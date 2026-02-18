@@ -5,14 +5,14 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 // ═══════════════════════════════════════════
 
 const BG = {
-  darkest:  "#1A1A1A",
-  dark:     "#222222",
-  standard: "#2A2A2A",
-  editor:   "#2E2E2E",
-  elevated: "#333333",
-  surface:  "#3B3B3B",
-  divider:  "#444444",
-  hover:    "#505050",
+  darkest:  "#13151C",
+  dark:     "#1A1C25",
+  standard: "#222430",
+  editor:   "#131423",
+  elevated: "#292B36",
+  surface:  "#353845",
+  divider:  "#3A3D4A",
+  hover:    "#4A4D5A",
 };
 
 const TEXT = {
@@ -193,6 +193,7 @@ const loadFromStorage = () => {
 };
 
 const SLASH_COMMANDS = [
+  { id: "h1", label: "Heading 1", desc: "Page-level heading", icon: "H1", type: "h1" },
   { id: "h2", label: "Heading 2", desc: "Large section heading", icon: "H2", type: "h2" },
   { id: "h3", label: "Heading 3", desc: "Small section heading", icon: "H3", type: "h3" },
   { id: "bullet", label: "Bullet List", desc: "Simple bulleted list", icon: "•", type: "bullet" },
@@ -218,16 +219,16 @@ const ChevronDown = ({ color = TEXT.secondary }) => (
   <Icon size={13}><path d="M3 5.5L8 10L13 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
 );
 const FolderIcon = ({ open }) => (
-  <Icon size={14}>
+  <Icon size={15}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      fill={open ? TEXT.secondary : TEXT.muted} opacity={open ? 0.6 : 0.35}/>
+      fill={TEXT.secondary} opacity={open ? 0.6 : 0.45}/>
   </Icon>
 );
 const FileIcon = () => (
-  <Icon size={13}>
+  <Icon size={15}>
     <path d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
-      fill={TEXT.muted} opacity="0.3"/>
-    <path d="M9 2V5.5H12.5" stroke={TEXT.muted} strokeWidth="0.8" opacity="0.3" strokeLinejoin="round"/>
+      fill={TEXT.secondary} opacity="0.45"/>
+    <path d="M9 2V5.5H12.5" stroke={TEXT.secondary} strokeWidth="0.8" opacity="0.45" strokeLinejoin="round"/>
   </Icon>
 );
 const SearchIcon = () => (
@@ -242,13 +243,13 @@ const CloseIcon = () => (
   </svg>
 );
 const UndoIcon = () => (
-  <Icon size={15}>
+  <Icon size={16.5}>
     <path d="M4 6H10C11.66 6 13 7.34 13 9C13 10.66 11.66 12 10 12H8" stroke={TEXT.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M6.5 3.5L4 6L6.5 8.5" stroke={TEXT.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
   </Icon>
 );
 const RedoIcon = () => (
-  <Icon size={15}>
+  <Icon size={16.5}>
     <path d="M12 6H6C4.34 6 3 7.34 3 9C3 10.66 4.34 12 6 12H8" stroke={TEXT.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M9.5 3.5L12 6L9.5 8.5" stroke={TEXT.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
   </Icon>
@@ -268,14 +269,9 @@ const NewFolderIcon = () => (
   </Icon>
 );
 const SidebarToggleIcon = ({ open }) => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+  <svg width="16.5" height="16.5" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
     <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke={TEXT.muted} strokeWidth="1.3"/>
     {open && <path d="M6 2.5V13.5" stroke={TEXT.muted} strokeWidth="1.3"/>}
-  </svg>
-);
-const PlusIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-    <path d="M6 2V10M2 6H10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
 const BreadcrumbChevron = () => (
@@ -288,33 +284,93 @@ const BreadcrumbChevron = () => (
 // STAR FIELD FOR EMPTY STATE
 // ═══════════════════════════════════════════
 
-const Stars = () => {
-  const stars = [
-    { x: "12%", y: "18%", s: 1.5, o: 0.15, d: 3 },
-    { x: "85%", y: "12%", s: 1, o: 0.1, d: 5 },
-    { x: "30%", y: "75%", s: 1.2, o: 0.12, d: 4 },
-    { x: "72%", y: "65%", s: 1, o: 0.08, d: 6 },
-    { x: "55%", y: "25%", s: 1.3, o: 0.1, d: 3.5 },
-    { x: "20%", y: "45%", s: 1, o: 0.07, d: 7 },
-    { x: "88%", y: "42%", s: 1.4, o: 0.11, d: 4.5 },
-    { x: "42%", y: "85%", s: 1, o: 0.09, d: 5.5 },
-    { x: "65%", y: "38%", s: 1.1, o: 0.06, d: 8 },
-    { x: "8%", y: "62%", s: 1, o: 0.08, d: 6.5 },
-    { x: "78%", y: "82%", s: 1.2, o: 0.1, d: 4 },
-    { x: "48%", y: "15%", s: 1, o: 0.07, d: 7.5 },
-  ];
+const StarField = ({ mode = "empty" }) => {
+  const canvasRef = useRef(null);
+  const starsRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+
+    const generateStars = (w, h) => {
+      const count = mode === "empty" ? 120 : 55;
+      const topExclude = mode === "empty" ? 0.05 : 0.12;
+      const colours = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#F0F4FF","#FFFDDE"];
+      return Array.from({ length: count }, () => {
+        const isHero = Math.random() < 0.08;
+        const radius = isHero ? 1.5 + Math.random() * 1.0 : 0.3 + Math.random() * 1.2;
+        return {
+          x: Math.random() * w,
+          y: h * topExclude + Math.random() * h * (1 - topExclude),
+          radius,
+          color: colours[Math.floor(Math.random() * colours.length)],
+          maxBrightness: 0.3 + Math.random() * 0.7,
+          cycleDuration: 30000 + Math.random() * 120000,
+          phaseOffset: Math.random() * Math.PI * 2,
+          shadowBlur: radius > 1.0 ? 4 + radius * 3 : 2 + radius * 2,
+        };
+      });
+    };
+
+    const resize = () => {
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      starsRef.current = generateStars(w, h);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    let raf;
+    const draw = (time) => {
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      const stars = starsRef.current;
+      if (!stars) { raf = requestAnimationFrame(draw); return; }
+      const emptyMult = mode === "empty" ? 1.6 : 1.0;
+
+      for (const s of stars) {
+        const cycle = (time % s.cycleDuration) / s.cycleDuration;
+        const sine = Math.sin(cycle * Math.PI * 2 + s.phaseOffset);
+        const norm = (sine + 1) / 2;
+        const opacity = Math.min((0.08 + norm * (s.maxBrightness - 0.08)) * emptyMult, 1.0);
+
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = s.color;
+        if (s.radius > 1.0) {
+          ctx.shadowBlur = s.shadowBlur * (0.6 + norm * 0.4);
+          ctx.shadowColor = s.color;
+        }
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fill();
+        if (s.radius > 1.0) ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, [mode]);
+
   return (
-    <>
-      {stars.map((s, i) => (
-        <div key={i} style={{
-          position: "absolute", left: s.x, top: s.y,
-          width: s.s, height: s.s, borderRadius: "50%",
-          background: TEXT.primary, opacity: s.o,
-          animation: `starTwinkle ${s.d}s ease-in-out infinite`,
-          animationDelay: `${i * 0.4}s`,
-        }} />
-      ))}
-    </>
+    <canvas ref={canvasRef} style={{
+      position: "absolute", inset: 0,
+      pointerEvents: "none", zIndex: 0,
+    }} />
   );
 };
 
@@ -322,7 +378,7 @@ const Stars = () => {
 // EDITABLE BLOCK
 // ═══════════════════════════════════════════
 
-function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckToggle, registerRef, syncGen }) {
+function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen }) {
   const elRef = useRef(null);
 
   // Set text on mount and force-resync on undo/redo (syncGen changes)
@@ -337,67 +393,63 @@ function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckT
     return () => registerRef(block.id, null);
   }, [block.id]);
 
-  const handlePaste = (e) => {
-    e.preventDefault();
-    document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
-  };
-
   if (block.type === "spacer") {
-    return <div style={{ height: 14 }} />;
+    return <div data-block-id={block.id} contentEditable="false" style={{ padding: "8px 0", userSelect: "none" }}><hr style={{ border: "none", borderTop: `1px solid ${BG.divider}`, margin: 0 }} /></div>;
   }
-
-  const editableProps = {
-    contentEditable: true,
-    suppressContentEditableWarning: true,
-    onInput: (e) => onInput(noteId, blockIndex, e),
-    onKeyDown: (e) => onKeyDown(noteId, blockIndex, e),
-    onPaste: handlePaste,
-  };
 
   if (block.type === "p") {
     return (
-      <p ref={elRef} {...editableProps} style={{
+      <p ref={elRef} data-block-id={block.id} style={{
         margin: "0 0 6px", lineHeight: 1.7, color: TEXT.primary, fontSize: 14.5, outline: "none",
+      }} />
+    );
+  }
+
+  if (block.type === "h1") {
+    return (
+      <h1 ref={elRef} data-block-id={block.id} style={{
+        fontSize: 28, fontWeight: 700, color: TEXT.primary, margin: "8px 0 12px", lineHeight: 1.3, letterSpacing: "-0.4px", outline: "none",
       }} />
     );
   }
 
   if (block.type === "h2") {
     return (
-      <h2 ref={elRef} {...editableProps} style={{
-        fontSize: 19, fontWeight: 600, color: TEXT.primary, margin: "6px 0 10px", lineHeight: 1.35, outline: "none",
+      <h2 ref={elRef} data-block-id={block.id} style={{
+        fontSize: 22, fontWeight: 600, color: TEXT.primary, margin: "6px 0 10px", lineHeight: 1.35, letterSpacing: "-0.2px", outline: "none",
       }} />
     );
   }
 
   if (block.type === "h3") {
     return (
-      <h3 ref={elRef} {...editableProps} style={{
-        fontSize: 15.5, fontWeight: 600, color: TEXT.primary, margin: "6px 0 6px", lineHeight: 1.35, outline: "none",
+      <h3 ref={elRef} data-block-id={block.id} style={{
+        fontSize: 16.5, fontWeight: 600, color: TEXT.primary, margin: "6px 0 6px", lineHeight: 1.35, outline: "none",
       }} />
     );
   }
 
   if (block.type === "bullet") {
     return (
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize: 14.5, lineHeight: 1.7 }}>
-        <span style={{ color: TEXT.muted, marginTop: 1, flexShrink: 0, fontSize: 10 }}>●</span>
-        <span ref={elRef} {...editableProps} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
+      <div data-block-id={block.id} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize: 14.5, lineHeight: 1.7 }}>
+        <span contentEditable="false" style={{ color: TEXT.muted, marginTop: 1, flexShrink: 0, fontSize: 10, userSelect: "none" }}>●</span>
+        <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
       </div>
     );
   }
 
   if (block.type === "checkbox") {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
+      <div data-block-id={block.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
         <div
+          contentEditable="false"
           onClick={(e) => { e.stopPropagation(); onCheckToggle(noteId, blockIndex); }}
           style={{
             width: 16, height: 16, borderRadius: 3.5, flexShrink: 0, cursor: "pointer",
             border: block.checked ? `1.5px solid ${ACCENT.primary}` : `1.5px solid ${TEXT.muted}`,
             background: block.checked ? ACCENT.primary : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.15s",
+            transition: "all 0.15s", userSelect: "none",
           }}
         >
           {block.checked && (
@@ -406,7 +458,7 @@ function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckT
             </svg>
           )}
         </div>
-        <span ref={elRef} {...editableProps} style={{
+        <span ref={elRef} style={{
           color: block.checked ? TEXT.muted : TEXT.primary,
           textDecoration: block.checked ? "line-through" : "none",
           outline: "none", flex: 1, transition: "color 0.15s",
@@ -475,6 +527,7 @@ export default function BoojyNotes() {
   // ─── Refs ───
   const isDragging = useRef(false);
   const blockRefs = useRef({});
+  const editorRef = useRef(null);
   const titleRef = useRef(null);
   const focusBlockId = useRef(null);
   const focusCursorPos = useRef(null);
@@ -574,23 +627,7 @@ export default function BoojyNotes() {
     if (focusBlockId.current) {
       const el = blockRefs.current[focusBlockId.current];
       if (el) {
-        el.focus();
-        if (focusCursorPos.current !== null) {
-          try {
-            const range = document.createRange();
-            const sel = window.getSelection();
-            if (el.childNodes.length > 0) {
-              const textNode = el.childNodes[0];
-              const pos = Math.min(focusCursorPos.current, textNode.length || 0);
-              range.setStart(textNode, pos);
-            } else {
-              range.setStart(el, 0);
-            }
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          } catch (_) { /* ignore range errors */ }
-        }
+        placeCaret(el, focusCursorPos.current ?? 0);
       }
       focusBlockId.current = null;
       focusCursorPos.current = null;
@@ -815,8 +852,10 @@ export default function BoojyNotes() {
   };
 
   // ─── Block input handler ───
-  const handleBlockInput = (noteId, blockIndex, e) => {
-    const el = e.currentTarget;
+  const handleBlockInput = (noteId, blockIndex) => {
+    const blocks = noteDataRef.current[noteId].content.blocks;
+    const el = blockRefs.current[blocks[blockIndex]?.id];
+    if (!el) return;
     const text = el.innerText;
     updateBlockText(noteId, blockIndex, text);
 
@@ -824,8 +863,9 @@ export default function BoojyNotes() {
     // contentEditable uses \u00a0 (non-breaking space) so match both \s and \u00a0
     const S = "[\\s\\u00a0]"; // space character class
     const mdPatterns = [
-      { regex: new RegExp(`^#{1,2}${S}$`), type: "h2" },
       { regex: new RegExp(`^###${S}$`), type: "h3" },
+      { regex: new RegExp(`^##${S}$`), type: "h2" },
+      { regex: new RegExp(`^#${S}$`), type: "h1" },
       { regex: new RegExp(`^[-*]${S}$`), type: "bullet" },
       { regex: new RegExp(`^\\[\\]${S}$`), type: "checkbox" },
       { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
@@ -892,6 +932,28 @@ export default function BoojyNotes() {
     // Enter — split block
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      const blockType = blocks[blockIndex].type;
+      const isList = blockType === "bullet" || blockType === "checkbox";
+
+      // Empty list item → convert to plain paragraph (Obsidian behavior)
+      if (isList && text.trim() === "") {
+        el.innerText = "";
+        commitNoteData(prev => {
+          const next = { ...prev };
+          const n = { ...next[noteId] };
+          const blks = [...n.content.blocks];
+          const updated = { ...blks[blockIndex], type: "p", text: "" };
+          delete updated.checked;
+          blks[blockIndex] = updated;
+          n.content = { ...n.content, blocks: blks };
+          next[noteId] = n;
+          return next;
+        });
+        focusBlockId.current = blocks[blockIndex].id;
+        focusCursorPos.current = 0;
+        return;
+      }
+
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
@@ -903,16 +965,17 @@ export default function BoojyNotes() {
       const preDiv = document.createElement("div");
       preDiv.appendChild(preRange.cloneContents());
       const beforeText = preDiv.innerText;
-      // Clone after-cursor content the same way
+      // Clone after-selection content the same way (use range end, not start, to exclude selected text)
       const postRange = document.createRange();
       postRange.selectNodeContents(el);
-      postRange.setStart(range.startContainer, range.startOffset);
+      postRange.setStart(range.endContainer, range.endOffset);
       const postDiv = document.createElement("div");
       postDiv.appendChild(postRange.cloneContents());
       const afterText = postDiv.innerText;
       el.innerText = beforeText;
       updateBlockText(noteId, blockIndex, beforeText);
-      insertBlockAfter(noteId, blockIndex, "p", afterText);
+      // Continue list type, or plain paragraph for other blocks
+      insertBlockAfter(noteId, blockIndex, isList ? blockType : "p", afterText);
     }
 
     // Backspace
@@ -958,8 +1021,8 @@ export default function BoojyNotes() {
       }
     }
 
-    // Arrow up — move to previous block when at start
-    if (e.key === "ArrowUp") {
+    // Arrow up — only handle: move to title from first block
+    if (e.key === "ArrowUp" && blockIndex === 0) {
       const sel = window.getSelection();
       if (sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
@@ -967,39 +1030,227 @@ export default function BoojyNotes() {
         const elRect = el.getBoundingClientRect();
         if (rect.top - elRect.top < 5) {
           e.preventDefault();
-          let prevIdx = blockIndex - 1;
-          while (prevIdx >= 0 && blocks[prevIdx].type === "spacer") prevIdx--;
-          if (prevIdx >= 0) {
-            const prev = blocks[prevIdx];
-            focusBlockId.current = prev.id;
-            focusCursorPos.current = (prev.text || "").length;
-            blockRefs.current[prev.id]?.focus();
-          } else {
-            titleRef.current?.focus();
-          }
+          titleRef.current?.focus();
         }
+      }
+    }
+  };
+
+  // ─── Helper: find block from a DOM node ───
+  const getBlockFromNode = (node) => {
+    let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    while (el && el !== editorRef.current) {
+      if (el.dataset && el.dataset.blockId) {
+        const blockId = el.dataset.blockId;
+        const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+        if (!blocks) return null;
+        const blockIndex = blocks.findIndex(b => b.id === blockId);
+        if (blockIndex === -1) return null;
+        return { el: blockRefs.current[blockId], blockIndex, blockId };
+      }
+      el = el.parentElement;
+    }
+    return null;
+  };
+
+  // ─── Helper: place cursor inside a block element ───
+  const placeCaret = (el, pos = 0) => {
+    if (!el) return;
+    try {
+      const range = document.createRange();
+      const sel = window.getSelection();
+      if (pos === 0 || el.childNodes.length === 0) {
+        range.setStart(el, 0);
+      } else {
+        // Walk text nodes to find correct position
+        let remaining = pos;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let textNode, placed = false;
+        while (textNode = walker.nextNode()) {
+          if (remaining <= textNode.length) {
+            range.setStart(textNode, remaining);
+            placed = true;
+            break;
+          }
+          remaining -= textNode.length;
+        }
+        if (!placed) { range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); return; }
+      }
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  };
+
+  // ─── Cross-block key handler ───
+  const handleCrossBlockKeyDown = (e, startInfo, endInfo) => {
+    const blocks = noteDataRef.current[activeNote].content.blocks;
+    const range = window.getSelection().getRangeAt(0);
+    const startEl = startInfo.el;
+    const endEl = endInfo.el;
+
+    // Get text before selection in first block
+    const preRange = document.createRange();
+    preRange.selectNodeContents(startEl);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    const preDiv = document.createElement("div");
+    preDiv.appendChild(preRange.cloneContents());
+    const beforeText = preDiv.innerText;
+
+    // Get text after selection in last block
+    const postRange = document.createRange();
+    postRange.selectNodeContents(endEl);
+    postRange.setStart(range.endContainer, range.endOffset);
+    const postDiv = document.createElement("div");
+    postDiv.appendChild(postRange.cloneContents());
+    const afterText = postDiv.innerText;
+
+    const startIdx = startInfo.blockIndex;
+    const endIdx = endInfo.blockIndex;
+    const startBlockId = blocks[startIdx].id;
+
+    // Backspace / Delete — collapse selection
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[activeNote] };
+        const blks = [...n.content.blocks];
+        blks[startIdx] = { ...blks[startIdx], text: beforeText + afterText };
+        blks.splice(startIdx + 1, endIdx - startIdx);
+        n.content = { ...n.content, blocks: blks };
+        next[activeNote] = n;
+        return next;
+      });
+      syncGeneration.current++;
+      focusBlockId.current = startBlockId;
+      focusCursorPos.current = beforeText.length;
+      return;
+    }
+
+    // Enter — collapse then split
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const newBlockId = genBlockId();
+      const startType = blocks[startIdx].type;
+      const isList = startType === "bullet" || startType === "checkbox";
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[activeNote] };
+        const blks = [...n.content.blocks];
+        blks[startIdx] = { ...blks[startIdx], text: beforeText };
+        blks.splice(startIdx + 1, endIdx - startIdx);
+        const newBlock = { id: newBlockId, type: isList ? startType : "p", text: afterText };
+        if (startType === "checkbox") newBlock.checked = false;
+        blks.splice(startIdx + 1, 0, newBlock);
+        n.content = { ...n.content, blocks: blks };
+        next[activeNote] = n;
+        return next;
+      });
+      syncGeneration.current++;
+      focusBlockId.current = newBlockId;
+      focusCursorPos.current = 0;
+      return;
+    }
+
+    // Printable character — collapse + insert
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[activeNote] };
+        const blks = [...n.content.blocks];
+        blks[startIdx] = { ...blks[startIdx], text: beforeText + e.key + afterText };
+        blks.splice(startIdx + 1, endIdx - startIdx);
+        n.content = { ...n.content, blocks: blks };
+        next[activeNote] = n;
+        return next;
+      });
+      syncGeneration.current++;
+      focusBlockId.current = startBlockId;
+      focusCursorPos.current = beforeText.length + e.key.length;
+      return;
+    }
+  };
+
+  // ─── Editor wrapper event handlers ───
+  const handleEditorKeyDown = (e) => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+
+    // Check for cross-block selection
+    if (!range.collapsed) {
+      const startInfo = getBlockFromNode(range.startContainer);
+      const endInfo = getBlockFromNode(range.endContainer);
+      if (startInfo && endInfo && startInfo.blockIndex !== endInfo.blockIndex) {
+        handleCrossBlockKeyDown(e, startInfo, endInfo);
+        return;
       }
     }
 
-    // Arrow down — move to next block when at end
-    if (e.key === "ArrowDown") {
-      const sel = window.getSelection();
-      if (sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        if (elRect.bottom - rect.bottom < 5) {
-          e.preventDefault();
-          let nextIdx = blockIndex + 1;
-          while (nextIdx < blocks.length && blocks[nextIdx].type === "spacer") nextIdx++;
-          if (nextIdx < blocks.length) {
-            focusBlockId.current = blocks[nextIdx].id;
-            focusCursorPos.current = 0;
-            blockRefs.current[blocks[nextIdx].id]?.focus();
-          }
-        }
+    // Single-block — find which block and delegate
+    const info = getBlockFromNode(sel.anchorNode);
+    if (!info) return;
+    handleBlockKeyDown(activeNote, info.blockIndex, e);
+  };
+
+  const handleEditorInput = () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const info = getBlockFromNode(sel.anchorNode);
+    if (!info) return;
+    handleBlockInput(activeNote, info.blockIndex);
+  };
+
+  const handleEditorPaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData("text/plain");
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+
+    // Cross-block paste: collapse selection and insert text programmatically
+    if (!range.collapsed) {
+      const startInfo = getBlockFromNode(range.startContainer);
+      const endInfo = getBlockFromNode(range.endContainer);
+      if (startInfo && endInfo && startInfo.blockIndex !== endInfo.blockIndex) {
+        const startEl = startInfo.el;
+        const endEl = endInfo.el;
+        const preRange = document.createRange();
+        preRange.selectNodeContents(startEl);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const preDiv = document.createElement("div");
+        preDiv.appendChild(preRange.cloneContents());
+        const beforeText = preDiv.innerText;
+        const postRange = document.createRange();
+        postRange.selectNodeContents(endEl);
+        postRange.setStart(range.endContainer, range.endOffset);
+        const postDiv = document.createElement("div");
+        postDiv.appendChild(postRange.cloneContents());
+        const afterText = postDiv.innerText;
+        const startIdx = startInfo.blockIndex;
+        const endIdx = endInfo.blockIndex;
+        const startBlockId = noteDataRef.current[activeNote].content.blocks[startIdx].id;
+        commitNoteData(prev => {
+          const next = { ...prev };
+          const n = { ...next[activeNote] };
+          const blks = [...n.content.blocks];
+          blks[startIdx] = { ...blks[startIdx], text: beforeText + pastedText + afterText };
+          blks.splice(startIdx + 1, endIdx - startIdx);
+          n.content = { ...n.content, blocks: blks };
+          next[activeNote] = n;
+          return next;
+        });
+        syncGeneration.current++;
+        focusBlockId.current = startBlockId;
+        focusCursorPos.current = (beforeText + pastedText).length;
+        return;
       }
     }
+
+    // Single block or collapsed — use browser's insertText
+    document.execCommand("insertText", false, pastedText);
   };
 
   // ─── Search filtering ───
@@ -1016,7 +1267,7 @@ export default function BoojyNotes() {
 
   const syncDotStyle = () => {
     const base = {
-      width: 17, height: 17, borderRadius: "50%",
+      width: 19, height: 19, borderRadius: "50%",
       background: BRAND.orange, border: "none",
       cursor: "pointer", position: "relative", top: 1,
       transition: "transform 0.15s",
@@ -1050,16 +1301,18 @@ export default function BoojyNotes() {
           borderRight: collapsed ? "none" : `1px solid ${BG.divider}`,
         }}>
           {/* N●tes */}
-          <div style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
-            <span style={{ fontSize: 19, fontWeight: 800, color: TEXT.primary, letterSpacing: "-0.5px" }}>N</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+            <img src="/boojy-notes-text-N.png" alt="" style={{ height: 23.5 }} draggable="false" />
             <button
               onClick={() => setSettings(!settings)}
               style={syncDotStyle()}
-              onMouseEnter={(e) => e.target.style.transform = "scale(1.1)"}
-              onMouseLeave={(e) => e.target.style.transform = "scale(1)"}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
               title={`Settings · Sync: ${syncState}`}
-            />
-            <span style={{ fontSize: 19, fontWeight: 800, color: TEXT.primary, letterSpacing: "-0.5px" }}>tes</span>
+            >
+              <img src="/boojy-notes-settings-circle.png" alt="" style={{ width: "100%", height: "100%", borderRadius: "50%" }} draggable="false" />
+            </button>
+            <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
           </div>
 
           <div style={{ flex: 1 }} />
@@ -1068,7 +1321,7 @@ export default function BoojyNotes() {
             <button onClick={() => setCollapsed(!collapsed)}
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                padding: 4, borderRadius: 5, display: "flex", alignItems: "center",
+                padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
                 transition: "background 0.15s",
               }}
               onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
@@ -1077,30 +1330,35 @@ export default function BoojyNotes() {
             >
               <SidebarToggleIcon open={!collapsed} />
             </button>
-            <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><UndoIcon /></button>
-            <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><RedoIcon /></button>
+            <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center" }}><UndoIcon /></button>
+            <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center" }}><RedoIcon /></button>
           </div>
         </div>
 
         {/* Right section — tabs + actions */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", height: "100%", overflow: "hidden" }}>
           {/* Tabs */}
-          <div style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" }}>
-            {tabs.map((tId) => {
+          <div className="tab-scroll" style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" }}>
+            {tabs.flatMap((tId, i) => {
               const t = noteData[tId];
-              if (!t) return null;
+              if (!t) return [];
               const act = activeNote === tId;
-              return (
+              const prevAct = i > 0 && tabs[i - 1] === activeNote;
+              const els = [];
+              if (i > 0 && !act && !prevAct) {
+                els.push(<div key={`div-${tId}`} style={{ width: 1, background: BG.divider, opacity: 0.25, alignSelf: "stretch", flexShrink: 0 }} />);
+              }
+              els.push(
                 <button key={tId} onClick={() => setActiveNote(tId)}
                   style={{
                     background: act ? BG.standard : "transparent",
                     border: "none",
                     borderBottom: act ? `2px solid ${ACCENT.primary}` : "2px solid transparent",
                     borderImage: act ? `linear-gradient(90deg, transparent, ${ACCENT.primary}, transparent) 1` : "none",
-                    cursor: "pointer", padding: "0 14px",
-                    display: "flex", alignItems: "center", gap: 7,
+                    cursor: "pointer", padding: "0 16px",
+                    display: "flex", alignItems: "center", gap: 5,
                     color: act ? TEXT.primary : "#909090",
-                    fontSize: 13, fontFamily: "inherit",
+                    fontSize: 13.5, fontFamily: "inherit",
                     whiteSpace: "nowrap", transition: "background 0.15s, color 0.15s",
                     height: "100%",
                   }}
@@ -1120,24 +1378,16 @@ export default function BoojyNotes() {
                   ><CloseIcon /></span>
                 </button>
               );
+              if (i === tabs.length - 1) {
+                els.push(<div key="div-end" style={{ width: 1, background: BG.divider, opacity: 0.25, alignSelf: "stretch", flexShrink: 0 }} />);
+              }
+              return els;
             })}
-            {/* + new tab */}
-            <button onClick={() => createNote(null)} style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: "0 10px", color: TEXT.muted, display: "flex",
-              alignItems: "center", transition: "color 0.15s", height: "100%",
-            }}
-              onMouseEnter={(e) => e.currentTarget.style.color = ACCENT.primary}
-              onMouseLeave={(e) => e.currentTarget.style.color = TEXT.muted}
-            ><PlusIcon /></button>
           </div>
-
-          {/* Divider */}
-          <div style={{ width: 1, height: 20, background: BG.divider, flexShrink: 0, margin: "0 4px" }} />
 
           {/* Word count */}
           {note && (
-            <span style={{ fontSize: 11, color: TEXT.muted, flexShrink: 0, padding: "0 6px", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 12, color: TEXT.muted, flexShrink: 0, padding: "0 10px", whiteSpace: "nowrap" }}>
               {wordCount} words
             </span>
           )}
@@ -1148,18 +1398,19 @@ export default function BoojyNotes() {
           {/* Action buttons */}
           <div style={{ display: "flex", gap: 4, flexShrink: 0, padding: "0 10px 0 6px" }}>
             {[
-              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null) },
+              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null), accent: true },
               { icon: <NewFolderIcon />, title: "New folder", onClick: () => {} },
             ].map((btn, i) => (
               <button key={i} onClick={btn.onClick} style={{
                 width: 30, height: 28, borderRadius: 6,
-                background: BG.elevated, border: `1px solid ${BG.divider}`,
+                background: btn.accent ? ACCENT.primary : BG.elevated,
+                border: btn.accent ? `1px solid ${ACCENT.primary}` : `1px solid ${BG.divider}`,
                 cursor: "pointer", display: "flex",
                 alignItems: "center", justifyContent: "center",
-                color: TEXT.muted, transition: "all 0.15s",
+                color: btn.accent ? BG.darkest : TEXT.muted, transition: "all 0.15s",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT.primary; e.currentTarget.style.color = ACCENT.primary; e.currentTarget.style.background = BG.surface; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = BG.divider; e.currentTarget.style.color = TEXT.muted; e.currentTarget.style.background = BG.elevated; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = btn.accent ? ACCENT.hover : BG.surface; e.currentTarget.style.borderColor = btn.accent ? ACCENT.hover : ACCENT.primary; e.currentTarget.style.color = btn.accent ? BG.darkest : ACCENT.primary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = btn.accent ? ACCENT.primary : BG.elevated; e.currentTarget.style.borderColor = btn.accent ? ACCENT.primary : BG.divider; e.currentTarget.style.color = btn.accent ? BG.darkest : TEXT.muted; }}
                 title={btn.title}
               >{btn.icon}</button>
             ))}
@@ -1186,16 +1437,16 @@ export default function BoojyNotes() {
               <div style={{
                 display: "flex", alignItems: "center", gap: 7,
                 background: BG.darkest, borderRadius: 6,
-                padding: "5px 9px", border: `1px solid ${BG.divider}`,
+                padding: "6px 10px", border: `1px solid ${BG.divider}`,
               }}>
-                <SearchIcon />
                 <input type="text" placeholder="Search..."
                   value={search} onChange={(e) => setSearch(e.target.value)}
                   style={{
                     background: "none", border: "none", outline: "none",
-                    color: TEXT.primary, fontSize: 12, width: "100%", fontFamily: "inherit",
+                    color: TEXT.primary, fontSize: 13, width: "100%", fontFamily: "inherit",
                   }}
                 />
+                <SearchIcon />
               </div>
             </div>
 
@@ -1207,13 +1458,13 @@ export default function BoojyNotes() {
                     onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folder.name }); }}
                     style={{
                       width: "100%", background: "none", border: "none",
-                      cursor: "pointer", padding: "4px 10px",
+                      cursor: "pointer", padding: "5px 10px",
                       display: "flex", alignItems: "center", gap: 5,
-                      color: TEXT.primary, fontSize: 12.5, fontFamily: "inherit",
-                      transition: "background 0.1s", textAlign: "left",
+                      color: TEXT.secondary, fontSize: 13, fontWeight: 400, fontFamily: "inherit",
+                      transition: "background 0.1s, color 0.1s", textAlign: "left",
                     }}
-                    onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
-                    onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+                    onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
+                    onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
                   >
                     {expanded[folder.name] ? <ChevronDown /> : <ChevronRight />}
                     <FolderIcon open={expanded[folder.name]} />
@@ -1246,10 +1497,10 @@ export default function BoojyNotes() {
                           width: "100%", border: "none", cursor: "pointer",
                           background: act ? BG.surface : "transparent",
                           borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
-                          padding: "4px 10px 4px 36px",
+                          padding: "5px 10px 5px 36px",
                           display: "flex", alignItems: "center", gap: 5,
                           color: act ? TEXT.primary : TEXT.secondary,
-                          fontSize: 12.5, fontFamily: "inherit",
+                          fontSize: 13, fontFamily: "inherit",
                           fontWeight: act ? 600 : 400,
                           transition: "background 0.12s", textAlign: "left",
                         }}
@@ -1278,10 +1529,10 @@ export default function BoojyNotes() {
                       width: "100%", border: "none", cursor: "pointer",
                       background: act ? BG.surface : "transparent",
                       borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
-                      padding: "4px 10px 4px 12px",
+                      padding: "5px 10px 5px 12px",
                       display: "flex", alignItems: "center", gap: 5,
                       color: act ? TEXT.primary : TEXT.secondary,
-                      fontSize: 12.5, fontFamily: "inherit",
+                      fontSize: 13, fontFamily: "inherit",
                       fontWeight: act ? 600 : 400,
                       transition: "background 0.12s", textAlign: "left",
                     }}
@@ -1315,7 +1566,8 @@ export default function BoojyNotes() {
         )}
 
         {/* ─── EDITOR ─── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.editor }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.editor, position: "relative" }}>
+          <StarField mode={note ? "editor" : "empty"} key={note ? "editor" : "empty"} />
           {note ? (
             <div key={activeNote} style={{
               flex: 1, overflow: "auto",
@@ -1323,6 +1575,7 @@ export default function BoojyNotes() {
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
               transition: "opacity 0.2s ease, transform 0.2s ease",
+              position: "relative", zIndex: 1,
             }}>
               {/* Breadcrumb (only if inside a folder) */}
               {note.path && (
@@ -1367,7 +1620,7 @@ export default function BoojyNotes() {
                     e.preventDefault();
                     const blocks = noteDataRef.current[activeNote].content.blocks;
                     const first = blocks.find(b => b.type !== "spacer");
-                    if (first) blockRefs.current[first.id]?.focus();
+                    if (first) placeCaret(blockRefs.current[first.id], 0);
                   }
                 }}
                 onPaste={(e) => {
@@ -1381,20 +1634,28 @@ export default function BoojyNotes() {
                 }}
               />
 
-              {/* Blocks */}
-              {note.content.blocks.map((block, i) => (
-                <EditableBlock
-                  key={block.id + "-" + block.type}
-                  block={block}
-                  blockIndex={i}
-                  noteId={activeNote}
-                  onInput={handleBlockInput}
-                  onKeyDown={handleBlockKeyDown}
-                  onCheckToggle={flipCheck}
-                  registerRef={registerBlockRef}
-                  syncGen={syncGeneration.current}
-                />
-              ))}
+              {/* Blocks — single contentEditable wrapper for cross-block selection */}
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onKeyDown={handleEditorKeyDown}
+                onInput={handleEditorInput}
+                onPaste={handleEditorPaste}
+                style={{ outline: "none" }}
+              >
+                {note.content.blocks.map((block, i) => (
+                  <EditableBlock
+                    key={block.id + "-" + block.type}
+                    block={block}
+                    blockIndex={i}
+                    noteId={activeNote}
+                    onCheckToggle={flipCheck}
+                    registerRef={registerBlockRef}
+                    syncGen={syncGeneration.current}
+                  />
+                ))}
+              </div>
 
               {/* Click to create new block */}
               <div
@@ -1410,16 +1671,15 @@ export default function BoojyNotes() {
             <div style={{
               flex: 1, display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
-              position: "relative", overflow: "hidden",
+              position: "relative", overflow: "hidden", zIndex: 1,
             }}>
-              <Stars />
 
               <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
                 {/* Faded N●tes logo */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, marginBottom: 20, opacity: 0.12 }}>
-                  <span style={{ fontSize: 48, fontWeight: 800, color: TEXT.primary }}>N</span>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: BRAND.orange, position: "relative", top: 2 }} />
-                  <span style={{ fontSize: 48, fontWeight: 800, color: TEXT.primary }}>tes</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 20, opacity: 0.12 }}>
+                  <img src="/boojy-notes-text-N.png" alt="" style={{ height: 55, filter: "invert(1)" }} draggable="false" />
+                  <img src="/boojy-notes-settings-circle.png" alt="" style={{ height: 40, position: "relative", top: 2 }} draggable="false" />
+                  <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 48, filter: "invert(1)" }} draggable="false" />
                 </div>
 
                 <p style={{ color: TEXT.muted, fontSize: 14, marginBottom: 28, opacity: 0.7 }}>Start writing...</p>
@@ -1645,10 +1905,6 @@ export default function BoojyNotes() {
           0%, 100% { box-shadow: 0 0 4px ${BRAND.orange}40; }
           50% { box-shadow: 0 0 14px ${BRAND.orange}80, 0 0 24px ${BRAND.orange}30; }
         }
-        @keyframes starTwinkle {
-          0%, 100% { opacity: inherit; }
-          50% { opacity: 0.02; }
-        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -1662,6 +1918,10 @@ export default function BoojyNotes() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${BG.divider}; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: ${BG.hover}; box-shadow: 0 0 4px ${BG.hover}40; }
+        .tab-scroll::-webkit-scrollbar { height: 3px; }
+        .tab-scroll::-webkit-scrollbar-track { background: transparent; }
+        .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+        .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
         .sidebar-note .delete-btn { opacity: 0; transition: opacity 0.1s; }
