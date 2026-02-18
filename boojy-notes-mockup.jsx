@@ -8,6 +8,7 @@ const BG = {
   darkest:  "#1A1A1A",
   dark:     "#222222",
   standard: "#2A2A2A",
+  editor:   "#2E2E2E",
   elevated: "#333333",
   surface:  "#3B3B3B",
   divider:  "#444444",
@@ -174,6 +175,23 @@ const ROOT_NOTES = ["shopping-list", "quick-ideas", "meeting-notes"];
 let _blockId = 0;
 const genBlockId = () => `blk-${++_blockId}`;
 
+let _noteId = 0;
+const genNoteId = () => `note-${Date.now()}-${++_noteId}`;
+
+const STORAGE_KEY = "boojy-notes-v1";
+let _cachedStorage;
+const loadFromStorage = () => {
+  if (_cachedStorage !== undefined) return _cachedStorage;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    _cachedStorage = raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    console.warn("Failed to load from localStorage:", e);
+    _cachedStorage = null;
+  }
+  return _cachedStorage;
+};
+
 const SLASH_COMMANDS = [
   { id: "h2", label: "Heading 2", desc: "Large section heading", icon: "H2", type: "h2" },
   { id: "h3", label: "Heading 3", desc: "Small section heading", icon: "H3", type: "h3" },
@@ -304,14 +322,15 @@ const Stars = () => {
 // EDITABLE BLOCK
 // ═══════════════════════════════════════════
 
-function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckToggle, registerRef }) {
+function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckToggle, registerRef, syncGen }) {
   const elRef = useRef(null);
 
+  // Set text on mount and force-resync on undo/redo (syncGen changes)
   useLayoutEffect(() => {
     if (elRef.current && block.text !== undefined) {
       elRef.current.innerText = block.text;
     }
-  }, []); // mount only — DOM owns text after this
+  }, [syncGen]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
   useEffect(() => {
     if (elRef.current) registerRef(block.id, elRef.current);
@@ -405,9 +424,22 @@ function EditableBlock({ block, blockIndex, noteId, onInput, onKeyDown, onCheckT
 
 export default function BoojyNotes() {
   // ─── State ───
-  const [expanded, setExpanded] = useState({ University: true });
-  const [activeNote, setActiveNote] = useState("comp201");
-  const [tabs, setTabs] = useState(["shopping-list", "comp201"]);
+  const [expanded, setExpanded] = useState(() => {
+    const saved = loadFromStorage();
+    return saved?.expanded || { University: true };
+  });
+  const [activeNote, setActiveNote] = useState(() => {
+    const saved = loadFromStorage();
+    return (saved?.activeNote && saved.noteData?.[saved.activeNote]) ? saved.activeNote : "comp201";
+  });
+  const [tabs, setTabs] = useState(() => {
+    const saved = loadFromStorage();
+    if (saved?.tabs) {
+      const valid = saved.tabs.filter(id => saved.noteData?.[id]);
+      if (valid.length > 0) return valid;
+    }
+    return ["shopping-list", "comp201"];
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [search, setSearch] = useState("");
@@ -415,6 +447,21 @@ export default function BoojyNotes() {
   const [syncState, setSyncState] = useState("synced");
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [noteData, setNoteData] = useState(() => {
+    const saved = loadFromStorage();
+    if (saved?.noteData) {
+      // Resume _blockId counter to avoid collisions
+      let maxId = 0;
+      for (const n of Object.values(saved.noteData)) {
+        for (const b of n.content.blocks) {
+          if (b.id?.startsWith("blk-")) {
+            const num = parseInt(b.id.slice(4), 10);
+            if (num > maxId) maxId = num;
+          }
+        }
+      }
+      _blockId = maxId;
+      return saved.noteData;
+    }
     const clone = {};
     for (const [id, n] of Object.entries(NOTES)) {
       clone[id] = { ...n, content: { title: n.content.title, blocks: n.content.blocks.map(b => ({ ...b, id: genBlockId() })) } };
@@ -422,6 +469,8 @@ export default function BoojyNotes() {
     return clone;
   });
   const [slashMenu, setSlashMenu] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null); // { x, y, type: "note"|"folder", id }
+  const [renamingFolder, setRenamingFolder] = useState(null); // folder name being renamed
 
   // ─── Refs ───
   const isDragging = useRef(false);
@@ -431,8 +480,55 @@ export default function BoojyNotes() {
   const focusCursorPos = useRef(null);
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
+  const syncGeneration = useRef(0); // bumped on undo/redo to force DOM resync
   const slashMenuRef = useRef(slashMenu);
   slashMenuRef.current = slashMenu;
+  const undoStack = useRef([]);
+  const redoStack = useRef([]);
+  const historyTimer = useRef(null);
+  const isUndoRedo = useRef(false);
+
+  // ─── History wrappers ───
+  const pushHistory = () => {
+    undoStack.current.push(structuredClone(noteDataRef.current));
+    if (undoStack.current.length > 50) undoStack.current.shift();
+    redoStack.current = [];
+  };
+
+  const commitNoteData = (updater) => {
+    if (!isUndoRedo.current) pushHistory();
+    setNoteData(updater);
+  };
+
+  const commitTextChange = (updater) => {
+    if (!isUndoRedo.current) {
+      if (!historyTimer.current) {
+        pushHistory();
+      } else {
+        clearTimeout(historyTimer.current);
+      }
+      historyTimer.current = setTimeout(() => { historyTimer.current = null; }, 500);
+    }
+    setNoteData(updater);
+  };
+
+  const undo = () => {
+    if (undoStack.current.length === 0) return;
+    redoStack.current.push(structuredClone(noteDataRef.current));
+    isUndoRedo.current = true;
+    syncGeneration.current++;
+    setNoteData(undoStack.current.pop());
+    isUndoRedo.current = false;
+  };
+
+  const redo = () => {
+    if (redoStack.current.length === 0) return;
+    undoStack.current.push(structuredClone(noteDataRef.current));
+    isUndoRedo.current = true;
+    syncGeneration.current++;
+    setNoteData(redoStack.current.pop());
+    isUndoRedo.current = false;
+  };
 
   // ─── Effects ───
   useEffect(() => {
@@ -448,6 +544,30 @@ export default function BoojyNotes() {
   }, [activeNote]);
 
   useEffect(() => { blockRefs.current = {}; }, [activeNote]);
+
+  // Undo/Redo keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      if (mod && e.key === "y") { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Persist to localStorage — debounced 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteData, tabs, activeNote, expanded }));
+      } catch (e) {
+        console.warn("Failed to save to localStorage:", e);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [noteData, tabs, activeNote, expanded]);
 
   // Focus management — runs after every render
   useEffect(() => {
@@ -514,9 +634,23 @@ export default function BoojyNotes() {
     .filter(b => b.text)
     .reduce((sum, b) => sum + b.text.split(/\s+/).filter(Boolean).length, 0) : 0;
 
+  // Derive folder structure and root notes from noteData
+  const derivedFolders = {};
+  const derivedRootNotes = [];
+  for (const [id, n] of Object.entries(noteData)) {
+    if (n.folder) {
+      if (!derivedFolders[n.folder]) derivedFolders[n.folder] = [];
+      derivedFolders[n.folder].push(id);
+    } else {
+      derivedRootNotes.push(id);
+    }
+  }
+  const folderList = Object.entries(derivedFolders).map(([name, notes]) => ({ name, notes }));
+  folderList.sort((a, b) => a.name.localeCompare(b.name));
+
   // ─── Block CRUD ───
   const updateBlockText = (noteId, blockIndex, newText) => {
-    setNoteData(prev => {
+    commitTextChange(prev => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
@@ -530,7 +664,7 @@ export default function BoojyNotes() {
   const insertBlockAfter = (noteId, afterIndex, type = "p", text = "") => {
     const newBlock = { id: genBlockId(), type, text };
     if (type === "checkbox") newBlock.checked = false;
-    setNoteData(prev => {
+    commitNoteData(prev => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
@@ -544,7 +678,7 @@ export default function BoojyNotes() {
   };
 
   const deleteBlock = (noteId, blockIndex) => {
-    setNoteData(prev => {
+    commitNoteData(prev => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
@@ -555,25 +689,8 @@ export default function BoojyNotes() {
     });
   };
 
-  const changeBlockType = (noteId, blockIndex, newType) => {
-    setNoteData(prev => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      const old = blocks[blockIndex];
-      const updated = { ...old, type: newType };
-      if (newType === "checkbox") updated.checked = false;
-      if (newType === "spacer") { delete updated.text; delete updated.checked; }
-      if (newType !== "checkbox") delete updated.checked;
-      blocks[blockIndex] = updated;
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  };
-
   const flipCheck = (noteId, blockIndex) => {
-    setNoteData(prev => {
+    commitNoteData(prev => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
@@ -589,14 +706,106 @@ export default function BoojyNotes() {
     else delete blockRefs.current[id];
   };
 
+  // ─── Note CRUD ───
+  const createNote = (folder = null) => {
+    const id = genNoteId();
+    const firstBlockId = genBlockId();
+    const newNote = {
+      id, title: "Untitled", folder,
+      path: folder ? [folder, "Untitled"] : undefined,
+      content: { title: "Untitled", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
+      words: 0,
+    };
+    commitNoteData(prev => ({ ...prev, [id]: newNote }));
+    setTabs(prev => [...prev, id]);
+    setActiveNote(id);
+    setTimeout(() => titleRef.current?.focus(), 50);
+  };
+
+  const deleteNote = (noteId) => {
+    commitNoteData(prev => {
+      const next = { ...prev };
+      delete next[noteId];
+      return next;
+    });
+    setTabs(prev => {
+      const next = prev.filter(t => t !== noteId);
+      if (activeNote === noteId) setActiveNote(next[next.length - 1] || null);
+      return next;
+    });
+  };
+
+  const duplicateNote = (noteId) => {
+    const src = noteDataRef.current[noteId];
+    if (!src) return;
+    const id = genNoteId();
+    const dup = {
+      ...src, id, title: src.title + " (copy)",
+      content: {
+        title: src.title + " (copy)",
+        blocks: src.content.blocks.map(b => ({ ...b, id: genBlockId() })),
+      },
+    };
+    commitNoteData(prev => ({ ...prev, [id]: dup }));
+    setTabs(prev => [...prev, id]);
+    setActiveNote(id);
+  };
+
+  const renameFolder = (oldName, newName) => {
+    if (!newName || newName === oldName) return;
+    commitNoteData(prev => {
+      const next = { ...prev };
+      for (const [id, n] of Object.entries(next)) {
+        if (n.folder === oldName) {
+          const updated = { ...n, folder: newName };
+          if (updated.path) updated.path = updated.path.map(s => s === oldName ? newName : s);
+          next[id] = updated;
+        }
+      }
+      return next;
+    });
+    setExpanded(prev => {
+      const next = { ...prev };
+      if (oldName in next) { next[newName] = next[oldName]; delete next[oldName]; }
+      return next;
+    });
+  };
+
+  const deleteFolder = (folderName) => {
+    const noteIds = Object.entries(noteDataRef.current)
+      .filter(([, n]) => n.folder === folderName).map(([id]) => id);
+    commitNoteData(prev => {
+      const next = { ...prev };
+      noteIds.forEach(id => delete next[id]);
+      return next;
+    });
+    setTabs(prev => {
+      const next = prev.filter(t => !noteIds.includes(t));
+      if (noteIds.includes(activeNote)) setActiveNote(next[next.length - 1] || null);
+      return next;
+    });
+  };
+
   // ─── Slash command execution ───
   const executeSlashCommand = (noteId, blockIndex, command) => {
     const blocks = noteDataRef.current[noteId].content.blocks;
     const block = blocks[blockIndex];
     const el = blockRefs.current[block.id];
     if (el) el.innerText = "";
-    updateBlockText(noteId, blockIndex, "");
-    changeBlockType(noteId, blockIndex, command.type);
+    // Single commit for text clear + type change
+    commitNoteData(prev => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blks = [...n.content.blocks];
+      const updated = { ...blks[blockIndex], text: "", type: command.type };
+      if (command.type === "checkbox") updated.checked = false;
+      if (command.type === "spacer") { delete updated.text; delete updated.checked; }
+      if (command.type !== "checkbox") delete updated.checked;
+      blks[blockIndex] = updated;
+      n.content = { ...n.content, blocks: blks };
+      next[noteId] = n;
+      return next;
+    });
     if (command.type === "spacer") {
       insertBlockAfter(noteId, blockIndex, "p", "");
     } else {
@@ -610,6 +819,45 @@ export default function BoojyNotes() {
     const el = e.currentTarget;
     const text = el.innerText;
     updateBlockText(noteId, blockIndex, text);
+
+    // Markdown shortcuts — detect trigger patterns
+    // contentEditable uses \u00a0 (non-breaking space) so match both \s and \u00a0
+    const S = "[\\s\\u00a0]"; // space character class
+    const mdPatterns = [
+      { regex: new RegExp(`^#{1,2}${S}$`), type: "h2" },
+      { regex: new RegExp(`^###${S}$`), type: "h3" },
+      { regex: new RegExp(`^[-*]${S}$`), type: "bullet" },
+      { regex: new RegExp(`^\\[\\]${S}$`), type: "checkbox" },
+      { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
+      { regex: /^---$/, type: "spacer" },
+    ];
+    const currentBlock = noteDataRef.current[noteId].content.blocks[blockIndex];
+    for (const pat of mdPatterns) {
+      if (pat.regex.test(text)) {
+        el.innerText = "";
+        // Single commit for text clear + type change
+        commitNoteData(prev => {
+          const next = { ...prev };
+          const n = { ...next[noteId] };
+          const blks = [...n.content.blocks];
+          const updated = { ...blks[blockIndex], text: "", type: pat.type };
+          if (pat.type === "checkbox") updated.checked = false;
+          if (pat.type === "spacer") { delete updated.text; delete updated.checked; }
+          if (pat.type !== "checkbox") delete updated.checked;
+          blks[blockIndex] = updated;
+          n.content = { ...n.content, blocks: blks };
+          next[noteId] = n;
+          return next;
+        });
+        if (pat.type === "spacer") {
+          insertBlockAfter(noteId, blockIndex, "p", "");
+        } else {
+          focusBlockId.current = currentBlock.id;
+          focusCursorPos.current = 0;
+        }
+        return;
+      }
+    }
 
     if (text === "/") {
       const rect = el.getBoundingClientRect();
@@ -647,11 +895,21 @@ export default function BoojyNotes() {
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
+      // Clone before-cursor content into temp element, read innerText to preserve line breaks
+      // (Range.toString() only concatenates Text nodes and drops <br>/<div> line breaks)
       const preRange = document.createRange();
       preRange.selectNodeContents(el);
       preRange.setEnd(range.startContainer, range.startOffset);
-      const beforeText = preRange.toString();
-      const afterText = text.slice(beforeText.length);
+      const preDiv = document.createElement("div");
+      preDiv.appendChild(preRange.cloneContents());
+      const beforeText = preDiv.innerText;
+      // Clone after-cursor content the same way
+      const postRange = document.createRange();
+      postRange.selectNodeContents(el);
+      postRange.setStart(range.startContainer, range.startOffset);
+      const postDiv = document.createElement("div");
+      postDiv.appendChild(postRange.cloneContents());
+      const afterText = postDiv.innerText;
       el.innerText = beforeText;
       updateBlockText(noteId, blockIndex, beforeText);
       insertBlockAfter(noteId, blockIndex, "p", afterText);
@@ -747,11 +1005,11 @@ export default function BoojyNotes() {
   // ─── Search filtering ───
   const lc = (s) => s.toLowerCase();
   const fFolders = search
-    ? FOLDERS.filter((f) => lc(f.name).includes(lc(search)) || f.notes.some((n) => lc(noteData[n].title).includes(lc(search))))
-    : FOLDERS;
+    ? folderList.filter((f) => lc(f.name).includes(lc(search)) || f.notes.some((n) => noteData[n] && lc(noteData[n].title).includes(lc(search))))
+    : folderList;
   const fNotes = search
-    ? ROOT_NOTES.filter((n) => lc(noteData[n].title).includes(lc(search)))
-    : ROOT_NOTES;
+    ? derivedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
+    : derivedRootNotes;
 
   // ─── UI helpers ───
   const hBg = (el, c) => { el.style.background = c; };
@@ -804,24 +1062,23 @@ export default function BoojyNotes() {
             <span style={{ fontSize: 19, fontWeight: 800, color: TEXT.primary, letterSpacing: "-0.5px" }}>tes</span>
           </div>
 
-          <button onClick={() => setCollapsed(!collapsed)}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 4, borderRadius: 5, display: "flex", alignItems: "center",
-              marginLeft: 8, transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
-            onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-            title={collapsed ? "Show sidebar" : "Hide sidebar"}
-          >
-            <SidebarToggleIcon open={!collapsed} />
-          </button>
-
           <div style={{ flex: 1 }} />
 
-          <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
-            <button style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><UndoIcon /></button>
-            <button style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><RedoIcon /></button>
+          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+            <button onClick={() => setCollapsed(!collapsed)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                padding: 4, borderRadius: 5, display: "flex", alignItems: "center",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
+              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              title={collapsed ? "Show sidebar" : "Hide sidebar"}
+            >
+              <SidebarToggleIcon open={!collapsed} />
+            </button>
+            <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><UndoIcon /></button>
+            <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 3px", borderRadius: 4, display: "flex", alignItems: "center" }}><RedoIcon /></button>
           </div>
         </div>
 
@@ -831,6 +1088,7 @@ export default function BoojyNotes() {
           <div style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" }}>
             {tabs.map((tId) => {
               const t = noteData[tId];
+              if (!t) return null;
               const act = activeNote === tId;
               return (
                 <button key={tId} onClick={() => setActiveNote(tId)}
@@ -841,13 +1099,13 @@ export default function BoojyNotes() {
                     borderImage: act ? `linear-gradient(90deg, transparent, ${ACCENT.primary}, transparent) 1` : "none",
                     cursor: "pointer", padding: "0 14px",
                     display: "flex", alignItems: "center", gap: 7,
-                    color: act ? TEXT.primary : TEXT.muted,
-                    fontSize: 12, fontFamily: "inherit",
+                    color: act ? TEXT.primary : "#909090",
+                    fontSize: 13, fontFamily: "inherit",
                     whiteSpace: "nowrap", transition: "background 0.15s, color 0.15s",
                     height: "100%",
                   }}
                   onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.secondary; } }}
-                  onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; } }}
+                  onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = "#909090"; } }}
                 >
                   <span>{t.title}</span>
                   <span onClick={(e) => closeTab(e, tId)}
@@ -855,16 +1113,16 @@ export default function BoojyNotes() {
                       display: "flex", alignItems: "center", justifyContent: "center",
                       width: 16, height: 16, borderRadius: 4,
                       color: TEXT.muted, transition: "all 0.1s",
-                      opacity: act ? 0.7 : 0,
+                      opacity: act ? 0.6 : 0.35,
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.color = TEXT.primary; e.currentTarget.style.opacity = 1; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.muted; e.currentTarget.style.opacity = act ? 0.7 : 0; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.muted; e.currentTarget.style.opacity = act ? 0.6 : 0.35; }}
                   ><CloseIcon /></span>
                 </button>
               );
             })}
             {/* + new tab */}
-            <button style={{
+            <button onClick={() => createNote(null)} style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "0 10px", color: TEXT.muted, display: "flex",
               alignItems: "center", transition: "color 0.15s", height: "100%",
@@ -890,10 +1148,10 @@ export default function BoojyNotes() {
           {/* Action buttons */}
           <div style={{ display: "flex", gap: 4, flexShrink: 0, padding: "0 10px 0 6px" }}>
             {[
-              { icon: <NewNoteIcon />, title: "New note" },
-              { icon: <NewFolderIcon />, title: "New folder" },
+              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null) },
+              { icon: <NewFolderIcon />, title: "New folder", onClick: () => {} },
             ].map((btn, i) => (
-              <button key={i} style={{
+              <button key={i} onClick={btn.onClick} style={{
                 width: 30, height: 28, borderRadius: 6,
                 background: BG.elevated, border: `1px solid ${BG.divider}`,
                 cursor: "pointer", display: "flex",
@@ -946,6 +1204,7 @@ export default function BoojyNotes() {
               {fFolders.map((folder) => (
                 <div key={folder.name}>
                   <button onClick={() => toggle(folder.name)}
+                    onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folder.name }); }}
                     style={{
                       width: "100%", background: "none", border: "none",
                       cursor: "pointer", padding: "4px 10px",
@@ -958,12 +1217,31 @@ export default function BoojyNotes() {
                   >
                     {expanded[folder.name] ? <ChevronDown /> : <ChevronRight />}
                     <FolderIcon open={expanded[folder.name]} />
-                    <span style={{ fontWeight: 500 }}>{folder.name}</span>
+                    {renamingFolder === folder.name ? (
+                      <input
+                        autoFocus
+                        defaultValue={folder.name}
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={(e) => { renameFolder(folder.name, e.target.value.trim()); setRenamingFolder(null); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { renameFolder(folder.name, e.target.value.trim()); setRenamingFolder(null); }
+                          if (e.key === "Escape") setRenamingFolder(null);
+                        }}
+                        style={{
+                          background: BG.darkest, border: `1px solid ${ACCENT.primary}`, borderRadius: 4,
+                          color: TEXT.primary, fontSize: 12.5, fontFamily: "inherit", fontWeight: 500,
+                          padding: "1px 4px", outline: "none", width: "100%",
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontWeight: 500 }}>{folder.name}</span>
+                    )}
                   </button>
                   {expanded[folder.name] && folder.notes.map((nId) => {
-                    const n = noteData[nId]; const act = activeNote === nId;
+                    const n = noteData[nId]; if (!n) return null; const act = activeNote === nId;
                     return (
-                      <button key={nId} onClick={() => openNote(nId)}
+                      <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
+                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
                         style={{
                           width: "100%", border: "none", cursor: "pointer",
                           background: act ? BG.surface : "transparent",
@@ -979,29 +1257,23 @@ export default function BoojyNotes() {
                         onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
                       >
                         <FileIcon />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
+                        <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
+                          style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
+                        ><CloseIcon /></span>
                       </button>
                     );
                   })}
                 </div>
               ))}
 
-              {/* · · · constellation separator */}
-              {fFolders.length > 0 && fNotes.length > 0 && (
-                <div style={{
-                  display: "flex", justifyContent: "center", gap: 6,
-                  padding: "8px 0", opacity: 0.25,
-                }}>
-                  <div style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: TEXT.primary }} />
-                  <div style={{ width: 2, height: 2, borderRadius: "50%", background: TEXT.primary, marginTop: 1 }} />
-                  <div style={{ width: 2.5, height: 2.5, borderRadius: "50%", background: TEXT.primary }} />
-                </div>
-              )}
+              {fFolders.length > 0 && fNotes.length > 0 && <div style={{ height: 14 }} />}
 
               {fNotes.map((nId) => {
-                const n = noteData[nId]; const act = activeNote === nId;
+                const n = noteData[nId]; if (!n) return null; const act = activeNote === nId;
                 return (
-                  <button key={nId} onClick={() => openNote(nId)}
+                  <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
+                    onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
                     style={{
                       width: "100%", border: "none", cursor: "pointer",
                       background: act ? BG.surface : "transparent",
@@ -1017,7 +1289,10 @@ export default function BoojyNotes() {
                     onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
                   >
                     <FileIcon />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
+                    <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
+                      style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
+                    ><CloseIcon /></span>
                   </button>
                 );
               })}
@@ -1040,7 +1315,7 @@ export default function BoojyNotes() {
         )}
 
         {/* ─── EDITOR ─── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.standard }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.editor }}>
           {note ? (
             <div key={activeNote} style={{
               flex: 1, overflow: "auto",
@@ -1078,7 +1353,7 @@ export default function BoojyNotes() {
                 suppressContentEditableWarning
                 onInput={(e) => {
                   const newTitle = e.currentTarget.innerText;
-                  setNoteData(prev => {
+                  commitTextChange(prev => {
                     const next = { ...prev };
                     const n = { ...next[activeNote] };
                     n.title = newTitle;
@@ -1117,6 +1392,7 @@ export default function BoojyNotes() {
                   onKeyDown={handleBlockKeyDown}
                   onCheckToggle={flipCheck}
                   registerRef={registerBlockRef}
+                  syncGen={syncGeneration.current}
                 />
               ))}
 
@@ -1268,6 +1544,42 @@ export default function BoojyNotes() {
         </div>
       )}
 
+      {/* ═══ CONTEXT MENU OVERLAY ═══ */}
+      {ctxMenu && (
+        <>
+          <div onClick={() => setCtxMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 250 }} />
+          <div style={{
+            position: "fixed", top: ctxMenu.y, left: ctxMenu.x, zIndex: 300,
+            background: BG.elevated, border: `1px solid ${BG.divider}`,
+            borderRadius: 8, padding: "4px 0", minWidth: 160,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            animation: "fadeIn 0.1s ease",
+          }}>
+            {(ctxMenu.type === "note" ? [
+              { label: "Rename", action: () => { openNote(ctxMenu.id); setCtxMenu(null); setTimeout(() => { if (titleRef.current) { titleRef.current.focus(); const sel = window.getSelection(); sel.selectAllChildren(titleRef.current); } }, 60); } },
+              { label: "Duplicate", action: () => { duplicateNote(ctxMenu.id); setCtxMenu(null); } },
+              { label: "Delete", action: () => { deleteNote(ctxMenu.id); setCtxMenu(null); }, danger: true },
+            ] : [
+              { label: "Rename", action: () => { setRenamingFolder(ctxMenu.id); setCtxMenu(null); } },
+              { label: "Delete folder", action: () => { deleteFolder(ctxMenu.id); setCtxMenu(null); }, danger: true },
+            ]).map((item) => (
+              <button key={item.label}
+                onClick={item.action}
+                style={{
+                  width: "100%", background: "none", border: "none",
+                  padding: "7px 14px", cursor: "pointer",
+                  color: item.danger ? SEMANTIC.error : TEXT.primary,
+                  fontSize: 12.5, fontFamily: "inherit", textAlign: "left",
+                  transition: "background 0.08s",
+                }}
+                onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
+                onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              >{item.label}</button>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* ═══ SLASH MENU OVERLAY ═══ */}
       {slashMenu && (() => {
         const filtered = SLASH_COMMANDS.filter(c =>
@@ -1352,6 +1664,9 @@ export default function BoojyNotes() {
         ::-webkit-scrollbar-thumb:hover { background: ${BG.hover}; box-shadow: 0 0 4px ${BG.hover}40; }
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
+        .sidebar-note .delete-btn { opacity: 0; transition: opacity 0.1s; }
+        .sidebar-note:hover .delete-btn { opacity: 0.5; }
+        .sidebar-note .delete-btn:hover { opacity: 1; }
         [contenteditable]:empty::before {
           content: attr(data-placeholder);
           color: ${TEXT.muted};
