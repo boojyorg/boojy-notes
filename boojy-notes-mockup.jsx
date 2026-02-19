@@ -36,6 +36,14 @@ const BRAND = {
   orange: "#D4820A",
 };
 
+const FINDER = {
+  folderBlue:    "#3B82F6",
+  folderDark:    "#2563EB",
+  selectBg:      "#1E3A5F",
+  selectBgHover: "#254A73",
+  docIcon:       "#9CA3AF",
+};
+
 // ═══════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════
@@ -94,9 +102,133 @@ const NOTES = {
     },
     words: 41,
   },
+  "boojy-design": {
+    id: "boojy-design", title: "Boojy Design - Early Preview", folder: "Boojy",
+    path: ["Boojy", "Boojy Design - Early Preview"],
+    content: {
+      title: "Boojy Design - Early Preview",
+      blocks: [
+        { type: "p", text: "Design notes for the early preview of the Boojy Suite." },
+      ],
+    },
+    words: 11,
+  },
+  "boojy-draw-comp": {
+    id: "boojy-draw-comp", title: "Boojy Draw Competitor Comparisons", folder: "Boojy",
+    path: ["Boojy", "Boojy Draw Competitor Comparisons"],
+    content: {
+      title: "Boojy Draw Competitor Comparisons",
+      blocks: [
+        { type: "p", text: "Comparing Boojy Draw against Excalidraw, Figma, and tldraw." },
+      ],
+    },
+    words: 9,
+  },
+  "boojy-suite-vision": {
+    id: "boojy-suite-vision", title: "Boojy Suite (Vision Document)", folder: "Boojy",
+    path: ["Boojy", "Boojy Suite (Vision Document)"],
+    content: {
+      title: "Boojy Suite (Vision Document)",
+      blocks: [
+        { type: "p", text: "Long-term vision for the Boojy productivity suite." },
+      ],
+    },
+    words: 8,
+  },
+  "boojy-video": {
+    id: "boojy-video", title: "Boojy Video - Final Cut Pro, Premiere, Resolve", folder: "Boojy",
+    path: ["Boojy", "Boojy Video - Final Cut Pro, Premiere, Resolve"],
+    content: {
+      title: "Boojy Video - Final Cut Pro, Premiere, Resolve",
+      blocks: [
+        { type: "p", text: "Research on video editors: Final Cut Pro, Premiere Pro, DaVinci Resolve." },
+      ],
+    },
+    words: 11,
+  },
+  "beta-todo": {
+    id: "beta-todo", title: "Beta (v0.1) TODO", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "Beta (v0.1) TODO"],
+    content: {
+      title: "Beta (v0.1) TODO",
+      blocks: [
+        { type: "checkbox", checked: true, text: "Core audio engine" },
+        { type: "checkbox", checked: true, text: "Track mixer UI" },
+        { type: "checkbox", checked: false, text: "Plugin hosting (VST3)" },
+        { type: "checkbox", checked: false, text: "Export to WAV/MP3" },
+      ],
+    },
+    words: 14,
+  },
+  "boojy-audio-future": {
+    id: "boojy-audio-future", title: "Boojy Audio (Future Features)", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "Boojy Audio (Future Features)"],
+    content: {
+      title: "Boojy Audio (Future Features)",
+      blocks: [
+        { type: "p", text: "Features planned for post-v1.0 of Boojy Audio." },
+        { type: "bullet", text: "MIDI editing" },
+        { type: "bullet", text: "Automation lanes" },
+        { type: "bullet", text: "Collaborative sessions" },
+      ],
+    },
+    words: 16,
+  },
+  "boojy-audio-ideas": {
+    id: "boojy-audio-ideas", title: "Boojy Audio Ideas", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "Boojy Audio Ideas"],
+    content: {
+      title: "Boojy Audio Ideas",
+      blocks: [
+        { type: "p", text: "Brainstorming ideas for the Boojy Audio DAW." },
+        { type: "spacer" },
+        { type: "h2", text: "Sampler" },
+        { type: "p", text: "Drag-and-drop sample pads with waveform preview. Auto-chop mode for loops." },
+        { type: "spacer" },
+        { type: "h2", text: "Piano Roll" },
+        { type: "p", text: "Velocity-sensitive, snap-to-grid, ghost notes from other tracks." },
+      ],
+    },
+    words: 36,
+  },
+  "design-review": {
+    id: "design-review", title: "Design Review - Boojy Audio", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "Design Review - Boojy Audio"],
+    content: {
+      title: "Design Review - Boojy Audio",
+      blocks: [
+        { type: "p", text: "Feedback from design review session on the Boojy Audio interface." },
+      ],
+    },
+    words: 11,
+  },
+  "track-mixer-spec": {
+    id: "track-mixer-spec", title: "Updated Track Mixer Design Specification", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "Updated Track Mixer Design Specification"],
+    content: {
+      title: "Updated Track Mixer Design Specification",
+      blocks: [
+        { type: "p", text: "Revised specification for the track mixer component." },
+      ],
+    },
+    words: 8,
+  },
+  "v1-todo": {
+    id: "v1-todo", title: "v1.0 TODO list", folder: "Boojy/Boojy Audio",
+    path: ["Boojy", "Boojy Audio", "v1.0 TODO list"],
+    content: {
+      title: "v1.0 TODO list",
+      blocks: [
+        { type: "checkbox", checked: true, text: "Audio engine rewrite" },
+        { type: "checkbox", checked: false, text: "Cross-platform testing" },
+        { type: "checkbox", checked: false, text: "Performance profiling" },
+      ],
+    },
+    words: 8,
+  },
   "comp201": {
     id: "comp201", title: "COMP201 Notes", folder: "University",
-    path: ["University", "2026-27", "COMP201 Notes"],
+    path: ["University", "COMP201 Notes"],
     content: {
       title: "COMP201 — Software Engineering",
       blocks: [
@@ -116,7 +248,7 @@ const NOTES = {
   },
   "comp207": {
     id: "comp207", title: "COMP207 Notes", folder: "University",
-    path: ["University", "2026-27", "COMP207 Notes"],
+    path: ["University", "COMP207 Notes"],
     content: {
       title: "COMP207 — Database Development",
       blocks: [
@@ -160,10 +292,18 @@ const NOTES = {
   },
 };
 
-const FOLDERS = [
-  { name: "University", notes: ["comp201", "comp207"] },
-  { name: "Projects", notes: ["barcelona"] },
-  { name: "Finance", notes: ["budget"] },
+// Nested folder tree — supports subfolders like macOS Finder
+const FOLDER_TREE = [
+  {
+    name: "Boojy",
+    children: [
+      { name: "Boojy Audio", children: [], notes: ["beta-todo", "boojy-audio-future", "boojy-audio-ideas", "design-review", "track-mixer-spec", "v1-todo"] },
+    ],
+    notes: ["boojy-design", "boojy-draw-comp", "boojy-suite-vision", "boojy-video"],
+  },
+  { name: "Finance", children: [], notes: ["budget"] },
+  { name: "Projects", children: [], notes: ["barcelona"] },
+  { name: "University", children: [], notes: ["comp201", "comp207"] },
 ];
 
 const ROOT_NOTES = ["shopping-list", "quick-ideas", "meeting-notes"];
@@ -221,14 +361,14 @@ const ChevronDown = ({ color = TEXT.secondary }) => (
 const FolderIcon = ({ open }) => (
   <Icon size={15}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      fill={TEXT.secondary} opacity={open ? 0.6 : 0.45}/>
+      fill={FINDER.folderBlue} opacity={open ? 0.9 : 0.75}/>
   </Icon>
 );
 const FileIcon = () => (
   <Icon size={15}>
     <path d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
-      fill={TEXT.secondary} opacity="0.45"/>
-    <path d="M9 2V5.5H12.5" stroke={TEXT.secondary} strokeWidth="0.8" opacity="0.45" strokeLinejoin="round"/>
+      fill={FINDER.docIcon} opacity="0.55"/>
+    <path d="M9 2V5.5H12.5" stroke={FINDER.docIcon} strokeWidth="0.8" opacity="0.55" strokeLinejoin="round"/>
   </Icon>
 );
 const SearchIcon = () => (
@@ -478,11 +618,11 @@ export default function BoojyNotes() {
   // ─── State ───
   const [expanded, setExpanded] = useState(() => {
     const saved = loadFromStorage();
-    return saved?.expanded || { University: true };
+    return saved?.expanded || { "Boojy": true };
   });
   const [activeNote, setActiveNote] = useState(() => {
     const saved = loadFromStorage();
-    return (saved?.activeNote && saved.noteData?.[saved.activeNote]) ? saved.activeNote : "comp201";
+    return (saved?.activeNote && saved.noteData?.[saved.activeNote]) ? saved.activeNote : "boojy-audio-ideas";
   });
   const [tabs, setTabs] = useState(() => {
     const saved = loadFromStorage();
@@ -490,7 +630,7 @@ export default function BoojyNotes() {
       const valid = saved.tabs.filter(id => saved.noteData?.[id]);
       if (valid.length > 0) return valid;
     }
-    return ["shopping-list", "comp201"];
+    return ["shopping-list", "boojy-audio-ideas"];
   });
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -671,19 +811,51 @@ export default function BoojyNotes() {
     .filter(b => b.text)
     .reduce((sum, b) => sum + b.text.split(/\s+/).filter(Boolean).length, 0) : 0;
 
-  // Derive folder structure and root notes from noteData
-  const derivedFolders = {};
+  // Derive nested folder tree and root notes from noteData
   const derivedRootNotes = [];
+  const folderNoteMap = {}; // "Boojy" -> [noteIds], "Boojy/Boojy Audio" -> [noteIds]
   for (const [id, n] of Object.entries(noteData)) {
     if (n.folder) {
-      if (!derivedFolders[n.folder]) derivedFolders[n.folder] = [];
-      derivedFolders[n.folder].push(id);
+      if (!folderNoteMap[n.folder]) folderNoteMap[n.folder] = [];
+      folderNoteMap[n.folder].push(id);
     } else {
       derivedRootNotes.push(id);
     }
   }
-  const folderList = Object.entries(derivedFolders).map(([name, notes]) => ({ name, notes }));
-  folderList.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Build tree from FOLDER_TREE template, merging in dynamic note assignments
+  const buildTree = (nodes) => nodes.map(node => {
+    const path = node._path || node.name;
+    return {
+      name: node.name,
+      _path: path,
+      notes: folderNoteMap[path] || [],
+      children: buildTree((node.children || []).map(c => ({ ...c, _path: path + "/" + c.name }))),
+    };
+  });
+
+  // Collect all known folder paths from FOLDER_TREE
+  const collectPaths = (nodes, prefix = "") => {
+    const paths = [];
+    for (const n of nodes) {
+      const p = prefix ? prefix + "/" + n.name : n.name;
+      paths.push(p);
+      paths.push(...collectPaths(n.children || [], p));
+    }
+    return paths;
+  };
+  const knownPaths = new Set(collectPaths(FOLDER_TREE));
+
+  // Also add any folders from noteData that aren't in FOLDER_TREE (dynamically created)
+  for (const path of Object.keys(folderNoteMap)) {
+    if (!knownPaths.has(path)) {
+      // Insert as top-level folder
+      const parts = path.split("/");
+      knownPaths.add(path);
+    }
+  }
+
+  const folderTree = buildTree(FOLDER_TREE);
 
   // ─── Block CRUD ───
   const updateBlockText = (noteId, blockIndex, newText) => {
@@ -747,9 +919,10 @@ export default function BoojyNotes() {
   const createNote = (folder = null) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
+    const pathParts = folder ? [...folder.split("/"), "Untitled"] : undefined;
     const newNote = {
       id, title: "Untitled", folder,
-      path: folder ? [folder, "Untitled"] : undefined,
+      path: pathParts,
       content: { title: "Untitled", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
       words: 0,
     };
@@ -788,29 +961,42 @@ export default function BoojyNotes() {
     setActiveNote(id);
   };
 
-  const renameFolder = (oldName, newName) => {
-    if (!newName || newName === oldName) return;
+  const renameFolder = (oldPath, newName) => {
+    if (!newName) return;
+    const parts = oldPath.split("/");
+    parts[parts.length - 1] = newName;
+    const newPath = parts.join("/");
+    if (newPath === oldPath) return;
     commitNoteData(prev => {
       const next = { ...prev };
       for (const [id, n] of Object.entries(next)) {
-        if (n.folder === oldName) {
-          const updated = { ...n, folder: newName };
-          if (updated.path) updated.path = updated.path.map(s => s === oldName ? newName : s);
+        if (n.folder && (n.folder === oldPath || n.folder.startsWith(oldPath + "/"))) {
+          const updated = { ...n, folder: n.folder.replace(oldPath, newPath) };
+          if (updated.path) {
+            const oldLast = oldPath.split("/").pop();
+            updated.path = updated.path.map(s => s === oldLast ? newName : s);
+          }
           next[id] = updated;
         }
       }
       return next;
     });
     setExpanded(prev => {
-      const next = { ...prev };
-      if (oldName in next) { next[newName] = next[oldName]; delete next[oldName]; }
+      const next = {};
+      for (const [key, val] of Object.entries(prev)) {
+        if (key === oldPath) next[newPath] = val;
+        else if (key.startsWith(oldPath + "/")) next[key.replace(oldPath, newPath)] = val;
+        else next[key] = val;
+      }
       return next;
     });
   };
 
-  const deleteFolder = (folderName) => {
+  const deleteFolder = (folderPath) => {
+    // Delete all notes in this folder and its subfolders
     const noteIds = Object.entries(noteDataRef.current)
-      .filter(([, n]) => n.folder === folderName).map(([id]) => id);
+      .filter(([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(folderPath + "/")))
+      .map(([id]) => id);
     commitNoteData(prev => {
       const next = { ...prev };
       noteIds.forEach(id => delete next[id]);
@@ -1255,9 +1441,22 @@ export default function BoojyNotes() {
 
   // ─── Search filtering ───
   const lc = (s) => s.toLowerCase();
-  const fFolders = search
-    ? folderList.filter((f) => lc(f.name).includes(lc(search)) || f.notes.some((n) => noteData[n] && lc(noteData[n].title).includes(lc(search))))
-    : folderList;
+
+  // Filter folder tree recursively — keep folder if its name matches or any descendant note matches
+  const filterTree = (nodes) => {
+    if (!search) return nodes;
+    return nodes.map(folder => {
+      const filteredChildren = filterTree(folder.children);
+      const filteredNotes = folder.notes.filter(n => noteData[n] && lc(noteData[n].title).includes(lc(search)));
+      const nameMatches = lc(folder.name).includes(lc(search));
+      if (nameMatches || filteredChildren.length > 0 || filteredNotes.length > 0) {
+        return { ...folder, children: filteredChildren, notes: nameMatches ? folder.notes : filteredNotes };
+      }
+      return null;
+    }).filter(Boolean);
+  };
+  const filteredTree = filterTree(folderTree);
+
   const fNotes = search
     ? derivedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
     : derivedRootNotes;
@@ -1450,103 +1649,98 @@ export default function BoojyNotes() {
               </div>
             </div>
 
-            {/* File tree */}
+            {/* File tree — recursive Finder-style */}
             <div style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
-              {fFolders.map((folder) => (
-                <div key={folder.name}>
-                  <button onClick={() => toggle(folder.name)}
-                    onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folder.name }); }}
-                    style={{
-                      width: "100%", background: "none", border: "none",
-                      cursor: "pointer", padding: "5px 10px",
-                      display: "flex", alignItems: "center", gap: 5,
-                      color: TEXT.secondary, fontSize: 13, fontWeight: 400, fontFamily: "inherit",
-                      transition: "background 0.1s, color 0.1s", textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
-                    onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
-                  >
-                    {expanded[folder.name] ? <ChevronDown /> : <ChevronRight />}
-                    <FolderIcon open={expanded[folder.name]} />
-                    {renamingFolder === folder.name ? (
-                      <input
-                        autoFocus
-                        defaultValue={folder.name}
-                        onClick={(e) => e.stopPropagation()}
-                        onBlur={(e) => { renameFolder(folder.name, e.target.value.trim()); setRenamingFolder(null); }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { renameFolder(folder.name, e.target.value.trim()); setRenamingFolder(null); }
-                          if (e.key === "Escape") setRenamingFolder(null);
-                        }}
+              {(() => {
+                // Render a note row at given depth
+                const renderNote = (nId, depth) => {
+                  const n = noteData[nId]; if (!n) return null;
+                  const act = activeNote === nId;
+                  return (
+                    <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
+                      onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
+                      style={{
+                        width: "100%", border: "none", cursor: "pointer",
+                        background: act ? FINDER.selectBg : "transparent",
+                        borderRadius: act ? 5 : 0,
+                        padding: `4px 10px 4px ${10 + depth * 20}px`,
+                        display: "flex", alignItems: "center", gap: 5,
+                        color: act ? TEXT.primary : TEXT.secondary,
+                        fontSize: 13, fontFamily: "inherit",
+                        fontWeight: act ? 500 : 400,
+                        transition: "background 0.12s", textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
+                      onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
+                    >
+                      <FileIcon />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
+                      <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
+                        style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
+                      ><CloseIcon /></span>
+                    </button>
+                  );
+                };
+
+                // Render a folder and its children recursively
+                const renderFolder = (folder, depth) => {
+                  const folderPath = folder._path || folder.name;
+                  const isOpen = expanded[folderPath];
+                  const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
+                  return (
+                    <div key={folderPath}>
+                      <button onClick={() => toggle(folderPath)}
+                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folderPath }); }}
                         style={{
-                          background: BG.darkest, border: `1px solid ${ACCENT.primary}`, borderRadius: 4,
-                          color: TEXT.primary, fontSize: 12.5, fontFamily: "inherit", fontWeight: 500,
-                          padding: "1px 4px", outline: "none", width: "100%",
-                        }}
-                      />
-                    ) : (
-                      <span style={{ fontWeight: 500 }}>{folder.name}</span>
-                    )}
-                  </button>
-                  {expanded[folder.name] && folder.notes.map((nId) => {
-                    const n = noteData[nId]; if (!n) return null; const act = activeNote === nId;
-                    return (
-                      <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
-                        onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
-                        style={{
-                          width: "100%", border: "none", cursor: "pointer",
-                          background: act ? BG.surface : "transparent",
-                          borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
-                          padding: "5px 10px 5px 36px",
+                          width: "100%", background: "none", border: "none",
+                          cursor: "pointer", padding: `4px 10px 4px ${10 + depth * 20}px`,
                           display: "flex", alignItems: "center", gap: 5,
-                          color: act ? TEXT.primary : TEXT.secondary,
-                          fontSize: 13, fontFamily: "inherit",
-                          fontWeight: act ? 600 : 400,
-                          transition: "background 0.12s", textAlign: "left",
+                          color: TEXT.secondary, fontSize: 13, fontWeight: 400, fontFamily: "inherit",
+                          transition: "background 0.1s, color 0.1s", textAlign: "left",
                         }}
-                        onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
-                        onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
+                        onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; }}
+                        onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
                       >
-                        <FileIcon />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
-                        <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
-                          style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
-                        ><CloseIcon /></span>
+                        {hasChildren ? (isOpen ? <ChevronDown /> : <ChevronRight />) : <span style={{ width: 13, flexShrink: 0 }} />}
+                        <FolderIcon open={isOpen} />
+                        {renamingFolder === folderPath ? (
+                          <input
+                            autoFocus
+                            defaultValue={folder.name}
+                            onClick={(e) => e.stopPropagation()}
+                            onBlur={(e) => { renameFolder(folderPath, e.target.value.trim()); setRenamingFolder(null); }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") { renameFolder(folderPath, e.target.value.trim()); setRenamingFolder(null); }
+                              if (e.key === "Escape") setRenamingFolder(null);
+                            }}
+                            style={{
+                              background: BG.darkest, border: `1px solid ${FINDER.folderBlue}`, borderRadius: 4,
+                              color: TEXT.primary, fontSize: 12.5, fontFamily: "inherit", fontWeight: 500,
+                              padding: "1px 4px", outline: "none", width: "100%",
+                            }}
+                          />
+                        ) : (
+                          <span style={{ fontWeight: 500 }}>{folder.name}</span>
+                        )}
                       </button>
-                    );
-                  })}
-                </div>
-              ))}
+                      {isOpen && (
+                        <>
+                          {folder.children.map(child => renderFolder(child, depth + 1))}
+                          {folder.notes.map(nId => renderNote(nId, depth + 1))}
+                        </>
+                      )}
+                    </div>
+                  );
+                };
 
-              {fFolders.length > 0 && fNotes.length > 0 && <div style={{ height: 14 }} />}
-
-              {fNotes.map((nId) => {
-                const n = noteData[nId]; if (!n) return null; const act = activeNote === nId;
                 return (
-                  <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
-                    onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
-                    style={{
-                      width: "100%", border: "none", cursor: "pointer",
-                      background: act ? BG.surface : "transparent",
-                      borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
-                      padding: "5px 10px 5px 12px",
-                      display: "flex", alignItems: "center", gap: 5,
-                      color: act ? TEXT.primary : TEXT.secondary,
-                      fontSize: 13, fontFamily: "inherit",
-                      fontWeight: act ? 600 : 400,
-                      transition: "background 0.12s", textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
-                    onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
-                  >
-                    <FileIcon />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
-                    <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
-                      style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
-                    ><CloseIcon /></span>
-                  </button>
+                  <>
+                    {filteredTree.map(f => renderFolder(f, 0))}
+                    {filteredTree.length > 0 && fNotes.length > 0 && <div style={{ height: 14 }} />}
+                    {fNotes.map(nId => renderNote(nId, 0))}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </div>
 
@@ -1820,6 +2014,7 @@ export default function BoojyNotes() {
               { label: "Duplicate", action: () => { duplicateNote(ctxMenu.id); setCtxMenu(null); } },
               { label: "Delete", action: () => { deleteNote(ctxMenu.id); setCtxMenu(null); }, danger: true },
             ] : [
+              { label: "New note here", action: () => { createNote(ctxMenu.id); setCtxMenu(null); } },
               { label: "Rename", action: () => { setRenamingFolder(ctxMenu.id); setCtxMenu(null); } },
               { label: "Delete folder", action: () => { deleteFolder(ctxMenu.id); setCtxMenu(null); }, danger: true },
             ]).map((item) => (
