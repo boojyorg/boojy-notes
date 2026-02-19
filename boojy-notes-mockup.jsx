@@ -663,7 +663,6 @@ export default function BoojyNotes() {
   const [slashMenu, setSlashMenu] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // { x, y, type: "note"|"folder", id }
   const [renamingFolder, setRenamingFolder] = useState(null); // folder name being renamed
-  const [starDust, setStarDust] = useState(false); // A/B toggle for sidebar star dust
 
   // ─── Refs ───
   const isDragging = useRef(false);
@@ -1654,10 +1653,6 @@ export default function BoojyNotes() {
             {/* File tree — recursive Finder-style */}
             <div style={{
               flex: 1, overflow: "auto", padding: "2px 0",
-              ...(starDust ? {
-                backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-              } : {}),
             }}>
               {(() => {
                 // Render a note row at given depth
@@ -1757,25 +1752,6 @@ export default function BoojyNotes() {
               })()}
             </div>
 
-            {/* Star dust A/B toggle */}
-            <div style={{
-              padding: "6px 10px", borderTop: `1px solid ${BG.divider}`,
-              display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-            }}>
-              <span style={{ fontSize: 11, color: TEXT.muted }}>Star dust</span>
-              <button onClick={() => setStarDust(!starDust)} style={{
-                width: 32, height: 16, borderRadius: 8, border: "none", cursor: "pointer",
-                background: starDust ? ACCENT.primary : BG.surface,
-                position: "relative", transition: "background 0.2s", flexShrink: 0,
-              }}>
-                <div style={{
-                  width: 12, height: 12, borderRadius: "50%", background: "#fff",
-                  position: "absolute", top: 2, left: starDust ? 18 : 2,
-                  transition: "left 0.2s",
-                }} />
-              </button>
-              <span style={{ fontSize: 10, color: TEXT.muted }}>{starDust ? "B" : "A"}</span>
-            </div>
           </div>
 
           {/* Drag handle */}
