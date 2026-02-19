@@ -361,7 +361,7 @@ const ChevronDown = ({ color = TEXT.secondary }) => (
 const FolderIcon = ({ open }) => (
   <Icon size={15}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      fill={FINDER.folderBlue} opacity={open ? 0.9 : 0.75}/>
+      fill={FINDER.folderBlue}/>
   </Icon>
 );
 const FileIcon = () => (
