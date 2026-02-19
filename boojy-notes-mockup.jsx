@@ -6,7 +6,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 
 const BG = {
   darkest:  "#13151C",
-  dark:     "#1A1C25",
+  dark:     "#181A23",
   standard: "#222430",
   editor:   "#131423",
   elevated: "#292B36",
@@ -353,26 +353,26 @@ const Icon = ({ children, size = 14, ...props }) => (
 );
 
 const ChevronRight = ({ color = TEXT.muted }) => (
-  <Icon size={13}><path d="M5.5 3L10 8L5.5 13" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
+  <Icon size={14}><path d="M5.5 3L10 8L5.5 13" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
 );
 const ChevronDown = ({ color = TEXT.secondary }) => (
-  <Icon size={13}><path d="M3 5.5L8 10L13 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
+  <Icon size={14}><path d="M3 5.5L8 10L13 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
 );
 const FolderIcon = ({ open }) => (
-  <Icon size={15}>
+  <Icon size={17}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
       fill={FINDER.folderBlue}/>
   </Icon>
 );
 const FileIcon = () => (
-  <Icon size={15}>
+  <Icon size={17}>
     <path d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
       fill={FINDER.docIcon} opacity="0.55"/>
     <path d="M9 2V5.5H12.5" stroke={FINDER.docIcon} strokeWidth="0.8" opacity="0.55" strokeLinejoin="round"/>
   </Icon>
 );
 const SearchIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
     <circle cx="7" cy="7" r="4.5" stroke={TEXT.muted} strokeWidth="1.5"/>
     <path d="M10.5 10.5L14 14" stroke={TEXT.muted} strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
@@ -395,17 +395,17 @@ const RedoIcon = () => (
   </Icon>
 );
 const NewNoteIcon = () => (
-  <Icon size={14}>
+  <Icon size={18}>
     <path d="M4 2C3.45 2 3 2.45 3 3V13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13V6L9.5 2H4Z"
-      stroke="currentColor" strokeWidth="1.3" fill="none"/>
-    <path d="M8 7V11M6 9H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      stroke="currentColor" strokeWidth="1.8" fill="none"/>
+    <path d="M8 7V11M6 9H10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
   </Icon>
 );
 const NewFolderIcon = () => (
-  <Icon size={14}>
+  <Icon size={18}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      stroke="currentColor" strokeWidth="1.2" fill="none"/>
-    <path d="M8 7.5V10.5M6.5 9H9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      stroke="currentColor" strokeWidth="1.8" fill="none"/>
+    <path d="M8 7.5V10.5M6.5 9H9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
   </Icon>
 );
 const SidebarToggleIcon = ({ open }) => (
@@ -663,6 +663,7 @@ export default function BoojyNotes() {
   const [slashMenu, setSlashMenu] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // { x, y, type: "note"|"folder", id }
   const [renamingFolder, setRenamingFolder] = useState(null); // folder name being renamed
+  const [starDust, setStarDust] = useState(false); // A/B toggle for sidebar star dust
 
   // ─── Refs ───
   const isDragging = useRef(false);
@@ -1597,19 +1598,19 @@ export default function BoojyNotes() {
           {/* Action buttons */}
           <div style={{ display: "flex", gap: 4, flexShrink: 0, padding: "0 10px 0 6px" }}>
             {[
-              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null), accent: true },
+              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null) },
               { icon: <NewFolderIcon />, title: "New folder", onClick: () => {} },
             ].map((btn, i) => (
               <button key={i} onClick={btn.onClick} style={{
-                width: 30, height: 28, borderRadius: 6,
-                background: btn.accent ? ACCENT.primary : BG.elevated,
-                border: btn.accent ? `1px solid ${ACCENT.primary}` : `1px solid ${BG.divider}`,
+                width: 32, height: 30, borderRadius: 6,
+                background: BG.elevated,
+                border: `1px solid ${BG.divider}`,
                 cursor: "pointer", display: "flex",
                 alignItems: "center", justifyContent: "center",
-                color: btn.accent ? BG.darkest : TEXT.muted, transition: "all 0.15s",
+                color: TEXT.muted, transition: "all 0.15s",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = btn.accent ? ACCENT.hover : BG.surface; e.currentTarget.style.borderColor = btn.accent ? ACCENT.hover : ACCENT.primary; e.currentTarget.style.color = btn.accent ? BG.darkest : ACCENT.primary; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = btn.accent ? ACCENT.primary : BG.elevated; e.currentTarget.style.borderColor = btn.accent ? ACCENT.primary : BG.divider; e.currentTarget.style.color = btn.accent ? BG.darkest : TEXT.muted; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.borderColor = ACCENT.primary; e.currentTarget.style.color = ACCENT.primary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = BG.elevated; e.currentTarget.style.borderColor = BG.divider; e.currentTarget.style.color = TEXT.muted; }}
                 title={btn.title}
               >{btn.icon}</button>
             ))}
@@ -1632,25 +1633,32 @@ export default function BoojyNotes() {
             overflow: "hidden",
           }}>
             {/* Search */}
-            <div style={{ padding: "8px 8px 8px" }}>
+            <div style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: TEXT.muted, fontSize: 12, fontWeight: 500, flexShrink: 0, letterSpacing: "0.3px" }}>Search</span>
               <div style={{
-                display: "flex", alignItems: "center", gap: 7,
-                background: BG.darkest, borderRadius: 6,
-                padding: "6px 10px", border: `1px solid ${BG.divider}`,
+                display: "flex", alignItems: "center", gap: 6, flex: 1,
+                background: BG.darkest, borderRadius: 5,
+                padding: "5px 8px", border: `1px solid ${BG.divider}`,
               }}>
-                <input type="text" placeholder="Search..."
+                <SearchIcon />
+                <input type="text" placeholder=""
                   value={search} onChange={(e) => setSearch(e.target.value)}
                   style={{
                     background: "none", border: "none", outline: "none",
                     color: TEXT.primary, fontSize: 13, width: "100%", fontFamily: "inherit",
                   }}
                 />
-                <SearchIcon />
               </div>
             </div>
 
             {/* File tree — recursive Finder-style */}
-            <div style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
+            <div style={{
+              flex: 1, overflow: "auto", padding: "2px 0",
+              ...(starDust ? {
+                backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              } : {}),
+            }}>
               {(() => {
                 // Render a note row at given depth
                 const renderNote = (nId, depth) => {
@@ -1666,9 +1674,10 @@ export default function BoojyNotes() {
                         padding: `4px 10px 4px ${10 + depth * 20}px`,
                         display: "flex", alignItems: "center", gap: 5,
                         color: act ? TEXT.primary : TEXT.secondary,
-                        fontSize: 13, fontFamily: "inherit",
+                        fontSize: 14, fontFamily: "inherit",
                         fontWeight: act ? 500 : 400,
                         transition: "background 0.12s", textAlign: "left",
+                        boxShadow: act ? "0 0 12px rgba(56, 189, 248, 0.08)" : "none",
                       }}
                       onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
                       onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
@@ -1695,13 +1704,13 @@ export default function BoojyNotes() {
                           width: "100%", background: "none", border: "none",
                           cursor: "pointer", padding: `4px 10px 4px ${10 + depth * 20}px`,
                           display: "flex", alignItems: "center", gap: 5,
-                          color: TEXT.secondary, fontSize: 13, fontWeight: 400, fontFamily: "inherit",
+                          color: TEXT.secondary, fontSize: 14, fontWeight: 400, fontFamily: "inherit",
                           transition: "background 0.1s, color 0.1s", textAlign: "left",
                         }}
                         onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; }}
                         onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
                       >
-                        {hasChildren ? (isOpen ? <ChevronDown /> : <ChevronRight />) : <span style={{ width: 13, flexShrink: 0 }} />}
+                        {hasChildren ? (isOpen ? <ChevronDown /> : <ChevronRight />) : <span style={{ width: 14, flexShrink: 0 }} />}
                         <FolderIcon open={isOpen} />
                         {renamingFolder === folderPath ? (
                           <input
@@ -1724,10 +1733,15 @@ export default function BoojyNotes() {
                         )}
                       </button>
                       {isOpen && (
-                        <>
+                        <div style={{ position: "relative" }}>
+                          <div style={{
+                            position: "absolute", left: 10 + depth * 20 + 7,
+                            top: 0, bottom: 0, width: 1,
+                            background: "rgba(58, 61, 74, 0.4)",
+                          }} />
                           {folder.children.map(child => renderFolder(child, depth + 1))}
                           {folder.notes.map(nId => renderNote(nId, depth + 1))}
-                        </>
+                        </div>
                       )}
                     </div>
                   );
@@ -1741,6 +1755,26 @@ export default function BoojyNotes() {
                   </>
                 );
               })()}
+            </div>
+
+            {/* Star dust A/B toggle */}
+            <div style={{
+              padding: "6px 10px", borderTop: `1px solid ${BG.divider}`,
+              display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 11, color: TEXT.muted }}>Star dust</span>
+              <button onClick={() => setStarDust(!starDust)} style={{
+                width: 32, height: 16, borderRadius: 8, border: "none", cursor: "pointer",
+                background: starDust ? ACCENT.primary : BG.surface,
+                position: "relative", transition: "background 0.2s", flexShrink: 0,
+              }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: "50%", background: "#fff",
+                  position: "absolute", top: 2, left: starDust ? 18 : 2,
+                  transition: "left 0.2s",
+                }} />
+              </button>
+              <span style={{ fontSize: 10, color: TEXT.muted }}>{starDust ? "B" : "A"}</span>
             </div>
           </div>
 
@@ -1823,10 +1857,17 @@ export default function BoojyNotes() {
                 }}
                 style={{
                   fontSize: 28, fontWeight: 700, color: TEXT.primary,
-                  margin: "0 0 24px", lineHeight: 1.3, letterSpacing: "-0.4px",
+                  margin: "0 0 16px", lineHeight: 1.3, letterSpacing: "-0.4px",
                   outline: "none",
                 }}
               />
+
+              {/* Title separator — gradient line */}
+              <div style={{
+                height: 1,
+                marginBottom: 20,
+                background: `linear-gradient(90deg, ${ACCENT.primary}33, ${ACCENT.primary}0D, transparent)`,
+              }} />
 
               {/* Blocks — single contentEditable wrapper for cross-block selection */}
               <div
@@ -2113,9 +2154,10 @@ export default function BoojyNotes() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${BG.divider}; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: ${BG.hover}; box-shadow: 0 0 4px ${BG.hover}40; }
-        .tab-scroll::-webkit-scrollbar { height: 3px; }
+        .tab-scroll::-webkit-scrollbar { height: 0px; }
         .tab-scroll::-webkit-scrollbar-track { background: transparent; }
         .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+        .tab-scroll:hover::-webkit-scrollbar { height: 5px; }
         .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
