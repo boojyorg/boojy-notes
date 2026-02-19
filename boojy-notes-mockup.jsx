@@ -45,6 +45,35 @@ const FINDER = {
 };
 
 // ═══════════════════════════════════════════
+// COLOR HELPERS
+// ═══════════════════════════════════════════
+
+function hexToHsl(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255;
+  const g = parseInt(hex.slice(3,5),16)/255;
+  const b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    if (max === r) h = ((g-b)/d + (g < b ? 6 : 0))/6;
+    else if (max === g) h = ((b-r)/d + 2)/6;
+    else h = ((r-g)/d + 4)/6;
+  }
+  return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+}
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1-l);
+  const f = n => { const k = (n + h/30) % 12; return l - a * Math.max(-1, Math.min(k-3, 9-k, 1)); };
+  const toHex = x => Math.round(x*255).toString(16).padStart(2,"0");
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
+
+// ═══════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════
 
@@ -659,6 +688,8 @@ export default function BoojyNotes() {
   const [devOverlay, setDevOverlay] = useState(false);
   const [tabStyleB, setTabStyleB] = useState(false);
   const [devToast, setDevToast] = useState(null);
+  const [chromeBg, setChromeBg] = useState(BG.dark);
+  const [editorBg, setEditorBg] = useState(BG.editor);
   const [noteData, setNoteData] = useState(() => {
     const saved = loadFromStorage();
     if (saved?.noteData) {
@@ -774,8 +805,8 @@ export default function BoojyNotes() {
       if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if (mod && e.key === "y") { e.preventDefault(); redo(); }
-      if (mod && e.shiftKey && e.key === "D") { e.preventDefault(); setDevOverlay(v => !v); }
-      if (mod && e.shiftKey && e.key === "T") {
+      if (mod && e.key === ".") { e.preventDefault(); setDevOverlay(v => !v); }
+      if (mod && e.key === ",") {
         e.preventDefault();
         setTabStyleB(v => {
           const next = !v;
@@ -1539,7 +1570,7 @@ export default function BoojyNotes() {
 
       {/* ═══ SINGLE TOP ROW ═══ */}
       <div style={{
-        height: 44, background: BG.dark,
+        height: 44, background: chromeBg,
         boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         display: "flex", alignItems: "center",
         flexShrink: 0, zIndex: 2, position: "relative",
@@ -1611,7 +1642,7 @@ export default function BoojyNotes() {
                 <button key={tId} className="tab-btn" onClick={() => { if (!isClosing) setActiveNote(tId); }}
                   style={{
                     background: tabStyleB
-                      ? (act ? BG.editor : BG.dark)
+                      ? (act ? editorBg : chromeBg)
                       : (act ? BG.standard : "transparent"),
                     border: "none",
                     ...(tabStyleB ? {
@@ -1717,7 +1748,7 @@ export default function BoojyNotes() {
           <div style={{
             width: collapsed ? 0 : sidebarWidth,
             minWidth: collapsed ? 0 : sidebarWidth,
-            background: BG.dark,
+            background: chromeBg,
             display: "flex", flexShrink: 0, overflow: "hidden",
             position: "relative",
             transition: "width 0.2s ease, min-width 0.2s ease",
@@ -1887,7 +1918,7 @@ export default function BoojyNotes() {
           </div>
 
         {/* ─── EDITOR ─── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.editor, position: "relative" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: editorBg, position: "relative" }}>
           <StarField mode={note ? "editor" : "empty"} key={note ? "editor" : "empty"} />
           {note ? (
             <div key={activeNote} style={{
@@ -2040,7 +2071,7 @@ export default function BoojyNotes() {
         <div style={{
           width: rightPanel ? 320 : 0,
           minWidth: rightPanel ? 320 : 0,
-          background: BG.dark,
+          background: chromeBg,
           borderLeft: rightPanel ? `1px solid ${BG.divider}` : "none",
           display: "flex", flexDirection: "column",
           overflow: "hidden", flexShrink: 0,
@@ -2264,40 +2295,106 @@ export default function BoojyNotes() {
       )}
 
       {/* Dev colour slider overlay */}
-      {devOverlay && (
+      {devOverlay && (() => {
+        const chromeHsl = hexToHsl(chromeBg);
+        const editorHsl = hexToHsl(editorBg);
+        const sliderTrack = { width: "100%", height: 4, appearance: "none", WebkitAppearance: "none", background: BG.divider, borderRadius: 2, outline: "none", cursor: "pointer" };
+        const sliderCss = `
+          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${ACCENT.primary}; cursor: pointer; border: 2px solid ${BG.elevated}; }
+          .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${BG.divider}; border-radius: 2px; }
+        `;
+        return (
         <div style={{
           position: "fixed", top: 56, right: 16, width: 280,
           background: BG.elevated, border: `1px solid ${BG.divider}`,
           borderRadius: 10, padding: 16, zIndex: 200,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          display: "flex", flexDirection: "column", gap: 12,
+          display: "flex", flexDirection: "column", gap: 14,
           fontSize: 12, color: TEXT.secondary, fontFamily: "inherit",
         }}>
+          <style>{sliderCss}</style>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, color: TEXT.primary }}>Dev Tools</span>
+            <span style={{ fontWeight: 600, color: TEXT.primary, fontSize: 13 }}>Dev Tools</span>
             <button onClick={() => setDevOverlay(false)} style={{
               background: "none", border: "none", color: TEXT.muted, cursor: "pointer", fontSize: 14,
             }}>✕</button>
           </div>
+
+          {/* Chrome BG slider */}
           <div>
-            <div style={{ marginBottom: 4 }}>Chrome: <code style={{ color: ACCENT.primary }}>{BG.dark}</code></div>
-            <div style={{ marginBottom: 4 }}>Editor: <code style={{ color: ACCENT.primary }}>{BG.editor}</code></div>
-            <div style={{ marginBottom: 4 }}>Standard: <code style={{ color: ACCENT.primary }}>{BG.standard}</code></div>
-            <div style={{ marginBottom: 4 }}>Elevated: <code style={{ color: ACCENT.primary }}>{BG.elevated}</code></div>
-            <div style={{ marginBottom: 4 }}>Divider: <code style={{ color: ACCENT.primary }}>{BG.divider}</code></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span>Chrome BG</span>
+              <code style={{ color: ACCENT.primary }}>{chromeBg}</code>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>H</span>
+              <input className="dev-slider" type="range" min="0" max="360" value={chromeHsl[0]}
+                style={sliderTrack}
+                onChange={e => setChromeBg(hslToHex(+e.target.value, chromeHsl[1], chromeHsl[2]))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{chromeHsl[0]}°</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>S</span>
+              <input className="dev-slider" type="range" min="0" max="100" value={chromeHsl[1]}
+                style={sliderTrack}
+                onChange={e => setChromeBg(hslToHex(chromeHsl[0], +e.target.value, chromeHsl[2]))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{chromeHsl[1]}%</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>L</span>
+              <input className="dev-slider" type="range" min="0" max="100" value={chromeHsl[2]}
+                style={sliderTrack}
+                onChange={e => setChromeBg(hslToHex(chromeHsl[0], chromeHsl[1], +e.target.value))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{chromeHsl[2]}%</span>
+            </div>
+            <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: chromeBg, border: `1px solid ${BG.divider}` }} />
           </div>
+
           <div style={{ height: 1, background: BG.divider }} />
+
+          {/* Editor BG slider */}
           <div>
-            <div style={{ marginBottom: 4 }}>Text primary: <code style={{ color: ACCENT.primary }}>{TEXT.primary}</code></div>
-            <div style={{ marginBottom: 4 }}>Text secondary: <code style={{ color: ACCENT.primary }}>{TEXT.secondary}</code></div>
-            <div style={{ marginBottom: 4 }}>Text muted: <code style={{ color: ACCENT.primary }}>{TEXT.muted}</code></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span>Editor BG</span>
+              <code style={{ color: ACCENT.primary }}>{editorBg}</code>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>H</span>
+              <input className="dev-slider" type="range" min="0" max="360" value={editorHsl[0]}
+                style={sliderTrack}
+                onChange={e => setEditorBg(hslToHex(+e.target.value, editorHsl[1], editorHsl[2]))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{editorHsl[0]}°</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>S</span>
+              <input className="dev-slider" type="range" min="0" max="100" value={editorHsl[1]}
+                style={sliderTrack}
+                onChange={e => setEditorBg(hslToHex(editorHsl[0], +e.target.value, editorHsl[2]))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{editorHsl[1]}%</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 12, fontSize: 10, color: TEXT.muted }}>L</span>
+              <input className="dev-slider" type="range" min="0" max="100" value={editorHsl[2]}
+                style={sliderTrack}
+                onChange={e => setEditorBg(hslToHex(editorHsl[0], editorHsl[1], +e.target.value))} />
+              <span style={{ width: 28, textAlign: "right", fontSize: 10, color: TEXT.muted }}>{editorHsl[2]}%</span>
+            </div>
+            <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: editorBg, border: `1px solid ${BG.divider}` }} />
           </div>
+
           <div style={{ height: 1, background: BG.divider }} />
-          <div style={{ fontSize: 11, color: TEXT.muted }}>
-            ⌘⇧D toggle overlay · ⌘⇧T toggle tab style ({tabStyleB ? "B" : "A"})
+
+          {/* Reset + shortcuts */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <button onClick={() => { setChromeBg(BG.dark); setEditorBg(BG.editor); }} style={{
+              background: "none", border: `1px solid ${BG.divider}`, borderRadius: 4,
+              color: TEXT.muted, fontSize: 11, padding: "3px 8px", cursor: "pointer",
+            }}>Reset</button>
+            <span style={{ fontSize: 10, color: TEXT.muted }}>⌘. overlay · ⌘, tabs ({tabStyleB ? "B" : "A"})</span>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <style>{`
         @keyframes blink { 50% { opacity: 0; } }
