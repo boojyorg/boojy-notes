@@ -37,8 +37,8 @@ const BRAND = {
 };
 
 const FINDER = {
-  folderBlue:    "#3B82F6",
-  folderDark:    "#2563EB",
+  folderBlue:    "#38BDF8",
+  folderDark:    "#2DA8E0",
   selectBg:      "#1E3A5F",
   selectBgHover: "#254A73",
   docIcon:       "#9CA3AF",
