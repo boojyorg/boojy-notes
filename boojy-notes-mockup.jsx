@@ -419,6 +419,13 @@ const BreadcrumbChevron = () => (
     <path d="M2 1L5 3.5L2 6" stroke={TEXT.muted} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+const TerminalIcon = () => (
+  <svg width="16.5" height="16.5" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+    <path d="M4 6.5L6 8.5L4 10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7.5 10.5H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
 
 // ═══════════════════════════════════════════
 // STAR FIELD FOR EMPTY STATE
@@ -468,6 +475,8 @@ const StarField = ({ mode = "empty" }) => {
 
     resize();
     window.addEventListener("resize", resize);
+    const ro = new ResizeObserver(resize);
+    ro.observe(parent);
 
     let raf;
     const draw = (time) => {
@@ -503,6 +512,7 @@ const StarField = ({ mode = "empty" }) => {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      ro.disconnect();
     };
   }, [mode]);
 
@@ -539,7 +549,7 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
 
   if (block.type === "p") {
     return (
-      <p ref={elRef} data-block-id={block.id} style={{
+      <p ref={elRef} data-block-id={block.id} data-placeholder="Type / for commands..." style={{
         margin: "0 0 6px", lineHeight: 1.7, color: TEXT.primary, fontSize: 14.5, outline: "none",
       }} />
     );
@@ -582,6 +592,7 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
     return (
       <div data-block-id={block.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
         <div
+          className="checkbox-box"
           contentEditable="false"
           onClick={(e) => { e.stopPropagation(); onCheckToggle(noteId, blockIndex); }}
           style={{
@@ -592,11 +603,9 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
             transition: "all 0.15s", userSelect: "none",
           }}
         >
-          {block.checked && (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M2 5L4.2 7.2L8 3" stroke={BG.darkest} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          )}
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ opacity: block.checked ? 1 : 0, transform: block.checked ? "scale(1)" : "scale(0.5)", transition: "opacity 0.15s, transform 0.15s" }}>
+            <path d="M2 5L4.2 7.2L8 3" stroke={BG.darkest} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
         <span ref={elRef} style={{
           color: block.checked ? TEXT.muted : TEXT.primary,
@@ -632,7 +641,10 @@ export default function BoojyNotes() {
     }
     return ["shopping-list", "boojy-audio-ideas"];
   });
+  const [newTabId, setNewTabId] = useState(null);
+  const [closingTabs, setClosingTabs] = useState(new Set());
   const [collapsed, setCollapsed] = useState(false);
+  const [rightPanel, setRightPanel] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [search, setSearch] = useState("");
   const [settings, setSettings] = useState(false);
@@ -680,12 +692,16 @@ export default function BoojyNotes() {
   const redoStack = useRef([]);
   const historyTimer = useRef(null);
   const isUndoRedo = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // ─── History wrappers ───
   const pushHistory = () => {
     undoStack.current.push(structuredClone(noteDataRef.current));
     if (undoStack.current.length > 50) undoStack.current.shift();
     redoStack.current = [];
+    setCanUndo(true);
+    setCanRedo(false);
   };
 
   const commitNoteData = (updater) => {
@@ -712,6 +728,8 @@ export default function BoojyNotes() {
     syncGeneration.current++;
     setNoteData(undoStack.current.pop());
     isUndoRedo.current = false;
+    setCanUndo(undoStack.current.length > 0);
+    setCanRedo(true);
   };
 
   const redo = () => {
@@ -721,6 +739,8 @@ export default function BoojyNotes() {
     syncGeneration.current++;
     setNoteData(redoStack.current.pop());
     isUndoRedo.current = false;
+    setCanUndo(true);
+    setCanRedo(redoStack.current.length > 0);
   };
 
   // ─── Effects ───
@@ -797,12 +817,25 @@ export default function BoojyNotes() {
 
   // ─── Navigation helpers ───
   const toggle = (n) => setExpanded((p) => ({ ...p, [n]: !p[n] }));
-  const openNote = (id) => { setActiveNote(id); if (!tabs.includes(id)) setTabs([...tabs, id]); };
+  const openNote = (id) => {
+    setActiveNote(id);
+    if (!tabs.includes(id)) {
+      setTabs([...tabs, id]);
+      setNewTabId(id);
+      setTimeout(() => setNewTabId(null), 250);
+    }
+  };
   const closeTab = (e, id) => {
     e.stopPropagation();
-    const next = tabs.filter((t) => t !== id);
-    setTabs(next);
-    if (activeNote === id) setActiveNote(next[next.length - 1] || null);
+    setClosingTabs(prev => new Set([...prev, id]));
+    setTimeout(() => {
+      setClosingTabs(prev => { const next = new Set(prev); next.delete(id); return next; });
+      setTabs(prev => prev.filter(t => t !== id));
+      if (activeNote === id) {
+        const next = tabs.filter(t => t !== id);
+        setActiveNote(next[next.length - 1] || null);
+      }
+    }, 180);
   };
 
   // ─── Derived data ───
@@ -1529,8 +1562,14 @@ export default function BoojyNotes() {
             >
               <SidebarToggleIcon open={!collapsed} />
             </button>
-            <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center" }}><UndoIcon /></button>
-            <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center" }}><RedoIcon /></button>
+            <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, opacity 0.15s" }}
+              onMouseEnter={(e) => { if (canUndo) hBg(e.currentTarget, BG.surface); }}
+              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+            ><UndoIcon /></button>
+            <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", opacity: canRedo ? 1 : 0.3, transition: "background 0.15s, opacity 0.15s" }}
+              onMouseEnter={(e) => { if (canRedo) hBg(e.currentTarget, BG.surface); }}
+              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+            ><RedoIcon /></button>
           </div>
         </div>
 
@@ -1547,8 +1586,10 @@ export default function BoojyNotes() {
               if (i > 0 && !act && !prevAct) {
                 els.push(<div key={`div-${tId}`} style={{ width: 1, background: BG.divider, opacity: 0.25, alignSelf: "stretch", flexShrink: 0 }} />);
               }
+              const isNew = newTabId === tId;
+              const isClosing = closingTabs.has(tId);
               els.push(
-                <button key={tId} onClick={() => setActiveNote(tId)}
+                <button key={tId} onClick={() => { if (!isClosing) setActiveNote(tId); }}
                   style={{
                     background: act ? BG.standard : "transparent",
                     border: "none",
@@ -1559,7 +1600,8 @@ export default function BoojyNotes() {
                     color: act ? TEXT.primary : "#909090",
                     fontSize: 13.5, fontFamily: "inherit",
                     whiteSpace: "nowrap", transition: "background 0.15s, color 0.15s",
-                    height: "100%",
+                    height: "100%", overflow: "hidden",
+                    animation: isNew ? "tabSlideIn 0.2s ease forwards" : isClosing ? "tabSlideOut 0.18s ease forwards" : "none",
                   }}
                   onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.secondary; } }}
                   onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = "#909090"; } }}
@@ -1599,6 +1641,7 @@ export default function BoojyNotes() {
             {[
               { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null) },
               { icon: <NewFolderIcon />, title: "New folder", onClick: () => {} },
+              { icon: <TerminalIcon />, title: "Toggle terminal", onClick: () => setRightPanel(!rightPanel) },
             ].map((btn, i) => (
               <button key={i} onClick={btn.onClick} style={{
                 width: 32, height: 30, borderRadius: 6,
@@ -1621,11 +1664,13 @@ export default function BoojyNotes() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
         {/* ─── SIDEBAR ─── */}
-        {!collapsed && (
           <div style={{
-            width: sidebarWidth, background: BG.dark,
+            width: collapsed ? 0 : sidebarWidth,
+            minWidth: collapsed ? 0 : sidebarWidth,
+            background: BG.dark,
             display: "flex", flexShrink: 0, overflow: "hidden",
             position: "relative",
+            transition: "width 0.2s ease, min-width 0.2s ease",
           }}>
           <div style={{
             flex: 1, display: "flex", flexDirection: "column",
@@ -1767,7 +1812,6 @@ export default function BoojyNotes() {
             onMouseLeave={(e) => { if (!isDragging.current) e.currentTarget.style.background = "transparent"; }}
           />
           </div>
-        )}
 
         {/* ─── EDITOR ─── */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: BG.editor, position: "relative" }}>
@@ -1776,6 +1820,7 @@ export default function BoojyNotes() {
             <div key={activeNote} style={{
               flex: 1, overflow: "auto",
               padding: "28px 56px 80px",
+              maxWidth: 720, margin: "0 auto", width: "100%",
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
               transition: "opacity 0.2s ease, transform 0.2s ease",
@@ -1916,6 +1961,29 @@ export default function BoojyNotes() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* ─── RIGHT PANEL (Terminal) ─── */}
+        <div style={{
+          width: rightPanel ? 320 : 0,
+          minWidth: rightPanel ? 320 : 0,
+          background: BG.dark,
+          borderLeft: rightPanel ? `1px solid ${BG.divider}` : "none",
+          display: "flex", flexDirection: "column",
+          overflow: "hidden", flexShrink: 0,
+          transition: "width 0.2s ease, min-width 0.2s ease",
+        }}>
+          <div style={{
+            padding: "10px 16px", borderBottom: `1px solid ${BG.divider}`,
+            fontSize: 12, color: TEXT.muted, fontWeight: 500, letterSpacing: "0.3px",
+          }}>Terminal</div>
+          <div style={{
+            flex: 1, padding: 16,
+            fontFamily: "'SF Mono', 'Fira Code', monospace",
+            fontSize: 12, color: TEXT.muted, lineHeight: 1.6,
+          }}>
+            <span style={{ color: ACCENT.primary }}>~</span> <span style={{ opacity: 0.5 }}>$</span> <span style={{ animation: "blink 1s step-end infinite", color: TEXT.primary }}>▎</span>
+          </div>
         </div>
       </div>
 
@@ -2125,6 +2193,14 @@ export default function BoojyNotes() {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes tabSlideIn {
+          from { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
+          to { max-width: 200px; opacity: 1; }
+        }
+        @keyframes tabSlideOut {
+          from { max-width: 200px; opacity: 1; }
+          to { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
+        }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -2137,6 +2213,7 @@ export default function BoojyNotes() {
         .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
+        .checkbox-box:active { transform: scale(0.85); }
         .sidebar-note .delete-btn { opacity: 0; transition: opacity 0.1s; }
         .sidebar-note:hover .delete-btn { opacity: 0.5; }
         .sidebar-note .delete-btn:hover { opacity: 1; }
