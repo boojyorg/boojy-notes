@@ -6,8 +6,8 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 
 const BG = {
   darkest:  "#13151C",
-  dark:     "#181A23",
-  standard: "#222430",
+  dark:     "#222430",
+  standard: "#272A38",
   editor:   "#131423",
   elevated: "#292B36",
   surface:  "#353845",
@@ -16,9 +16,9 @@ const BG = {
 };
 
 const TEXT = {
-  primary:   "#EBEBEB",
-  secondary: "#A0A0A0",
-  muted:     "#707070",
+  primary:   "#E8EAF0",
+  secondary: "#9B9EB0",
+  muted:     "#646880",
 };
 
 const ACCENT = {
@@ -364,11 +364,11 @@ const FolderIcon = ({ open }) => (
       fill={FINDER.folderBlue}/>
   </Icon>
 );
-const FileIcon = () => (
+const FileIcon = ({ active }) => (
   <Icon size={17}>
     <path d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
-      fill={FINDER.docIcon} opacity="0.55"/>
-    <path d="M9 2V5.5H12.5" stroke={FINDER.docIcon} strokeWidth="0.8" opacity="0.55" strokeLinejoin="round"/>
+      fill={active ? TEXT.primary : FINDER.docIcon} opacity={active ? "0.7" : "0.55"}/>
+    <path d="M9 2V5.5H12.5" stroke={active ? TEXT.primary : FINDER.docIcon} strokeWidth="0.8" opacity={active ? "0.7" : "0.55"} strokeLinejoin="round"/>
   </Icon>
 );
 const SearchIcon = () => (
@@ -426,6 +426,12 @@ const TerminalIcon = () => (
     <path d="M7.5 10.5H11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
   </svg>
 );
+const TrashIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <path d="M3 4.5H13M6 4.5V3.5C6 3.22 6.22 3 6.5 3H9.5C9.78 3 10 3.22 10 3.5V4.5M4.5 4.5V12.5C4.5 13.05 4.95 13.5 5.5 13.5H10.5C11.05 13.5 11.5 13.05 11.5 12.5V4.5"
+      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 // ═══════════════════════════════════════════
 // STAR FIELD FOR EMPTY STATE
@@ -443,7 +449,7 @@ const StarField = ({ mode = "empty" }) => {
     const dpr = window.devicePixelRatio || 1;
 
     const generateStars = (w, h) => {
-      const count = mode === "empty" ? 120 : 55;
+      const count = mode === "empty" ? 220 : 110;
       const topExclude = mode === "empty" ? 0.05 : 0.12;
       const colours = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#F0F4FF","#FFFDDE"];
       return Array.from({ length: count }, () => {
@@ -457,7 +463,7 @@ const StarField = ({ mode = "empty" }) => {
           maxBrightness: 0.3 + Math.random() * 0.7,
           cycleDuration: 30000 + Math.random() * 120000,
           phaseOffset: Math.random() * Math.PI * 2,
-          shadowBlur: radius > 1.0 ? 4 + radius * 3 : 2 + radius * 2,
+          shadowBlur: radius > 1.0 ? 8 + radius * 5 : 4 + radius * 3,
         };
       });
     };
@@ -650,6 +656,9 @@ export default function BoojyNotes() {
   const [settings, setSettings] = useState(false);
   const [syncState, setSyncState] = useState("synced");
   const [editorFadeIn, setEditorFadeIn] = useState(false);
+  const [devOverlay, setDevOverlay] = useState(false);
+  const [tabStyleB, setTabStyleB] = useState(false);
+  const [devToast, setDevToast] = useState(null);
   const [noteData, setNoteData] = useState(() => {
     const saved = loadFromStorage();
     if (saved?.noteData) {
@@ -765,6 +774,16 @@ export default function BoojyNotes() {
       if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if (mod && e.key === "y") { e.preventDefault(); redo(); }
+      if (mod && e.shiftKey && e.key === "D") { e.preventDefault(); setDevOverlay(v => !v); }
+      if (mod && e.shiftKey && e.key === "T") {
+        e.preventDefault();
+        setTabStyleB(v => {
+          const next = !v;
+          setDevToast(`Tab style: ${next ? "B" : "A"}`);
+          setTimeout(() => setDevToast(null), 1500);
+          return next;
+        });
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -1521,9 +1540,9 @@ export default function BoojyNotes() {
       {/* ═══ SINGLE TOP ROW ═══ */}
       <div style={{
         height: 44, background: BG.dark,
-        borderBottom: `1px solid ${BG.divider}`,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         display: "flex", alignItems: "center",
-        flexShrink: 0,
+        flexShrink: 0, zIndex: 2, position: "relative",
       }}>
         {/* Left section — aligns with sidebar width */}
         <div style={{
@@ -1589,33 +1608,44 @@ export default function BoojyNotes() {
               const isNew = newTabId === tId;
               const isClosing = closingTabs.has(tId);
               els.push(
-                <button key={tId} onClick={() => { if (!isClosing) setActiveNote(tId); }}
+                <button key={tId} className="tab-btn" onClick={() => { if (!isClosing) setActiveNote(tId); }}
                   style={{
-                    background: act ? BG.standard : "transparent",
+                    background: tabStyleB
+                      ? (act ? BG.editor : BG.dark)
+                      : (act ? BG.standard : "transparent"),
                     border: "none",
-                    borderBottom: act ? `2px solid ${ACCENT.primary}` : "2px solid transparent",
-                    borderImage: act ? `linear-gradient(90deg, transparent, ${ACCENT.primary}, transparent) 1` : "none",
+                    ...(tabStyleB ? {
+                      borderBottom: "none",
+                      borderRadius: act ? "6px 6px 0 0" : "4px 4px 0 0",
+                      borderLeft: act ? `1px solid ${BG.divider}` : "1px solid transparent",
+                      borderRight: act ? `1px solid ${BG.divider}` : "1px solid transparent",
+                      borderTop: act ? `1px solid ${BG.divider}` : "1px solid transparent",
+                      marginBottom: act ? -1 : 0,
+                    } : {
+                      borderBottom: act ? `2px solid ${ACCENT.primary}` : "2px solid transparent",
+                      borderImage: act ? `linear-gradient(90deg, transparent, ${ACCENT.primary}, transparent) 1` : "none",
+                    }),
                     cursor: "pointer", padding: "0 16px",
                     display: "flex", alignItems: "center", gap: 5,
-                    color: act ? TEXT.primary : "#909090",
+                    color: act ? TEXT.primary : TEXT.secondary,
                     fontSize: 13.5, fontFamily: "inherit",
+                    fontWeight: act ? 600 : 500,
                     whiteSpace: "nowrap", transition: "background 0.15s, color 0.15s",
                     height: "100%", overflow: "hidden",
                     animation: isNew ? "tabSlideIn 0.2s ease forwards" : isClosing ? "tabSlideOut 0.18s ease forwards" : "none",
                   }}
-                  onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.secondary; } }}
-                  onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = "#909090"; } }}
+                  onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; } }}
+                  onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; } }}
                 >
                   <span>{t.title}</span>
-                  <span onClick={(e) => closeTab(e, tId)}
+                  <span className="tab-close" onClick={(e) => closeTab(e, tId)}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center",
                       width: 16, height: 16, borderRadius: 4,
                       color: TEXT.muted, transition: "all 0.1s",
-                      opacity: act ? 0.6 : 0.35,
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.color = TEXT.primary; e.currentTarget.style.opacity = 1; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.muted; e.currentTarget.style.opacity = act ? 0.6 : 0.35; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.color = TEXT.primary; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.muted; }}
                   ><CloseIcon /></span>
                 </button>
               );
@@ -1628,34 +1658,54 @@ export default function BoojyNotes() {
 
           {/* Word count */}
           {note && (
-            <span style={{ fontSize: 12, color: TEXT.muted, flexShrink: 0, padding: "0 10px", whiteSpace: "nowrap" }}>
-              {wordCount} words
+            <span style={{ fontSize: 12, color: TEXT.secondary, flexShrink: 0, padding: "0 16px", whiteSpace: "nowrap" }}>
+              {wordCount}w
             </span>
           )}
 
-          {/* Divider */}
-          <div style={{ width: 1, height: 20, background: BG.divider, flexShrink: 0, margin: "0 4px" }} />
-
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: 4, flexShrink: 0, padding: "0 10px 0 6px" }}>
-            {[
-              { icon: <NewNoteIcon />, title: "New note", onClick: () => createNote(null) },
-              { icon: <NewFolderIcon />, title: "New folder", onClick: () => {} },
-              { icon: <TerminalIcon />, title: "Toggle terminal", onClick: () => setRightPanel(!rightPanel) },
-            ].map((btn, i) => (
-              <button key={i} onClick={btn.onClick} style={{
-                width: 32, height: 30, borderRadius: 6,
-                background: BG.elevated,
-                border: `1px solid ${BG.divider}`,
-                cursor: "pointer", display: "flex",
-                alignItems: "center", justifyContent: "center",
-                color: TEXT.muted, transition: "all 0.15s",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.borderColor = ACCENT.primary; e.currentTarget.style.color = ACCENT.primary; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = BG.elevated; e.currentTarget.style.borderColor = BG.divider; e.currentTarget.style.color = TEXT.muted; }}
-                title={btn.title}
-              >{btn.icon}</button>
-            ))}
+          <div style={{ display: "flex", gap: 4, flexShrink: 0, padding: "0 10px 0 6px", alignItems: "center" }}>
+            {/* Creation group */}
+            <button onClick={() => createNote(null)} title="New note (⌘N)" style={{
+              width: 32, height: 30, borderRadius: 6,
+              background: ACCENT.primary, border: "none",
+              cursor: "pointer", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              color: BG.darkest, transition: "all 0.15s",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = ACCENT.hover; e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = `0 0 12px ${ACCENT.primary}40`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ACCENT.primary; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
+            ><NewNoteIcon /></button>
+            <button onClick={() => {}} title="New folder" style={{
+              width: 32, height: 30, borderRadius: 6,
+              background: "transparent", border: `1.5px solid ${ACCENT.primary}50`,
+              cursor: "pointer", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              color: ACCENT.primary, transition: "all 0.15s",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT.primary; e.currentTarget.style.background = `${ACCENT.primary}15`; e.currentTarget.style.color = ACCENT.hover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${ACCENT.primary}50`; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = ACCENT.primary; }}
+            ><NewFolderIcon /></button>
+            {/* Divider */}
+            <div style={{ width: 1, height: 20, background: BG.divider, margin: "0 3px" }} />
+            {/* Layout group */}
+            <button onClick={() => setRightPanel(!rightPanel)} title="Toggle terminal (⌘\\)" style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
+              color: TEXT.muted, transition: "background 0.15s, color 0.15s",
+            }}
+              onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
+              onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            ><TerminalIcon /></button>
+            <button onClick={() => {}} title="Keyboard shortcuts (?)" style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: "4px 5px", borderRadius: 5, display: "flex", alignItems: "center",
+              color: TEXT.muted, fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+              transition: "background 0.15s, color 0.15s",
+            }}
+              onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
+              onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            >?</button>
           </div>
         </div>
       </div>
@@ -1677,15 +1727,18 @@ export default function BoojyNotes() {
             overflow: "hidden",
           }}>
             {/* Search */}
-            <div style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: TEXT.muted, fontSize: 12, fontWeight: 500, flexShrink: 0, letterSpacing: "0.3px" }}>Search</span>
+            <div style={{ padding: "8px 10px" }}>
               <div style={{
-                display: "flex", alignItems: "center", gap: 6, flex: 1,
-                background: BG.darkest, borderRadius: 5,
-                padding: "5px 8px", border: `1px solid ${BG.divider}`,
-              }}>
+                display: "flex", alignItems: "center", gap: 8,
+                background: BG.darkest, borderRadius: 8, height: 32,
+                padding: "0 10px", border: `1px solid ${BG.divider}`,
+                transition: "border-color 0.2s",
+              }}
+                onFocusCapture={(e) => e.currentTarget.style.borderColor = `${ACCENT.primary}60`}
+                onBlurCapture={(e) => e.currentTarget.style.borderColor = BG.divider}
+              >
                 <SearchIcon />
-                <input type="text" placeholder=""
+                <input type="text" placeholder="Search..."
                   value={search} onChange={(e) => setSearch(e.target.value)}
                   style={{
                     background: "none", border: "none", outline: "none",
@@ -1709,20 +1762,21 @@ export default function BoojyNotes() {
                       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
                       style={{
                         width: "100%", border: "none", cursor: "pointer",
-                        background: act ? FINDER.selectBg : "transparent",
-                        borderRadius: act ? 5 : 0,
-                        padding: `4px 10px 4px ${10 + depth * 20}px`,
+                        background: act ? `${ACCENT.primary}15` : "transparent",
+                        borderRadius: 0,
+                        borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
+                        padding: `4px 10px 4px ${7 + depth * 20 + 19}px`,
                         display: "flex", alignItems: "center", gap: 5,
                         color: act ? TEXT.primary : TEXT.secondary,
                         fontSize: 14, fontFamily: "inherit",
-                        fontWeight: act ? 500 : 400,
+                        fontWeight: act ? 600 : 400,
                         transition: "background 0.12s", textAlign: "left",
-                        boxShadow: act ? "0 0 12px rgba(56, 189, 248, 0.08)" : "none",
+                        boxShadow: act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
                       }}
                       onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
                       onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
                     >
-                      <FileIcon />
+                      <FileIcon active={act} />
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
                       <span className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteNote(nId); }}
                         style={{ display: "flex", alignItems: "center", padding: "0 2px", marginLeft: "auto" }}
@@ -1745,7 +1799,7 @@ export default function BoojyNotes() {
                           cursor: "pointer", padding: `4px 10px 4px ${10 + depth * 20}px`,
                           display: "flex", alignItems: "center", gap: 5,
                           color: TEXT.secondary, fontSize: 14, fontWeight: 400, fontFamily: "inherit",
-                          transition: "background 0.1s, color 0.1s", textAlign: "left",
+                          transition: "background 0.12s, color 0.12s", textAlign: "left",
                         }}
                         onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; }}
                         onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
@@ -1797,6 +1851,25 @@ export default function BoojyNotes() {
               })()}
             </div>
 
+            {/* Bin — pinned at bottom */}
+            <div style={{ height: 1, background: BG.divider, margin: "0 10px", opacity: 0.25, flexShrink: 0 }} />
+            <button
+              onClick={() => {}}
+              style={{
+                width: "100%", border: "none", cursor: "pointer",
+                background: "transparent",
+                padding: "8px 12px",
+                display: "flex", alignItems: "center", gap: 7,
+                color: TEXT.muted, fontSize: 13, fontFamily: "inherit",
+                transition: "background 0.12s, color 0.12s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.secondary; }}
+              onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            >
+              <TrashIcon />
+              <span>Bin</span>
+            </button>
           </div>
 
           {/* Drag handle */}
@@ -1819,8 +1892,8 @@ export default function BoojyNotes() {
           {note ? (
             <div key={activeNote} style={{
               flex: 1, overflow: "auto",
-              padding: "28px 56px 80px",
-              maxWidth: 720, margin: "0 auto", width: "100%",
+              padding: "28px 56px 80px 56px",
+              maxWidth: 720, marginLeft: 40, marginRight: "auto", width: "100%",
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
               transition: "opacity 0.2s ease, transform 0.2s ease",
@@ -2110,7 +2183,7 @@ export default function BoojyNotes() {
                   padding: "7px 14px", cursor: "pointer",
                   color: item.danger ? SEMANTIC.error : TEXT.primary,
                   fontSize: 12.5, fontFamily: "inherit", textAlign: "left",
-                  transition: "background 0.08s",
+                  transition: "background 0.12s",
                 }}
                 onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
                 onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
@@ -2157,7 +2230,7 @@ export default function BoojyNotes() {
                     display: "flex", alignItems: "center", gap: 10,
                     cursor: "pointer",
                     background: i === slashMenu.selectedIndex ? BG.surface : "transparent",
-                    transition: "background 0.08s",
+                    transition: "background 0.12s",
                   }}
                 >
                   <div style={{
@@ -2178,6 +2251,53 @@ export default function BoojyNotes() {
           </div>
         );
       })()}
+
+      {/* Dev toast */}
+      {devToast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: BG.elevated, border: `1px solid ${BG.divider}`,
+          borderRadius: 8, padding: "6px 16px", fontSize: 12, color: TEXT.primary,
+          fontWeight: 500, zIndex: 200, animation: "fadeIn 0.15s ease",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+        }}>{devToast}</div>
+      )}
+
+      {/* Dev colour slider overlay */}
+      {devOverlay && (
+        <div style={{
+          position: "fixed", top: 56, right: 16, width: 280,
+          background: BG.elevated, border: `1px solid ${BG.divider}`,
+          borderRadius: 10, padding: 16, zIndex: 200,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          display: "flex", flexDirection: "column", gap: 12,
+          fontSize: 12, color: TEXT.secondary, fontFamily: "inherit",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: TEXT.primary }}>Dev Tools</span>
+            <button onClick={() => setDevOverlay(false)} style={{
+              background: "none", border: "none", color: TEXT.muted, cursor: "pointer", fontSize: 14,
+            }}>✕</button>
+          </div>
+          <div>
+            <div style={{ marginBottom: 4 }}>Chrome: <code style={{ color: ACCENT.primary }}>{BG.dark}</code></div>
+            <div style={{ marginBottom: 4 }}>Editor: <code style={{ color: ACCENT.primary }}>{BG.editor}</code></div>
+            <div style={{ marginBottom: 4 }}>Standard: <code style={{ color: ACCENT.primary }}>{BG.standard}</code></div>
+            <div style={{ marginBottom: 4 }}>Elevated: <code style={{ color: ACCENT.primary }}>{BG.elevated}</code></div>
+            <div style={{ marginBottom: 4 }}>Divider: <code style={{ color: ACCENT.primary }}>{BG.divider}</code></div>
+          </div>
+          <div style={{ height: 1, background: BG.divider }} />
+          <div>
+            <div style={{ marginBottom: 4 }}>Text primary: <code style={{ color: ACCENT.primary }}>{TEXT.primary}</code></div>
+            <div style={{ marginBottom: 4 }}>Text secondary: <code style={{ color: ACCENT.primary }}>{TEXT.secondary}</code></div>
+            <div style={{ marginBottom: 4 }}>Text muted: <code style={{ color: ACCENT.primary }}>{TEXT.muted}</code></div>
+          </div>
+          <div style={{ height: 1, background: BG.divider }} />
+          <div style={{ fontSize: 11, color: TEXT.muted }}>
+            ⌘⇧D toggle overlay · ⌘⇧T toggle tab style ({tabStyleB ? "B" : "A"})
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes blink { 50% { opacity: 0; } }
@@ -2214,6 +2334,9 @@ export default function BoojyNotes() {
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
         .checkbox-box:active { transform: scale(0.85); }
+        .tab-btn > .tab-close { opacity: 0; transition: opacity 0.15s; }
+        .tab-btn:hover > .tab-close { opacity: 0.6; }
+        .tab-btn > .tab-close:hover { opacity: 1 !important; }
         .sidebar-note .delete-btn { opacity: 0; transition: opacity 0.1s; }
         .sidebar-note:hover .delete-btn { opacity: 0.5; }
         .sidebar-note .delete-btn:hover { opacity: 1; }
