@@ -1942,11 +1942,10 @@ export default function BoojyNotes() {
           </div>
 
         {/* ─── EDITOR ─── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: editorBg, position: "relative" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
           <StarField mode={note ? "editor" : "empty"} key={note ? "editor" : "empty"} />
           {note ? (
             <div key={activeNote} style={{
-              flex: 1, overflow: "auto",
               padding: "28px 56px 80px 56px",
               maxWidth: 720, marginLeft: 40, marginRight: "auto", width: "100%",
               opacity: editorFadeIn ? 1 : 0,
