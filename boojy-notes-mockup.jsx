@@ -22,8 +22,8 @@ const TEXT = {
 };
 
 const ACCENT = {
-  primary: "#38BDF8",
-  hover:   "#5CCBFA",
+  primary: "#A4CACE",
+  hover:   "#B8D8DB",
 };
 
 const SEMANTIC = {
@@ -371,21 +371,21 @@ const ChevronRight = ({ color = TEXT.muted }) => (
 const ChevronDown = ({ color = TEXT.secondary }) => (
   <Icon size={14}><path d="M3 5.5L8 10L13 5.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></Icon>
 );
-const FolderIcon = ({ open }) => (
-  <Icon size={17}>
+const FolderIcon = ({ open, color, size: sz }) => (
+  <Icon size={sz || 17}>
     <path d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      fill={FINDER.folderBlue}/>
+      fill={color || FINDER.folderBlue}/>
   </Icon>
 );
-const FileIcon = ({ active }) => (
-  <Icon size={17}>
+const FileIcon = ({ active, color, size: sz }) => (
+  <Icon size={sz || 17}>
     <path d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
-      fill={active ? TEXT.primary : FINDER.docIcon} opacity={active ? "0.7" : "0.55"}/>
-    <path d="M9 2V5.5H12.5" stroke={active ? TEXT.primary : FINDER.docIcon} strokeWidth="0.8" opacity={active ? "0.7" : "0.55"} strokeLinejoin="round"/>
+      fill={color || (active ? TEXT.primary : FINDER.docIcon)} opacity={color ? "1" : (active ? "0.7" : "0.55")}/>
+    <path d="M9 2V5.5H12.5" stroke={color || (active ? TEXT.primary : FINDER.docIcon)} strokeWidth="0.8" opacity={color ? "1" : (active ? "0.7" : "0.55")} strokeLinejoin="round"/>
   </Icon>
 );
 const SearchIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+  <svg width="15.4" height="15.4" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
     <circle cx="7" cy="7" r="4.5" stroke={TEXT.muted} strokeWidth="1.5"/>
     <path d="M10.5 10.5L14 14" stroke={TEXT.muted} strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
@@ -540,7 +540,7 @@ const StarField = ({ mode = "empty" }) => {
 // EDITABLE BLOCK
 // ═══════════════════════════════════════════
 
-function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen }) {
+function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen, accentColor }) {
   const elRef = useRef(null);
 
   // Set text on mount and force-resync on undo/redo (syncGen changes)
@@ -609,8 +609,8 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
           onClick={(e) => { e.stopPropagation(); onCheckToggle(noteId, blockIndex); }}
           style={{
             width: 16, height: 16, borderRadius: 3.5, flexShrink: 0, cursor: "pointer",
-            border: block.checked ? `1.5px solid ${ACCENT.primary}` : `1.5px solid ${TEXT.muted}`,
-            background: block.checked ? ACCENT.primary : "transparent",
+            border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
+            background: block.checked ? accentColor : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.15s", userSelect: "none",
           }}
@@ -658,7 +658,7 @@ export default function BoojyNotes() {
   const [collapsed, setCollapsed] = useState(false);
   const [rightPanel, setRightPanel] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
-  const [rightPanelWidth, setRightPanelWidth] = useState(320);
+  const [rightPanelWidth, setRightPanelWidth] = useState(220);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -670,6 +670,8 @@ export default function BoojyNotes() {
   const [chromeBg, setChromeBg] = useState(BG.dark);
   const [editorBg, setEditorBg] = useState(BG.editor);
   const [topBarEdge, setTopBarEdge] = useState("B");
+  const [createBtnStyle, setCreateBtnStyle] = useState("A");
+  const [accentColor, setAccentColor] = useState(ACCENT.primary);
   const [noteData, setNoteData] = useState(() => {
     const saved = loadFromStorage();
     if (saved?.noteData) {
@@ -695,9 +697,15 @@ export default function BoojyNotes() {
   const [slashMenu, setSlashMenu] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // { x, y, type: "note"|"folder", id }
   const [renamingFolder, setRenamingFolder] = useState(null); // folder name being renamed
+  const [customFolders, setCustomFolders] = useState(() => {
+    const saved = loadFromStorage();
+    return saved?.customFolders || [];
+  });
 
   // ─── Refs ───
   const isDragging = useRef(false);
+  const sidebarHandles = useRef([]);
+  const rightPanelHandles = useRef([]);
   const tabScrollRef = useRef(null);
   const searchInputRef = useRef(null);
   const [tabAreaWidth, setTabAreaWidth] = useState(600);
@@ -816,13 +824,13 @@ export default function BoojyNotes() {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteData, tabs, activeNote, expanded }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteData, tabs, activeNote, expanded, customFolders }));
       } catch (e) {
         console.warn("Failed to save to localStorage:", e);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [noteData, tabs, activeNote, expanded]);
+  }, [noteData, tabs, activeNote, expanded, customFolders]);
 
   // Focus management — runs after every render
   useEffect(() => {
@@ -842,14 +850,18 @@ export default function BoojyNotes() {
     isDragging.current = true;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
+    // Disable transitions during drag for instant response
+    document.documentElement.classList.add("sidebar-dragging");
     const onMove = (ev) => {
       if (!isDragging.current) return;
-      setSidebarWidth(Math.min(400, Math.max(160, ev.clientX)));
+      setSidebarWidth(Math.min(400, Math.max(200, ev.clientX)));
     };
     const onUp = () => {
       isDragging.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      document.documentElement.classList.remove("sidebar-dragging");
+      sidebarHandles.current.forEach(h => h && (h.style.background = ""));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -862,14 +874,17 @@ export default function BoojyNotes() {
     isDragging.current = true;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
+    document.documentElement.classList.add("sidebar-dragging");
     const onMove = (ev) => {
       if (!isDragging.current) return;
-      setRightPanelWidth(Math.min(500, Math.max(200, window.innerWidth - ev.clientX)));
+      setRightPanelWidth(Math.min(500, Math.max(140, window.innerWidth - ev.clientX)));
     };
     const onUp = () => {
       isDragging.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      document.documentElement.classList.remove("sidebar-dragging");
+      rightPanelHandles.current.forEach(h => h && (h.style.background = ""));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -939,18 +954,21 @@ export default function BoojyNotes() {
     }
     return paths;
   };
-  const knownPaths = new Set(collectPaths(FOLDER_TREE));
+  // Merge custom folders into the tree template
+  const allFolders = [
+    ...FOLDER_TREE,
+    ...customFolders.map(name => ({ name, children: [], notes: [] })),
+  ];
+  const knownPaths = new Set(collectPaths(allFolders));
 
-  // Also add any folders from noteData that aren't in FOLDER_TREE (dynamically created)
+  // Also add any folders from noteData that aren't in the tree (dynamically created)
   for (const path of Object.keys(folderNoteMap)) {
     if (!knownPaths.has(path)) {
-      // Insert as top-level folder
-      const parts = path.split("/");
       knownPaths.add(path);
     }
   }
 
-  const folderTree = buildTree(FOLDER_TREE);
+  const folderTree = buildTree(allFolders);
 
   // ─── Block CRUD ───
   const updateBlockText = (noteId, blockIndex, newText) => {
@@ -1085,6 +1103,8 @@ export default function BoojyNotes() {
       }
       return next;
     });
+    // Update customFolders if this was a custom folder
+    setCustomFolders(prev => prev.map(f => f === oldPath ? newName : f));
   };
 
   const deleteFolder = (folderPath) => {
@@ -1102,6 +1122,25 @@ export default function BoojyNotes() {
       if (noteIds.includes(activeNote)) setActiveNote(next[next.length - 1] || null);
       return next;
     });
+    // Remove from customFolders if it was a custom folder
+    setCustomFolders(prev => prev.filter(f => f !== folderPath));
+  };
+
+  const createFolder = () => {
+    let name = "Untitled Folder";
+    // Avoid duplicates
+    const existingNames = new Set([
+      ...FOLDER_TREE.map(f => f.name),
+      ...customFolders,
+    ]);
+    if (existingNames.has(name)) {
+      let i = 2;
+      while (existingNames.has(`${name} ${i}`)) i++;
+      name = `${name} ${i}`;
+    }
+    setCustomFolders(prev => [...prev, name]);
+    setExpanded(prev => ({ ...prev, [name]: false }));
+    setTimeout(() => setRenamingFolder(name), 50);
   };
 
   // ─── Slash command execution ───
@@ -1562,7 +1601,7 @@ export default function BoojyNotes() {
   const syncDotStyle = () => {
     const base = {
       width: 19, height: 19, borderRadius: "50%",
-      background: BRAND.orange, border: "none",
+      background: accentColor, border: "none",
       cursor: "pointer", position: "relative", top: 1,
       transition: "transform 0.15s",
     };
@@ -1592,7 +1631,6 @@ export default function BoojyNotes() {
         <div style={{
           width: sidebarWidth, flexShrink: 0, display: "flex", alignItems: "center",
           padding: "0 8px 0 14px", height: "100%", gap: 4,
-          borderRight: `1px solid ${BG.divider}`,
           transition: "width 0.2s ease",
         }}>
           {/* N●tes */}
@@ -1605,11 +1643,11 @@ export default function BoojyNotes() {
               onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
               title={`Settings · Sync: ${syncState}`}
             >
-              <img src="/boojy-notes-settings-circle.png" alt="" style={{ width: "100%", height: "100%", borderRadius: "50%" }} draggable="false" />
+              <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: accentColor }} />
             </button>
             <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
           </div>
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }} />
           <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.muted, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
             onMouseEnter={(e) => { if (canUndo) { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; } }}
             onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
@@ -1631,6 +1669,19 @@ export default function BoojyNotes() {
             <SidebarToggleIcon />
           </button>
         </div>
+        <div
+          ref={(el) => { if (el) sidebarHandles.current[0] = el; }}
+          onMouseDown={startDrag}
+          style={{
+            width: 4, cursor: "col-resize",
+            background: chromeBg,
+            borderRight: `1px solid ${BG.divider}`,
+            flexShrink: 0, transition: "background 0.15s",
+            alignSelf: "stretch",
+          }}
+          onMouseEnter={() => sidebarHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
+          onMouseLeave={() => { if (!isDragging.current) sidebarHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
+        />
 
         {/* Top-middle — tabs */}
         <div ref={tabScrollRef} className="tab-scroll" style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" }}>
@@ -1638,10 +1689,9 @@ export default function BoojyNotes() {
             const t = noteData[tId];
             if (!t) return [];
             const act = activeNote === tId;
-            const prevAct = i > 0 && tabs[i - 1] === activeNote;
             const els = [];
-            if (i > 0 && !act && !prevAct) {
-              els.push(<div key={`div-${tId}`} style={{ width: 1, background: BG.divider, opacity: 0.25, alignSelf: "stretch", flexShrink: 0 }} />);
+            if (i > 0) {
+              els.push(<div key={`div-${tId}`} style={{ width: 2, background: BG.divider, opacity: 0.6, alignSelf: "stretch", flexShrink: 0 }} />);
             }
             const isNew = newTabId === tId;
             const isClosing = closingTabs.has(tId);
@@ -1649,7 +1699,7 @@ export default function BoojyNotes() {
               <button key={tId} className="tab-btn" onClick={() => { if (!isClosing) setActiveNote(tId); }}
                 style={{
                   background: tabStyleB
-                    ? (act ? editorBg : chromeBg)
+                    ? (act ? BG.elevated : chromeBg)
                     : (act ? BG.standard : "transparent"),
                   border: "none",
                   ...(tabStyleB ? {
@@ -1690,19 +1740,34 @@ export default function BoojyNotes() {
               </button>
             );
             if (i === tabs.length - 1) {
-              els.push(<div key="div-end" style={{ width: 1, background: BG.divider, opacity: 0.25, alignSelf: "stretch", flexShrink: 0 }} />);
+              els.push(<div key="div-end" style={{ width: 2, background: BG.divider, opacity: 0.6, alignSelf: "stretch", flexShrink: 0 }} />);
             }
             return els;
           }); })()}
         </div>
 
-        {/* Top-right — panel toggle, new note, new folder, word count, help */}
+        {/* Top-right drag handle — always visible so divider doesn't jump */}
+        <div
+          ref={(el) => { if (el) rightPanelHandles.current[0] = el; }}
+          onMouseDown={startRightDrag}
+          style={{
+            width: 4, cursor: "col-resize",
+            background: chromeBg,
+            borderLeft: `1px solid ${BG.divider}`,
+            flexShrink: 0, transition: "background 0.15s",
+            alignSelf: "stretch",
+            marginRight: -1, position: "relative", zIndex: 1,
+          }}
+          onMouseEnter={() => rightPanelHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
+          onMouseLeave={() => { if (!isDragging.current) rightPanelHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
+        />
+
+        {/* Top-right — panel toggle, word count, help */}
         <div style={{
-          width: rightPanel ? rightPanelWidth : "auto",
+          width: rightPanelWidth,
           flexShrink: 0, display: "flex", alignItems: "center",
-          justifyContent: "flex-end", gap: 4, padding: "0 10px 0 6px",
-          height: "100%", borderLeft: `1px solid ${BG.divider}`,
-          transition: rightPanel ? "width 0.2s ease" : "none",
+          justifyContent: "flex-start", gap: 4, padding: "0 10px 0 10px",
+          height: "100%",
         }}>
           <button onClick={() => setRightPanel(!rightPanel)} title="Toggle right panel (⌘\\)" style={{
             background: "none", border: "none", cursor: "pointer",
@@ -1715,31 +1780,12 @@ export default function BoojyNotes() {
             <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3"/>
             <path d="M10 2.5V13.5" stroke="currentColor" strokeWidth="1.3"/>
           </svg></button>
-          <button onClick={() => createNote(null)} title="New note (⌘N)" style={{
-            width: 32, height: 30, borderRadius: 6,
-            background: ACCENT.primary, border: "none",
-            cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center",
-            color: BG.darkest, transition: "all 0.15s",
-          }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = ACCENT.hover; e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = `0 0 12px ${ACCENT.primary}40`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = ACCENT.primary; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "none"; }}
-          ><NewNoteIcon /></button>
-          <button onClick={() => {}} title="New folder" style={{
-            width: 32, height: 30, borderRadius: 6,
-            background: "transparent", border: `1.5px solid ${ACCENT.primary}50`,
-            cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center",
-            color: ACCENT.primary, transition: "all 0.15s",
-          }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = ACCENT.primary; e.currentTarget.style.background = `${ACCENT.primary}15`; e.currentTarget.style.color = ACCENT.hover; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${ACCENT.primary}50`; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = ACCENT.primary; }}
-          ><NewFolderIcon /></button>
           {note && (
             <span style={{ fontSize: 12, color: TEXT.secondary, flexShrink: 0, padding: "0 4px", whiteSpace: "nowrap" }}>
               {wordCount} words
             </span>
           )}
+          <div style={{ flex: 1 }} />
           <button onClick={() => {}} title="Keyboard shortcuts (?)" style={{
             background: "none", border: "none", cursor: "pointer",
             padding: "4px 5px", borderRadius: 5, display: "flex", alignItems: "center",
@@ -1748,7 +1794,7 @@ export default function BoojyNotes() {
           }}
             onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
             onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
-          ><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          ><svg width="17.6" height="17.6" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="6.5"/>
             <path d="M6 6.2a2.1 2.1 0 0 1 2-1.4c1.1 0 2 .8 2 1.8 0 1-.7 1.4-1.4 1.7-.3.1-.6.4-.6.7"/>
             <circle cx="8" cy="11.5" r="0.01" fill="currentColor" strokeWidth="2"/>
@@ -1778,17 +1824,16 @@ export default function BoojyNotes() {
                 onClick={() => { if (!searchFocused && !search) { setSearchFocused(true); setTimeout(() => searchInputRef.current?.focus(), 0); } }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: BG.darkest, borderRadius: 8, height: 28,
-                  width: (searchFocused || search) ? sidebarWidth - 20 : 28,
-                  padding: (searchFocused || search) ? "0 10px" : "0",
-                  justifyContent: (searchFocused || search) ? "flex-start" : "center",
-                  border: `1px solid ${searchFocused ? `${ACCENT.primary}60` : BG.divider}`,
-                  transition: "width 0.2s ease, border-color 0.2s ease, padding 0.2s ease",
+                  background: BG.darkest, borderRadius: 14, height: 28,
+                  width: (searchFocused || search) ? sidebarWidth - 20 : 95,
+                  padding: "0 10px",
+                  border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
+                  transition: "width 0.2s ease, border-color 0.2s ease",
                   cursor: (searchFocused || search) ? "text" : "pointer",
                   overflow: "hidden",
                 }}>
                 <SearchIcon />
-                {(searchFocused || search) && (
+                {(searchFocused || search) ? (
                   <input ref={searchInputRef} type="text" autoFocus
                     value={search} onChange={(e) => setSearch(e.target.value)}
                     onFocus={() => setSearchFocused(true)}
@@ -1798,6 +1843,8 @@ export default function BoojyNotes() {
                       color: TEXT.primary, fontSize: 13, width: "100%", fontFamily: "inherit",
                     }}
                   />
+                ) : (
+                  <span style={{ color: TEXT.muted, fontSize: 13, fontWeight: 500, userSelect: "none" }}>Search</span>
                 )}
               </div>
             </div>
@@ -1816,9 +1863,9 @@ export default function BoojyNotes() {
                       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
                       style={{
                         width: "100%", border: "none", cursor: "pointer",
-                        background: act ? `${ACCENT.primary}15` : "transparent",
+                        background: act ? `${accentColor}15` : "transparent",
                         borderRadius: 0,
-                        borderLeft: act ? `3px solid ${ACCENT.primary}` : "3px solid transparent",
+                        borderLeft: act ? `3px solid ${accentColor}` : "3px solid transparent",
                         padding: `4px 10px 4px ${7 + depth * 20 + 19}px`,
                         display: "flex", alignItems: "center", gap: 5,
                         color: act ? TEXT.primary : TEXT.secondary,
@@ -1859,7 +1906,7 @@ export default function BoojyNotes() {
                         onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
                       >
                         {hasChildren ? (isOpen ? <ChevronDown /> : <ChevronRight />) : <span style={{ width: 14, flexShrink: 0 }} />}
-                        <FolderIcon open={isOpen} />
+                        <FolderIcon open={isOpen} color={accentColor} />
                         {renamingFolder === folderPath ? (
                           <input
                             autoFocus
@@ -1871,7 +1918,7 @@ export default function BoojyNotes() {
                               if (e.key === "Escape") setRenamingFolder(null);
                             }}
                             style={{
-                              background: BG.darkest, border: `1px solid ${FINDER.folderBlue}`, borderRadius: 4,
+                              background: BG.darkest, border: `1px solid ${accentColor}`, borderRadius: 4,
                               color: TEXT.primary, fontSize: 12.5, fontFamily: "inherit", fontWeight: 500,
                               padding: "1px 4px", outline: "none", width: "100%",
                             }}
@@ -1897,9 +1944,46 @@ export default function BoojyNotes() {
 
                 return (
                   <>
+                    <div style={{ height: 5 }} />
                     {filteredTree.map(f => renderFolder(f, 0))}
-                    {filteredTree.length > 0 && fNotes.length > 0 && <div style={{ height: 14 }} />}
+                    {filteredTree.length > 0 && !search && (
+                      <button onClick={createFolder} style={{
+                        width: "100%", border: "none", cursor: "pointer",
+                        background: "transparent",
+                        padding: `4px 10px 4px 10px`,
+                        display: "flex", alignItems: "center", gap: 5,
+                        color: TEXT.secondary, fontSize: 14, fontFamily: "inherit", fontWeight: 500,
+                        opacity: 0.55,
+                        transition: "background 0.12s, color 0.12s, opacity 0.12s", textAlign: "left",
+                      }}
+                        onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; e.currentTarget.style.opacity = "1"; }}
+                        onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; e.currentTarget.style.opacity = "0.55"; }}
+                      >
+                        <span style={{ width: 14, flexShrink: 0 }} />
+                        <span style={{ width: 17, flexShrink: 0, textAlign: "center" }}>+</span>
+                        <span>New Folder</span>
+                      </button>
+                    )}
+                    {(filteredTree.length > 0 || fNotes.length > 0) && <div style={{ height: 16 }} />}
                     {fNotes.map(nId => renderNote(nId, 0))}
+                    {!search && (
+                      <button onClick={() => createNote(null)} style={{
+                        width: "100%", border: "none", cursor: "pointer",
+                        background: "transparent",
+                        borderLeft: "3px solid transparent",
+                        padding: `4px 10px 4px ${7 + 19}px`,
+                        display: "flex", alignItems: "center", gap: 5,
+                        color: TEXT.secondary, fontSize: 14, fontFamily: "inherit", fontWeight: 500,
+                        opacity: 0.55,
+                        transition: "background 0.12s, color 0.12s, opacity 0.12s", textAlign: "left",
+                      }}
+                        onMouseEnter={(e) => { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; e.currentTarget.style.opacity = "1"; }}
+                        onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; e.currentTarget.style.opacity = "0.55"; }}
+                      >
+                        <span style={{ width: 17, flexShrink: 0, textAlign: "center" }}>+</span>
+                        <span>New Note</span>
+                      </button>
+                    )}
                   </>
                 );
               })()}
@@ -1915,7 +1999,7 @@ export default function BoojyNotes() {
                 padding: "4px 10px 4px 26px",
                 marginBottom: 10,
                 display: "flex", alignItems: "center", gap: 5,
-                color: TEXT.secondary, fontSize: 14, fontFamily: "inherit",
+                color: TEXT.secondary, fontSize: 14, fontFamily: "inherit", fontWeight: 500,
                 transition: "background 0.12s",
                 flexShrink: 0, textAlign: "left",
               }}
@@ -1927,22 +2011,24 @@ export default function BoojyNotes() {
             </button>
           </div>
 
+          </div>
+
           {/* Drag handle */}
           <div
+            ref={(el) => { if (el) sidebarHandles.current[1] = el; }}
             onMouseDown={startDrag}
             style={{
               width: 4, cursor: "col-resize",
-              background: "transparent",
+              background: chromeBg,
               borderRight: `1px solid ${BG.divider}`,
               flexShrink: 0, transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = ACCENT.primary}
-            onMouseLeave={(e) => { if (!isDragging.current) e.currentTarget.style.background = "transparent"; }}
+            onMouseEnter={() => sidebarHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
+            onMouseLeave={() => { if (!isDragging.current) sidebarHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
           />
-          </div>
 
         {/* ─── EDITOR ─── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
+        <div className="editor-scroll" style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
           <StarField mode={note ? "editor" : "empty"} key={note ? "editor" : "empty"} />
           {note ? (
             <div key={activeNote} style={{
@@ -2014,7 +2100,7 @@ export default function BoojyNotes() {
               <div style={{
                 height: 1,
                 marginBottom: 20,
-                background: `linear-gradient(90deg, ${ACCENT.primary}33, ${ACCENT.primary}0D, transparent)`,
+                background: `linear-gradient(90deg, ${accentColor}33, ${accentColor}0D, transparent)`,
               }} />
 
               {/* Blocks — single contentEditable wrapper for cross-block selection */}
@@ -2036,6 +2122,7 @@ export default function BoojyNotes() {
                     onCheckToggle={flipCheck}
                     registerRef={registerBlockRef}
                     syncGen={syncGeneration.current}
+                    accentColor={accentColor}
                   />
                 ))}
               </div>
@@ -2061,7 +2148,7 @@ export default function BoojyNotes() {
                 {/* Faded N●tes logo */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 20, opacity: 0.12 }}>
                   <img src="/boojy-notes-text-N.png" alt="" style={{ height: 55, filter: "invert(1)" }} draggable="false" />
-                  <img src="/boojy-notes-settings-circle.png" alt="" style={{ height: 40, position: "relative", top: 2 }} draggable="false" />
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: accentColor, position: "relative", top: 2, flexShrink: 0 }} />
                   <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 48, filter: "invert(1)" }} draggable="false" />
                 </div>
 
@@ -2090,6 +2177,21 @@ export default function BoojyNotes() {
           )}
         </div>
 
+        {/* Right panel drag handle — outside container so it aligns with top bar handle */}
+          <div
+            ref={(el) => { if (el) rightPanelHandles.current[1] = el; }}
+            onMouseDown={startRightDrag}
+            style={{
+              width: 4, cursor: "col-resize",
+              background: chromeBg,
+              borderLeft: `1px solid ${BG.divider}`,
+              flexShrink: 0, transition: "background 0.15s",
+              marginRight: -1, position: "relative", zIndex: 1,
+            }}
+            onMouseEnter={() => rightPanelHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
+            onMouseLeave={() => { if (!isDragging.current) rightPanelHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
+          />
+
         {/* ─── RIGHT PANEL (Terminal) ─── */}
         <div style={{
           width: rightPanel ? rightPanelWidth : 0,
@@ -2100,19 +2202,6 @@ export default function BoojyNotes() {
           position: "relative",
           transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
         }}>
-          {/* Drag handle — full height, absolutely positioned on left edge */}
-          {rightPanel && <div
-            onMouseDown={startRightDrag}
-            style={{
-              position: "absolute", left: 0, top: 0, bottom: 0,
-              width: 4, cursor: "col-resize",
-              background: "transparent",
-              borderLeft: `1px solid ${BG.divider}`,
-              zIndex: 1, transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = ACCENT.primary}
-            onMouseLeave={(e) => { if (!isDragging.current) e.currentTarget.style.background = "transparent"; }}
-          />}
           <div style={{
             padding: "10px 16px", borderBottom: `1px solid ${BG.divider}`,
             fontSize: 12, color: TEXT.muted, fontWeight: 500, letterSpacing: "0.3px",
@@ -2352,11 +2441,12 @@ export default function BoojyNotes() {
 
       {/* Dev tools overlay — anchored bottom-right above gear */}
       {devOverlay && (() => {
+        const aRgb = hexToRgb(accentColor);
         const cRgb = hexToRgb(chromeBg);
         const eRgb = hexToRgb(editorBg);
         const sliderTrack = { width: "100%", height: 4, appearance: "none", WebkitAppearance: "none", background: BG.divider, borderRadius: 2, outline: "none", cursor: "pointer" };
         const sliderCss = `
-          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${ACCENT.primary}; cursor: pointer; border: 2px solid ${BG.elevated}; }
+          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${TEXT.primary}; cursor: pointer; border: 2px solid ${BG.elevated}; }
           .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${BG.divider}; border-radius: 2px; }
         `;
         const channels = ["R", "G", "B"];
@@ -2398,7 +2488,7 @@ export default function BoojyNotes() {
                   setDevToast(`Tab style: ${s}`);
                   setTimeout(() => setDevToast(null), 1500);
                 }} style={{
-                  background: (s === "A" ? !tabStyleB : tabStyleB) ? ACCENT.primary : "transparent",
+                  background: (s === "A" ? !tabStyleB : tabStyleB) ? TEXT.primary : "transparent",
                   color: (s === "A" ? !tabStyleB : tabStyleB) ? BG.darkest : TEXT.muted,
                   border: "none", padding: "3px 12px", fontSize: 11, fontWeight: 600,
                   cursor: "pointer", transition: "background 0.12s, color 0.12s",
@@ -2417,8 +2507,27 @@ export default function BoojyNotes() {
                   setDevToast(`Top bar: ${s === "A" ? "Shadow+line" : s === "B" ? "Shadow" : s === "C" ? "Line" : "None"}`);
                   setTimeout(() => setDevToast(null), 1500);
                 }} style={{
-                  background: topBarEdge === s ? ACCENT.primary : "transparent",
+                  background: topBarEdge === s ? TEXT.primary : "transparent",
                   color: topBarEdge === s ? BG.darkest : TEXT.muted,
+                  border: "none", padding: "3px 10px", fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", transition: "background 0.12s, color 0.12s",
+                }}>{s}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Create button style toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Create Buttons</span>
+            <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: `1px solid ${BG.divider}`, marginLeft: "auto" }}>
+              {["A", "B", "C"].map(s => (
+                <button key={s} onClick={() => {
+                  setCreateBtnStyle(s);
+                  setDevToast(`Create btns: ${s === "A" ? "Default" : s === "B" ? "Ghost" : "Accent"}`);
+                  setTimeout(() => setDevToast(null), 1500);
+                }} style={{
+                  background: createBtnStyle === s ? TEXT.primary : "transparent",
+                  color: createBtnStyle === s ? BG.darkest : TEXT.muted,
                   border: "none", padding: "3px 10px", fontSize: 11, fontWeight: 600,
                   cursor: "pointer", transition: "background 0.12s, color 0.12s",
                 }}>{s}</button>
@@ -2428,11 +2537,23 @@ export default function BoojyNotes() {
 
           <div style={{ height: 1, background: BG.divider }} />
 
+          {/* Accent Color */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span>Accent Color</span>
+              <code style={{ color: accentColor }}>{accentColor}</code>
+            </div>
+            {rgbSliders(aRgb, setAccentColor)}
+            <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: accentColor, border: `1px solid ${BG.divider}` }} />
+          </div>
+
+          <div style={{ height: 1, background: BG.divider }} />
+
           {/* Chrome BG */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span>Chrome BG</span>
-              <code style={{ color: ACCENT.primary }}>{chromeBg}</code>
+              <code style={{ color: TEXT.primary }}>{chromeBg}</code>
             </div>
             {rgbSliders(cRgb, setChromeBg)}
             <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: chromeBg, border: `1px solid ${BG.divider}` }} />
@@ -2444,7 +2565,7 @@ export default function BoojyNotes() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span>Editor BG</span>
-              <code style={{ color: ACCENT.primary }}>{editorBg}</code>
+              <code style={{ color: TEXT.primary }}>{editorBg}</code>
             </div>
             {rgbSliders(eRgb, setEditorBg)}
             <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: editorBg, border: `1px solid ${BG.divider}` }} />
@@ -2453,7 +2574,7 @@ export default function BoojyNotes() {
           <div style={{ height: 1, background: BG.divider }} />
 
           {/* Reset */}
-          <button onClick={() => { setChromeBg(BG.dark); setEditorBg(BG.editor); }} style={{
+          <button onClick={() => { setChromeBg(BG.dark); setEditorBg(BG.editor); setAccentColor(ACCENT.primary); }} style={{
             background: "none", border: `1px solid ${BG.divider}`, borderRadius: 4,
             color: TEXT.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer",
             alignSelf: "flex-start",
@@ -2484,6 +2605,7 @@ export default function BoojyNotes() {
           from { max-width: 200px; opacity: 1; }
           to { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
         }
+        .sidebar-dragging * { transition: none !important; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -2494,6 +2616,8 @@ export default function BoojyNotes() {
         .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
         .tab-scroll:hover::-webkit-scrollbar { height: 5px; }
         .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
+        .editor-scroll::-webkit-scrollbar-thumb { background: transparent; }
+        .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
         .checkbox-box:active { transform: scale(0.85); }
