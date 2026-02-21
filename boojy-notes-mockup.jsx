@@ -440,12 +440,34 @@ const TrashIcon = () => (
 );
 
 // ═══════════════════════════════════════════
-// STAR FIELD FOR EMPTY STATE
+// SEEDED PRNG (mulberry32)
 // ═══════════════════════════════════════════
 
-const StarField = ({ mode = "empty" }) => {
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
+// ═══════════════════════════════════════════
+// STAR FIELD
+// ═══════════════════════════════════════════
+
+const StarField = ({ mode = "empty", seed = "__default__" }) => {
   const canvasRef = useRef(null);
-  const starsRef = useRef(null);
+  const animRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -454,52 +476,67 @@ const StarField = ({ mode = "empty" }) => {
     const ctx = canvas.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
 
-    const generateStars = (w, h) => {
-      const count = mode === "empty" ? 220 : 110;
-      const topExclude = mode === "empty" ? 0.05 : 0.12;
-      const colours = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#F0F4FF","#FFFDDE"];
-      return Array.from({ length: count }, () => {
-        const isHero = Math.random() < 0.08;
-        const radius = isHero ? 1.5 + Math.random() * 1.0 : 0.3 + Math.random() * 1.2;
-        return {
-          x: Math.random() * w,
-          y: h * topExclude + Math.random() * h * (1 - topExclude),
-          radius,
-          color: colours[Math.floor(Math.random() * colours.length)],
-          maxBrightness: 0.3 + Math.random() * 0.7,
-          cycleDuration: 30000 + Math.random() * 120000,
-          phaseOffset: Math.random() * Math.PI * 2,
-          shadowBlur: radius > 1.0 ? 8 + radius * 5 : 4 + radius * 3,
-        };
-      });
-    };
+    // Kill any previous animation loop
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+
+    // Force-clear the canvas by resetting dimensions
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Generate stars for this seed
+    const rand = mulberry32(hashString(seed));
+    const count = mode === "empty" ? 220 : 110;
+    const topExclude = mode === "empty" ? 0.05 : 0.12;
+    const colours = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#F0F4FF","#FFFDDE"];
+    const stars = Array.from({ length: count }, () => {
+      const isHero = rand() < 0.08;
+      const radius = isHero ? 1.5 + rand() * 1.0 : 0.3 + rand() * 1.2;
+      return {
+        x: rand() * w,
+        y: h * topExclude + rand() * h * (1 - topExclude),
+        radius,
+        color: colours[Math.floor(rand() * colours.length)],
+        maxBrightness: 0.3 + rand() * 0.7,
+        cycleDuration: 30000 + rand() * 120000,
+        phaseOffset: rand() * Math.PI * 2,
+        shadowBlur: radius > 1.0 ? 8 + radius * 5 : 4 + radius * 3,
+      };
+    });
 
     const resize = () => {
-      const w = parent.clientWidth;
-      const h = parent.clientHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
+      const rw = parent.clientWidth;
+      const rh = parent.clientHeight;
+      canvas.width = rw * dpr;
+      canvas.height = rh * dpr;
+      canvas.style.width = rw + "px";
+      canvas.style.height = rh + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      starsRef.current = generateStars(w, h);
     };
 
-    resize();
     window.addEventListener("resize", resize);
     const ro = new ResizeObserver(resize);
     ro.observe(parent);
 
-    let raf;
+    const emptyMult = mode === "empty" ? 1.6 : 1.0;
     const draw = (time) => {
-      const w = parent.clientWidth;
-      const h = parent.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      const stars = starsRef.current;
-      if (!stars) { raf = requestAnimationFrame(draw); return; }
-      const emptyMult = mode === "empty" ? 1.6 : 1.0;
+      const cw = parent.clientWidth;
+      const ch = parent.clientHeight;
+      // Full-buffer clear: reset transform, clear raw pixels, restore
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
 
       for (const s of stars) {
+        if (s.x > cw || s.y > ch) continue;
         const cycle = (time % s.cycleDuration) / s.cycleDuration;
         const sine = Math.sin(cycle * Math.PI * 2 + s.phaseOffset);
         const norm = (sine + 1) / 2;
@@ -517,16 +554,21 @@ const StarField = ({ mode = "empty" }) => {
         if (s.radius > 1.0) ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(draw);
+      animRef.current = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
+    animRef.current = requestAnimationFrame(draw);
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current);
+        animRef.current = null;
+      }
       window.removeEventListener("resize", resize);
       ro.disconnect();
+      // Nuke canvas content
+      canvas.width = canvas.width;
     };
-  }, [mode]);
+  }, [mode, seed]);
 
   return (
     <canvas ref={canvasRef} style={{
@@ -632,6 +674,176 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
 }
 
 // ═══════════════════════════════════════════
+// SETTINGS PAGE COMPONENT
+// ═══════════════════════════════════════════
+
+function SettingsPage({ accentColor, fontSize, setFontSize }) {
+  const cardStyle = {
+    background: "#1E2030", border: "1px solid #2A2C3A",
+    borderRadius: 12, padding: 20, marginTop: 12,
+  };
+
+  const SectionHeader = ({ title }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: TEXT.muted, textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}>{title}</span>
+      <div style={{ flex: 1, height: 1, background: `${TEXT.muted}33` }} />
+    </div>
+  );
+
+  const SignInButton = ({ icon, label }) => {
+    const [hovered, setHovered] = useState(false);
+    return (
+      <button
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: 280, height: 36, borderRadius: 8,
+          background: hovered ? BG.surface : BG.elevated,
+          border: `1px solid ${BG.divider}`,
+          color: TEXT.primary, fontSize: 13, fontWeight: 500,
+          cursor: "pointer", fontFamily: "inherit",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          transition: "background 0.15s",
+        }}
+      >
+        {icon}
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div style={{
+      maxWidth: 480, margin: "0 auto",
+      padding: "40px 20px 60px",
+      position: "relative", zIndex: 1,
+    }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, color: TEXT.primary, margin: "0 0 32px" }}>Settings</h1>
+
+      {/* ─── Boojy Cloud ─── */}
+      <SectionHeader title="Boojy Cloud" />
+      <div style={{ ...cardStyle, marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TEXT.secondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+          </svg>
+          <p style={{ margin: 0, fontSize: 13, color: TEXT.secondary, lineHeight: 1.5 }}>
+            Sync your notes across all your devices. Sign in to get started with Boojy Cloud.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+          <SignInButton
+            icon={<svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>}
+            label="Continue with Google"
+          />
+          <SignInButton
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill={TEXT.primary}><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.32 2.32-2.14 4.41-3.74 4.25z"/></svg>}
+            label="Continue with Apple"
+          />
+          <SignInButton
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TEXT.primary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>}
+            label="Continue with Email"
+          />
+        </div>
+      </div>
+
+      {/* ─── Appearance ─── */}
+      <SectionHeader title="Appearance" />
+      <div style={{ ...cardStyle, marginBottom: 32 }}>
+        {/* Font size row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 0" }}>
+          <span style={{ fontSize: 13, color: TEXT.primary }}>Font size</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 13, color: TEXT.secondary, minWidth: 20, textAlign: "center" }}>{fontSize}</span>
+            <button
+              onClick={() => setFontSize(prev => Math.max(10, prev - 1))}
+              onMouseEnter={(e) => e.currentTarget.style.background = BG.surface}
+              onMouseLeave={(e) => e.currentTarget.style.background = BG.elevated}
+              style={{
+                width: 28, height: 28, borderRadius: 6,
+                background: BG.elevated, border: `1px solid ${BG.divider}`,
+                color: TEXT.primary, fontSize: 15, fontWeight: 500,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "background 0.15s", fontFamily: "inherit",
+              }}
+            >−</button>
+            <button
+              onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
+              onMouseEnter={(e) => e.currentTarget.style.background = BG.surface}
+              onMouseLeave={(e) => e.currentTarget.style.background = BG.elevated}
+              style={{
+                width: 28, height: 28, borderRadius: 6,
+                background: BG.elevated, border: `1px solid ${BG.divider}`,
+                color: TEXT.primary, fontSize: 15, fontWeight: 500,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "background 0.15s", fontFamily: "inherit",
+              }}
+            >+</button>
+          </div>
+        </div>
+
+        {/* Spell check row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0 2px" }}>
+          <span style={{ fontSize: 13, color: TEXT.primary }}>Spell check</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: TEXT.muted, opacity: 0.5, fontStyle: "italic" }}>coming soon</span>
+            <div style={{
+              width: 36, height: 20, borderRadius: 10,
+              background: BG.elevated, border: `1px solid ${BG.divider}`,
+              position: "relative", cursor: "not-allowed", opacity: 0.4,
+              transition: "background 0.15s",
+            }}>
+              <div style={{
+                width: 14, height: 14, borderRadius: "50%",
+                background: TEXT.secondary, position: "absolute",
+                top: 2, left: 2, transition: "left 0.15s",
+              }} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── About ─── */}
+      <SectionHeader title="About" />
+      <div style={cardStyle}>
+        {/* Logo + wordmark */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 16 }}>
+          <img src="/boojy-notes-text-N.png" alt="" style={{ height: 20 }} draggable="false" />
+          <div style={{ width: 16, height: 16, borderRadius: "50%", background: accentColor, flexShrink: 0 }} />
+          <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 17.5 }} draggable="false" />
+        </div>
+
+        {/* Version + check for updates */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 13, color: TEXT.muted }}>v0.1.0</span>
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            style={{ fontSize: 13, color: accentColor, textDecoration: "none" }}
+            onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
+            onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+          >Check for updates</a>
+        </div>
+
+        {/* Made by */}
+        <div style={{ marginTop: 8 }}>
+          <span style={{ fontSize: 13, color: TEXT.muted }}>Made by Tyr @ </span>
+          <a
+            href="https://boojy.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 13, color: accentColor, textDecoration: "none" }}
+            onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
+            onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+          >boojy.org</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════
 
@@ -661,8 +873,8 @@ export default function BoojyNotes() {
   const [rightPanelWidth, setRightPanelWidth] = useState(220);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [settings, setSettings] = useState(false);
   const [syncState, setSyncState] = useState("synced");
+  const [settingsFontSize, setSettingsFontSize] = useState(15);
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
   const [devToast, setDevToast] = useState(null);
@@ -1639,7 +1851,16 @@ export default function BoojyNotes() {
           <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}>
             <img src="/boojy-notes-text-N.png" alt="" style={{ height: 23.5 }} draggable="false" />
             <button
-              onClick={() => setSettings(!settings)}
+              onClick={() => {
+                if (tabs.includes("__settings__")) {
+                  setActiveNote("__settings__");
+                } else {
+                  setTabs(prev => [...prev, "__settings__"]);
+                  setNewTabId("__settings__");
+                  setTimeout(() => setNewTabId(null), 250);
+                  setActiveNote("__settings__");
+                }
+              }}
               style={syncDotStyle()}
               onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
               onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
@@ -1688,8 +1909,9 @@ export default function BoojyNotes() {
         {/* Top-middle — tabs */}
         <div ref={tabScrollRef} className="tab-scroll" style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%", background: tabFlip ? activeTabBg : "transparent" }}>
           {(() => { const tabW = Math.min(200, Math.max(100, tabAreaWidth / Math.max(1, tabs.length))); return tabs.flatMap((tId, i) => {
-            const t = noteData[tId];
-            if (!t) return [];
+            const isSettings = tId === "__settings__";
+            const t = isSettings ? null : noteData[tId];
+            if (!isSettings && !t) return [];
             const act = activeNote === tId;
             const els = [];
             els.push(<div key={`div-${tId}`} style={{ width: i === 0 ? 1 : 2, background: BG.divider, opacity: 0.6, alignSelf: "stretch", flexShrink: 0 }} />);
@@ -1700,7 +1922,7 @@ export default function BoojyNotes() {
                 style={{
                   background: tabFlip ? (act ? chromeBg : activeTabBg) : (act ? activeTabBg : "transparent"),
                   border: "none",
-                  cursor: "pointer", padding: "0 8px",
+                  cursor: "pointer", padding: "0 8px 0 10px",
                   width: tabW, minWidth: tabW, flexShrink: 0,
                   display: "flex", alignItems: "center",
                   color: act ? TEXT.primary : TEXT.secondary,
@@ -1713,7 +1935,7 @@ export default function BoojyNotes() {
                 onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; } }}
                 onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = act ? TEXT.primary : TEXT.secondary; } }}
               >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left" }}>{t.title}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left", display: "flex", alignItems: "center" }}>{isSettings ? (<><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 5 }}><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.4 3.4l.85.85M11.75 11.75l.85.85M3.4 12.6l.85-.85M11.75 4.25l.85-.85"/></svg>Settings</>) : t.title}</span>
                 <span className="tab-close" onClick={(e) => closeTab(e, tId)}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -2020,8 +2242,10 @@ export default function BoojyNotes() {
 
         {/* ─── EDITOR ─── */}
         <div className="editor-scroll" style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
-          <StarField mode={note ? "editor" : "empty"} key={note ? "editor" : "empty"} />
-          {note ? (
+          <StarField mode={note || activeNote === "__settings__" ? "editor" : "empty"} seed={activeNote || "__empty__"} />
+          {activeNote === "__settings__" ? (
+            <SettingsPage accentColor={accentColor} fontSize={settingsFontSize} setFontSize={setSettingsFontSize} />
+          ) : note ? (
             <div key={activeNote} style={{
               padding: "28px 56px 80px 56px",
               maxWidth: 720, marginLeft: 40, marginRight: "auto", width: "100%",
@@ -2207,101 +2431,6 @@ export default function BoojyNotes() {
         </div>
       </div>
 
-      {/* ═══ SETTINGS OVERLAY ═══ */}
-      {settings && (
-        <div onClick={() => setSettings(false)}
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 100, backdropFilter: "blur(4px)",
-            animation: "fadeIn 0.15s ease",
-          }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{
-              background: BG.elevated, borderRadius: 14,
-              border: `1px solid ${BG.divider}`,
-              width: 380, padding: 26,
-              boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
-              animation: "slideUp 0.2s ease",
-            }}>
-            <h2 style={{ margin: "0 0 22px", fontSize: 17, fontWeight: 600, color: TEXT.primary }}>Settings</h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              <div>
-                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: TEXT.muted, fontWeight: 600 }}>Vault</label>
-                <div style={{
-                  marginTop: 5, padding: "7px 11px", background: BG.dark,
-                  borderRadius: 6, border: `1px solid ${BG.divider}`,
-                  fontSize: 11.5, color: TEXT.secondary,
-                  fontFamily: "'SF Mono', 'Fira Code', monospace",
-                }}>~/Boojy/Notes/</div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: TEXT.muted, fontWeight: 600 }}>Sync</label>
-                <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 7 }}>
-                  {["Boojy Cloud (free, 100MB)", "GitHub", "Local only"].map((opt, i) => (
-                    <label key={opt} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12.5, color: TEXT.primary }}>
-                      <div style={{
-                        width: 15, height: 15, borderRadius: "50%",
-                        border: i === 0 ? `2px solid ${ACCENT.primary}` : `2px solid ${TEXT.muted}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {i === 0 && <div style={{ width: 7, height: 7, borderRadius: "50%", background: ACCENT.primary }} />}
-                      </div>
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: TEXT.muted, fontWeight: 600 }}>Sync status demo</label>
-                <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {["synced", "syncing", "error", "offline"].map((s) => (
-                    <button key={s} onClick={() => setSyncState(s)} style={{
-                      padding: "5px 14px",
-                      background: syncState === s ? ACCENT.primary : "transparent",
-                      border: `1px solid ${syncState === s ? ACCENT.primary : BG.divider}`,
-                      borderRadius: 6, color: syncState === s ? BG.darkest : TEXT.muted,
-                      fontSize: 11.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-                      transition: "all 0.15s",
-                    }}>{s}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: TEXT.muted, fontWeight: 600 }}>Theme</label>
-                <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
-                  {["Dark", "Light"].map((t) => (
-                    <button key={t} style={{
-                      padding: "5px 16px",
-                      background: t === "Dark" ? ACCENT.primary : "transparent",
-                      border: `1px solid ${t === "Dark" ? ACCENT.primary : BG.divider}`,
-                      borderRadius: 6, color: t === "Dark" ? BG.darkest : TEXT.muted,
-                      fontSize: 11.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-                    }}>{t}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button onClick={() => setSettings(false)}
-              style={{
-                marginTop: 22, width: "100%", padding: "9px",
-                background: ACCENT.primary, border: "none", borderRadius: 8,
-                color: BG.darkest, fontSize: 13, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit",
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = ACCENT.hover}
-              onMouseLeave={(e) => e.currentTarget.style.background = ACCENT.primary}
-            >Done</button>
-          </div>
-        </div>
-      )}
 
       {/* ═══ CONTEXT MENU OVERLAY ═══ */}
       {ctxMenu && (
