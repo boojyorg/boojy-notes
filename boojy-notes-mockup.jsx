@@ -665,13 +665,15 @@ export default function BoojyNotes() {
   const [syncState, setSyncState] = useState("synced");
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
-  const [tabStyleB, setTabStyleB] = useState(true);
   const [devToast, setDevToast] = useState(null);
   const [chromeBg, setChromeBg] = useState(BG.dark);
   const [editorBg, setEditorBg] = useState(BG.editor);
   const [topBarEdge, setTopBarEdge] = useState("B");
   const [createBtnStyle, setCreateBtnStyle] = useState("A");
   const [accentColor, setAccentColor] = useState(ACCENT.primary);
+  const [activeTabBg, setActiveTabBg] = useState("#1C1C20");
+  const [tabFlip, setTabFlip] = useState(false);
+  const [selectionStyle, setSelectionStyle] = useState("B");
   const [noteData, setNoteData] = useState(() => {
     const saved = loadFromStorage();
     if (saved?.noteData) {
@@ -1648,22 +1650,22 @@ export default function BoojyNotes() {
             <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }} />
-          <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.muted, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
+          <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
             onMouseEnter={(e) => { if (canUndo) { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; } }}
-            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
           ><UndoIcon /></button>
-          <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.muted, opacity: canRedo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
+          <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canRedo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
             onMouseEnter={(e) => { if (canRedo) { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; } }}
-            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
           ><RedoIcon /></button>
           <button onClick={() => setCollapsed(!collapsed)}
             style={{
               background: "none", border: "none", cursor: "pointer",
               padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
-              color: TEXT.muted, transition: "background 0.15s, color 0.15s",
+              color: TEXT.secondary, transition: "background 0.15s, color 0.15s",
             }}
             onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
-            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
             title={collapsed ? "Show sidebar" : "Hide sidebar"}
           >
             <SidebarToggleIcon />
@@ -1684,58 +1686,42 @@ export default function BoojyNotes() {
         />
 
         {/* Top-middle — tabs */}
-        <div ref={tabScrollRef} className="tab-scroll" style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" }}>
+        <div ref={tabScrollRef} className="tab-scroll" style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%", background: tabFlip ? activeTabBg : "transparent" }}>
           {(() => { const tabW = Math.min(200, Math.max(100, tabAreaWidth / Math.max(1, tabs.length))); return tabs.flatMap((tId, i) => {
             const t = noteData[tId];
             if (!t) return [];
             const act = activeNote === tId;
             const els = [];
-            if (i > 0) {
-              els.push(<div key={`div-${tId}`} style={{ width: 2, background: BG.divider, opacity: 0.6, alignSelf: "stretch", flexShrink: 0 }} />);
-            }
+            els.push(<div key={`div-${tId}`} style={{ width: i === 0 ? 1 : 2, background: BG.divider, opacity: 0.6, alignSelf: "stretch", flexShrink: 0 }} />);
             const isNew = newTabId === tId;
             const isClosing = closingTabs.has(tId);
             els.push(
-              <button key={tId} className="tab-btn" onClick={() => { if (!isClosing) setActiveNote(tId); }}
+              <button key={tId} className={`tab-btn${act ? " tab-active" : ""}`} onClick={() => { if (!isClosing) setActiveNote(tId); }}
                 style={{
-                  background: tabStyleB
-                    ? (act ? BG.elevated : chromeBg)
-                    : (act ? BG.standard : "transparent"),
+                  background: tabFlip ? (act ? chromeBg : activeTabBg) : (act ? activeTabBg : "transparent"),
                   border: "none",
-                  ...(tabStyleB ? {
-                    borderBottom: "none",
-                    borderRadius: act ? "6px 6px 0 0" : "4px 4px 0 0",
-                    borderLeft: act ? `1px solid ${BG.divider}` : "1px solid transparent",
-                    borderRight: act ? `1px solid ${BG.divider}` : "1px solid transparent",
-                    borderTop: act ? `1px solid ${BG.divider}` : "1px solid transparent",
-                    marginBottom: act ? -1 : 0,
-                  } : {
-                    borderBottom: act ? `2px solid ${ACCENT.primary}` : "2px solid transparent",
-                    borderImage: act ? `linear-gradient(90deg, transparent, ${ACCENT.primary}, transparent) 1` : "none",
-                  }),
                   cursor: "pointer", padding: "0 8px",
                   width: tabW, minWidth: tabW, flexShrink: 0,
-                  display: "flex", alignItems: "center", gap: 5,
+                  display: "flex", alignItems: "center",
                   color: act ? TEXT.primary : TEXT.secondary,
                   fontSize: 13.5, fontFamily: "inherit",
-                  fontWeight: act ? 600 : 500,
+                  fontWeight: act ? 600 : 400,
                   whiteSpace: "nowrap", transition: "background 0.15s, color 0.15s",
                   height: "100%", overflow: "hidden",
                   animation: isNew ? "tabSlideIn 0.2s ease forwards" : isClosing ? "tabSlideOut 0.18s ease forwards" : "none",
                 }}
                 onMouseEnter={(e) => { if (!act) { hBg(e.currentTarget, BG.elevated); e.currentTarget.style.color = TEXT.primary; } }}
-                onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; } }}
+                onMouseLeave={(e) => { if (!act) { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = act ? TEXT.primary : TEXT.secondary; } }}
               >
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{t.title}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left" }}>{t.title}</span>
                 <span className="tab-close" onClick={(e) => closeTab(e, tId)}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                    color: TEXT.muted, transition: "all 0.1s",
-                    ...(act ? { opacity: 0.6 } : {}),
+                    height: 16, borderRadius: 4, flexShrink: 0,
+                    color: TEXT.secondary,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = BG.surface; e.currentTarget.style.color = TEXT.primary; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.muted; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = TEXT.secondary; }}
                 ><CloseIcon /></span>
               </button>
             );
@@ -1772,10 +1758,10 @@ export default function BoojyNotes() {
           <button onClick={() => setRightPanel(!rightPanel)} title="Toggle right panel (⌘\\)" style={{
             background: "none", border: "none", cursor: "pointer",
             padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
-            color: TEXT.muted, transition: "background 0.15s, color 0.15s", flexShrink: 0,
+            color: TEXT.secondary, transition: "background 0.15s, color 0.15s", flexShrink: 0,
           }}
             onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
-            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
           ><svg width="16.5" height="16.5" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
             <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3"/>
             <path d="M10 2.5V13.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -1789,11 +1775,11 @@ export default function BoojyNotes() {
           <button onClick={() => {}} title="Keyboard shortcuts (?)" style={{
             background: "none", border: "none", cursor: "pointer",
             padding: "4px 5px", borderRadius: 5, display: "flex", alignItems: "center",
-            color: TEXT.muted, fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+            color: TEXT.secondary, fontSize: 13, fontWeight: 600, fontFamily: "inherit",
             transition: "background 0.15s, color 0.15s",
           }}
             onMouseEnter={(e) => { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; }}
-            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.muted; }}
+            onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
           ><svg width="17.6" height="17.6" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="6.5"/>
             <path d="M6 6.2a2.1 2.1 0 0 1 2-1.4c1.1 0 2 .8 2 1.8 0 1-.7 1.4-1.4 1.7-.3.1-.6.4-.6.7"/>
@@ -1824,7 +1810,7 @@ export default function BoojyNotes() {
                 onClick={() => { if (!searchFocused && !search) { setSearchFocused(true); setTimeout(() => searchInputRef.current?.focus(), 0); } }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: BG.darkest, borderRadius: 14, height: 28,
+                  background: "#18191E", borderRadius: 14, height: 28,
                   width: (searchFocused || search) ? sidebarWidth - 20 : 95,
                   padding: "0 10px",
                   border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
@@ -1862,17 +1848,22 @@ export default function BoojyNotes() {
                     <button key={nId} onClick={() => openNote(nId)} className="sidebar-note"
                       onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId }); }}
                       style={{
-                        width: "100%", border: "none", cursor: "pointer",
-                        background: act ? `${accentColor}15` : "transparent",
-                        borderRadius: 0,
-                        borderLeft: act ? `3px solid ${accentColor}` : "3px solid transparent",
-                        padding: `4px 10px 4px ${7 + depth * 20 + 19}px`,
+                        width: selectionStyle === "B" ? "calc(100% - 8px)" : "calc(100% + 2px)",
+                        marginTop: 0, marginBottom: 0,
+                        marginLeft: selectionStyle === "B" ? 5 : -1,
+                        marginRight: selectionStyle === "B" ? 3 : 0,
+                        border: "none", outline: "none", appearance: "none", WebkitAppearance: "none",
+                        cursor: "pointer",
+                        background: act ? `${accentColor}${selectionStyle === "B" ? "30" : "15"}` : "transparent",
+                        borderRadius: selectionStyle === "B" ? 6 : 0,
+                        ...(selectionStyle === "A" ? { borderLeft: act ? `3px solid ${accentColor}` : "3px solid transparent" } : {}),
+                        padding: selectionStyle === "B" ? `4px 10px 4px ${7 + depth * 20 + 19}px` : `4px 10px 4px ${7 + depth * 20 + 19}px`,
                         display: "flex", alignItems: "center", gap: 5,
                         color: act ? TEXT.primary : TEXT.secondary,
                         fontSize: 14, fontFamily: "inherit",
                         fontWeight: act ? 600 : 400,
                         transition: "background 0.12s", textAlign: "left",
-                        boxShadow: act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
+                        boxShadow: selectionStyle === "A" && act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
                       }}
                       onMouseEnter={(e) => { if (!act) hBg(e.currentTarget, BG.elevated); }}
                       onMouseLeave={(e) => { if (!act) hBg(e.currentTarget, "transparent"); }}
@@ -2444,6 +2435,7 @@ export default function BoojyNotes() {
         const aRgb = hexToRgb(accentColor);
         const cRgb = hexToRgb(chromeBg);
         const eRgb = hexToRgb(editorBg);
+        const tRgb = hexToRgb(activeTabBg);
         const sliderTrack = { width: "100%", height: 4, appearance: "none", WebkitAppearance: "none", background: BG.divider, borderRadius: 2, outline: "none", cursor: "pointer" };
         const sliderCss = `
           .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${TEXT.primary}; cursor: pointer; border: 2px solid ${BG.elevated}; }
@@ -2475,26 +2467,6 @@ export default function BoojyNotes() {
             <button onClick={() => setDevOverlay(false)} style={{
               background: "none", border: "none", color: TEXT.muted, cursor: "pointer", fontSize: 14,
             }}>✕</button>
-          </div>
-
-          {/* Tab style toggle */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span>Tab Style</span>
-            <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: `1px solid ${BG.divider}`, marginLeft: "auto" }}>
-              {["A", "B"].map(s => (
-                <button key={s} onClick={() => {
-                  const next = s === "B";
-                  setTabStyleB(next);
-                  setDevToast(`Tab style: ${s}`);
-                  setTimeout(() => setDevToast(null), 1500);
-                }} style={{
-                  background: (s === "A" ? !tabStyleB : tabStyleB) ? TEXT.primary : "transparent",
-                  color: (s === "A" ? !tabStyleB : tabStyleB) ? BG.darkest : TEXT.muted,
-                  border: "none", padding: "3px 12px", fontSize: 11, fontWeight: 600,
-                  cursor: "pointer", transition: "background 0.12s, color 0.12s",
-                }}>{s}</button>
-              ))}
-            </div>
           </div>
 
           {/* Top bar edge toggle */}
@@ -2535,6 +2507,25 @@ export default function BoojyNotes() {
             </div>
           </div>
 
+          {/* Selection Style toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Selection</span>
+            <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: `1px solid ${BG.divider}`, marginLeft: "auto" }}>
+              {["A", "B"].map(s => (
+                <button key={s} onClick={() => {
+                  setSelectionStyle(s);
+                  setDevToast(`Selection: ${s === "A" ? "Glow bar" : "Pill"}`);
+                  setTimeout(() => setDevToast(null), 1500);
+                }} style={{
+                  background: selectionStyle === s ? TEXT.primary : "transparent",
+                  color: selectionStyle === s ? BG.darkest : TEXT.muted,
+                  border: "none", padding: "3px 10px", fontSize: 11, fontWeight: 600,
+                  cursor: "pointer", transition: "background 0.12s, color 0.12s",
+                }}>{s}</button>
+              ))}
+            </div>
+          </div>
+
           <div style={{ height: 1, background: BG.divider }} />
 
           {/* Accent Color */}
@@ -2545,6 +2536,31 @@ export default function BoojyNotes() {
             </div>
             {rgbSliders(aRgb, setAccentColor)}
             <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: accentColor, border: `1px solid ${BG.divider}` }} />
+          </div>
+
+          <div style={{ height: 1, background: BG.divider }} />
+
+          {/* Active Tab BG + flip toggle */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span>Active Tab BG</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <code style={{ color: TEXT.primary }}>{activeTabBg}</code>
+                <button onClick={() => {
+                  setTabFlip(!tabFlip);
+                  setDevToast(`Tab flip: ${!tabFlip ? "ON" : "OFF"}`);
+                  setTimeout(() => setDevToast(null), 1500);
+                }} style={{
+                  background: tabFlip ? TEXT.primary : "transparent",
+                  color: tabFlip ? BG.darkest : TEXT.muted,
+                  border: `1px solid ${BG.divider}`, borderRadius: 4,
+                  padding: "2px 8px", fontSize: 10, fontWeight: 600,
+                  cursor: "pointer", transition: "background 0.12s, color 0.12s",
+                }}>FLIP</button>
+              </div>
+            </div>
+            {rgbSliders(tRgb, setActiveTabBg)}
+            <div style={{ height: 8, marginTop: 6, borderRadius: 3, background: activeTabBg, border: `1px solid ${BG.divider}` }} />
           </div>
 
           <div style={{ height: 1, background: BG.divider }} />
@@ -2574,7 +2590,7 @@ export default function BoojyNotes() {
           <div style={{ height: 1, background: BG.divider }} />
 
           {/* Reset */}
-          <button onClick={() => { setChromeBg(BG.dark); setEditorBg(BG.editor); setAccentColor(ACCENT.primary); }} style={{
+          <button onClick={() => { setChromeBg(BG.dark); setEditorBg(BG.editor); setAccentColor(ACCENT.primary); setActiveTabBg("#1C1C20"); setTabFlip(false); }} style={{
             background: "none", border: `1px solid ${BG.divider}`, borderRadius: 4,
             color: TEXT.muted, fontSize: 11, padding: "4px 10px", cursor: "pointer",
             alignSelf: "flex-start",
@@ -2621,8 +2637,8 @@ export default function BoojyNotes() {
         input::placeholder { color: ${TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
         .checkbox-box:active { transform: scale(0.85); }
-        .tab-btn > .tab-close { opacity: 0; transition: opacity 0.15s; }
-        .tab-btn:hover > .tab-close { opacity: 0.6; }
+        .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
+        .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }
         .tab-btn > .tab-close:hover { opacity: 1 !important; }
         .sidebar-note .delete-btn { opacity: 0; transition: opacity 0.1s; }
         .sidebar-note:hover .delete-btn { opacity: 0.5; }
