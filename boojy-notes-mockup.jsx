@@ -1160,16 +1160,17 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
                     >Upgrade to Orbit ↗</a>
                   </div>
                   {/* Sign out */}
-                  <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
                     <button
                       onClick={() => authActions.signOut()}
                       style={{
-                        background: "none", border: "none", padding: 0,
-                        fontSize: 13, color: TEXT.muted, cursor: "pointer",
-                        fontFamily: "inherit", transition: "color 0.15s",
+                        padding: "8px 32px", borderRadius: 8, border: "none",
+                        background: accentColor, color: BG.darkest,
+                        fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        fontFamily: "inherit", transition: "opacity 0.15s",
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = TEXT.secondary}
-                      onMouseLeave={(e) => e.currentTarget.style.color = TEXT.muted}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
                     >Sign out</button>
                   </div>
                 </div>
