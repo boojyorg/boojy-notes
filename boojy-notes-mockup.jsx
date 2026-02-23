@@ -1,5 +1,6 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo } from "react";
 import { useAuth } from "./src/hooks/useAuth";
+import { useSync } from "./src/hooks/useSync";
 
 // ═══════════════════════════════════════════
 // BOOJY AUDIO DESIGN TOKENS
@@ -327,7 +328,7 @@ const ROOT_NOTES = ["shopping-list", "quick-ideas", "meeting-notes"];
 // ═══════════════════════════════════════════
 
 let _blockId = 0;
-const genBlockId = () => `blk-${++_blockId}`;
+const genBlockId = () => `blk-${Date.now()}-${++_blockId}`;
 
 let _noteId = 0;
 const genNoteId = () => `note-${Date.now()}-${++_noteId}`;
@@ -583,7 +584,7 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
 // EDITABLE BLOCK
 // ═══════════════════════════════════════════
 
-function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen, accentColor }) {
+const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen, accentColor }) {
   const elRef = useRef(null);
 
   // Set text on mount and force-resync on undo/redo (syncGen changes)
@@ -593,13 +594,13 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
     }
   }, [syncGen]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (elRef.current) registerRef(block.id, elRef.current);
     return () => registerRef(block.id, null);
   }, [block.id]);
 
   if (block.type === "spacer") {
-    return <div data-block-id={block.id} contentEditable="false" style={{ padding: "8px 0", userSelect: "none" }}><hr style={{ border: "none", borderTop: `1px solid ${BG.divider}`, margin: 0 }} /></div>;
+    return <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning style={{ padding: "8px 0", userSelect: "none" }}><hr style={{ border: "none", borderTop: `1px solid ${BG.divider}`, margin: 0 }} /></div>;
   }
 
   if (block.type === "p") {
@@ -636,8 +637,8 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
 
   if (block.type === "bullet") {
     return (
-      <div data-block-id={block.id} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize: 14.5, lineHeight: 1.7 }}>
-        <span contentEditable="false" style={{ color: TEXT.muted, marginTop: 1, flexShrink: 0, fontSize: 10, userSelect: "none" }}>●</span>
+      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize: 14.5, lineHeight: 1.7 }}>
+        <span contentEditable="false" suppressContentEditableWarning style={{ color: accentColor, marginTop: 6.5, flexShrink: 0, fontSize: 7, userSelect: "none" }}>●</span>
         <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
       </div>
     );
@@ -645,10 +646,11 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
 
   if (block.type === "checkbox") {
     return (
-      <div data-block-id={block.id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
+      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
         <div
           className="checkbox-box"
           contentEditable="false"
+          suppressContentEditableWarning
           onClick={(e) => { e.stopPropagation(); onCheckToggle(noteId, blockIndex); }}
           style={{
             width: 16, height: 16, borderRadius: 3.5, flexShrink: 0, cursor: "pointer",
@@ -672,13 +674,20 @@ function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, 
   }
 
   return null;
-}
+}, (prev, next) => {
+  return prev.block.id === next.block.id
+    && prev.block.type === next.block.type
+    && prev.block.checked === next.block.checked
+    && prev.blockIndex === next.blockIndex
+    && prev.syncGen === next.syncGen
+    && prev.accentColor === next.accentColor;
+});
 
 // ═══════════════════════════════════════════
 // SETTINGS MODAL COMPONENT
 // ═══════════════════════════════════════════
 
-function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, authActions }) {
+function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, authActions, syncState, lastSynced, storageUsed, storageLimitMB, onSync }) {
   const loggedIn = !!user;
   const [nameInput, setNameInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -1178,37 +1187,67 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
             </div>
 
             {/* ─── Sync (logged in only) ─── */}
-            {loggedIn && (
-              <div ref={el => sectionRefs.current.sync = el}>
-                <SectionHeader title="Sync" />
-                <p style={{ margin: "0 0 16px", fontSize: 13, color: TEXT.secondary, lineHeight: 1.5 }}>
-                  Your notes, synced across all your devices via Boojy Cloud.
-                </p>
-                {/* Status row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
-                  <span style={{ fontSize: 13, color: TEXT.muted }}>Status</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4CAF50" }} />
-                    <span style={{ fontSize: 14, color: TEXT.primary }}>Synced</span>
+            {loggedIn && (() => {
+              const statusLabel = syncState === "syncing" ? "Syncing…" : syncState === "error" ? "Sync error" : syncState === "synced" ? "Synced" : "Idle";
+              const dotColor = syncState === "syncing" ? accentColor : syncState === "error" ? SEMANTIC.error : syncState === "synced" ? "#4CAF50" : TEXT.muted;
+              const storageMB = (storageUsed / (1024 * 1024)).toFixed(1);
+              const storagePct = Math.min(100, (storageUsed / (storageLimitMB * 1024 * 1024)) * 100);
+              const timeAgo = lastSynced ? (() => {
+                const diff = Date.now() - new Date(lastSynced).getTime();
+                if (diff < 60000) return "Just now";
+                if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                return `${Math.floor(diff / 86400000)}d ago`;
+              })() : "Never";
+
+              return (
+                <div ref={el => sectionRefs.current.sync = el}>
+                  <SectionHeader title="Sync" />
+                  <p style={{ margin: "0 0 16px", fontSize: 13, color: TEXT.secondary, lineHeight: 1.5 }}>
+                    Your notes, synced across all your devices via Boojy Cloud.
+                  </p>
+                  {/* Status row */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+                    <span style={{ fontSize: 13, color: TEXT.muted }}>Status</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, ...(syncState === "syncing" ? { animation: "syncDotPulse 1.2s ease-in-out infinite" } : {}) }} />
+                      <span style={{ fontSize: 14, color: TEXT.primary }}>{statusLabel}</span>
+                    </div>
                   </div>
-                </div>
-                {/* Last synced row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
-                  <span style={{ fontSize: 13, color: TEXT.muted }}>Last synced</span>
-                  <span style={{ fontSize: 14, color: TEXT.primary }}>2 minutes ago</span>
-                </div>
-                {/* Storage */}
-                <div style={{ marginTop: 12, marginBottom: 32 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, color: TEXT.muted }}>Storage</span>
-                    <span style={{ fontSize: 13, color: TEXT.secondary }}>32.3 / 100.0 MB</span>
+                  {/* Last synced row */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+                    <span style={{ fontSize: 13, color: TEXT.muted }}>Last synced</span>
+                    <span style={{ fontSize: 14, color: TEXT.primary }}>{timeAgo}</span>
                   </div>
-                  <div style={{ width: "100%", height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
-                    <div style={{ width: "32.3%", height: "100%", borderRadius: 3, background: accentColor }} />
+                  {/* Storage */}
+                  <div style={{ marginTop: 12, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, color: TEXT.muted }}>Storage</span>
+                      <span style={{ fontSize: 13, color: TEXT.secondary }}>{storageMB} / {storageLimitMB.toFixed(1)} MB</span>
+                    </div>
+                    <div style={{ width: "100%", height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
+                      <div style={{ width: `${storagePct}%`, height: "100%", borderRadius: 3, background: accentColor, transition: "width 0.3s ease" }} />
+                    </div>
                   </div>
+                  {/* Sync now button */}
+                  <button
+                    onClick={onSync}
+                    disabled={syncState === "syncing"}
+                    style={{
+                      width: "100%", padding: "8px 0", borderRadius: 8,
+                      background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.08)`,
+                      color: syncState === "syncing" ? TEXT.muted : TEXT.secondary,
+                      fontSize: 13, fontWeight: 500, cursor: syncState === "syncing" ? "default" : "pointer",
+                      fontFamily: "inherit", transition: "all 0.15s", marginBottom: 32,
+                    }}
+                    onMouseEnter={(e) => { if (syncState !== "syncing") e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                  >
+                    {syncState === "syncing" ? "Syncing…" : "Sync now"}
+                  </button>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ─── Appearance ─── */}
             <div ref={el => sectionRefs.current.appearance = el}>
@@ -1318,7 +1357,6 @@ export default function BoojyNotes() {
   const [rightPanelWidth, setRightPanelWidth] = useState(220);
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [syncState, setSyncState] = useState("synced");
   const [settingsFontSize, setSettingsFontSize] = useState(15);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
@@ -1363,6 +1401,9 @@ export default function BoojyNotes() {
     const saved = loadFromStorage();
     return saved?.customFolders || [];
   });
+
+  // ─── Sync ───
+  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(user, noteData, setNoteData);
 
   // ─── Refs ───
   const isDragging = useRef(false);
@@ -1449,7 +1490,8 @@ export default function BoojyNotes() {
     }
   }, [activeNote]);
 
-  useEffect(() => { blockRefs.current = {}; }, [activeNote]);
+  // Note: blockRefs cleanup is handled by EditableBlock's useEffect cleanup (registerRef(id, null) on unmount).
+  // Do NOT clear blockRefs here — parent effects fire AFTER child effects, which would wipe freshly registered refs.
 
   // Track tab scroll container width
   useEffect(() => {
@@ -1495,12 +1537,20 @@ export default function BoojyNotes() {
     return () => clearTimeout(timer);
   }, [noteData, tabs, activeNote, expanded, customFolders]);
 
-  // Focus management — runs after every render
-  useEffect(() => {
+  // Focus management — runs synchronously after DOM update, before browser paint
+  useLayoutEffect(() => {
     if (focusBlockId.current) {
-      const el = blockRefs.current[focusBlockId.current];
-      if (el) {
-        placeCaret(el, focusCursorPos.current ?? 0);
+      cleanOrphanNodes(); // Only clean after structural ops (Enter/Backspace), not every keystroke
+      const targetId = focusBlockId.current;
+      const targetPos = focusCursorPos.current ?? 0;
+      const el = blockRefs.current[targetId];
+      const success = placeCaret(el, targetPos);
+      if (!success) {
+        // Safety fallback — retry after paint
+        requestAnimationFrame(() => {
+          const freshEl = blockRefs.current[targetId];
+          if (freshEl) placeCaret(freshEl, targetPos);
+        });
       }
       focusBlockId.current = null;
       focusCursorPos.current = null;
@@ -1674,7 +1724,7 @@ export default function BoojyNotes() {
     });
   };
 
-  const flipCheck = (noteId, blockIndex) => {
+  const flipCheck = useCallback((noteId, blockIndex) => {
     commitNoteData(prev => {
       const next = { ...prev };
       const n = { ...next[noteId] };
@@ -1684,12 +1734,12 @@ export default function BoojyNotes() {
       next[noteId] = n;
       return next;
     });
-  };
+  }, []);
 
-  const registerBlockRef = (id, el) => {
+  const registerBlockRef = useCallback((id, el) => {
     if (el) blockRefs.current[id] = el;
     else delete blockRefs.current[id];
-  };
+  }, []);
 
   // ─── Note CRUD ───
   const createNote = (folder = null) => {
@@ -1705,7 +1755,16 @@ export default function BoojyNotes() {
     commitNoteData(prev => ({ ...prev, [id]: newNote }));
     setTabs(prev => [...prev, id]);
     setActiveNote(id);
-    setTimeout(() => titleRef.current?.focus(), 50);
+    setTimeout(() => {
+      if (titleRef.current) {
+        titleRef.current.focus();
+        const range = document.createRange();
+        range.selectNodeContents(titleRef.current);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 50);
   };
 
   const deleteNote = (noteId) => {
@@ -1839,7 +1898,7 @@ export default function BoojyNotes() {
     const blocks = noteDataRef.current[noteId].content.blocks;
     const el = blockRefs.current[blocks[blockIndex]?.id];
     if (!el) return;
-    const text = el.innerText;
+    const text = el.innerText.replace(/\n$/, "");
     updateBlockText(noteId, blockIndex, text);
 
     // Markdown shortcuts — detect trigger patterns
@@ -1900,6 +1959,11 @@ export default function BoojyNotes() {
     const block = blocks[blockIndex];
     const el = blockRefs.current[block.id];
 
+    if (!el) {
+      // Ref not registered yet — bail safely
+      return;
+    }
+
     // Slash menu navigation
     if (slashMenuRef.current && slashMenuRef.current.blockIndex === blockIndex) {
       const sm = slashMenuRef.current;
@@ -1910,7 +1974,7 @@ export default function BoojyNotes() {
       if (e.key === "Escape") { e.preventDefault(); setSlashMenu(null); return; }
     }
 
-    const text = el ? el.innerText : "";
+    const text = el ? el.innerText.replace(/\n$/, "") : "";
 
     // Enter — split block
     if (e.key === "Enter" && !e.shiftKey) {
@@ -2036,10 +2100,50 @@ export default function BoojyNotes() {
     return null;
   };
 
+  // ─── Helper: clean orphan DOM nodes from editor ───
+  const cleanOrphanNodes = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    for (const child of Array.from(editor.childNodes)) {
+      if (child.nodeType === Node.ELEMENT_NODE && child.dataset?.blockId) continue;
+      editor.removeChild(child);
+    }
+  };
+
+  // ─── Helper: find nearest block to cursor position ───
+  const findNearestBlock = (sel, blocks) => {
+    if (!blocks || blocks.length === 0) return null;
+    const range = sel.getRangeAt(0);
+    const cursorRect = range.getBoundingClientRect();
+    // If cursor rect has no position (collapsed at root), fall back to last block
+    if (cursorRect.top === 0 && cursorRect.bottom === 0) {
+      const lastIdx = blocks.length - 1;
+      return { blockIndex: lastIdx, blockId: blocks[lastIdx].id };
+    }
+    let closestIdx = blocks.length - 1;
+    let closestDist = Infinity;
+    for (let i = 0; i < blocks.length; i++) {
+      const el = blockRefs.current[blocks[i].id];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const blockCenter = (rect.top + rect.bottom) / 2;
+      const dist = Math.abs(cursorRect.top - blockCenter);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+    return { blockIndex: closestIdx, blockId: blocks[closestIdx].id };
+  };
+
   // ─── Helper: place cursor inside a block element ───
   const placeCaret = (el, pos = 0) => {
-    if (!el) return;
+    if (!el || !el.isConnected) return false;
     try {
+      // Ensure the contentEditable ancestor is focused (critical when coming from title or click-below)
+      let ancestor = el.parentElement;
+      while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
+      if (ancestor) ancestor.focus();
       const range = document.createRange();
       const sel = window.getSelection();
       if (pos === 0 || el.childNodes.length === 0) {
@@ -2057,12 +2161,27 @@ export default function BoojyNotes() {
           }
           remaining -= textNode.length;
         }
-        if (!placed) { range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); return; }
+        if (!placed) { range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); return true; }
       }
       range.collapse(true);
       sel.removeAllRanges();
       sel.addRange(range);
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      // Fallback: try to at least focus the element
+      try {
+        el.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(el, 0);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+      } catch (__) {
+        return false;
+      }
+    }
   };
 
   // ─── Cross-block key handler ───
@@ -2174,7 +2293,35 @@ export default function BoojyNotes() {
 
     // Single-block — find which block and delegate
     const info = getBlockFromNode(sel.anchorNode);
-    if (!info) return;
+    if (!info) {
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (!blocks || blocks.length === 0) return;
+      const target = findNearestBlock(sel, blocks);
+      if (!target) return;
+
+      // Enter: prevent default + create new block
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        insertBlockAfter(activeNote, target.blockIndex, "p", "");
+        return;
+      }
+
+      // Backspace/Delete: prevent to avoid DOM corruption
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        return;
+      }
+
+      // Printable character: move cursor into nearest block, let browser type it there
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        const el = blockRefs.current[target.blockId];
+        if (el) placeCaret(el, (blocks[target.blockIndex].text || "").length);
+        // Don't preventDefault — let the character be typed into the block
+        return;
+      }
+
+      return;
+    }
     handleBlockKeyDown(activeNote, info.blockIndex, e);
   };
 
@@ -2182,8 +2329,32 @@ export default function BoojyNotes() {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
     const info = getBlockFromNode(sel.anchorNode);
-    if (!info) return;
+    if (!info) {
+      cleanOrphanNodes();
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (!blocks || blocks.length === 0) return;
+      const lastBlock = blocks[blocks.length - 1];
+      const el = blockRefs.current[lastBlock.id];
+      if (el) placeCaret(el, (lastBlock.text || "").length);
+      return;
+    }
     handleBlockInput(activeNote, info.blockIndex);
+  };
+
+  const handleEditorMouseUp = () => {
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      if (!sel.getRangeAt(0).collapsed) return; // Don't fix text selections
+      const info = getBlockFromNode(sel.anchorNode);
+      if (info) return; // Cursor is inside a block, nothing to fix
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (!blocks || blocks.length === 0) return;
+      const target = findNearestBlock(sel, blocks);
+      if (!target) return;
+      const el = blockRefs.current[target.blockId];
+      if (el) placeCaret(el, (blocks[target.blockIndex].text || "").length);
+    });
   };
 
   const handleEditorPaste = (e) => {
@@ -2734,7 +2905,14 @@ export default function BoojyNotes() {
                     e.preventDefault();
                     const blocks = noteDataRef.current[activeNote].content.blocks;
                     const first = blocks.find(b => b.type !== "spacer");
-                    if (first) placeCaret(blockRefs.current[first.id], 0);
+                    if (first) {
+                      // Focus editor div first, then place caret after browser processes the focus transition
+                      editorRef.current?.focus();
+                      setTimeout(() => {
+                        const el = blockRefs.current[first.id];
+                        if (el) placeCaret(el, 0);
+                      }, 0);
+                    }
                   }
                 }}
                 onPaste={(e) => {
@@ -2763,6 +2941,7 @@ export default function BoojyNotes() {
                 onKeyDown={handleEditorKeyDown}
                 onInput={handleEditorInput}
                 onPaste={handleEditorPaste}
+                onMouseUp={handleEditorMouseUp}
                 style={{ outline: "none" }}
               >
                 {note.content.blocks.map((block, i) => (
@@ -2976,6 +3155,11 @@ export default function BoojyNotes() {
         setFontSize={setSettingsFontSize}
         user={user}
         authActions={{ signInWithEmail, signUpWithEmail, signInWithOAuth, signOut, resendVerification }}
+        syncState={syncState}
+        lastSynced={lastSynced}
+        storageUsed={storageUsed}
+        storageLimitMB={storageLimitMB}
+        onSync={syncAll}
       />
 
       {/* Dev toast */}
@@ -3183,6 +3367,10 @@ export default function BoojyNotes() {
         @keyframes syncGlow {
           0%, 100% { box-shadow: 0 0 4px ${BRAND.orange}40; }
           50% { box-shadow: 0 0 14px ${BRAND.orange}80, 0 0 24px ${BRAND.orange}30; }
+        }
+        @keyframes syncDotPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
         @keyframes fadeIn {
           from { opacity: 0; }

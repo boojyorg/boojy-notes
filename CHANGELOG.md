@@ -2,7 +2,35 @@
 
 ## Unreleased
 
+### Bug Fixes
+- Fix Enter key intermittently not creating new blocks in the editor
+- Fix slash commands (`/`) not opening the command menu
+- **Fix React/contentEditable race conditions** — `cleanOrphanNodes` was running on every render, destroying browser selection state; now only runs after structural ops (Enter/Backspace)
+- **Fix focus placement timing** — ref registration and cursor placement now use `useLayoutEffect` (synchronous after DOM update), ensuring refs are ready before focus is placed
+- **Fix blockRefs race condition** — parent `useEffect` was clearing all refs AFTER child components registered them
+- **Fix duplicate block IDs** — `genBlockId()` now includes timestamp to avoid collisions with existing blocks from localStorage
+- Strip trailing newline from `innerText` reads (browser `<br>` artifact)
+- Prevent cursor from escaping block structure — guard keydown, input, and click events
+- Improved `placeCaret` with `isConnected` check, return value, and fallback recovery
+- Snap cursor to nearest block on clicks between or below blocks
+- Suppress React `contentEditable` warnings on bullet/checkbox wrapper elements
+- Fix sync parse errors for non-JSON remote notes (moved parsing outside React state updater)
+- Fix title-to-editor focus transition — `placeCaret` now focuses the contentEditable ancestor before setting selection
+- Fix click-below-editor not placing cursor in new block when editor wasn't previously focused
+
+### Improvements
+- Auto-select "Untitled" text when creating a new note — typing immediately replaces placeholder title
+- Memoize `EditableBlock` with `React.memo` — prevents all blocks from re-rendering on every keystroke
+- Stabilize `flipCheck` and `registerBlockRef` with `useCallback` for proper memoization
+
 ### Features
+- Cloud sync via Supabase Edge Functions + Cloudflare R2 storage
+- `sync-push`, `sync-pull`, `sync-delete` Edge Functions for note CRUD
+- Client-side sync service with automatic change detection and debounced push (5s)
+- `useSync` hook — watches noteData for changes, auto-syncs dirty notes
+- First sync pushes all local notes to server; subsequent syncs are incremental
+- Live sync status in Settings (Synced/Syncing/Error indicator, last synced time, storage bar)
+- "Sync now" button for manual sync trigger
 - Supabase Auth integration — real email/password sign-in and sign-up
 - Google and Apple OAuth sign-in via Supabase
 - Separate Sign In and Create Account flows (signin default, create via link)
