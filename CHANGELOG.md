@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Bug Fixes
+- Fix Edge Function 401 "invalid JWT" — disable gateway JWT verification (functions verify auth internally)
+- Keep settings panel open after OAuth login (Google/Apple redirect no longer closes it)
 - Fix Enter key intermittently not creating new blocks in the editor
 - Fix slash commands (`/`) not opening the command menu
 - **Fix React/contentEditable race conditions** — `cleanOrphanNodes` was running on every render, destroying browser selection state; now only runs after structural ops (Enter/Backspace)

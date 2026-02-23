@@ -1361,6 +1361,17 @@ export default function BoojyNotes() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
   const { user, signInWithEmail, signUpWithEmail, signInWithOAuth, signOut, resendVerification } = useAuth();
+
+  // Re-open settings after OAuth redirect (Google/Apple login reloads the page)
+  useEffect(() => {
+    const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
+    if (hash.includes("access_token") || params.has("code")) {
+      setSettingsOpen(true);
+      setSettingsTab("profile");
+    }
+  }, []);
+
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
   const [devToast, setDevToast] = useState(null);

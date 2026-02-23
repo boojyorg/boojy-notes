@@ -1,28 +1,8 @@
 import { supabase } from "../lib/supabase";
 
-const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-
-async function getAccessToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
-}
-
 async function callFunction(name, body) {
-  const token = await getAccessToken();
-  if (!token) throw new Error("Not authenticated");
-
-  const res = await fetch(`${FUNCTIONS_URL}/${name}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Sync failed (${res.status})`);
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) throw new Error(error.message || `Sync failed: ${name}`);
   return data;
 }
 

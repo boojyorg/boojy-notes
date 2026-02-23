@@ -385,7 +385,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.sync-push]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/sync-push/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -396,7 +396,7 @@ entrypoint = "./functions/sync-push/index.ts"
 
 [functions.sync-pull]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/sync-pull/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -407,7 +407,7 @@ entrypoint = "./functions/sync-pull/index.ts"
 
 [functions.sync-delete]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/sync-delete/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
