@@ -1416,7 +1416,7 @@ export default function BoojyNotes() {
   });
 
   // ─── Sync ───
-  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(user, noteData, setNoteData);
+  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(user, profile, noteData, setNoteData);
 
   // ─── Refs ───
   const isDragging = useRef(false);
