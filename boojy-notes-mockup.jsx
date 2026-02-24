@@ -687,7 +687,7 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
 // SETTINGS MODAL COMPONENT
 // ═══════════════════════════════════════════
 
-function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, authActions, syncState, lastSynced, storageUsed, storageLimitMB, onSync }) {
+function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, profile, authActions, syncState, lastSynced, storageUsed, storageLimitMB, onSync }) {
   const loggedIn = !!user;
   const [nameInput, setNameInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -1155,9 +1155,10 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
                   {/* Plan row */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
                     <span style={{ fontSize: 13, color: TEXT.muted }}>Plan</span>
-                    <span style={{ fontSize: 14, color: TEXT.primary }}>Free</span>
+                    <span style={{ fontSize: 14, color: TEXT.primary }}>{profile?.tier === 'orbit' ? 'Orbit' : 'Free'}</span>
                   </div>
-                  {/* Upgrade link */}
+                  {/* Upgrade link — only show for free users */}
+                  {(!profile || profile.tier !== 'orbit') && (
                   <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 0 12px" }}>
                     <a
                       href="https://boojy.org/cloud"
@@ -1168,6 +1169,7 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
                       onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
                     >Upgrade to Orbit ↗</a>
                   </div>
+                  )}
                   {/* Sign out */}
                   <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
                     <button
@@ -1360,7 +1362,7 @@ export default function BoojyNotes() {
   const [settingsFontSize, setSettingsFontSize] = useState(15);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
-  const { user, signInWithEmail, signUpWithEmail, signInWithOAuth, signOut, resendVerification } = useAuth();
+  const { user, profile, signInWithEmail, signUpWithEmail, signInWithOAuth, signOut, resendVerification } = useAuth();
 
   // Re-open settings after OAuth redirect (Google/Apple login reloads the page)
   useEffect(() => {
@@ -3165,6 +3167,7 @@ export default function BoojyNotes() {
         fontSize={settingsFontSize}
         setFontSize={setSettingsFontSize}
         user={user}
+        profile={profile}
         authActions={{ signInWithEmail, signUpWithEmail, signInWithOAuth, signOut, resendVerification }}
         syncState={syncState}
         lastSynced={lastSynced}
