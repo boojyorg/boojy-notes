@@ -3,7 +3,6 @@ import { pushNote, pullNotes, deleteNoteRemote } from "../services/sync";
 
 const SYNC_DEBOUNCE_MS = 5000;
 const LAST_SYNC_KEY = "boojy-sync-last";
-const DEFAULT_LIMIT_BYTES = 524288000; // 500 MB (free tier)
 
 export function useSync(user, profile, noteData, setNoteData) {
   const [syncState, setSyncState] = useState("idle");
@@ -180,7 +179,7 @@ export function useSync(user, profile, noteData, setNoteData) {
     syncState,
     lastSynced,
     storageUsed,
-    storageLimitMB: (profile?.storage_limit_bytes || DEFAULT_LIMIT_BYTES) / (1024 * 1024),
+    storageLimitMB: profile?.storage_limit_bytes ? profile.storage_limit_bytes / (1024 * 1024) : null,
     syncAll,
   };
 }
