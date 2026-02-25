@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { pushNote, pullNotes, deleteNoteRemote } from "../services/sync";
+import { supabase } from "../lib/supabase";
 
 const SYNC_DEBOUNCE_MS = 5000;
 const LAST_SYNC_KEY = "boojy-sync-last";
@@ -182,14 +183,42 @@ export function useSync(user, profile, noteData, setNoteData) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [user?.id]);
 
-  // Poll for remote changes every 30s
+  // Realtime: listen for storage_usage changes (triggered by other devices pushing)
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`storage_usage:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "storage_usage",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Another device pushed/deleted — pull latest
+          if (!isSyncing.current) {
+            syncAllRef.current();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  // Poll for remote changes every 60s (fallback in case Realtime drops)
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         syncAllRef.current();
       }
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [user?.id]);
 
