@@ -15,7 +15,8 @@ export async function pushNote(note) {
     words: note.words || 0,
   });
 
-  return callFunction("sync-push", {
+  return callFunction("sync", {
+    action: "push",
     noteId: note.id,
     title: note.title || "Untitled",
     content,
@@ -24,9 +25,9 @@ export async function pushNote(note) {
 }
 
 export async function pullNotes(since = null) {
-  return callFunction("sync-pull", { since });
+  return callFunction("sync", { action: "pull", since });
 }
 
 export async function deleteNoteRemote(noteId) {
-  return callFunction("sync-delete", { noteId });
+  return callFunction("sync", { action: "delete", noteId });
 }
