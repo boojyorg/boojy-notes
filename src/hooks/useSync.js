@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { pushNote, pullNotes, deleteNoteRemote } from "../services/sync";
 import { supabase } from "../lib/supabase";
 
-const SYNC_DEBOUNCE_MS = 5000;
+const SYNC_DEBOUNCE_MS = 2000;
 const LAST_SYNC_KEY = "boojy-sync-last";
 
 export function useSync(user, profile, noteData, setNoteData) {
@@ -20,6 +20,7 @@ export function useSync(user, profile, noteData, setNoteData) {
   const noteDataRef = useRef(noteData);
   const lastSyncedRef = useRef(lastSynced);
   const isRemoteUpdate = useRef(false);
+  const channelRef = useRef(null);
 
   noteDataRef.current = noteData;
   lastSyncedRef.current = lastSynced;
@@ -70,6 +71,11 @@ export function useSync(user, profile, noteData, setNoteData) {
         const allNotes = Object.values(noteDataRef.current);
         for (const note of allNotes) {
           await pushNote(note);
+          channelRef.current?.send({
+            type: "broadcast",
+            event: "note_upsert",
+            payload: { id: note.id, title: note.title, folder: note.folder || null, path: note.path || null, content: note.content, words: note.words || 0 },
+          });
         }
         dirtyNotes.current.clear();
       } else {
@@ -79,6 +85,11 @@ export function useSync(user, profile, noteData, setNoteData) {
           const note = noteDataRef.current[noteId];
           if (note) {
             await pushNote(note);
+            channelRef.current?.send({
+              type: "broadcast",
+              event: "note_upsert",
+              payload: { id: note.id, title: note.title, folder: note.folder || null, path: note.path || null, content: note.content, words: note.words || 0 },
+            });
             dirtyNotes.current.delete(noteId);
           }
         }
@@ -88,6 +99,11 @@ export function useSync(user, profile, noteData, setNoteData) {
       const deleted = [...deletedNotes.current];
       for (const noteId of deleted) {
         await deleteNoteRemote(noteId);
+        channelRef.current?.send({
+          type: "broadcast",
+          event: "note_delete",
+          payload: { id: noteId },
+        });
         deletedNotes.current.delete(noteId);
       }
 
@@ -183,33 +199,35 @@ export function useSync(user, profile, noteData, setNoteData) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [user?.id]);
 
-  // Realtime: listen for storage_usage changes (triggered by other devices pushing)
+  // Realtime Broadcast: receive note changes from other devices instantly
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel(`storage_usage:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "storage_usage",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          // Another device pushed/deleted — pull latest
-          if (!isSyncing.current) {
-            syncAllRef.current();
-          }
-        }
-      )
+      .channel(`notes-sync:${user.id}`)
+      .on("broadcast", { event: "note_upsert" }, ({ payload }) => {
+        if (!payload?.id || dirtyNotes.current.has(payload.id)) return;
+        isRemoteUpdate.current = true;
+        setNoteData(prev => ({ ...prev, [payload.id]: payload }));
+      })
+      .on("broadcast", { event: "note_delete" }, ({ payload }) => {
+        if (!payload?.id || dirtyNotes.current.has(payload.id)) return;
+        isRemoteUpdate.current = true;
+        setNoteData(prev => {
+          const next = { ...prev };
+          delete next[payload.id];
+          return next;
+        });
+      })
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, setNoteData]);
 
   // Poll for remote changes every 60s (fallback in case Realtime drops)
   useEffect(() => {
