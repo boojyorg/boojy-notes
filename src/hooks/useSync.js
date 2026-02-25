@@ -200,6 +200,7 @@ export function useSync(user, profile, noteData, setNoteData) {
   }, [user?.id]);
 
   // Realtime Broadcast: receive note changes from other devices instantly
+  // postgres_changes on storage_usage: reliable backup if broadcast is missed
   useEffect(() => {
     if (!user) return;
 
@@ -219,9 +220,28 @@ export function useSync(user, profile, noteData, setNoteData) {
           return next;
         });
       })
-      .subscribe();
-
-    channelRef.current = channel;
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "storage_usage",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Backup: if broadcast was missed, full pull catches it
+          if (!isSyncing.current) {
+            syncAllRef.current();
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          channelRef.current = channel;
+        } else {
+          channelRef.current = null;
+        }
+      });
 
     return () => {
       channelRef.current = null;
