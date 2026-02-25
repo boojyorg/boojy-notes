@@ -170,6 +170,29 @@ export function useSync(user, profile, noteData, setNoteData) {
     }
   }, [user?.id]);
 
+  // Sync when tab becomes visible (covers switching browsers/tabs)
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        syncAllRef.current();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [user?.id]);
+
+  // Poll for remote changes every 30s
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        syncAllRef.current();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   // Cleanup
   useEffect(() => {
     return () => clearTimeout(syncTimer.current);
