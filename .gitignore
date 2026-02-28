@@ -1,4 +1,45 @@
-node_modules
-dist
-docs/private/
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-electron/
+build/
+
+# Vite
+.vite/
+
+# Environment
+.env
 .env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Flutter / Dart (ui/ is the Flutter frontend)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+ui/build/
+ui/.dart_tool/
+android/
+ios/
+macos/Pods/
+
+# Private docs
+docs/private/
+
+# Electron build artifacts
+out/
+release/
