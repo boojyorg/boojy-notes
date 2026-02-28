@@ -235,11 +235,11 @@ export default function SettingsModal({ settingsOpen, setSettingsOpen, settingsT
             <div style={{ flex: 1 }} />
             {/* Sidebar footer — branding */}
             <div style={{ padding: "0 12px 16px", display: "flex", flexDirection: "column", gap: 3 }}>
-              <img src="/boojy-logo.png" alt="Boojy" style={{ height: 12, objectFit: "contain", alignSelf: "flex-start" }} draggable="false" />
+              <img src="/assets/boojy-logo.png" alt="Boojy" style={{ height: 12, objectFit: "contain", alignSelf: "flex-start" }} draggable="false" />
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <img src="/boojy-notes-text-N.png" alt="" style={{ height: 12 }} draggable="false" />
+                <img src="/assets/boojy-notes-text-N.png" alt="" style={{ height: 12 }} draggable="false" />
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: accentColor, flexShrink: 0, position: "relative", top: 0.5 }} />
-                <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 11 }} draggable="false" />
+                <img src="/assets/boojy-notes.text-tes.png" alt="" style={{ height: 11 }} draggable="false" />
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>v0.1.0</span>
             </div>

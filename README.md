@@ -50,6 +50,10 @@ npm run dev
 ## Project Structure
 
 ```text
+assets/
+  boojy-logo.png          # Brand logo
+  boojy-notes-text-N.png  # "N" wordmark segment
+  boojy-notes.text-tes.png # "tes" wordmark segment
 src/
   BoojyNotes.jsx        # App root
   main.jsx              # Entry point

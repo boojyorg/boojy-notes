@@ -1257,7 +1257,7 @@ export default function BoojyNotes() {
         }}>
           {/* N●tes */}
           <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}>
-            <img src="/boojy-notes-text-N.png" alt="" style={{ height: 23.5 }} draggable="false" />
+            <img src="/assets/boojy-notes-text-N.png" alt="" style={{ height: 23.5 }} draggable="false" />
             <button
               onClick={() => { setSettingsOpen(true); setSettingsTab("profile"); }}
               style={syncDotStyle()}
@@ -1267,7 +1267,7 @@ export default function BoojyNotes() {
             >
               <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: accentColor }} />
             </button>
-            <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
+            <img src="/assets/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }} />
           <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
@@ -1798,9 +1798,9 @@ export default function BoojyNotes() {
               <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
                 {/* Faded N●tes logo */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 20, opacity: 0.12 }}>
-                  <img src="/boojy-notes-text-N.png" alt="" style={{ height: 55, filter: "invert(1)" }} draggable="false" />
+                  <img src="/assets/boojy-notes-text-N.png" alt="" style={{ height: 55, filter: "invert(1)" }} draggable="false" />
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: accentColor, position: "relative", top: 2, flexShrink: 0 }} />
-                  <img src="/boojy-notes.text-tes.png" alt="" style={{ height: 48, filter: "invert(1)" }} draggable="false" />
+                  <img src="/assets/boojy-notes.text-tes.png" alt="" style={{ height: 48, filter: "invert(1)" }} draggable="false" />
                 </div>
 
                 <p style={{ color: TEXT.muted, fontSize: 14, marginBottom: 28, opacity: 0.7 }}>Start writing...</p>
