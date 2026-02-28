@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improvements
+- Split `boojy-notes-mockup.jsx` monolith (3,344 lines) into focused modules under `src/`: constants (`colors.js`, `data.js`), utils (`colorUtils.js`, `storage.js`, `random.js`), components (`Icons.jsx`, `StarField.jsx`, `EditableBlock.jsx`, `SettingsModal.jsx`), and main component (`BoojyNotes.jsx`); no logic changes
+
 ### Bug Fixes
 - Fix editor focus on new blank notes — cursor now appears reliably on first interaction; root cause was `placeCaret` mutating DOM (`<br>` → text node) during focus transitions, which destabilised browser selection state; `placeCaret` is now a pure selection operation (uses element-level `range.setStart(el, 0)` for `<br>` elements), `handleEditorKeyDown` recovers cursor when `rangeCount === 0` instead of silently swallowing keystrokes, removed `suppressEditorFocus` complexity in favour of a `mouseIsDown` ref that lets `handleEditorFocus` defer to `handleEditorMouseUp` during clicks, and added `console.warn` debug logging at all recovery points
 - Fix block ID churn in Electron — `useFileSystem` now compares incoming blocks structurally (type, text, checked) and skips state updates when chokidar echoes back files we just wrote, preventing unmount/remount cycles that wiped focus
