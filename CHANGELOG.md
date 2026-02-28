@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Bug Fixes
+- Fix "New Folder" button hidden when no folders exist — button was gated behind `filteredTree.length > 0`
 - Fix Edge Function 401 "invalid JWT" — disable gateway JWT verification (functions verify auth internally)
 - Keep settings panel open after OAuth login (Google/Apple redirect no longer closes it)
 - Fix Enter key intermittently not creating new blocks in the editor

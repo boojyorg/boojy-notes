@@ -2521,7 +2521,7 @@ export default function BoojyNotes() {
                   <>
                     <div style={{ height: 5 }} />
                     {filteredTree.map(f => renderFolder(f, 0))}
-                    {filteredTree.length > 0 && !search && (
+                    {!search && (
                       <button onClick={createFolder} style={{
                         width: "100%", border: "none", cursor: "pointer",
                         background: "transparent",
