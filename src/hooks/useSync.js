@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pushNote, pullNotes, deleteNoteRemote } from "../services/sync";
+import { pushNote, pullNotes, deleteNoteRemote, parseFrontmatter, markdownToBlocks } from "../services/sync";
 import { supabase } from "../lib/supabase";
 
 const SYNC_DEBOUNCE_MS = 2000;
@@ -119,17 +119,38 @@ export function useSync(user, profile, noteData, setNoteData) {
             deletedRemotes.push(remote.note_id);
           } else if (remote.content) {
             try {
-              const parsed = JSON.parse(remote.content);
-              parsedRemotes.push({
-                id: remote.note_id,
-                title: parsed.title || remote.title,
-                folder: parsed.folder || null,
-                path: parsed.path || null,
-                content: parsed.content,
-                words: parsed.words || 0,
-              });
+              const raw = remote.content.trim();
+              let noteObj;
+
+              if (raw.startsWith("---")) {
+                // New markdown format with frontmatter
+                const fm = parseFrontmatter(raw);
+                if (fm) {
+                  noteObj = {
+                    id: remote.note_id,
+                    title: fm.title,
+                    folder: fm.folder,
+                    path: fm.path,
+                    content: { title: fm.title, blocks: markdownToBlocks(fm.body) },
+                    words: fm.words,
+                  };
+                }
+              } else {
+                // Legacy JSON format
+                const parsed = JSON.parse(raw);
+                noteObj = {
+                  id: remote.note_id,
+                  title: parsed.title || remote.title,
+                  folder: parsed.folder || null,
+                  path: parsed.path || null,
+                  content: parsed.content,
+                  words: parsed.words || 0,
+                };
+              }
+
+              if (noteObj) parsedRemotes.push(noteObj);
             } catch {
-              // Content not in expected JSON format — skip this note
+              // Content not in expected format — skip this note
             }
           }
         }
