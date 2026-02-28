@@ -25,17 +25,17 @@ Thumbs.db
 *.swo
 *~
 
-# Flutter / Dart (ui/ is the Flutter frontend)
+# Flutter / Dart (no source — build artifacts only)
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 *.iml
-ui/build/
-ui/.dart_tool/
+ui/
 android/
 ios/
-macos/Pods/
+macos/
+windows/
 
 # Private docs
 docs/private/
