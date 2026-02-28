@@ -175,7 +175,7 @@ function createWindow() {
     height: 800,
     minWidth: 600,
     minHeight: 400,
-    titleBarStyle: "hiddenInset",
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     icon: path.join(__dirname, "../assets/icon.png"),
     webPreferences: {
       contextIsolation: true,
@@ -187,6 +187,7 @@ function createWindow() {
   // Dev: load Vite dev server; Prod: load built files
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }

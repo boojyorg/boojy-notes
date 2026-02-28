@@ -4,9 +4,10 @@ import { supabase } from "../lib/supabase";
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   async function fetchProfile(userId) {
+    if (!supabase) return;
     try {
       const { data } = await supabase
         .from('profiles')
@@ -20,6 +21,9 @@ export function useAuth() {
   }
 
   useEffect(() => {
+    if (!supabase) return;
+    setLoading(true);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = session?.user ?? null;

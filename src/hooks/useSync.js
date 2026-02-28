@@ -225,6 +225,7 @@ export function useSync(user, profile, noteData, setNoteData) {
   useEffect(() => {
     if (!user) return;
 
+    if (!supabase) return;
     const channel = supabase
       .channel(`notes-sync:${user.id}`)
       .on("broadcast", { event: "note_upsert" }, ({ payload }) => {
@@ -266,7 +267,7 @@ export function useSync(user, profile, noteData, setNoteData) {
 
     return () => {
       channelRef.current = null;
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [user?.id, setNoteData]);
 
