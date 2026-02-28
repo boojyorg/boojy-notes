@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, memo } from "react";
 import { useAuth } from "./src/hooks/useAuth";
 import { useSync } from "./src/hooks/useSync";
+import { useFileSystem } from "./src/hooks/useFileSystem";
 
 // ═══════════════════════════════════════════
 // BOOJY AUDIO DESIGN TOKENS
@@ -333,7 +334,11 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
   // Set text on mount and force-resync on undo/redo (syncGen changes)
   useLayoutEffect(() => {
     if (elRef.current && block.text !== undefined) {
-      elRef.current.innerText = block.text;
+      if (block.text === "") {
+        elRef.current.innerHTML = "<br>";
+      } else {
+        elRef.current.innerText = block.text;
+      }
     }
   }, [syncGen]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
@@ -430,7 +435,7 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
 // SETTINGS MODAL COMPONENT
 // ═══════════════════════════════════════════
 
-function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, profile, authActions, syncState, lastSynced, storageUsed, storageLimitMB, onSync }) {
+function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, accentColor, fontSize, setFontSize, user, profile, authActions, syncState, lastSynced, storageUsed, storageLimitMB, onSync, isDesktop, notesDir, changeNotesDir }) {
   const loggedIn = !!user;
   const [nameInput, setNameInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -496,12 +501,14 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
     const props = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
     if (type === "profile") return <svg {...props}><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>;
     if (type === "sync") return <svg {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>;
+    if (type === "storage") return <svg {...props}><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M21 7H3l2-4h14l2 4z"/><line x1="12" y1="11" x2="12" y2="15"/></svg>;
     if (type === "appearance") return <svg {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>;
     return null;
   };
 
   const sidebarItems = [
     { id: "profile", label: "Profile" },
+    ...(isDesktop ? [{ id: "storage", label: "Storage" }] : []),
     ...(loggedIn ? [{ id: "sync", label: "Sync" }] : []),
     { id: "appearance", label: "Appearance" },
   ];
@@ -931,6 +938,38 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
               )}
             </div>
 
+            {/* ─── Notes folder (desktop only) ─── */}
+            {isDesktop && (() => {
+              const displayPath = notesDir
+                ? notesDir.replace(/^\/Users\/[^/]+/, "~").replace(/^C:\\Users\\[^\\]+/, "~")
+                : "—";
+              const truncated = displayPath.length > 32
+                ? "…" + displayPath.slice(-30)
+                : displayPath;
+              return (
+                <div ref={el => sectionRefs.current.storage = el} style={{ marginBottom: 32 }}>
+                  <SectionHeader title="Storage" />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+                    <span style={{ fontSize: 13, color: TEXT.muted }}>Notes folder</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: TEXT.secondary, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={notesDir}>{truncated}</span>
+                      <button
+                        onClick={changeNotesDir}
+                        style={{
+                          padding: "4px 10px", borderRadius: 6,
+                          background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.08)`,
+                          color: TEXT.secondary, fontSize: 12, fontWeight: 500,
+                          cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                      >Change</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ─── Sync (logged in only) ─── */}
             {loggedIn && (() => {
               const statusLabel = syncState === "syncing" ? "Syncing…" : syncState === "error" ? "Sync error" : syncState === "synced" ? "Synced" : "Idle";
@@ -1079,20 +1118,26 @@ function SettingsModal({ settingsOpen, setSettingsOpen, settingsTab, setSettings
 export default function BoojyNotes() {
   // ─── State ───
   const [expanded, setExpanded] = useState(() => {
+    const ui = (() => { try { return JSON.parse(localStorage.getItem("boojy-ui-state")); } catch { return null; } })();
+    if (ui?.expanded) return ui.expanded;
     const saved = loadFromStorage();
     return saved?.expanded || { "Boojy": true };
   });
   const [activeNote, setActiveNote] = useState(() => {
+    const ui = (() => { try { return JSON.parse(localStorage.getItem("boojy-ui-state")); } catch { return null; } })();
+    if (ui?.activeNote) return ui.activeNote;
     const saved = loadFromStorage();
-    return (saved?.activeNote && saved.noteData?.[saved.activeNote]) ? saved.activeNote : "boojy-audio-ideas";
+    return (saved?.activeNote && saved.noteData?.[saved.activeNote]) ? saved.activeNote : null;
   });
   const [tabs, setTabs] = useState(() => {
+    const ui = (() => { try { return JSON.parse(localStorage.getItem("boojy-ui-state")); } catch { return null; } })();
+    if (ui?.tabs?.length > 0) return ui.tabs;
     const saved = loadFromStorage();
     if (saved?.tabs) {
       const valid = saved.tabs.filter(id => saved.noteData?.[id]);
       if (valid.length > 0) return valid;
     }
-    return ["shopping-list", "boojy-audio-ideas"];
+    return [];
   });
   const [newTabId, setNewTabId] = useState(null);
   const [closingTabs, setClosingTabs] = useState(new Set());
@@ -1129,6 +1174,7 @@ export default function BoojyNotes() {
   const [tabFlip, setTabFlip] = useState(false);
   const [selectionStyle, setSelectionStyle] = useState("B");
   const [noteData, setNoteData] = useState(() => {
+    if (window.electronAPI) return {}; // Electron: useFileSystem loads from disk
     const saved = loadFromStorage();
     if (saved?.noteData) {
       // Resume _blockId counter to avoid collisions
@@ -1146,16 +1192,21 @@ export default function BoojyNotes() {
     }
     return {};
   });
+  const [, forceRender] = useState(0);
   const [slashMenu, setSlashMenu] = useState(null);
   const [ctxMenu, setCtxMenu] = useState(null); // { x, y, type: "note"|"folder", id }
   const [renamingFolder, setRenamingFolder] = useState(null); // folder name being renamed
   const [customFolders, setCustomFolders] = useState(() => {
+    if (window.electronAPI) return []; // Electron: useFileSystem loads from disk
     const saved = loadFromStorage();
     return saved?.customFolders || [];
   });
 
   // ─── Sync ───
   const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(user, profile, noteData, setNoteData);
+
+  // ─── Filesystem (Electron) ───
+  const { isElectron: isDesktop, notesDir, loading: fsLoading, changeNotesDir } = useFileSystem(noteData, setNoteData, setCustomFolders);
 
   // ─── Refs ───
   const isDragging = useRef(false);
@@ -1169,6 +1220,7 @@ export default function BoojyNotes() {
   const titleRef = useRef(null);
   const focusBlockId = useRef(null);
   const focusCursorPos = useRef(null);
+  const mouseIsDown = useRef(false); // true while mouse button is held — lets handleEditorFocus defer to handleEditorMouseUp
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
   const syncGeneration = useRef(0); // bumped on undo/redo to force DOM resync
@@ -1277,8 +1329,19 @@ export default function BoojyNotes() {
     return () => window.removeEventListener("keydown", handler);
   }, [settingsOpen]);
 
-  // Persist to localStorage — debounced 300ms
+  // Persist UI state to localStorage (always, even in Electron)
   useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem("boojy-ui-state", JSON.stringify({ tabs, activeNote, expanded }));
+      } catch {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tabs, activeNote, expanded]);
+
+  // Persist noteData to localStorage (web only — Electron uses filesystem)
+  useEffect(() => {
+    if (window.electronAPI) return;
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ noteData, tabs, activeNote, expanded, customFolders }));
@@ -1295,17 +1358,18 @@ export default function BoojyNotes() {
       cleanOrphanNodes(); // Only clean after structural ops (Enter/Backspace), not every keystroke
       const targetId = focusBlockId.current;
       const targetPos = focusCursorPos.current ?? 0;
-      const el = blockRefs.current[targetId];
-      const success = placeCaret(el, targetPos);
-      if (!success) {
-        // Safety fallback — retry after paint
-        requestAnimationFrame(() => {
-          const freshEl = blockRefs.current[targetId];
-          if (freshEl) placeCaret(freshEl, targetPos);
-        });
-      }
       focusBlockId.current = null;
       focusCursorPos.current = null;
+      const el = blockRefs.current[targetId];
+      const success = placeCaret(el, targetPos);
+      // Always verify after paint — catches cases where placeCaret succeeded
+      // but the browser reset the selection during the focus transition
+      requestAnimationFrame(() => {
+        const sel = window.getSelection();
+        if (sel.rangeCount && getBlockFromNode(sel.anchorNode)) return; // Cursor is in a block
+        const freshEl = blockRefs.current[targetId];
+        if (freshEl) placeCaret(freshEl, targetPos);
+      });
     }
   });
 
@@ -1650,7 +1714,8 @@ export default function BoojyNotes() {
     const blocks = noteDataRef.current[noteId].content.blocks;
     const el = blockRefs.current[blocks[blockIndex]?.id];
     if (!el) return;
-    const text = el.innerText.replace(/\n$/, "");
+    const raw = el.innerText.replace(/[\n\r]+$/, "").replace(/^[\n\r]+/, "");
+    const text = raw === "\n" ? "" : raw;
     updateBlockText(noteId, blockIndex, text);
 
     // Markdown shortcuts — detect trigger patterns
@@ -1693,12 +1758,13 @@ export default function BoojyNotes() {
       }
     }
 
-    if (text === "/") {
+    const trimmed = text.trim();
+    if (trimmed === "/") {
       const rect = el.getBoundingClientRect();
       setSlashMenu({ noteId, blockIndex, filter: "", selectedIndex: 0, rect: { top: rect.bottom + 4, left: rect.left } });
     } else if (slashMenuRef.current && slashMenuRef.current.blockIndex === blockIndex) {
-      if (text.startsWith("/")) {
-        setSlashMenu(prev => prev ? { ...prev, filter: text.slice(1), selectedIndex: 0 } : null);
+      if (trimmed.startsWith("/")) {
+        setSlashMenu(prev => prev ? { ...prev, filter: trimmed.slice(1), selectedIndex: 0 } : null);
       } else {
         setSlashMenu(null);
       }
@@ -1889,17 +1955,31 @@ export default function BoojyNotes() {
   };
 
   // ─── Helper: place cursor inside a block element ───
+  // IMPORTANT: This must be a pure selection operation — no DOM mutations.
+  // Mutating innerHTML during focus transitions destabilises browser selection state
+  // and causes the "focused but no cursor" bug on first interaction.
   const placeCaret = (el, pos = 0) => {
-    if (!el || !el.isConnected) return false;
+    if (!el || !el.isConnected) {
+      console.warn("[placeCaret] skipped — el is", el ? "disconnected" : "null");
+      return false;
+    }
     try {
-      // Ensure the contentEditable ancestor is focused (critical when coming from title or click-below)
+      // Step 1: Focus the contentEditable ancestor (critical when coming from title or click-below)
       let ancestor = el.parentElement;
       while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
       if (ancestor) ancestor.focus();
+      // Step 2: Set the selection range — NO DOM mutation
       const range = document.createRange();
       const sel = window.getSelection();
-      if (pos === 0 || el.childNodes.length === 0) {
+      if (el.childNodes.length === 0) {
+        // Truly empty element — must add a text node for caret anchoring
+        el.appendChild(document.createTextNode(""));
+        range.setStart(el.firstChild, 0);
+      } else if (el.childNodes.length === 1 && el.firstChild.nodeName === "BR") {
+        // Has <br> for height — use element-level position (before <br>), no DOM mutation
         range.setStart(el, 0);
+      } else if (pos === 0) {
+        range.setStart(el.firstChild, 0);
       } else {
         // Walk text nodes to find correct position
         let remaining = pos;
@@ -1922,7 +2002,9 @@ export default function BoojyNotes() {
     } catch (_) {
       // Fallback: try to at least focus the element
       try {
-        el.focus();
+        let ancestor = el.parentElement;
+        while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
+        if (ancestor) ancestor.focus();
         const range = document.createRange();
         const sel = window.getSelection();
         range.setStart(el, 0);
@@ -2030,7 +2112,22 @@ export default function BoojyNotes() {
   // ─── Editor wrapper event handlers ───
   const handleEditorKeyDown = (e) => {
     const sel = window.getSelection();
-    if (!sel.rangeCount) return;
+    if (!sel.rangeCount) {
+      // Editor has focus but no selection — recover by placing cursor in first block
+      console.warn("[handleEditorKeyDown] rangeCount === 0, rescuing cursor");
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (blocks && blocks.length > 0) {
+        const first = blocks.find(b => b.type !== "spacer");
+        if (first) {
+          const el = blockRefs.current[first.id];
+          if (el && placeCaret(el, 0)) {
+            // Cursor rescued — let the keystroke proceed naturally
+            return;
+          }
+        }
+      }
+      return;
+    }
     const range = sel.getRangeAt(0);
 
     // Check for cross-block selection
@@ -2094,18 +2191,56 @@ export default function BoojyNotes() {
   };
 
   const handleEditorMouseUp = () => {
+    mouseIsDown.current = false;
     requestAnimationFrame(() => {
       const sel = window.getSelection();
-      if (!sel.rangeCount) return;
-      if (!sel.getRangeAt(0).collapsed) return; // Don't fix text selections
-      const info = getBlockFromNode(sel.anchorNode);
-      if (info) return; // Cursor is inside a block, nothing to fix
+      if (sel.rangeCount && !sel.getRangeAt(0).collapsed) return; // Don't fix text selections
+      if (sel.rangeCount) {
+        const info = getBlockFromNode(sel.anchorNode);
+        if (info) return; // Cursor is inside a block, nothing to fix
+      }
       const blocks = noteDataRef.current[activeNote]?.content?.blocks;
       if (!blocks || blocks.length === 0) return;
-      const target = findNearestBlock(sel, blocks);
-      if (!target) return;
-      const el = blockRefs.current[target.blockId];
-      if (el) placeCaret(el, (blocks[target.blockIndex].text || "").length);
+      // Try to find nearest block to click position
+      if (sel.rangeCount) {
+        const target = findNearestBlock(sel, blocks);
+        if (target) {
+          console.warn("[handleEditorMouseUp] cursor outside block, snapping to nearest");
+          const el = blockRefs.current[target.blockId];
+          if (el) { placeCaret(el, (blocks[target.blockIndex].text || "").length); return; }
+        }
+      }
+      // Fallback: rangeCount === 0 or no nearest block — place cursor in first block
+      console.warn("[handleEditorMouseUp] no selection/block, rescuing to first block");
+      const first = blocks.find(b => b.type !== "spacer");
+      if (!first) return;
+      const el = blockRefs.current[first.id];
+      if (el) placeCaret(el, 0);
+    });
+  };
+
+  const handleEditorMouseDown = () => {
+    mouseIsDown.current = true;
+  };
+
+  const handleEditorFocus = () => {
+    // Safety net: when editor receives focus via Tab or programmatic .focus()
+    // but no cursor is in a valid block, place cursor in the first block.
+    // Skip during mouse clicks — handleEditorMouseUp covers that case.
+    if (mouseIsDown.current) return;
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (sel.rangeCount) {
+        const info = getBlockFromNode(sel.anchorNode);
+        if (info) return; // Cursor is already in a block
+      }
+      console.warn("[handleEditorFocus] no cursor in block, rescuing focus");
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (!blocks || blocks.length === 0) return;
+      const first = blocks.find(b => b.type !== "spacer");
+      if (!first) return;
+      const el = blockRefs.current[first.id];
+      if (el) placeCaret(el, 0);
     });
   };
 
@@ -2658,12 +2793,24 @@ export default function BoojyNotes() {
                     const blocks = noteDataRef.current[activeNote].content.blocks;
                     const first = blocks.find(b => b.type !== "spacer");
                     if (first) {
-                      // Focus editor div first, then place caret after browser processes the focus transition
-                      editorRef.current?.focus();
-                      setTimeout(() => {
-                        const el = blockRefs.current[first.id];
-                        if (el) placeCaret(el, 0);
-                      }, 0);
+                      const firstId = first.id;
+                      const el = blockRefs.current[firstId];
+                      if (el) {
+                        // Synchronous attempt — DOM prep happens before focus in placeCaret
+                        placeCaret(el, 0);
+                        // Verify after browser settles — retry if cursor didn't land in a block
+                        requestAnimationFrame(() => {
+                          const sel = window.getSelection();
+                          if (sel.rangeCount && getBlockFromNode(sel.anchorNode)) return;
+                          const freshEl = blockRefs.current[firstId];
+                          if (freshEl) placeCaret(freshEl, 0);
+                        });
+                      } else {
+                        // Block ref not registered yet — fall back to render-triggered focus
+                        focusBlockId.current = firstId;
+                        focusCursorPos.current = 0;
+                        forceRender(c => c + 1);
+                      }
                     }
                   }
                 }}
@@ -2693,7 +2840,9 @@ export default function BoojyNotes() {
                 onKeyDown={handleEditorKeyDown}
                 onInput={handleEditorInput}
                 onPaste={handleEditorPaste}
+                onMouseDown={handleEditorMouseDown}
                 onMouseUp={handleEditorMouseUp}
+                onFocus={handleEditorFocus}
                 style={{ outline: "none" }}
               >
                 {note.content.blocks.map((block, i) => (
@@ -2713,8 +2862,26 @@ export default function BoojyNotes() {
               {/* Click to create new block */}
               <div
                 style={{ minHeight: 200, cursor: "text" }}
-                onClick={() => {
+                onMouseDown={(e) => {
+                  e.preventDefault(); // prevent browser from stealing focus from the editor
                   const blocks = noteData[activeNote].content.blocks;
+                  if (blocks.length > 0) {
+                    // If last block is empty, just focus it instead of creating another
+                    const lastBlock = blocks[blocks.length - 1];
+                    const lastEl = blockRefs.current[lastBlock.id];
+                    if (lastEl && (lastEl.innerText || "").trim() === "") {
+                      placeCaret(lastEl, 0);
+                      // Verify after browser settles
+                      const lastId = lastBlock.id;
+                      requestAnimationFrame(() => {
+                        const sel = window.getSelection();
+                        if (sel.rangeCount && getBlockFromNode(sel.anchorNode)) return;
+                        const freshEl = blockRefs.current[lastId];
+                        if (freshEl) placeCaret(freshEl, 0);
+                      });
+                      return;
+                    }
+                  }
                   insertBlockAfter(activeNote, blocks.length - 1, "p", "");
                 }}
               />
@@ -2913,6 +3080,9 @@ export default function BoojyNotes() {
         storageUsed={storageUsed}
         storageLimitMB={storageLimitMB}
         onSync={syncAll}
+        isDesktop={isDesktop}
+        notesDir={notesDir}
+        changeNotesDir={changeNotesDir}
       />
 
       {/* Dev toast */}

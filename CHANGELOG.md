@@ -3,7 +3,38 @@
 ## Unreleased
 
 ### Bug Fixes
+- Fix editor focus on new blank notes — cursor now appears reliably on first interaction; root cause was `placeCaret` mutating DOM (`<br>` → text node) during focus transitions, which destabilised browser selection state; `placeCaret` is now a pure selection operation (uses element-level `range.setStart(el, 0)` for `<br>` elements), `handleEditorKeyDown` recovers cursor when `rangeCount === 0` instead of silently swallowing keystrokes, removed `suppressEditorFocus` complexity in favour of a `mouseIsDown` ref that lets `handleEditorFocus` defer to `handleEditorMouseUp` during clicks, and added `console.warn` debug logging at all recovery points
+- Fix block ID churn in Electron — `useFileSystem` now compares incoming blocks structurally (type, text, checked) and skips state updates when chokidar echoes back files we just wrote, preventing unmount/remount cycles that wiped focus
+- Fix double-newline block separation in saved `.md` files — blocks now join with single `\n` (Obsidian-style), and parsing splits on single newlines so each line becomes its own block
+
+### Improvements
+- Remove YAML frontmatter from local `.md` files — notes are now clean markdown (Obsidian-style), with title derived from filename and folder from directory structure; note IDs persisted in `.boojy-index.json`
+
+### Features
+- **Notes folder chooser in Settings** — desktop (Electron) users can view and change their vault directory from Settings → Sync; default path changed to `~/Documents/Boojy/Notes/`
+- **Electron desktop app** — notes stored as real `.md` files on disk (`~/Documents/Boojy/Notes/`), browseable and editable with Obsidian, VS Code, etc.
+- Chokidar file watcher detects external edits and syncs them into the app in real-time
+- `useFileSystem` hook for filesystem persistence with 500ms debounced writes
+- Title/folder renames automatically move files on disk; deletes remove files
+- One-time migration: existing localStorage notes written to disk on first Electron launch
+- `dev:web` script preserves pure browser development without Electron
+- Vault directory configurable via native folder picker
+
+### Bug Fixes
+- Fix cursor not appearing after Enter on title or clicking below editor — `mousedown` on the click-below area was defocusing the contentEditable editor before `onClick` could restore it; switched to `onMouseDown` with `preventDefault`; title Enter now explicitly focuses the editor div before placing the caret
+- Fix editor body not accepting text input — empty blocks now use `<br>` for caret anchoring so Chromium places the cursor inside the block element
+- Fix title→editor caret not appearing on Enter — replaced manual `focus()`/`placeCaret()` with the standard `focusBlockId`/`focusCursorPos` ref pattern to avoid race conditions with React's render cycle
+- Fix click-below-editor focus using same ref-based pattern instead of `setTimeout`/`placeCaret`
+
+### Features
+- Store notes as portable markdown (`.md`) in R2 instead of JSON — YAML frontmatter for metadata, markdown body for content
+- Backward-compatible pull: auto-detects legacy JSON vs new markdown format on sync
+- `blocksToMarkdown()` / `markdownToBlocks()` converters for all block types (p, h1–h3, bullet, checkbox, spacer)
+
+### Previous Bug Fixes
 - Fix "New Folder" button hidden when no folders exist — button was gated behind `filteredTree.length > 0`
+- Fix caret not appearing in Chromium/Electron browsers (Cursor) — ensure empty blocks have a text node for caret anchoring, use `requestAnimationFrame` for title→editor focus transition, and focus existing empty block on click-below
+- Fix slash command menu not triggering in Chromium/Electron — strip leading/trailing newlines and trim whitespace before checking for `/`
 - Fix Edge Function 401 "invalid JWT" — disable gateway JWT verification (functions verify auth internally)
 - Keep settings panel open after OAuth login (Google/Apple redirect no longer closes it)
 - Fix Enter key intermittently not creating new blocks in the editor
