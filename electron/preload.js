@@ -11,6 +11,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readMeta: (folderRelPath) => ipcRenderer.invoke("read-meta", folderRelPath),
   writeMeta: (folderRelPath, meta) => ipcRenderer.invoke("write-meta", folderRelPath, meta),
 
+  // Trash
+  trashNote: (noteId, title, folder) => ipcRenderer.invoke("trash-note", noteId, title, folder),
+  readTrash: () => ipcRenderer.invoke("read-trash"),
+  restoreNote: (noteId) => ipcRenderer.invoke("restore-note", noteId),
+  purgeTrash: (noteIds) => ipcRenderer.invoke("purge-trash", noteIds),
+  emptyTrash: () => ipcRenderer.invoke("empty-trash"),
+
   onFileChanged: (callback) => {
     const handler = (_event, note) => callback(note);
     ipcRenderer.on("file-changed", handler);

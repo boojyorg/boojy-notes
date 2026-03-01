@@ -10,13 +10,17 @@ function blocksEqual(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (a[i].type !== b[i].type) return false;
-    if ((a[i].text || "") !== (b[i].text || "")) return false;
+    if (a[i].type === "image") {
+      if (a[i].src !== b[i].src || (a[i].alt || "") !== (b[i].alt || "")) return false;
+    } else {
+      if ((a[i].text || "") !== (b[i].text || "")) return false;
+    }
     if (a[i].checked !== b[i].checked) return false;
   }
   return true;
 }
 
-export function useFileSystem(noteData, setNoteData, setCustomFolders) {
+export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isElectron);
 
@@ -132,7 +136,13 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders) {
     const deleted = [...deletedNotes.current];
     for (const noteId of deleted) {
       try {
-        await window.electronAPI.deleteNoteFile(noteId);
+        const trashInfo = trashedNotesRef?.current?.get(noteId);
+        if (trashInfo) {
+          await window.electronAPI.trashNote(noteId, trashInfo.title, trashInfo.folder);
+          trashedNotesRef.current.delete(noteId);
+        } else {
+          await window.electronAPI.deleteNoteFile(noteId);
+        }
       } catch (err) {
         console.error("useFileSystem: delete failed", noteId, err);
       }

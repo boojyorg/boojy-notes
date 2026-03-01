@@ -1,7 +1,90 @@
-import { memo, useRef, useLayoutEffect } from "react";
+import { memo, useState, useRef, useLayoutEffect } from "react";
 import { BG, TEXT, ACCENT } from "../constants/colors";
+import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 
-const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, onCheckToggle, registerRef, syncGen, accentColor }) {
+function ImageBlock({ src, alt, onDelete, accentColor }) {
+  const [hovered, setHovered] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  // Resolve src — use boojy-att: protocol in Electron, raw src otherwise
+  const resolvedSrc = src
+    ? (src.startsWith("data:") ? src : `boojy-att://${src}`)
+    : "";
+
+  if (errored || !src) {
+    return (
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          position: "relative",
+          border: `1.5px dashed ${TEXT.muted}`,
+          borderRadius: 6,
+          padding: "24px 16px",
+          textAlign: "center",
+          color: TEXT.muted,
+          fontSize: 13,
+        }}
+      >
+        Image not found: {src || "(empty)"}
+        {hovered && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            style={{
+              position: "absolute", top: 6, right: 6,
+              width: 22, height: 22, borderRadius: "50%",
+              background: "rgba(0,0,0,0.7)", color: "#fff",
+              border: "none", cursor: "pointer", fontSize: 14,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1,
+            }}
+          >&times;</button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: "relative",
+        borderRadius: 6,
+        border: hovered ? `2px solid ${accentColor}` : "2px solid transparent",
+        transition: "border-color 0.15s",
+      }}
+    >
+      <img
+        src={resolvedSrc}
+        alt={alt || ""}
+        draggable="false"
+        loading="lazy"
+        onError={() => setErrored(true)}
+        style={{
+          display: "block",
+          maxWidth: "100%",
+          borderRadius: 6,
+        }}
+      />
+      {hovered && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{
+            position: "absolute", top: 8, right: 8,
+            width: 24, height: 24, borderRadius: "50%",
+            background: "rgba(0,0,0,0.7)", color: "#fff",
+            border: "none", cursor: "pointer", fontSize: 15,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            lineHeight: 1,
+          }}
+        >&times;</button>
+      )}
+    </div>
+  );
+}
+
+const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, onCheckToggle, onDeleteBlock, registerRef, syncGen, accentColor, fontSize, numberedIndex }) {
   const elRef = useRef(null);
 
   // Set text on mount and force-resync on undo/redo (syncGen changes)
@@ -10,7 +93,7 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
       if (block.text === "") {
         elRef.current.innerHTML = "<br>";
       } else {
-        elRef.current.innerText = block.text;
+        elRef.current.innerHTML = inlineMarkdownToHtml(block.text);
       }
     }
   }, [syncGen]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
@@ -24,10 +107,19 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
     return <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning style={{ padding: "8px 0", userSelect: "none" }}><hr style={{ border: "none", borderTop: `1px solid ${BG.divider}`, margin: 0 }} /></div>;
   }
 
+  if (block.type === "image") {
+    return (
+      <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
+        style={{ padding: "8px 0", userSelect: "none" }}>
+        <ImageBlock src={block.src} alt={block.alt} accentColor={accentColor} onDelete={() => onDeleteBlock(noteId, blockIndex)} />
+      </div>
+    );
+  }
+
   if (block.type === "p") {
     return (
-      <p ref={elRef} data-block-id={block.id} data-placeholder="Type / for commands..." style={{
-        margin: "0 0 6px", lineHeight: 1.7, color: TEXT.primary, fontSize: 14.5, outline: "none",
+      <p ref={elRef} data-block-id={block.id} data-placeholder="Type / for commands..." className={blockIndex === 0 && block.text === "" ? "empty-block" : undefined} style={{
+        margin: "0 0 6px", lineHeight: 1.7, color: TEXT.primary, fontSize, outline: "none",
       }} />
     );
   }
@@ -58,8 +150,19 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
 
   if (block.type === "bullet") {
     return (
-      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize: 14.5, lineHeight: 1.7 }}>
+      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize, lineHeight: 1.7 }}>
         <span contentEditable="false" suppressContentEditableWarning style={{ color: accentColor, marginTop: 6.5, flexShrink: 0, fontSize: 7, userSelect: "none" }}>{"\u25CF"}</span>
+        <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
+      </div>
+    );
+  }
+
+  if (block.type === "numbered") {
+    return (
+      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "2px 0", fontSize, lineHeight: 1.7 }}>
+        <span contentEditable="false" suppressContentEditableWarning style={{ color: TEXT.secondary, flexShrink: 0, fontSize, userSelect: "none", minWidth: 18, textAlign: "right" }}>
+          {numberedIndex}.
+        </span>
         <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
       </div>
     );
@@ -67,7 +170,7 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
 
   if (block.type === "checkbox") {
     return (
-      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize: 14.5, lineHeight: 1.6 }}>
+      <div data-block-id={block.id} suppressContentEditableWarning style={{ display: "flex", alignItems: "center", gap: 9, padding: "2.5px 0", fontSize, lineHeight: 1.6 }}>
         <div
           className="checkbox-box"
           contentEditable="false"
@@ -99,9 +202,14 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
   return prev.block.id === next.block.id
     && prev.block.type === next.block.type
     && prev.block.checked === next.block.checked
+    && prev.block.src === next.block.src
+    && prev.block.alt === next.block.alt
     && prev.blockIndex === next.blockIndex
     && prev.syncGen === next.syncGen
-    && prev.accentColor === next.accentColor;
+    && prev.accentColor === next.accentColor
+    && prev.fontSize === next.fontSize
+    && prev.numberedIndex === next.numberedIndex
+    && (prev.block.text === "") === (next.block.text === "");
 });
 
 export default EditableBlock;

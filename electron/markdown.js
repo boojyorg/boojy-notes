@@ -20,11 +20,17 @@ export function blocksToMarkdown(blocks) {
       case "bullet":
         lines.push(`- ${block.text || ""}`);
         break;
+      case "numbered":
+        lines.push(`1. ${block.text || ""}`);
+        break;
       case "checkbox":
         lines.push(`- [${block.checked ? "x" : " "}] ${block.text || ""}`);
         break;
       case "spacer":
         lines.push("---");
+        break;
+      case "image":
+        lines.push(`![${block.alt || ""}](${block.src || ""})`);
         break;
       default:
         lines.push(block.text || "");
@@ -47,6 +53,8 @@ export function markdownToBlocks(md) {
     } else if (/^- \[([ xX])\] /.test(line)) {
       const checked = line[3] !== " ";
       block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: line.slice(6), checked };
+    } else if (/^\d+\.\s/.test(line)) {
+      block = { id: `md-${++_parseBlockId}`, type: "numbered", text: line.replace(/^\d+\.\s/, "") };
     } else if (line.startsWith("- ")) {
       block = { id: `md-${++_parseBlockId}`, type: "bullet", text: line.slice(2) };
     } else if (line.startsWith("### ")) {
@@ -55,6 +63,9 @@ export function markdownToBlocks(md) {
       block = { id: `md-${++_parseBlockId}`, type: "h2", text: line.slice(3) };
     } else if (line.startsWith("# ")) {
       block = { id: `md-${++_parseBlockId}`, type: "h1", text: line.slice(2) };
+    } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
+      const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      block = { id: `md-${++_parseBlockId}`, type: "image", src: m[2], alt: m[1], text: "" };
     } else {
       block = { id: `md-${++_parseBlockId}`, type: "p", text: line };
     }
@@ -75,7 +86,9 @@ export function parseFrontmatter(content) {
     const idx = line.indexOf(": ");
     if (idx === -1) continue;
     const key = line.slice(0, idx).trim();
-    const val = line.slice(idx + 2).trim();
+    let val = line.slice(idx + 2).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+      val = val.slice(1, -1);
     meta[key] = val;
   }
 

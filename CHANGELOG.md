@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Features
+- **Trash / Recycling Bin** — Deleted notes move to a `.trash/` folder instead of being permanently destroyed; 30-day auto-purge on startup; collapsible Trash section in sidebar with age labels; right-click to Restore or Delete permanently; Empty Trash button; folder deletion moves all contained notes to trash individually; trash persists across restarts via `.boojy-trash-meta.json`
 - **Block drag reordering** — Hold any block 400ms to drag and reorder; multi-block drag with text selection; Escape to cancel; auto-scroll near edges; Ctrl+Z reverts the entire drag
 - **Sidebar drag reordering** — Hold notes/folders 400ms to reorder or move between folders; drop-into-folder with auto-expand; visual drop indicator line; order persists in `.boojy-meta.json`
 - **Image blocks** — Insert images into notes via drag & drop from file explorer, clipboard paste (screenshots via Win+Shift+S / Cmd+Shift+4), or `/image` slash command with native file picker; images render inline with hover controls (accent border + delete button); stored as `![alt](.attachments/noteId/file.png)` in markdown for Obsidian/VS Code portability
@@ -17,6 +18,7 @@
 - **Cmd/Ctrl+P** shortcut to open sidebar and focus search input
 
 ### Improvements
+- **Codebase refactor** — Split monolithic `BoojyNotes.jsx` (~3,500 lines) into 17 focused files: 9 custom hooks (`useHistory`, `useNoteNavigation`, `useNoteCrud`, `useBlockOperations`, `useInlineFormatting`, `usePanelResize`, `useBlockDrag`, `useSidebarDrag`, `useEditorHandlers`), 2 utility modules (`domHelpers`, `sidebarTree`), and 5 components (`TopBar`, `Sidebar`, `EditorArea`, `ContextMenu`, `SlashMenu`); main file reduced to ~810 lines as a thin orchestrator
 - Word count now strips markdown formatting tokens for accurate counts
 - Inline code renders with monospace font, subtle background, and border
 - Links render with accent color and subtle underline

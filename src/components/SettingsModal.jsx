@@ -541,7 +541,7 @@ export default function SettingsModal({ settingsOpen, setSettingsOpen, settingsT
               const statusLabel = syncState === "syncing" ? "Syncing\u2026" : syncState === "error" ? "Sync error" : syncState === "synced" ? "Synced" : "Idle";
               const dotColor = syncState === "syncing" ? accentColor : syncState === "error" ? SEMANTIC.error : syncState === "synced" ? "#4CAF50" : TEXT.muted;
               const storageMB = (storageUsed / (1024 * 1024)).toFixed(1);
-              const storagePct = Math.min(100, (storageUsed / (storageLimitMB * 1024 * 1024)) * 100);
+              const storagePct = storageLimitMB ? Math.min(100, (storageUsed / (storageLimitMB * 1024 * 1024)) * 100) : 0;
               const timeAgo = lastSynced ? (() => {
                 const diff = Date.now() - new Date(lastSynced).getTime();
                 if (diff < 60000) return "Just now";
@@ -573,7 +573,7 @@ export default function SettingsModal({ settingsOpen, setSettingsOpen, settingsT
                   <div style={{ marginTop: 12, marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontSize: 13, color: TEXT.muted }}>Storage</span>
-                      <span style={{ fontSize: 13, color: TEXT.secondary }}>{storageMB} / {storageLimitMB.toFixed(1)} MB</span>
+                      <span style={{ fontSize: 13, color: TEXT.secondary }}>{storageMB} / {storageLimitMB ? storageLimitMB.toFixed(1) : '—'} MB</span>
                     </div>
                     <div style={{ width: "100%", height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)" }}>
                       <div style={{ width: `${storagePct}%`, height: "100%", borderRadius: 3, background: accentColor, transition: "width 0.3s ease" }} />

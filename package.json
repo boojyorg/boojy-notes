@@ -1,7 +1,7 @@
 {
   "name": "boojy-notes",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Boojy Notes",
   "author": "Tyr Bujac",
   "type": "module",
@@ -26,5 +26,14 @@
     "vite": "^6.3.5",
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6"
+  },
+  "build": {
+    "appId": "org.boojy.notes",
+    "productName": "Boojy Notes",
+    "copyright": "Copyright 2026 Tyr Bujac",
+    "files": ["dist/**/*", "dist-electron/**/*", "assets/**/*"],
+    "win": { "target": ["nsis"], "icon": "assets/icon.png" },
+    "mac": { "target": ["dmg"], "icon": "assets/icon.png", "category": "public.app-category.productivity" },
+    "linux": { "target": ["AppImage"], "icon": "assets/icon.png" }
   }
 }
