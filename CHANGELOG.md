@@ -3,18 +3,49 @@
 ## Unreleased
 
 ### Features
+- **Block drag reordering** — Hold any block 400ms to drag and reorder; multi-block drag with text selection; Escape to cancel; auto-scroll near edges; Ctrl+Z reverts the entire drag
+- **Sidebar drag reordering** — Hold notes/folders 400ms to reorder or move between folders; drop-into-folder with auto-expand; visual drop indicator line; order persists in `.boojy-meta.json`
+- **Image blocks** — Insert images into notes via drag & drop from file explorer, clipboard paste (screenshots via Win+Shift+S / Cmd+Shift+4), or `/image` slash command with native file picker; images render inline with hover controls (accent border + delete button); stored as `![alt](.attachments/noteId/file.png)` in markdown for Obsidian/VS Code portability
+- **Image storage** — Images saved to `.attachments/{noteId}/` directory inside the vault; `boojy-att:` custom protocol resolves paths efficiently without base64 overhead; attachment directories cleaned up automatically on note deletion
+- **Inline formatting** — Bold (`Ctrl+B`), Italic (`Ctrl+I`), and Inline Code (`` Ctrl+` ``) via keyboard shortcuts or floating toolbar; stored as markdown tokens (`**bold**`, `*italic*`, `` `code` ``) in block text for full .md file compatibility
+- **Floating toolbar** — Notion-style bubble toolbar appears above selected text with Bold, Italic, Code, and Link buttons; shows active format state; disappears on selection collapse
+- **Links** — Markdown links `[text](url)` and bare `https://` URLs auto-render as clickable links; Ctrl+Click opens in browser; Link button in toolbar prompts for URL
+- **Numbered lists** — Type `1. ` to create a numbered list; auto-numbering across consecutive numbered blocks; Enter continues the list; empty item + Enter converts to paragraph; `/numbered` slash command; persists as `1. text` in .md files
+- **Rich paste** — Pasting HTML from web pages preserves bold, italic, and code formatting while stripping all other tags
 - **Arrow key navigation between blocks** — ArrowUp/Down now moves the cursor between blocks when at the first/last line of a block (Obsidian-like behavior); ArrowUp from the first block still moves to the title; spacer blocks are skipped
+- **Cmd/Ctrl+N** shortcut to create a new note from anywhere
+- **Cmd/Ctrl+P** shortcut to open sidebar and focus search input
+
+### Improvements
+- Word count now strips markdown formatting tokens for accurate counts
+- Inline code renders with monospace font, subtle background, and border
+- Links render with accent color and subtle underline
 
 ### Bug Fixes
 - Fix Enter on empty blocks appearing to do nothing — when `beforeText` is empty, `el.innerText = ""` stripped the `<br>` that gives empty blocks visible height, collapsing the old block to 0px; now sets `el.innerHTML = "<br>"` instead, keeping the block visible so the new line appears below
 - Add missing app icon (`assets/icon.png`) and fix icon path in `electron/main.js` — the previous `build/icon.png` path was gitignored, so a fresh clone couldn't display the window icon
+- Fix `setTabStyleB` crash on Ctrl+, — reference was stale after state rename to `tabFlip`
+- Fix Settings crash when `storageLimitMB` is null/undefined — guard `storagePct` calculation and display
+- Fix frontmatter parser not stripping surrounding quotes from YAML values
+- Fix placeholder text ("Type / for commands...") never showing — `:empty` CSS pseudo-class doesn't match elements containing `<br>`; switched to `.empty-block` class driven by React state
+- Fix font size setting not applying to editor — pass `settingsFontSize` through to `EditableBlock`
+- Add delete confirmation dialog to prevent accidental note deletion
 
 ### Improvements
+- Placeholder text ("Type / for commands...") now only appears on the first block of a note, reducing visual clutter on subsequent empty blocks
+- Placeholder cursor now appears at the left edge instead of after the text — the hint renders as a faded overlay behind the blinking cursor
 - Move brand assets (`boojy-logo.png`, `boojy-notes-text-N.png`, `boojy-notes.text-tes.png`) from repo root into `assets/`; delete unused `boojy-notes-full-name-text-logo.png` and `boojy-notes-settings-circle.png`; update all `<img src>` references
 - Archive Flutter platform scaffolding to `flutter-templates` branch and remove local Flutter directories (`android/`, `macos/`, `windows/`, `ui/`, `.dart_tool/`, `build/`) from working tree
-
-### Improvements
 - Split `boojy-notes-mockup.jsx` monolith (3,344 lines) into focused modules under `src/`: constants (`colors.js`, `data.js`), utils (`colorUtils.js`, `storage.js`, `random.js`), components (`Icons.jsx`, `StarField.jsx`, `EditableBlock.jsx`, `SettingsModal.jsx`), and main component (`BoojyNotes.jsx`); no logic changes
+- Gate dev tools (overlay, gear button, toast, Ctrl+. / Ctrl+,) behind `import.meta.env.DEV` — stripped from production builds
+- Gate `console.warn` debug logging behind `import.meta.env.DEV`
+- Remove unused icon imports (`NewNoteIcon`, `NewFolderIcon`, `TrashIcon`)
+- Remove non-functional Trash button from sidebar (no trash feature exists)
+- Remove non-functional help `?` button from top bar (no help content exists)
+- Add click-outside dismiss for slash command menu
+- Custom Electron menu — strips "Toggle Developer Tools" from production builds
+- Set `app.setName("Boojy Notes")` for proper OS display
+- Bump version to `0.1.0`; add `electron-builder` config for Windows/macOS/Linux packaging
 
 ### Bug Fixes
 - Fix editor focus on new blank notes — cursor now appears reliably on first interaction; root cause was `placeCaret` mutating DOM (`<br>` → text node) during focus transitions, which destabilised browser selection state; `placeCaret` is now a pure selection operation (uses element-level `range.setStart(el, 0)` for `<br>` elements), `handleEditorKeyDown` recovers cursor when `rangeCount === 0` instead of silently swallowing keystrokes, removed `suppressEditorFocus` complexity in favour of a `mouseIsDown` ref that lets `handleEditorFocus` defer to `handleEditorMouseUp` during clicks, and added `console.warn` debug logging at all recovery points

@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   deleteNoteFile: (noteId) => ipcRenderer.invoke("delete-note-file", noteId),
+  saveImage: (data) => ipcRenderer.invoke("save-image", data),
+  pickImageFile: () => ipcRenderer.invoke("pick-image-file"),
+  readMeta: (folderRelPath) => ipcRenderer.invoke("read-meta", folderRelPath),
+  writeMeta: (folderRelPath, meta) => ipcRenderer.invoke("write-meta", folderRelPath, meta),
 
   onFileChanged: (callback) => {
     const handler = (_event, note) => callback(note);

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, Menu, protocol, net } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -87,6 +87,7 @@ function readAllNotes(notesDir) {
 
   function walk(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".")) continue; // skip dotfiles/dirs (.attachments, etc.)
       if (entry.isDirectory()) {
         walk(path.join(dir, entry.name));
       } else if (entry.name.endsWith(".md")) {
@@ -339,6 +340,9 @@ ipcMain.handle("delete-note-file", (_event, noteId) => {
         // dir not empty
       }
     }
+    // Clean up attachments for this note
+    const attDir = path.join(notesDir, ".attachments", noteId);
+    try { fs.rmSync(attDir, { recursive: true, force: true }); } catch { /* no attachments */ }
     delete _idIndex[noteId];
     saveIndex(notesDir);
     return { deleted: true };
@@ -347,9 +351,117 @@ ipcMain.handle("delete-note-file", (_event, noteId) => {
   }
 });
 
+ipcMain.handle("save-image", (_event, { noteId, fileName, dataBase64 }) => {
+  const notesDir = getNotesDir();
+  const attDir = path.join(notesDir, ".attachments", noteId);
+  fs.mkdirSync(attDir, { recursive: true });
+  const safeName = sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
+  const finalPath = ensureUniqueFilePath(path.join(attDir, safeName));
+  fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
+  // Return relative path from vault root (forward slashes for markdown)
+  return path.relative(notesDir, finalPath).replace(/\\/g, "/");
+});
+
+ipcMain.handle("read-meta", (_event, folderRelPath) => {
+  const metaPath = path.join(getNotesDir(), folderRelPath || "", ".boojy-meta.json");
+  try { return JSON.parse(fs.readFileSync(metaPath, "utf-8")); }
+  catch { return null; }
+});
+
+ipcMain.handle("write-meta", (_event, folderRelPath, meta) => {
+  const dir = path.join(getNotesDir(), folderRelPath || "");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, ".boojy-meta.json"), JSON.stringify(meta, null, 2));
+});
+
+ipcMain.handle("pick-image-file", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  const filePath = result.filePaths[0];
+  const dataBase64 = fs.readFileSync(filePath).toString("base64");
+  return { fileName: path.basename(filePath), dataBase64 };
+});
+
 // ─── App lifecycle ───
 
 app.whenReady().then(() => {
+  app.setName("Boojy Notes");
+
+  // Custom protocol for resolving attachment paths to actual files
+  protocol.handle("boojy-att", (request) => {
+    const relativePath = decodeURIComponent(request.url.slice("boojy-att://".length));
+    const absPath = path.join(getNotesDir(), relativePath);
+    return net.fetch("file://" + absPath.replace(/\\/g, "/"));
+  });
+
+  // Build custom menu (strips devTools from production builds)
+  const isDev = !!process.env.VITE_DEV_SERVER_URL;
+  const template = [
+    ...(process.platform === "darwin" ? [{
+      label: "Boojy Notes",
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    }] : []),
+    {
+      label: "File",
+      submenu: [
+        process.platform === "darwin" ? { role: "close" } : { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        ...(isDev ? [{ role: "toggleDevTools" }] : []),
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        ...(process.platform === "darwin" ? [
+          { type: "separator" },
+          { role: "front" },
+        ] : [
+          { role: "close" },
+        ]),
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+
   createWindow();
   startWatcher();
 
