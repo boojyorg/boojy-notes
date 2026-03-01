@@ -738,7 +738,11 @@ export default function BoojyNotes() {
       const postDiv = document.createElement("div");
       postDiv.appendChild(postRange.cloneContents());
       const afterText = postDiv.innerText;
-      el.innerText = beforeText;
+      if (beforeText === "") {
+        el.innerHTML = "<br>";
+      } else {
+        el.innerText = beforeText;
+      }
       updateBlockText(noteId, blockIndex, beforeText);
       // Continue list type, or plain paragraph for other blocks
       insertBlockAfter(noteId, blockIndex, isList ? blockType : "p", afterText);
@@ -787,8 +791,8 @@ export default function BoojyNotes() {
       }
     }
 
-    // Arrow up — only handle: move to title from first block
-    if (e.key === "ArrowUp" && blockIndex === 0) {
+    // Arrow up — move to previous block (or title from first block)
+    if (e.key === "ArrowUp") {
       const sel = window.getSelection();
       if (sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
@@ -796,7 +800,35 @@ export default function BoojyNotes() {
         const elRect = el.getBoundingClientRect();
         if (rect.top - elRect.top < 5) {
           e.preventDefault();
-          titleRef.current?.focus();
+          if (blockIndex === 0) {
+            titleRef.current?.focus();
+          } else {
+            let prevIdx = blockIndex - 1;
+            while (prevIdx >= 0 && blocks[prevIdx].type === "spacer") prevIdx--;
+            if (prevIdx >= 0) {
+              const prevEl = blockRefs.current[blocks[prevIdx].id];
+              if (prevEl) placeCaret(prevEl, (blocks[prevIdx].text || "").length);
+            }
+          }
+        }
+      }
+    }
+
+    // Arrow down — move to next block
+    if (e.key === "ArrowDown") {
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        if (elRect.bottom - rect.bottom < 5) {
+          let nextIdx = blockIndex + 1;
+          while (nextIdx < blocks.length && blocks[nextIdx].type === "spacer") nextIdx++;
+          if (nextIdx < blocks.length) {
+            e.preventDefault();
+            const nextEl = blockRefs.current[blocks[nextIdx].id];
+            if (nextEl) placeCaret(nextEl, 0);
+          }
         }
       }
     }
