@@ -20,7 +20,7 @@ function blocksEqual(a, b) {
   return true;
 }
 
-export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef) {
+export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isElectron);
 
@@ -161,20 +161,30 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNo
       if (!note?.id) return;
       // Strip internal _filePath from the note before setting state
       const { _filePath, ...cleanNote } = note;
+
+      // Check if content actually changed before queueing state update —
+      // avoids block ID churn when chokidar echoes back a file we just wrote
+      const existing = noteDataRef.current[cleanNote.id];
+      if (existing && blocksEqual(existing.content?.blocks, cleanNote.content?.blocks)
+          && existing.title === cleanNote.title
+          && existing.folder === cleanNote.folder) {
+        return; // Nothing changed, skip entirely
+      }
+
       isExternalUpdate.current = true;
-      setNoteData((prev) => {
-        const existing = prev[cleanNote.id];
-        // Skip update if content is structurally identical — avoids block ID churn
-        // when chokidar echoes back a file we just wrote (markdownToBlocks generates
-        // new IDs each time, which would cause React key changes → unmount/remount)
-        if (existing && blocksEqual(existing.content?.blocks, cleanNote.content?.blocks)
-            && existing.title === cleanNote.title
-            && existing.folder === cleanNote.folder) {
-          isExternalUpdate.current = false; // Nothing changed, reset flag
-          return prev;
-        }
-        return { ...prev, [cleanNote.id]: cleanNote };
-      });
+      setNoteData((prev) => ({ ...prev, [cleanNote.id]: cleanNote }));
+
+      // Bump syncGeneration so EditableBlock re-syncs DOM from new block data
+      if (syncGeneration) {
+        syncGeneration.current++;
+      }
+      // If the note lives in a folder, ensure that folder exists in customFolders
+      if (cleanNote.folder) {
+        setCustomFolders((prev) => {
+          if (prev.includes(cleanNote.folder)) return prev;
+          return [...prev, cleanNote.folder];
+        });
+      }
     });
 
     const unsubDelete = window.electronAPI.onFileDeleted(({ filePath }) => {
@@ -187,6 +197,18 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNo
           const diskNotes = await window.electronAPI.readAllNotes();
           isExternalUpdate.current = true;
           setNoteData(diskNotes);
+          // Sync customFolders with what's actually on disk
+          const folders = new Set();
+          for (const n of Object.values(diskNotes)) {
+            if (n.folder) folders.add(n.folder);
+          }
+          if (folders.size > 0) {
+            setCustomFolders((prev) => {
+              const merged = new Set([...prev, ...folders]);
+              if (merged.size === prev.length) return prev;
+              return [...merged];
+            });
+          }
         } catch (err) {
           console.error("useFileSystem: re-read after delete failed", err);
         }

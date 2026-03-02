@@ -1,11 +1,10 @@
 import { useState, useRef } from "react";
 
-export function useHistory(noteData, setNoteData) {
+export function useHistory(noteData, setNoteData, syncGeneration) {
   const undoStack = useRef([]);
   const redoStack = useRef([]);
   const historyTimer = useRef(null);
   const isUndoRedo = useRef(false);
-  const syncGeneration = useRef(0);
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
   const [canUndo, setCanUndo] = useState(false);
@@ -69,6 +68,6 @@ export function useHistory(noteData, setNoteData) {
     canUndo, canRedo, undo, redo,
     commitNoteData, commitTextChange,
     pushHistory, popHistory,
-    syncGeneration, isUndoRedo, noteDataRef,
+    isUndoRedo, noteDataRef,
   };
 }

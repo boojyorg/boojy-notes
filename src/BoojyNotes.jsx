@@ -11,6 +11,7 @@ import { usePanelResize } from "./hooks/usePanelResize";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
+import { useTerminal } from "./hooks/useTerminal";
 import { BG, TEXT, ACCENT, SEMANTIC, BRAND } from "./constants/colors";
 import { FOLDER_TREE } from "./constants/data";
 import { hexToRgb, rgbToHex } from "./utils/colorUtils";
@@ -24,6 +25,7 @@ import SlashMenu from "./components/SlashMenu";
 import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import EditorArea from "./components/EditorArea";
+import TerminalPanel from "./components/terminal/TerminalPanel";
 
 export default function BoojyNotes() {
   // ── State ──────────────────────────────────────────────────────────
@@ -132,12 +134,15 @@ export default function BoojyNotes() {
   const editorScrollRef = useRef(null);
   const sidebarScrollRef = useRef(null);
 
+  // ── Shared refs ─────────────────────────────────────────────────────
+  const syncGeneration = useRef(0);
+
   // ── External hooks ──────────────────────────────────────────────────
   const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(user, profile, noteData, setNoteData);
-  const { isElectron: isDesktop, notesDir, loading: fsLoading, changeNotesDir } = useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef);
+  const { isElectron: isDesktop, notesDir, loading: fsLoading, changeNotesDir } = useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration);
 
   // ── App hooks ───────────────────────────────────────────────────────
-  const { canUndo, canRedo, undo, redo, commitNoteData, commitTextChange, pushHistory, popHistory, syncGeneration, isUndoRedo, noteDataRef } = useHistory(noteData, setNoteData);
+  const { canUndo, canRedo, undo, redo, commitNoteData, commitTextChange, pushHistory, popHistory, isUndoRedo, noteDataRef } = useHistory(noteData, setNoteData, syncGeneration);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({ activeNote, setActiveNote, tabs, setTabs, expanded, setExpanded });
   const { createNote, deleteNote, duplicateNote, renameFolder, deleteFolder, restoreNote, permanentDeleteNote, emptyAllTrash, createFolder } = useNoteCrud({ commitNoteData, noteDataRef, setTabs, setActiveNote, activeNote, setCustomFolders, customFolders, setExpanded, titleRef, trashedNotesRef, setTrashedNotes, setRenamingFolder });
   const { updateBlockText, insertBlockAfter, deleteBlock, insertImageBlock, saveAndInsertImage, flipCheck, registerBlockRef } = useBlockOperations({ commitNoteData, commitTextChange, blockRefs, focusBlockId, focusCursorPos });
@@ -146,6 +151,7 @@ export default function BoojyNotes() {
   const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({ noteDataRef, activeNote, setNoteData, pushHistory, popHistory, blockRefs, editorRef, editorScrollRef, accentColor, editorBg, setDragTooltip, dragTooltipCount, setToolbarState });
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder } = useSidebarDrag({ noteDataRef, setNoteData, expanded, setExpanded, sidebarOrder, setSidebarOrder, customFolders, sidebarScrollRef, accentColor, chromeBg, setDragTooltip, dragTooltipCount });
   const { handleEditorKeyDown, handleEditorInput, handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus, handleEditorPaste, handleEditorDragOver, handleEditorDrop, executeSlashCommand } = useEditorHandlers({ noteDataRef, activeNote, commitNoteData, commitTextChange, blockRefs, editorRef, focusBlockId, focusCursorPos, slashMenuRef, setSlashMenu, syncGeneration, updateBlockText, insertBlockAfter, deleteBlock, saveAndInsertImage, reReadBlockFromDom, toggleInlineCode, mouseIsDown, setToolbarState });
+  const { terminals, activeTerminalId, setActiveTerminalId, xtermInstances, createTerminal, closeTerminal, renameTerminal, restartTerminal, clearTerminal, markExited } = useTerminal();
 
   // ── Effects ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -170,11 +176,12 @@ export default function BoojyNotes() {
     return () => clearTimeout(t);
   }, [activeNote]);
 
+  const currentTitle = noteData[activeNote]?.content?.title;
   useLayoutEffect(() => {
-    if (titleRef.current && noteData[activeNote]) {
-      titleRef.current.innerText = noteData[activeNote].content.title;
+    if (titleRef.current && currentTitle !== undefined) {
+      titleRef.current.innerText = currentTitle;
     }
-  }, [activeNote]);
+  }, [activeNote, currentTitle]);
 
   useEffect(() => {
     const el = tabScrollRef.current;
@@ -200,6 +207,13 @@ export default function BoojyNotes() {
         setTimeout(() => searchInputRef.current?.focus(), 250);
         return;
       }
+      if (mod && e.key === "\\") { e.preventDefault(); setRightPanel(v => !v); return; }
+      if (mod && e.shiftKey && (e.key === "T" || e.key === "t")) {
+        if (rightPanel) { e.preventDefault(); createTerminal(); return; }
+      }
+      if (mod && e.shiftKey && (e.key === "W" || e.key === "w")) {
+        if (rightPanel && activeTerminalId) { e.preventDefault(); closeTerminal(activeTerminalId); return; }
+      }
       if (import.meta.env.DEV && mod && e.key === ".") { e.preventDefault(); setDevOverlay(v => !v); }
       if (import.meta.env.DEV && mod && e.key === ",") {
         e.preventDefault();
@@ -213,7 +227,7 @@ export default function BoojyNotes() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [settingsOpen]);
+  }, [settingsOpen, rightPanel, activeTerminalId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -474,36 +488,39 @@ export default function BoojyNotes() {
           onMouseDown={startRightDrag}
           style={{
             width: 4, cursor: "col-resize",
-            background: chromeBg,
-            borderLeft: `1px solid ${BG.divider}`,
+            background: BG.editor,
             flexShrink: 0, transition: "background 0.15s",
-            marginRight: -1, position: "relative", zIndex: 1,
           }}
           onMouseEnter={() => rightPanelHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
-          onMouseLeave={() => { if (!isDragging.current) rightPanelHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
+          onMouseLeave={() => { if (!isDragging.current) { rightPanelHandles.current[0] && (rightPanelHandles.current[0].style.background = chromeBg); rightPanelHandles.current[1] && (rightPanelHandles.current[1].style.background = BG.editor); } }}
         />
 
         {/* Right panel */}
         <div style={{
           width: rightPanel ? rightPanelWidth : 0,
           minWidth: rightPanel ? rightPanelWidth : 0,
-          background: chromeBg,
+          background: BG.editor,
           display: "flex", flexDirection: "column",
           overflow: "hidden", flexShrink: 0,
           position: "relative",
+          borderLeft: `1px solid ${BG.divider}`,
           transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
         }}>
-          <div style={{
-            padding: "10px 16px", borderBottom: `1px solid ${BG.divider}`,
-            fontSize: 12, color: TEXT.muted, fontWeight: 500, letterSpacing: "0.3px",
-          }}>Terminal</div>
-          <div style={{
-            flex: 1, padding: 16,
-            fontFamily: "'SF Mono', 'Fira Code', monospace",
-            fontSize: 12, color: TEXT.muted, lineHeight: 1.6,
-          }}>
-            <span style={{ color: ACCENT.primary }}>~</span> <span style={{ opacity: 0.5 }}>$</span> <span style={{ animation: "blink 1s step-end infinite", color: TEXT.primary }}>{"\u258E"}</span>
-          </div>
+          <TerminalPanel
+            terminals={terminals}
+            activeTerminalId={activeTerminalId}
+            setActiveTerminalId={setActiveTerminalId}
+            xtermInstances={xtermInstances}
+            createTerminal={createTerminal}
+            closeTerminal={closeTerminal}
+            renameTerminal={renameTerminal}
+            restartTerminal={restartTerminal}
+            clearTerminal={clearTerminal}
+            markExited={markExited}
+            chromeBg={chromeBg}
+            activeTabBg={activeTabBg}
+            isOpen={rightPanel}
+          />
         </div>
       </div>
 
@@ -729,6 +746,8 @@ export default function BoojyNotes() {
       })()}
 
       <style>{`
+        .titlebar-drag { -webkit-app-region: drag; -webkit-user-select: none; user-select: none; }
+        .no-drag { -webkit-app-region: no-drag; }
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes syncGlow {
           0%, 100% { box-shadow: 0 0 4px ${BRAND.orange}40; }

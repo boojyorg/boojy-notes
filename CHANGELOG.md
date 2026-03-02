@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Live file sync — editor blocks** — External file changes (terminal, Finder, other editors) now update the editor's contentEditable DOM by bumping a shared `syncGeneration` counter, ensuring `EditableBlock` re-syncs its innerHTML
+- **Live file sync — title** — Renaming a note's `.md` file externally now updates the title bar; `useLayoutEffect` dependency includes the actual title text instead of only the active note ID
+- **Live file sync — new folders** — Creating files in new folders externally now makes both the folder and note appear in the sidebar; `onFileChanged` adds unknown folders to `customFolders`, and `onFileDeleted` re-merges folders after re-read
+
 ### Features
+- **Integrated terminal** — Fully functional multi-instance terminal in the right panel powered by `node-pty` + `xterm.js`; tabbed interface matching the note tab design; spawn real PTY sessions (zsh/bash) with 256-color support; `Cmd+\` toggles panel, `Cmd+Shift+T` creates new terminal, `Cmd+Shift+W` closes active terminal, `Cmd+K` clears, `Cmd+F` searches output; tab context menu with Rename, Clear, Restart, Kill; clickable URLs open in browser; auto-resizes with panel; press Enter to restart exited processes; PTYs cleaned up on app quit
+- **Draggable title bar** — Hold non-interactive areas of the top bar to move the window; buttons, tabs, and resize handles remain fully clickable
 - **Trash / Recycling Bin** — Deleted notes move to a `.trash/` folder instead of being permanently destroyed; 30-day auto-purge on startup; collapsible Trash section in sidebar with age labels; right-click to Restore or Delete permanently; Empty Trash button; folder deletion moves all contained notes to trash individually; trash persists across restarts via `.boojy-trash-meta.json`
 - **Block drag reordering** — Hold any block 400ms to drag and reorder; multi-block drag with text selection; Escape to cancel; auto-scroll near edges; Ctrl+Z reverts the entire drag
 - **Sidebar drag reordering** — Hold notes/folders 400ms to reorder or move between folders; drop-into-folder with auto-expand; visual drop indicator line; order persists in `.boojy-meta.json`
@@ -16,6 +23,9 @@
 - **Arrow key navigation between blocks** — ArrowUp/Down now moves the cursor between blocks when at the first/last line of a block (Obsidian-like behavior); ArrowUp from the first block still moves to the title; spacer blocks are skipped
 - **Cmd/Ctrl+N** shortcut to create a new note from anywhere
 - **Cmd/Ctrl+P** shortcut to open sidebar and focus search input
+
+### Performance
+- **Instant terminal startup** — Pre-spawns a warm PTY in the background 2 seconds after app launch; when the user opens a terminal, the already-running shell is claimed instantly instead of waiting 1-3s for `pty.spawn()` + shell init; pool auto-refills after each claim; falls back to normal spawn if no warm PTY is available; warm PTYs cleaned up on app quit
 
 ### Improvements
 - **Codebase refactor** — Split monolithic `BoojyNotes.jsx` (~3,500 lines) into 17 focused files: 9 custom hooks (`useHistory`, `useNoteNavigation`, `useNoteCrud`, `useBlockOperations`, `useInlineFormatting`, `usePanelResize`, `useBlockDrag`, `useSidebarDrag`, `useEditorHandlers`), 2 utility modules (`domHelpers`, `sidebarTree`), and 5 components (`TopBar`, `Sidebar`, `EditorArea`, `ContextMenu`, `SlashMenu`); main file reduced to ~810 lines as a thin orchestrator
