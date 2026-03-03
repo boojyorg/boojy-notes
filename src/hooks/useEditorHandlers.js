@@ -11,7 +11,9 @@ export function useEditorHandlers({
   syncGeneration,
   updateBlockText, insertBlockAfter, deleteBlock, saveAndInsertImage,
   reReadBlockFromDom, toggleInlineCode,
+  applyFormat,
   mouseIsDown, setToolbarState,
+  onOpenLinkEditor,
 }) {
   // Helper to get blocks and call getBlockFromNode with current refs
   const getBlock = (node) => {
@@ -62,6 +64,63 @@ export function useEditorHandlers({
       return;
     }
 
+    // Code block slash command — create special block
+    if (command.type === "code") {
+      if (el) el.innerHTML = "<br>";
+      const codeBlock = { ...block, text: "", type: "code", lang: "" };
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blks = [...n.content.blocks];
+        blks.splice(blockIndex, 1, codeBlock, paraBlock);
+        n.content = { ...n.content, blocks: blks };
+        next[noteId] = n;
+        return next;
+      });
+      focusBlockId.current = paraBlock.id;
+      focusCursorPos.current = 0;
+      return;
+    }
+
+    // Callout slash command
+    if (command.type === "callout") {
+      if (el) el.innerHTML = "<br>";
+      const calloutBlock = { ...block, text: "", type: "callout", calloutType: command.calloutType || "note", title: "" };
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blks = [...n.content.blocks];
+        blks.splice(blockIndex, 1, calloutBlock, paraBlock);
+        n.content = { ...n.content, blocks: blks };
+        next[noteId] = n;
+        return next;
+      });
+      focusBlockId.current = paraBlock.id;
+      focusCursorPos.current = 0;
+      return;
+    }
+
+    // Table slash command
+    if (command.type === "table") {
+      if (el) el.innerHTML = "<br>";
+      const tableBlock = { ...block, text: "", type: "table", rows: [["Column 1", "Column 2", "Column 3"], ["", "", ""]] };
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      commitNoteData(prev => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blks = [...n.content.blocks];
+        blks.splice(blockIndex, 1, tableBlock, paraBlock);
+        n.content = { ...n.content, blocks: blks };
+        next[noteId] = n;
+        return next;
+      });
+      focusBlockId.current = paraBlock.id;
+      focusCursorPos.current = 0;
+      return;
+    }
+
     if (el) el.innerHTML = "<br>";
     commitNoteData(prev => {
       const next = { ...prev };
@@ -103,10 +162,31 @@ export function useEditorHandlers({
       { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
       { regex: new RegExp(`^1\\.${S}$`), type: "numbered" },
       { regex: /^---$/, type: "spacer" },
+      { regex: /^```/, type: "code" },
     ];
     const currentBlock = noteDataRef.current[noteId].content.blocks[blockIndex];
     for (const pat of mdPatterns) {
       if (pat.regex.test(text)) {
+        // Code block auto-conversion
+        if (pat.type === "code") {
+          el.innerHTML = "<br>";
+          const lang = text.slice(3).trim();
+          const codeBlock = { ...currentBlock, text: "", type: "code", lang };
+          const paraBlock = { id: genBlockId(), type: "p", text: "" };
+          commitNoteData(prev => {
+            const next = { ...prev };
+            const n = { ...next[noteId] };
+            const blks = [...n.content.blocks];
+            blks.splice(blockIndex, 1, codeBlock, paraBlock);
+            n.content = { ...n.content, blocks: blks };
+            next[noteId] = n;
+            return next;
+          });
+          focusBlockId.current = paraBlock.id;
+          focusCursorPos.current = 0;
+          return;
+        }
+
         el.innerHTML = "<br>";
         commitNoteData(prev => {
           const next = { ...prev };
@@ -140,6 +220,15 @@ export function useEditorHandlers({
         setSlashMenu(prev => prev ? { ...prev, filter: trimmed.slice(1), selectedIndex: 0 } : null);
       } else {
         setSlashMenu(null);
+      }
+    }
+
+    // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it
+    if (/https?:\/\/\S+\s$/.test(text) || /https?:\/\/\S+\s/.test(text)) {
+      // Check if the DOM already has it as a link (avoid re-render loop)
+      const hasUnstyledUrl = !el.querySelector("a.external-link");
+      if (hasUnstyledUrl && /https?:\/\//.test(text)) {
+        syncGeneration.current++;
       }
     }
   };
@@ -417,6 +506,21 @@ export function useEditorHandlers({
       reReadBlockFromDom(sel);
       return;
     }
+    if (mod && e.shiftKey && (e.key === "S" || e.key === "s")) {
+      e.preventDefault();
+      applyFormat("strikethrough");
+      return;
+    }
+    if (mod && e.shiftKey && (e.key === "H" || e.key === "h")) {
+      e.preventDefault();
+      applyFormat("highlight");
+      return;
+    }
+    if (mod && (e.key === "k" || e.key === "K") && !e.shiftKey) {
+      e.preventDefault();
+      if (onOpenLinkEditor) onOpenLinkEditor();
+      return;
+    }
 
     if (!range.collapsed) {
       const startInfo = getBlock(range.startContainer);
@@ -548,9 +652,60 @@ export function useEditorHandlers({
       }
     }
 
+    const textData = e.clipboardData.getData("text/plain");
+
+    // Smart paste: URL over selected text → create markdown link
+    if (/^https?:\/\/\S+$/.test(textData.trim())) {
+      e.preventDefault();
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const url = textData.trim();
+
+      if (!sel.isCollapsed) {
+        // Selection exists: wrap selected text as [text](url)
+        const selectedText = sel.toString();
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const a = document.createElement("a");
+        a.href = url;
+        a.className = "external-link";
+        a.setAttribute("data-url", url);
+        a.textContent = selectedText;
+        const icon = document.createElement("span");
+        icon.className = "external-link-icon";
+        icon.contentEditable = "false";
+        icon.textContent = "\u2197";
+        a.appendChild(icon);
+        range.insertNode(a);
+        range.setStartAfter(a);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        // No selection: insert bare URL as link
+        const range = sel.getRangeAt(0);
+        const a = document.createElement("a");
+        a.href = url;
+        a.className = "external-link bare-url";
+        a.setAttribute("data-url", url);
+        a.textContent = url;
+        const icon = document.createElement("span");
+        icon.className = "external-link-icon";
+        icon.contentEditable = "false";
+        icon.textContent = "\u2197";
+        a.appendChild(icon);
+        range.insertNode(a);
+        range.setStartAfter(a);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      reReadBlockFromDom();
+      return;
+    }
+
     e.preventDefault();
     const htmlData = e.clipboardData.getData("text/html");
-    const textData = e.clipboardData.getData("text/plain");
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
     const range = sel.getRangeAt(0);

@@ -1,6 +1,10 @@
 import { memo, useState, useRef, useLayoutEffect } from "react";
 import { BG, TEXT, ACCENT } from "../constants/colors";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
+import CodeBlock from "./CodeBlock";
+import FrontmatterBlock from "./FrontmatterBlock";
+import CalloutBlock from "./CalloutBlock";
+import TableBlock from "./TableBlock";
 
 function ImageBlock({ src, alt, onDelete, accentColor }) {
   const [hovered, setHovered] = useState(false);
@@ -84,7 +88,7 @@ function ImageBlock({ src, alt, onDelete, accentColor }) {
   );
 }
 
-const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, onCheckToggle, onDeleteBlock, registerRef, syncGen, accentColor, fontSize, numberedIndex }) {
+const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, onCheckToggle, onDeleteBlock, registerRef, syncGen, accentColor, fontSize, numberedIndex, onUpdateCode, onUpdateLang, onUpdateCallout, onUpdateTableRows, noteTitleSet, onBlockNav }) {
   const elRef = useRef(null);
 
   // Set text on mount and force-resync on undo/redo (syncGen changes)
@@ -93,10 +97,10 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
       if (block.text === "") {
         elRef.current.innerHTML = "<br>";
       } else {
-        elRef.current.innerHTML = inlineMarkdownToHtml(block.text);
+        elRef.current.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
       }
     }
-  }, [syncGen]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
+  }, [syncGen, noteTitleSet]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
   useLayoutEffect(() => {
     if (elRef.current) registerRef(block.id, elRef.current);
@@ -112,6 +116,62 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
       <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
         style={{ padding: "8px 0", userSelect: "none" }}>
         <ImageBlock src={block.src} alt={block.alt} accentColor={accentColor} onDelete={() => onDeleteBlock(noteId, blockIndex)} />
+      </div>
+    );
+  }
+
+  if (block.type === "code") {
+    return (
+      <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
+        style={{ userSelect: "none" }}>
+        <CodeBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          onUpdateCode={onUpdateCode}
+          onUpdateLang={onUpdateLang}
+          onBlockNav={onBlockNav}
+          onDelete={(idx) => onDeleteBlock(noteId, idx)}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === "frontmatter") {
+    return (
+      <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
+        style={{ userSelect: "none" }}>
+        <FrontmatterBlock block={block} />
+      </div>
+    );
+  }
+
+  if (block.type === "callout") {
+    return (
+      <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
+        style={{ userSelect: "none" }}>
+        <CalloutBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          onUpdateCallout={onUpdateCallout}
+          onBlockNav={onBlockNav}
+          onDelete={(idx) => onDeleteBlock(noteId, idx)}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === "table") {
+    return (
+      <div data-block-id={block.id} contentEditable="false" suppressContentEditableWarning
+        style={{ userSelect: "none" }}>
+        <TableBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          onUpdateTableRows={onUpdateTableRows}
+        />
       </div>
     );
   }
@@ -204,12 +264,19 @@ const EditableBlock = memo(function EditableBlock({ block, blockIndex, noteId, o
     && prev.block.checked === next.block.checked
     && prev.block.src === next.block.src
     && prev.block.alt === next.block.alt
+    && prev.block.lang === next.block.lang
+    && prev.block.calloutType === next.block.calloutType
+    && prev.block.calloutTypeRaw === next.block.calloutTypeRaw
+    && prev.block.title === next.block.title
     && prev.blockIndex === next.blockIndex
     && prev.syncGen === next.syncGen
     && prev.accentColor === next.accentColor
     && prev.fontSize === next.fontSize
     && prev.numberedIndex === next.numberedIndex
-    && (prev.block.text === "") === (next.block.text === "");
+    && (prev.block.text === "") === (next.block.text === "")
+    && (prev.block.text === next.block.text || (prev.block.type !== "code" && prev.block.type !== "callout"))
+    && prev.block.rows === next.block.rows
+    && prev.noteTitleSet === next.noteTitleSet;
 });
 
 export default EditableBlock;

@@ -11,4 +11,7 @@ export const SLASH_COMMANDS = [
   { id: "text", label: "Text", desc: "Plain text paragraph", icon: "T", type: "p" },
   { id: "divider", label: "Divider", desc: "Visual spacer", icon: "\u2014", type: "spacer" },
   { id: "image", label: "Image", desc: "Insert an image", icon: "\uD83D\uDDBC", type: "image" },
+  { id: "code", label: "Code Block", desc: "Fenced code block", icon: "</>", type: "code" },
+  { id: "callout", label: "Callout", desc: "Highlighted info box", icon: "!", type: "callout", calloutType: "note" },
+  { id: "table", label: "Table", desc: "Insert a table", icon: "\u25A6", type: "table" },
 ];

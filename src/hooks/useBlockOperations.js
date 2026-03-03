@@ -93,8 +93,60 @@ export function useBlockOperations({
     else delete blockRefs.current[id];
   }, []);
 
+  // --- Code block operations ---
+  const updateCodeText = useCallback((noteId, blockIndex, newText) => {
+    commitNoteData(prev => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+  }, []);
+
+  const updateCodeLang = useCallback((noteId, blockIndex, lang) => {
+    commitNoteData(prev => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks[blockIndex] = { ...blocks[blockIndex], lang };
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+  }, []);
+
+  // --- Callout operations ---
+  const updateCallout = useCallback((noteId, blockIndex, updates) => {
+    commitNoteData(prev => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks[blockIndex] = { ...blocks[blockIndex], ...updates };
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+  }, []);
+
+  // --- Table operations ---
+  const updateTableRows = useCallback((noteId, blockIndex, rows) => {
+    commitNoteData(prev => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks[blockIndex] = { ...blocks[blockIndex], rows };
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+  }, []);
+
   return {
     updateBlockText, insertBlockAfter, deleteBlock,
     insertImageBlock, saveAndInsertImage, flipCheck, registerBlockRef,
+    updateCodeText, updateCodeLang, updateCallout, updateTableRows,
   };
 }

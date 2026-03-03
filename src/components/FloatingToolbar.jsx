@@ -45,6 +45,10 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         style={{ fontWeight: 700 }} />
       <ToolbarBtn label="I" active={activeFormats.italic} onClick={() => onFormat("italic")}
         style={{ fontStyle: "italic" }} />
+      <ToolbarBtn label={<span style={{ textDecoration: "line-through" }}>S</span>} active={activeFormats.strikethrough} onClick={() => onFormat("strikethrough")}
+        style={{ fontWeight: 600 }} />
+      <ToolbarBtn label="H" active={activeFormats.highlight} onClick={() => onFormat("highlight")}
+        style={{ fontWeight: 600, background: activeFormats.highlight ? "rgba(255,230,0,0.15)" : undefined }} />
       <ToolbarBtn label="</>" active={activeFormats.code} onClick={() => onFormat("code")}
         style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10 }} />
       <ToolbarBtn label="Link" active={activeFormats.link} onClick={() => onFormat("link")}

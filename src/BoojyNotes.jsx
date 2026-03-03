@@ -944,75 +944,212 @@ export default function BoojyNotes() {
           color: rgba(255,255,255,0.6);
           text-decoration-color: rgba(255,255,255,0.3);
         }
-        .code-block-wrapper {
+        .code-block {
           position: relative;
+          background: rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.10);
           border-radius: 8px;
-          background: #1a1b26;
-          border: 1px solid ${BG.divider};
-          overflow: hidden;
           margin: 8px 0;
+          padding: 14px 16px;
+          transition: border-color 0.15s;
         }
-        .code-block-wrapper pre {
-          margin: 0;
-          padding: 16px;
-          overflow-x: auto;
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          font-size: 13px;
-          line-height: 1.6;
-          color: ${TEXT.primary};
-          tab-size: 2;
+        .code-block:focus-within {
+          border-color: rgba(255,255,255,0.18);
         }
-        .code-block-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 6px 12px;
-          background: rgba(255,255,255,0.03);
-          border-bottom: 1px solid ${BG.divider};
-          font-size: 11px;
-          color: ${TEXT.muted};
+        .code-body {
+          position: relative;
+          overflow: hidden;
         }
-        .code-block-header select {
-          background: transparent;
-          border: 1px solid ${BG.divider};
-          border-radius: 4px;
-          color: ${TEXT.secondary};
-          font-size: 11px;
-          padding: 2px 6px;
-          outline: none;
-          cursor: pointer;
-        }
-        .code-block-header select option {
-          background: ${BG.elevated};
-          color: ${TEXT.primary};
-        }
-        .code-block-copy {
-          background: transparent;
-          border: 1px solid ${BG.divider};
-          border-radius: 4px;
-          color: ${TEXT.muted};
-          font-size: 11px;
-          padding: 2px 8px;
-          cursor: pointer;
-          transition: color 0.15s, border-color 0.15s;
-        }
-        .code-block-copy:hover {
-          color: ${TEXT.primary};
-          border-color: ${TEXT.secondary};
-        }
-        .code-block-textarea {
+        .code-textarea {
+          display: block;
           width: 100%;
-          min-height: 60px;
-          padding: 16px;
-          background: #1a1b26;
-          color: ${TEXT.primary};
+          min-height: 22px;
+          padding: 0;
+          margin: 0;
+          background: transparent;
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+          caret-color: #fff;
           border: none;
           outline: none;
-          resize: vertical;
+          resize: none;
+          overflow: hidden;
           font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           font-size: 13px;
           line-height: 1.6;
-          tab-size: 2;
+          tab-size: 4;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          position: relative;
+          z-index: 1;
+        }
+        .code-textarea::selection {
+          background: rgba(255,255,255,0.12);
+          -webkit-text-fill-color: transparent;
+        }
+        .code-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          border: none;
+          pointer-events: none;
+          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          font-size: 13px;
+          line-height: 1.6;
+          tab-size: 4;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          color: ${TEXT.primary};
+          overflow: hidden;
+        }
+        .code-overlay code {
+          display: block;
+          font-family: inherit;
+          font-size: inherit;
+          line-height: inherit;
+          background: transparent;
+          border: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .code-line {
+          position: relative;
+          display: block;
+        }
+        .code-copy-wrapper {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          z-index: 2;
+          opacity: 0;
+          transition: opacity 0.15s;
+          pointer-events: auto;
+        }
+        .code-block:hover .code-copy-wrapper {
+          opacity: 1;
+        }
+        .code-copy-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(0,0,0,0.5);
+          color: rgba(255,255,255,0.45);
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+          padding: 0;
+        }
+        .code-copy-btn:hover {
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.8);
+        }
+        .code-lang-anchor {
+          position: absolute;
+          bottom: 8px;
+          right: 10px;
+          z-index: 2;
+        }
+        .code-lang {
+          font-size: 11px;
+          color: rgba(255,255,255,0.2);
+          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          user-select: none;
+          cursor: pointer;
+          transition: color 0.15s;
+        }
+        .code-lang:hover {
+          color: rgba(255,255,255,0.45);
+        }
+        .code-lang-dropdown {
+          position: absolute;
+          bottom: calc(100% + 6px);
+          right: 0;
+          min-width: 140px;
+          background: ${BG.elevated};
+          border: 1px solid ${BG.divider};
+          border-radius: 8px;
+          padding: 4px 0;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          max-height: 260px;
+          overflow-y: auto;
+        }
+        .code-lang-option {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          padding: 6px 12px;
+          border: none;
+          background: none;
+          color: ${TEXT.secondary};
+          font-size: 12px;
+          font-family: inherit;
+          cursor: pointer;
+          text-align: left;
+        }
+        .code-lang-option:hover {
+          background: rgba(255,255,255,0.06);
+          color: ${TEXT.primary};
+        }
+        .code-lang-option-active {
+          color: ${TEXT.primary};
+        }
+        /* Code block context menu */
+        .code-ctx-menu {
+          position: fixed;
+          z-index: 9999;
+          min-width: 170px;
+          background: ${BG.elevated};
+          border: 1px solid ${BG.divider};
+          border-radius: 8px;
+          padding: 4px 0;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .code-ctx-item {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          padding: 7px 14px;
+          font-size: 12.5px;
+          color: ${TEXT.primary};
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          position: relative;
+          gap: 4px;
+        }
+        .code-ctx-item:hover {
+          background: rgba(255,255,255,0.06);
+        }
+        .code-ctx-danger { color: #f87171; }
+        .code-ctx-danger:hover { background: rgba(248,113,113,0.1); }
+        .code-ctx-active { color: ${ACCENT.primary}; }
+        .code-ctx-sep {
+          height: 1px;
+          background: ${BG.divider};
+          margin: 4px 0;
+        }
+        .code-ctx-submenu-trigger {
+          position: relative;
+        }
+        .code-ctx-submenu {
+          position: absolute;
+          left: 100%;
+          top: 0;
+          min-width: 150px;
+          background: ${BG.elevated};
+          border: 1px solid ${BG.divider};
+          border-radius: 8px;
+          padding: 4px 0;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: #636980; font-style: italic; }
@@ -1027,23 +1164,21 @@ export default function BoojyNotes() {
         .token.italic { font-style: italic; }
         /* Callout block styles */
         .callout-block {
-          border-radius: 8px;
-          border-left: 4px solid;
-          padding: 12px 16px;
           margin: 8px 0;
         }
-        .callout-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 600;
-          font-size: 14px;
-          margin-bottom: 4px;
+        .callout-icon-btn:hover {
+          background: rgba(255,255,255,0.06) !important;
         }
-        .callout-body {
-          font-size: 14px;
-          line-height: 1.6;
-          opacity: 0.9;
+        .callout-title:empty::before {
+          content: attr(data-placeholder);
+          opacity: 0.35;
+          pointer-events: none;
+        }
+        .callout-body:empty::before {
+          content: attr(data-placeholder);
+          color: ${TEXT.muted};
+          opacity: 0.5;
+          pointer-events: none;
         }
         .callout-body p { margin: 0; }
         /* Table block styles */

@@ -1,8 +1,13 @@
+import { useState, useRef, useCallback } from "react";
 import { BG, TEXT, ACCENT } from "../constants/colors";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import FloatingToolbar from "./FloatingToolbar";
+import BacklinksPanel from "./BacklinksPanel";
+import LinkTooltip from "./LinkTooltip";
+import LinkEditPopover from "./LinkEditPopover";
+import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
 
 export default function EditorArea({
@@ -16,8 +21,192 @@ export default function EditorArea({
   commitTextChange, syncGeneration,
   flipCheck, deleteBlock, registerBlockRef,
   insertBlockAfter,
+  updateCodeText, updateCodeLang, updateCallout, updateTableRows,
+  backlinks, onWikilinkClick, onOpenBacklink,
   toolbarState, detectActiveFormats, applyFormat,
+  noteTitleSet,
+  linkPopover, setLinkPopover, reReadBlockFromDom,
 }) {
+  // Link tooltip state
+  const [linkTooltip, setLinkTooltip] = useState(null);
+  const tooltipTimer = useRef(null);
+  const editorContainerRef = useRef(null);
+
+  const handleEditorMouseMove = useCallback((e) => {
+    const link = e.target.closest("a") || e.target.closest(".wikilink");
+    if (link) {
+      const url = link.getAttribute("data-url") || link.getAttribute("href") || link.getAttribute("data-target");
+      if (url && (!tooltipTimer.current || tooltipTimer.current._url !== url)) {
+        clearTimeout(tooltipTimer.current);
+        const timer = setTimeout(() => {
+          const containerRect = editorContainerRef.current?.getBoundingClientRect();
+          const linkRect = link.getBoundingClientRect();
+          if (containerRect) {
+            setLinkTooltip({
+              url: link.classList.contains("wikilink") ? `[[${url}]]` : url,
+              position: {
+                top: linkRect.bottom - containerRect.top + 4,
+                left: linkRect.left - containerRect.left,
+              },
+            });
+          }
+        }, 500);
+        timer._url = url;
+        tooltipTimer.current = timer;
+      }
+    } else {
+      clearTimeout(tooltipTimer.current);
+      tooltipTimer.current = null;
+      setLinkTooltip(null);
+    }
+  }, []);
+
+  const handleEditorMouseLeave = useCallback(() => {
+    clearTimeout(tooltipTimer.current);
+    tooltipTimer.current = null;
+    setLinkTooltip(null);
+  }, []);
+
+  // Link popover handlers
+  const handleLinkApply = useCallback((url) => {
+    if (!linkPopover) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(linkPopover.savedRange);
+
+    if (linkPopover.existingLink) {
+      // Update existing link
+      linkPopover.existingLink.setAttribute("href", url);
+      linkPopover.existingLink.setAttribute("data-url", url);
+      if (!linkPopover.existingLink.classList.contains("external-link")) {
+        linkPopover.existingLink.className = "external-link";
+      }
+      // Add icon if missing
+      if (!linkPopover.existingLink.querySelector(".external-link-icon")) {
+        const icon = document.createElement("span");
+        icon.className = "external-link-icon";
+        icon.contentEditable = "false";
+        icon.textContent = "\u2197";
+        linkPopover.existingLink.appendChild(icon);
+      }
+    } else if (!sel.isCollapsed) {
+      // Wrap selection in link
+      const range = sel.getRangeAt(0);
+      const a = document.createElement("a");
+      a.href = url;
+      a.className = "external-link";
+      a.setAttribute("data-url", url);
+      try {
+        range.surroundContents(a);
+      } catch (_) {
+        const frag = range.extractContents();
+        a.appendChild(frag);
+        range.insertNode(a);
+      }
+      const icon = document.createElement("span");
+      icon.className = "external-link-icon";
+      icon.contentEditable = "false";
+      icon.textContent = "\u2197";
+      a.appendChild(icon);
+    } else {
+      // No selection — insert link with URL as text
+      const range = sel.getRangeAt(0);
+      const a = document.createElement("a");
+      a.href = url;
+      a.className = "external-link bare-url";
+      a.setAttribute("data-url", url);
+      a.textContent = url;
+      const icon = document.createElement("span");
+      icon.className = "external-link-icon";
+      icon.contentEditable = "false";
+      icon.textContent = "\u2197";
+      a.appendChild(icon);
+      range.insertNode(a);
+      range.setStartAfter(a);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    reReadBlockFromDom();
+    setLinkPopover(null);
+  }, [linkPopover, reReadBlockFromDom, setLinkPopover]);
+
+  const handleLinkRemove = useCallback(() => {
+    if (!linkPopover?.existingLink) { setLinkPopover(null); return; }
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(linkPopover.savedRange);
+    // Get text without icon
+    const textContent = Array.from(linkPopover.existingLink.childNodes)
+      .filter(n => !n.classList?.contains("external-link-icon"))
+      .map(n => n.textContent)
+      .join("");
+    const textNode = document.createTextNode(textContent);
+    linkPopover.existingLink.parentNode.replaceChild(textNode, linkPopover.existingLink);
+    reReadBlockFromDom();
+    setLinkPopover(null);
+  }, [linkPopover, reReadBlockFromDom, setLinkPopover]);
+
+  const handleLinkDismiss = useCallback(() => {
+    setLinkPopover(null);
+  }, [setLinkPopover]);
+
+  // Block navigation for code blocks (Escape / ArrowUp / ArrowDown at edges)
+  const handleBlockNav = useCallback((blockIndex, direction) => {
+    const blocks = noteDataRef.current?.[activeNote]?.content?.blocks;
+    if (!blocks) return;
+    const targetIndex = direction === "prev" ? blockIndex - 1 : blockIndex + 1;
+    if (targetIndex < 0) {
+      // Focus title
+      if (titleRef.current) titleRef.current.focus();
+      return;
+    }
+    if (targetIndex >= blocks.length) return;
+    const target = blocks[targetIndex];
+    if (target.type === "code") {
+      // Focus the textarea inside the code block
+      const wrapper = editorRef.current?.querySelector(`[data-block-id="${target.id}"]`);
+      const ta = wrapper?.querySelector("textarea");
+      if (ta) ta.focus();
+    } else {
+      const el = blockRefs.current[target.id];
+      if (el) {
+        placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
+      }
+    }
+  }, [activeNote, noteDataRef, blockRefs, editorRef, titleRef]);
+
+  // Right-click context menu for links
+  const [linkCtxMenu, setLinkCtxMenu] = useState(null);
+
+  const handleEditorContextMenu = useCallback((e) => {
+    const anchor = e.target.closest("a");
+    const wikilink = e.target.closest(".wikilink");
+    if (!anchor && !wikilink) return; // default context menu
+    e.preventDefault();
+
+    if (anchor) {
+      const url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
+      setLinkCtxMenu({
+        position: { top: e.clientY, left: e.clientX },
+        linkType: "external",
+        url,
+        element: anchor,
+      });
+    } else if (wikilink) {
+      const target = wikilink.getAttribute("data-target");
+      const isBroken = wikilink.classList.contains("wikilink-broken");
+      setLinkCtxMenu({
+        position: { top: e.clientY, left: e.clientX },
+        linkType: isBroken ? "wikilink-broken" : "wikilink",
+        url: target,
+        element: wikilink,
+      });
+    }
+  }, []);
+
+  const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
+
   return (
     <div ref={editorScrollRef} className="editor-scroll" style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
       <StarField mode={note ? "editor" : "empty"} seed={activeNote || "__empty__"} />
@@ -111,7 +300,7 @@ export default function EditorArea({
           }} />
 
           {/* Blocks */}
-          <div style={{ position: "relative" }}>
+          <div ref={editorContainerRef} style={{ position: "relative" }}>
             <div
               ref={editorRef}
               contentEditable
@@ -120,16 +309,45 @@ export default function EditorArea({
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
               onPointerDown={handleEditorPointerDown}
-              onMouseDown={handleEditorMouseDown}
+              onMouseMove={handleEditorMouseMove}
+              onMouseLeave={handleEditorMouseLeave}
+              onContextMenu={handleEditorContextMenu}
+              onMouseDown={(e) => {
+                handleEditorMouseDown(e);
+                // Prevent caret placement inside links on click (for instant open feel)
+                if (!e.shiftKey && e.button === 0) {
+                  const anchor = e.target.closest("a");
+                  const wikilink = e.target.closest(".wikilink");
+                  if (anchor || wikilink) e.preventDefault();
+                }
+              }}
               onMouseUp={handleEditorMouseUp}
               onFocus={handleEditorFocus}
               onDragOver={handleEditorDragOver}
               onDrop={handleEditorDrop}
               onClick={(e) => {
+                const sel = window.getSelection();
+                // Don't open links if user was selecting text
+                if (sel && !sel.isCollapsed) return;
                 const anchor = e.target.closest("a");
-                if (anchor && (e.ctrlKey || e.metaKey)) {
+                if (anchor) {
                   e.preventDefault();
-                  window.open(anchor.href, "_blank");
+                  const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
+                  if (url) {
+                    if (window.electronAPI?.openExternal) {
+                      window.electronAPI.openExternal(url);
+                    } else {
+                      window.open(url, "_blank");
+                    }
+                  }
+                  return;
+                }
+                const wikilink = e.target.closest(".wikilink");
+                if (wikilink) {
+                  e.preventDefault();
+                  const target = wikilink.getAttribute("data-target");
+                  if (target && onWikilinkClick) onWikilinkClick(target);
+                  return;
                 }
               }}
               style={{ outline: "none" }}
@@ -151,6 +369,12 @@ export default function EditorArea({
                       accentColor={accentColor}
                       fontSize={settingsFontSize}
                       numberedIndex={block.type === "numbered" ? numCounter : undefined}
+                      onUpdateCode={updateCodeText}
+                      onUpdateLang={updateCodeLang}
+                      onUpdateCallout={updateCallout}
+                      onUpdateTableRows={updateTableRows}
+                      noteTitleSet={noteTitleSet}
+                      onBlockNav={handleBlockNav}
                     />
                   );
                 });
@@ -158,9 +382,19 @@ export default function EditorArea({
             </div>
             <FloatingToolbar
               position={toolbarState}
-              activeFormats={toolbarState ? detectActiveFormats() : { bold: false, italic: false, code: false, link: false }}
+              activeFormats={toolbarState ? detectActiveFormats() : { bold: false, italic: false, code: false, link: false, strikethrough: false, highlight: false }}
               onFormat={applyFormat}
             />
+            <LinkTooltip url={linkTooltip?.url} position={linkTooltip?.position} />
+            {linkPopover && (
+              <LinkEditPopover
+                position={linkPopover.position}
+                initialUrl={linkPopover.url}
+                onApply={handleLinkApply}
+                onRemove={handleLinkRemove}
+                onDismiss={handleLinkDismiss}
+              />
+            )}
           </div>
 
           {/* Click to create new block */}
@@ -187,6 +421,71 @@ export default function EditorArea({
               insertBlockAfter(activeNote, blocks.length - 1, "p", "");
             }}
           />
+
+          {/* Backlinks panel */}
+          <BacklinksPanel
+            backlinks={backlinks}
+            onOpenNote={onOpenBacklink}
+            accentColor={accentColor}
+          />
+
+          {/* Link context menu */}
+          {linkCtxMenu && (
+            <LinkContextMenu
+              position={linkCtxMenu.position}
+              linkType={linkCtxMenu.linkType}
+              url={linkCtxMenu.url}
+              onOpen={() => {
+                if (linkCtxMenu.linkType === "external") {
+                  if (window.electronAPI?.openExternal) window.electronAPI.openExternal(linkCtxMenu.url);
+                  else window.open(linkCtxMenu.url, "_blank");
+                } else {
+                  if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);
+                }
+                dismissCtxMenu();
+              }}
+              onCopy={() => {
+                navigator.clipboard.writeText(linkCtxMenu.url);
+                dismissCtxMenu();
+              }}
+              onEdit={() => {
+                // Position the popover near the link element
+                const containerRect = editorContainerRef.current?.getBoundingClientRect();
+                const linkRect = linkCtxMenu.element.getBoundingClientRect();
+                const pos = containerRect ? {
+                  top: linkRect.bottom - containerRect.top + 4,
+                  left: linkRect.left - containerRect.left,
+                } : { top: linkCtxMenu.position.top, left: linkCtxMenu.position.left };
+                // Save a range at the link
+                const range = document.createRange();
+                range.selectNodeContents(linkCtxMenu.element);
+                setLinkPopover({
+                  existingLink: linkCtxMenu.linkType === "external" ? linkCtxMenu.element : null,
+                  url: linkCtxMenu.url,
+                  text: linkCtxMenu.element.textContent?.replace(/\u2197/g, "") || "",
+                  position: pos,
+                  savedRange: range,
+                });
+                dismissCtxMenu();
+              }}
+              onRemove={() => {
+                const el = linkCtxMenu.element;
+                const textContent = Array.from(el.childNodes)
+                  .filter(n => !n.classList?.contains("external-link-icon"))
+                  .map(n => n.textContent)
+                  .join("");
+                const textNode = document.createTextNode(textContent);
+                el.parentNode.replaceChild(textNode, el);
+                reReadBlockFromDom();
+                dismissCtxMenu();
+              }}
+              onCreate={() => {
+                if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);
+                dismissCtxMenu();
+              }}
+              onDismiss={dismissCtxMenu}
+            />
+          )}
         </div>
       ) : (
         /* Empty state */

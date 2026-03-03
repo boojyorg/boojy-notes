@@ -8,14 +8,15 @@ export function useNoteCrud({
   titleRef, trashedNotesRef, setTrashedNotes,
   setRenamingFolder,
 }) {
-  const createNote = (folder = null) => {
+  const createNote = (folder = null, title = null) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
-    const pathParts = folder ? [...folder.split("/"), "Untitled"] : undefined;
+    const noteTitle = title || "Untitled";
+    const pathParts = folder ? [...folder.split("/"), noteTitle] : undefined;
     const newNote = {
-      id, title: "Untitled", folder,
+      id, title: noteTitle, folder,
       path: pathParts,
-      content: { title: "Untitled", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
+      content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
       words: 0,
     };
     commitNoteData(prev => ({ ...prev, [id]: newNote }));

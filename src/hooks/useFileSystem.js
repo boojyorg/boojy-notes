@@ -16,6 +16,17 @@ function blocksEqual(a, b) {
       if ((a[i].text || "") !== (b[i].text || "")) return false;
     }
     if (a[i].checked !== b[i].checked) return false;
+    // Multi-line block properties
+    if ((a[i].lang || "") !== (b[i].lang || "")) return false;
+    if ((a[i].calloutType || "") !== (b[i].calloutType || "")) return false;
+    if ((a[i].calloutTypeRaw || "") !== (b[i].calloutTypeRaw || "")) return false;
+    if ((a[i].title || "") !== (b[i].title || "")) return false;
+    // Table rows
+    if (a[i].rows || b[i].rows) {
+      const ar = JSON.stringify(a[i].rows || []);
+      const br = JSON.stringify(b[i].rows || []);
+      if (ar !== br) return false;
+    }
   }
   return true;
 }

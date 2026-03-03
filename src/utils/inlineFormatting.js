@@ -3,9 +3,10 @@
 
 /**
  * Convert inline markdown tokens to HTML for rendering.
- * Process order: escape HTML → code → bold → italic → markdown links → bare URLs
+ * Process order: escape HTML → code → bold+italic → bold → italic →
+ *                strikethrough → highlight → wikilinks → markdown links → bare URLs → tags
  */
-export function inlineMarkdownToHtml(md) {
+export function inlineMarkdownToHtml(md, noteTitles) {
   if (!md) return "";
   let s = md;
 
@@ -24,11 +25,30 @@ export function inlineMarkdownToHtml(md) {
   // 5. Italic (*text*) — single asterisks, but not inside words like file*name
   s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
 
-  // 6. Markdown links [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // 6. Strikethrough (~~text~~)
+  s = s.replace(/~~(.+?)~~/g, "<del>$1</del>");
 
-  // 7. Auto-link bare URLs (https://... not already inside an <a> tag)
-  s = s.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
+  // 7. Highlight (==text==)
+  s = s.replace(/==(.+?)==/g, "<mark>$1</mark>");
+
+  // 8. Wikilinks [[Target]] or [[Target|Display]]
+  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
+    const broken = noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    return `<span class="wikilink${broken}" data-target="${target}">${display}</span>`;
+  });
+  s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
+    const broken = noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    return `<span class="wikilink${broken}" data-target="${target}">${target}</span>`;
+  });
+
+  // 9. Markdown links [text](url)
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="external-link" data-url="$2">$1<span class="external-link-icon" contenteditable="false">\u2197</span></a>');
+
+  // 10. Auto-link bare URLs (https://... not already inside an <a> tag)
+  s = s.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" class="external-link bare-url" data-url="$2">$2<span class="external-link-icon" contenteditable="false">\u2197</span></a>');
+
+  // 11. Tags (#tag but not # at line start which is heading)
+  s = s.replace(/(^|[\s(])#([a-zA-Z][\w/-]*)/g, '$1<span class="inline-tag">#$2</span>');
 
   return s;
 }
@@ -62,13 +82,38 @@ function walkNode(node) {
         result += `*${inner}*`;
       } else if (tag === "CODE") {
         result += `\`${inner}\``;
+      } else if (tag === "DEL" || tag === "S") {
+        result += `~~${inner}~~`;
+      } else if (tag === "MARK") {
+        result += `==${inner}==`;
       } else if (tag === "A") {
         const href = child.getAttribute("href") || "";
+        // Strip the ↗ icon character from link text for comparison
+        const linkText = inner.replace(/\u2197/g, "");
         // If the link text equals the URL, just emit the bare URL
-        if (inner === href) {
+        if (linkText === href) {
+          result += linkText;
+        } else {
+          result += `[${linkText}](${href})`;
+        }
+      } else if (tag === "SPAN") {
+        // External link icon — decorative, skip
+        if (child.classList.contains("external-link-icon")) {
+          continue;
+        }
+        // Wikilink spans
+        if (child.classList.contains("wikilink")) {
+          const target = child.getAttribute("data-target") || inner;
+          if (target === inner) {
+            result += `[[${inner}]]`;
+          } else {
+            result += `[[${target}|${inner}]]`;
+          }
+        } else if (child.classList.contains("inline-tag")) {
+          // Tag spans — just pass through the text (already has #)
           result += inner;
         } else {
-          result += `[${inner}](${href})`;
+          result += inner;
         }
       } else if (tag === "BR") {
         // Ignore <br> at end of block (browser artifact)
@@ -90,7 +135,7 @@ function walkNode(node) {
   return result;
 }
 
-const ALLOWED_TAGS = new Set(["STRONG", "EM", "CODE", "A", "B", "I", "BR"]);
+const ALLOWED_TAGS = new Set(["STRONG", "EM", "CODE", "A", "B", "I", "BR", "DEL", "S", "MARK", "SPAN"]);
 
 /**
  * Sanitize HTML: strip all tags except formatting tags.
@@ -115,10 +160,11 @@ function sanitizeNode(sourceNode) {
       const tag = child.nodeName;
 
       if (ALLOWED_TAGS.has(tag)) {
-        // Normalize <b> → <strong>, <i> → <em>
+        // Normalize <b> → <strong>, <i> → <em>, <s> → <del>
         let newTag = tag;
         if (tag === "B") newTag = "STRONG";
         if (tag === "I") newTag = "EM";
+        if (tag === "S") newTag = "DEL";
 
         if (tag === "BR") {
           frag.appendChild(document.createElement("br"));
@@ -127,9 +173,28 @@ function sanitizeNode(sourceNode) {
 
         const el = document.createElement(newTag);
 
-        // Copy href for links
+        // Copy href, class, data-url for links
         if (tag === "A" && child.getAttribute("href")) {
           el.setAttribute("href", child.getAttribute("href"));
+          const cls = child.getAttribute("class");
+          if (cls) el.setAttribute("class", cls);
+          const dataUrl = child.getAttribute("data-url");
+          if (dataUrl) el.setAttribute("data-url", dataUrl);
+        }
+
+        // Copy class + data attrs for SPAN (wikilinks, tags, link icons)
+        if (tag === "SPAN") {
+          const cls = child.getAttribute("class") || "";
+          if (cls === "wikilink" || cls.startsWith("wikilink") || cls === "inline-tag") {
+            el.setAttribute("class", cls);
+            if (cls.startsWith("wikilink")) {
+              const target = child.getAttribute("data-target");
+              if (target) el.setAttribute("data-target", target);
+            }
+          } else if (cls === "external-link-icon") {
+            el.setAttribute("class", cls);
+            el.setAttribute("contenteditable", "false");
+          }
         }
 
         // Recurse into children
@@ -142,13 +207,9 @@ function sanitizeNode(sourceNode) {
         }
 
         frag.appendChild(el);
-      } else if (tag === "DIV" || tag === "P" || tag === "SPAN") {
-        // Unwrap block/span elements, keep content
+      } else if (tag === "DIV" || tag === "P") {
+        // Unwrap block elements, keep content
         const innerFrag = sanitizeNode(child);
-        // Add line break before block elements if needed
-        if ((tag === "DIV" || tag === "P") && frag.childNodes.length > 0) {
-          // Don't add <br> — just flatten. The block structure handles line separation.
-        }
         frag.appendChild(innerFrag);
       } else {
         // Unknown tag: recurse children only (strip the tag)
@@ -171,6 +232,9 @@ function sanitizeNode(sourceNode) {
 export function stripMarkdownFormatting(md) {
   if (!md) return "";
   let s = md;
+  // Remove wikilinks: [[target|display]] → display, [[target]] → target
+  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2");
+  s = s.replace(/\[\[([^\]]+)\]\]/g, "$1");
   // Remove markdown links: [text](url) → text
   s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
   // Remove bold+italic (***text*** → text)
@@ -181,5 +245,9 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/\*(.+?)\*/g, "$1");
   // Remove inline code (`text` → text)
   s = s.replace(/`([^`]+)`/g, "$1");
+  // Remove strikethrough (~~text~~ → text)
+  s = s.replace(/~~(.+?)~~/g, "$1");
+  // Remove highlight (==text== → text)
+  s = s.replace(/==(.+?)==/g, "$1");
   return s;
 }

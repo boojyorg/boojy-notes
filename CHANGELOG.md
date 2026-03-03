@@ -2,12 +2,61 @@
 
 ## Unreleased
 
+### Features
+- **Callout block rewrite** — Replaced emoji icons with Lucide line icons and native `<select>` with custom type picker dropdown (11 types with icons, colours, checkmark for active); switched from click-to-edit input/textarea to always-live `contentEditable` title and body; keyboard navigation: Enter in title focuses body, ArrowUp/Escape exits, Backspace on empty deletes block, ArrowUp/Down at body edges navigates between blocks
+- **Callout alias resolution** — Obsidian aliases (`caution`, `hint`, `error`, `todo`, `faq`, `cite`, `tldr`, etc.) resolve to canonical types on parse while preserving the original alias in `calloutTypeRaw` for round-trip fidelity
+- **Callout collapsible syntax** — `+`/`-` fold suffixes (`> [!note]+`) parsed and preserved in round-trip
+
+### Bug Fixes
+- **Callout type picker scroll jump** — Fixed page scrolling to top when opening the type picker; render picker via React portal to `document.body` instead of inside the scroll container; added scroll-save/restore guard via `useLayoutEffect` to prevent residual scroll resets caused by blur→commit→re-render and type-select→re-render paths
+- **Consecutive callouts** — Fixed parser consuming the second callout's `> [!type]` line as body text of the first callout
+- **Callout search indexing** — Callout title text now included in full-text search index
+
+### Improvements
+- **Callout visual tweaks** — Removed colored left border strip, increased background opacity from 6% to 20% for better visibility, aligned body text with icon (removed 31px left padding)
+- **Code block — seamless card** — Removed inner box/border from `<pre>` overlay so the code block renders as one clean card
+- **Code block — 4-space tabs** — Tab key now inserts 4 spaces (was 2); Shift+Tab removes 4 spaces
+- **Code block — trimmed language list** — Removed Rust and Dart from dropdown; kept Plain, JavaScript, TypeScript, Python, HTML, CSS, JSON, Bash, SQL
+- **Code block — removed indent guides** — Removed thin vertical indent guide lines for a cleaner look
+- **Code block — language label dropdown** — Click the language label (bottom-right) to open a dropdown and change language; hover brightens the label; always shows "Plain" when no language is set
+- **Code block — full language names** — Language label now shows "JavaScript", "Python", etc. instead of short codes like "js", "py"
+- **Code block — stronger border** — Default border opacity increased from 6% to 10%, focus border from 10% to 18%
+
+### Bug Fixes
+- **Code block — blank first line & bracket artifact** — Stripped leading/trailing newlines from code display to fix empty first line and textarea/overlay misalignment; added `display: block` to `<code>` element to prevent anonymous block box rendering issues
+- **Code block — overlay double-spacing** — Fixed double line breaks and blank top line in code overlay caused by `\n` between `display:block` spans inside `<pre>`; also removed trailing newline that added extra blank line at bottom
+- **Code block — selection artifacts** — Fixed browser default highlight bleeding through textarea by adding `-webkit-text-fill-color: transparent` and custom `::selection` style
+
+### Features
+- **Code block rewrite** — Replaced header-bar + double-click UX with always-editable textarea + syntax-highlighted overlay; hover-only copy icon (SVG) with green checkmark feedback; bottom-right language label; right-click context menu with "Change Language" submenu (now includes Rust & Dart); Tab/Shift+Tab indent/dedent; Enter with auto-indent; Escape exits to next block; ArrowUp/Down at edges navigates between blocks; Backspace on empty deletes block
+- **Link system** — External links render with ↗ icon in soft blue (#6ea8d8), wikilinks in teal (#A4CACE)
+- **Single-click to open links** — External links open in browser, wikilinks open note (no modifier key needed)
+- **URL hover tooltip** — Shows full URL after 500ms hover delay
+- **Right-click context menu on links** — Open, Copy, Edit, Remove actions; broken wikilinks show Create Note option
+- **Ctrl/Cmd+K link shortcut** — Insert or edit links via keyboard shortcut with inline popover; also available from floating toolbar
+- **Smart paste** — Paste URL over selected text to create `[text](url)` link; paste standalone URL to create clickable link
+- **Bare URL auto-detection** — Typed or pasted URLs auto-convert to clickable links with ↗ icon
+- **Broken wikilink detection** — Links to non-existent notes rendered with dashed underline in muted color
+
+### Features
+- **Obsidian compatibility — code blocks** — Fenced code blocks (` ``` `) now parse, render with Prism.js syntax highlighting, and round-trip perfectly; supports 8 languages (JS, TS, Python, HTML, CSS, JSON, Bash, SQL); double-click or Enter to edit in monospace textarea; language selector dropdown; copy button; `/code` slash command; typing ` ``` ` auto-converts to code block
+- **Obsidian compatibility — frontmatter** — YAML frontmatter (`---` at file start) now preserved as a collapsible block showing property count; click to expand and view key-value pairs; round-trips without data loss
+- **Obsidian compatibility — callouts/admonitions** — `> [!type]` syntax renders as styled callout blocks with left border, icon, and title; 11 types supported (note, info, tip, warning, danger, success, question, quote, example, bug, abstract); editable title and body; type selector dropdown; `/callout` slash command
+- **Obsidian compatibility — tables** — Markdown tables (`| ... |`) render as HTML tables with individually editable cells; Tab/Shift+Tab cell navigation; Enter in last row adds new row; hover toolbar with +Row, +Column, -Row, -Column buttons; `/table` slash command creates default 3x2 table
+- **Obsidian compatibility — wikilinks** — `[[Note Title]]` and `[[Target|Display]]` syntax renders as dotted-underline links; Ctrl/Cmd+Click opens the target note or creates it if it doesn't exist; round-trips to markdown without data loss
+- **Backlinks panel** — Below each note's content, a "Backlinks" section lists all notes that reference the current note via `[[wikilinks]]`; click to navigate directly to the source note
+- **Strikethrough formatting** — `~~text~~` renders as strikethrough; `Cmd+Shift+S` keyboard shortcut; button in floating toolbar
+- **Highlight formatting** — `==text==` renders as highlighted text with a subtle yellow background; `Cmd+Shift+H` keyboard shortcut; button in floating toolbar
+- **Inline tags** — `#tag` renders in accent color (not confused with `#` headings at line start)
+- **Multi-line markdown parser** — Rewritten parser from line-by-line `for` loop to stateful `while` scanner; correctly handles code fences, tables, callouts, and frontmatter spanning multiple lines
+
 ### Bug Fixes
 - **Live file sync — editor blocks** — External file changes (terminal, Finder, other editors) now update the editor's contentEditable DOM by bumping a shared `syncGeneration` counter, ensuring `EditableBlock` re-syncs its innerHTML
 - **Live file sync — title** — Renaming a note's `.md` file externally now updates the title bar; `useLayoutEffect` dependency includes the actual title text instead of only the active note ID
 - **Live file sync — new folders** — Creating files in new folders externally now makes both the folder and note appear in the sidebar; `onFileChanged` adds unknown folders to `customFolders`, and `onFileDeleted` re-merges folders after re-read
 
 ### Features
+- **Full-text fuzzy search** — Sidebar search now searches note titles AND body content with typo tolerance; results grouped by folder with highlighted snippets; keyboard navigation (arrows + Enter) scrolls to and briefly highlights the matching block in the editor; clear button and Escape to dismiss; 150ms debounced for snappy typing; custom fuzzy matching with score-based ranking (no external dependencies)
 - **Integrated terminal** — Fully functional multi-instance terminal in the right panel powered by `node-pty` + `xterm.js`; tabbed interface matching the note tab design; spawn real PTY sessions (zsh/bash) with 256-color support; `Cmd+\` toggles panel, `Cmd+Shift+T` creates new terminal, `Cmd+Shift+W` closes active terminal, `Cmd+K` clears, `Cmd+F` searches output; tab context menu with Rename, Clear, Restart, Kill; clickable URLs open in browser; auto-resizes with panel; press Enter to restart exited processes; PTYs cleaned up on app quit
 - **Draggable title bar** — Hold non-interactive areas of the top bar to move the window; buttons, tabs, and resize handles remain fully clickable
 - **Trash / Recycling Bin** — Deleted notes move to a `.trash/` folder instead of being permanently destroyed; 30-day auto-purge on startup; collapsible Trash section in sidebar with age labels; right-click to Restore or Delete permanently; Empty Trash button; folder deletion moves all contained notes to trash individually; trash persists across restarts via `.boojy-trash-meta.json`

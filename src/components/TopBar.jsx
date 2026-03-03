@@ -20,7 +20,7 @@ export default function TopBar({
   tabScrollRef, tabAreaWidth,
 }) {
   return (
-    <div style={{
+    <div className="titlebar-drag" style={{
       height: 44, background: chromeBg,
       boxShadow: (topBarEdge === "A" || topBarEdge === "B") ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
       borderBottom: (topBarEdge === "A" || topBarEdge === "C") ? `1px solid ${BG.divider}25` : "none",
@@ -33,7 +33,7 @@ export default function TopBar({
         padding: "0 8px 0 14px", height: "100%", gap: 4,
         transition: "width 0.2s ease",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}>
+        <div className="no-drag" style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}>
           <img src="/assets/boojy-notes-text-N.png" alt="" style={{ height: 23.5 }} draggable="false" />
           <button
             onClick={() => { setSettingsOpen(true); setSettingsTab("profile"); }}
@@ -46,16 +46,17 @@ export default function TopBar({
           </button>
           <img src="/assets/boojy-notes.text-tes.png" alt="" style={{ height: 21 }} draggable="false" />
         </div>
+        {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1, minWidth: 0 }} />
-        <button onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
+        <button className="no-drag" onClick={undo} title="Undo (Ctrl+Z)" style={{ background: "none", border: "none", cursor: canUndo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canUndo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
               onMouseEnter={(e) => { if (canUndo) { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; } }}
               onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
         ><UndoIcon /></button>
-        <button onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canRedo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
+        <button className="no-drag" onClick={redo} title="Redo (Ctrl+Shift+Z)" style={{ background: "none", border: "none", cursor: canRedo ? "pointer" : "default", padding: "5px 4px", borderRadius: 4, display: "flex", alignItems: "center", color: TEXT.secondary, opacity: canRedo ? 1 : 0.3, transition: "background 0.15s, color 0.15s, opacity 0.15s" }}
               onMouseEnter={(e) => { if (canRedo) { hBg(e.currentTarget, BG.surface); e.currentTarget.style.color = TEXT.primary; } }}
               onMouseLeave={(e) => { hBg(e.currentTarget, "transparent"); e.currentTarget.style.color = TEXT.secondary; }}
         ><RedoIcon /></button>
-        <button onClick={() => setCollapsed(!collapsed)}
+        <button className="no-drag" onClick={() => setCollapsed(!collapsed)}
           style={{
             background: "none", border: "none", cursor: "pointer",
             padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
@@ -69,6 +70,7 @@ export default function TopBar({
         </button>
       </div>
       <div
+        className="no-drag"
         ref={(el) => { if (el) sidebarHandles.current[0] = el; }}
         onMouseDown={startDrag}
         style={{
@@ -93,7 +95,7 @@ export default function TopBar({
           const isNew = newTabId === tId;
           const isClosing = closingTabs.has(tId);
           els.push(
-            <button key={tId} className={`tab-btn${act ? " tab-active" : ""}`} onClick={() => { if (!isClosing) setActiveNote(tId); }}
+            <button key={tId} className={`tab-btn no-drag${act ? " tab-active" : ""}`} onClick={() => { if (!isClosing) setActiveNote(tId); }}
               style={{
                 background: tabFlip ? (act ? chromeBg : activeTabBg) : (act ? activeTabBg : "transparent"),
                 border: "none",
@@ -131,28 +133,28 @@ export default function TopBar({
 
       {/* Top-right drag handle */}
       <div
+        className="no-drag"
         ref={(el) => { if (el) rightPanelHandles.current[0] = el; }}
         onMouseDown={startRightDrag}
         style={{
           width: 4, cursor: "col-resize",
           background: chromeBg,
-          borderLeft: `1px solid ${BG.divider}`,
           flexShrink: 0, transition: "background 0.15s",
           alignSelf: "stretch",
-          marginRight: -1, position: "relative", zIndex: 1,
         }}
         onMouseEnter={() => rightPanelHandles.current.forEach(h => h && (h.style.background = ACCENT.primary))}
-        onMouseLeave={() => { if (!isDragging.current) rightPanelHandles.current.forEach(h => h && (h.style.background = chromeBg)); }}
+        onMouseLeave={() => { if (!isDragging.current) { rightPanelHandles.current[0] && (rightPanelHandles.current[0].style.background = chromeBg); rightPanelHandles.current[1] && (rightPanelHandles.current[1].style.background = BG.editor); } }}
       />
 
       {/* Top-right — panel toggle, word count */}
-      <div style={{
+      <div className="titlebar-drag" style={{
         width: rightPanelWidth,
         flexShrink: 0, display: "flex", alignItems: "center",
         justifyContent: "flex-start", gap: 4, padding: "0 10px 0 10px",
         height: "100%",
+        borderLeft: `1px solid ${BG.divider}`,
       }}>
-        <button onClick={() => setRightPanel(!rightPanel)} title="Toggle right panel (\u2318\\)" style={{
+        <button className="no-drag" onClick={() => setRightPanel(!rightPanel)} title="Toggle right panel (\u2318\\)" style={{
           background: "none", border: "none", cursor: "pointer",
           padding: 5, borderRadius: 5, display: "flex", alignItems: "center",
           color: TEXT.secondary, transition: "background 0.15s, color 0.15s", flexShrink: 0,
@@ -168,6 +170,7 @@ export default function TopBar({
             {wordCount} words
           </span>
         )}
+        {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1 }} />
       </div>
     </div>

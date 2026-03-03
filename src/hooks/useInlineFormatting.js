@@ -3,6 +3,7 @@ import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../utils/inlineFormatt
 
 export function useInlineFormatting({
   blockRefs, editorRef, noteDataRef, activeNote, updateBlockText, setToolbarState,
+  onOpenLinkEditor,
 }) {
   const reReadBlockFromDom = (sel) => {
     if (!sel) sel = window.getSelection();
@@ -47,6 +48,80 @@ export function useInlineFormatting({
     }
   };
 
+  const toggleWrappingTag = (sel, tagName) => {
+    if (!sel.rangeCount || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    let node = sel.anchorNode;
+    let existing = null;
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === tagName) { existing = node; break; }
+      node = node.parentNode;
+    }
+    if (existing) {
+      const textNode = document.createTextNode(existing.textContent);
+      existing.parentNode.replaceChild(textNode, existing);
+      const r = document.createRange();
+      r.selectNodeContents(textNode);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } else {
+      const el = document.createElement(tagName.toLowerCase());
+      try {
+        range.surroundContents(el);
+      } catch (_) {
+        const frag = range.extractContents();
+        el.appendChild(frag);
+        range.insertNode(el);
+      }
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  };
+
+  const toggleStrikethrough = (sel) => toggleWrappingTag(sel, "DEL");
+  const toggleHighlight = (sel) => toggleWrappingTag(sel, "MARK");
+
+  const getLinkContext = () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    let node = sel.anchorNode;
+    let linkEl = null;
+    while (node && node !== editorRef.current) {
+      if (node.nodeName === "A") { linkEl = node; break; }
+      node = node.parentNode;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const containerEl = editorRef.current?.closest("[style*='position: relative']") || editorRef.current?.parentElement;
+    const containerRect = containerEl?.getBoundingClientRect() || { top: 0, left: 0 };
+    const savedRange = range.cloneRange();
+    if (linkEl) {
+      // Strip icon text from link text
+      const textContent = Array.from(linkEl.childNodes)
+        .filter(n => !n.classList?.contains("external-link-icon"))
+        .map(n => n.textContent)
+        .join("");
+      return {
+        existingLink: linkEl,
+        url: linkEl.getAttribute("href") || "",
+        text: textContent,
+        position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
+        savedRange,
+      };
+    }
+    // No existing link — use selection text
+    const selectedText = sel.isCollapsed ? "" : sel.toString();
+    return {
+      existingLink: null,
+      url: "",
+      text: selectedText,
+      position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
+      savedRange,
+    };
+  };
+
   const applyFormat = (format) => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
@@ -56,30 +131,15 @@ export function useInlineFormatting({
       document.execCommand("italic");
     } else if (format === "code") {
       toggleInlineCode(sel);
+    } else if (format === "strikethrough") {
+      toggleStrikethrough(sel);
+    } else if (format === "highlight") {
+      toggleHighlight(sel);
     } else if (format === "link") {
-      let node = sel.anchorNode;
-      let linkEl = null;
-      while (node && node !== editorRef.current) {
-        if (node.nodeName === "A") { linkEl = node; break; }
-        node = node.parentNode;
-      }
-      if (linkEl) {
-        const textNode = document.createTextNode(linkEl.textContent);
-        linkEl.parentNode.replaceChild(textNode, linkEl);
-      } else if (!sel.isCollapsed) {
-        const url = prompt("Enter URL:");
-        if (url) {
-          const range = sel.getRangeAt(0);
-          const a = document.createElement("a");
-          a.href = url;
-          try {
-            range.surroundContents(a);
-          } catch (_) {
-            const frag = range.extractContents();
-            a.appendChild(frag);
-            range.insertNode(a);
-          }
-        }
+      // Open link editor popover instead of using prompt()
+      if (onOpenLinkEditor) {
+        onOpenLinkEditor();
+        return; // Don't dismiss toolbar yet — popover will handle it
       }
     }
     reReadBlockFromDom(sel);
@@ -88,7 +148,7 @@ export function useInlineFormatting({
 
   const detectActiveFormats = () => {
     const sel = window.getSelection();
-    if (!sel.rangeCount) return { bold: false, italic: false, code: false, link: false };
+    if (!sel.rangeCount) return { bold: false, italic: false, code: false, link: false, strikethrough: false, highlight: false };
     const isFormatActive = (tags) => {
       let node = sel.anchorNode;
       while (node && node !== editorRef.current) {
@@ -102,8 +162,10 @@ export function useInlineFormatting({
       italic: isFormatActive(["EM", "I"]),
       code: isFormatActive(["CODE"]),
       link: isFormatActive(["A"]),
+      strikethrough: isFormatActive(["DEL", "S"]),
+      highlight: isFormatActive(["MARK"]),
     };
   };
 
-  return { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode };
+  return { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext };
 }

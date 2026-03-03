@@ -86,6 +86,8 @@ export function placeCaret(el, pos = 0) {
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       let textNode, placed = false;
       while (textNode = walker.nextNode()) {
+        // Skip decorative icon text nodes (↗ inside links)
+        if (textNode.parentElement?.classList?.contains("external-link-icon")) continue;
         if (remaining <= textNode.length) {
           range.setStart(textNode, remaining);
           placed = true;
@@ -137,5 +139,7 @@ export function runAutoScroll(scrollEl, pointerY) {
  * Check if a block type is editable (has text content).
  */
 export function isEditableBlock(b) {
-  return b.type !== "spacer" && b.type !== "image";
+  return b.type !== "spacer" && b.type !== "image"
+    && b.type !== "code" && b.type !== "table"
+    && b.type !== "callout" && b.type !== "frontmatter";
 }

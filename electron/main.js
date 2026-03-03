@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, protocol, net } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, Menu, protocol, net, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,7 @@ import {
   markdownToBlocks,
   parseFrontmatter,
 } from "./markdown.js";
+import { registerTerminalIPC, killAllTerminals } from "./terminal.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -564,6 +565,12 @@ ipcMain.handle("empty-trash", () => {
   return { emptied: true };
 });
 
+ipcMain.handle("open-external", async (_event, url) => {
+  if (typeof url === "string" && /^https?:\/\//i.test(url)) {
+    await shell.openExternal(url);
+  }
+});
+
 ipcMain.handle("pick-image-file", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
@@ -654,6 +661,7 @@ app.whenReady().then(() => {
 
   createWindow();
   startWatcher();
+  registerTerminalIPC(ipcMain, () => mainWindow, getNotesDir);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -661,9 +669,11 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  killAllTerminals();
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
+  killAllTerminals();
   if (watcher) watcher.close();
 });
