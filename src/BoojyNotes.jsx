@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -12,11 +12,13 @@ import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTerminal } from "./hooks/useTerminal";
+import { useSearch } from "./hooks/useSearch";
 import { BG, TEXT, ACCENT, SEMANTIC, BRAND } from "./constants/colors";
 import { FOLDER_TREE } from "./constants/data";
 import { hexToRgb, rgbToHex } from "./utils/colorUtils";
 import { setBlockIdCounter, STORAGE_KEY, loadFromStorage } from "./utils/storage";
 import { stripMarkdownFormatting } from "./utils/inlineFormatting";
+import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
 import { sortByOrder, buildTree, collectPaths, filterTree } from "./utils/sidebarTree";
 import SettingsModal from "./components/SettingsModal";
@@ -145,13 +147,53 @@ export default function BoojyNotes() {
   const { canUndo, canRedo, undo, redo, commitNoteData, commitTextChange, pushHistory, popHistory, isUndoRedo, noteDataRef } = useHistory(noteData, setNoteData, syncGeneration);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({ activeNote, setActiveNote, tabs, setTabs, expanded, setExpanded });
   const { createNote, deleteNote, duplicateNote, renameFolder, deleteFolder, restoreNote, permanentDeleteNote, emptyAllTrash, createFolder } = useNoteCrud({ commitNoteData, noteDataRef, setTabs, setActiveNote, activeNote, setCustomFolders, customFolders, setExpanded, titleRef, trashedNotesRef, setTrashedNotes, setRenamingFolder });
-  const { updateBlockText, insertBlockAfter, deleteBlock, insertImageBlock, saveAndInsertImage, flipCheck, registerBlockRef } = useBlockOperations({ commitNoteData, commitTextChange, blockRefs, focusBlockId, focusCursorPos });
-  const { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode } = useInlineFormatting({ blockRefs, editorRef, noteDataRef, activeNote, updateBlockText, setToolbarState });
+  const { updateBlockText, insertBlockAfter, deleteBlock, insertImageBlock, saveAndInsertImage, flipCheck, registerBlockRef, updateCodeText, updateCodeLang, updateCallout, updateTableRows } = useBlockOperations({ commitNoteData, commitTextChange, blockRefs, focusBlockId, focusCursorPos });
+
+  // Link popover state
+  const [linkPopover, setLinkPopover] = useState(null);
+  const openLinkEditor = useCallback(() => {
+    // getLinkContext is called from within useInlineFormatting
+    if (getLinkContextRef.current) {
+      const ctx = getLinkContextRef.current();
+      if (ctx) setLinkPopover(ctx);
+    }
+  }, []);
+  const getLinkContextRef = useRef(null);
+
+  const { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext } = useInlineFormatting({ blockRefs, editorRef, noteDataRef, activeNote, updateBlockText, setToolbarState, onOpenLinkEditor: openLinkEditor });
+  getLinkContextRef.current = getLinkContext;
+
   const { isDragging, startDrag, startRightDrag } = usePanelResize({ sidebarHandles, rightPanelHandles, setSidebarWidth, setRightPanelWidth, chromeBg });
   const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({ noteDataRef, activeNote, setNoteData, pushHistory, popHistory, blockRefs, editorRef, editorScrollRef, accentColor, editorBg, setDragTooltip, dragTooltipCount, setToolbarState });
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder } = useSidebarDrag({ noteDataRef, setNoteData, expanded, setExpanded, sidebarOrder, setSidebarOrder, customFolders, sidebarScrollRef, accentColor, chromeBg, setDragTooltip, dragTooltipCount });
-  const { handleEditorKeyDown, handleEditorInput, handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus, handleEditorPaste, handleEditorDragOver, handleEditorDrop, executeSlashCommand } = useEditorHandlers({ noteDataRef, activeNote, commitNoteData, commitTextChange, blockRefs, editorRef, focusBlockId, focusCursorPos, slashMenuRef, setSlashMenu, syncGeneration, updateBlockText, insertBlockAfter, deleteBlock, saveAndInsertImage, reReadBlockFromDom, toggleInlineCode, mouseIsDown, setToolbarState });
+  const { handleEditorKeyDown, handleEditorInput, handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus, handleEditorPaste, handleEditorDragOver, handleEditorDrop, executeSlashCommand } = useEditorHandlers({ noteDataRef, activeNote, commitNoteData, commitTextChange, blockRefs, editorRef, focusBlockId, focusCursorPos, slashMenuRef, setSlashMenu, syncGeneration, updateBlockText, insertBlockAfter, deleteBlock, saveAndInsertImage, reReadBlockFromDom, toggleInlineCode, applyFormat, mouseIsDown, setToolbarState, onOpenLinkEditor: openLinkEditor });
   const { terminals, activeTerminalId, setActiveTerminalId, xtermInstances, createTerminal, closeTerminal, renameTerminal, restartTerminal, clearTerminal, markExited } = useTerminal();
+  const { searchMode, searchResults, activeResultIndex, search: runSearch, clearSearch, navigateResults, getActiveResult } = useSearch(noteData, noteDataRef);
+
+  // Wire search input to fuzzy search
+  useEffect(() => { runSearch(search); }, [search, runSearch]);
+
+  const scrollToSearchMatch = useCallback((noteId, matchBlockId) => {
+    if (!matchBlockId) return;
+    setTimeout(() => {
+      const el = blockRefs.current[matchBlockId];
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.background = `${accentColor}18`;
+      el.style.borderRadius = "6px";
+      el.style.transition = "background 0s";
+      setTimeout(() => {
+        el.style.transition = "background 0.5s ease-out";
+        el.style.background = "transparent";
+      }, 1200);
+      setTimeout(() => { el.style.borderRadius = ""; el.style.transition = ""; }, 1700);
+    }, 150);
+  }, [accentColor]);
+
+  const handleSearchResultOpen = useCallback((noteId, matchBlockId) => {
+    openNote(noteId);
+    if (matchBlockId) scrollToSearchMatch(noteId, matchBlockId);
+  }, [openNote, scrollToSearchMatch]);
 
   // ── Effects ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -332,6 +374,27 @@ export default function BoojyNotes() {
     .filter(b => b.text)
     .reduce((sum, b) => sum + stripMarkdownFormatting(b.text).split(/\s+/).filter(Boolean).length, 0) : 0;
 
+  // Backlink index — rebuild when noteData changes
+  const backlinkIndex = useMemo(() => buildBacklinkIndex(noteData), [noteData]);
+  const currentBacklinks = note ? getBacklinksForNote(backlinkIndex, note.title) : [];
+
+  // Note title set for broken wikilink detection
+  const noteTitleSet = useMemo(() => new Set(Object.values(noteData).map(n => n.title?.trim().toLowerCase()).filter(Boolean)), [noteData]);
+
+  // Wikilink click handler — find note by title and open it
+  const handleWikilinkClick = useCallback((targetTitle) => {
+    const lc = targetTitle.trim().toLowerCase();
+    const found = Object.entries(noteData).find(([, n]) =>
+      (n.title || "").toLowerCase() === lc
+    );
+    if (found) {
+      openNote(found[0]);
+    } else {
+      // Create new note with the target title
+      createNote(null, targetTitle);
+    }
+  }, [noteData, openNote, createNote]);
+
   const derivedRootNotes = [];
   const folderNoteMap = {};
   for (const [id, n] of Object.entries(noteData)) {
@@ -436,6 +499,11 @@ export default function BoojyNotes() {
             trashedNotes={trashedNotes}
             trashExpanded={trashExpanded} setTrashExpanded={setTrashExpanded}
             emptyAllTrash={emptyAllTrash}
+            searchMode={searchMode} searchResults={searchResults}
+            activeResultIndex={activeResultIndex}
+            navigateResults={navigateResults} clearSearch={clearSearch}
+            handleSearchResultOpen={handleSearchResultOpen}
+            getActiveResult={getActiveResult}
           />
         </div>
 
@@ -477,9 +545,20 @@ export default function BoojyNotes() {
           flipCheck={flipCheck} deleteBlock={deleteBlock}
           registerBlockRef={registerBlockRef}
           insertBlockAfter={insertBlockAfter}
+          updateCodeText={updateCodeText}
+          updateCodeLang={updateCodeLang}
+          updateCallout={updateCallout}
+          updateTableRows={updateTableRows}
+          backlinks={currentBacklinks}
+          onWikilinkClick={handleWikilinkClick}
+          onOpenBacklink={openNote}
           toolbarState={toolbarState}
           detectActiveFormats={detectActiveFormats}
           applyFormat={applyFormat}
+          noteTitleSet={noteTitleSet}
+          linkPopover={linkPopover}
+          setLinkPopover={setLinkPopover}
+          reReadBlockFromDom={reReadBlockFromDom}
         />
 
         {/* Right panel drag handle — bottom */}
@@ -808,10 +887,244 @@ export default function BoojyNotes() {
           font-size: 0.9em;
         }
         [data-block-id] a {
-          color: ${ACCENT.primary};
+          color: #6ea8d8;
           text-decoration: underline;
-          text-decoration-color: rgba(164,202,206,0.4);
-          cursor: text;
+          text-decoration-color: rgba(110,168,216,0.3);
+          cursor: pointer;
+        }
+        [data-block-id] a:hover {
+          text-decoration-color: #6ea8d8;
+          background: rgba(110,168,216,0.06);
+          border-radius: 2px;
+        }
+        [data-block-id] .external-link-icon {
+          font-size: 0.65em;
+          opacity: 0.5;
+          vertical-align: super;
+          user-select: none;
+          pointer-events: none;
+          margin-left: 1px;
+        }
+        [data-block-id] a:hover .external-link-icon {
+          opacity: 0.8;
+        }
+        [data-block-id] del {
+          text-decoration: line-through;
+          text-decoration-color: ${ACCENT.primary};
+          text-decoration-thickness: 1.5px;
+          color: inherit;
+        }
+        [data-block-id] mark {
+          background: rgba(164, 202, 206, 0.35);
+          color: inherit;
+          border-radius: 2px;
+          padding: 0 2px;
+        }
+        [data-block-id] .inline-tag {
+          color: ${ACCENT.primary};
+          opacity: 0.7;
+          font-size: 0.92em;
+        }
+        [data-block-id] .wikilink {
+          color: #A4CACE;
+          text-decoration: underline;
+          text-decoration-style: dotted;
+          text-decoration-color: rgba(164,202,206,0.3);
+          cursor: pointer;
+        }
+        [data-block-id] .wikilink:hover {
+          text-decoration-color: #A4CACE;
+        }
+        [data-block-id] .wikilink-broken {
+          color: rgba(255,255,255,0.4);
+          text-decoration-style: dashed;
+          text-decoration-color: rgba(255,255,255,0.2);
+        }
+        [data-block-id] .wikilink-broken:hover {
+          color: rgba(255,255,255,0.6);
+          text-decoration-color: rgba(255,255,255,0.3);
+        }
+        .code-block-wrapper {
+          position: relative;
+          border-radius: 8px;
+          background: #1a1b26;
+          border: 1px solid ${BG.divider};
+          overflow: hidden;
+          margin: 8px 0;
+        }
+        .code-block-wrapper pre {
+          margin: 0;
+          padding: 16px;
+          overflow-x: auto;
+          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          font-size: 13px;
+          line-height: 1.6;
+          color: ${TEXT.primary};
+          tab-size: 2;
+        }
+        .code-block-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 6px 12px;
+          background: rgba(255,255,255,0.03);
+          border-bottom: 1px solid ${BG.divider};
+          font-size: 11px;
+          color: ${TEXT.muted};
+        }
+        .code-block-header select {
+          background: transparent;
+          border: 1px solid ${BG.divider};
+          border-radius: 4px;
+          color: ${TEXT.secondary};
+          font-size: 11px;
+          padding: 2px 6px;
+          outline: none;
+          cursor: pointer;
+        }
+        .code-block-header select option {
+          background: ${BG.elevated};
+          color: ${TEXT.primary};
+        }
+        .code-block-copy {
+          background: transparent;
+          border: 1px solid ${BG.divider};
+          border-radius: 4px;
+          color: ${TEXT.muted};
+          font-size: 11px;
+          padding: 2px 8px;
+          cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
+        }
+        .code-block-copy:hover {
+          color: ${TEXT.primary};
+          border-color: ${TEXT.secondary};
+        }
+        .code-block-textarea {
+          width: 100%;
+          min-height: 60px;
+          padding: 16px;
+          background: #1a1b26;
+          color: ${TEXT.primary};
+          border: none;
+          outline: none;
+          resize: vertical;
+          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          font-size: 13px;
+          line-height: 1.6;
+          tab-size: 2;
+        }
+        /* Prism.js token colors */
+        .token.comment, .token.prolog, .token.doctype, .token.cdata { color: #636980; font-style: italic; }
+        .token.punctuation { color: #9B9EB0; }
+        .token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol { color: #FF9E64; }
+        .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin { color: #9ECE6A; }
+        .token.operator, .token.entity, .token.url { color: #89DDFF; }
+        .token.atrule, .token.attr-value, .token.keyword { color: #BB9AF7; }
+        .token.function, .token.class-name { color: #7AA2F7; }
+        .token.regex, .token.important, .token.variable { color: #E0AF68; }
+        .token.important, .token.bold { font-weight: bold; }
+        .token.italic { font-style: italic; }
+        /* Callout block styles */
+        .callout-block {
+          border-radius: 8px;
+          border-left: 4px solid;
+          padding: 12px 16px;
+          margin: 8px 0;
+        }
+        .callout-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 600;
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+        .callout-body {
+          font-size: 14px;
+          line-height: 1.6;
+          opacity: 0.9;
+        }
+        .callout-body p { margin: 0; }
+        /* Table block styles */
+        .table-block-wrapper {
+          overflow-x: auto;
+          margin: 8px 0;
+          border-radius: 8px;
+          border: 1px solid ${BG.divider};
+        }
+        .table-block {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+        .table-block th, .table-block td {
+          border: 1px solid ${BG.divider};
+          padding: 8px 12px;
+          text-align: left;
+          outline: none;
+          min-width: 80px;
+        }
+        .table-block th {
+          background: rgba(255,255,255,0.04);
+          font-weight: 600;
+          color: ${TEXT.primary};
+        }
+        .table-block td {
+          color: ${TEXT.primary};
+          background: transparent;
+        }
+        .table-block td:focus, .table-block th:focus {
+          box-shadow: inset 0 0 0 2px ${ACCENT.primary}50;
+        }
+        .table-toolbar {
+          display: flex;
+          gap: 4px;
+          padding: 4px 8px;
+          background: rgba(255,255,255,0.03);
+          border-top: 1px solid ${BG.divider};
+        }
+        .table-toolbar button {
+          background: transparent;
+          border: 1px solid ${BG.divider};
+          border-radius: 4px;
+          color: ${TEXT.muted};
+          font-size: 11px;
+          padding: 3px 8px;
+          cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
+        }
+        .table-toolbar button:hover {
+          color: ${TEXT.primary};
+          border-color: ${TEXT.secondary};
+        }
+        /* Frontmatter block styles */
+        .frontmatter-block {
+          border-radius: 8px;
+          border: 1px solid ${BG.divider};
+          background: rgba(255,255,255,0.02);
+          margin: 8px 0;
+          overflow: hidden;
+        }
+        .frontmatter-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px;
+          cursor: pointer;
+          font-size: 12px;
+          color: ${TEXT.muted};
+          transition: color 0.15s;
+        }
+        .frontmatter-header:hover { color: ${TEXT.secondary}; }
+        .frontmatter-body {
+          padding: 8px 12px;
+          border-top: 1px solid ${BG.divider};
+          font-family: 'SF Mono', 'Fira Code', monospace;
+          font-size: 12px;
+          line-height: 1.6;
+          color: ${TEXT.secondary};
+          white-space: pre-wrap;
         }
         .empty-block {
           position: relative;
