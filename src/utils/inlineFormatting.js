@@ -60,8 +60,8 @@ export function inlineMarkdownToHtml(md, noteTitles) {
 export function htmlToInlineMarkdown(html) {
   if (!html) return "";
 
-  // Fast path: no HTML tags at all
-  if (!/</.test(html)) return html;
+  // Fast path: no HTML tags or entities at all
+  if (!/[<&]/.test(html)) return html;
 
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
   return walkNode(doc.body);

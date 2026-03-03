@@ -2,12 +2,19 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Markdown shortcuts not triggering** — Typing `## `, `- `, `1. `, etc. did not convert to headings, bullets, or numbered lists; the browser inserts trailing spaces as `&nbsp;` entities, and the `htmlToInlineMarkdown` fast path returned the raw entity string without decoding it, so the shortcut regexes never matched; also fixes a latent data corruption bug where `&nbsp;` was stored literally and later displayed as `&amp;nbsp;` after undo/redo or note switching
+- **Title text reversal when typing** — Fixed typing "Hello" appearing as "olleH" in the title; the `useLayoutEffect` that syncs external file renames depended on `currentTitle`, causing it to overwrite the contentEditable DOM on every keystroke and reset the cursor to position 0; changed dependency to `syncGeneration.current` (matching the `EditableBlock` pattern) so the DOM is only rewritten on note switch or external file sync
+- **Critical: wikilink selection destroying all notes** — Selecting a note from the `[[` autocomplete menu called `commitTextChange(noteId, blockIndex, newText)` with three positional args, but the function expects a single updater function; this set the entire notes state to a string, wiping all data from React state and disk; now uses the correct updater-function pattern matching `updateBlockText`
+
 ### Features
+- **Wikilink autocomplete menu** — Type `[[` in any block to open an autocomplete menu listing all note titles; fuzzy-filters as you type; Enter or click inserts `[[Title]]` and navigates to the note; "Create note" fallback for non-existent titles; Escape or click-outside to dismiss
 - **Callout block rewrite** — Replaced emoji icons with Lucide line icons and native `<select>` with custom type picker dropdown (11 types with icons, colours, checkmark for active); switched from click-to-edit input/textarea to always-live `contentEditable` title and body; keyboard navigation: Enter in title focuses body, ArrowUp/Escape exits, Backspace on empty deletes block, ArrowUp/Down at body edges navigates between blocks
 - **Callout alias resolution** — Obsidian aliases (`caution`, `hint`, `error`, `todo`, `faq`, `cite`, `tldr`, etc.) resolve to canonical types on parse while preserving the original alias in `calloutTypeRaw` for round-trip fidelity
 - **Callout collapsible syntax** — `+`/`-` fold suffixes (`> [!note]+`) parsed and preserved in round-trip
 
 ### Bug Fixes
+- **Cursor reversal when typing** — Fixed typing "hello" appearing as "olleh"; the `noteTitleSet` was getting a new object reference on every keystroke (because it depended on `noteData`), causing `EditableBlock` to re-render and rewrite `innerHTML`, destroying cursor position; stabilised the Set reference so it only changes when actual note titles change
 - **Callout type picker scroll jump** — Fixed page scrolling to top when opening the type picker; render picker via React portal to `document.body` instead of inside the scroll container; added scroll-save/restore guard via `useLayoutEffect` to prevent residual scroll resets caused by blur→commit→re-render and type-select→re-render paths
 - **Consecutive callouts** — Fixed parser consuming the second callout's `> [!type]` line as body text of the first callout
 - **Callout search indexing** — Callout title text now included in full-text search index
