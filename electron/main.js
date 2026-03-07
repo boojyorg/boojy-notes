@@ -1,13 +1,21 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu, protocol, net, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  Menu,
+  protocol,
+  net,
+  shell,
+  clipboard,
+  nativeImage,
+  nativeTheme,
+} from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { watch } from "chokidar";
-import {
-  blocksToMarkdown,
-  markdownToBlocks,
-  parseFrontmatter,
-} from "./markdown.js";
+import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "./markdown.js";
 import { registerTerminalIPC, killAllTerminals } from "./terminal.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ─── Config (vault path) ───
 
 const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
+const SETTINGS_FILE = path.join(app.getPath("userData"), "settings.json");
 
 function loadConfig() {
   try {
@@ -26,6 +35,18 @@ function loadConfig() {
 
 function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+}
+
+function loadSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveSettings(settings) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
 function getNotesDir() {
@@ -53,8 +74,8 @@ function ensureUniqueFilePath(filePath) {
   const ext = path.extname(filePath);
   const base = path.basename(filePath, ext);
   let i = 2;
-  while (fs.existsSync(path.join(dir, `${base} ${i}${ext}`))) i++;
-  return path.join(dir, `${base} ${i}${ext}`);
+  while (fs.existsSync(path.join(dir, `${base}-${i}${ext}`))) i++;
+  return path.join(dir, `${base}-${i}${ext}`);
 }
 
 // ─── Note ID index (.boojy-index.json) ───
@@ -88,7 +109,7 @@ function readAllNotes(notesDir) {
 
   function walk(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".")) continue; // skip dotfiles/dirs (.attachments, etc.)
+      if (entry.name.startsWith(".") || entry.name === "attachments") continue; // skip dotfiles/dirs and attachments
       if (entry.isDirectory()) {
         walk(path.join(dir, entry.name));
       } else if (entry.name.endsWith(".md")) {
@@ -140,7 +161,10 @@ function parseNoteFile(filePath, notesDir) {
     // Look up existing ID from index, or use migrated ID, or generate new
     let id = null;
     for (const [noteId, p] of Object.entries(_idIndex)) {
-      if (p === relPath) { id = noteId; break; }
+      if (p === relPath) {
+        id = noteId;
+        break;
+      }
     }
     if (!id) id = migratedId || `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -148,7 +172,7 @@ function parseNoteFile(filePath, notesDir) {
     _idIndex[id] = relPath;
 
     const blocks = markdownToBlocks(body);
-    const text = blocks.map(b => b.text || "").join(" ");
+    const text = blocks.map((b) => b.text || "").join(" ");
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
     return {
@@ -177,11 +201,15 @@ function createWindow() {
     height: 800,
     minWidth: 600,
     minHeight: 400,
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    title: "Boojy Notes",
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 14, y: 8 },
+    backgroundColor: "#2C2C32",
     icon: path.join(__dirname, "../assets/icon.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      spellcheck: true,
       preload: path.join(__dirname, "preload.js"),
     },
   });
@@ -205,7 +233,7 @@ function startWatcher() {
   watcher = watch(notesDir, {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 50 },
-    ignored: [/(^|[/\\])\./, /\.boojy-index\.json$/], // ignore dotfiles and index
+    ignored: [/(^|[/\\])\./, /\.boojy-index\.json$/, /[/\\]attachments[/\\]/], // ignore dotfiles, index, and attachments
   });
 
   watcher.on("change", (filePath) => {
@@ -340,9 +368,6 @@ ipcMain.handle("delete-note-file", (_event, noteId) => {
         // dir not empty
       }
     }
-    // Clean up attachments for this note
-    const attDir = path.join(notesDir, ".attachments", noteId);
-    try { fs.rmSync(attDir, { recursive: true, force: true }); } catch { /* no attachments */ }
     delete _idIndex[noteId];
     saveIndex(notesDir);
     return { deleted: true };
@@ -351,21 +376,110 @@ ipcMain.handle("delete-note-file", (_event, noteId) => {
   }
 });
 
-ipcMain.handle("save-image", (_event, { noteId, fileName, dataBase64 }) => {
+ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
   const notesDir = getNotesDir();
-  const attDir = path.join(notesDir, ".attachments", noteId);
+  const attDir = path.join(notesDir, "attachments");
   fs.mkdirSync(attDir, { recursive: true });
-  const safeName = sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
+  const safeName =
+    sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
   const finalPath = ensureUniqueFilePath(path.join(attDir, safeName));
   fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
-  // Return relative path from vault root (forward slashes for markdown)
-  return path.relative(notesDir, finalPath).replace(/\\/g, "/");
+  return path.basename(finalPath);
+});
+
+ipcMain.handle("save-attachment", (_event, { fileName, dataBase64 }) => {
+  const notesDir = getNotesDir();
+  const attDir = path.join(notesDir, "attachments");
+  fs.mkdirSync(attDir, { recursive: true });
+  const safeName =
+    sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
+  const finalPath = ensureUniqueFilePath(path.join(attDir, safeName));
+  fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
+  const size = fs.statSync(finalPath).size;
+  return { filename: path.basename(finalPath), size };
+});
+
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
+
+ipcMain.handle("resolve-attachment", (_event, filename) => {
+  const notesDir = getNotesDir();
+  // Search order: attachments/ folder → vault root
+  const candidates = [path.join(notesDir, "attachments", filename), path.join(notesDir, filename)];
+  // Also check legacy .attachments/ subfolders
+  const legacyAttDir = path.join(notesDir, ".attachments");
+  if (fs.existsSync(legacyAttDir)) {
+    try {
+      for (const sub of fs.readdirSync(legacyAttDir, { withFileTypes: true })) {
+        if (sub.isDirectory()) {
+          candidates.push(path.join(legacyAttDir, sub.name, filename));
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+});
+
+ipcMain.handle("open-path", async (_event, absolutePath) => {
+  if (typeof absolutePath === "string" && fs.existsSync(absolutePath)) {
+    await shell.openPath(absolutePath);
+  }
+});
+
+ipcMain.handle("show-item-in-folder", (_event, absolutePath) => {
+  if (typeof absolutePath === "string" && fs.existsSync(absolutePath)) {
+    shell.showItemInFolder(absolutePath);
+  }
+});
+
+ipcMain.handle("pick-file", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  const filePath = result.filePaths[0];
+  const dataBase64 = fs.readFileSync(filePath).toString("base64");
+  const size = fs.statSync(filePath).size;
+  return { fileName: path.basename(filePath), dataBase64, size };
+});
+
+ipcMain.handle("get-file-size", (_event, filename) => {
+  const notesDir = getNotesDir();
+  const candidates = [path.join(notesDir, "attachments", filename), path.join(notesDir, filename)];
+  for (const candidate of candidates) {
+    try {
+      return fs.statSync(candidate).size;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+});
+
+ipcMain.handle("copy-image-to-clipboard", (_event, filename) => {
+  const notesDir = getNotesDir();
+  const absPath = path.join(notesDir, "attachments", filename);
+  if (!fs.existsSync(absPath)) return false;
+  try {
+    const img = nativeImage.createFromPath(absPath);
+    clipboard.writeImage(img);
+    return true;
+  } catch {
+    return false;
+  }
 });
 
 ipcMain.handle("read-meta", (_event, folderRelPath) => {
   const metaPath = path.join(getNotesDir(), folderRelPath || "", ".boojy-meta.json");
-  try { return JSON.parse(fs.readFileSync(metaPath, "utf-8")); }
-  catch { return null; }
+  try {
+    return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+  } catch {
+    return null;
+  }
 });
 
 ipcMain.handle("write-meta", (_event, folderRelPath, meta) => {
@@ -419,26 +533,24 @@ ipcMain.handle("trash-note", (_event, noteId, title, folder) => {
     fs.unlinkSync(filePath);
   }
 
-  // Move attachments if they exist
-  const attDir = path.join(notesDir, ".attachments", noteId);
-  if (fs.existsSync(attDir)) {
-    const trashAttDir = path.join(dest, ".attachments", noteId);
-    fs.mkdirSync(path.dirname(trashAttDir), { recursive: true });
-    fs.renameSync(attDir, trashAttDir);
-  }
-
   // Clean empty parent dirs
   const dir = path.dirname(filePath);
   if (dir !== notesDir) {
     try {
       const entries = fs.readdirSync(dir);
       if (entries.length === 0) fs.rmdirSync(dir);
-    } catch { /* dir not empty */ }
+    } catch {
+      /* dir not empty */
+    }
   }
 
   // Update metadata
   const meta = loadTrashMeta(notesDir);
-  meta[noteId] = { deletedAt: Date.now(), originalFolder: folder || null, originalTitle: title || "Untitled" };
+  meta[noteId] = {
+    deletedAt: Date.now(),
+    originalFolder: folder || null,
+    originalTitle: title || "Untitled",
+  };
   saveTrashMeta(notesDir, meta);
 
   // Remove from index
@@ -513,14 +625,6 @@ ipcMain.handle("restore-note", (_event, noteId) => {
     fs.unlinkSync(trashFile);
   }
 
-  // Restore attachments if they exist
-  const trashAttDir = path.join(trashDir(notesDir), ".attachments", noteId);
-  if (fs.existsSync(trashAttDir)) {
-    const attDir = path.join(notesDir, ".attachments", noteId);
-    fs.mkdirSync(path.dirname(attDir), { recursive: true });
-    fs.renameSync(trashAttDir, attDir);
-  }
-
   // Re-add to index
   _idIndex[noteId] = path.relative(notesDir, targetPath);
   saveIndex(notesDir);
@@ -542,14 +646,24 @@ ipcMain.handle("purge-trash", (_event, noteIds) => {
   const purged = [];
 
   const toPurge = noteIds
-    ? noteIds.filter(id => meta[id])
-    : Object.entries(meta).filter(([, info]) => now - info.deletedAt > thirtyDaysMs).map(([id]) => id);
+    ? noteIds.filter((id) => meta[id])
+    : Object.entries(meta)
+        .filter(([, info]) => now - info.deletedAt > thirtyDaysMs)
+        .map(([id]) => id);
 
   for (const noteId of toPurge) {
     const trashFile = path.join(trashDir(notesDir), `${noteId}.md`);
-    try { fs.unlinkSync(trashFile); } catch { /* already gone */ }
+    try {
+      fs.unlinkSync(trashFile);
+    } catch {
+      /* already gone */
+    }
     const trashAttDir = path.join(trashDir(notesDir), ".attachments", noteId);
-    try { fs.rmSync(trashAttDir, { recursive: true, force: true }); } catch { /* no attachments */ }
+    try {
+      fs.rmSync(trashAttDir, { recursive: true, force: true });
+    } catch {
+      /* no attachments */
+    }
     delete meta[noteId];
     purged.push(noteId);
   }
@@ -561,8 +675,106 @@ ipcMain.handle("purge-trash", (_event, noteIds) => {
 ipcMain.handle("empty-trash", () => {
   const notesDir = getNotesDir();
   const dir = trashDir(notesDir);
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* nothing to delete */ }
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch {
+    /* nothing to delete */
+  }
   return { emptied: true };
+});
+
+// ─── Settings IPC handlers ───
+
+ipcMain.handle("get-settings", () => loadSettings());
+
+ipcMain.handle("set-setting", (_event, key, value) => {
+  const settings = loadSettings();
+  settings[key] = value;
+  saveSettings(settings);
+  return settings;
+});
+
+ipcMain.on("set-window-title", (_, title) => {
+  if (mainWindow) mainWindow.setTitle(title);
+});
+
+ipcMain.handle("toggle-spellcheck", (_event, { enabled, languages }) => {
+  const settings = loadSettings();
+  settings.spellCheckEnabled = enabled;
+  if (languages) settings.spellCheckLanguages = languages;
+  saveSettings(settings);
+  if (mainWindow) {
+    const langs = enabled ? languages || settings.spellCheckLanguages || ["en-US"] : [];
+    mainWindow.webContents.session.setSpellCheckerLanguages(langs);
+  }
+  return settings;
+});
+
+// ─── Export IPC handlers ───
+
+ipcMain.handle("export:pdf", async (_event, { html, title }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: sanitizeFilename(title) + ".pdf",
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (result.canceled) return { exported: false };
+  const { exportToPDF } = await import("./export.js");
+  await exportToPDF(html, title, result.filePath);
+  return { exported: true, filePath: result.filePath };
+});
+
+ipcMain.handle("export:docx", async (_event, { blocks, title }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: sanitizeFilename(title) + ".docx",
+    filters: [{ name: "Word Document", extensions: ["docx"] }],
+  });
+  if (result.canceled) return { exported: false };
+  const { exportToDocx } = await import("./export.js");
+  await exportToDocx(blocks, title, result.filePath);
+  return { exported: true, filePath: result.filePath };
+});
+
+// ─── Import IPC handlers ───
+
+ipcMain.handle("import:markdown", async (_event, opts) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile", "multiSelections"],
+    filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
+  });
+  if (result.canceled) return { imported: [] };
+  const { importMarkdownFiles } = await import("./import.js");
+  const notesDir = getNotesDir();
+  const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
+  fs.mkdirSync(targetDir, { recursive: true });
+  const imported = importMarkdownFiles(result.filePaths, targetDir);
+  return { imported };
+});
+
+ipcMain.handle("import:html", async (_event, opts) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile", "multiSelections"],
+    filters: [{ name: "HTML", extensions: ["html", "htm"] }],
+  });
+  if (result.canceled) return { imported: [] };
+  const { importHtmlFiles } = await import("./import.js");
+  const notesDir = getNotesDir();
+  const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
+  fs.mkdirSync(targetDir, { recursive: true });
+  const imported = await importHtmlFiles(result.filePaths, targetDir);
+  return { imported };
+});
+
+ipcMain.handle("import:folder", async (_event, opts) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
+  });
+  if (result.canceled) return { imported: [] };
+  const { importMarkdownFolder } = await import("./import.js");
+  const notesDir = getNotesDir();
+  const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
+  fs.mkdirSync(targetDir, { recursive: true });
+  const imported = importMarkdownFolder(result.filePaths[0], targetDir);
+  return { imported };
 });
 
 ipcMain.handle("open-external", async (_event, url) => {
@@ -586,34 +798,78 @@ ipcMain.handle("pick-image-file", async () => {
 
 app.whenReady().then(() => {
   app.setName("Boojy Notes");
+  nativeTheme.themeSource = "dark";
 
   // Custom protocol for resolving attachment paths to actual files
   protocol.handle("boojy-att", (request) => {
     const relativePath = decodeURIComponent(request.url.slice("boojy-att://".length));
-    const absPath = path.join(getNotesDir(), relativePath);
+    const notesDir = getNotesDir();
+    // Try exact relative path first, then attachments/ folder, then legacy .attachments/
+    let absPath = path.join(notesDir, relativePath);
+    if (!fs.existsSync(absPath)) {
+      const inAttachments = path.join(notesDir, "attachments", relativePath);
+      if (fs.existsSync(inAttachments)) {
+        absPath = inAttachments;
+      }
+    }
     return net.fetch("file://" + absPath.replace(/\\/g, "/"));
   });
 
   // Build custom menu (strips devTools from production builds)
   const isDev = !!process.env.VITE_DEV_SERVER_URL;
   const template = [
-    ...(process.platform === "darwin" ? [{
-      label: "Boojy Notes",
-      submenu: [
-        { role: "about" },
-        { type: "separator" },
-        { role: "services" },
-        { type: "separator" },
-        { role: "hide" },
-        { role: "hideOthers" },
-        { role: "unhide" },
-        { type: "separator" },
-        { role: "quit" },
-      ],
-    }] : []),
+    ...(process.platform === "darwin"
+      ? [
+          {
+            label: "Boojy Notes",
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              { role: "services" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { role: "quit" },
+            ],
+          },
+        ]
+      : []),
     {
       label: "File",
       submenu: [
+        {
+          label: "Export",
+          submenu: [
+            {
+              label: "PDF...",
+              click: () => mainWindow?.webContents.send("menu:export", "pdf"),
+            },
+            {
+              label: "DOCX...",
+              click: () => mainWindow?.webContents.send("menu:export", "docx"),
+            },
+          ],
+        },
+        {
+          label: "Import",
+          submenu: [
+            {
+              label: "Markdown Files...",
+              click: () => mainWindow?.webContents.send("menu:import", "markdown"),
+            },
+            {
+              label: "HTML Files...",
+              click: () => mainWindow?.webContents.send("menu:import", "html"),
+            },
+            {
+              label: "Folder...",
+              click: () => mainWindow?.webContents.send("menu:import", "folder"),
+            },
+          ],
+        },
+        { type: "separator" },
         process.platform === "darwin" ? { role: "close" } : { role: "quit" },
       ],
     },
@@ -648,18 +904,44 @@ app.whenReady().then(() => {
       submenu: [
         { role: "minimize" },
         { role: "zoom" },
-        ...(process.platform === "darwin" ? [
-          { type: "separator" },
-          { role: "front" },
-        ] : [
-          { role: "close" },
-        ]),
+        ...(process.platform === "darwin"
+          ? [{ type: "separator" }, { role: "front" }]
+          : [{ role: "close" }]),
       ],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
   createWindow();
+
+  // Initialize spell check from saved settings
+  const settings = loadSettings();
+  const spellLangs = settings.spellCheckLanguages || ["en-US"];
+  if (settings.spellCheckEnabled !== false) {
+    mainWindow.webContents.session.setSpellCheckerLanguages(spellLangs);
+  } else {
+    mainWindow.webContents.session.setSpellCheckerLanguages([]);
+  }
+
+  // Context menu for spelling suggestions
+  mainWindow.webContents.on("context-menu", (event, params) => {
+    if (params.misspelledWord) {
+      const menu = Menu.buildFromTemplate([
+        ...params.dictionarySuggestions.map((s) => ({
+          label: s,
+          click: () => mainWindow.webContents.replaceMisspelling(s),
+        })),
+        { type: "separator" },
+        {
+          label: "Add to Dictionary",
+          click: () =>
+            mainWindow.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
+        },
+      ]);
+      menu.popup();
+    }
+  });
+
   startWatcher();
   registerTerminalIPC(ipcMain, () => mainWindow, getNotesDir);
 

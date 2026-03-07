@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Fix blank screen after native title bar switch** — Removed duplicate `noteData` destructuring in EditorArea that caused `undefined` prop when the redundant BoojyNotes prop was cleaned up
+- **Fix useEffect dependency array** — Replace dynamic property access `noteData[activeNote]?.title` with `noteData` in window title effect dependency array
+
+### Features
+- **Separate title bar** — Added a thin 28px draggable title bar above the TopBar with centered window title; traffic lights sit in the title bar row instead of overlapping TopBar content; TopBar left padding reduced since traffic lights no longer occupy that space
+
 ### Improvements
 - **Compact slash menu** — Single-line rows with smaller icon boxes (24px), reduced padding, and right-aligned monospace shortcut hints instead of verbose descriptions; removed redundant "Text" command; menu is shorter and easier to scan
 
