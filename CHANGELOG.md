@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Bug Fixes
+- **Fix stars disappearing when scrolling past ~50 lines** — Replaced `inset: 0` with `top: 0; left: 0; width: 100%` so the canvas isn't clipped to viewport height; stars now generate dynamically in bands as content grows, so scrolling down always shows stars
 - **Fix blank screen after native title bar switch** — Removed duplicate `noteData` destructuring in EditorArea that caused `undefined` prop when the redundant BoojyNotes prop was cleaned up
 - **Fix useEffect dependency array** — Replace dynamic property access `noteData[activeNote]?.title` with `noteData` in window title effect dependency array
 

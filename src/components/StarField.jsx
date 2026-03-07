@@ -20,36 +20,61 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
 
     // Force-clear the canvas by resetting dimensions
     const w = parent.clientWidth;
-    const h = parent.clientHeight;
+    const h = Math.max(parent.scrollHeight, parent.clientHeight);
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Generate stars for this seed
-    const rand = mulberry32(hashString(seed));
-    const count = mode === "empty" ? 220 : 110;
-    const topExclude = mode === "empty" ? 0.05 : 0.12;
-    const colours = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#F0F4FF","#FFFDDE"];
-    const stars = Array.from({ length: count }, () => {
-      const isHero = rand() < 0.08;
-      const radius = isHero ? 1.5 + rand() * 1.0 : 0.3 + rand() * 1.2;
-      return {
-        x: rand() * w,
-        y: h * topExclude + rand() * h * (1 - topExclude),
-        radius,
-        color: colours[Math.floor(rand() * colours.length)],
-        maxBrightness: 0.3 + rand() * 0.7,
-        cycleDuration: 30000 + rand() * 120000,
-        phaseOffset: rand() * Math.PI * 2,
-        shadowBlur: radius > 1.0 ? 8 + radius * 5 : 4 + radius * 3,
-      };
-    });
+    // Star generation: density-based, grows as content grows
+    const colours = [
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#FFFFFF",
+      "#F0F4FF",
+      "#FFFDDE",
+    ];
+    const starsPerScreen = mode === "empty" ? 220 : 110;
+    // Fixed pixel offset to avoid the title/toolbar area
+    const topExcludePx = mode === "empty" ? 30 : 60;
+    const stars = [];
+    let coveredHeight = 0;
+
+    const generateStarsForBand = (yFrom, yTo, width) => {
+      const bandHeight = yTo - yFrom;
+      const viewportH = parent.clientHeight || 800;
+      const count = Math.round(starsPerScreen * (bandHeight / viewportH));
+      // Use a seed derived from the band start so stars are stable per region
+      const bandRand = mulberry32(hashString(seed) + Math.round(yFrom));
+      for (let i = 0; i < count; i++) {
+        const isHero = bandRand() < 0.08;
+        const radius = isHero ? 1.5 + bandRand() * 1.0 : 0.3 + bandRand() * 1.2;
+        stars.push({
+          x: bandRand() * width,
+          y: yFrom + bandRand() * bandHeight,
+          radius,
+          color: colours[Math.floor(bandRand() * colours.length)],
+          maxBrightness: 0.3 + bandRand() * 0.7,
+          cycleDuration: 30000 + bandRand() * 120000,
+          phaseOffset: bandRand() * Math.PI * 2,
+          shadowBlur: radius > 1.0 ? 8 + radius * 5 : 4 + radius * 3,
+        });
+      }
+    };
+
+    // Initial generation
+    generateStarsForBand(topExcludePx, h, w);
+    coveredHeight = h;
 
     const resize = () => {
       const rw = parent.clientWidth;
-      const rh = parent.clientHeight;
+      const rh = Math.max(parent.scrollHeight, parent.clientHeight);
       canvas.width = rw * dpr;
       canvas.height = rh * dpr;
       canvas.style.width = rw + "px";
@@ -64,7 +89,18 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
     const emptyMult = mode === "empty" ? 1.6 : 1.0;
     const draw = (time) => {
       const cw = parent.clientWidth;
-      const ch = parent.clientHeight;
+      const ch = Math.max(parent.scrollHeight, parent.clientHeight);
+
+      // Resize canvas and generate new stars if content grew
+      if (ch > coveredHeight + 1) {
+        generateStarsForBand(coveredHeight, ch, cw);
+        coveredHeight = ch;
+      }
+      if (Math.abs(ch - canvas.clientHeight) > 1) {
+        canvas.height = ch * dpr;
+        canvas.style.height = ch + "px";
+      }
+
       // Full-buffer clear: reset transform, clear raw pixels, restore
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -102,15 +138,22 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
       window.removeEventListener("resize", resize);
       ro.disconnect();
       // Nuke canvas content
-      canvas.width = canvas.width;
+      canvas.width = canvas.width; // eslint-disable-line no-self-assign -- intentional canvas clear
     };
   }, [mode, seed]);
 
   return (
-    <canvas ref={canvasRef} style={{
-      position: "absolute", inset: 0,
-      pointerEvents: "none", zIndex: 0,
-    }} />
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        pointerEvents: "none",
+        zIndex: 0,
+      }}
+    />
   );
 };
 
