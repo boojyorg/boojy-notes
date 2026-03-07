@@ -2,7 +2,34 @@
 
 ## Unreleased
 
+### Improvements
+- **Compact slash menu** — Single-line rows with smaller icon boxes (24px), reduced padding, and right-aligned monospace shortcut hints instead of verbose descriptions; removed redundant "Text" command; menu is shorter and easier to scan
+
+### Features
+- **Spell check** — Native Electron spell check with right-click suggestions, "Add to Dictionary", and language selection (8 languages); toggle on/off in Settings → Appearance; persists across sessions via app settings file
+- **Word count tooltip** — Hover over "N words" in the top bar to see character count, character count without spaces, and estimated reading time
+- **Find in note (Cmd+F)** — Floating search bar with CSS Custom Highlight API for non-destructive match highlighting; "n of N" counter, previous/next navigation (Enter/Shift+Enter), collapsible Replace section with Replace and Replace All; Escape to close
+- **Table alignment** — Column alignment (left/center/right) via toolbar buttons when hovering a table; alignment round-trips through markdown separator row (`:---:`, `---:`, `---`); header row styled with bold + accent tint
+- **Table cell formatting** — Bold, italic, code, strikethrough, highlight, and wikilinks now render inside table cells; formatting preserved on blur via `htmlToInlineMarkdown`
+- **Table CSV/TSV paste** — Paste tab-separated or comma-separated data into a table cell to auto-fill cells; grid expands if pasted data exceeds current dimensions
+- **PDF export** — Export any note as a styled PDF via right-click context menu or File → Export → PDF; renders in a hidden BrowserWindow with print-friendly CSS
+- **DOCX export** — Export any note as a Word document via right-click or File → Export → DOCX; supports headings, lists, checkboxes, code, tables (with alignment), callouts, and inline formatting (bold, italic, code, strikethrough, highlight)
+- **Import markdown files** — File → Import → Markdown Files to copy `.md`/`.txt` files into the vault; chokidar watcher auto-detects new files
+- **Import HTML files** — File → Import → HTML Files converts HTML to markdown via Turndown and saves as `.md` in the vault
+- **Import folder** — File → Import → Folder recursively imports all `.md`/`.txt` files preserving directory structure; "Import files here" in folder right-click menu
+- **Embed / Transclusion (`![[Note Title]]`)** — Embed another note's content inline as a read-only preview with accent-colored left border; `![[Note#Heading]]` shows only the heading's section; "not found" placeholder with "Create note" button for broken embeds; nested embeds supported up to depth 3; `/embed` slash command; round-trips through markdown
+- **Vitest test suite** — 158 tests across 6 test files covering markdown conversion (round-trip for all 14 block types), search (fuzzy matching, indexing, grouping), sidebar tree (sorting, nesting, filtering), backlink index (wikilinks, aliases, dedup), inline formatting (markdown↔HTML, sanitization), and slash command data validation
+- **ESLint + Prettier** — Flat ESLint 9 config with React and React Hooks plugins; Prettier auto-formatting for consistent code style; `npm run lint` and `npm run format:check` scripts
+- **TypeScript (incremental)** — `tsconfig.json` with `allowJs`, `@ts-check` + JSDoc on 5 pure utility files (`sidebarTree.js`, `backlinkIndex.js`, `search.js`, `data.js`, `markdown.js`); shared type definitions in `src/types.d.ts`; `npm run typecheck` script
+- **GitHub Actions CI** — Runs lint, format check, type check, tests, and build on push/PR to master and feature branches
+
 ### Bug Fixes
+- **Lightbox missing ArrowUp/ArrowDown close** — Pressing ArrowUp or ArrowDown now closes the image lightbox, matching Escape and ArrowLeft/ArrowRight behavior
+- **Image deselection on typing** — Pressing a printable character while an image block is selected now deselects the image and lets the keystroke pass through to the editor
+- **Timestamp filenames for clipboard pastes** — Pasted screenshots now get descriptive filenames like `paste-2026-03-05-143022.png` instead of generic `image.png`
+- **Filename deduplication uses dash** — Duplicate filenames now get a `-2` suffix instead of ` 2` (space), avoiding issues with spaces in filenames
+- **Friendly filename dots** — Dots in filenames are now converted to spaces in display labels (e.g., `song.final.mix.mp3` → "Song Final Mix")
+
 - **Markdown shortcuts not triggering** — Typing `## `, `- `, `1. `, etc. did not convert to headings, bullets, or numbered lists; the browser inserts trailing spaces as `&nbsp;` entities, and the `htmlToInlineMarkdown` fast path returned the raw entity string without decoding it, so the shortcut regexes never matched; also fixes a latent data corruption bug where `&nbsp;` was stored literally and later displayed as `&amp;nbsp;` after undo/redo or note switching
 - **Title text reversal when typing** — Fixed typing "Hello" appearing as "olleH" in the title; the `useLayoutEffect` that syncs external file renames depended on `currentTitle`, causing it to overwrite the contentEditable DOM on every keystroke and reset the cursor to position 0; changed dependency to `syncGeneration.current` (matching the `EditableBlock` pattern) so the DOM is only rewritten on note switch or external file sync
 - **Critical: wikilink selection destroying all notes** — Selecting a note from the `[[` autocomplete menu called `commitTextChange(noteId, blockIndex, newText)` with three positional args, but the function expects a single updater function; this set the entire notes state to a string, wiping all data from React state and disk; now uses the correct updater-function pattern matching `updateBlockText`
