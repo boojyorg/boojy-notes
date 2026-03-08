@@ -2,11 +2,19 @@ import { genNoteId, genBlockId } from "../utils/storage";
 import { FOLDER_TREE } from "../constants/data";
 
 export function useNoteCrud({
-  commitNoteData, noteDataRef,
-  setTabs, setActiveNote, activeNote,
-  setCustomFolders, customFolders, setExpanded,
-  titleRef, trashedNotesRef, setTrashedNotes,
+  commitNoteData,
+  noteDataRef,
+  setTabs,
+  setActiveNote,
+  activeNote,
+  setCustomFolders,
+  customFolders,
+  setExpanded,
+  titleRef,
+  trashedNotesRef,
+  setTrashedNotes,
   setRenamingFolder,
+  setSidebarOrder,
 }) {
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
@@ -14,13 +22,15 @@ export function useNoteCrud({
     const noteTitle = title || "Untitled";
     const pathParts = folder ? [...folder.split("/"), noteTitle] : undefined;
     const newNote = {
-      id, title: noteTitle, folder,
+      id,
+      title: noteTitle,
+      folder,
       path: pathParts,
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
       words: 0,
     };
-    commitNoteData(prev => ({ ...prev, [id]: newNote }));
-    setTabs(prev => [...prev, id]);
+    commitNoteData((prev) => ({ ...prev, [id]: newNote }));
+    setTabs((prev) => [...prev, id]);
     setActiveNote(id);
     setTimeout(() => {
       if (titleRef.current) {
@@ -39,7 +49,7 @@ export function useNoteCrud({
     if (!note) return;
     if (window.electronAPI?.trashNote) {
       trashedNotesRef.current.set(noteId, { title: note.title, folder: note.folder });
-      setTrashedNotes(prev => ({
+      setTrashedNotes((prev) => ({
         ...prev,
         [noteId]: {
           id: noteId,
@@ -50,15 +60,33 @@ export function useNoteCrud({
         },
       }));
     }
-    commitNoteData(prev => {
+    commitNoteData((prev) => {
       const next = { ...prev };
       delete next[noteId];
       return next;
     });
-    setTabs(prev => {
-      const next = prev.filter(t => t !== noteId);
+    setTabs((prev) => {
+      const next = prev.filter((t) => t !== noteId);
       if (activeNote === noteId) setActiveNote(next[next.length - 1] || null);
       return next;
+    });
+
+    // Clean note from folder's noteOrder in sidebarOrder
+    const folderKey = note.folder || "";
+    setSidebarOrder((prev) => {
+      const entry = prev[folderKey];
+      if (!entry?.noteOrder?.includes(noteId)) return prev;
+      const updated = {
+        ...prev,
+        [folderKey]: {
+          ...entry,
+          noteOrder: entry.noteOrder.filter((id) => id !== noteId),
+        },
+      };
+      if (window.electronAPI?.writeMeta) {
+        window.electronAPI.writeMeta(folderKey, updated[folderKey]);
+      }
+      return updated;
     });
   };
 
@@ -67,14 +95,16 @@ export function useNoteCrud({
     if (!src) return;
     const id = genNoteId();
     const dup = {
-      ...src, id, title: src.title + " (copy)",
+      ...src,
+      id,
+      title: src.title + " (copy)",
       content: {
         title: src.title + " (copy)",
-        blocks: src.content.blocks.map(b => ({ ...b, id: genBlockId() })),
+        blocks: src.content.blocks.map((b) => ({ ...b, id: genBlockId() })),
       },
     };
-    commitNoteData(prev => ({ ...prev, [id]: dup }));
-    setTabs(prev => [...prev, id]);
+    commitNoteData((prev) => ({ ...prev, [id]: dup }));
+    setTabs((prev) => [...prev, id]);
     setActiveNote(id);
   };
 
@@ -84,21 +114,21 @@ export function useNoteCrud({
     parts[parts.length - 1] = newName;
     const newPath = parts.join("/");
     if (newPath === oldPath) return;
-    commitNoteData(prev => {
+    commitNoteData((prev) => {
       const next = { ...prev };
       for (const [id, n] of Object.entries(next)) {
         if (n.folder && (n.folder === oldPath || n.folder.startsWith(oldPath + "/"))) {
           const updated = { ...n, folder: n.folder.replace(oldPath, newPath) };
           if (updated.path) {
             const oldLast = oldPath.split("/").pop();
-            updated.path = updated.path.map(s => s === oldLast ? newName : s);
+            updated.path = updated.path.map((s) => (s === oldLast ? newName : s));
           }
           next[id] = updated;
         }
       }
       return next;
     });
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = {};
       for (const [key, val] of Object.entries(prev)) {
         if (key === oldPath) next[newPath] = val;
@@ -107,12 +137,13 @@ export function useNoteCrud({
       }
       return next;
     });
-    setCustomFolders(prev => prev.map(f => f === oldPath ? newName : f));
+    setCustomFolders((prev) => prev.map((f) => (f === oldPath ? newName : f)));
   };
 
   const deleteFolder = (folderPath) => {
-    const noteEntries = Object.entries(noteDataRef.current)
-      .filter(([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(folderPath + "/")));
+    const noteEntries = Object.entries(noteDataRef.current).filter(
+      ([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(folderPath + "/")),
+    );
     const noteIds = noteEntries.map(([id]) => id);
 
     if (window.electronAPI?.trashNote) {
@@ -127,20 +158,48 @@ export function useNoteCrud({
           content: n.content,
         };
       }
-      setTrashedNotes(prev => ({ ...prev, ...trashBatch }));
+      setTrashedNotes((prev) => ({ ...prev, ...trashBatch }));
     }
 
-    commitNoteData(prev => {
+    commitNoteData((prev) => {
       const next = { ...prev };
-      noteIds.forEach(id => delete next[id]);
+      noteIds.forEach((id) => delete next[id]);
       return next;
     });
-    setTabs(prev => {
-      const next = prev.filter(t => !noteIds.includes(t));
+    setTabs((prev) => {
+      const next = prev.filter((t) => !noteIds.includes(t));
       if (noteIds.includes(activeNote)) setActiveNote(next[next.length - 1] || null);
       return next;
     });
-    setCustomFolders(prev => prev.filter(f => f !== folderPath));
+    setCustomFolders((prev) =>
+      prev.filter((f) => f !== folderPath && !f.startsWith(folderPath + "/")),
+    );
+
+    // Clean sidebarOrder: remove folder's own entry, all subfolder entries,
+    // and remove it from parent's folderOrder
+    setSidebarOrder((prev) => {
+      const next = { ...prev };
+      // Remove the folder itself and all subfolders
+      for (const key of Object.keys(next)) {
+        if (key === folderPath || key.startsWith(folderPath + "/")) {
+          delete next[key];
+        }
+      }
+      // Remove from parent's folderOrder
+      const parts = folderPath.split("/");
+      const folderName = parts.pop();
+      const parentPath = parts.join("/") || "";
+      if (next[parentPath]?.folderOrder) {
+        next[parentPath] = {
+          ...next[parentPath],
+          folderOrder: next[parentPath].folderOrder.filter((f) => f !== folderName),
+        };
+        if (window.electronAPI?.writeMeta) {
+          window.electronAPI.writeMeta(parentPath, next[parentPath]);
+        }
+      }
+      return next;
+    });
   };
 
   const restoreNote = async (noteId) => {
@@ -149,14 +208,14 @@ export function useNoteCrud({
       const note = await window.electronAPI.restoreNote(noteId);
       if (!note) return;
       const { _filePath, _migrated, ...cleanNote } = note;
-      commitNoteData(prev => ({ ...prev, [cleanNote.id]: cleanNote }));
+      commitNoteData((prev) => ({ ...prev, [cleanNote.id]: cleanNote }));
       if (cleanNote.folder) {
-        setCustomFolders(prev => {
+        setCustomFolders((prev) => {
           if (prev.includes(cleanNote.folder)) return prev;
           return [...prev, cleanNote.folder];
         });
       }
-      setTrashedNotes(prev => {
+      setTrashedNotes((prev) => {
         const next = { ...prev };
         delete next[noteId];
         return next;
@@ -171,7 +230,7 @@ export function useNoteCrud({
     if (!window.electronAPI?.purgeTrash) return;
     try {
       await window.electronAPI.purgeTrash([noteId]);
-      setTrashedNotes(prev => {
+      setTrashedNotes((prev) => {
         const next = { ...prev };
         delete next[noteId];
         return next;
@@ -194,24 +253,65 @@ export function useNoteCrud({
 
   const createFolder = () => {
     let name = "Untitled Folder";
-    const existingNames = new Set([
-      ...FOLDER_TREE.map(f => f.name),
-      ...customFolders,
-    ]);
+    const existingNames = new Set([...FOLDER_TREE.map((f) => f.name), ...customFolders]);
     if (existingNames.has(name)) {
       let i = 2;
       while (existingNames.has(`${name} ${i}`)) i++;
       name = `${name} ${i}`;
     }
-    setCustomFolders(prev => [...prev, name]);
-    setExpanded(prev => ({ ...prev, [name]: false }));
+    setCustomFolders((prev) => [...prev, name]);
+    setExpanded((prev) => ({ ...prev, [name]: false }));
     setTimeout(() => setRenamingFolder(name), 50);
   };
 
+  const createDraftNote = () => {
+    const id = genNoteId();
+    const firstBlockId = genBlockId();
+    const newNote = {
+      id,
+      title: "",
+      folder: null,
+      content: { title: "", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
+      words: 0,
+      _draft: true,
+    };
+    commitNoteData((prev) => ({ ...prev, [id]: newNote }));
+    // No setTabs — draft doesn't get a tab
+    setActiveNote(id);
+    return id;
+  };
+
+  const promoteDraft = (noteId) => {
+    commitNoteData((prev) => {
+      const note = prev[noteId];
+      if (!note?._draft) return prev;
+      const { _draft, ...clean } = note;
+      return { ...prev, [noteId]: clean };
+    });
+    setTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
+  };
+
+  const discardDraft = (noteId) => {
+    commitNoteData((prev) => {
+      if (!prev[noteId]?._draft) return prev;
+      const next = { ...prev };
+      delete next[noteId];
+      return next;
+    });
+  };
+
   return {
-    createNote, deleteNote, duplicateNote,
-    renameFolder, deleteFolder,
-    restoreNote, permanentDeleteNote, emptyAllTrash,
+    createNote,
+    deleteNote,
+    duplicateNote,
+    renameFolder,
+    deleteFolder,
+    restoreNote,
+    permanentDeleteNote,
+    emptyAllTrash,
     createFolder,
+    createDraftNote,
+    promoteDraft,
+    discardDraft,
   };
 }

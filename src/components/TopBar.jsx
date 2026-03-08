@@ -363,7 +363,7 @@ export default function TopBar({
                     alignItems: "center",
                   }}
                 >
-                  {t.title}
+                  {t.title || "Untitled"}
                 </span>
                 <span
                   className="tab-close"

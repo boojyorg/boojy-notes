@@ -10,6 +10,7 @@ import { useInlineFormatting } from "./hooks/useInlineFormatting";
 import { usePanelResize } from "./hooks/usePanelResize";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
+import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTerminal } from "./hooks/useTerminal";
 import { useSearch } from "./hooks/useSearch";
@@ -21,7 +22,7 @@ import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
-import { sortByOrder, buildTree, collectPaths, filterTree } from "./utils/sidebarTree";
+import { sortByOrder, buildTree, collectPaths, filterTree, pathsToTree, naturalCompare } from "./utils/sidebarTree";
 import SettingsModal from "./components/SettingsModal";
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -184,6 +185,8 @@ export default function BoojyNotes() {
 
   // ── Shared refs ─────────────────────────────────────────────────────
   const syncGeneration = useRef(0);
+  const activeNoteRef = useRef(activeNote);
+  activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
   const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(
@@ -197,7 +200,7 @@ export default function BoojyNotes() {
     notesDir,
     loading: fsLoading,
     changeNotesDir,
-  } = useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration);
+  } = useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration, setSidebarOrder);
 
   // ── App hooks ───────────────────────────────────────────────────────
   const {
@@ -211,7 +214,7 @@ export default function BoojyNotes() {
     popHistory,
     isUndoRedo,
     noteDataRef,
-  } = useHistory(noteData, setNoteData, syncGeneration);
+  } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({
     activeNote,
     setActiveNote,
@@ -243,6 +246,7 @@ export default function BoojyNotes() {
     trashedNotesRef,
     setTrashedNotes,
     setRenamingFolder,
+    setSidebarOrder,
   });
   const {
     updateBlockText,
@@ -315,6 +319,8 @@ export default function BoojyNotes() {
     dragTooltipCount,
     setToolbarState,
   });
+  const multiSelectRef = useRef(null);
+  const clearSelectionRef = useRef(null);
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder } =
     useSidebarDrag({
       noteDataRef,
@@ -329,6 +335,8 @@ export default function BoojyNotes() {
       chromeBg,
       setDragTooltip,
       dragTooltipCount,
+      selectedNotesRef: multiSelectRef,
+      clearSelectionRef: clearSelectionRef,
     });
   const {
     handleEditorKeyDown,
@@ -389,9 +397,10 @@ export default function BoojyNotes() {
     getActiveResult,
   } = useSearch(noteData, noteDataRef);
 
-  // Wire search input to fuzzy search
+  // Wire search input to fuzzy search — clear multi-select when entering search
   useEffect(() => {
     runSearch(search);
+    if (search && clearSelectionRef.current) clearSelectionRef.current();
   }, [search, runSearch]);
 
   const scrollToSearchMatch = useCallback(
@@ -606,12 +615,14 @@ export default function BoojyNotes() {
       if (blockDrag.current.active) cancelBlockDrag();
       if (sidebarDrag.current.active) cancelSidebarDrag();
     };
-    window.addEventListener("blur", onBlur);
-    document.addEventListener("visibilitychange", () => {
+    const onVisChange = () => {
       if (document.hidden) onBlur();
-    });
+    };
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVisChange);
     return () => {
       window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVisChange);
     };
   }, []);
 
@@ -716,20 +727,21 @@ export default function BoojyNotes() {
 
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
-  const plainText = note
-    ? note.content.blocks
-        .filter((b) => b.text)
-        .map((b) => stripMarkdownFormatting(b.text))
-        .join(" ")
-    : "";
-  const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).filter(Boolean).length : 0;
-  const charCount = plainText.length;
-  const charCountNoSpaces = plainText.replace(/\s/g, "").length;
-  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-
-  // Backlink index — rebuild when noteData changes
-  const backlinkIndex = useMemo(() => buildBacklinkIndex(noteData), [noteData]);
-  const currentBacklinks = note ? getBacklinksForNote(backlinkIndex, note.title) : [];
+  const noteBlocks = note?.content?.blocks;
+  const { wordCount, charCount, charCountNoSpaces, readingTime } = useMemo(() => {
+    if (!noteBlocks) return { wordCount: 0, charCount: 0, charCountNoSpaces: 0, readingTime: 1 };
+    const plainText = noteBlocks
+      .filter((b) => b.text)
+      .map((b) => stripMarkdownFormatting(b.text))
+      .join(" ");
+    const wc = plainText.trim() ? plainText.trim().split(/\s+/).filter(Boolean).length : 0;
+    return {
+      wordCount: wc,
+      charCount: plainText.length,
+      charCountNoSpaces: plainText.replace(/\s/g, "").length,
+      readingTime: Math.max(1, Math.ceil(wc / 200)),
+    };
+  }, [noteBlocks]);
 
   // Note title set for broken wikilink detection
   // Stabilise the Set reference: only rebuild when actual titles change (not on every text edit)
@@ -744,11 +756,22 @@ export default function BoojyNotes() {
   );
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
 
+  // Backlink index — only rebuild when note structure changes (not on every text edit)
+  const backlinkIndex = useMemo(
+    () => buildBacklinkIndex(noteDataRef.current),
+    [noteTitlesKey, activeNote], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const noteTitle = note?.title;
+  const currentBacklinks = useMemo(
+    () => (noteTitle ? getBacklinksForNote(backlinkIndex, noteTitle) : []),
+    [backlinkIndex, noteTitle],
+  );
+
   // Wikilink click handler — find note by title and open it
   const handleWikilinkClick = useCallback(
     (targetTitle) => {
       const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteData).find(([, n]) => (n.title || "").toLowerCase() === lc);
+      const found = Object.entries(noteDataRef.current).find(([, n]) => (n.title || "").toLowerCase() === lc);
       if (found) {
         openNote(found[0]);
       } else {
@@ -756,7 +779,7 @@ export default function BoojyNotes() {
         createNote(null, targetTitle);
       }
     },
-    [noteData, openNote, createNote],
+    [openNote, createNote],
   );
 
   // Wikilink autocomplete select handler — replace raw [[filter text with [[Title]]
@@ -846,35 +869,79 @@ export default function BoojyNotes() {
     [spellCheckEnabled],
   );
 
-  const derivedRootNotes = [];
-  const folderNoteMap = {};
-  for (const [id, n] of Object.entries(noteData)) {
-    if (n.folder) {
-      if (!folderNoteMap[n.folder]) folderNoteMap[n.folder] = [];
-      folderNoteMap[n.folder].push(id);
-    } else {
-      derivedRootNotes.push(id);
+  const { derivedRootNotes, folderNoteMap } = useMemo(() => {
+    const roots = [];
+    const map = {};
+    for (const [id, n] of Object.entries(noteData)) {
+      if (n.folder) {
+        if (!map[n.folder]) map[n.folder] = [];
+        map[n.folder].push(id);
+      } else {
+        roots.push(id);
+      }
     }
-  }
+    return { derivedRootNotes: roots, folderNoteMap: map };
+  }, [noteData]);
 
-  const allFolders = [
-    ...FOLDER_TREE,
-    ...customFolders.map((name) => ({ name, children: [], notes: [] })),
-  ];
-  const knownPaths = new Set(collectPaths(allFolders));
-  for (const path of Object.keys(folderNoteMap)) {
-    if (!knownPaths.has(path)) knownPaths.add(path);
-  }
+  const { allFolders, knownPaths } = useMemo(() => {
+    const allPaths = new Set([...customFolders, ...Object.keys(folderNoteMap)]);
+    const folders = [...FOLDER_TREE, ...pathsToTree([...allPaths])];
+    const paths = new Set(collectPaths(folders));
+    return { allFolders: folders, knownPaths: paths };
+  }, [customFolders, folderNoteMap]);
 
-  const rawFolderTree = buildTree(allFolders, folderNoteMap, sidebarOrder);
-  const folderTree = sortByOrder(rawFolderTree, sidebarOrder[""]?.folderOrder, (f) => f.name);
-  const sortedRootNotes = sortByOrder(derivedRootNotes, sidebarOrder[""]?.noteOrder, (id) => id);
+  const { folderTree, sortedRootNotes } = useMemo(() => {
+    const rawFolderTree = buildTree(allFolders, folderNoteMap, sidebarOrder);
+    const hasRootOrder = sidebarOrder[""]?.folderOrder?.length > 0;
+    const tree = hasRootOrder
+      ? sortByOrder(rawFolderTree, sidebarOrder[""].folderOrder, (f) => f.name)
+      : [...rawFolderTree].sort((a, b) => naturalCompare(a.name, b.name));
+    const sorted = sortByOrder(derivedRootNotes, sidebarOrder[""]?.noteOrder, (id) => id);
+    return { folderTree: tree, sortedRootNotes: sorted };
+  }, [allFolders, folderNoteMap, sidebarOrder, derivedRootNotes]);
 
-  const lc = (s) => s.toLowerCase();
-  const filteredTree = filterTree(folderTree, search ? lc(search) : "", noteData);
-  const fNotes = search
-    ? sortedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
-    : sortedRootNotes;
+  const { filteredTree, fNotes } = useMemo(() => {
+    const lc = (s) => s.toLowerCase();
+    const filtered = filterTree(folderTree, search ? lc(search) : "", noteData);
+    const notes = search
+      ? sortedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
+      : sortedRootNotes;
+    return { filteredTree: filtered, fNotes: notes };
+  }, [folderTree, search, noteData, sortedRootNotes]);
+
+  // ── Multi-select ────────────────────────────────────────────────────
+  const { selectedNotes, handleNoteClick, clearSelection, removeFromSelection } =
+    useMultiSelect({ filteredTree, fNotes, expanded, openNote });
+
+  // Keep refs in sync for useSidebarDrag (which is instantiated earlier)
+  multiSelectRef.current = selectedNotes;
+  clearSelectionRef.current = clearSelection;
+
+  const selectedCount = selectedNotes.size;
+
+  const bulkDeleteNotes = useCallback(
+    (ids) => {
+      for (const id of ids) deleteNote(id);
+      clearSelection();
+    },
+    [deleteNote, clearSelection],
+  );
+
+  const bulkMoveNotes = useCallback(
+    (ids, folder) => {
+      setNoteData((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          if (next[id]) next[id] = { ...next[id], folder: folder || null };
+        }
+        return next;
+      });
+      clearSelection();
+    },
+    [setNoteData, clearSelection],
+  );
+
+  const folderList = useMemo(() => [...knownPaths].sort(), [knownPaths]);
 
   // ── UI helpers ──────────────────────────────────────────────────────
   const hBg = (el, c) => {
@@ -1037,6 +1104,9 @@ export default function BoojyNotes() {
             clearSearch={clearSearch}
             handleSearchResultOpen={handleSearchResultOpen}
             getActiveResult={getActiveResult}
+            selectedNotes={selectedNotes}
+            handleNoteClick={handleNoteClick}
+            clearSelection={clearSelection}
           />
         </div>
 
@@ -1064,9 +1134,9 @@ export default function BoojyNotes() {
         />
 
         <EditorArea
+          onEditorClick={clearSelection}
           note={note}
           activeNote={activeNote}
-          noteData={noteData}
           editorFadeIn={editorFadeIn}
           editorRef={editorRef}
           editorScrollRef={editorScrollRef}
@@ -1192,6 +1262,11 @@ export default function BoojyNotes() {
         onExportPdf={handleExportPdf}
         onExportDocx={handleExportDocx}
         onImport={handleImportIntoFolder}
+        selectedNotes={selectedNotes}
+        selectedCount={selectedCount}
+        bulkDeleteNotes={bulkDeleteNotes}
+        bulkMoveNotes={bulkMoveNotes}
+        folderList={folderList}
       />
 
       <SlashMenu

@@ -31,7 +31,14 @@ function blocksEqual(a, b) {
   return true;
 }
 
-export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration) {
+export function useFileSystem(
+  noteData,
+  setNoteData,
+  setCustomFolders,
+  trashedNotesRef,
+  syncGeneration,
+  setSidebarOrder,
+) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isElectron);
 
@@ -87,7 +94,9 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNo
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [setNoteData, setCustomFolders]);
 
   // ─── Detect local changes and debounce writes ───
@@ -176,9 +185,12 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNo
       // Check if content actually changed before queueing state update —
       // avoids block ID churn when chokidar echoes back a file we just wrote
       const existing = noteDataRef.current[cleanNote.id];
-      if (existing && blocksEqual(existing.content?.blocks, cleanNote.content?.blocks)
-          && existing.title === cleanNote.title
-          && existing.folder === cleanNote.folder) {
+      if (
+        existing &&
+        blocksEqual(existing.content?.blocks, cleanNote.content?.blocks) &&
+        existing.title === cleanNote.title &&
+        existing.folder === cleanNote.folder
+      ) {
         return; // Nothing changed, skip entirely
       }
 
@@ -198,28 +210,68 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, trashedNo
       }
     });
 
+    // Sync folders after external file change — remove stale folders
+    const syncFoldersFromDisk = async () => {
+      try {
+        const diskNotes = await window.electronAPI.readAllNotes();
+        const diskFolders = new Set();
+        for (const n of Object.values(diskNotes)) {
+          if (n.folder) diskFolders.add(n.folder);
+        }
+        setCustomFolders((prev) => {
+          const filtered = prev.filter((f) => diskFolders.has(f));
+          for (const f of diskFolders) {
+            if (!filtered.includes(f)) filtered.push(f);
+          }
+          if (
+            filtered.length === prev.length &&
+            filtered.every((f, i) => f === prev[i])
+          )
+            return prev;
+          return filtered;
+        });
+
+        // Clean sidebarOrder: remove entries for folders that no longer exist
+        if (setSidebarOrder) {
+          setSidebarOrder((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const key of Object.keys(next)) {
+              if (key === "") continue; // root always valid
+              if (!diskFolders.has(key)) {
+                delete next[key];
+                changed = true;
+              }
+            }
+            // Clean folderOrder arrays in remaining entries
+            for (const [key, meta] of Object.entries(next)) {
+              if (meta.folderOrder) {
+                const validChildren = meta.folderOrder.filter((name) => {
+                  const childPath = key ? key + "/" + name : name;
+                  return diskFolders.has(childPath);
+                });
+                if (validChildren.length !== meta.folderOrder.length) {
+                  next[key] = { ...meta, folderOrder: validChildren };
+                  changed = true;
+                }
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
+      } catch (err) {
+        console.error('useFileSystem: folder sync failed', err);
+      }
+    };
+
     const unsubDelete = window.electronAPI.onFileDeleted(({ filePath }) => {
-      // Find note by filePath — scan current noteData
-      // Since we can't read the deleted file, we mark it via setNoteData
-      // The main process sends filePath; we match against known notes
-      // For now, trigger a full re-read to stay consistent
+      // Re-read all notes and sync folders to remove stale entries
       (async () => {
         try {
           const diskNotes = await window.electronAPI.readAllNotes();
           isExternalUpdate.current = true;
           setNoteData(diskNotes);
-          // Sync customFolders with what's actually on disk
-          const folders = new Set();
-          for (const n of Object.values(diskNotes)) {
-            if (n.folder) folders.add(n.folder);
-          }
-          if (folders.size > 0) {
-            setCustomFolders((prev) => {
-              const merged = new Set([...prev, ...folders]);
-              if (merged.size === prev.length) return prev;
-              return [...merged];
-            });
-          }
+          await syncFoldersFromDisk();
         } catch (err) {
           console.error("useFileSystem: re-read after delete failed", err);
         }

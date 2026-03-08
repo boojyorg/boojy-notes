@@ -2,7 +2,28 @@
 
 ## Unreleased
 
+### Features
+- **Blockquote support** — Lines starting with `>` now render as blockquotes with a thin accent-colored left border and italic muted text (Obsidian-style); consecutive `>` lines group into one block; type `> ` to auto-convert, use `/blockquote` slash command, or write `>` lines in markdown; Enter continues the blockquote, Backspace on empty reverts to paragraph; `> [!type]` callouts are unaffected
+
 ### Bug Fixes
+- **Fix ghost note naming after promotion** — When typing in the body first, `promoteDraft` forced the title to the literal string "Untitled", replacing the faded placeholder with solid text that required manual clearing; now keeps the title empty so the CSS placeholder remains active and the user can type a title naturally; added `|| "Untitled"` fallback to tab labels for display consistency
+- **Fix ghost note not appearing in empty vault** — On app start, `activeNote` could point to a deleted note via stale localStorage, preventing the draft-creation effect from firing; now resets `activeNote` to null when it references a non-existent note. Also fixed `onFileDeleted` disk sync wiping in-memory draft notes by preserving `_draft` entries during `setNoteData` overwrites
+- **Fix deleted folders/notes retaining stale ordering position** — When a folder or note was deleted, its custom drag-order entry persisted in `sidebarOrder`; re-creating it would cause it to reappear at its old position instead of sorting alphabetically; now `deleteFolder` cleans the folder (and all subfolders) from both `customFolders` and `sidebarOrder`, and `deleteNote` removes the note ID from its folder's `noteOrder`; external deletions via Finder also clean `sidebarOrder` during folder sync
+- **Fix orphaned folders remaining in sidebar after vault files deleted** — The `onFileDeleted` handler only merged folders into `customFolders` and never removed stale ones; when all files in a folder were deleted externally, the empty folder persisted in the sidebar; now syncs `customFolders` against actual disk state, removing folders that no longer contain notes
+- **Fix progressive slowdown on note switch** — `useHistory` was cloning the entire `noteData` object (all notes) on every edit, accumulating massive memory pressure across 50 undo stack entries; now stores per-note `{ noteId, snapshot }` tuples, reducing memory ~100×. Wrapped all `useEditorHandlers` return values in `useCallback` so `React.memo` on `EditorArea` is no longer bypassed on every parent render. Fixed `visibilitychange` listener leak (anonymous function couldn't be removed in cleanup).
+
+### Improvements
+- **Ghost note empty state** — Replaced the static "Notes" logo splash screen with a live editor draft; when no note is open, a phantom note appears with "Untitled" and "Type / for commands..." placeholders; the note materializes into a real note (sidebar, tabs, disk) only when you start typing; navigating away from an empty draft silently discards it
+- **Performance: reduce unnecessary re-renders** — Memoized sidebar tree computation (folder hierarchy, filtering, sorting) with `useMemo` chains so it only recomputes when `noteData`, `customFolders`, `sidebarOrder`, or `search` change; wrapped `Sidebar`, `ContextMenu`, and `EditorArea` in `React.memo`; removed unstable `isSelected` callback in favor of `selectedNotes.has()` inline; extracted inline `onNavigateToNote` closure to `useCallback`; memoized `activeFormats` default object to prevent spurious `FloatingToolbar` re-renders
+
+### Features
+- **Multi-select notes in sidebar** — Cmd+Click to toggle individual notes, Shift+Click to select a range; right-click shows bulk context menu with "Delete N notes", "Move to..." folder submenu, and "Move to root"; multi-drag moves all selected notes as a group with a count badge; selection clears on plain click, editor click, or search activation
+
+### Bug Fixes
+- **Fix nested folders flattened to root level** — Nested folder paths like `University/25-26 Semester 2/COMP208` were saved as flat directories with underscores (`University_25-26 Semester 2_COMP208`) because `sanitizeFilename()` was applied to the entire path; now each path segment is sanitized individually, preserving the nested directory structure; same fix applied to restore-from-trash
+- **Fix folder drag-and-drop reordering** — Folder reordering now works correctly at all nesting levels; fixed root-level reorder using full paths instead of folder names, fixed nested folder reorder producing empty sibling lists, and fixed name-vs-path mismatch causing folders to jump to top
+- **Fix default sidebar folder ordering** — Folders at every nesting level now sort naturally by default (e.g. Week 1, Week 2, … Week 10) instead of appearing in arbitrary insertion order; custom drag-to-reorder still takes priority when set
+- **Fix sidebar folder nesting** — Deeply nested folders (e.g. `University/25-26 Semester 2/COMP208/Week 3`) now display as a proper nested tree instead of flat top-level entries; added `pathsToTree()` utility that splits slash-delimited paths into hierarchical nodes
 - **Fix stars disappearing when scrolling past ~50 lines** — Replaced `inset: 0` with `top: 0; left: 0; width: 100%` so the canvas isn't clipped to viewport height; stars now generate dynamically in bands as content grows, so scrolling down always shows stars
 - **Fix blank screen after native title bar switch** — Removed duplicate `noteData` destructuring in EditorArea that caused `undefined` prop when the redundant BoojyNotes prop was cleaned up
 - **Fix useEffect dependency array** — Replace dynamic property access `noteData[activeNote]?.title` with `noteData` in window title effect dependency array
