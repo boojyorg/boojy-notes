@@ -927,6 +927,8 @@ app.whenReady().then(() => {
 
   // Context menu for spelling suggestions
   mainWindow.webContents.on("context-menu", (event, params) => {
+    // Prevent native context menu — custom menus are handled in the renderer
+    event.preventDefault();
     if (params.misspelledWord) {
       const menu = Menu.buildFromTemplate([
         ...params.dictionarySuggestions.map((s) => ({

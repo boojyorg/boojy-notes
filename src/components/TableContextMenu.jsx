@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 
 function MenuItem({ label, onClick, danger }) {
@@ -6,7 +7,19 @@ function MenuItem({ label, onClick, danger }) {
   const { BG, TEXT, SEMANTIC } = theme;
   return (
     <div
-      onClick={onClick}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        // Capture scroll position before the action/dismiss removes the portal
+        // and focus returns to the editor (which would trigger scroll-to-top)
+        const scrollEl = document.querySelector(".editor-scroll");
+        const scrollTop = scrollEl?.scrollTop;
+        onClick(e);
+        if (scrollEl && scrollTop != null) {
+          requestAnimationFrame(() => {
+            scrollEl.scrollTop = scrollTop;
+          });
+        }
+      }}
       style={{
         padding: "6px 12px",
         fontSize: 12,
@@ -189,7 +202,7 @@ export default function TableContextMenu({
     );
   }
 
-  return (
+  return createPortal(
     <div
       className="table-context-menu"
       style={{
@@ -207,6 +220,7 @@ export default function TableContextMenu({
       }}
     >
       {items}
-    </div>
+    </div>,
+    document.body,
   );
 }
