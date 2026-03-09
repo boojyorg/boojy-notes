@@ -56,7 +56,15 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onUpdateLang, onBlockNav, onDelete }) {
+export default function CodeBlock({
+  block,
+  noteId,
+  blockIndex,
+  onUpdateCode,
+  onUpdateLang,
+  onBlockNav,
+  onDelete,
+}) {
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -97,116 +105,129 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
   }, [code]);
 
   // Handle input changes
-  const handleInput = useCallback((e) => {
-    onUpdateCode(noteId, blockIndex, e.target.value);
-    autoResize();
-    syncScroll();
-  }, [noteId, blockIndex, onUpdateCode, autoResize, syncScroll]);
+  const handleInput = useCallback(
+    (e) => {
+      onUpdateCode(noteId, blockIndex, e.target.value);
+      autoResize();
+      syncScroll();
+    },
+    [noteId, blockIndex, onUpdateCode, autoResize, syncScroll],
+  );
 
   // Keyboard handling
-  const handleKeyDown = useCallback((e) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
+  const handleKeyDown = useCallback(
+    (e) => {
+      e.stopPropagation(); // Prevent parent editor from intercepting
+      const ta = textareaRef.current;
+      if (!ta) return;
 
-    // Tab — insert 4 spaces
-    if (e.key === "Tab" && !e.shiftKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const val = ta.value;
-      const newVal = val.substring(0, start) + "    " + val.substring(end);
-      ta.value = newVal;
-      ta.selectionStart = ta.selectionEnd = start + 4;
-      onUpdateCode(noteId, blockIndex, newVal);
-      autoResize();
-      return;
-    }
-
-    // Shift+Tab — remove 4 leading spaces from current line
-    if (e.key === "Tab" && e.shiftKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      const start = ta.selectionStart;
-      const val = ta.value;
-      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-      if (val.substring(lineStart, lineStart + 4) === "    ") {
-        const newVal = val.substring(0, lineStart) + val.substring(lineStart + 4);
-        ta.value = newVal;
-        ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - 4);
-        onUpdateCode(noteId, blockIndex, newVal);
-        autoResize();
-      }
-      return;
-    }
-
-    // Enter — new line with auto-indent
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopPropagation();
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const val = ta.value;
-      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-      const line = val.substring(lineStart, start);
-      const indent = line.match(/^(\s*)/)[1];
-      const insert = "\n" + indent;
-      const newVal = val.substring(0, start) + insert + val.substring(end);
-      ta.value = newVal;
-      ta.selectionStart = ta.selectionEnd = start + insert.length;
-      onUpdateCode(noteId, blockIndex, newVal);
-      autoResize();
-      return;
-    }
-
-    // Escape — exit code block, focus next block
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      if (onBlockNav) onBlockNav(blockIndex, "next");
-      return;
-    }
-
-    // ArrowUp at first line
-    if (e.key === "ArrowUp") {
-      const beforeCursor = ta.value.substring(0, ta.selectionStart);
-      if (!beforeCursor.includes("\n")) {
+      // Tab — insert 4 spaces
+      if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
-        if (onBlockNav) onBlockNav(blockIndex, "prev");
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const val = ta.value;
+        const newVal = val.substring(0, start) + "    " + val.substring(end);
+        ta.value = newVal;
+        ta.selectionStart = ta.selectionEnd = start + 4;
+        onUpdateCode(noteId, blockIndex, newVal);
+        autoResize();
         return;
       }
-    }
 
-    // ArrowDown at last line
-    if (e.key === "ArrowDown") {
-      const afterCursor = ta.value.substring(ta.selectionEnd);
-      if (!afterCursor.includes("\n")) {
+      // Shift+Tab — remove 4 leading spaces from current line
+      if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const start = ta.selectionStart;
+        const val = ta.value;
+        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+        if (val.substring(lineStart, lineStart + 4) === "    ") {
+          const newVal = val.substring(0, lineStart) + val.substring(lineStart + 4);
+          ta.value = newVal;
+          ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - 4);
+          onUpdateCode(noteId, blockIndex, newVal);
+          autoResize();
+        }
+        return;
+      }
+
+      // Enter — new line with auto-indent
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const val = ta.value;
+        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+        const line = val.substring(lineStart, start);
+        const indent = line.match(/^(\s*)/)[1];
+        const insert = "\n" + indent;
+        const newVal = val.substring(0, start) + insert + val.substring(end);
+        ta.value = newVal;
+        ta.selectionStart = ta.selectionEnd = start + insert.length;
+        onUpdateCode(noteId, blockIndex, newVal);
+        autoResize();
+        return;
+      }
+
+      // Escape — exit code block, focus next block
+      if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         if (onBlockNav) onBlockNav(blockIndex, "next");
         return;
       }
-    }
 
-    // Backspace on empty — delete block
-    if (e.key === "Backspace" && ta.value === "") {
-      e.preventDefault();
-      e.stopPropagation();
-      if (onDelete) onDelete(blockIndex);
-      return;
-    }
-  }, [noteId, blockIndex, onUpdateCode, onBlockNav, onDelete, autoResize]);
+      // ArrowUp at first line
+      if (e.key === "ArrowUp") {
+        const beforeCursor = ta.value.substring(0, ta.selectionStart);
+        if (!beforeCursor.includes("\n")) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (onBlockNav) onBlockNav(blockIndex, "prev");
+          return;
+        }
+      }
+
+      // ArrowDown at last line
+      if (e.key === "ArrowDown") {
+        const afterCursor = ta.value.substring(ta.selectionEnd);
+        if (!afterCursor.includes("\n")) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (onBlockNav) onBlockNav(blockIndex, "next");
+          return;
+        }
+      }
+
+      // Backspace on empty — delete block
+      if (e.key === "Backspace" && ta.value === "") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onDelete) onDelete(blockIndex);
+        return;
+      }
+    },
+    [noteId, blockIndex, onUpdateCode, onBlockNav, onDelete, autoResize],
+  );
 
   // Copy to clipboard
-  const handleCopy = useCallback(async (e) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {}
-  }, [code]);
+  const handleCopy = useCallback(
+    async (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      try {
+        await navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      } catch {}
+    },
+    [code],
+  );
 
   // Right-click context menu
   const handleContextMenu = useCallback((e) => {
@@ -251,15 +272,21 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
     };
   }, [langDropdown]);
 
-  const handleLangChange = useCallback((newLang) => {
-    onUpdateLang(noteId, blockIndex, newLang);
-    closeCtxMenu();
-  }, [noteId, blockIndex, onUpdateLang, closeCtxMenu]);
+  const handleLangChange = useCallback(
+    (newLang) => {
+      onUpdateLang(noteId, blockIndex, newLang);
+      closeCtxMenu();
+    },
+    [noteId, blockIndex, onUpdateLang, closeCtxMenu],
+  );
 
-  const handleLangDropdownSelect = useCallback((newLang) => {
-    onUpdateLang(noteId, blockIndex, newLang);
-    setLangDropdown(false);
-  }, [noteId, blockIndex, onUpdateLang]);
+  const handleLangDropdownSelect = useCallback(
+    (newLang) => {
+      onUpdateLang(noteId, blockIndex, newLang);
+      setLangDropdown(false);
+    },
+    [noteId, blockIndex, onUpdateLang],
+  );
 
   const handleDeleteBlock = useCallback(() => {
     closeCtxMenu();
@@ -271,9 +298,12 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
   const highlightedHtml = highlight(code, lang);
 
   // Post-process: wrap each line in a span
-  const overlayHtml = highlightedHtml.split("\n").map((lineHtml) => {
-    return `<span class="code-line">${lineHtml}</span>`;
-  }).join("");
+  const overlayHtml = highlightedHtml
+    .split("\n")
+    .map((lineHtml) => {
+      return `<span class="code-line">${lineHtml}</span>`;
+    })
+    .join("");
 
   return (
     <div
@@ -281,6 +311,8 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onContextMenu={handleContextMenu}
+      onInput={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
     >
       <div className="code-body">
         <textarea
@@ -310,12 +342,30 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
         >
           {copied ? (
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8.5L6.5 12L13 4" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path
+                d="M3 8.5L6.5 12L13 4"
+                stroke="#4ade80"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           ) : (
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="5.5" y="5.5" width="7" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-              <path d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5" stroke="currentColor" strokeWidth="1.3"/>
+              <rect
+                x="5.5"
+                y="5.5"
+                width="7"
+                height="8"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.3"
+              />
+              <path
+                d="M10.5 5.5V3.5C10.5 2.67 9.83 2 9 2H4C3.17 2 2.5 2.67 2.5 3.5V10C2.5 10.83 3.17 11.5 4 11.5H5.5"
+                stroke="currentColor"
+                strokeWidth="1.3"
+              />
             </svg>
           )}
         </button>
@@ -325,7 +375,10 @@ export default function CodeBlock({ block, noteId, blockIndex, onUpdateCode, onU
       <div className="code-lang-anchor" ref={langDropdownRef}>
         <span
           className="code-lang"
-          onClick={(e) => { e.stopPropagation(); setLangDropdown((v) => !v); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setLangDropdown((v) => !v);
+          }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {displayLabel || "Plain"}

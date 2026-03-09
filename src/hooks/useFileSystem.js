@@ -116,6 +116,7 @@ export function useFileSystem(
     }
 
     for (const id of Object.keys(noteData)) {
+      if (noteData[id]?._draft) continue; // Skip drafts
       if (!prev[id] || prev[id] !== noteData[id]) {
         dirtyNotes.current.add(id);
       }
@@ -143,6 +144,7 @@ export function useFileSystem(
     const dirty = [...dirtyNotes.current];
     for (const noteId of dirty) {
       const note = noteDataRef.current[noteId];
+      if (note?._draft) { dirtyNotes.current.delete(noteId); continue; }
       if (note) {
         try {
           await window.electronAPI.writeNote(note);
@@ -270,7 +272,13 @@ export function useFileSystem(
         try {
           const diskNotes = await window.electronAPI.readAllNotes();
           isExternalUpdate.current = true;
-          setNoteData(diskNotes);
+          setNoteData((prev) => {
+            const drafts = {};
+            for (const [id, n] of Object.entries(prev)) {
+              if (n._draft) drafts[id] = n;
+            }
+            return { ...diskNotes, ...drafts };
+          });
           await syncFoldersFromDisk();
         } catch (err) {
           console.error("useFileSystem: re-read after delete failed", err);

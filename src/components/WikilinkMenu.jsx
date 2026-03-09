@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { BG, TEXT, ACCENT } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 
 export default function WikilinkMenu({ position, filter, noteData, onSelect, onDismiss }) {
+  const { theme } = useTheme();
+  const { BG, TEXT, ACCENT } = theme;
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef(null);
 
@@ -15,7 +18,7 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
   const filtered = useMemo(() => {
     if (!filter) return noteTitles;
     const lc = filter.toLowerCase();
-    return noteTitles.filter(n => n.title.toLowerCase().includes(lc));
+    return noteTitles.filter((n) => n.title.toLowerCase().includes(lc));
   }, [noteTitles, filter]);
 
   useEffect(() => {
@@ -26,10 +29,10 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
     const handler = (e) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex(i => Math.min(i + 1, filtered.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex(i => Math.max(i - 1, 0));
+        setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (filtered.length > 0) {
@@ -52,7 +55,7 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
     <div
       ref={menuRef}
       style={{
-        position: "absolute",
+        position: "fixed",
         top: position.top,
         left: position.left,
         background: BG.elevated,
@@ -75,7 +78,10 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
         filtered.slice(0, 10).map((n, i) => (
           <div
             key={n.id}
-            onMouseDown={(e) => { e.preventDefault(); onSelect(n.title); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(n.title);
+            }}
             onMouseEnter={() => setSelectedIndex(i)}
             style={{
               padding: "6px 12px",

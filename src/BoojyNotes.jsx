@@ -14,6 +14,7 @@ import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTerminal } from "./hooks/useTerminal";
 import { useSearch } from "./hooks/useSearch";
+import { useTheme } from "./hooks/useTheme";
 import { BG, TEXT, ACCENT, SEMANTIC, BRAND } from "./constants/colors";
 import { FOLDER_TREE } from "./constants/data";
 import { hexToRgb, rgbToHex } from "./utils/colorUtils";
@@ -34,6 +35,8 @@ import ImageLightbox from "./components/ImageLightbox";
 import TerminalPanel from "./components/terminal/TerminalPanel";
 
 export default function BoojyNotes() {
+  const { theme, isDark, themeMode, setThemeMode } = useTheme();
+
   // ── State ──────────────────────────────────────────────────────────
   const [expanded, setExpanded] = useState(() => {
     const ui = (() => {
@@ -106,14 +109,22 @@ export default function BoojyNotes() {
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
   const [devToast, setDevToast] = useState(null);
-  const [chromeBg, setChromeBg] = useState(BG.dark);
-  const [editorBg, setEditorBg] = useState(BG.editor);
+  const [chromeBg, setChromeBg] = useState(theme.BG.dark);
+  const [editorBg, setEditorBg] = useState(theme.BG.editor);
   const [topBarEdge, setTopBarEdge] = useState("B");
   const [createBtnStyle, setCreateBtnStyle] = useState("A");
-  const [accentColor, setAccentColor] = useState(ACCENT.primary);
+  const [accentColor, setAccentColor] = useState(theme.ACCENT.primary);
   const [activeTabBg, setActiveTabBg] = useState("#1C1C20");
   const [tabFlip, setTabFlip] = useState(false);
   const [selectionStyle, setSelectionStyle] = useState("B");
+
+  useEffect(() => {
+    setChromeBg(theme.BG.dark);
+    setEditorBg(theme.BG.editor);
+    setAccentColor(theme.ACCENT.primary);
+    setActiveTabBg(isDark ? "#1C1C20" : "#e2e6f2");
+  }, [isDark]);
+
   const [noteData, setNoteData] = useState(() => {
     if (window.electronAPI) return {};
     const saved = loadFromStorage();
@@ -1015,7 +1026,7 @@ export default function BoojyNotes() {
     };
     if (syncState === "syncing") return { ...base, animation: "syncGlow 2s ease-in-out infinite" };
     if (syncState === "error")
-      return { ...base, boxShadow: `0 0 0 2.5px ${BG.dark}, 0 0 0 4.5px ${SEMANTIC.error}` };
+      return { ...base, boxShadow: `0 0 0 2.5px ${theme.BG.dark}, 0 0 0 4.5px ${theme.SEMANTIC.error}` };
     if (syncState === "offline") return { ...base, opacity: 0.4 };
     return base;
   };
@@ -1026,13 +1037,14 @@ export default function BoojyNotes() {
       style={{
         width: "100%",
         height: "100vh",
-        background: BG.darkest,
+        background: theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
         fontFamily: "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        color: TEXT.primary,
+        color: theme.TEXT.primary,
         overflow: "hidden",
         fontSize: 13,
+        transition: `background-color ${theme.transitionMs}ms ease, color ${theme.transitionMs}ms ease`,
       }}
     >
       {/* Title bar with traffic lights and centered title */}
@@ -1052,7 +1064,7 @@ export default function BoojyNotes() {
           style={{
             fontSize: 12,
             fontWeight: 500,
-            color: TEXT.secondary,
+            color: theme.TEXT.secondary,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -1173,12 +1185,12 @@ export default function BoojyNotes() {
             width: 4,
             cursor: "col-resize",
             background: chromeBg,
-            borderRight: `1px solid ${BG.divider}`,
+            borderRight: `1px solid ${theme.BG.divider}`,
             flexShrink: 0,
             transition: "background 0.15s",
           }}
           onMouseEnter={() =>
-            sidebarHandles.current.forEach((h) => h && (h.style.background = ACCENT.primary))
+            sidebarHandles.current.forEach((h) => h && (h.style.background = theme.ACCENT.primary))
           }
           onMouseLeave={() => {
             if (!isDragging.current)
@@ -1249,19 +1261,19 @@ export default function BoojyNotes() {
           style={{
             width: 4,
             cursor: "col-resize",
-            background: BG.editor,
+            background: theme.BG.editor,
             flexShrink: 0,
             transition: "background 0.15s",
           }}
           onMouseEnter={() =>
-            rightPanelHandles.current.forEach((h) => h && (h.style.background = ACCENT.primary))
+            rightPanelHandles.current.forEach((h) => h && (h.style.background = theme.ACCENT.primary))
           }
           onMouseLeave={() => {
             if (!isDragging.current) {
               rightPanelHandles.current[0] &&
                 (rightPanelHandles.current[0].style.background = chromeBg);
               rightPanelHandles.current[1] &&
-                (rightPanelHandles.current[1].style.background = BG.editor);
+                (rightPanelHandles.current[1].style.background = theme.BG.editor);
             }
           }}
         />
@@ -1271,13 +1283,13 @@ export default function BoojyNotes() {
           style={{
             width: rightPanel ? rightPanelWidth : 0,
             minWidth: rightPanel ? rightPanelWidth : 0,
-            background: BG.editor,
+            background: theme.BG.editor,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
             flexShrink: 0,
             position: "relative",
-            borderLeft: `1px solid ${BG.divider}`,
+            borderLeft: `1px solid ${theme.BG.divider}`,
             transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
           }}
         >
@@ -1352,12 +1364,12 @@ export default function BoojyNotes() {
             top: dragTooltip.y,
             left: dragTooltip.x,
             transform: "translateX(-50%)",
-            background: BG.elevated,
-            border: `1px solid ${BG.divider}`,
+            background: theme.BG.elevated,
+            border: `1px solid ${theme.BG.divider}`,
             borderRadius: 6,
             padding: "5px 12px",
             fontSize: 12,
-            color: TEXT.primary,
+            color: theme.TEXT.primary,
             fontWeight: 500,
             zIndex: 1100,
             pointerEvents: "none",
@@ -1417,12 +1429,12 @@ export default function BoojyNotes() {
             bottom: 24,
             left: "50%",
             transform: "translateX(-50%)",
-            background: BG.elevated,
-            border: `1px solid ${BG.divider}`,
+            background: theme.BG.elevated,
+            border: `1px solid ${theme.BG.divider}`,
             borderRadius: 8,
             padding: "6px 16px",
             fontSize: 12,
-            color: TEXT.primary,
+            color: theme.TEXT.primary,
             fontWeight: 500,
             zIndex: 200,
             animation: "fadeIn 0.15s ease",
@@ -1444,9 +1456,9 @@ export default function BoojyNotes() {
             width: 28,
             height: 28,
             borderRadius: "50%",
-            border: `1px solid ${BG.divider}`,
-            background: devOverlay ? BG.surface : `${BG.elevated}aa`,
-            color: devOverlay ? ACCENT.primary : TEXT.muted,
+            border: `1px solid ${theme.BG.divider}`,
+            background: devOverlay ? theme.BG.surface : `${theme.BG.elevated}aa`,
+            color: devOverlay ? theme.ACCENT.primary : theme.TEXT.muted,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1459,11 +1471,11 @@ export default function BoojyNotes() {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.color = ACCENT.primary;
+            e.currentTarget.style.color = theme.ACCENT.primary;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.color = devOverlay ? ACCENT.primary : TEXT.muted;
+            e.currentTarget.style.color = devOverlay ? theme.ACCENT.primary : theme.TEXT.muted;
           }}
         >
           <svg
@@ -1495,14 +1507,14 @@ export default function BoojyNotes() {
             height: 4,
             appearance: "none",
             WebkitAppearance: "none",
-            background: BG.divider,
+            background: theme.BG.divider,
             borderRadius: 2,
             outline: "none",
             cursor: "pointer",
           };
           const sliderCss = `
-          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${TEXT.primary}; cursor: pointer; border: 2px solid ${BG.elevated}; }
-          .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${BG.divider}; border-radius: 2px; }
+          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${theme.TEXT.primary}; cursor: pointer; border: 2px solid ${theme.BG.elevated}; }
+          .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${theme.BG.divider}; border-radius: 2px; }
         `;
           const channels = ["R", "G", "B"];
           const rgbSliders = (rgb, setter) =>
@@ -1539,7 +1551,7 @@ export default function BoojyNotes() {
                     setter(rgbToHex(...next));
                   }}
                 />
-                <span style={{ width: 24, textAlign: "right", fontSize: 10, color: TEXT.muted }}>
+                <span style={{ width: 24, textAlign: "right", fontSize: 10, color: theme.TEXT.muted }}>
                   {rgb[i]}
                 </span>
               </div>
@@ -1551,8 +1563,8 @@ export default function BoojyNotes() {
                 bottom: 52,
                 right: 16,
                 width: 280,
-                background: BG.elevated,
-                border: `1px solid ${BG.divider}`,
+                background: theme.BG.elevated,
+                border: `1px solid ${theme.BG.divider}`,
                 borderRadius: 10,
                 padding: 16,
                 zIndex: 200,
@@ -1561,7 +1573,7 @@ export default function BoojyNotes() {
                 flexDirection: "column",
                 gap: 14,
                 fontSize: 12,
-                color: TEXT.secondary,
+                color: theme.TEXT.secondary,
                 fontFamily: "inherit",
                 animation: "slideUp 0.15s ease",
               }}
@@ -1570,7 +1582,7 @@ export default function BoojyNotes() {
               <div
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
               >
-                <span style={{ fontWeight: 600, color: TEXT.primary, fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: theme.TEXT.primary, fontSize: 13 }}>
                   Dev Tools
                 </span>
                 <button
@@ -1578,7 +1590,7 @@ export default function BoojyNotes() {
                   style={{
                     background: "none",
                     border: "none",
-                    color: TEXT.muted,
+                    color: theme.TEXT.muted,
                     cursor: "pointer",
                     fontSize: 14,
                   }}
@@ -1593,7 +1605,7 @@ export default function BoojyNotes() {
                     display: "flex",
                     borderRadius: 5,
                     overflow: "hidden",
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                     marginLeft: "auto",
                   }}
                 >
@@ -1608,8 +1620,8 @@ export default function BoojyNotes() {
                         setTimeout(() => setDevToast(null), 1500);
                       }}
                       style={{
-                        background: topBarEdge === s ? TEXT.primary : "transparent",
-                        color: topBarEdge === s ? BG.darkest : TEXT.muted,
+                        background: topBarEdge === s ? theme.TEXT.primary : "transparent",
+                        color: topBarEdge === s ? theme.BG.darkest : theme.TEXT.muted,
                         border: "none",
                         padding: "3px 10px",
                         fontSize: 11,
@@ -1630,7 +1642,7 @@ export default function BoojyNotes() {
                     display: "flex",
                     borderRadius: 5,
                     overflow: "hidden",
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                     marginLeft: "auto",
                   }}
                 >
@@ -1645,8 +1657,8 @@ export default function BoojyNotes() {
                         setTimeout(() => setDevToast(null), 1500);
                       }}
                       style={{
-                        background: createBtnStyle === s ? TEXT.primary : "transparent",
-                        color: createBtnStyle === s ? BG.darkest : TEXT.muted,
+                        background: createBtnStyle === s ? theme.TEXT.primary : "transparent",
+                        color: createBtnStyle === s ? theme.BG.darkest : theme.TEXT.muted,
                         border: "none",
                         padding: "3px 10px",
                         fontSize: 11,
@@ -1667,7 +1679,7 @@ export default function BoojyNotes() {
                     display: "flex",
                     borderRadius: 5,
                     overflow: "hidden",
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                     marginLeft: "auto",
                   }}
                 >
@@ -1680,8 +1692,8 @@ export default function BoojyNotes() {
                         setTimeout(() => setDevToast(null), 1500);
                       }}
                       style={{
-                        background: selectionStyle === s ? TEXT.primary : "transparent",
-                        color: selectionStyle === s ? BG.darkest : TEXT.muted,
+                        background: selectionStyle === s ? theme.TEXT.primary : "transparent",
+                        color: selectionStyle === s ? theme.BG.darkest : theme.TEXT.muted,
                         border: "none",
                         padding: "3px 10px",
                         fontSize: 11,
@@ -1695,7 +1707,35 @@ export default function BoojyNotes() {
                   ))}
                 </div>
               </div>
-              <div style={{ height: 1, background: BG.divider }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span>Theme</span>
+                <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: `1px solid ${theme.BG.divider}`, marginLeft: "auto" }}>
+                  {["night", "day", "auto"].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setThemeMode(s);
+                        setDevToast(`Theme: ${s}`);
+                        setTimeout(() => setDevToast(null), 1500);
+                      }}
+                      style={{
+                        background: themeMode === s ? theme.TEXT.primary : "transparent",
+                        color: themeMode === s ? theme.BG.darkest : theme.TEXT.muted,
+                        border: "none",
+                        padding: "3px 10px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "background 0.12s, color 0.12s",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ height: 1, background: theme.BG.divider }} />
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span>Accent Color</span>
@@ -1708,11 +1748,11 @@ export default function BoojyNotes() {
                     marginTop: 6,
                     borderRadius: 3,
                     background: accentColor,
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                   }}
                 />
               </div>
-              <div style={{ height: 1, background: BG.divider }} />
+              <div style={{ height: 1, background: theme.BG.divider }} />
               <div>
                 <div
                   style={{
@@ -1724,7 +1764,7 @@ export default function BoojyNotes() {
                 >
                   <span>Active Tab BG</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ color: TEXT.primary }}>{activeTabBg}</code>
+                    <code style={{ color: theme.TEXT.primary }}>{activeTabBg}</code>
                     <button
                       onClick={() => {
                         setTabFlip(!tabFlip);
@@ -1732,9 +1772,9 @@ export default function BoojyNotes() {
                         setTimeout(() => setDevToast(null), 1500);
                       }}
                       style={{
-                        background: tabFlip ? TEXT.primary : "transparent",
-                        color: tabFlip ? BG.darkest : TEXT.muted,
-                        border: `1px solid ${BG.divider}`,
+                        background: tabFlip ? theme.TEXT.primary : "transparent",
+                        color: tabFlip ? theme.BG.darkest : theme.TEXT.muted,
+                        border: `1px solid ${theme.BG.divider}`,
                         borderRadius: 4,
                         padding: "2px 8px",
                         fontSize: 10,
@@ -1754,15 +1794,15 @@ export default function BoojyNotes() {
                     marginTop: 6,
                     borderRadius: 3,
                     background: activeTabBg,
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                   }}
                 />
               </div>
-              <div style={{ height: 1, background: BG.divider }} />
+              <div style={{ height: 1, background: theme.BG.divider }} />
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span>Chrome BG</span>
-                  <code style={{ color: TEXT.primary }}>{chromeBg}</code>
+                  <code style={{ color: theme.TEXT.primary }}>{chromeBg}</code>
                 </div>
                 {rgbSliders(cRgb, setChromeBg)}
                 <div
@@ -1771,15 +1811,15 @@ export default function BoojyNotes() {
                     marginTop: 6,
                     borderRadius: 3,
                     background: chromeBg,
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                   }}
                 />
               </div>
-              <div style={{ height: 1, background: BG.divider }} />
+              <div style={{ height: 1, background: theme.BG.divider }} />
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <span>Editor BG</span>
-                  <code style={{ color: TEXT.primary }}>{editorBg}</code>
+                  <code style={{ color: theme.TEXT.primary }}>{editorBg}</code>
                 </div>
                 {rgbSliders(eRgb, setEditorBg)}
                 <div
@@ -1788,24 +1828,24 @@ export default function BoojyNotes() {
                     marginTop: 6,
                     borderRadius: 3,
                     background: editorBg,
-                    border: `1px solid ${BG.divider}`,
+                    border: `1px solid ${theme.BG.divider}`,
                   }}
                 />
               </div>
-              <div style={{ height: 1, background: BG.divider }} />
+              <div style={{ height: 1, background: theme.BG.divider }} />
               <button
                 onClick={() => {
-                  setChromeBg(BG.dark);
-                  setEditorBg(BG.editor);
-                  setAccentColor(ACCENT.primary);
+                  setChromeBg(theme.BG.dark);
+                  setEditorBg(theme.BG.editor);
+                  setAccentColor(theme.ACCENT.primary);
                   setActiveTabBg("#1C1C20");
                   setTabFlip(false);
                 }}
                 style={{
                   background: "none",
-                  border: `1px solid ${BG.divider}`,
+                  border: `1px solid ${theme.BG.divider}`,
                   borderRadius: 4,
-                  color: TEXT.muted,
+                  color: theme.TEXT.muted,
                   fontSize: 11,
                   padding: "4px 10px",
                   cursor: "pointer",
@@ -1821,8 +1861,8 @@ export default function BoojyNotes() {
       <style>{`
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes syncGlow {
-          0%, 100% { box-shadow: 0 0 4px ${BRAND.orange}40; }
-          50% { box-shadow: 0 0 14px ${BRAND.orange}80, 0 0 24px ${BRAND.orange}30; }
+          0%, 100% { box-shadow: 0 0 4px ${theme.BRAND.orange}40; }
+          50% { box-shadow: 0 0 14px ${theme.BRAND.orange}80, 0 0 24px ${theme.BRAND.orange}30; }
         }
         @keyframes syncDotPulse {
           0%, 100% { opacity: 1; }
@@ -1855,38 +1895,38 @@ export default function BoojyNotes() {
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${BG.divider}; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${BG.hover}; box-shadow: 0 0 4px ${BG.hover}40; }
+        ::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${theme.BG.hover}; box-shadow: 0 0 4px ${theme.BG.hover}40; }
         .tab-scroll::-webkit-scrollbar { height: 0px; }
         .tab-scroll::-webkit-scrollbar-track { background: transparent; }
         .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
         .tab-scroll:hover::-webkit-scrollbar { height: 5px; }
-        .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
+        .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
         .editor-scroll::-webkit-scrollbar-thumb { background: transparent; }
-        .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${BG.divider}; }
-        input::placeholder { color: ${TEXT.muted}; }
+        .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
+        input::placeholder { color: ${theme.TEXT.muted}; }
         [contenteditable]:focus { outline: none; }
         .checkbox-box:active { transform: scale(0.85); }
         .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
         .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }
         .tab-btn > .tab-close:hover { opacity: 1 !important; }
         [data-block-id] code {
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: ${theme.inlineCode.bg};
+          border: 1px solid ${theme.inlineCode.border};
           border-radius: 3px;
           padding: 1px 4px;
           font-family: 'SF Mono', 'Fira Code', monospace;
           font-size: 0.9em;
         }
         [data-block-id] a {
-          color: #6ea8d8;
+          color: ${theme.link.color};
           text-decoration: underline;
-          text-decoration-color: rgba(110,168,216,0.3);
+          text-decoration-color: ${theme.link.underline};
           cursor: pointer;
         }
         [data-block-id] a:hover {
-          text-decoration-color: #6ea8d8;
-          background: rgba(110,168,216,0.06);
+          text-decoration-color: ${theme.link.color};
+          background: ${theme.link.hoverBg};
           border-radius: 2px;
         }
         [data-block-id] .external-link-icon {
@@ -1902,51 +1942,51 @@ export default function BoojyNotes() {
         }
         [data-block-id] del {
           text-decoration: line-through;
-          text-decoration-color: ${ACCENT.primary};
+          text-decoration-color: ${theme.ACCENT.primary};
           text-decoration-thickness: 1.5px;
           color: inherit;
         }
         [data-block-id] mark {
-          background: rgba(164, 202, 206, 0.35);
+          background: ${theme.mark.bg};
           color: inherit;
           border-radius: 2px;
           padding: 0 2px;
         }
         [data-block-id] .inline-tag {
-          color: ${ACCENT.primary};
+          color: ${theme.ACCENT.primary};
           opacity: 0.7;
           font-size: 0.92em;
         }
         [data-block-id] .wikilink {
-          color: #A4CACE;
+          color: ${theme.wikilink.color};
           text-decoration: underline;
           text-decoration-style: dotted;
-          text-decoration-color: rgba(164,202,206,0.3);
+          text-decoration-color: ${theme.wikilink.underline};
           cursor: pointer;
         }
         [data-block-id] .wikilink:hover {
-          text-decoration-color: #A4CACE;
+          text-decoration-color: ${theme.wikilink.color};
         }
         [data-block-id] .wikilink-broken {
-          color: rgba(255,255,255,0.4);
+          color: ${theme.wikilinkBroken.color};
           text-decoration-style: dashed;
-          text-decoration-color: rgba(255,255,255,0.2);
+          text-decoration-color: ${theme.wikilinkBroken.underline};
         }
         [data-block-id] .wikilink-broken:hover {
-          color: rgba(255,255,255,0.6);
-          text-decoration-color: rgba(255,255,255,0.3);
+          color: ${theme.wikilinkBroken.hoverColor};
+          text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
         }
         .code-block {
           position: relative;
-          background: #03030D;
-          border: 1px solid rgba(255,255,255,0.10);
+          background: ${theme.codeBlockBg};
+          border: 1px solid ${theme.codeBlockBorder};
           border-radius: 8px;
           margin: 8px 0;
           padding: 14px 16px;
           transition: border-color 0.15s;
         }
         .code-block:focus-within {
-          border-color: rgba(255,255,255,0.18);
+          border-color: ${theme.codeBlockBorderFocus};
         }
         .code-body {
           position: relative;
@@ -1961,7 +2001,7 @@ export default function BoojyNotes() {
           background: transparent;
           color: transparent;
           -webkit-text-fill-color: transparent;
-          caret-color: #fff;
+          caret-color: ${theme.caretColor};
           border: none;
           outline: none;
           resize: none;
@@ -1976,7 +2016,7 @@ export default function BoojyNotes() {
           z-index: 1;
         }
         .code-textarea::selection {
-          background: rgba(255,255,255,0.12);
+          background: ${theme.codeSelection};
           -webkit-text-fill-color: transparent;
         }
         .code-overlay {
@@ -1996,7 +2036,7 @@ export default function BoojyNotes() {
           tab-size: 4;
           white-space: pre-wrap;
           word-wrap: break-word;
-          color: ${TEXT.primary};
+          color: ${theme.TEXT.primary};
           overflow: hidden;
         }
         .code-overlay code {
@@ -2032,16 +2072,16 @@ export default function BoojyNotes() {
           width: 28px;
           height: 28px;
           border-radius: 6px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(0,0,0,0.5);
-          color: rgba(255,255,255,0.45);
+          border: 1px solid ${theme.codeCopy.border};
+          background: ${theme.codeCopy.bg};
+          color: ${theme.codeCopy.color};
           cursor: pointer;
           transition: background 0.15s, color 0.15s;
           padding: 0;
         }
         .code-copy-btn:hover {
-          background: rgba(255,255,255,0.08);
-          color: rgba(255,255,255,0.8);
+          background: ${theme.codeCopy.hoverBg};
+          color: ${theme.codeCopy.hoverColor};
         }
         .code-lang-anchor {
           position: absolute;
@@ -2051,22 +2091,22 @@ export default function BoojyNotes() {
         }
         .code-lang {
           font-size: 11px;
-          color: rgba(255,255,255,0.2);
+          color: ${theme.codeLang.color};
           font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           user-select: none;
           cursor: pointer;
           transition: color 0.15s;
         }
         .code-lang:hover {
-          color: rgba(255,255,255,0.45);
+          color: ${theme.codeLang.hoverColor};
         }
         .code-lang-dropdown {
           position: absolute;
           bottom: calc(100% + 6px);
           right: 0;
           min-width: 140px;
-          background: ${BG.elevated};
-          border: 1px solid ${BG.divider};
+          background: ${theme.BG.elevated};
+          border: 1px solid ${theme.BG.divider};
           border-radius: 8px;
           padding: 4px 0;
           box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -2080,26 +2120,26 @@ export default function BoojyNotes() {
           padding: 6px 12px;
           border: none;
           background: none;
-          color: ${TEXT.secondary};
+          color: ${theme.TEXT.secondary};
           font-size: 12px;
           font-family: inherit;
           cursor: pointer;
           text-align: left;
         }
         .code-lang-option:hover {
-          background: rgba(255,255,255,0.06);
-          color: ${TEXT.primary};
+          background: ${theme.codeLangOption.hoverBg};
+          color: ${theme.TEXT.primary};
         }
         .code-lang-option-active {
-          color: ${TEXT.primary};
+          color: ${theme.TEXT.primary};
         }
         /* Code block context menu */
         .code-ctx-menu {
           position: fixed;
           z-index: 9999;
           min-width: 170px;
-          background: ${BG.elevated};
-          border: 1px solid ${BG.divider};
+          background: ${theme.BG.elevated};
+          border: 1px solid ${theme.BG.divider};
           border-radius: 8px;
           padding: 4px 0;
           box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -2110,7 +2150,7 @@ export default function BoojyNotes() {
           width: 100%;
           padding: 7px 14px;
           font-size: 12.5px;
-          color: ${TEXT.primary};
+          color: ${theme.TEXT.primary};
           background: none;
           border: none;
           cursor: pointer;
@@ -2123,10 +2163,10 @@ export default function BoojyNotes() {
         }
         .code-ctx-danger { color: #f87171; }
         .code-ctx-danger:hover { background: rgba(248,113,113,0.1); }
-        .code-ctx-active { color: ${ACCENT.primary}; }
+        .code-ctx-active { color: ${theme.ACCENT.primary}; }
         .code-ctx-sep {
           height: 1px;
-          background: ${BG.divider};
+          background: ${theme.BG.divider};
           margin: 4px 0;
         }
         .code-ctx-submenu-trigger {
@@ -2137,8 +2177,8 @@ export default function BoojyNotes() {
           left: 100%;
           top: 0;
           min-width: 150px;
-          background: ${BG.elevated};
-          border: 1px solid ${BG.divider};
+          background: ${theme.BG.elevated};
+          border: 1px solid ${theme.BG.divider};
           border-radius: 8px;
           padding: 4px 0;
           box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -2159,7 +2199,7 @@ export default function BoojyNotes() {
           margin: 8px 0;
         }
         .callout-icon-btn:hover {
-          background: rgba(255,255,255,0.06) !important;
+          background: ${theme.calloutIconHover} !important;
         }
         .callout-title:empty::before {
           content: attr(data-placeholder);
@@ -2168,7 +2208,7 @@ export default function BoojyNotes() {
         }
         .callout-body:empty::before {
           content: attr(data-placeholder);
-          color: ${TEXT.muted};
+          color: ${theme.TEXT.muted};
           opacity: 0.5;
           pointer-events: none;
         }
@@ -2178,7 +2218,7 @@ export default function BoojyNotes() {
           overflow-x: auto;
           margin: 8px 0;
           border-radius: 8px;
-          border: 1px solid ${BG.divider};
+          border: 1px solid ${theme.BG.divider};
         }
         .table-block {
           width: 100%;
@@ -2186,50 +2226,50 @@ export default function BoojyNotes() {
           font-size: 14px;
         }
         .table-block th, .table-block td {
-          border: 1px solid ${BG.divider};
+          border: 1px solid ${theme.BG.divider};
           padding: 8px 12px;
           text-align: left;
           outline: none;
           min-width: 80px;
         }
         .table-block th {
-          background: rgba(255,255,255,0.04);
+          background: ${theme.tableTh};
           font-weight: 600;
-          color: ${TEXT.primary};
+          color: ${theme.TEXT.primary};
         }
         .table-block td {
-          color: ${TEXT.primary};
+          color: ${theme.TEXT.primary};
           background: transparent;
         }
         .table-block td:focus, .table-block th:focus {
-          box-shadow: inset 0 0 0 2px ${ACCENT.primary}50;
+          box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}50;
         }
         .table-toolbar {
           display: flex;
           gap: 4px;
           padding: 4px 8px;
-          background: rgba(255,255,255,0.03);
-          border-top: 1px solid ${BG.divider};
+          background: ${theme.tableToolbar};
+          border-top: 1px solid ${theme.BG.divider};
         }
         .table-toolbar button {
           background: transparent;
-          border: 1px solid ${BG.divider};
+          border: 1px solid ${theme.BG.divider};
           border-radius: 4px;
-          color: ${TEXT.muted};
+          color: ${theme.TEXT.muted};
           font-size: 11px;
           padding: 3px 8px;
           cursor: pointer;
           transition: color 0.15s, border-color 0.15s;
         }
         .table-toolbar button:hover {
-          color: ${TEXT.primary};
-          border-color: ${TEXT.secondary};
+          color: ${theme.TEXT.primary};
+          border-color: ${theme.TEXT.secondary};
         }
         /* Frontmatter block styles */
         .frontmatter-block {
           border-radius: 8px;
-          border: 1px solid ${BG.divider};
-          background: rgba(255,255,255,0.02);
+          border: 1px solid ${theme.BG.divider};
+          background: ${theme.frontmatter};
           margin: 8px 0;
           overflow: hidden;
         }
@@ -2240,17 +2280,17 @@ export default function BoojyNotes() {
           padding: 8px 12px;
           cursor: pointer;
           font-size: 12px;
-          color: ${TEXT.muted};
+          color: ${theme.TEXT.muted};
           transition: color 0.15s;
         }
-        .frontmatter-header:hover { color: ${TEXT.secondary}; }
+        .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
         .frontmatter-body {
           padding: 8px 12px;
-          border-top: 1px solid ${BG.divider};
+          border-top: 1px solid ${theme.BG.divider};
           font-family: 'SF Mono', 'Fira Code', monospace;
           font-size: 12px;
           line-height: 1.6;
-          color: ${TEXT.secondary};
+          color: ${theme.TEXT.secondary};
           white-space: pre-wrap;
         }
         .empty-block {
@@ -2258,14 +2298,14 @@ export default function BoojyNotes() {
         }
         .empty-block::before {
           content: attr(data-placeholder);
-          color: ${TEXT.muted};
+          color: ${theme.TEXT.muted};
           opacity: 0.4;
           position: absolute;
           pointer-events: none;
         }
         .empty-title::before {
           content: attr(data-placeholder);
-          color: ${TEXT.muted};
+          color: ${theme.TEXT.muted};
           opacity: 0.35;
           position: absolute;
           top: 0;

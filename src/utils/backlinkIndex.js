@@ -1,9 +1,17 @@
+// @ts-check
 // Build a backlink index from all notes.
 // Returns a Map: titleLower → [{ sourceNoteId, sourceTitle, snippet }]
 
+/** @typedef {import("../types.d.ts").BacklinkEntry} BacklinkEntry */
+
 const WIKILINK_RE = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 
+/**
+ * @param {Record<string, any>} noteData
+ * @returns {Map<string, BacklinkEntry[]>}
+ */
 export function buildBacklinkIndex(noteData) {
+  /** @type {Map<string, BacklinkEntry[]>} */
   const index = new Map(); // targetTitleLower → [{ sourceNoteId, sourceTitle, snippet }]
 
   for (const [noteId, note] of Object.entries(noteData)) {
@@ -19,7 +27,7 @@ export function buildBacklinkIndex(noteData) {
         if (!index.has(target)) index.set(target, []);
         const existing = index.get(target);
         // Avoid duplicate entries from same note
-        if (!existing.some(e => e.sourceNoteId === noteId)) {
+        if (!existing.some((e) => e.sourceNoteId === noteId)) {
           existing.push({
             sourceNoteId: noteId,
             sourceTitle,
@@ -33,6 +41,11 @@ export function buildBacklinkIndex(noteData) {
   return index;
 }
 
+/**
+ * @param {Map<string, BacklinkEntry[]>} index
+ * @param {string | null | undefined} noteTitle
+ * @returns {BacklinkEntry[]}
+ */
 export function getBacklinksForNote(index, noteTitle) {
   if (!noteTitle) return [];
   const key = noteTitle.trim().toLowerCase();

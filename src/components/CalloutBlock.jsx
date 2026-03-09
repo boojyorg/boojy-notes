@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
-import { TEXT, BG } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import {
   Pencil,
@@ -103,6 +103,8 @@ const CALLOUT_TYPE_KEYS = Object.keys(CALLOUT_TYPES);
 /* ─── Type picker dropdown ─── */
 
 function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
   const listRef = useRef(null);
   const [focusIdx, setFocusIdx] = useState(() => CALLOUT_TYPE_KEYS.indexOf(activeType));
 
@@ -234,6 +236,9 @@ export default function CalloutBlock({
   const iconBtnRef = useRef(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [iconRect, setIconRect] = useState(null);
+
+  const { theme } = useTheme();
+  const { TEXT, BG } = theme;
 
   const scrollRestoreRef = useRef(null);
 
@@ -419,7 +424,7 @@ export default function CalloutBlock({
     <div
       className="callout-block"
       style={{
-        background: config.bg,
+        background: theme.callouts[calloutType]?.bg || config.bg,
         borderRadius: 8,
         padding: "14px 18px",
         transition: "background 0.15s, border-color 0.15s",
@@ -485,7 +490,7 @@ export default function CalloutBlock({
         onKeyDown={handleBodyKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          color: "rgba(232,234,240,0.7)",
+          color: theme.TEXT.secondary,
           fontSize: 14,
           lineHeight: 1.7,
           outline: "none",

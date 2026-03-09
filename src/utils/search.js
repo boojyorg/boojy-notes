@@ -1,3 +1,4 @@
+// @ts-check
 // Pure search functions — no React dependencies.
 
 import { stripMarkdownFormatting } from "./inlineFormatting";
@@ -14,7 +15,8 @@ export function buildPlainText(blocks) {
   const parts = [];
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i];
-    const raw = b.type === "callout" ? ((b.title || "") + " " + (b.text || "")).trim() : (b.text || "");
+    const raw =
+      b.type === "callout" ? ((b.title || "") + " " + (b.text || "")).trim() : b.text || "";
     const text = stripMarkdownFormatting(raw);
     blockOffsets.push({ blockIndex: i, blockId: b.id, start: offset, end: offset + text.length });
     parts.push(text);
@@ -231,6 +233,8 @@ export function searchNotes(query, index, limit = 20) {
         plainText: entry.plainText,
         blockOffsets: entry.blockOffsets,
         lastModified: entry.lastModified,
+        snippet: /** @type {any} */ (null),
+        matchBlockId: /** @type {any} */ (null),
       });
     }
   }
@@ -305,7 +309,10 @@ export function findMatchBlock(blockOffsets, matchStartInPlainText) {
   }
   // Fall back: check if it's in a gap (space between blocks)
   for (let i = 0; i < blockOffsets.length - 1; i++) {
-    if (matchStartInPlainText >= blockOffsets[i].end && matchStartInPlainText < blockOffsets[i + 1].start) {
+    if (
+      matchStartInPlainText >= blockOffsets[i].end &&
+      matchStartInPlainText < blockOffsets[i + 1].start
+    ) {
       return blockOffsets[i + 1].blockId;
     }
   }

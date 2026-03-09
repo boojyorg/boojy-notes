@@ -1,7 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  buildSearchIndex, updateIndexEntry, removeIndexEntry,
-  searchNotes, groupByFolder,
+  buildSearchIndex,
+  updateIndexEntry,
+  removeIndexEntry,
+  searchNotes,
+  groupByFolder,
 } from "../utils/search";
 
 export function useSearch(noteData, noteDataRef) {
@@ -34,7 +37,10 @@ export function useSearch(noteData, noteDataRef) {
           const note = noteData[id];
           const currentTitle = note.title || note.content?.title || "";
           const currentBlockCount = note.content?.blocks?.length || 0;
-          if (entry && (entry.title !== currentTitle || entry.blockOffsets.length !== currentBlockCount)) {
+          if (
+            entry &&
+            (entry.title !== currentTitle || entry.blockOffsets.length !== currentBlockCount)
+          ) {
             updateIndexEntry(searchIndexRef.current, id, note);
           }
         }
@@ -86,7 +92,7 @@ export function useSearch(noteData, noteDataRef) {
   resultCountRef.current = searchResults.results.length;
 
   const navigateResults = useCallback((direction) => {
-    setActiveResultIndex(prev => {
+    setActiveResultIndex((prev) => {
       const max = resultCountRef.current - 1;
       if (max < 0) return 0;
       if (direction === "down") return Math.min(prev + 1, max);

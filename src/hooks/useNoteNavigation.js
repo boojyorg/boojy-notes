@@ -1,6 +1,13 @@
 import { useState } from "react";
 
-export function useNoteNavigation({ activeNote, setActiveNote, tabs, setTabs, expanded, setExpanded }) {
+export function useNoteNavigation({
+  activeNote,
+  setActiveNote,
+  tabs,
+  setTabs,
+  expanded,
+  setExpanded,
+}) {
   const [newTabId, setNewTabId] = useState(null);
   const [closingTabs, setClosingTabs] = useState(new Set());
 
@@ -17,12 +24,16 @@ export function useNoteNavigation({ activeNote, setActiveNote, tabs, setTabs, ex
 
   const closeTab = (e, id) => {
     e.stopPropagation();
-    setClosingTabs(prev => new Set([...prev, id]));
+    setClosingTabs((prev) => new Set([...prev, id]));
     setTimeout(() => {
-      setClosingTabs(prev => { const next = new Set(prev); next.delete(id); return next; });
-      setTabs(prev => prev.filter(t => t !== id));
+      setClosingTabs((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setTabs((prev) => prev.filter((t) => t !== id));
       if (activeNote === id) {
-        const next = tabs.filter(t => t !== id);
+        const next = tabs.filter((t) => t !== id);
         setActiveNote(next[next.length - 1] || null);
       }
     }, 180);

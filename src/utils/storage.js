@@ -1,6 +1,8 @@
 let _blockId = 0;
 export const genBlockId = () => `blk-${Date.now()}-${++_blockId}`;
-export const setBlockIdCounter = (val) => { _blockId = val; };
+export const setBlockIdCounter = (val) => {
+  _blockId = val;
+};
 
 let _noteId = 0;
 export const genNoteId = () => `note-${Date.now()}-${++_noteId}`;

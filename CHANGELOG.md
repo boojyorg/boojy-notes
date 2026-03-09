@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Features
+- **Day/Night theme system** — Full light/dark theme support with smooth 400ms crossfade transitions; Day mode uses flat sky-blue backgrounds with warm gold accent; Night mode preserves the existing dark palette with teal accent and star field; toggle between Night, Day, and Auto modes in Settings > Appearance; Auto mode supports both system preference detection and time-of-day scheduling with configurable hours; theme state persisted in localStorage
+
+### Improvements
+- **Theme infrastructure** — Created `ThemeProvider` React context with `useTheme()` hook; two complete palettes in `src/constants/themes.js` (NIGHT and DAY) covering all color tokens; migrated all 22 component files from direct `colors.js` imports to `useTheme()` hook; terminal theme, scrollbar styles, inline code/link/wikilink colors, callout backgrounds, and code block styles all respond to theme changes; dev tools overlay includes theme quick-toggle
+
+### Features
 - **Blockquote support** — Lines starting with `>` now render as blockquotes with a thin accent-colored left border and italic muted text (Obsidian-style); consecutive `>` lines group into one block; type `> ` to auto-convert, use `/blockquote` slash command, or write `>` lines in markdown; Enter continues the blockquote, Backspace on empty reverts to paragraph; `> [!type]` callouts are unaffected
 
 ### Bug Fixes

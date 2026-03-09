@@ -63,7 +63,8 @@ function sanitizeFilename(name) {
 function noteToFilePath(note, notesDir) {
   const sanitized = sanitizeFilename(note.title || "Untitled") + ".md";
   if (note.folder) {
-    return path.join(notesDir, sanitizeFilename(note.folder), sanitized);
+    const folderParts = note.folder.split("/").map(sanitizeFilename);
+    return path.join(notesDir, ...folderParts, sanitized);
   }
   return path.join(notesDir, sanitized);
 }
@@ -609,7 +610,8 @@ ipcMain.handle("restore-note", (_event, noteId) => {
   const sanitizedTitle = sanitizeFilename(info.originalTitle || "Untitled") + ".md";
   let targetPath;
   if (info.originalFolder) {
-    const folderDir = path.join(notesDir, sanitizeFilename(info.originalFolder));
+    const folderParts = info.originalFolder.split("/").map(sanitizeFilename);
+    const folderDir = path.join(notesDir, ...folderParts);
     fs.mkdirSync(folderDir, { recursive: true });
     targetPath = path.join(folderDir, sanitizedTitle);
   } else {

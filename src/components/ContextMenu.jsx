@@ -1,52 +1,255 @@
-import { BG, TEXT, SEMANTIC } from "../constants/colors";
+import { useState, memo } from "react";
+import { useTheme } from "../hooks/useTheme";
 
-const hBg = (el, c) => { el.style.background = c; };
+const hBg = (el, c) => {
+  el.style.background = c;
+};
 
-export default function ContextMenu({
-  ctxMenu, setCtxMenu,
-  openNote, duplicateNote, deleteNote, deleteFolder, createNote,
-  setRenamingFolder, restoreNote, permanentDeleteNote, titleRef,
+const ContextMenu = memo(function ContextMenu({
+  ctxMenu,
+  setCtxMenu,
+  openNote,
+  duplicateNote,
+  deleteNote,
+  deleteFolder,
+  createNote,
+  setRenamingFolder,
+  restoreNote,
+  permanentDeleteNote,
+  titleRef,
+  onExportPdf,
+  onExportDocx,
+  onImport,
+  selectedNotes,
+  selectedCount,
+  bulkDeleteNotes,
+  bulkMoveNotes,
+  folderList,
 }) {
+  const { theme } = useTheme();
+  const { BG, TEXT, SEMANTIC } = theme;
+
+  const [moveSubmenu, setMoveSubmenu] = useState(false);
+
   if (!ctxMenu) return null;
 
-  const items = ctxMenu.type === "trash" ? [
-    { label: "Restore", action: () => { restoreNote(ctxMenu.id); setCtxMenu(null); } },
-    { label: "Delete permanently", action: () => { permanentDeleteNote(ctxMenu.id); setCtxMenu(null); }, danger: true },
-  ] : ctxMenu.type === "note" ? [
-    { label: "Rename", action: () => { openNote(ctxMenu.id); setCtxMenu(null); setTimeout(() => { if (titleRef.current) { titleRef.current.focus(); const sel = window.getSelection(); sel.selectAllChildren(titleRef.current); } }, 60); } },
-    { label: "Duplicate", action: () => { duplicateNote(ctxMenu.id); setCtxMenu(null); } },
-    { label: "Delete", action: () => { deleteNote(ctxMenu.id); setCtxMenu(null); }, danger: true },
-  ] : [
-    { label: "New note here", action: () => { createNote(ctxMenu.id); setCtxMenu(null); } },
-    { label: "Rename", action: () => { setRenamingFolder(ctxMenu.id); setCtxMenu(null); } },
-    { label: "Delete folder", action: () => { deleteFolder(ctxMenu.id); setCtxMenu(null); }, danger: true },
-  ];
+  const isBulk = ctxMenu.type === "note" && selectedCount > 1;
+
+  const items =
+    ctxMenu.type === "trash"
+      ? [
+          {
+            label: "Restore",
+            action: () => {
+              restoreNote(ctxMenu.id);
+              setCtxMenu(null);
+            },
+          },
+          {
+            label: "Delete permanently",
+            action: () => {
+              permanentDeleteNote(ctxMenu.id);
+              setCtxMenu(null);
+            },
+            danger: true,
+          },
+        ]
+      : ctxMenu.type === "note" && isBulk
+        ? [
+            {
+              label: `Delete ${selectedCount} notes`,
+              action: () => {
+                bulkDeleteNotes([...selectedNotes]);
+                setCtxMenu(null);
+              },
+              danger: true,
+            },
+            {
+              label: "Move to...",
+              action: () => setMoveSubmenu((v) => !v),
+              submenu: true,
+            },
+            {
+              label: "Move to root",
+              action: () => {
+                bulkMoveNotes([...selectedNotes], null);
+                setCtxMenu(null);
+              },
+            },
+          ]
+        : ctxMenu.type === "note"
+          ? [
+              {
+                label: "Rename",
+                action: () => {
+                  openNote(ctxMenu.id);
+                  setCtxMenu(null);
+                  setTimeout(() => {
+                    if (titleRef.current) {
+                      titleRef.current.focus();
+                      const sel = window.getSelection();
+                      sel.selectAllChildren(titleRef.current);
+                    }
+                  }, 60);
+                },
+              },
+              {
+                label: "Duplicate",
+                action: () => {
+                  duplicateNote(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+              },
+              ...(onExportPdf
+                ? [
+                    {
+                      label: "Export as PDF",
+                      action: () => {
+                        onExportPdf(ctxMenu.id);
+                        setCtxMenu(null);
+                      },
+                    },
+                  ]
+                : []),
+              ...(onExportDocx
+                ? [
+                    {
+                      label: "Export as DOCX",
+                      action: () => {
+                        onExportDocx(ctxMenu.id);
+                        setCtxMenu(null);
+                      },
+                    },
+                  ]
+                : []),
+              {
+                label: "Delete",
+                action: () => {
+                  deleteNote(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+                danger: true,
+              },
+            ]
+          : [
+              {
+                label: "New note here",
+                action: () => {
+                  createNote(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+              },
+              ...(onImport
+                ? [
+                    {
+                      label: "Import files here",
+                      action: () => {
+                        onImport(ctxMenu.id);
+                        setCtxMenu(null);
+                      },
+                    },
+                  ]
+                : []),
+              {
+                label: "Rename",
+                action: () => {
+                  setRenamingFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+              },
+              {
+                label: "Delete folder",
+                action: () => {
+                  deleteFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+                danger: true,
+              },
+            ];
 
   return (
     <>
       <div onClick={() => setCtxMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 250 }} />
-      <div style={{
-        position: "fixed", top: ctxMenu.y, left: ctxMenu.x, zIndex: 300,
-        background: BG.elevated, border: `1px solid ${BG.divider}`,
-        borderRadius: 8, padding: "4px 0", minWidth: 160,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-        animation: "fadeIn 0.1s ease",
-      }}>
+      <div
+        style={{
+          position: "fixed",
+          top: ctxMenu.y,
+          left: ctxMenu.x,
+          zIndex: 300,
+          background: BG.elevated,
+          border: `1px solid ${BG.divider}`,
+          borderRadius: 8,
+          padding: "4px 0",
+          minWidth: 160,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          animation: "fadeIn 0.1s ease",
+        }}
+      >
         {items.map((item) => (
-          <button key={item.label}
+          <button
+            key={item.label}
             onClick={item.action}
             style={{
-              width: "100%", background: "none", border: "none",
-              padding: "7px 14px", cursor: "pointer",
+              width: "100%",
+              background: "none",
+              border: "none",
+              padding: "7px 14px",
+              cursor: "pointer",
               color: item.danger ? SEMANTIC.error : TEXT.primary,
-              fontSize: 12.5, fontFamily: "inherit", textAlign: "left",
+              fontSize: 12.5,
+              fontFamily: "inherit",
+              textAlign: "left",
               transition: "background 0.12s",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
             onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
             onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-          >{item.label}</button>
+          >
+            {item.label}
+            {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}
+          </button>
         ))}
+        {moveSubmenu && isBulk && folderList && folderList.length > 0 && (
+          <div
+            style={{
+              borderTop: `1px solid ${BG.divider}`,
+              padding: "4px 0",
+              maxHeight: 200,
+              overflowY: "auto",
+            }}
+          >
+            {folderList.map((fp) => (
+              <button
+                key={fp}
+                onClick={() => {
+                  bulkMoveNotes([...selectedNotes], fp);
+                  setCtxMenu(null);
+                }}
+                style={{
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  padding: "6px 14px 6px 22px",
+                  cursor: "pointer",
+                  color: TEXT.primary,
+                  fontSize: 12,
+                  fontFamily: "inherit",
+                  textAlign: "left",
+                  transition: "background 0.12s",
+                }}
+                onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
+                onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              >
+                {fp}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
-}
+});
+
+export default ContextMenu;

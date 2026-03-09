@@ -12,7 +12,10 @@ function resolveShell(preferred) {
   let shell = preferred || process.env.SHELL;
   if (!shell || !fs.existsSync(shell)) {
     for (const candidate of ["/bin/zsh", "/bin/bash", "/bin/sh"]) {
-      if (fs.existsSync(candidate)) { shell = candidate; break; }
+      if (fs.existsSync(candidate)) {
+        shell = candidate;
+        break;
+      }
     }
   }
   return shell;
@@ -21,7 +24,9 @@ function resolveShell(preferred) {
 function resolveCwd(preferred, getNotesDir) {
   let cwd = preferred || (getNotesDir ? getNotesDir() : os.homedir());
   if (!fs.existsSync(cwd)) {
-    try { fs.mkdirSync(cwd, { recursive: true }); } catch {}
+    try {
+      fs.mkdirSync(cwd, { recursive: true });
+    } catch {}
   }
   if (!fs.existsSync(cwd)) cwd = os.homedir();
   return cwd;
@@ -48,8 +53,12 @@ function preSpawnTerminal(getNotesDir) {
 
   const warm = { proc, shell, cwd, cols, rows, buffer: "", exited: false };
 
-  proc.onData((data) => { warm.buffer += data; });
-  proc.onExit(() => { warm.exited = true; });
+  proc.onData((data) => {
+    warm.buffer += data;
+  });
+  proc.onExit(() => {
+    warm.exited = true;
+  });
 
   warmPool.push(warm);
 }
@@ -60,7 +69,11 @@ function claimWarm(opts, getNotesDir) {
 
   for (let i = 0; i < warmPool.length; i++) {
     const warm = warmPool[i];
-    if (warm.exited) { warmPool.splice(i, 1); i--; continue; }
+    if (warm.exited) {
+      warmPool.splice(i, 1);
+      i--;
+      continue;
+    }
     if (warm.shell === wantShell && warm.cwd === wantCwd) {
       warmPool.splice(i, 1);
       return warm;
@@ -71,7 +84,11 @@ function claimWarm(opts, getNotesDir) {
 
 function killWarmPool() {
   for (const warm of warmPool) {
-    if (!warm.exited) { try { warm.proc.kill(); } catch {} }
+    if (!warm.exited) {
+      try {
+        warm.proc.kill();
+      } catch {}
+    }
   }
   warmPool.length = 0;
 }
@@ -92,7 +109,9 @@ export function registerTerminalIPC(ipcMain, getMainWindow, getNotesDir) {
       const wantCols = opts.cols || 80;
       const wantRows = opts.rows || 24;
       if (wantCols !== cols || wantRows !== rows) {
-        try { proc.resize(wantCols, wantRows); } catch {}
+        try {
+          proc.resize(wantCols, wantRows);
+        } catch {}
       }
 
       const entry = { pty: proc, cols: wantCols, rows: wantRows };
@@ -176,7 +195,9 @@ export function registerTerminalIPC(ipcMain, getMainWindow, getNotesDir) {
   ipcMain.on("terminal:resize", (_event, { id, cols, rows }) => {
     const entry = terminals.get(id);
     if (entry && cols > 0 && rows > 0) {
-      try { entry.pty.resize(cols, rows); } catch {}
+      try {
+        entry.pty.resize(cols, rows);
+      } catch {}
       entry.cols = cols;
       entry.rows = rows;
     }
@@ -185,7 +206,9 @@ export function registerTerminalIPC(ipcMain, getMainWindow, getNotesDir) {
   ipcMain.handle("terminal:kill", (_event, id) => {
     const entry = terminals.get(id);
     if (entry) {
-      try { entry.pty.kill(); } catch {}
+      try {
+        entry.pty.kill();
+      } catch {}
       terminals.delete(id);
       return true;
     }
@@ -194,7 +217,9 @@ export function registerTerminalIPC(ipcMain, getMainWindow, getNotesDir) {
 
   ipcMain.handle("terminal:kill-all", () => {
     for (const [id, entry] of terminals) {
-      try { entry.pty.kill(); } catch {}
+      try {
+        entry.pty.kill();
+      } catch {}
       terminals.delete(id);
     }
     killWarmPool();
@@ -204,7 +229,9 @@ export function registerTerminalIPC(ipcMain, getMainWindow, getNotesDir) {
 
 export function killAllTerminals() {
   for (const [id, entry] of terminals) {
-    try { entry.pty.kill(); } catch {}
+    try {
+      entry.pty.kill();
+    } catch {}
     terminals.delete(id);
   }
   killWarmPool();

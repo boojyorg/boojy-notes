@@ -1,7 +1,10 @@
-import { BG, TEXT } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 import { SLASH_COMMANDS } from "../constants/data";
 
 export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
+
   if (!slashMenu) return null;
 
   const filtered = SLASH_COMMANDS.filter((c) =>

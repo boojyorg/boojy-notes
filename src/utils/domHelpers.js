@@ -14,7 +14,7 @@ export function getBlockFromNode(node, editorEl, blocks, blockRefs) {
     if (el.dataset && el.dataset.blockId) {
       const blockId = el.dataset.blockId;
       if (!blocks) return null;
-      const blockIndex = blocks.findIndex(b => b.id === blockId);
+      const blockIndex = blocks.findIndex((b) => b.id === blockId);
       if (blockIndex === -1) return null;
       return { el: blockRefs[blockId], blockIndex, blockId };
     }
@@ -84,8 +84,9 @@ export function placeCaret(el, pos = 0) {
     } else {
       let remaining = pos;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-      let textNode, placed = false;
-      while (textNode = walker.nextNode()) {
+      let textNode,
+        placed = false;
+      while ((textNode = walker.nextNode())) {
         // Skip decorative icon text nodes (↗ inside links)
         if (textNode.parentElement?.classList?.contains("external-link-icon")) continue;
         if (remaining <= textNode.length) {
@@ -95,7 +96,13 @@ export function placeCaret(el, pos = 0) {
         }
         remaining -= textNode.length;
       }
-      if (!placed) { range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); return true; }
+      if (!placed) {
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+      }
     }
     range.collapse(true);
     sel.removeAllRanges();
@@ -125,7 +132,8 @@ export function placeCaret(el, pos = 0) {
 export function runAutoScroll(scrollEl, pointerY) {
   if (!scrollEl) return;
   const rect = scrollEl.getBoundingClientRect();
-  const edgeZone = 60, maxSpeed = 12;
+  const edgeZone = 60,
+    maxSpeed = 12;
   if (pointerY < rect.top + edgeZone) {
     const factor = Math.max(0, 1 - (pointerY - rect.top) / edgeZone);
     scrollEl.scrollTop -= maxSpeed * factor;
@@ -139,7 +147,13 @@ export function runAutoScroll(scrollEl, pointerY) {
  * Check if a block type is editable (has text content).
  */
 export function isEditableBlock(b) {
-  return b.type !== "spacer" && b.type !== "image"
-    && b.type !== "code" && b.type !== "table"
-    && b.type !== "callout" && b.type !== "frontmatter";
+  return (
+    b.type !== "spacer" &&
+    b.type !== "image" &&
+    b.type !== "file" &&
+    b.type !== "code" &&
+    b.type !== "table" &&
+    b.type !== "callout" &&
+    b.type !== "frontmatter"
+  );
 }

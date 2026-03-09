@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { BG, TEXT, ACCENT } from "../constants/colors";
+import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useTheme } from "../hooks/useTheme";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
@@ -9,33 +9,105 @@ import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
 import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
+import FindBar from "./FindBar";
 
-export default function EditorArea({
-  note, activeNote, noteData, editorFadeIn,
-  editorRef, editorScrollRef, titleRef, blockRefs,
-  noteDataRef, focusBlockId, focusCursorPos, forceRender,
-  accentColor, editorBg, settingsFontSize,
-  handleEditorKeyDown, handleEditorInput, handleEditorPaste,
-  handleEditorPointerDown, handleEditorMouseDown, handleEditorMouseUp,
-  handleEditorFocus, handleEditorDragOver, handleEditorDrop,
-  commitTextChange, syncGeneration,
-  flipCheck, deleteBlock, registerBlockRef,
+const EMPTY_FORMATS = {
+  bold: false,
+  italic: false,
+  code: false,
+  link: false,
+  strikethrough: false,
+  highlight: false,
+};
+
+const EditorArea = memo(function EditorArea({
+  note,
+  activeNote,
+  editorFadeIn,
+  editorRef,
+  editorScrollRef,
+  titleRef,
+  blockRefs,
+  noteDataRef,
+  focusBlockId,
+  focusCursorPos,
+  forceRender,
+  accentColor,
+  editorBg,
+  settingsFontSize,
+  handleEditorKeyDown,
+  handleEditorInput,
+  handleEditorPaste,
+  handleEditorPointerDown,
+  handleEditorMouseDown,
+  handleEditorMouseUp,
+  handleEditorFocus,
+  handleEditorDragOver,
+  handleEditorDragLeave,
+  handleEditorDrop,
+  commitTextChange,
+  syncGeneration,
+  flipCheck,
+  deleteBlock,
+  registerBlockRef,
   insertBlockAfter,
-  updateCodeText, updateCodeLang, updateCallout, updateTableRows,
-  backlinks, onWikilinkClick, onOpenBacklink,
-  toolbarState, detectActiveFormats, applyFormat,
+  updateCodeText,
+  updateCodeLang,
+  updateCallout,
+  updateTableRows,
+  updateBlockProperty,
+  backlinks,
+  onWikilinkClick,
+  onOpenBacklink,
+  toolbarState,
+  detectActiveFormats,
+  applyFormat,
   noteTitleSet,
-  linkPopover, setLinkPopover, reReadBlockFromDom,
+  linkPopover,
+  setLinkPopover,
+  reReadBlockFromDom,
+  selectedImageBlockId,
+  setSelectedImageBlockId,
+  lightbox,
+  setLightbox,
+  openNote: openNoteProp,
+  onEditorClick,
 }) {
+  const { theme } = useTheme();
+  const { TEXT, ACCENT } = theme;
+
+  // Find bar state
+  const [findBarOpen, setFindBarOpen] = useState(false);
+
   // Link tooltip state
   const [linkTooltip, setLinkTooltip] = useState(null);
   const tooltipTimer = useRef(null);
   const editorContainerRef = useRef(null);
 
+  const onNavigateToNote = useCallback(
+    (target, create) => {
+      if (create && onWikilinkClick) {
+        onWikilinkClick(target);
+      } else if (openNoteProp) {
+        openNoteProp(target);
+      }
+    },
+    [onWikilinkClick, openNoteProp],
+  );
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activeFormats = useMemo(
+    () => (toolbarState ? detectActiveFormats() : EMPTY_FORMATS),
+    [toolbarState],
+  );
+
   const handleEditorMouseMove = useCallback((e) => {
     const link = e.target.closest("a") || e.target.closest(".wikilink");
     if (link) {
-      const url = link.getAttribute("data-url") || link.getAttribute("href") || link.getAttribute("data-target");
+      const url =
+        link.getAttribute("data-url") ||
+        link.getAttribute("href") ||
+        link.getAttribute("data-target");
       if (url && (!tooltipTimer.current || tooltipTimer.current._url !== url)) {
         clearTimeout(tooltipTimer.current);
         const timer = setTimeout(() => {
@@ -68,78 +140,84 @@ export default function EditorArea({
   }, []);
 
   // Link popover handlers
-  const handleLinkApply = useCallback((url) => {
-    if (!linkPopover) return;
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(linkPopover.savedRange);
+  const handleLinkApply = useCallback(
+    (url) => {
+      if (!linkPopover) return;
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(linkPopover.savedRange);
 
-    if (linkPopover.existingLink) {
-      // Update existing link
-      linkPopover.existingLink.setAttribute("href", url);
-      linkPopover.existingLink.setAttribute("data-url", url);
-      if (!linkPopover.existingLink.classList.contains("external-link")) {
-        linkPopover.existingLink.className = "external-link";
-      }
-      // Add icon if missing
-      if (!linkPopover.existingLink.querySelector(".external-link-icon")) {
+      if (linkPopover.existingLink) {
+        // Update existing link
+        linkPopover.existingLink.setAttribute("href", url);
+        linkPopover.existingLink.setAttribute("data-url", url);
+        if (!linkPopover.existingLink.classList.contains("external-link")) {
+          linkPopover.existingLink.className = "external-link";
+        }
+        // Add icon if missing
+        if (!linkPopover.existingLink.querySelector(".external-link-icon")) {
+          const icon = document.createElement("span");
+          icon.className = "external-link-icon";
+          icon.contentEditable = "false";
+          icon.textContent = "\u2197";
+          linkPopover.existingLink.appendChild(icon);
+        }
+      } else if (!sel.isCollapsed) {
+        // Wrap selection in link
+        const range = sel.getRangeAt(0);
+        const a = document.createElement("a");
+        a.href = url;
+        a.className = "external-link";
+        a.setAttribute("data-url", url);
+        try {
+          range.surroundContents(a);
+        } catch (_) {
+          const frag = range.extractContents();
+          a.appendChild(frag);
+          range.insertNode(a);
+        }
         const icon = document.createElement("span");
         icon.className = "external-link-icon";
         icon.contentEditable = "false";
         icon.textContent = "\u2197";
-        linkPopover.existingLink.appendChild(icon);
-      }
-    } else if (!sel.isCollapsed) {
-      // Wrap selection in link
-      const range = sel.getRangeAt(0);
-      const a = document.createElement("a");
-      a.href = url;
-      a.className = "external-link";
-      a.setAttribute("data-url", url);
-      try {
-        range.surroundContents(a);
-      } catch (_) {
-        const frag = range.extractContents();
-        a.appendChild(frag);
+        a.appendChild(icon);
+      } else {
+        // No selection — insert link with URL as text
+        const range = sel.getRangeAt(0);
+        const a = document.createElement("a");
+        a.href = url;
+        a.className = "external-link bare-url";
+        a.setAttribute("data-url", url);
+        a.textContent = url;
+        const icon = document.createElement("span");
+        icon.className = "external-link-icon";
+        icon.contentEditable = "false";
+        icon.textContent = "\u2197";
+        a.appendChild(icon);
         range.insertNode(a);
+        range.setStartAfter(a);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
       }
-      const icon = document.createElement("span");
-      icon.className = "external-link-icon";
-      icon.contentEditable = "false";
-      icon.textContent = "\u2197";
-      a.appendChild(icon);
-    } else {
-      // No selection — insert link with URL as text
-      const range = sel.getRangeAt(0);
-      const a = document.createElement("a");
-      a.href = url;
-      a.className = "external-link bare-url";
-      a.setAttribute("data-url", url);
-      a.textContent = url;
-      const icon = document.createElement("span");
-      icon.className = "external-link-icon";
-      icon.contentEditable = "false";
-      icon.textContent = "\u2197";
-      a.appendChild(icon);
-      range.insertNode(a);
-      range.setStartAfter(a);
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-    reReadBlockFromDom();
-    setLinkPopover(null);
-  }, [linkPopover, reReadBlockFromDom, setLinkPopover]);
+      reReadBlockFromDom();
+      setLinkPopover(null);
+    },
+    [linkPopover, reReadBlockFromDom, setLinkPopover],
+  );
 
   const handleLinkRemove = useCallback(() => {
-    if (!linkPopover?.existingLink) { setLinkPopover(null); return; }
+    if (!linkPopover?.existingLink) {
+      setLinkPopover(null);
+      return;
+    }
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(linkPopover.savedRange);
     // Get text without icon
     const textContent = Array.from(linkPopover.existingLink.childNodes)
-      .filter(n => !n.classList?.contains("external-link-icon"))
-      .map(n => n.textContent)
+      .filter((n) => !n.classList?.contains("external-link-icon"))
+      .map((n) => n.textContent)
       .join("");
     const textNode = document.createTextNode(textContent);
     linkPopover.existingLink.parentNode.replaceChild(textNode, linkPopover.existingLink);
@@ -152,29 +230,93 @@ export default function EditorArea({
   }, [setLinkPopover]);
 
   // Block navigation for code blocks (Escape / ArrowUp / ArrowDown at edges)
-  const handleBlockNav = useCallback((blockIndex, direction) => {
-    const blocks = noteDataRef.current?.[activeNote]?.content?.blocks;
-    if (!blocks) return;
-    const targetIndex = direction === "prev" ? blockIndex - 1 : blockIndex + 1;
-    if (targetIndex < 0) {
-      // Focus title
-      if (titleRef.current) titleRef.current.focus();
-      return;
-    }
-    if (targetIndex >= blocks.length) return;
-    const target = blocks[targetIndex];
-    if (target.type === "code") {
-      // Focus the textarea inside the code block
-      const wrapper = editorRef.current?.querySelector(`[data-block-id="${target.id}"]`);
-      const ta = wrapper?.querySelector("textarea");
-      if (ta) ta.focus();
-    } else {
-      const el = blockRefs.current[target.id];
-      if (el) {
-        placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
+  const handleBlockNav = useCallback(
+    (blockIndex, direction) => {
+      const blocks = noteDataRef.current?.[activeNote]?.content?.blocks;
+      if (!blocks) return;
+      const targetIndex = direction === "prev" ? blockIndex - 1 : blockIndex + 1;
+      if (targetIndex < 0) {
+        // Focus title
+        if (titleRef.current) titleRef.current.focus();
+        return;
       }
+      if (targetIndex >= blocks.length) return;
+      const target = blocks[targetIndex];
+      if (target.type === "code") {
+        // Focus the textarea inside the code block
+        const wrapper = editorRef.current?.querySelector(`[data-block-id="${target.id}"]`);
+        const ta = wrapper?.querySelector("textarea");
+        if (ta) ta.focus();
+      } else {
+        const el = blockRefs.current[target.id];
+        if (el) {
+          placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
+        }
+      }
+    },
+    [activeNote, noteDataRef, blockRefs, editorRef, titleRef],
+  );
+
+  // Image interaction callbacks
+  const handleImageSelect = useCallback(
+    (blockId) => {
+      setSelectedImageBlockId(blockId);
+    },
+    [setSelectedImageBlockId],
+  );
+
+  const handleImageLightbox = useCallback(
+    (src, alt) => {
+      setLightbox({ src, alt });
+    },
+    [setLightbox],
+  );
+
+  const handleImageReplace = useCallback(
+    async (noteId, blockIndex) => {
+      if (!window.electronAPI) return;
+      const picked = await window.electronAPI.pickImageFile();
+      if (!picked) return;
+      const filename = await window.electronAPI.saveImage({
+        fileName: picked.fileName,
+        dataBase64: picked.dataBase64,
+      });
+      updateBlockProperty(noteId, blockIndex, { src: filename, width: 100 });
+    },
+    [updateBlockProperty],
+  );
+
+  const handleImageCopyImage = useCallback((src) => {
+    if (window.electronAPI?.copyImageToClipboard) {
+      window.electronAPI.copyImageToClipboard(src);
     }
-  }, [activeNote, noteDataRef, blockRefs, editorRef, titleRef]);
+  }, []);
+
+  const handleFileOpen = useCallback(async (src) => {
+    if (!window.electronAPI?.resolveAttachment) return;
+    const absPath = await window.electronAPI.resolveAttachment(src);
+    if (absPath) window.electronAPI.openPath(absPath);
+  }, []);
+
+  const handleFileShowInFolder = useCallback(async (src) => {
+    if (!window.electronAPI?.resolveAttachment) return;
+    const absPath = await window.electronAPI.resolveAttachment(src);
+    if (absPath) window.electronAPI.showItemInFolder(absPath);
+  }, []);
+
+  // Click outside image to deselect
+  const handleEditorClick = useCallback(
+    (e) => {
+      // Don't deselect if clicking on an image block or its context menu
+      if (
+        !e.target.closest("[data-block-id]")?.querySelector("img") &&
+        !e.target.closest(".image-context-menu")
+      ) {
+        if (selectedImageBlockId) setSelectedImageBlockId(null);
+      }
+    },
+    [selectedImageBlockId, setSelectedImageBlockId],
+  );
 
   // Right-click context menu for links
   const [linkCtxMenu, setLinkCtxMenu] = useState(null);
@@ -208,34 +350,66 @@ export default function EditorArea({
   const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
   return (
-    <div ref={editorScrollRef} className="editor-scroll" style={{ flex: 1, display: "flex", flexDirection: "column", overflowX: "hidden", overflowY: "auto", background: editorBg, position: "relative" }}>
-      <StarField mode={note ? "editor" : "empty"} seed={activeNote || "__empty__"} />
+    <div
+      ref={editorScrollRef}
+      className="editor-scroll"
+      onMouseDown={onEditorClick}
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        overflowX: "hidden",
+        overflowY: "auto",
+        background: editorBg,
+        position: "relative",
+      }}
+    >
+      {theme.starField && <StarField mode="editor" seed={activeNote || "__empty__"} />}
       {note ? (
-        <div key={activeNote} style={{
-          padding: "28px 56px 80px 56px",
-          maxWidth: 720, marginLeft: 40, marginRight: "auto", width: "100%",
-          opacity: editorFadeIn ? 1 : 0,
-          transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
-          transition: "opacity 0.2s ease, transform 0.2s ease",
-          position: "relative", zIndex: 1,
-        }}>
+        <div
+          key={activeNote}
+          style={{
+            padding: "28px 56px 80px 56px",
+            maxWidth: 720,
+            marginLeft: 40,
+            marginRight: "auto",
+            width: "100%",
+            opacity: editorFadeIn ? 1 : 0,
+            transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
+            transition: "opacity 0.2s ease, transform 0.2s ease",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           {/* Breadcrumb */}
           {note.path && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 5,
-              marginBottom: 16, fontSize: 12,
-            }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                marginBottom: 16,
+                fontSize: 12,
+              }}
+            >
               {note.path.map((seg, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   {i > 0 && <BreadcrumbChevron />}
-                  <span style={{
-                    color: i < note.path.length - 1 ? TEXT.secondary : TEXT.muted,
-                    cursor: i < note.path.length - 1 ? "pointer" : "default",
-                    transition: "color 0.15s",
-                  }}
-                    onMouseEnter={(e) => { if (i < note.path.length - 1) e.target.style.color = ACCENT.primary; }}
-                    onMouseLeave={(e) => { if (i < note.path.length - 1) e.target.style.color = TEXT.secondary; }}
-                  >{seg}</span>
+                  <span
+                    style={{
+                      color: i < note.path.length - 1 ? TEXT.secondary : TEXT.muted,
+                      cursor: i < note.path.length - 1 ? "pointer" : "default",
+                      transition: "color 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (i < note.path.length - 1) e.target.style.color = ACCENT.primary;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (i < note.path.length - 1) e.target.style.color = TEXT.secondary;
+                    }}
+                  >
+                    {seg}
+                  </span>
                 </div>
               ))}
             </div>
@@ -246,9 +420,11 @@ export default function EditorArea({
             ref={titleRef}
             contentEditable
             suppressContentEditableWarning
+            data-placeholder="Untitled"
+            className={!note.title ? "empty-title" : undefined}
             onInput={(e) => {
               const newTitle = e.currentTarget.innerText;
-              commitTextChange(prev => {
+              commitTextChange((prev) => {
                 const next = { ...prev };
                 const n = { ...next[activeNote] };
                 n.title = newTitle;
@@ -261,7 +437,7 @@ export default function EditorArea({
               if (e.key === "Enter") {
                 e.preventDefault();
                 const blocks = noteDataRef.current[activeNote].content.blocks;
-                const first = blocks.find(b => isEditableBlock(b));
+                const first = blocks.find((b) => isEditableBlock(b));
                 if (first) {
                   const firstId = first.id;
                   const el = blockRefs.current[firstId];
@@ -269,14 +445,23 @@ export default function EditorArea({
                     placeCaret(el, 0);
                     requestAnimationFrame(() => {
                       const sel = window.getSelection();
-                      if (sel.rangeCount && getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)) return;
+                      if (
+                        sel.rangeCount &&
+                        getBlockFromNode(
+                          sel.anchorNode,
+                          editorRef.current,
+                          blocks,
+                          blockRefs.current,
+                        )
+                      )
+                        return;
                       const freshEl = blockRefs.current[firstId];
                       if (freshEl) placeCaret(freshEl, 0);
                     });
                   } else {
                     focusBlockId.current = firstId;
                     focusCursorPos.current = 0;
-                    forceRender(c => c + 1);
+                    forceRender((c) => c + 1);
                   }
                 }
               }
@@ -286,26 +471,72 @@ export default function EditorArea({
               document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
             }}
             style={{
-              fontSize: 28, fontWeight: 700, color: TEXT.primary,
-              margin: "0 0 16px", lineHeight: 1.3, letterSpacing: "-0.4px",
+              fontSize: 28,
+              fontWeight: 700,
+              color: TEXT.primary,
+              margin: "0 0 16px",
+              lineHeight: 1.3,
+              letterSpacing: "-0.4px",
               outline: "none",
+              position: "relative",
             }}
           />
 
           {/* Title separator */}
-          <div style={{
-            height: 1,
-            marginBottom: 20,
-            background: `linear-gradient(90deg, ${accentColor}33, ${accentColor}0D, transparent)`,
-          }} />
+          <div
+            style={{
+              height: 1,
+              marginBottom: 20,
+              background: `linear-gradient(90deg, ${accentColor}33, ${accentColor}0D, transparent)`,
+            }}
+          />
 
           {/* Blocks */}
           <div ref={editorContainerRef} style={{ position: "relative" }}>
+            {findBarOpen && (
+              <FindBar
+                editorRef={editorRef}
+                blocks={note.content.blocks}
+                blockRefs={blockRefs}
+                noteId={activeNote}
+                commitTextChange={commitTextChange}
+                onClose={() => setFindBarOpen(false)}
+              />
+            )}
             <div
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              onKeyDown={handleEditorKeyDown}
+              onKeyDown={(e) => {
+                // Cmd+F: toggle find bar
+                const mod = e.ctrlKey || e.metaKey;
+                if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {
+                  e.preventDefault();
+                  setFindBarOpen((v) => !v);
+                  return;
+                }
+                // Handle image selection keys
+                if (selectedImageBlockId) {
+                  if (e.key === "Escape" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSelectedImageBlockId(null);
+                    return;
+                  }
+                  if (e.key === "Backspace" || e.key === "Delete") {
+                    e.preventDefault();
+                    const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+                    const idx = blocks.findIndex((b) => b.id === selectedImageBlockId);
+                    if (idx >= 0) deleteBlock(activeNote, idx);
+                    setSelectedImageBlockId(null);
+                    return;
+                  }
+                  // Printable character: deselect image and let keystroke through
+                  if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
+                    setSelectedImageBlockId(null);
+                  }
+                }
+                handleEditorKeyDown(e);
+              }}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
               onPointerDown={handleEditorPointerDown}
@@ -324,8 +555,10 @@ export default function EditorArea({
               onMouseUp={handleEditorMouseUp}
               onFocus={handleEditorFocus}
               onDragOver={handleEditorDragOver}
+              onDragLeave={handleEditorDragLeave}
               onDrop={handleEditorDrop}
               onClick={(e) => {
+                handleEditorClick(e);
                 const sel = window.getSelection();
                 // Don't open links if user was selecting text
                 if (sel && !sel.isCollapsed) return;
@@ -355,7 +588,11 @@ export default function EditorArea({
               {(() => {
                 let numCounter = 0;
                 return note.content.blocks.map((block, i) => {
-                  if (block.type === "numbered") { numCounter++; } else { numCounter = 0; }
+                  if (block.type === "numbered") {
+                    numCounter++;
+                  } else {
+                    numCounter = 0;
+                  }
                   return (
                     <EditableBlock
                       key={block.id + "-" + block.type}
@@ -375,6 +612,16 @@ export default function EditorArea({
                       onUpdateTableRows={updateTableRows}
                       noteTitleSet={noteTitleSet}
                       onBlockNav={handleBlockNav}
+                      isImageSelected={selectedImageBlockId === block.id}
+                      onImageSelect={handleImageSelect}
+                      onImageLightbox={handleImageLightbox}
+                      onImageReplace={handleImageReplace}
+                      onImageCopyImage={handleImageCopyImage}
+                      onUpdateBlockProperty={updateBlockProperty}
+                      onFileOpen={handleFileOpen}
+                      onFileShowInFolder={handleFileShowInFolder}
+                      noteDataRef={noteDataRef}
+                      onNavigateToNote={onNavigateToNote}
                     />
                   );
                 });
@@ -382,7 +629,7 @@ export default function EditorArea({
             </div>
             <FloatingToolbar
               position={toolbarState}
-              activeFormats={toolbarState ? detectActiveFormats() : { bold: false, italic: false, code: false, link: false, strikethrough: false, highlight: false }}
+              activeFormats={activeFormats}
               onFormat={applyFormat}
             />
             <LinkTooltip url={linkTooltip?.url} position={linkTooltip?.position} />
@@ -402,7 +649,7 @@ export default function EditorArea({
             style={{ minHeight: 200, cursor: "text" }}
             onMouseDown={(e) => {
               e.preventDefault();
-              const blocks = noteData[activeNote].content.blocks;
+              const blocks = noteDataRef.current[activeNote].content.blocks;
               if (blocks.length > 0) {
                 const lastBlock = blocks[blocks.length - 1];
                 const lastEl = blockRefs.current[lastBlock.id];
@@ -411,7 +658,11 @@ export default function EditorArea({
                   const lastId = lastBlock.id;
                   requestAnimationFrame(() => {
                     const sel = window.getSelection();
-                    if (sel.rangeCount && getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)) return;
+                    if (
+                      sel.rangeCount &&
+                      getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)
+                    )
+                      return;
                     const freshEl = blockRefs.current[lastId];
                     if (freshEl) placeCaret(freshEl, 0);
                   });
@@ -437,7 +688,8 @@ export default function EditorArea({
               url={linkCtxMenu.url}
               onOpen={() => {
                 if (linkCtxMenu.linkType === "external") {
-                  if (window.electronAPI?.openExternal) window.electronAPI.openExternal(linkCtxMenu.url);
+                  if (window.electronAPI?.openExternal)
+                    window.electronAPI.openExternal(linkCtxMenu.url);
                   else window.open(linkCtxMenu.url, "_blank");
                 } else {
                   if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);
@@ -452,10 +704,12 @@ export default function EditorArea({
                 // Position the popover near the link element
                 const containerRect = editorContainerRef.current?.getBoundingClientRect();
                 const linkRect = linkCtxMenu.element.getBoundingClientRect();
-                const pos = containerRect ? {
-                  top: linkRect.bottom - containerRect.top + 4,
-                  left: linkRect.left - containerRect.left,
-                } : { top: linkCtxMenu.position.top, left: linkCtxMenu.position.left };
+                const pos = containerRect
+                  ? {
+                      top: linkRect.bottom - containerRect.top + 4,
+                      left: linkRect.left - containerRect.left,
+                    }
+                  : { top: linkCtxMenu.position.top, left: linkCtxMenu.position.left };
                 // Save a range at the link
                 const range = document.createRange();
                 range.selectNodeContents(linkCtxMenu.element);
@@ -471,8 +725,8 @@ export default function EditorArea({
               onRemove={() => {
                 const el = linkCtxMenu.element;
                 const textContent = Array.from(el.childNodes)
-                  .filter(n => !n.classList?.contains("external-link-icon"))
-                  .map(n => n.textContent)
+                  .filter((n) => !n.classList?.contains("external-link-icon"))
+                  .map((n) => n.textContent)
                   .join("");
                 const textNode = document.createTextNode(textContent);
                 el.parentNode.replaceChild(textNode, el);
@@ -487,41 +741,37 @@ export default function EditorArea({
             />
           )}
         </div>
-      ) : (
-        /* Empty state */
-        <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          position: "relative", overflow: "hidden", zIndex: 1,
-        }}>
-          <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, marginBottom: 20, opacity: 0.12 }}>
-              <img src="/assets/boojy-notes-text-N.png" alt="" style={{ height: 55, filter: "invert(1)" }} draggable="false" />
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: accentColor, position: "relative", top: 2, flexShrink: 0 }} />
-              <img src="/assets/boojy-notes.text-tes.png" alt="" style={{ height: 48, filter: "invert(1)" }} draggable="false" />
-            </div>
-            <p style={{ color: TEXT.muted, fontSize: 14, marginBottom: 28, opacity: 0.7 }}>Start writing...</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: 0.4 }}>
-              {[
-                { key: "\u2318N", label: "New note" },
-                { key: "\u2318P", label: "Search notes" },
-                { key: "/", label: "Commands" },
-              ].map((s) => (
-                <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "center" }}>
-                  <span style={{
-                    fontSize: 11, color: TEXT.secondary,
-                    background: BG.elevated, padding: "2px 7px",
-                    borderRadius: 4, border: `1px solid ${BG.divider}`,
-                    fontFamily: "'SF Mono', 'Fira Code', monospace",
-                    minWidth: 28, textAlign: "center",
-                  }}>{s.key}</span>
-                  <span style={{ fontSize: 12, color: TEXT.muted, width: 90, textAlign: "left" }}>{s.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      ) : null}
     </div>
   );
-}
+}, (prev, next) => {
+  // Custom comparator: avoid re-render on pure text edits
+  // Compare note by block structure (ids + types), not by reference
+  const pBlocks = prev.note?.content?.blocks;
+  const nBlocks = next.note?.content?.blocks;
+  if (pBlocks !== nBlocks) {
+    if (!pBlocks || !nBlocks || pBlocks.length !== nBlocks.length) return false;
+    for (let i = 0; i < pBlocks.length; i++) {
+      if (pBlocks[i].id !== nBlocks[i].id || pBlocks[i].type !== nBlocks[i].type) return false;
+      // Code blocks manage their own textarea — must re-render on text/lang changes
+      if (pBlocks[i].type === "code" && (pBlocks[i].text !== nBlocks[i].text || pBlocks[i].lang !== nBlocks[i].lang)) return false;
+    }
+  }
+  // Check path changed (folder move / breadcrumb)
+  if (prev.note?.path !== next.note?.path) return false;
+  return (
+    prev.activeNote === next.activeNote &&
+    prev.editorFadeIn === next.editorFadeIn &&
+    prev.accentColor === next.accentColor &&
+    prev.editorBg === next.editorBg &&
+    prev.settingsFontSize === next.settingsFontSize &&
+    prev.toolbarState === next.toolbarState &&
+    prev.noteTitleSet === next.noteTitleSet &&
+    prev.linkPopover === next.linkPopover &&
+    prev.selectedImageBlockId === next.selectedImageBlockId &&
+    prev.lightbox === next.lightbox &&
+    prev.backlinks === next.backlinks
+  );
+});
+
+export default EditorArea;

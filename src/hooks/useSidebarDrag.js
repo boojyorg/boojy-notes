@@ -1,22 +1,31 @@
 import { useRef } from "react";
 import { runAutoScroll } from "../utils/domHelpers";
-import { FOLDER_TREE } from "../constants/data";
 
 export function useSidebarDrag({
-  noteDataRef, setNoteData,
-  expanded, setExpanded,
-  sidebarOrder, setSidebarOrder, customFolders,
+  noteDataRef,
+  setNoteData,
+  expanded,
+  setExpanded,
+  sidebarOrder,
+  setSidebarOrder,
+  customFolders,
   sidebarScrollRef,
-  accentColor, chromeBg,
-  setDragTooltip, dragTooltipCount,
+  accentColor,
+  chromeBg,
+  setDragTooltip,
+  dragTooltipCount,
+  selectedNotesRef,
+  clearSelectionRef,
 }) {
   const sidebarDrag = useRef({
     active: false,
     type: null,
     id: null,
+    draggedIds: [],
     cloneEl: null,
     holdTimer: null,
-    startX: 0, startY: 0,
+    startX: 0,
+    startY: 0,
     dropTarget: null,
     dropIndicator: null,
     autoExpandTimer: null,
@@ -28,7 +37,10 @@ export function useSidebarDrag({
     const meta = {};
     if (noteIds) meta.noteOrder = noteIds;
     if (folderIds) meta.folderOrder = folderIds;
-    setSidebarOrder(prev => ({ ...prev, [folderPath]: { ...(prev[folderPath] || {}), ...meta } }));
+    setSidebarOrder((prev) => ({
+      ...prev,
+      [folderPath]: { ...(prev[folderPath] || {}), ...meta },
+    }));
     if (window.electronAPI?.writeMeta) {
       window.electronAPI.writeMeta(folderPath, { ...(sidebarOrder[folderPath] || {}), ...meta });
     }
@@ -39,6 +51,16 @@ export function useSidebarDrag({
     sd.active = true;
     sd.type = type;
     sd.id = id;
+
+    // Determine dragged IDs for multi-drag
+    const sel = selectedNotesRef?.current;
+    const clearSel = clearSelectionRef?.current;
+    if (type === "note" && sel && sel.size > 1 && sel.has(id)) {
+      sd.draggedIds = [...sel];
+    } else {
+      sd.draggedIds = [id];
+      if (clearSel) clearSel();
+    }
 
     const rect = el.getBoundingClientRect();
     const clone = el.cloneNode(true);
@@ -57,6 +79,30 @@ export function useSidebarDrag({
       borderRadius: "6px",
       transition: "none",
     });
+    // Count badge for multi-drag
+    if (type === "note" && sd.draggedIds.length > 1) {
+      const badge = document.createElement("div");
+      Object.assign(badge.style, {
+        position: "absolute",
+        top: "-6px",
+        right: "-6px",
+        width: "20px",
+        height: "20px",
+        borderRadius: "50%",
+        background: accentColor,
+        color: "#fff",
+        fontSize: "11px",
+        fontWeight: "600",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+      });
+      badge.textContent = String(sd.draggedIds.length);
+      clone.style.position = "fixed";
+      clone.style.overflow = "visible";
+      clone.appendChild(badge);
+    }
     document.body.appendChild(clone);
     sd.cloneEl = clone;
     sd.startY = pointerY;
@@ -90,7 +136,9 @@ export function useSidebarDrag({
       sd.scrollRAF = requestAnimationFrame(scrollLoop);
     };
     sd.scrollRAF = requestAnimationFrame(scrollLoop);
-    sd._updatePointerY = (y) => { lastPointerY = y; };
+    sd._updatePointerY = (y) => {
+      lastPointerY = y;
+    };
   };
 
   const updateSidebarDropTarget = (pointerX, pointerY) => {
@@ -100,11 +148,17 @@ export function useSidebarDrag({
     if (!scrollEl) return;
     const scrollRect = scrollEl.getBoundingClientRect();
 
-    if (pointerX < scrollRect.left || pointerX > scrollRect.right ||
-        pointerY < scrollRect.top || pointerY > scrollRect.bottom) {
+    if (
+      pointerX < scrollRect.left ||
+      pointerX > scrollRect.right ||
+      pointerY < scrollRect.top ||
+      pointerY > scrollRect.bottom
+    ) {
       if (sd.dropIndicator) sd.dropIndicator.style.display = "none";
       sd.dropTarget = null;
-      scrollEl.querySelectorAll("[data-folder-path]").forEach(el => el.style.background = "none");
+      scrollEl
+        .querySelectorAll("[data-folder-path]")
+        .forEach((el) => (el.style.background = "none"));
       return;
     }
 
@@ -112,13 +166,14 @@ export function useSidebarDrag({
     const noteEls = scrollEl.querySelectorAll("[data-note-id]");
     const folderEls = scrollEl.querySelectorAll("[data-folder-path]");
 
-    folderEls.forEach(el => el.style.background = "none");
+    folderEls.forEach((el) => (el.style.background = "none"));
 
     for (const el of folderEls) {
       const rect = el.getBoundingClientRect();
       if (pointerY >= rect.top && pointerY <= rect.bottom) {
         const folderPath = el.dataset.folderPath;
-        if (sd.type === "folder" && (folderPath === sd.id || folderPath.startsWith(sd.id + "/"))) continue;
+        if (sd.type === "folder" && (folderPath === sd.id || folderPath.startsWith(sd.id + "/")))
+          continue;
         const third = rect.height / 3;
         if (pointerY < rect.top + third) {
           target = { type: "folder", id: folderPath, zone: "above", rect };
@@ -162,20 +217,23 @@ export function useSidebarDrag({
       if (!expanded[target.id]) {
         if (!sd.autoExpandTimer) {
           sd.autoExpandTimer = setTimeout(() => {
-            setExpanded(prev => ({ ...prev, [target.id]: true }));
+            setExpanded((prev) => ({ ...prev, [target.id]: true }));
             sd.autoExpandTimer = null;
           }, 500);
         }
       }
     } else {
-      if (sd.autoExpandTimer) { clearTimeout(sd.autoExpandTimer); sd.autoExpandTimer = null; }
+      if (sd.autoExpandTimer) {
+        clearTimeout(sd.autoExpandTimer);
+        sd.autoExpandTimer = null;
+      }
       const lineY = target.zone === "above" ? target.rect.top : target.rect.bottom;
       if (sd.dropIndicator) {
         Object.assign(sd.dropIndicator.style, {
           display: "block",
-          top: (lineY - 1) + "px",
-          left: (target.rect.left + 4) + "px",
-          width: (target.rect.width - 8) + "px",
+          top: lineY - 1 + "px",
+          left: target.rect.left + 4 + "px",
+          width: target.rect.width - 8 + "px",
         });
       }
     }
@@ -187,12 +245,14 @@ export function useSidebarDrag({
     const target = sd.dropTarget;
 
     if (target) {
+      const ids = sd.draggedIds && sd.draggedIds.length > 0 ? sd.draggedIds : [sd.id];
       if (sd.type === "note" && target.zone === "into" && target.type === "folder") {
-        const noteId = sd.id;
         const targetFolder = target.id;
-        setNoteData(prev => {
+        setNoteData((prev) => {
           const next = { ...prev };
-          next[noteId] = { ...next[noteId], folder: targetFolder };
+          for (const noteId of ids) {
+            if (next[noteId]) next[noteId] = { ...next[noteId], folder: targetFolder };
+          }
           return next;
         });
       } else if (sd.type === "note") {
@@ -213,21 +273,27 @@ export function useSidebarDrag({
             .map(([id]) => id);
           const currentOrder = sidebarOrder[folderKey]?.noteOrder || noteIds;
           const ordered = [...currentOrder];
-          for (const id of noteIds) { if (!ordered.includes(id)) ordered.push(id); }
-          const filtered = ordered.filter(id => noteIds.includes(id));
-          const fromIdx = filtered.indexOf(sd.id);
-          if (fromIdx !== -1) filtered.splice(fromIdx, 1);
-          let toIdx = filtered.length;
+          for (const id of noteIds) {
+            if (!ordered.includes(id)) ordered.push(id);
+          }
+          const filtered = ordered.filter((id) => noteIds.includes(id));
+          // Remove all dragged IDs from order
+          const dragSet = new Set(ids);
+          const withoutDragged = filtered.filter((id) => !dragSet.has(id));
+          let toIdx = withoutDragged.length;
           if (target.type === "note") {
-            const tIdx = filtered.indexOf(target.id);
+            const tIdx = withoutDragged.indexOf(target.id);
             toIdx = target.zone === "above" ? tIdx : tIdx + 1;
           }
-          filtered.splice(Math.max(0, toIdx), 0, sd.id);
-          persistSidebarOrder(folderKey, filtered, null);
+          // Insert all dragged IDs as a group at drop position
+          withoutDragged.splice(Math.max(0, toIdx), 0, ...ids);
+          persistSidebarOrder(folderKey, withoutDragged, null);
         } else {
-          setNoteData(prev => {
+          setNoteData((prev) => {
             const next = { ...prev };
-            next[sd.id] = { ...next[sd.id], folder: targetFolder || null };
+            for (const noteId of ids) {
+              if (next[noteId]) next[noteId] = { ...next[noteId], folder: targetFolder || null };
+            }
             return next;
           });
         }
@@ -239,14 +305,30 @@ export function useSidebarDrag({
 
         if (parentPath === targetParent && target.zone !== "into") {
           const parentKey = parentPath;
+
+          // Discover sibling folder names from the rendered DOM
+          const scrollEl = sidebarScrollRef.current;
+          const allFolderEls = scrollEl
+            ? scrollEl.querySelectorAll("[data-folder-path]")
+            : [];
           const folderNames = [];
-          if (parentPath === "") {
-            folderNames.push(...FOLDER_TREE.map(f => f.name), ...customFolders);
+          for (const el of allFolderEls) {
+            const p = el.dataset.folderPath;
+            const isDirectChild = parentPath === ""
+              ? !p.includes("/")
+              : p.startsWith(parentPath + "/") && !p.slice(parentPath.length + 1).includes("/");
+            if (isDirectChild) {
+              const name = parentPath === "" ? p : p.slice(parentPath.length + 1);
+              if (!folderNames.includes(name)) folderNames.push(name);
+            }
           }
+
           const currentOrder = sidebarOrder[parentKey]?.folderOrder || folderNames;
           const ordered = [...currentOrder];
-          for (const n of folderNames) { if (!ordered.includes(n)) ordered.push(n); }
-          const filtered = ordered.filter(n => folderNames.includes(n));
+          for (const n of folderNames) {
+            if (!ordered.includes(n)) ordered.push(n);
+          }
+          const filtered = ordered.filter((n) => folderNames.includes(n));
           const dragName = parts[parts.length - 1];
           const fromIdx = filtered.indexOf(dragName);
           if (fromIdx !== -1) filtered.splice(fromIdx, 1);
@@ -268,16 +350,26 @@ export function useSidebarDrag({
   const cleanupSidebarDrag = () => {
     const sd = sidebarDrag.current;
     if (sd.cloneEl && sd.cloneEl.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
-    if (sd.dropIndicator && sd.dropIndicator.parentNode) sd.dropIndicator.parentNode.removeChild(sd.dropIndicator);
-    if (sd.scrollRAF) { cancelAnimationFrame(sd.scrollRAF); sd.scrollRAF = null; }
-    if (sd.autoExpandTimer) { clearTimeout(sd.autoExpandTimer); sd.autoExpandTimer = null; }
+    if (sd.dropIndicator && sd.dropIndicator.parentNode)
+      sd.dropIndicator.parentNode.removeChild(sd.dropIndicator);
+    if (sd.scrollRAF) {
+      cancelAnimationFrame(sd.scrollRAF);
+      sd.scrollRAF = null;
+    }
+    if (sd.autoExpandTimer) {
+      clearTimeout(sd.autoExpandTimer);
+      sd.autoExpandTimer = null;
+    }
     if (sidebarScrollRef.current) {
-      sidebarScrollRef.current.querySelectorAll("[data-folder-path]").forEach(el => el.style.background = "none");
+      sidebarScrollRef.current
+        .querySelectorAll("[data-folder-path]")
+        .forEach((el) => (el.style.background = "none"));
     }
     document.body.classList.remove("block-dragging");
     sd.active = false;
     sd.type = null;
     sd.id = null;
+    sd.draggedIds = [];
     sd.cloneEl = null;
     sd.holdTimer = null;
     sd.dropTarget = null;
@@ -288,12 +380,18 @@ export function useSidebarDrag({
 
   const cancelSidebarDrag = () => {
     const sd = sidebarDrag.current;
-    if (sd.holdTimer) { clearTimeout(sd.holdTimer); sd.holdTimer = null; }
-    if (!sd.active) { cleanupSidebarDrag(); return; }
+    if (sd.holdTimer) {
+      clearTimeout(sd.holdTimer);
+      sd.holdTimer = null;
+    }
+    if (!sd.active) {
+      cleanupSidebarDrag();
+      return;
+    }
     if (sd.type === "note" && sd.originalFolder !== undefined) {
       const noteId = sd.id;
       const origFolder = sd.originalFolder;
-      setNoteData(prev => {
+      setNoteData((prev) => {
         if (prev[noteId]?.folder !== origFolder) {
           const next = { ...prev };
           next[noteId] = { ...next[noteId], folder: origFolder };
@@ -349,14 +447,17 @@ export function useSidebarDrag({
       }
       if (sd.active) {
         if (sd.cloneEl) {
-          sd.cloneEl.style.top = (ev.clientY - sd.offsetY) + "px";
+          sd.cloneEl.style.top = ev.clientY - sd.offsetY + "px";
         }
         if (sd._updatePointerY) sd._updatePointerY(ev.clientY);
         updateSidebarDropTarget(ev.clientX, ev.clientY);
       }
     };
     const onUp = () => {
-      if (sd.holdTimer) { clearTimeout(sd.holdTimer); sd.holdTimer = null; }
+      if (sd.holdTimer) {
+        clearTimeout(sd.holdTimer);
+        sd.holdTimer = null;
+      }
       if (sd.active) finalizeSidebarDrag();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);

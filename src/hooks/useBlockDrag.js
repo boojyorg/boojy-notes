@@ -2,10 +2,18 @@ import { useRef } from "react";
 import { getBlockFromNode, runAutoScroll } from "../utils/domHelpers";
 
 export function useBlockDrag({
-  noteDataRef, activeNote, setNoteData, pushHistory, popHistory,
-  blockRefs, editorRef, editorScrollRef,
-  accentColor, editorBg,
-  setDragTooltip, dragTooltipCount,
+  noteDataRef,
+  activeNote,
+  setNoteData,
+  pushHistory,
+  popHistory,
+  blockRefs,
+  editorRef,
+  editorScrollRef,
+  accentColor,
+  editorBg,
+  setDragTooltip,
+  dragTooltipCount,
   setToolbarState,
 }) {
   const blockDrag = useRef({
@@ -14,7 +22,8 @@ export function useBlockDrag({
     blockIds: [],
     originalBlocks: null,
     cloneEl: null,
-    startX: 0, startY: 0,
+    startX: 0,
+    startY: 0,
     offsetY: 0,
     startIndex: -1,
     currentIndex: -1,
@@ -38,10 +47,12 @@ export function useBlockDrag({
     const sel = window.getSelection();
     if (sel.rangeCount && !sel.isCollapsed) {
       const range = sel.getRangeAt(0);
-      const multiIds = blocks.filter((b) => {
-        const bEl = blockRefs.current[b.id];
-        return bEl && range.intersectsNode(bEl);
-      }).map(b => b.id);
+      const multiIds = blocks
+        .filter((b) => {
+          const bEl = blockRefs.current[b.id];
+          return bEl && range.intersectsNode(bEl);
+        })
+        .map((b) => b.id);
       if (multiIds.length > 1 && multiIds.includes(blockId)) {
         draggedIds = multiIds;
       }
@@ -68,20 +79,22 @@ export function useBlockDrag({
         if (srcEl) {
           const c = srcEl.cloneNode(true);
           c.removeAttribute("contenteditable");
-          c.querySelectorAll("[contenteditable]").forEach(e => e.removeAttribute("contenteditable"));
+          c.querySelectorAll("[contenteditable]").forEach((e) =>
+            e.removeAttribute("contenteditable"),
+          );
           clone.appendChild(c);
         }
       }
     } else {
       const c = el.cloneNode(true);
       c.removeAttribute("contenteditable");
-      c.querySelectorAll("[contenteditable]").forEach(e => e.removeAttribute("contenteditable"));
+      c.querySelectorAll("[contenteditable]").forEach((e) => e.removeAttribute("contenteditable"));
       clone.appendChild(c);
     }
     Object.assign(clone.style, {
       position: "fixed",
       left: rect.left + "px",
-      top: (pointerY - bd.offsetY) + "px",
+      top: pointerY - bd.offsetY + "px",
       width: rect.width + "px",
       zIndex: "1000",
       pointerEvents: "none",
@@ -117,7 +130,9 @@ export function useBlockDrag({
       bd.scrollRAF = requestAnimationFrame(scrollLoop);
     };
     bd.scrollRAF = requestAnimationFrame(scrollLoop);
-    bd._updatePointerY = (y) => { lastPointerY = y; };
+    bd._updatePointerY = (y) => {
+      lastPointerY = y;
+    };
   };
 
   const updateBlockDropTarget = (pointerY) => {
@@ -144,12 +159,12 @@ export function useBlockDrag({
     if (targetIndex === bd.currentIndex) return;
 
     const dragIds = bd.blockIds;
-    setNoteData(prev => {
+    setNoteData((prev) => {
       const next = { ...prev };
       const n = { ...next[activeNote] };
       const blks = [...n.content.blocks];
-      const dragged = dragIds.map(id => blks.find(b => b.id === id)).filter(Boolean);
-      const remaining = blks.filter(b => !dragIds.includes(b.id));
+      const dragged = dragIds.map((id) => blks.find((b) => b.id === id)).filter(Boolean);
+      const remaining = blks.filter((b) => !dragIds.includes(b.id));
       let insertAt = targetIndex;
       let removedBefore = 0;
       for (let i = 0; i < blks.length && i < targetIndex; i++) {
@@ -169,7 +184,7 @@ export function useBlockDrag({
     if (bd.cloneEl && bd.cloneEl.parentNode) {
       bd.cloneEl.parentNode.removeChild(bd.cloneEl);
     }
-    for (const id of (bd.blockIds || [bd.blockId])) {
+    for (const id of bd.blockIds || [bd.blockId]) {
       const el = blockRefs.current[id];
       if (el) {
         delete el.dataset.dragSlot;
@@ -180,7 +195,10 @@ export function useBlockDrag({
       }
     }
     document.body.classList.remove("block-dragging");
-    if (bd.scrollRAF) { cancelAnimationFrame(bd.scrollRAF); bd.scrollRAF = null; }
+    if (bd.scrollRAF) {
+      cancelAnimationFrame(bd.scrollRAF);
+      bd.scrollRAF = null;
+    }
     bd.active = false;
     bd.blockId = null;
     bd.blockIds = [];
@@ -193,7 +211,10 @@ export function useBlockDrag({
   const finalizeBlockDrag = () => {
     const bd = blockDrag.current;
     if (!bd.active) return;
-    if (bd.scrollRAF) { cancelAnimationFrame(bd.scrollRAF); bd.scrollRAF = null; }
+    if (bd.scrollRAF) {
+      cancelAnimationFrame(bd.scrollRAF);
+      bd.scrollRAF = null;
+    }
 
     const slotEl = blockRefs.current[bd.blockId];
     if (slotEl && bd.cloneEl) {
@@ -213,10 +234,13 @@ export function useBlockDrag({
 
   const cancelBlockDrag = () => {
     const bd = blockDrag.current;
-    if (bd.holdTimer) { clearTimeout(bd.holdTimer); bd.holdTimer = null; }
+    if (bd.holdTimer) {
+      clearTimeout(bd.holdTimer);
+      bd.holdTimer = null;
+    }
     if (!bd.active) return;
     if (bd.originalBlocks) {
-      setNoteData(prev => {
+      setNoteData((prev) => {
         const next = { ...prev };
         const n = { ...next[activeNote] };
         n.content = { ...n.content, blocks: bd.originalBlocks };
@@ -269,14 +293,17 @@ export function useBlockDrag({
       }
       if (bd.active) {
         if (bd.cloneEl) {
-          bd.cloneEl.style.top = (ev.clientY - bd.offsetY) + "px";
+          bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
         }
         if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
         updateBlockDropTarget(ev.clientY);
       }
     };
     const onUp = () => {
-      if (bd.holdTimer) { clearTimeout(bd.holdTimer); bd.holdTimer = null; }
+      if (bd.holdTimer) {
+        clearTimeout(bd.holdTimer);
+        bd.holdTimer = null;
+      }
       if (bd.active) finalizeBlockDrag();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);

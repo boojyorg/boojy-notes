@@ -1,28 +1,42 @@
+import { useCallback, useRef } from "react";
 import { getBlockFromNode } from "../utils/domHelpers";
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../utils/inlineFormatting";
 
 export function useInlineFormatting({
-  blockRefs, editorRef, noteDataRef, activeNote, updateBlockText, setToolbarState,
+  blockRefs,
+  editorRef,
+  noteDataRef,
+  activeNote,
+  updateBlockText,
+  setToolbarState,
   onOpenLinkEditor,
 }) {
-  const reReadBlockFromDom = (sel) => {
+  const activeNoteRef = useRef(activeNote);
+  activeNoteRef.current = activeNote;
+
+  const reReadBlockFromDom = useCallback((sel) => {
     if (!sel) sel = window.getSelection();
     if (!sel.rangeCount) return;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
     if (!info) return;
     const rawHtml = sanitizeInlineHtml(info.el.innerHTML);
-    const text = htmlToInlineMarkdown(rawHtml).replace(/[\n\r]+$/, "").replace(/^[\n\r]+/, "");
-    updateBlockText(activeNote, info.blockIndex, text);
-  };
+    const text = htmlToInlineMarkdown(rawHtml)
+      .replace(/[\n\r]+$/, "")
+      .replace(/^[\n\r]+/, "");
+    updateBlockText(activeNoteRef.current, info.blockIndex, text);
+  }, []);
 
-  const toggleInlineCode = (sel) => {
+  const toggleInlineCode = useCallback((sel) => {
     if (!sel.rangeCount || sel.isCollapsed) return;
     const range = sel.getRangeAt(0);
     let node = sel.anchorNode;
     let codeEl = null;
     while (node && node !== editorRef.current) {
-      if (node.nodeName === "CODE") { codeEl = node; break; }
+      if (node.nodeName === "CODE") {
+        codeEl = node;
+        break;
+      }
       node = node.parentNode;
     }
     if (codeEl) {
@@ -46,15 +60,18 @@ export function useInlineFormatting({
       sel.removeAllRanges();
       sel.addRange(r);
     }
-  };
+  }, []);
 
-  const toggleWrappingTag = (sel, tagName) => {
+  const toggleWrappingTag = useCallback((sel, tagName) => {
     if (!sel.rangeCount || sel.isCollapsed) return;
     const range = sel.getRangeAt(0);
     let node = sel.anchorNode;
     let existing = null;
     while (node && node !== editorRef.current) {
-      if (node.nodeName === tagName) { existing = node; break; }
+      if (node.nodeName === tagName) {
+        existing = node;
+        break;
+      }
       node = node.parentNode;
     }
     if (existing) {
@@ -78,36 +95,44 @@ export function useInlineFormatting({
       sel.removeAllRanges();
       sel.addRange(r);
     }
-  };
+  }, []);
 
-  const toggleStrikethrough = (sel) => toggleWrappingTag(sel, "DEL");
-  const toggleHighlight = (sel) => toggleWrappingTag(sel, "MARK");
+  const toggleStrikethrough = useCallback((sel) => toggleWrappingTag(sel, "DEL"), [toggleWrappingTag]);
+  const toggleHighlight = useCallback((sel) => toggleWrappingTag(sel, "MARK"), [toggleWrappingTag]);
 
-  const getLinkContext = () => {
+  const getLinkContext = useCallback(() => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return null;
     let node = sel.anchorNode;
     let linkEl = null;
     while (node && node !== editorRef.current) {
-      if (node.nodeName === "A") { linkEl = node; break; }
+      if (node.nodeName === "A") {
+        linkEl = node;
+        break;
+      }
       node = node.parentNode;
     }
     const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const containerEl = editorRef.current?.closest("[style*='position: relative']") || editorRef.current?.parentElement;
+    const containerEl =
+      editorRef.current?.closest("[style*='position: relative']") ||
+      editorRef.current?.parentElement;
     const containerRect = containerEl?.getBoundingClientRect() || { top: 0, left: 0 };
     const savedRange = range.cloneRange();
     if (linkEl) {
       // Strip icon text from link text
       const textContent = Array.from(linkEl.childNodes)
-        .filter(n => !n.classList?.contains("external-link-icon"))
-        .map(n => n.textContent)
+        .filter((n) => !n.classList?.contains("external-link-icon"))
+        .map((n) => n.textContent)
         .join("");
       return {
         existingLink: linkEl,
         url: linkEl.getAttribute("href") || "",
         text: textContent,
-        position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
+        position: {
+          top: rect.bottom - containerRect.top + 4,
+          left: rect.left - containerRect.left,
+        },
         savedRange,
       };
     }
@@ -120,9 +145,9 @@ export function useInlineFormatting({
       position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
       savedRange,
     };
-  };
+  }, []);
 
-  const applyFormat = (format) => {
+  const applyFormat = useCallback((format) => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
     if (format === "bold") {
@@ -144,11 +169,19 @@ export function useInlineFormatting({
     }
     reReadBlockFromDom(sel);
     setToolbarState(null);
-  };
+  }, [reReadBlockFromDom, toggleInlineCode, toggleStrikethrough, toggleHighlight, onOpenLinkEditor, setToolbarState]);
 
-  const detectActiveFormats = () => {
+  const detectActiveFormats = useCallback(() => {
     const sel = window.getSelection();
-    if (!sel.rangeCount) return { bold: false, italic: false, code: false, link: false, strikethrough: false, highlight: false };
+    if (!sel.rangeCount)
+      return {
+        bold: false,
+        italic: false,
+        code: false,
+        link: false,
+        strikethrough: false,
+        highlight: false,
+      };
     const isFormatActive = (tags) => {
       let node = sel.anchorNode;
       while (node && node !== editorRef.current) {
@@ -165,7 +198,7 @@ export function useInlineFormatting({
       strikethrough: isFormatActive(["DEL", "S"]),
       highlight: isFormatActive(["MARK"]),
     };
-  };
+  }, []);
 
   return { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext };
 }

@@ -5,6 +5,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SearchAddon } from "@xterm/addon-search";
 import "@xterm/xterm/css/xterm.css";
 import { getTerminalTheme } from "../../constants/terminalTheme";
+import { useTheme } from "../../hooks/useTheme";
 
 export default function TerminalInstance({
   terminalId,
@@ -13,6 +14,7 @@ export default function TerminalInstance({
   xtermInstances,
   onExited,
 }) {
+  const { theme } = useTheme();
   const containerRef = useRef(null);
   const xtermRef = useRef(null);
   const fitAddonRef = useRef(null);
@@ -28,9 +30,9 @@ export default function TerminalInstance({
   useEffect(() => {
     if (!containerRef.current || !api) return;
 
-    const theme = getTerminalTheme();
+    const termTheme = getTerminalTheme(theme);
     const term = new Terminal({
-      theme,
+      theme: termTheme,
       fontFamily: "'SF Mono', 'Fira Code', 'Menlo', monospace",
       fontSize: 11,
       lineHeight: 1.2,
@@ -59,7 +61,9 @@ export default function TerminalInstance({
 
     // Fit after open
     requestAnimationFrame(() => {
-      try { fitAddon.fit(); } catch {}
+      try {
+        fitAddon.fit();
+      } catch {}
     });
 
     // Subscribe to PTY data (filtered by our ID)
@@ -76,7 +80,9 @@ export default function TerminalInstance({
     unsubExitRef.current = api.onExit(({ id, exitCode }) => {
       if (id !== ptyIdRef.current) return;
       exitedRef.current = true;
-      term.write(`\r\n\x1b[90m[Process exited with code ${exitCode}] Press Enter to restart\x1b[0m`);
+      term.write(
+        `\r\n\x1b[90m[Process exited with code ${exitCode}] Press Enter to restart\x1b[0m`,
+      );
       onExited?.(terminalId);
     });
 
@@ -131,18 +137,21 @@ export default function TerminalInstance({
 
     // Spawn the PTY
     function spawnPty(fa) {
-      api.create().then((result) => {
-        ptyIdRef.current = result.id;
-        // Flush any data that arrived before create() resolved
-        for (const d of bufferedData.current) {
-          if (d.id === result.id) term.write(d.data);
-        }
-        bufferedData.current = [];
-        const dims = fa.proposeDimensions();
-        if (dims) api.resize(result.id, dims.cols, dims.rows);
-      }).catch((err) => {
-        term.write(`\x1b[31mFailed to start shell: ${err.message}\x1b[0m\r\n`);
-      });
+      api
+        .create()
+        .then((result) => {
+          ptyIdRef.current = result.id;
+          // Flush any data that arrived before create() resolved
+          for (const d of bufferedData.current) {
+            if (d.id === result.id) term.write(d.data);
+          }
+          bufferedData.current = [];
+          const dims = fa.proposeDimensions();
+          if (dims) api.resize(result.id, dims.cols, dims.rows);
+        })
+        .catch((err) => {
+          term.write(`\x1b[31mFailed to start shell: ${err.message}\x1b[0m\r\n`);
+        });
     }
     spawnPty(fitAddon);
 
@@ -175,7 +184,7 @@ export default function TerminalInstance({
   // Update theme
   useEffect(() => {
     if (xtermRef.current) {
-      xtermRef.current.options.theme = getTerminalTheme();
+      xtermRef.current.options.theme = getTerminalTheme(theme);
     }
   }, []);
 

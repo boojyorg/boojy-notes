@@ -33,19 +33,27 @@ export function inlineMarkdownToHtml(md, noteTitles) {
 
   // 8. Wikilinks [[Target]] or [[Target|Display]]
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
-    const broken = noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    const broken =
+      noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
     return `<span class="wikilink${broken}" data-target="${target}">${display}</span>`;
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
-    const broken = noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    const broken =
+      noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
     return `<span class="wikilink${broken}" data-target="${target}">${target}</span>`;
   });
 
   // 9. Markdown links [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="external-link" data-url="$2">$1<span class="external-link-icon" contenteditable="false">\u2197</span></a>');
+  s = s.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" class="external-link" data-url="$2">$1<span class="external-link-icon" contenteditable="false">\u2197</span></a>',
+  );
 
   // 10. Auto-link bare URLs (https://... not already inside an <a> tag)
-  s = s.replace(/(^|[^"'>])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" class="external-link bare-url" data-url="$2">$2<span class="external-link-icon" contenteditable="false">\u2197</span></a>');
+  s = s.replace(
+    /(^|[^"'>])(https?:\/\/[^\s<]+)/g,
+    '$1<a href="$2" class="external-link bare-url" data-url="$2">$2<span class="external-link-icon" contenteditable="false">\u2197</span></a>',
+  );
 
   // 11. Tags (#tag but not # at line start which is heading)
   s = s.replace(/(^|[\s(])#([a-zA-Z][\w/-]*)/g, '$1<span class="inline-tag">#$2</span>');
@@ -135,7 +143,19 @@ function walkNode(node) {
   return result;
 }
 
-const ALLOWED_TAGS = new Set(["STRONG", "EM", "CODE", "A", "B", "I", "BR", "DEL", "S", "MARK", "SPAN"]);
+const ALLOWED_TAGS = new Set([
+  "STRONG",
+  "EM",
+  "CODE",
+  "A",
+  "B",
+  "I",
+  "BR",
+  "DEL",
+  "S",
+  "MARK",
+  "SPAN",
+]);
 
 /**
  * Sanitize HTML: strip all tags except formatting tags.

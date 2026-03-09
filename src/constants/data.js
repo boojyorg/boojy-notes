@@ -15,10 +15,11 @@ export const SLASH_COMMANDS = [
   { id: "divider", label: "Divider", desc: "---", icon: "\u2014", type: "spacer" },
   { id: "image", label: "Image", desc: "![]()", icon: "\uD83D\uDDBC", type: "image" },
   { id: "code", label: "Code Block", desc: "```", icon: "</>", type: "code" },
+  { id: "blockquote", label: "Blockquote", desc: ">", icon: "\u275D", type: "blockquote" },
   {
     id: "callout",
     label: "Callout",
-    desc: ">",
+    desc: "> [!]",
     icon: "!",
     type: "callout",
     calloutType: "note",

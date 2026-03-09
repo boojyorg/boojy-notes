@@ -32,12 +32,15 @@ export function useTerminal() {
     setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)));
   }, []);
 
-  const restartTerminal = useCallback((id) => {
-    // Close the tab, then create a new one
-    closeTerminal(id);
-    // Use setTimeout so the old instance unmounts first
-    setTimeout(() => createTerminal(), 50);
-  }, [closeTerminal, createTerminal]);
+  const restartTerminal = useCallback(
+    (id) => {
+      // Close the tab, then create a new one
+      closeTerminal(id);
+      // Use setTimeout so the old instance unmounts first
+      setTimeout(() => createTerminal(), 50);
+    },
+    [closeTerminal, createTerminal],
+  );
 
   const clearTerminal = useCallback((id) => {
     const inst = xtermInstances.current.get(id);

@@ -7,8 +7,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   deleteNoteFile: (noteId) => ipcRenderer.invoke("delete-note-file", noteId),
   saveImage: (data) => ipcRenderer.invoke("save-image", data),
+  saveAttachment: (data) => ipcRenderer.invoke("save-attachment", data),
   pickImageFile: () => ipcRenderer.invoke("pick-image-file"),
+  pickFile: () => ipcRenderer.invoke("pick-file"),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  openPath: (absolutePath) => ipcRenderer.invoke("open-path", absolutePath),
+  showItemInFolder: (absolutePath) => ipcRenderer.invoke("show-item-in-folder", absolutePath),
+  resolveAttachment: (filename) => ipcRenderer.invoke("resolve-attachment", filename),
+  getFileSize: (filename) => ipcRenderer.invoke("get-file-size", filename),
+  copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
   readMeta: (folderRelPath) => ipcRenderer.invoke("read-meta", folderRelPath),
   writeMeta: (folderRelPath, meta) => ipcRenderer.invoke("write-meta", folderRelPath, meta),
 
@@ -30,6 +37,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("file-deleted", handler);
     return () => ipcRenderer.removeListener("file-deleted", handler);
   },
+
+  // Settings
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  setSetting: (key, value) => ipcRenderer.invoke("set-setting", key, value),
+  toggleSpellcheck: (opts) => ipcRenderer.invoke("toggle-spellcheck", opts),
+
+  // Export
+  exportPdf: (data) => ipcRenderer.invoke("export:pdf", data),
+  exportDocx: (data) => ipcRenderer.invoke("export:docx", data),
+  onMenuExport: (callback) => {
+    const handler = (_event, fmt) => callback(fmt);
+    ipcRenderer.on("menu:export", handler);
+    return () => ipcRenderer.removeListener("menu:export", handler);
+  },
+
+  // Import
+  importMarkdown: (opts) => ipcRenderer.invoke("import:markdown", opts),
+  importHtml: (opts) => ipcRenderer.invoke("import:html", opts),
+  importFolder: (opts) => ipcRenderer.invoke("import:folder", opts),
+  onMenuImport: (callback) => {
+    const handler = (_event, fmt) => callback(fmt);
+    ipcRenderer.on("menu:import", handler);
+    return () => ipcRenderer.removeListener("menu:import", handler);
+  },
+
+  // Window
+  setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
 
   // Terminal
   terminal: {

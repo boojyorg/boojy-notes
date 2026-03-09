@@ -1,7 +1,9 @@
 import { useEffect } from "react";
-import { BG, TEXT } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 
 function MenuItem({ label, onClick }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
   return (
     <div
       onClick={onClick}
@@ -13,17 +15,36 @@ function MenuItem({ label, onClick }) {
         borderRadius: 4,
         transition: "background 0.1s",
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = BG.hover; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = BG.hover;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
     >
       {label}
     </div>
   );
 }
 
-export default function LinkContextMenu({ position, linkType, url, onOpen, onCopy, onEdit, onRemove, onCreate, onDismiss }) {
+export default function LinkContextMenu({
+  position,
+  linkType,
+  url,
+  onOpen,
+  onCopy,
+  onEdit,
+  onRemove,
+  onCreate,
+  onDismiss,
+}) {
+  const { theme } = useTheme();
+  const { BG } = theme;
+
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === "Escape") onDismiss(); };
+    const handleKey = (e) => {
+      if (e.key === "Escape") onDismiss();
+    };
     const handleClick = (e) => {
       if (!e.target.closest(".link-context-menu")) onDismiss();
     };

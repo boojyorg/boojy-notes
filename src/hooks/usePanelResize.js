@@ -1,7 +1,11 @@
 import { useRef } from "react";
 
 export function usePanelResize({
-  sidebarHandles, rightPanelHandles, setSidebarWidth, setRightPanelWidth, chromeBg,
+  sidebarHandles,
+  rightPanelHandles,
+  setSidebarWidth,
+  setRightPanelWidth,
+  chromeBg,
 }) {
   const isDragging = useRef(false);
 
@@ -20,7 +24,7 @@ export function usePanelResize({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       document.documentElement.classList.remove("sidebar-dragging");
-      sidebarHandles.current.forEach(h => h && (h.style.background = ""));
+      sidebarHandles.current.forEach((h) => h && (h.style.background = ""));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -43,7 +47,7 @@ export function usePanelResize({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       document.documentElement.classList.remove("sidebar-dragging");
-      rightPanelHandles.current.forEach(h => h && (h.style.background = ""));
+      rightPanelHandles.current.forEach((h) => h && (h.style.background = ""));
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };

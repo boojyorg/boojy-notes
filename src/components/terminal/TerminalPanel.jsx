@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import TerminalTabBar from "./TerminalTabBar";
 import TerminalInstance from "./TerminalInstance";
 import TerminalSearchBar from "./TerminalSearchBar";
-import { BG, TEXT } from "../../constants/colors";
+import { useTheme } from "../../hooks/useTheme";
 
 export default function TerminalPanel({
   terminals,
@@ -19,6 +19,8 @@ export default function TerminalPanel({
   activeTabBg,
   isOpen,
 }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Auto-create first terminal when panel opens with none
@@ -70,14 +72,32 @@ export default function TerminalPanel({
   // No electron API — show placeholder
   if (!window.electronAPI?.terminal) {
     return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: TEXT.muted, fontSize: 12 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: TEXT.muted,
+          fontSize: 12,
+        }}
+      >
         Terminal requires Electron
       </div>
     );
   }
 
   return (
-    <div data-terminal-panel style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative", background: BG.editor }}>
+    <div
+      data-terminal-panel
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        position: "relative",
+        background: BG.editor,
+      }}
+    >
       <TerminalTabBar
         terminals={terminals}
         activeTerminalId={activeTerminalId}
@@ -104,19 +124,23 @@ export default function TerminalPanel({
         ))}
 
         {terminals.length === 0 && (
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            color: TEXT.muted, fontSize: 12, height: "100%",
-          }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: TEXT.muted,
+              fontSize: 12,
+              height: "100%",
+            }}
+          >
             No terminals open
           </div>
         )}
 
         {searchOpen && activeSearchAddon && (
-          <TerminalSearchBar
-            searchAddon={activeSearchAddon}
-            onClose={() => setSearchOpen(false)}
-          />
+          <TerminalSearchBar searchAddon={activeSearchAddon} onClose={() => setSearchOpen(false)} />
         )}
       </div>
     </div>

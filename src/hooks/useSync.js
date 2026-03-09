@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pushNote, pullNotes, deleteNoteRemote, parseFrontmatter, markdownToBlocks } from "../services/sync";
+import {
+  pushNote,
+  pullNotes,
+  deleteNoteRemote,
+  parseFrontmatter,
+  markdownToBlocks,
+} from "../services/sync";
 import { supabase } from "../lib/supabase";
 
 const SYNC_DEBOUNCE_MS = 2000;
@@ -7,9 +13,7 @@ const LAST_SYNC_KEY = "boojy-sync-last";
 
 export function useSync(user, profile, noteData, setNoteData) {
   const [syncState, setSyncState] = useState("idle");
-  const [lastSynced, setLastSynced] = useState(() =>
-    localStorage.getItem(LAST_SYNC_KEY) || null
-  );
+  const [lastSynced, setLastSynced] = useState(() => localStorage.getItem(LAST_SYNC_KEY) || null);
   const [storageUsed, setStorageUsed] = useState(0);
 
   const dirtyNotes = useRef(new Set());
@@ -74,7 +78,14 @@ export function useSync(user, profile, noteData, setNoteData) {
           channelRef.current?.send({
             type: "broadcast",
             event: "note_upsert",
-            payload: { id: note.id, title: note.title, folder: note.folder || null, path: note.path || null, content: note.content, words: note.words || 0 },
+            payload: {
+              id: note.id,
+              title: note.title,
+              folder: note.folder || null,
+              path: note.path || null,
+              content: note.content,
+              words: note.words || 0,
+            },
           });
         }
         dirtyNotes.current.clear();
@@ -88,7 +99,14 @@ export function useSync(user, profile, noteData, setNoteData) {
             channelRef.current?.send({
               type: "broadcast",
               event: "note_upsert",
-              payload: { id: note.id, title: note.title, folder: note.folder || null, path: note.path || null, content: note.content, words: note.words || 0 },
+              payload: {
+                id: note.id,
+                title: note.title,
+                folder: note.folder || null,
+                path: note.path || null,
+                content: note.content,
+                words: note.words || 0,
+              },
             });
             dirtyNotes.current.delete(noteId);
           }
@@ -157,7 +175,7 @@ export function useSync(user, profile, noteData, setNoteData) {
 
         if (parsedRemotes.length > 0 || deletedRemotes.length > 0) {
           isRemoteUpdate.current = true;
-          setNoteData(prev => {
+          setNoteData((prev) => {
             const next = { ...prev };
             for (const noteId of deletedRemotes) {
               if (!dirtyNotes.current.has(noteId)) {
@@ -231,12 +249,12 @@ export function useSync(user, profile, noteData, setNoteData) {
       .on("broadcast", { event: "note_upsert" }, ({ payload }) => {
         if (!payload?.id || dirtyNotes.current.has(payload.id)) return;
         isRemoteUpdate.current = true;
-        setNoteData(prev => ({ ...prev, [payload.id]: payload }));
+        setNoteData((prev) => ({ ...prev, [payload.id]: payload }));
       })
       .on("broadcast", { event: "note_delete" }, ({ payload }) => {
         if (!payload?.id || dirtyNotes.current.has(payload.id)) return;
         isRemoteUpdate.current = true;
-        setNoteData(prev => {
+        setNoteData((prev) => {
           const next = { ...prev };
           delete next[payload.id];
           return next;
@@ -255,7 +273,7 @@ export function useSync(user, profile, noteData, setNoteData) {
           if (!isSyncing.current) {
             syncAllRef.current();
           }
-        }
+        },
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
@@ -291,7 +309,9 @@ export function useSync(user, profile, noteData, setNoteData) {
     syncState,
     lastSynced,
     storageUsed,
-    storageLimitMB: profile?.storage_limit_bytes ? profile.storage_limit_bytes / (1024 * 1024) : null,
+    storageLimitMB: profile?.storage_limit_bytes
+      ? profile.storage_limit_bytes / (1024 * 1024)
+      : null,
     syncAll,
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BG, TEXT, ACCENT } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 import { UndoIcon, RedoIcon, SidebarToggleIcon, CloseIcon } from "./Icons";
 
 const hBg = (el, c) => {
@@ -7,6 +7,8 @@ const hBg = (el, c) => {
 };
 
 function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
   const [show, setShow] = useState(false);
   return (
     <div
@@ -93,6 +95,9 @@ export default function TopBar({
   tabScrollRef,
   tabAreaWidth,
 }) {
+  const { theme } = useTheme();
+  const { BG, TEXT, ACCENT } = theme;
+
   return (
     <div
       style={{

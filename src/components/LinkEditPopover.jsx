@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { BG, TEXT, ACCENT } from "../constants/colors";
+import { useTheme } from "../hooks/useTheme";
 
 export default function LinkEditPopover({ position, initialUrl, onApply, onRemove, onDismiss }) {
+  const { theme } = useTheme();
+  const { BG, TEXT, ACCENT } = theme;
+
   const [url, setUrl] = useState(initialUrl || "");
   const inputRef = useRef(null);
 
@@ -12,7 +15,10 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
 
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === "Escape") { e.preventDefault(); onDismiss(); }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onDismiss();
+      }
     };
     const handleClick = (e) => {
       if (!e.target.closest(".link-edit-popover")) onDismiss();
@@ -59,7 +65,10 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSubmit();
+          }
           e.stopPropagation();
         }}
         placeholder="https://..."

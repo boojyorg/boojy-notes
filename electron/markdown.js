@@ -1,18 +1,36 @@
+// @ts-check
 // Markdown converters for Electron main process.
 // Local .md files are stored as plain markdown (no frontmatter).
 // parseFrontmatter() is kept for migrating old files that still have YAML frontmatter.
 
 const CALLOUT_ALIASES = {
-  note: 'note', tip: 'tip', hint: 'tip', important: 'tip',
-  warning: 'warning', caution: 'warning', attention: 'warning',
-  danger: 'danger', error: 'danger',
-  info: 'info', todo: 'info',
-  success: 'success', check: 'success', done: 'success',
-  question: 'question', help: 'question', faq: 'question',
-  quote: 'quote', cite: 'quote',
-  example: 'example', bug: 'bug',
-  abstract: 'abstract', summary: 'abstract', tldr: 'abstract',
+  note: "note",
+  tip: "tip",
+  hint: "tip",
+  important: "tip",
+  warning: "warning",
+  caution: "warning",
+  attention: "warning",
+  danger: "danger",
+  error: "danger",
+  info: "info",
+  todo: "info",
+  success: "success",
+  check: "success",
+  done: "success",
+  question: "question",
+  help: "question",
+  faq: "question",
+  quote: "quote",
+  cite: "quote",
+  example: "example",
+  bug: "bug",
+  abstract: "abstract",
+  summary: "abstract",
+  tldr: "abstract",
 };
+
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
 let _parseBlockId = 0;
 
@@ -41,8 +59,18 @@ export function blocksToMarkdown(blocks) {
       case "spacer":
         lines.push("---");
         break;
-      case "image":
-        lines.push(`![${block.alt || ""}](${block.src || ""})`);
+      case "image": {
+        const src = block.src || "";
+        if (block.width && block.width < 100) {
+          const px = Math.round(block.width * 7);
+          lines.push(`![[${src}|${px}]]`);
+        } else {
+          lines.push(`![[${src}]]`);
+        }
+        break;
+      }
+      case "file":
+        lines.push(`![[${block.src || ""}]]`);
         break;
       case "frontmatter":
         lines.push("---");
@@ -54,6 +82,13 @@ export function blocksToMarkdown(blocks) {
         lines.push("```" + lang);
         lines.push(block.text || "");
         lines.push("```");
+        break;
+      }
+      case "blockquote": {
+        const bqLines = (block.text || "").split("\n");
+        for (const bqLine of bqLines) {
+          lines.push(`> ${bqLine}`);
+        }
         break;
       }
       case "callout": {
@@ -73,8 +108,15 @@ export function blocksToMarkdown(blocks) {
           // Header row
           const header = block.rows[0];
           lines.push("| " + header.join(" | ") + " |");
-          // Separator row
-          lines.push("| " + header.map(() => "---").join(" | ") + " |");
+          // Separator row (with alignment)
+          const aligns = block.alignments || [];
+          const sep = header.map((_, i) => {
+            const a = aligns[i];
+            if (a === "center") return ":---:";
+            if (a === "right") return "---:";
+            return "---";
+          });
+          lines.push("| " + sep.join(" | ") + " |");
           // Data rows
           for (let r = 1; r < block.rows.length; r++) {
             const row = block.rows[r];
@@ -86,6 +128,11 @@ export function blocksToMarkdown(blocks) {
             lines.push("| " + padded.join(" | ") + " |");
           }
         }
+        break;
+      }
+      case "embed": {
+        const heading = block.heading ? "#" + block.heading : "";
+        lines.push(`![[${block.target || ""}${heading}]]`);
         break;
       }
       default:
@@ -106,7 +153,10 @@ export function markdownToBlocks(md) {
     const line = raw.trim();
 
     // Skip leading blank lines
-    if (!line && blocks.length === 0) { i++; continue; }
+    if (!line && blocks.length === 0) {
+      i++;
+      continue;
+    }
 
     // 1. Frontmatter (--- at position 0 only, i.e. very first content)
     if (line === "---" && blocks.length === 0) {
@@ -151,7 +201,7 @@ export function markdownToBlocks(md) {
       const rawType = calloutMatch[1].toLowerCase();
       const calloutFold = calloutMatch[2] || "";
       const title = calloutMatch[3] || "";
-      const calloutType = CALLOUT_ALIASES[rawType] || 'note';
+      const calloutType = CALLOUT_ALIASES[rawType] || "note";
       const bodyLines = [];
       i++;
       while (i < lines.length && /^>\s?/.test(lines[i])) {
@@ -172,11 +222,38 @@ export function markdownToBlocks(md) {
       continue;
     }
 
+    // 3b. Blockquote (> without [!type]) — consecutive > lines grouped
+    if (/^>\s/.test(line) || line === ">") {
+      const bqLines = [];
+      while (i < lines.length && (/^>\s/.test(lines[i]) || lines[i].trim() === ">")) {
+        bqLines.push(lines[i].replace(/^>\s?/, ""));
+        i++;
+      }
+      blocks.push({
+        id: `md-${++_parseBlockId}`,
+        type: "blockquote",
+        text: bqLines.join("\n"),
+      });
+      continue;
+    }
+
     // 4. Table (| ... | with separator row)
-    if (/^\|(.+)\|/.test(line) && i + 1 < lines.length && /^\|[\s\-:|]+\|/.test(lines[i + 1].trim())) {
+    if (
+      /^\|(.+)\|/.test(line) &&
+      i + 1 < lines.length &&
+      /^\|[\s\-:|]+\|/.test(lines[i + 1].trim())
+    ) {
       const rows = [];
       // Parse header row
       rows.push(parseTableRow(line));
+      // Parse alignment from separator row
+      const separatorCells = parseTableRow(lines[i + 1]);
+      const alignments = separatorCells.map((cell) => {
+        const t = cell.trim();
+        if (t.startsWith(":") && t.endsWith(":")) return "center";
+        if (t.endsWith(":")) return "right";
+        return "left";
+      });
       i++; // skip header
       i++; // skip separator row
       // Parse data rows
@@ -194,12 +271,57 @@ export function markdownToBlocks(md) {
         id: `md-${++_parseBlockId}`,
         type: "table",
         rows,
+        alignments,
         text: "",
       });
       continue;
     }
 
-    // 5. Existing single-line matchers (unchanged)
+    // 5. Wikilink embed: ![[filename]] or ![[filename|width]]
+    const wikiEmbedMatch = line.match(/^!\[\[([^\]|]+?)(?:\|(\d+))?\]\]$/);
+    if (wikiEmbedMatch) {
+      const filename = wikiEmbedMatch[1];
+      const widthPx = wikiEmbedMatch[2] ? parseInt(wikiEmbedMatch[2], 10) : null;
+      const ext =
+        filename.lastIndexOf(".") !== -1
+          ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
+          : "";
+      if (IMAGE_EXTENSIONS.has(ext)) {
+        const width = widthPx ? Math.round(widthPx / 7) : 100; // px to % assuming ~700px editor
+        blocks.push({
+          id: `md-${++_parseBlockId}`,
+          type: "image",
+          src: filename,
+          alt: filename.replace(/\.[^.]+$/, ""),
+          width: Math.min(Math.max(width, 10), 100),
+          text: "",
+        });
+      } else if (ext) {
+        // Has a file extension but not an image → file embed
+        blocks.push({
+          id: `md-${++_parseBlockId}`,
+          type: "file",
+          src: filename,
+          filename: filename,
+          size: null,
+          text: "",
+        });
+      } else {
+        // No extension → note embed/transclusion
+        const headingMatch = filename.match(/^(.+?)#(.+)$/);
+        blocks.push({
+          id: `md-${++_parseBlockId}`,
+          type: "embed",
+          target: headingMatch ? headingMatch[1].trim() : filename.trim(),
+          heading: headingMatch ? headingMatch[2].trim() : null,
+          text: "",
+        });
+      }
+      i++;
+      continue;
+    }
+
+    // 6. Existing single-line matchers (unchanged)
     let block;
     if (line === "---") {
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
@@ -218,7 +340,14 @@ export function markdownToBlocks(md) {
       block = { id: `md-${++_parseBlockId}`, type: "h1", text: line.slice(2) };
     } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
       const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-      block = { id: `md-${++_parseBlockId}`, type: "image", src: m[2], alt: m[1], text: "" };
+      block = {
+        id: `md-${++_parseBlockId}`,
+        type: "image",
+        src: m[2],
+        alt: m[1],
+        width: 100,
+        text: "",
+      };
     } else {
       block = { id: `md-${++_parseBlockId}`, type: "p", text: line };
     }
@@ -232,15 +361,15 @@ export function markdownToBlocks(md) {
   return blocks;
 }
 
-function parseTableRow(line) {
+export function parseTableRow(line) {
   return line
     .replace(/^\|/, "")
     .replace(/\|$/, "")
     .split("|")
-    .map(cell => cell.trim());
+    .map((cell) => cell.trim());
 }
 
-function parseFrontmatterYaml(yamlStr) {
+export function parseFrontmatterYaml(yamlStr) {
   const meta = {};
   for (const line of yamlStr.split("\n")) {
     const idx = line.indexOf(": ");

@@ -10,13 +10,13 @@ export function useAuth() {
     if (!supabase) return;
     try {
       const { data } = await supabase
-        .from('profiles')
-        .select('tier, storage_limit_bytes, stripe_customer_id')
-        .eq('id', userId)
+        .from("profiles")
+        .select("tier, storage_limit_bytes, stripe_customer_id")
+        .eq("id", userId)
         .maybeSingle();
       setProfile(data);
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      console.error("Failed to fetch profile:", err);
     }
   }
 
@@ -33,14 +33,14 @@ export function useAuth() {
     });
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        const u = session?.user ?? null;
-        setUser(u);
-        if (u) fetchProfile(u.id);
-        else setProfile(null);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null;
+      setUser(u);
+      if (u) fetchProfile(u.id);
+      else setProfile(null);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
