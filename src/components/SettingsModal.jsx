@@ -1,5 +1,8 @@
 import { useState, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import boojyLogo from "/assets/boojy-logo.png";
+import boojyN from "/assets/boojy-notes-text-N.png";
+import boojyTes from "/assets/boojy-notes.text-tes.png";
 
 export default function SettingsModal({
   settingsOpen,
@@ -373,14 +376,14 @@ export default function SettingsModal({
               style={{ padding: "0 12px 16px", display: "flex", flexDirection: "column", gap: 3 }}
             >
               <img
-                src="/assets/boojy-logo.png"
+                src={boojyLogo}
                 alt="Boojy"
                 style={{ height: 12, objectFit: "contain", alignSelf: "flex-start" }}
                 draggable="false"
               />
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <img
-                  src="/assets/boojy-notes-text-N.png"
+                  src={boojyN}
                   alt=""
                   style={{ height: 12 }}
                   draggable="false"
@@ -397,7 +400,7 @@ export default function SettingsModal({
                   }}
                 />
                 <img
-                  src="/assets/boojy-notes.text-tes.png"
+                  src={boojyTes}
                   alt=""
                   style={{ height: 11 }}
                   draggable="false"

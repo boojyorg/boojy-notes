@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { getBlockFromNode, runAutoScroll } from "../utils/domHelpers";
 
 export function useBlockDrag({
@@ -206,6 +206,10 @@ export function useBlockDrag({
     bd.cloneEl = null;
     bd.holdTimer = null;
     bd._updatePointerY = null;
+    if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
+    if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
+    bd.moveHandler = null;
+    bd.upHandler = null;
   };
 
   const finalizeBlockDrag = () => {
@@ -308,9 +312,13 @@ export function useBlockDrag({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
+    bd.moveHandler = onMove;
+    bd.upHandler = onUp;
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   };
+
+  useEffect(() => () => cleanupBlockDrag(), []);
 
   return { blockDrag, handleEditorPointerDown, cancelBlockDrag };
 }

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { runAutoScroll } from "../utils/domHelpers";
 
 export function useSidebarDrag({
@@ -376,6 +376,10 @@ export function useSidebarDrag({
     sd.dropIndicator = null;
     sd.originalFolder = null;
     sd._updatePointerY = null;
+    if (sd.moveHandler) window.removeEventListener("pointermove", sd.moveHandler);
+    if (sd.upHandler) window.removeEventListener("pointerup", sd.upHandler);
+    sd.moveHandler = null;
+    sd.upHandler = null;
   };
 
   const cancelSidebarDrag = () => {
@@ -462,9 +466,13 @@ export function useSidebarDrag({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
+    sd.moveHandler = onMove;
+    sd.upHandler = onUp;
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   };
+
+  useEffect(() => () => cleanupSidebarDrag(), []);
 
   return { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder };
 }

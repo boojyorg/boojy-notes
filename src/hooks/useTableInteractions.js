@@ -594,6 +594,8 @@ export function useTableInteractions({
         setPreviewCount((p) => ({ ...p, rows: 0 }));
       };
 
+      c.moveHandler = handleMove;
+      c.upHandler = handleUp;
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
@@ -668,18 +670,30 @@ export function useTableInteractions({
         setPreviewCount((p) => ({ ...p, cols: 0 }));
       };
 
+      c.moveHandler = handleMove;
+      c.upHandler = handleUp;
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
     [],
   );
 
+  const cleanupCreate = useCallback(() => {
+    const c = createRef.current;
+    if (c.moveHandler) window.removeEventListener("pointermove", c.moveHandler);
+    if (c.upHandler) window.removeEventListener("pointerup", c.upHandler);
+    c.moveHandler = null;
+    c.upHandler = null;
+    c.active = false;
+  }, []);
+
   /* ── Cleanup on unmount ───────────────────────────────── */
   useEffect(() => {
     return () => {
       cleanupDrag();
+      cleanupCreate();
     };
-  }, [cleanupDrag]);
+  }, [cleanupDrag, cleanupCreate]);
 
   /* ── Reset drag opacity on rows change ────────────────── */
   useEffect(() => {

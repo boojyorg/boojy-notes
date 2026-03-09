@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { UndoIcon, RedoIcon, SidebarToggleIcon, CloseIcon, HelpIcon } from "./Icons";
 import HelpDropdown from "./HelpDropdown";
+import boojyN from "/assets/boojy-notes-text-N.png";
+import boojyTes from "/assets/boojy-notes.text-tes.png";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -135,7 +137,7 @@ export default function TopBar({
           style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}
         >
           <img
-            src="/assets/boojy-notes-text-N.png"
+            src={boojyN}
             alt=""
             style={{ height: 23.5 }}
             draggable="false"
@@ -160,7 +162,7 @@ export default function TopBar({
             />
           </button>
           <img
-            src="/assets/boojy-notes.text-tes.png"
+            src={boojyTes}
             alt=""
             style={{ height: 21 }}
             draggable="false"

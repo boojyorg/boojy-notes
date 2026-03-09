@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 — 2026-03-09
+
+### Bug Fixes
+- **Fix logo images missing in production build** — TopBar and Settings modal images used absolute paths (`/assets/...`) that don't resolve under Electron's `file://` protocol; now imported as ES modules so Vite bundles them correctly
+- **Fix memory leaks from drag event listeners** — Block drag, sidebar drag, and table drag-to-create handlers added `pointermove`/`pointerup` listeners to `window` that weren't removed if the component unmounted mid-drag; now stored in refs and cleaned up on unmount
 
 ### Features
 - **Table edge-zone interactions** — Replaced the hover toolbar with edge-based interaction zones: click the left edge to select a row, click the top edge to select a column, hold and drag to reorder rows/columns (400ms hold-to-drag with floating clone and insertion line), hover the bottom/right edge for a `+` button to add rows/columns (click for one, drag to create multiple with live preview and counter badge), right-click context menus for insert/delete operations with column alignment controls, keyboard shortcuts (Arrow keys to move selection, Backspace/Delete to remove, Escape to deselect); header row is locked and cannot be dragged or deleted
