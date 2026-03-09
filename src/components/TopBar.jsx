@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { UndoIcon, RedoIcon, SidebarToggleIcon, CloseIcon } from "./Icons";
+import { UndoIcon, RedoIcon, SidebarToggleIcon, CloseIcon, HelpIcon } from "./Icons";
+import HelpDropdown from "./HelpDropdown";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -97,6 +98,9 @@ export default function TopBar({
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpBtnRef = useRef(null);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
 
   return (
     <div
@@ -497,6 +501,35 @@ export default function TopBar({
         {note && <WordCountTooltip wordCount={wordCount} charCount={charCount} charCountNoSpaces={charCountNoSpaces} readingTime={readingTime} />}
         {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1 }} />
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <button
+            ref={helpBtnRef}
+            onClick={() => setHelpOpen((v) => !v)}
+            title="Quick reference"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 5,
+              borderRadius: 5,
+              display: "flex",
+              alignItems: "center",
+              color: TEXT.secondary,
+              transition: "background 0.15s, color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              hBg(e.currentTarget, BG.surface);
+              e.currentTarget.style.color = TEXT.primary;
+            }}
+            onMouseLeave={(e) => {
+              hBg(e.currentTarget, "transparent");
+              e.currentTarget.style.color = TEXT.secondary;
+            }}
+          >
+            <HelpIcon />
+          </button>
+          <HelpDropdown open={helpOpen} onClose={closeHelp} toggleRef={helpBtnRef} />
+        </div>
       </div>
     </div>
   );

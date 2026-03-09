@@ -149,6 +149,22 @@ export const BreadcrumbChevron = () => (
     />
   </svg>
 );
+export const HelpIcon = () => (
+  <Icon size={16.5}>
+    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+    <text
+      x="8"
+      y="11.2"
+      textAnchor="middle"
+      fill="currentColor"
+      fontSize="8.5"
+      fontWeight="600"
+      fontFamily="system-ui, sans-serif"
+    >
+      ?
+    </text>
+  </Icon>
+);
 export const TrashIcon = () => (
   <svg width="16.2" height="16.2" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
     <path

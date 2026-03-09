@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Features
+- **Help button & cheat sheet** — Added a (?) help icon in the top-right corner of the toolbar; clicking it opens a floating quick-reference dropdown with categorized editing syntax, keyboard shortcuts, and feature tips; closes on click-outside or Escape; works in both Day and Night themes
+
+### Bug Fixes
+- **Fix DAY theme search input & settings modal** — Search input had hardcoded dark background (`#18191E`), now uses `theme.searchInputBg` (white in DAY mode); settings modal had hardcoded dark background and white-overlay borders that only worked in NIGHT mode, now uses `theme.modalBg`, `theme.modalShadow`, and `theme.overlay()` for all borders/backgrounds so both themes render correctly
+
+### Improvements
+- **Smooth theme transition** — Switching between Night and Day themes now crossfades all colors over 400ms instead of switching instantly; implemented via a temporary global CSS transition injected on theme change and removed after completion
+
+### Features
 - **Day/Night theme system** — Full light/dark theme support with smooth 400ms crossfade transitions; Day mode uses flat sky-blue backgrounds with warm gold accent; Night mode preserves the existing dark palette with teal accent and star field; toggle between Night, Day, and Auto modes in Settings > Appearance; Auto mode supports both system preference detection and time-of-day scheduling with configurable hours; theme state persisted in localStorage
 
 ### Improvements

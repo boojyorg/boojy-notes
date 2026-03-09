@@ -41,15 +41,19 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
       "#FFFDDE",
     ];
     const starsPerScreen = mode === "empty" ? 220 : 110;
+    // Reference width used to calibrate density — starsPerScreen assumes this width
+    const REF_WIDTH = 800;
     // Fixed pixel offset to avoid the title/toolbar area
     const topExcludePx = mode === "empty" ? 30 : 60;
     const stars = [];
     let coveredHeight = 0;
+    let coveredWidth = 0;
 
     const generateStarsForBand = (yFrom, yTo, width) => {
       const bandHeight = yTo - yFrom;
       const viewportH = parent.clientHeight || 800;
-      const count = Math.round(starsPerScreen * (bandHeight / viewportH));
+      // Scale count with both height and width so density stays consistent
+      const count = Math.round(starsPerScreen * (bandHeight / viewportH) * (width / REF_WIDTH));
       // Use a seed derived from the band start so stars are stable per region
       const bandRand = mulberry32(hashString(seed) + Math.round(yFrom));
       for (let i = 0; i < count; i++) {
@@ -71,6 +75,7 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
     // Initial generation
     generateStarsForBand(topExcludePx, h, w);
     coveredHeight = h;
+    coveredWidth = w;
 
     const resize = () => {
       const rw = parent.clientWidth;
@@ -91,7 +96,15 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
       const cw = parent.clientWidth;
       const ch = Math.max(parent.scrollHeight, parent.clientHeight);
 
-      // Resize canvas and generate new stars if content grew
+      // Regenerate all stars if width grew (e.g. parent laid out late or window resized)
+      if (cw > coveredWidth + 1) {
+        stars.length = 0;
+        coveredHeight = 0;
+        generateStarsForBand(topExcludePx, ch, cw);
+        coveredHeight = ch;
+        coveredWidth = cw;
+      }
+      // Add stars for new vertical area if content grew taller
       if (ch > coveredHeight + 1) {
         generateStarsForBand(coveredHeight, ch, cw);
         coveredHeight = ch;
