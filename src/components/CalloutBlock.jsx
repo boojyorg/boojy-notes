@@ -3,25 +3,99 @@ import { createPortal } from "react-dom";
 import { TEXT, BG } from "../constants/colors";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import {
-  Pencil, Info, Lightbulb, AlertTriangle, ShieldAlert,
-  CheckCircle2, HelpCircle, Quote, ListChecks, Bug,
+  Pencil,
+  Info,
+  Lightbulb,
+  AlertTriangle,
+  ShieldAlert,
+  CheckCircle2,
+  HelpCircle,
+  Quote,
+  ListChecks,
+  Bug,
   FileText,
 } from "lucide-react";
 
 /* ─── Callout type configuration ─── */
 
 const CALLOUT_TYPES = {
-  note:     { icon: Pencil,         colour: "#7AA2F7", bg: "rgba(122,162,247,0.20)", border: "rgba(122,162,247,0.18)", defaultTitle: "Note" },
-  info:     { icon: Info,           colour: "#89DDFF", bg: "rgba(137,221,255,0.20)", border: "rgba(137,221,255,0.18)", defaultTitle: "Info" },
-  tip:      { icon: Lightbulb,      colour: "#9ECE6A", bg: "rgba(158,206,106,0.20)", border: "rgba(158,206,106,0.18)", defaultTitle: "Tip" },
-  warning:  { icon: AlertTriangle,  colour: "#E0AF68", bg: "rgba(224,175,104,0.20)", border: "rgba(224,175,104,0.18)", defaultTitle: "Warning" },
-  danger:   { icon: ShieldAlert,    colour: "#F7768E", bg: "rgba(247,118,142,0.20)", border: "rgba(247,118,142,0.18)", defaultTitle: "Danger" },
-  success:  { icon: CheckCircle2,   colour: "#9ECE6A", bg: "rgba(158,206,106,0.20)", border: "rgba(158,206,106,0.18)", defaultTitle: "Success" },
-  question: { icon: HelpCircle,     colour: "#BB9AF7", bg: "rgba(187,154,247,0.20)", border: "rgba(187,154,247,0.18)", defaultTitle: "Question" },
-  quote:    { icon: Quote,          colour: "#9B9EB0", bg: "rgba(155,158,176,0.20)", border: "rgba(155,158,176,0.18)", defaultTitle: "Quote" },
-  example:  { icon: ListChecks,     colour: "#BB9AF7", bg: "rgba(187,154,247,0.20)", border: "rgba(187,154,247,0.18)", defaultTitle: "Example" },
-  bug:      { icon: Bug,            colour: "#F7768E", bg: "rgba(247,118,142,0.20)", border: "rgba(247,118,142,0.18)", defaultTitle: "Bug" },
-  abstract: { icon: FileText,       colour: "#89DDFF", bg: "rgba(137,221,255,0.20)", border: "rgba(137,221,255,0.18)", defaultTitle: "Abstract" },
+  note: {
+    icon: Pencil,
+    colour: "#7AA2F7",
+    bg: "#3f4e74",
+    border: "rgba(122,162,247,0.18)",
+    defaultTitle: "Note",
+  },
+  info: {
+    icon: Info,
+    colour: "#89DDFF",
+    bg: "#446277",
+    border: "rgba(137,221,255,0.18)",
+    defaultTitle: "Info",
+  },
+  tip: {
+    icon: Lightbulb,
+    colour: "#9ECE6A",
+    bg: "#4c5e43",
+    border: "rgba(158,206,106,0.18)",
+    defaultTitle: "Tip",
+  },
+  warning: {
+    icon: AlertTriangle,
+    colour: "#E0AF68",
+    bg: "#635242",
+    border: "rgba(224,175,104,0.18)",
+    defaultTitle: "Warning",
+  },
+  danger: {
+    icon: ShieldAlert,
+    colour: "#F7768E",
+    bg: "#6b3d4f",
+    border: "rgba(247,118,142,0.18)",
+    defaultTitle: "Danger",
+  },
+  success: {
+    icon: CheckCircle2,
+    colour: "#9ECE6A",
+    bg: "#4c5e43",
+    border: "rgba(158,206,106,0.18)",
+    defaultTitle: "Success",
+  },
+  question: {
+    icon: HelpCircle,
+    colour: "#BB9AF7",
+    bg: "#564b74",
+    border: "rgba(187,154,247,0.18)",
+    defaultTitle: "Question",
+  },
+  quote: {
+    icon: Quote,
+    colour: "#9B9EB0",
+    bg: "#4c4c5a",
+    border: "rgba(155,158,176,0.18)",
+    defaultTitle: "Quote",
+  },
+  example: {
+    icon: ListChecks,
+    colour: "#BB9AF7",
+    bg: "#564b74",
+    border: "rgba(187,154,247,0.18)",
+    defaultTitle: "Example",
+  },
+  bug: {
+    icon: Bug,
+    colour: "#F7768E",
+    bg: "#6b3d4f",
+    border: "rgba(247,118,142,0.18)",
+    defaultTitle: "Bug",
+  },
+  abstract: {
+    icon: FileText,
+    colour: "#89DDFF",
+    bg: "#446277",
+    border: "rgba(137,221,255,0.18)",
+    defaultTitle: "Abstract",
+  },
 };
 
 const CALLOUT_TYPE_KEYS = Object.keys(CALLOUT_TYPES);
@@ -46,10 +120,26 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
-      if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((p) => Math.min(p + 1, CALLOUT_TYPE_KEYS.length - 1)); return; }
-      if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((p) => Math.max(p - 1, 0)); return; }
-      if (e.key === "Enter") { e.preventDefault(); onSelect(CALLOUT_TYPE_KEYS[focusIdx]); return; }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusIdx((p) => Math.min(p + 1, CALLOUT_TYPE_KEYS.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusIdx((p) => Math.max(p - 1, 0));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onSelect(CALLOUT_TYPE_KEYS[focusIdx]);
+        return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -72,7 +162,13 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
   return (
     <>
       {/* overlay to catch clicks outside */}
-      <div onMouseDown={(e) => { e.preventDefault(); onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+      <div
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onClose();
+        }}
+        style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+      />
       <div
         ref={listRef}
         className="callout-picker"
@@ -125,7 +221,14 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
 
 /* ─── CalloutBlock ─── */
 
-export default function CalloutBlock({ block, noteId, blockIndex, onUpdateCallout, onBlockNav, onDelete }) {
+export default function CalloutBlock({
+  block,
+  noteId,
+  blockIndex,
+  onUpdateCallout,
+  onBlockNav,
+  onDelete,
+}) {
   const titleRef = useRef(null);
   const bodyRef = useRef(null);
   const iconBtnRef = useRef(null);
@@ -138,7 +241,7 @@ export default function CalloutBlock({ block, noteId, blockIndex, onUpdateCallou
   const config = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES.note;
 
   const saveScroll = useCallback(() => {
-    const scrollEl = iconBtnRef.current?.closest('.editor-scroll');
+    const scrollEl = iconBtnRef.current?.closest(".editor-scroll");
     if (scrollEl) scrollRestoreRef.current = { el: scrollEl, top: scrollEl.scrollTop };
   }, []);
 
@@ -202,102 +305,111 @@ export default function CalloutBlock({ block, noteId, blockIndex, onUpdateCallou
     setPickerOpen(true);
   }, [saveScroll]);
 
-  const handleTypeSelect = useCallback((newType) => {
-    setPickerOpen(false);
-    if (newType === calloutType) return;
-    saveScroll();
-    const oldConfig = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES.note;
-    const newConfig = CALLOUT_TYPES[newType] || CALLOUT_TYPES.note;
-    const updates = { calloutType: newType, calloutTypeRaw: newType };
-    // If title matches the old default, update to new default
-    const currentTitle = block.title || "";
-    if (!currentTitle || currentTitle === oldConfig.defaultTitle) {
-      updates.title = newConfig.defaultTitle;
-    }
-    onUpdateCallout(noteId, blockIndex, updates);
-  }, [calloutType, block.title, noteId, blockIndex, onUpdateCallout, saveScroll]);
+  const handleTypeSelect = useCallback(
+    (newType) => {
+      setPickerOpen(false);
+      if (newType === calloutType) return;
+      saveScroll();
+      const oldConfig = CALLOUT_TYPES[calloutType] || CALLOUT_TYPES.note;
+      const newConfig = CALLOUT_TYPES[newType] || CALLOUT_TYPES.note;
+      const updates = { calloutType: newType, calloutTypeRaw: newType };
+      // If title matches the old default, update to new default
+      const currentTitle = block.title || "";
+      if (!currentTitle || currentTitle === oldConfig.defaultTitle) {
+        updates.title = newConfig.defaultTitle;
+      }
+      onUpdateCallout(noteId, blockIndex, updates);
+    },
+    [calloutType, block.title, noteId, blockIndex, onUpdateCallout, saveScroll],
+  );
 
   /* ─── Keyboard: title ─── */
 
-  const handleTitleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitTitle();
-      bodyRef.current?.focus();
-      return;
-    }
-    if (e.key === "Backspace") {
-      const titleEmpty = !(titleRef.current?.textContent);
-      const bodyEmpty = !(bodyRef.current?.innerText?.trim());
-      if (titleEmpty && bodyEmpty && onDelete) {
+  const handleTitleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter") {
         e.preventDefault();
-        onDelete(blockIndex);
+        commitTitle();
+        bodyRef.current?.focus();
         return;
       }
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      commitTitle();
-      onBlockNav?.(blockIndex, "prev");
-      return;
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      commitTitle();
-      onBlockNav?.(blockIndex, "next");
-      return;
-    }
-  }, [blockIndex, commitTitle, onBlockNav, onDelete]);
+      if (e.key === "Backspace") {
+        const titleEmpty = !titleRef.current?.textContent;
+        const bodyEmpty = !bodyRef.current?.innerText?.trim();
+        if (titleEmpty && bodyEmpty && onDelete) {
+          e.preventDefault();
+          onDelete(blockIndex);
+          return;
+        }
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        commitTitle();
+        onBlockNav?.(blockIndex, "prev");
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        commitTitle();
+        onBlockNav?.(blockIndex, "next");
+        return;
+      }
+    },
+    [blockIndex, commitTitle, onBlockNav, onDelete],
+  );
 
   /* ─── Keyboard: body ─── */
 
-  const handleBodyKeyDown = useCallback((e) => {
-    if (e.key === "Backspace") {
-      const bodyEmpty = !(bodyRef.current?.innerText?.trim());
-      if (bodyEmpty) {
-        e.preventDefault();
-        commitBody();
-        titleRef.current?.focus();
-        return;
-      }
-    }
-    if (e.key === "ArrowUp") {
-      // At first line → focus title
-      const sel = window.getSelection();
-      if (sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const containerRect = bodyRef.current.getBoundingClientRect();
-        if (rect.top - containerRect.top < 4) {
+  const handleBodyKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Backspace") {
+        const bodyEmpty = !bodyRef.current?.innerText?.trim();
+        if (bodyEmpty) {
           e.preventDefault();
           commitBody();
           titleRef.current?.focus();
           return;
         }
       }
-    }
-    if (e.key === "ArrowDown") {
-      // At last line → nav next
-      const sel = window.getSelection();
-      if (sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const containerRect = bodyRef.current.getBoundingClientRect();
-        if (containerRect.bottom - rect.bottom < 4) {
-          e.preventDefault();
-          commitBody();
-          onBlockNav?.(blockIndex, "next");
-          return;
+      if (e.key === "ArrowUp") {
+        // At first line → focus title
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const containerRect = bodyRef.current.getBoundingClientRect();
+          if (rect.top - containerRect.top < 4) {
+            e.preventDefault();
+            commitBody();
+            titleRef.current?.focus();
+            return;
+          }
         }
       }
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      commitBody();
-      onBlockNav?.(blockIndex, "next");
-      return;
-    }
-  }, [blockIndex, commitBody, onBlockNav]);
+      if (e.key === "ArrowDown") {
+        // At last line → nav next
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          const containerRect = bodyRef.current.getBoundingClientRect();
+          if (containerRect.bottom - rect.bottom < 4) {
+            e.preventDefault();
+            commitBody();
+            onBlockNav?.(blockIndex, "next");
+            return;
+          }
+        }
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        commitBody();
+        onBlockNav?.(blockIndex, "next");
+        return;
+      }
+    },
+    [blockIndex, commitBody, onBlockNav],
+  );
 
   /* ─── Render ─── */
 
@@ -319,7 +431,11 @@ export default function CalloutBlock({ block, noteId, blockIndex, onUpdateCallou
           ref={iconBtnRef}
           role="button"
           onClick={openPicker}
-          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); saveScroll(); }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            saveScroll();
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -381,15 +497,16 @@ export default function CalloutBlock({ block, noteId, blockIndex, onUpdateCallou
       />
 
       {/* Type picker dropdown (portal to avoid scroll jump) */}
-      {pickerOpen && createPortal(
-        <CalloutTypePicker
-          activeType={calloutType}
-          anchorRect={iconRect}
-          onSelect={handleTypeSelect}
-          onClose={() => setPickerOpen(false)}
-        />,
-        document.body
-      )}
+      {pickerOpen &&
+        createPortal(
+          <CalloutTypePicker
+            activeType={calloutType}
+            anchorRect={iconRect}
+            onSelect={handleTypeSelect}
+            onClose={() => setPickerOpen(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

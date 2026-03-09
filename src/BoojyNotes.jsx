@@ -233,6 +233,9 @@ export default function BoojyNotes() {
     permanentDeleteNote,
     emptyAllTrash,
     createFolder,
+    createDraftNote,
+    promoteDraft,
+    discardDraft,
   } = useNoteCrud({
     commitNoteData,
     noteDataRef,
@@ -496,7 +499,11 @@ export default function BoojyNotes() {
   useLayoutEffect(() => {
     const title = noteData[activeNote]?.content?.title;
     if (titleRef.current && title !== undefined) {
-      titleRef.current.innerText = title;
+      if (title === "") {
+        titleRef.current.innerHTML = "<br>";
+      } else {
+        titleRef.current.innerText = title;
+      }
     }
   }, [activeNote, syncGeneration.current]); // eslint-disable-line -- only on note switch + external sync, NOT every keystroke
 
@@ -540,6 +547,13 @@ export default function BoojyNotes() {
       }
       if (mod && e.key === "n") {
         e.preventDefault();
+        // If a draft is already active, focus its title instead of creating another
+        if (activeNote && noteData[activeNote]?._draft) {
+          if (titleRef.current) {
+            titleRef.current.focus();
+          }
+          return;
+        }
         createNote(null);
         return;
       }
@@ -725,6 +739,44 @@ export default function BoojyNotes() {
     }
   });
 
+  // ── Ghost note (draft) effects ────────────────────────────────────────
+  // Reset stale activeNote that points to a deleted/missing note
+  useEffect(() => {
+    if (fsLoading) return;
+    if (activeNote && !noteData[activeNote]) {
+      setActiveNote(null);
+    }
+  }, [fsLoading, noteData, activeNote]);
+
+  // Auto-create draft note when no note is active
+  useEffect(() => {
+    if (fsLoading) return;
+    if (activeNote) return;
+    createDraftNote();
+  }, [activeNote, fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Promote draft to real note on first meaningful edit
+  useEffect(() => {
+    if (!activeNote) return;
+    const n = noteData[activeNote];
+    if (!n?._draft) return;
+    const hasTitle = n.title.trim() !== "";
+    const hasContent = n.content?.blocks?.some((b) => (b.text || "").trim() !== "");
+    if (hasTitle || hasContent) {
+      promoteDraft(activeNote);
+    }
+  }, [noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Discard empty draft when navigating away
+  const prevActiveRef = useRef(null);
+  useEffect(() => {
+    const prevId = prevActiveRef.current;
+    prevActiveRef.current = activeNote;
+    if (prevId && prevId !== activeNote && noteDataRef.current[prevId]?._draft) {
+      discardDraft(prevId);
+    }
+  }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
   const noteBlocks = note?.content?.blocks;
@@ -873,6 +925,7 @@ export default function BoojyNotes() {
     const roots = [];
     const map = {};
     for (const [id, n] of Object.entries(noteData)) {
+      if (n._draft) continue; // Hide drafts from sidebar
       if (n.folder) {
         if (!map[n.folder]) map[n.folder] = [];
         map[n.folder].push(id);
@@ -1885,7 +1938,7 @@ export default function BoojyNotes() {
         }
         .code-block {
           position: relative;
-          background: rgba(0,0,0,0.3);
+          background: #03030D;
           border: 1px solid rgba(255,255,255,0.10);
           border-radius: 8px;
           margin: 8px 0;
@@ -2208,6 +2261,15 @@ export default function BoojyNotes() {
           color: ${TEXT.muted};
           opacity: 0.4;
           position: absolute;
+          pointer-events: none;
+        }
+        .empty-title::before {
+          content: attr(data-placeholder);
+          color: ${TEXT.muted};
+          opacity: 0.35;
+          position: absolute;
+          top: 0;
+          left: 0;
           pointer-events: none;
         }
       `}</style>
