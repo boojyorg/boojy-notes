@@ -208,7 +208,7 @@ export default function SettingsModal({
           height: 36,
           borderRadius: 8,
           background: hovered ? theme.overlay(0.08) : theme.overlay(0.05),
-          border: `1px solid ${hovered ? "rgba(255,255,255,0.12)" : theme.overlay(0.08)}`,
+          border: `1px solid ${hovered ? theme.overlay(0.12) : theme.overlay(0.08)}`,
           color: TEXT.primary,
           fontSize: 13,
           fontWeight: 500,
@@ -253,10 +253,10 @@ export default function SettingsModal({
           zIndex: 401,
           width: 640,
           maxHeight: 480,
-          background: "rgba(20,22,35,0.95)",
-          border: "1px solid rgba(255,255,255,0.06)",
+          background: theme.modalBg,
+          border: `1px solid ${theme.overlay(0.06)}`,
           borderRadius: 16,
-          boxShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
+          boxShadow: theme.modalShadow,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -270,7 +270,7 @@ export default function SettingsModal({
             justifyContent: "center",
             padding: 16,
             position: "relative",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: `1px solid ${theme.overlay(0.06)}`,
             flexShrink: 0,
           }}
         >
@@ -310,7 +310,7 @@ export default function SettingsModal({
               width: 160,
               flexShrink: 0,
               padding: "16px 12px",
-              borderRight: "1px solid rgba(255,255,255,0.06)",
+              borderRight: `1px solid ${theme.overlay(0.06)}`,
               display: "flex",
               flexDirection: "column",
               gap: 4,
@@ -331,7 +331,7 @@ export default function SettingsModal({
                     gap: 10,
                     fontSize: 14,
                     fontWeight: 500,
-                    background: active ? "rgba(164,202,206,0.10)" : "transparent",
+                    background: active ? `${ACCENT.primary}1A` : "transparent",
                     border: "none",
                     color: active ? ACCENT.primary : TEXT.secondary,
                     cursor: "pointer",
@@ -340,7 +340,7 @@ export default function SettingsModal({
                   }}
                   onMouseEnter={(e) => {
                     if (!active) {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                      e.currentTarget.style.background = theme.overlay(0.03);
                       e.currentTarget.style.color = TEXT.primary;
                     }
                   }}
@@ -1000,7 +1000,7 @@ export default function SettingsModal({
                             padding: "4px 10px",
                             borderRadius: 6,
                             background: theme.overlay(0.05),
-                            border: `1px solid rgba(255,255,255,0.08)`,
+                            border: `1px solid ${theme.overlay(0.08)}`,
                             color: TEXT.secondary,
                             fontSize: 12,
                             fontWeight: 500,
@@ -1149,7 +1149,7 @@ export default function SettingsModal({
                         padding: "8px 0",
                         borderRadius: 8,
                         background: theme.overlay(0.05),
-                        border: `1px solid rgba(255,255,255,0.08)`,
+                        border: `1px solid ${theme.overlay(0.08)}`,
                         color: syncState === "syncing" ? TEXT.muted : TEXT.secondary,
                         fontSize: 13,
                         fontWeight: 500,
@@ -1209,7 +1209,7 @@ export default function SettingsModal({
                       height: 28,
                       borderRadius: 6,
                       background: theme.overlay(0.05),
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      border: `1px solid ${theme.overlay(0.08)}`,
                       color: TEXT.secondary,
                       fontSize: 15,
                       fontWeight: 500,
@@ -1236,7 +1236,7 @@ export default function SettingsModal({
                       height: 28,
                       borderRadius: 6,
                       background: theme.overlay(0.05),
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      border: `1px solid ${theme.overlay(0.08)}`,
                       color: TEXT.secondary,
                       fontSize: 15,
                       fontWeight: 500,
@@ -1270,7 +1270,7 @@ export default function SettingsModal({
                     height: 20,
                     borderRadius: 10,
                     background: spellCheckEnabled ? accentColor : theme.overlay(0.06),
-                    border: spellCheckEnabled ? "none" : "1px solid rgba(255,255,255,0.08)",
+                    border: spellCheckEnabled ? "none" : `1px solid ${theme.overlay(0.08)}`,
                     position: "relative",
                     cursor: "pointer",
                     transition: "background 0.15s",

@@ -75,6 +75,8 @@ export const NIGHT = {
   codeSelection: "rgba(255,255,255,0.12)",
   caretColor: "#fff",
   searchInputBg: "#18191E",
+  modalBg: "rgba(20,22,35,0.95)",
+  modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
 };
 
 export const DAY = {
@@ -152,5 +154,7 @@ export const DAY = {
   codeLangOption: { hoverBg: "rgba(0,0,0,0.06)" },
   codeSelection: "rgba(0,0,0,0.12)",
   caretColor: "#1A2030",
-  searchInputBg: "#D0E4F4",
+  searchInputBg: "#FFFFFF",
+  modalBg: "rgba(255,255,255,0.97)",
+  modalShadow: "0 24px 48px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08)",
 };

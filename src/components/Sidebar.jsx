@@ -271,7 +271,7 @@ const Sidebar = memo(function Sidebar({
             display: "flex",
             alignItems: "center",
             gap: 8,
-            background: "#18191E",
+            background: theme.searchInputBg,
             borderRadius: 14,
             height: 28,
             width: searchFocused || search ? sidebarWidth - 20 : 95,

@@ -68,6 +68,26 @@ export function ThemeProvider({ children }) {
     return () => clearInterval(interval);
   }, [themeMode, autoMethod, dayStartHour, dayEndHour]);
 
+  // Smooth crossfade when theme changes
+  const isFirstRender = useMemo(() => ({ current: true }), []);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const ms = 400;
+    const id = "boojy-theme-transition";
+    let style = document.getElementById(id);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = id;
+      document.head.appendChild(style);
+    }
+    style.textContent = `*, *::before, *::after { transition: background-color ${ms}ms ease, color ${ms}ms ease, border-color ${ms}ms ease, box-shadow ${ms}ms ease, fill ${ms}ms ease !important; }`;
+    const timer = setTimeout(() => { style.textContent = ""; }, ms + 50);
+    return () => clearTimeout(timer);
+  }, [resolvedMode]);
+
   const theme = resolvedMode === "day" ? DAY : NIGHT;
   const isDark = resolvedMode === "night";
 
