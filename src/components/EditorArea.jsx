@@ -755,6 +755,8 @@ const EditorArea = memo(function EditorArea({
       if (pBlocks[i].id !== nBlocks[i].id || pBlocks[i].type !== nBlocks[i].type) return false;
       // Code blocks manage their own textarea — must re-render on text/lang changes
       if (pBlocks[i].type === "code" && (pBlocks[i].text !== nBlocks[i].text || pBlocks[i].lang !== nBlocks[i].lang)) return false;
+      // Table blocks — must re-render when rows or alignments change
+      if (pBlocks[i].type === "table" && (pBlocks[i].rows !== nBlocks[i].rows || pBlocks[i].alignments !== nBlocks[i].alignments)) return false;
     }
   }
   // Check path changed (folder move / breadcrumb)

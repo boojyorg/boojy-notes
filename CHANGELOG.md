@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Features
+- **Table edge-zone interactions** — Replaced the hover toolbar with edge-based interaction zones: click the left edge to select a row, click the top edge to select a column, hold and drag to reorder rows/columns (400ms hold-to-drag with floating clone and insertion line), hover the bottom/right edge for a `+` button to add rows/columns (click for one, drag to create multiple with live preview and counter badge), right-click context menus for insert/delete operations with column alignment controls, keyboard shortcuts (Arrow keys to move selection, Backspace/Delete to remove, Escape to deselect); header row is locked and cannot be dragged or deleted
+
+### Features
 - **Help button & cheat sheet** — Added a (?) help icon in the top-right corner of the toolbar; clicking it opens a floating quick-reference dropdown with categorized editing syntax, keyboard shortcuts, and feature tips; closes on click-outside or Escape; works in both Day and Night themes
 
 ### Bug Fixes

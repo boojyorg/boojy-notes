@@ -5,6 +5,8 @@ import {
   htmlToInlineMarkdown,
   sanitizeInlineHtml,
 } from "../utils/inlineFormatting";
+import { useTableInteractions } from "../hooks/useTableInteractions";
+import TableContextMenu from "./TableContextMenu";
 
 export default function TableBlock({
   block,
@@ -16,15 +18,53 @@ export default function TableBlock({
 }) {
   const { theme } = useTheme();
   const { TEXT } = theme;
-  const [hovered, setHovered] = useState(false);
   const cellRefs = useRef({});
+  const tableRef = useRef(null);
+  const outerRef = useRef(null);
 
-  const rows = block.rows || [
-    ["", ""],
-    ["", ""],
-  ];
+  const rows = block.rows || [["", ""], ["", ""]];
   const colCount = rows[0]?.length || 2;
   const alignments = block.alignments || [];
+
+  const {
+    selectedRow,
+    selectedCol,
+    clearSelection,
+    leftZoneHovered,
+    setLeftZoneHovered,
+    topZoneHovered,
+    setTopZoneHovered,
+    bottomZoneHovered,
+    setBottomZoneHovered,
+    rightZoneHovered,
+    setRightZoneHovered,
+    handleKeyDown,
+    handleLeftZonePointerDown,
+    handleTopZonePointerDown,
+    handleBottomZonePointerDown,
+    handleBottomZoneClick,
+    handleRightZonePointerDown,
+    handleRightZoneClick,
+    previewCount,
+    createBadge,
+    insertRow,
+    deleteRowAt,
+    insertColumn,
+    deleteColumnAt,
+    contextMenu,
+    handleCellContextMenu,
+    closeContextMenu,
+  } = useTableInteractions({
+    block,
+    noteId,
+    blockIndex,
+    onUpdateTableRows,
+    tableRef,
+    accentColor,
+    cellRefs,
+  });
+
+  /* ── Cell editing (preserved from original) ────────────── */
 
   const updateCell = useCallback(
     (rowIdx, colIdx, value) => {
@@ -38,25 +78,6 @@ export default function TableBlock({
   const addRow = useCallback(() => {
     const newRows = [...rows.map((r) => [...r]), new Array(colCount).fill("")];
     onUpdateTableRows(noteId, blockIndex, newRows, alignments);
-  }, [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments]);
-
-  const addColumn = useCallback(() => {
-    const newRows = rows.map((r, i) => [...r, i === 0 ? `Column ${colCount + 1}` : ""]);
-    const newAligns = [...alignments, "left"];
-    onUpdateTableRows(noteId, blockIndex, newRows, newAligns);
-  }, [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments]);
-
-  const deleteRow = useCallback(() => {
-    if (rows.length <= 2) return;
-    const newRows = rows.slice(0, -1).map((r) => [...r]);
-    onUpdateTableRows(noteId, blockIndex, newRows, alignments);
-  }, [rows, noteId, blockIndex, onUpdateTableRows, alignments]);
-
-  const deleteColumn = useCallback(() => {
-    if (colCount <= 1) return;
-    const newRows = rows.map((r) => r.slice(0, -1));
-    const newAligns = alignments.slice(0, -1);
-    onUpdateTableRows(noteId, blockIndex, newRows, newAligns);
   }, [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments]);
 
   const setAlignment = useCallback(
@@ -77,13 +98,11 @@ export default function TableBlock({
         const nextRow = rowIdx + (nextCol >= colCount ? 1 : 0);
         const targetCol = nextCol >= colCount ? 0 : nextCol;
         if (nextRow < rows.length) {
-          const key = `${nextRow}-${targetCol}`;
-          cellRefs.current[key]?.focus();
+          cellRefs.current[`${nextRow}-${targetCol}`]?.focus();
         } else {
           addRow();
           setTimeout(() => {
-            const key = `${rows.length}-0`;
-            cellRefs.current[key]?.focus();
+            cellRefs.current[`${rows.length}-0`]?.focus();
           }, 50);
         }
       } else if (e.key === "Tab" && e.shiftKey) {
@@ -92,15 +111,13 @@ export default function TableBlock({
         const prevRow = rowIdx + (prevCol < 0 ? -1 : 0);
         const targetCol = prevCol < 0 ? colCount - 1 : prevCol;
         if (prevRow >= 0) {
-          const key = `${prevRow}-${targetCol}`;
-          cellRefs.current[key]?.focus();
+          cellRefs.current[`${prevRow}-${targetCol}`]?.focus();
         }
       } else if (e.key === "Enter" && rowIdx === rows.length - 1) {
         e.preventDefault();
         addRow();
         setTimeout(() => {
-          const key = `${rows.length}-${colIdx}`;
-          cellRefs.current[key]?.focus();
+          cellRefs.current[`${rows.length}-${colIdx}`]?.focus();
         }, 50);
       }
     },
@@ -145,130 +162,244 @@ export default function TableBlock({
     [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments],
   );
 
-  const [selectedCol, setSelectedCol] = useState(null);
+  /* ── Selection highlight helper ───────────────────────── */
+
+  const isRowSelected = (rowIdx) => selectedRow === rowIdx;
+  const isColSelected = (colIdx) => selectedCol === colIdx;
+
+  const cellHighlightStyle = (rowIdx, colIdx) => {
+    if (isRowSelected(rowIdx) || isColSelected(colIdx)) {
+      return { background: accentColor ? `${accentColor}20` : "rgba(164,202,206,0.12)" };
+    }
+    return {};
+  };
+
+  /* ── Render ────────────────────────────────────────────── */
 
   return (
     <div
-      className="table-block-wrapper"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      ref={outerRef}
+      className="table-outer"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      style={{ position: "relative", outline: "none", margin: "8px 0" }}
     >
-      <table className="table-block">
-        <thead>
-          <tr>
-            {rows[0]?.map((cell, colIdx) => (
-              <th
-                key={colIdx}
-                ref={(el) => {
-                  cellRefs.current[`0-${colIdx}`] = el;
-                }}
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => handleCellBlur(e, 0, colIdx)}
-                onKeyDown={(e) => handleCellKeyDown(e, 0, colIdx)}
-                onFocus={() => setSelectedCol(colIdx)}
-                onPaste={(e) => handleCellPaste(e, 0, colIdx)}
-                dangerouslySetInnerHTML={{
-                  __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                }}
-                style={{
-                  fontWeight: 600,
-                  background: accentColor ? `${accentColor}10` : undefined,
-                  textAlign: alignments[colIdx] || "left",
-                }}
-              />
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(1).map((row, rOffset) => {
-            const rowIdx = rOffset + 1;
-            return (
-              <tr key={rowIdx}>
-                {row.map((cell, colIdx) => (
-                  <td
-                    key={colIdx}
-                    ref={(el) => {
-                      cellRefs.current[`${rowIdx}-${colIdx}`] = el;
-                    }}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) => handleCellBlur(e, rowIdx, colIdx)}
-                    onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
-                    onFocus={() => setSelectedCol(colIdx)}
-                    onPaste={(e) => handleCellPaste(e, rowIdx, colIdx)}
-                    dangerouslySetInnerHTML={{
-                      __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                    }}
-                    style={{
-                      textAlign: alignments[colIdx] || "left",
-                    }}
-                  />
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {hovered && (
-        <div className="table-toolbar">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              addRow();
-            }}
-          >
-            + Row
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              addColumn();
-            }}
-          >
-            + Column
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteRow();
-            }}
-          >
-            - Row
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteColumn();
-            }}
-          >
-            - Column
-          </button>
-          {selectedCol !== null && (
-            <>
-              <span style={{ margin: "0 4px", color: TEXT.muted, fontSize: 10 }}>|</span>
-              {[
-                { align: "left", label: "L" },
-                { align: "center", label: "C" },
-                { align: "right", label: "R" },
-              ].map(({ align, label }) => (
-                <button
-                  key={align}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAlignment(selectedCol, align);
+      {/* Left edge zone — 24px strip to the left of the wrapper */}
+      <div
+        className="table-left-zone"
+        style={{
+          position: "absolute",
+          left: -24,
+          top: 0,
+          width: 24,
+          bottom: 0,
+          cursor: "grab",
+          zIndex: 5,
+        }}
+        onMouseEnter={() => setLeftZoneHovered(true)}
+        onMouseLeave={() => setLeftZoneHovered(false)}
+        onPointerDown={handleLeftZonePointerDown}
+      />
+
+      {/* Top edge zone — 24px strip above the wrapper */}
+      <div
+        className="table-top-zone"
+        style={{
+          position: "absolute",
+          left: -24,
+          top: -24,
+          right: -28,
+          height: 24,
+          cursor: "grab",
+          zIndex: 5,
+        }}
+        onMouseEnter={() => setTopZoneHovered(true)}
+        onMouseLeave={() => setTopZoneHovered(false)}
+        onPointerDown={handleTopZonePointerDown}
+      />
+
+      {/* Table wrapper */}
+      <div className="table-block-wrapper" style={{ margin: 0, borderRadius: "8px 0 0 0", position: "relative", overflow: "visible" }}>
+        <table ref={tableRef} className="table-block">
+          <thead>
+            <tr>
+              {rows[0]?.map((cell, colIdx) => (
+                <th
+                  key={colIdx}
+                  ref={(el) => {
+                    cellRefs.current[`0-${colIdx}`] = el;
+                  }}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => handleCellBlur(e, 0, colIdx)}
+                  onKeyDown={(e) => handleCellKeyDown(e, 0, colIdx)}
+                  onFocus={clearSelection}
+                  onPaste={(e) => handleCellPaste(e, 0, colIdx)}
+                  onContextMenu={(e) => handleCellContextMenu(e, 0, colIdx)}
+                  dangerouslySetInnerHTML={{
+                    __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
                   }}
                   style={{
-                    fontWeight: alignments[selectedCol] === align ? 700 : 400,
-                    textDecoration: alignments[selectedCol] === align ? "underline" : "none",
+                    fontWeight: 600,
+                    background: isColSelected(colIdx)
+                      ? (accentColor ? `${accentColor}20` : "rgba(164,202,206,0.12)")
+                      : (accentColor ? `${accentColor}10` : undefined),
+                    textAlign: alignments[colIdx] || "left",
                   }}
-                >
-                  {label}
-                </button>
+                />
               ))}
-            </>
-          )}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(1).map((row, rOffset) => {
+              const rowIdx = rOffset + 1;
+              return (
+                <tr key={rowIdx}>
+                  {row.map((cell, colIdx) => (
+                    <td
+                      key={colIdx}
+                      ref={(el) => {
+                        cellRefs.current[`${rowIdx}-${colIdx}`] = el;
+                      }}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onBlur={(e) => handleCellBlur(e, rowIdx, colIdx)}
+                      onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
+                      onFocus={clearSelection}
+                      onPaste={(e) => handleCellPaste(e, rowIdx, colIdx)}
+                      onContextMenu={(e) => handleCellContextMenu(e, rowIdx, colIdx)}
+                      dangerouslySetInnerHTML={{
+                        __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
+                      }}
+                      style={{
+                        textAlign: alignments[colIdx] || "left",
+                        ...cellHighlightStyle(rowIdx, colIdx),
+                      }}
+                    />
+                  ))}
+                </tr>
+              );
+            })}
+            {/* Preview rows during drag-to-create */}
+            {previewCount.rows > 0 &&
+              Array.from({ length: previewCount.rows }, (_, i) => (
+                <tr key={`preview-${i}`} className="table-preview-row">
+                  {Array.from({ length: colCount }, (_, ci) => (
+                    <td
+                      key={ci}
+                      style={{
+                        textAlign: alignments[ci] || "left",
+                        background: accentColor ? `${accentColor}08` : "rgba(164,202,206,0.03)",
+                        borderStyle: "dashed",
+                      }}
+                    >
+                      &nbsp;
+                    </td>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+
+        {/* Right edge zone — full-height add-column bar, inside wrapper so it matches table height */}
+        <div
+          className="table-right-zone"
+          style={{
+            position: "absolute",
+            left: "100%",
+            top: -1,
+            width: 28,
+            bottom: -1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            borderTop: `1px solid ${theme.BG.divider}`,
+            borderRight: `1px solid ${theme.BG.divider}`,
+            borderBottom: `1px solid ${theme.BG.divider}`,
+            borderLeft: "none",
+            borderRadius: "0 8px 8px 0",
+            color: accentColor || "#A4CACE",
+            fontSize: 15,
+            opacity: rightZoneHovered ? 1 : 0,
+            transition: "opacity 150ms",
+            outline: "none",
+            background: "none",
+          }}
+          onMouseEnter={() => setRightZoneHovered(true)}
+          onMouseLeave={() => setRightZoneHovered(false)}
+          onPointerDown={handleRightZonePointerDown}
+          onClick={handleRightZoneClick}
+        >
+          +
         </div>
+      </div>
+
+      {/* Bottom edge zone — full-width add-row bar connected to table bottom */}
+      <div
+        className="table-bottom-zone"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 28,
+          cursor: "pointer",
+          borderLeft: `1px solid ${theme.BG.divider}`,
+          borderRight: `1px solid ${theme.BG.divider}`,
+          borderBottom: `1px solid ${theme.BG.divider}`,
+          borderTop: "none",
+          borderRadius: "0 0 8px 8px",
+          color: accentColor || "#A4CACE",
+          fontSize: 15,
+          opacity: bottomZoneHovered ? 1 : 0,
+          transition: "opacity 150ms",
+          outline: "none",
+          background: "none",
+        }}
+        onMouseEnter={() => setBottomZoneHovered(true)}
+        onMouseLeave={() => setBottomZoneHovered(false)}
+        onPointerDown={handleBottomZonePointerDown}
+        onClick={handleBottomZoneClick}
+      >
+        +
+      </div>
+
+      {/* Counter badge during drag-to-create */}
+      {createBadge && (
+        <div
+          className="table-create-counter"
+          style={{
+            position: "fixed",
+            left: createBadge.x,
+            top: createBadge.y,
+            padding: "2px 8px",
+            background: accentColor || "#A4CACE",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: 600,
+            borderRadius: 10,
+            pointerEvents: "none",
+            zIndex: 200,
+          }}
+        >
+          +{createBadge.count}
+        </div>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <TableContextMenu
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          context={contextMenu.context}
+          colCount={colCount}
+          alignments={alignments}
+          onInsertRow={insertRow}
+          onDeleteRow={deleteRowAt}
+          onInsertColumn={insertColumn}
+          onDeleteColumn={deleteColumnAt}
+          onSetAlignment={setAlignment}
+          onDismiss={closeContextMenu}
+        />
       )}
     </div>
   );

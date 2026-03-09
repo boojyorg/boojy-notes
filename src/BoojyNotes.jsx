@@ -2214,9 +2214,12 @@ export default function BoojyNotes() {
         }
         .callout-body p { margin: 0; }
         /* Table block styles */
+        .table-outer {
+          position: relative;
+          outline: none;
+        }
         .table-block-wrapper {
           overflow-x: auto;
-          margin: 8px 0;
           border-radius: 8px;
           border: 1px solid ${theme.BG.divider};
         }
@@ -2244,26 +2247,19 @@ export default function BoojyNotes() {
         .table-block td:focus, .table-block th:focus {
           box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}50;
         }
-        .table-toolbar {
-          display: flex;
-          gap: 4px;
-          padding: 4px 8px;
-          background: ${theme.tableToolbar};
-          border-top: 1px solid ${theme.BG.divider};
+        /* Edge zones */
+        .table-left-zone { cursor: grab; }
+        .table-left-zone:active { cursor: grabbing; }
+        .table-top-zone { cursor: grab; }
+        .table-top-zone:active { cursor: grabbing; }
+        /* Add row/column bars */
+        .table-bottom-zone:hover, .table-right-zone:hover {
+          background: ${theme.ACCENT.primary}0A;
         }
-        .table-toolbar button {
-          background: transparent;
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 4px;
-          color: ${theme.TEXT.muted};
-          font-size: 11px;
-          padding: 3px 8px;
-          cursor: pointer;
-          transition: color 0.15s, border-color 0.15s;
-        }
-        .table-toolbar button:hover {
-          color: ${theme.TEXT.primary};
-          border-color: ${theme.TEXT.secondary};
+        /* Preview rows */
+        .table-preview-row td {
+          background: ${theme.ACCENT.primary}08 !important;
+          border-style: dashed !important;
         }
         /* Frontmatter block styles */
         .frontmatter-block {
