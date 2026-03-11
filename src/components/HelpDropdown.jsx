@@ -97,9 +97,7 @@ export default function HelpDropdown({ open, onClose, toggleRef }) {
           marginBottom: 8,
         }}
       >
-        <span style={{ fontWeight: 600, fontSize: 13, color: TEXT.primary }}>
-          Quick Reference
-        </span>
+        <span style={{ fontWeight: 600, fontSize: 13, color: TEXT.primary }}>Quick Reference</span>
         <button
           onClick={onClose}
           style={{

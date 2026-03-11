@@ -22,7 +22,10 @@ export default function TableBlock({
   const tableRef = useRef(null);
   const outerRef = useRef(null);
 
-  const rows = block.rows || [["", ""], ["", ""]];
+  const rows = block.rows || [
+    ["", ""],
+    ["", ""],
+  ];
   const colCount = rows[0]?.length || 2;
   const alignments = block.alignments || [];
 
@@ -219,7 +222,10 @@ export default function TableBlock({
       />
 
       {/* Table wrapper */}
-      <div className="table-block-wrapper" style={{ margin: 0, borderRadius: "8px 0 0 0", position: "relative", overflow: "visible" }}>
+      <div
+        className="table-block-wrapper"
+        style={{ margin: 0, borderRadius: "8px 0 0 0", position: "relative", overflow: "visible" }}
+      >
         <table ref={tableRef} className="table-block">
           <thead>
             <tr>
@@ -242,8 +248,12 @@ export default function TableBlock({
                   style={{
                     fontWeight: 600,
                     background: isColSelected(colIdx)
-                      ? (accentColor ? `${accentColor}20` : "rgba(164,202,206,0.12)")
-                      : (accentColor ? `${accentColor}10` : undefined),
+                      ? accentColor
+                        ? `${accentColor}20`
+                        : "rgba(164,202,206,0.12)"
+                      : accentColor
+                        ? `${accentColor}10`
+                        : undefined,
                     textAlign: alignments[colIdx] || "left",
                   }}
                 />

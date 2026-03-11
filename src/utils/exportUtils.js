@@ -82,9 +82,7 @@ export function blocksToHtml(blocks, title) {
           parts.push('<ul style="list-style:none;padding-left:0">');
           inCheckList = true;
         }
-        parts.push(
-          `<li>${block.checked ? "\u2611" : "\u2610"} ${inlineToHtml(block.text)}</li>`,
-        );
+        parts.push(`<li>${block.checked ? "\u2611" : "\u2610"} ${inlineToHtml(block.text)}</li>`);
         break;
       case "code":
         parts.push(
@@ -115,7 +113,9 @@ export function blocksToHtml(blocks, title) {
         break;
       case "callout": {
         const cType = block.calloutType || "note";
-        parts.push(`<blockquote><strong>[${cType.toUpperCase()}]${block.title ? " " + inlineToHtml(block.title) : ""}</strong>`);
+        parts.push(
+          `<blockquote><strong>[${cType.toUpperCase()}]${block.title ? " " + inlineToHtml(block.title) : ""}</strong>`,
+        );
         if (block.text) parts.push(`<p>${inlineToHtml(block.text)}</p>`);
         parts.push("</blockquote>");
         break;

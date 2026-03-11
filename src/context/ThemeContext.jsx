@@ -84,7 +84,9 @@ export function ThemeProvider({ children }) {
       document.head.appendChild(style);
     }
     style.textContent = `*, *::before, *::after { transition: background-color ${ms}ms ease, color ${ms}ms ease, border-color ${ms}ms ease, box-shadow ${ms}ms ease, fill ${ms}ms ease !important; }`;
-    const timer = setTimeout(() => { style.textContent = ""; }, ms + 50);
+    const timer = setTimeout(() => {
+      style.textContent = "";
+    }, ms + 50);
     return () => clearTimeout(timer);
   }, [resolvedMode]);
 
@@ -109,7 +111,18 @@ export function ThemeProvider({ children }) {
       dayEndHour,
       setDayEndHour,
     }),
-    [theme, themeMode, autoMethod, isDark, dayStartHour, dayEndHour, setThemeMode, setAutoMethod, setDayStartHour, setDayEndHour],
+    [
+      theme,
+      themeMode,
+      autoMethod,
+      isDark,
+      dayStartHour,
+      dayEndHour,
+      setThemeMode,
+      setAutoMethod,
+      setDayStartHour,
+      setDayEndHour,
+    ],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

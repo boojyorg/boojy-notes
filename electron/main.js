@@ -400,8 +400,6 @@ ipcMain.handle("save-attachment", (_event, { fileName, dataBase64 }) => {
   return { filename: path.basename(finalPath), size };
 });
 
-const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
-
 ipcMain.handle("resolve-attachment", (_event, filename) => {
   const notesDir = getNotesDir();
   // Search order: attachments/ folder → vault root

@@ -9,7 +9,10 @@ export function useTableInteractions({
   accentColor,
   cellRefs,
 }) {
-  const rows = block.rows || [["", ""], ["", ""]];
+  const rows = block.rows || [
+    ["", ""],
+    ["", ""],
+  ];
   const colCount = rows[0]?.length || 2;
   const alignments = block.alignments || [];
 
@@ -90,28 +93,22 @@ export function useTableInteractions({
   );
 
   /* ── CRUD operations ──────────────────────────────────── */
-  const insertRow = useCallback(
-    (index, position) => {
-      const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-      const emptyRow = new Array(cc).fill("");
-      const newRows = r.map((row) => [...row]);
-      const insertAt = position === "above" ? index : index + 1;
-      newRows.splice(insertAt, 0, emptyRow);
-      updateRef.current(n, b, newRows, a);
-    },
-    [],
-  );
+  const insertRow = useCallback((index, position) => {
+    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+    const emptyRow = new Array(cc).fill("");
+    const newRows = r.map((row) => [...row]);
+    const insertAt = position === "above" ? index : index + 1;
+    newRows.splice(insertAt, 0, emptyRow);
+    updateRef.current(n, b, newRows, a);
+  }, []);
 
-  const deleteRowAt = useCallback(
-    (index) => {
-      if (index === 0) return;
-      const { rows: r, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-      const newRows = r.filter((_, i) => i !== index);
-      updateRef.current(n, b, newRows, a);
-      setSelectedRow(null);
-    },
-    [],
-  );
+  const deleteRowAt = useCallback((index) => {
+    if (index === 0) return;
+    const { rows: r, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+    const newRows = r.filter((_, i) => i !== index);
+    updateRef.current(n, b, newRows, a);
+    setSelectedRow(null);
+  }, []);
 
   const addRowAtEnd = useCallback(() => {
     const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
@@ -121,40 +118,31 @@ export function useTableInteractions({
     return r.length; // index of new row
   }, []);
 
-  const insertColumn = useCallback(
-    (index, position) => {
-      const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-      const insertAt = position === "left" ? index : index + 1;
-      const newRows = r.map((row, i) => {
-        const newRow = [...row];
-        newRow.splice(insertAt, 0, i === 0 ? `Col ${cc + 1}` : "");
-        return newRow;
-      });
-      const newAligns = [...a];
-      newAligns.splice(insertAt, 0, "left");
-      updateRef.current(n, b, newRows, newAligns);
-    },
-    [],
-  );
+  const insertColumn = useCallback((index, position) => {
+    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+    const insertAt = position === "left" ? index : index + 1;
+    const newRows = r.map((row, i) => {
+      const newRow = [...row];
+      newRow.splice(insertAt, 0, i === 0 ? `Col ${cc + 1}` : "");
+      return newRow;
+    });
+    const newAligns = [...a];
+    newAligns.splice(insertAt, 0, "left");
+    updateRef.current(n, b, newRows, newAligns);
+  }, []);
 
-  const deleteColumnAt = useCallback(
-    (index) => {
-      const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-      if (cc <= 1) return;
-      const newRows = r.map((row) => row.filter((_, i) => i !== index));
-      const newAligns = a.filter((_, i) => i !== index);
-      updateRef.current(n, b, newRows, newAligns);
-      setSelectedCol(null);
-    },
-    [],
-  );
+  const deleteColumnAt = useCallback((index) => {
+    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+    if (cc <= 1) return;
+    const newRows = r.map((row) => row.filter((_, i) => i !== index));
+    const newAligns = a.filter((_, i) => i !== index);
+    updateRef.current(n, b, newRows, newAligns);
+    setSelectedCol(null);
+  }, []);
 
   const addColumnAtEnd = useCallback(() => {
     const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const newRows = r.map((row, i) => [
-      ...row,
-      i === 0 ? `Col ${cc + 1}` : "",
-    ]);
+    const newRows = r.map((row, i) => [...row, i === 0 ? `Col ${cc + 1}` : ""]);
     const newAligns = [...a, "left"];
     updateRef.current(n, b, newRows, newAligns);
     return cc; // index of new column
@@ -245,8 +233,7 @@ export function useTableInteractions({
   const startEdgeDrag = useCallback(
     (type, e) => {
       const d = dragRef.current;
-      const targetIndex =
-        type === "row" ? getRowAtY(e.clientY) : getColAtX(e.clientX);
+      const targetIndex = type === "row" ? getRowAtY(e.clientY) : getColAtX(e.clientX);
       if (targetIndex === null) return;
 
       // Header row can't be dragged (but can be selected)
@@ -271,10 +258,16 @@ export function useTableInteractions({
             d.holdTimer = null;
             if (d.type === "row") {
               const row = getRowAtY(d.startY);
-              if (row !== null) { setSelectedRow(row); setSelectedCol(null); }
+              if (row !== null) {
+                setSelectedRow(row);
+                setSelectedCol(null);
+              }
             } else {
               const col = getColAtX(d.startX);
-              if (col !== null) { setSelectedCol(col); setSelectedRow(null); }
+              if (col !== null) {
+                setSelectedCol(col);
+                setSelectedRow(null);
+              }
             }
             cleanupDrag();
           }
@@ -302,7 +295,10 @@ export function useTableInteractions({
                 ? trs[i].getBoundingClientRect().top
                 : trs[trs.length - 1].getBoundingClientRect().bottom;
             const dist = Math.abs(me.clientY - y);
-            if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = i;
+            }
           }
           d.insertAt = bestIdx;
           setDragInsert({ type: "row", index: bestIdx });
@@ -329,7 +325,10 @@ export function useTableInteractions({
                 ? cells[i].getBoundingClientRect().left
                 : cells[cells.length - 1].getBoundingClientRect().right;
             const dist = Math.abs(me.clientX - x);
-            if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = i;
+            }
           }
           d.insertAt = bestIdx;
           setDragInsert({ type: "col", index: bestIdx });
@@ -353,10 +352,16 @@ export function useTableInteractions({
           clearTimeout(d.holdTimer);
           if (d.type === "row") {
             const row = getRowAtY(d.startY);
-            if (row !== null) { setSelectedRow(row); setSelectedCol(null); }
+            if (row !== null) {
+              setSelectedRow(row);
+              setSelectedCol(null);
+            }
           } else {
             const col = getColAtX(d.startX);
-            if (col !== null) { setSelectedCol(col); setSelectedRow(null); }
+            if (col !== null) {
+              setSelectedCol(col);
+              setSelectedRow(null);
+            }
           }
           cleanupDrag();
           return;
@@ -532,7 +537,13 @@ export function useTableInteractions({
       createRef.current.handled = false;
       return;
     }
-    const { rows: curRows, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+    const {
+      rows: curRows,
+      colCount: cc,
+      alignments: a,
+      noteId: n,
+      blockIndex: b,
+    } = dataRef.current;
     const emptyRow = new Array(cc).fill("");
     const newRows = [...curRows.map((r) => [...r]), emptyRow];
     updateRef.current(n, b, newRows, a);
@@ -558,8 +569,7 @@ export function useTableInteractions({
 
       const handleMove = (me) => {
         const dist = me.clientY - c.startY;
-        const totalMove =
-          Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
+        const totalMove = Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
         if (totalMove > 4) c.moved = true;
         const count = Math.min(MAX_ROWS, Math.max(0, Math.floor(dist / ROW_HEIGHT)));
         c.count = count;
@@ -580,7 +590,13 @@ export function useTableInteractions({
         if (c.moved && c.count > 0) {
           // Drag → add N rows
           c.handled = true;
-          const { rows: curRows, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
+          const {
+            rows: curRows,
+            colCount: cc,
+            alignments: a,
+            noteId: n,
+            blockIndex: b,
+          } = dataRef.current;
           const emptyRow = new Array(cc).fill("");
           const newRows = [...curRows.map((r) => [...r])];
           for (let i = 0; i < c.count; i++) newRows.push([...emptyRow]);
@@ -607,76 +623,81 @@ export function useTableInteractions({
       createRef.current.handled = false;
       return;
     }
-    const { rows: curRows, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const newRows = curRows.map((r, i) => [
-      ...r,
-      i === 0 ? `Col ${cc + 1}` : "",
-    ]);
+    const {
+      rows: curRows,
+      colCount: cc,
+      alignments: a,
+      noteId: n,
+      blockIndex: b,
+    } = dataRef.current;
+    const newRows = curRows.map((r, i) => [...r, i === 0 ? `Col ${cc + 1}` : ""]);
     updateRef.current(n, b, newRows, [...a, "left"]);
   }, []);
 
-  const handleRightZonePointerDown = useCallback(
-    (e) => {
-      const c = createRef.current;
-      c.type = "cols";
-      c.startX = e.clientX;
-      c.startY = e.clientY;
-      c.count = 0;
-      c.active = true;
-      c.moved = false;
-      c.handled = false;
+  const handleRightZonePointerDown = useCallback((e) => {
+    const c = createRef.current;
+    c.type = "cols";
+    c.startX = e.clientX;
+    c.startY = e.clientY;
+    c.count = 0;
+    c.active = true;
+    c.moved = false;
+    c.handled = false;
 
-      const COL_WIDTH = 120;
-      const MAX_COLS = 10;
+    const COL_WIDTH = 120;
+    const MAX_COLS = 10;
 
-      const handleMove = (me) => {
-        const dist = me.clientX - c.startX;
-        const totalMove =
-          Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
-        if (totalMove > 4) c.moved = true;
-        const count = Math.min(MAX_COLS, Math.max(0, Math.floor(dist / COL_WIDTH)));
-        c.count = count;
-        setPreviewCount((p) => ({ ...p, cols: count }));
-        if (count > 0) {
-          setCreateBadge({ x: me.clientX + 12, y: me.clientY - 16, count });
-        } else {
-          setCreateBadge(null);
-        }
-      };
-
-      const handleUp = () => {
-        c.active = false;
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleUp);
+    const handleMove = (me) => {
+      const dist = me.clientX - c.startX;
+      const totalMove = Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
+      if (totalMove > 4) c.moved = true;
+      const count = Math.min(MAX_COLS, Math.max(0, Math.floor(dist / COL_WIDTH)));
+      c.count = count;
+      setPreviewCount((p) => ({ ...p, cols: count }));
+      if (count > 0) {
+        setCreateBadge({ x: me.clientX + 12, y: me.clientY - 16, count });
+      } else {
         setCreateBadge(null);
+      }
+    };
 
-        if (c.moved && c.count > 0) {
-          // Drag → add N columns
-          c.handled = true;
-          const { rows: curRows, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-          const newRows = curRows.map((r, ri) => {
-            const nr = [...r];
-            for (let j = 0; j < c.count; j++) {
-              nr.push(ri === 0 ? `Col ${cc + j + 1}` : "");
-            }
-            return nr;
-          });
-          const newAligns = [...a];
-          for (let j = 0; j < c.count; j++) newAligns.push("left");
-          updateRef.current(n, b, newRows, newAligns);
-        }
-        // Simple click is handled by onClick
+    const handleUp = () => {
+      c.active = false;
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      setCreateBadge(null);
 
-        setPreviewCount((p) => ({ ...p, cols: 0 }));
-      };
+      if (c.moved && c.count > 0) {
+        // Drag → add N columns
+        c.handled = true;
+        const {
+          rows: curRows,
+          colCount: cc,
+          alignments: a,
+          noteId: n,
+          blockIndex: b,
+        } = dataRef.current;
+        const newRows = curRows.map((r, ri) => {
+          const nr = [...r];
+          for (let j = 0; j < c.count; j++) {
+            nr.push(ri === 0 ? `Col ${cc + j + 1}` : "");
+          }
+          return nr;
+        });
+        const newAligns = [...a];
+        for (let j = 0; j < c.count; j++) newAligns.push("left");
+        updateRef.current(n, b, newRows, newAligns);
+      }
+      // Simple click is handled by onClick
 
-      c.moveHandler = handleMove;
-      c.upHandler = handleUp;
-      window.addEventListener("pointermove", handleMove);
-      window.addEventListener("pointerup", handleUp);
-    },
-    [],
-  );
+      setPreviewCount((p) => ({ ...p, cols: 0 }));
+    };
+
+    c.moveHandler = handleMove;
+    c.upHandler = handleUp;
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  }, []);
 
   const cleanupCreate = useCallback(() => {
     const c = createRef.current;

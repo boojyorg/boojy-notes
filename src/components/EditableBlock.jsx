@@ -502,9 +502,7 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
   }
 
   const targetNote = noteData
-    ? Object.values(noteData).find(
-        (n) => n.title?.toLowerCase() === block.target?.toLowerCase(),
-      )
+    ? Object.values(noteData).find((n) => n.title?.toLowerCase() === block.target?.toLowerCase())
     : null;
 
   if (!targetNote) {
@@ -574,7 +572,15 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
       }}
       onClick={() => onNavigate && onNavigate(targetNote.id)}
     >
-      <div style={{ fontSize: 12, color: TEXT.secondary, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: TEXT.secondary,
+          marginBottom: 8,
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         <span>
           {targetNote.title}
           {block.heading ? ` > ${block.heading}` : ""}
@@ -585,7 +591,14 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
         {blocks.slice(0, 10).map((b) => {
           if (b.type === "embed") {
             return (
-              <div key={b.id} style={{ paddingLeft: 8, borderLeft: `2px solid ${accentColor}40`, margin: "4px 0" }}>
+              <div
+                key={b.id}
+                style={{
+                  paddingLeft: 8,
+                  borderLeft: `2px solid ${accentColor}40`,
+                  margin: "4px 0",
+                }}
+              >
                 <EmbedBlock
                   block={b}
                   noteData={noteData}

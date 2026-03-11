@@ -17,7 +17,12 @@ export default function SplitDivider({
   const cleanupRef = useRef(null);
 
   // Clean up window listeners if component unmounts mid-drag
-  useEffect(() => () => { if (cleanupRef.current) cleanupRef.current(); }, []);
+  useEffect(
+    () => () => {
+      if (cleanupRef.current) cleanupRef.current();
+    },
+    [],
+  );
 
   const handleMouseDown = useCallback(
     (e) => {
@@ -28,10 +33,8 @@ export default function SplitDivider({
 
       const startPos = splitMode === "vertical" ? e.clientX : e.clientY;
       const containerRect = container.getBoundingClientRect();
-      const containerSize =
-        splitMode === "vertical" ? containerRect.width : containerRect.height;
-      const containerStart =
-        splitMode === "vertical" ? containerRect.left : containerRect.top;
+      const containerSize = splitMode === "vertical" ? containerRect.width : containerRect.height;
+      const containerStart = splitMode === "vertical" ? containerRect.left : containerRect.top;
 
       document.body.style.cursor = splitMode === "vertical" ? "col-resize" : "row-resize";
       document.body.style.userSelect = "none";

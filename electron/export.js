@@ -243,9 +243,7 @@ function buildDocxTable(block) {
 }
 
 function buildDocxCallout(block) {
-  const prefix = block.calloutType
-    ? `[${block.calloutType.toUpperCase()}] `
-    : "";
+  const prefix = block.calloutType ? `[${block.calloutType.toUpperCase()}] ` : "";
   const titleText = prefix + (block.title || "");
   const children = [new TextRun({ text: titleText, bold: true })];
   if (block.text) {

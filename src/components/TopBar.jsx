@@ -21,7 +21,6 @@ function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime
       onMouseLeave={() => setShow(false)}
     >
       <span
-
         style={{
           fontSize: 12,
           color: TEXT.secondary,
@@ -143,15 +142,9 @@ export default function TopBar({
         }}
       >
         <div
-  
           style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}
         >
-          <img
-            src={boojyN}
-            alt=""
-            style={{ height: 23.5 }}
-            draggable="false"
-          />
+          <img src={boojyN} alt="" style={{ height: 23.5 }} draggable="false" />
           <button
             onClick={() => {
               setSettingsOpen(true);
@@ -168,24 +161,21 @@ export default function TopBar({
                 height: "100%",
                 borderRadius: "50%",
                 background:
-                  syncState === "conflict" ? "#f59e0b" :
-                  syncState === "offline" ? "#9ca3af" :
-                  syncState === "error" ? "#ef4444" :
-                  accentColor,
+                  syncState === "conflict"
+                    ? "#f59e0b"
+                    : syncState === "offline"
+                      ? "#9ca3af"
+                      : syncState === "error"
+                        ? "#ef4444"
+                        : accentColor,
               }}
             />
           </button>
-          <img
-            src={boojyTes}
-            alt=""
-            style={{ height: 21 }}
-            draggable="false"
-          />
+          <img src={boojyTes} alt="" style={{ height: 21 }} draggable="false" />
         </div>
         {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1, minWidth: 0 }} />
         <button
-  
           onClick={undo}
           title="Undo (Ctrl+Z)"
           style={{
@@ -214,7 +204,6 @@ export default function TopBar({
           <UndoIcon />
         </button>
         <button
-  
           onClick={redo}
           title="Redo (Ctrl+Shift+Z)"
           style={{
@@ -243,7 +232,6 @@ export default function TopBar({
           <RedoIcon />
         </button>
         <button
-  
           onClick={() => setCollapsed(!collapsed)}
           style={{
             background: "none",
@@ -270,7 +258,6 @@ export default function TopBar({
         </button>
       </div>
       <div
-
         ref={(el) => {
           if (el) sidebarHandles.current[0] = el;
         }}
@@ -294,99 +281,125 @@ export default function TopBar({
       />
 
       {/* Top-middle — tabs */}
-      {splitMode === "vertical" && panes ? (() => {
-        const closePaneTab = (paneId) => (e, id) => {
-          e.stopPropagation();
-          const pane = panes[paneId];
-          setTabsForPane(paneId, (prev) => prev.filter((t) => t !== id));
-          if (pane?.activeNote === id) {
-            const remaining = (pane?.tabs || []).filter((t) => t !== id);
-            setActiveNoteForPane(paneId, remaining[remaining.length - 1] || null);
-          }
-          setTimeout(() => closePaneIfEmpty(paneId), 200);
-        };
-        // Correct tab divider position to align with editor split divider.
-        // TopBar sidebar/right-panel sections are wider than main area counterparts
-        // due to padding/border differences, so percentage flex-basis needs a px offset.
-        const sidebarPad = 22; // padding: 0 8px 0 14px
-        const rightPad = 20;   // padding: 0 10px 0 10px
-        const leftExtra = collapsed ? sidebarWidth + sidebarPad : sidebarPad;
-        const rightExtra = rightPanel ? rightPad : rightPanelWidth + rightPad;
-        const totalExtra = leftExtra + rightExtra;
-        const correction = (dividerPosition / 100) * totalExtra - leftExtra;
-        return (
-          <div style={{ flex: 1, display: 'flex', minWidth: 0, overflow: 'hidden', height: '100%' }}>
+      {splitMode === "vertical" && panes ? (
+        (() => {
+          const closePaneTab = (paneId) => (e, id) => {
+            e.stopPropagation();
+            const pane = panes[paneId];
+            setTabsForPane(paneId, (prev) => prev.filter((t) => t !== id));
+            if (pane?.activeNote === id) {
+              const remaining = (pane?.tabs || []).filter((t) => t !== id);
+              setActiveNoteForPane(paneId, remaining[remaining.length - 1] || null);
+            }
+            setTimeout(() => closePaneIfEmpty(paneId), 200);
+          };
+          // Correct tab divider position to align with editor split divider.
+          // TopBar sidebar/right-panel sections are wider than main area counterparts
+          // due to padding/border differences, so percentage flex-basis needs a px offset.
+          const sidebarPad = 22; // padding: 0 8px 0 14px
+          const rightPad = 20; // padding: 0 10px 0 10px
+          const leftExtra = collapsed ? sidebarWidth + sidebarPad : sidebarPad;
+          const rightExtra = rightPanel ? rightPad : rightPanelWidth + rightPad;
+          const totalExtra = leftExtra + rightExtra;
+          const correction = (dividerPosition / 100) * totalExtra - leftExtra;
+          return (
+            <div
+              style={{ flex: 1, display: "flex", minWidth: 0, overflow: "hidden", height: "100%" }}
+            >
+              <PaneTabBar
+                tabs={panes.left?.tabs || []}
+                activeNote={panes.left?.activeNote}
+                noteData={noteData}
+                newTabId={newTabId}
+                closingTabs={closingTabs}
+                setActiveNote={(noteId) => {
+                  setActivePaneId("left");
+                  setActiveNoteForPane("left", noteId);
+                }}
+                closeTab={closePaneTab("left")}
+                tabFlip={tabFlip}
+                activeTabBg={activeTabBg}
+                chromeBg={chromeBg}
+                tabAreaWidth={tabAreaWidth * (dividerPosition / 100)}
+                tabScrollRef={null}
+                onTabPointerDown={onTabPointerDown}
+                paneId="left"
+                style={{
+                  flex: `0 0 calc(${dividerPosition}% + ${correction}px)`,
+                  overflow: "auto",
+                }}
+              />
+              <div
+                style={{
+                  width: 4,
+                  background: chromeBg,
+                  borderRight: `1px solid ${BG.divider}`,
+                  flexShrink: 0,
+                  alignSelf: "stretch",
+                  boxSizing: "border-box",
+                }}
+              />
+              <PaneTabBar
+                tabs={panes.right?.tabs || []}
+                activeNote={panes.right?.activeNote}
+                noteData={noteData}
+                newTabId={newTabId}
+                closingTabs={closingTabs}
+                setActiveNote={(noteId) => {
+                  setActivePaneId("right");
+                  setActiveNoteForPane("right", noteId);
+                }}
+                closeTab={closePaneTab("right")}
+                tabFlip={tabFlip}
+                activeTabBg={activeTabBg}
+                chromeBg={chromeBg}
+                tabAreaWidth={tabAreaWidth * ((100 - dividerPosition) / 100)}
+                tabScrollRef={null}
+                onTabPointerDown={onTabPointerDown}
+                paneId="right"
+                style={{
+                  flex: `0 0 calc(${100 - dividerPosition}% - ${correction}px)`,
+                  overflow: "auto",
+                }}
+              />
+            </div>
+          );
+        })()
+      ) : splitMode === "horizontal" && panes ? (
+        (() => {
+          const closeTopTab = (e, id) => {
+            e.stopPropagation();
+            const pane = panes.top;
+            setTabsForPane("top", (prev) => prev.filter((t) => t !== id));
+            if (pane?.activeNote === id) {
+              const remaining = (pane?.tabs || []).filter((t) => t !== id);
+              setActiveNoteForPane("top", remaining[remaining.length - 1] || null);
+            }
+            setTimeout(() => closePaneIfEmpty("top"), 200);
+          };
+          return (
             <PaneTabBar
-              tabs={panes.left?.tabs || []}
-              activeNote={panes.left?.activeNote}
+              tabs={panes.top?.tabs || []}
+              activeNote={panes.top?.activeNote}
               noteData={noteData}
               newTabId={newTabId}
               closingTabs={closingTabs}
-              setActiveNote={(noteId) => { setActivePaneId("left"); setActiveNoteForPane("left", noteId); }}
-              closeTab={closePaneTab("left")}
+              setActiveNote={(noteId) => {
+                setActivePaneId("top");
+                setActiveNoteForPane("top", noteId);
+              }}
+              closeTab={closeTopTab}
               tabFlip={tabFlip}
               activeTabBg={activeTabBg}
               chromeBg={chromeBg}
-              tabAreaWidth={tabAreaWidth * (dividerPosition / 100)}
-              tabScrollRef={null}
+              tabAreaWidth={tabAreaWidth}
+              tabScrollRef={tabScrollRef}
               onTabPointerDown={onTabPointerDown}
-              paneId="left"
-              style={{ flex: `0 0 calc(${dividerPosition}% + ${correction}px)`, overflow: "auto" }}
+              paneId="top"
             />
-            <div style={{
-              width: 4, background: chromeBg,
-              borderRight: `1px solid ${BG.divider}`,
-              flexShrink: 0, alignSelf: "stretch", boxSizing: "border-box",
-            }} />
-            <PaneTabBar
-              tabs={panes.right?.tabs || []}
-              activeNote={panes.right?.activeNote}
-              noteData={noteData}
-              newTabId={newTabId}
-              closingTabs={closingTabs}
-              setActiveNote={(noteId) => { setActivePaneId("right"); setActiveNoteForPane("right", noteId); }}
-              closeTab={closePaneTab("right")}
-              tabFlip={tabFlip}
-              activeTabBg={activeTabBg}
-              chromeBg={chromeBg}
-              tabAreaWidth={tabAreaWidth * ((100 - dividerPosition) / 100)}
-              tabScrollRef={null}
-              onTabPointerDown={onTabPointerDown}
-              paneId="right"
-              style={{ flex: `0 0 calc(${100 - dividerPosition}% - ${correction}px)`, overflow: "auto" }}
-            />
-          </div>
-        );
-      })() : splitMode === "horizontal" && panes ? (() => {
-        const closeTopTab = (e, id) => {
-          e.stopPropagation();
-          const pane = panes.top;
-          setTabsForPane("top", (prev) => prev.filter((t) => t !== id));
-          if (pane?.activeNote === id) {
-            const remaining = (pane?.tabs || []).filter((t) => t !== id);
-            setActiveNoteForPane("top", remaining[remaining.length - 1] || null);
-          }
-          setTimeout(() => closePaneIfEmpty("top"), 200);
-        };
-        return (
-          <PaneTabBar
-            tabs={panes.top?.tabs || []}
-            activeNote={panes.top?.activeNote}
-            noteData={noteData}
-            newTabId={newTabId}
-            closingTabs={closingTabs}
-            setActiveNote={(noteId) => { setActivePaneId("top"); setActiveNoteForPane("top", noteId); }}
-            closeTab={closeTopTab}
-            tabFlip={tabFlip}
-            activeTabBg={activeTabBg}
-            chromeBg={chromeBg}
-            tabAreaWidth={tabAreaWidth}
-            tabScrollRef={tabScrollRef}
-            onTabPointerDown={onTabPointerDown}
-            paneId="top"
-          />
-        );
-      })() : (
+          );
+        })()
+      ) : (
         <PaneTabBar
           tabs={tabs}
           activeNote={activeNote}
@@ -407,7 +420,6 @@ export default function TopBar({
 
       {/* Top-right drag handle */}
       <div
-
         ref={(el) => {
           if (el) rightPanelHandles.current[0] = el;
         }}
@@ -448,7 +460,6 @@ export default function TopBar({
         }}
       >
         <button
-  
           onClick={() => setRightPanel(!rightPanel)}
           title="Toggle right panel (\u2318\\)"
           style={{
@@ -485,7 +496,14 @@ export default function TopBar({
             <path d="M10 2.5V13.5" stroke="currentColor" strokeWidth="1.3" />
           </svg>
         </button>
-        {note && <WordCountTooltip wordCount={wordCount} charCount={charCount} charCountNoSpaces={charCountNoSpaces} readingTime={readingTime} />}
+        {note && (
+          <WordCountTooltip
+            wordCount={wordCount}
+            charCount={charCount}
+            charCountNoSpaces={charCountNoSpaces}
+            readingTime={readingTime}
+          />
+        )}
         {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1 }} />
         <div style={{ position: "relative", flexShrink: 0 }}>

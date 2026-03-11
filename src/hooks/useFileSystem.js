@@ -144,7 +144,10 @@ export function useFileSystem(
     const dirty = [...dirtyNotes.current];
     for (const noteId of dirty) {
       const note = noteDataRef.current[noteId];
-      if (note?._draft) { dirtyNotes.current.delete(noteId); continue; }
+      if (note?._draft) {
+        dirtyNotes.current.delete(noteId);
+        continue;
+      }
       if (note) {
         try {
           await window.electronAPI.writeNote(note);
@@ -225,10 +228,7 @@ export function useFileSystem(
           for (const f of diskFolders) {
             if (!filtered.includes(f)) filtered.push(f);
           }
-          if (
-            filtered.length === prev.length &&
-            filtered.every((f, i) => f === prev[i])
-          )
+          if (filtered.length === prev.length && filtered.every((f, i) => f === prev[i]))
             return prev;
           return filtered;
         });
@@ -262,7 +262,7 @@ export function useFileSystem(
           });
         }
       } catch (err) {
-        console.error('useFileSystem: folder sync failed', err);
+        console.error("useFileSystem: folder sync failed", err);
       }
     };
 

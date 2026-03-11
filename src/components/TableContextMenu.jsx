@@ -183,21 +183,30 @@ export default function TableContextMenu({
       <MenuItem
         key="align-left"
         label={`Align Left${currentAlign === "left" ? "  \u2713" : ""}`}
-        onClick={() => { onSetAlignment(colIndex, "left"); onDismiss(); }}
+        onClick={() => {
+          onSetAlignment(colIndex, "left");
+          onDismiss();
+        }}
       />,
     );
     items.push(
       <MenuItem
         key="align-center"
         label={`Align Center${currentAlign === "center" ? "  \u2713" : ""}`}
-        onClick={() => { onSetAlignment(colIndex, "center"); onDismiss(); }}
+        onClick={() => {
+          onSetAlignment(colIndex, "center");
+          onDismiss();
+        }}
       />,
     );
     items.push(
       <MenuItem
         key="align-right"
         label={`Align Right${currentAlign === "right" ? "  \u2713" : ""}`}
-        onClick={() => { onSetAlignment(colIndex, "right"); onDismiss(); }}
+        onClick={() => {
+          onSetAlignment(colIndex, "right");
+          onDismiss();
+        }}
       />,
     );
   }

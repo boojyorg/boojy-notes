@@ -31,7 +31,18 @@ export default function SettingsModal({
   onToggleSpellCheck,
   onChangeSpellCheckLanguages,
 }) {
-  const { theme, themeMode, setThemeMode, autoMethod, setAutoMethod, isDark, dayStartHour, setDayStartHour, dayEndHour, setDayEndHour } = useTheme();
+  const {
+    theme,
+    themeMode,
+    setThemeMode,
+    autoMethod,
+    setAutoMethod,
+    isDark,
+    dayStartHour,
+    setDayStartHour,
+    dayEndHour,
+    setDayEndHour,
+  } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
 
   const loggedIn = !!user;
@@ -385,12 +396,7 @@ export default function SettingsModal({
                 draggable="false"
               />
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <img
-                  src={boojyN}
-                  alt=""
-                  style={{ height: 29 }}
-                  draggable="false"
-                />
+                <img src={boojyN} alt="" style={{ height: 29 }} draggable="false" />
                 <div
                   style={{
                     width: 17,
@@ -402,12 +408,7 @@ export default function SettingsModal({
                     top: 0.5,
                   }}
                 />
-                <img
-                  src={boojyTes}
-                  alt=""
-                  style={{ height: 26 }}
-                  draggable="false"
-                />
+                <img src={boojyTes} alt="" style={{ height: 26 }} draggable="false" />
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>
                 v0.1.1
@@ -1190,9 +1191,7 @@ export default function SettingsModal({
                         if (syncState !== "syncing")
                           e.currentTarget.style.background = theme.overlay(0.08);
                       }}
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = theme.overlay(0.05))
-                      }
+                      onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
                     >
                       {syncState === "syncing" ? "Syncing\u2026" : "Sync now"}
                     </button>
@@ -1210,7 +1209,8 @@ export default function SettingsModal({
                             marginBottom: 8,
                           }}
                         >
-                          {conflictNotes.length} conflict {conflictNotes.length === 1 ? "copy" : "copies"}
+                          {conflictNotes.length} conflict{" "}
+                          {conflictNotes.length === 1 ? "copy" : "copies"}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           {conflictNotes.map((note) => (
@@ -1256,8 +1256,12 @@ export default function SettingsModal({
                                   fontFamily: "inherit",
                                   flexShrink: 0,
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.textDecoration = "underline")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.textDecoration = "none")
+                                }
                               >
                                 Open
                               </button>
@@ -1296,12 +1300,8 @@ export default function SettingsModal({
                   </span>
                   <button
                     onClick={() => setFontSize((prev) => Math.max(10, prev - 1))}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = theme.overlay(0.08))
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = theme.overlay(0.05))
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
                     style={{
                       width: 28,
                       height: 28,
@@ -1323,12 +1323,8 @@ export default function SettingsModal({
                   </button>
                   <button
                     onClick={() => setFontSize((prev) => Math.min(24, prev + 1))}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = theme.overlay(0.08))
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = theme.overlay(0.05))
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
                     style={{
                       width: 28,
                       height: 28,
@@ -1502,7 +1498,8 @@ export default function SettingsModal({
                         onClick={() => setAutoMethod(opt.value)}
                         style={{
                           background: autoMethod === opt.value ? accentColor : "transparent",
-                          color: autoMethod === opt.value ? (isDark ? BG.darkest : "#fff") : TEXT.muted,
+                          color:
+                            autoMethod === opt.value ? (isDark ? BG.darkest : "#fff") : TEXT.muted,
                           border: "none",
                           padding: "3px 10px",
                           fontSize: 11,

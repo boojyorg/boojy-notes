@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  Fragment,
+} from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -17,7 +25,6 @@ import { useSearch } from "./hooks/useSearch";
 import { useTheme } from "./hooks/useTheme";
 import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
-import { BG, TEXT, ACCENT, SEMANTIC, BRAND } from "./constants/colors";
 import { FOLDER_TREE } from "./constants/data";
 import { hexToRgb, rgbToHex } from "./utils/colorUtils";
 import { setBlockIdCounter, STORAGE_KEY, loadFromStorage } from "./utils/storage";
@@ -25,7 +32,14 @@ import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
-import { sortByOrder, buildTree, collectPaths, filterTree, pathsToTree, naturalCompare } from "./utils/sidebarTree";
+import {
+  sortByOrder,
+  buildTree,
+  collectPaths,
+  filterTree,
+  pathsToTree,
+  naturalCompare,
+} from "./utils/sidebarTree";
 import SettingsModal from "./components/SettingsModal";
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -177,9 +191,7 @@ export default function BoojyNotes() {
   // Update native window title when active note or its title changes
   const activeNoteTitle = noteData[activeNote]?.title;
   useEffect(() => {
-    const title = activeNoteTitle
-      ? activeNoteTitle + " - Boojy Notes"
-      : "Boojy Notes";
+    const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
     window.electronAPI?.setWindowTitle(title);
   }, [activeNote, activeNoteTitle]);
 
@@ -237,16 +249,30 @@ export default function BoojyNotes() {
 
   // ── External hooks ──────────────────────────────────────────────────
   const {
-    syncState, lastSynced, storageUsed, storageLimitMB, syncAll,
-    conflictToast, dismissConflictToast,
-    pendingFirstSync, confirmFirstSync, cancelFirstSync,
+    syncState,
+    lastSynced,
+    storageUsed,
+    storageLimitMB,
+    syncAll,
+    conflictToast,
+    dismissConflictToast,
+    pendingFirstSync,
+    confirmFirstSync,
+    cancelFirstSync,
   } = useSync(user, profile, noteData, setNoteData, activeNote);
   const {
     isElectron: isDesktop,
     notesDir,
     loading: fsLoading,
     changeNotesDir,
-  } = useFileSystem(noteData, setNoteData, setCustomFolders, trashedNotesRef, syncGeneration, setSidebarOrder);
+  } = useFileSystem(
+    noteData,
+    setNoteData,
+    setCustomFolders,
+    trashedNotesRef,
+    syncGeneration,
+    setSidebarOrder,
+  );
 
   // ── App hooks ───────────────────────────────────────────────────────
   const {
@@ -686,12 +712,15 @@ export default function BoojyNotes() {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("boojy-ui-state", JSON.stringify({
-          tabs,
-          activeNote,
-          expanded,
-          splitState: getSplitStateForPersistence(),
-        }));
+        localStorage.setItem(
+          "boojy-ui-state",
+          JSON.stringify({
+            tabs,
+            activeNote,
+            expanded,
+            splitState: getSplitStateForPersistence(),
+          }),
+        );
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
@@ -966,7 +995,9 @@ export default function BoojyNotes() {
   const handleWikilinkClick = useCallback(
     (targetTitle) => {
       const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(([, n]) => (n.title || "").toLowerCase() === lc);
+      const found = Object.entries(noteDataRef.current).find(
+        ([, n]) => (n.title || "").toLowerCase() === lc,
+      );
       if (found) {
         openNote(found[0]);
       } else {
@@ -981,7 +1012,9 @@ export default function BoojyNotes() {
   const handleWikilinkCmdClick = useCallback(
     (targetTitle) => {
       const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(([, n]) => (n.title || "").toLowerCase() === lc);
+      const found = Object.entries(noteDataRef.current).find(
+        ([, n]) => (n.title || "").toLowerCase() === lc,
+      );
       const noteId = found ? found[0] : null;
       if (!noteId) {
         // Create and open in other pane
@@ -997,7 +1030,14 @@ export default function BoojyNotes() {
         splitPaneWithNote("vertical", noteId);
       }
     },
-    [splitState.splitMode, getOtherPaneId, openNoteInPane, splitPaneWithNote, createNote, noteDataRef],
+    [
+      splitState.splitMode,
+      getOtherPaneId,
+      openNoteInPane,
+      splitPaneWithNote,
+      createNote,
+      noteDataRef,
+    ],
   );
 
   // Wikilink autocomplete select handler — replace raw [[filter text with [[Title]]
@@ -1132,8 +1172,12 @@ export default function BoojyNotes() {
   }, [folderTree, search, noteData, sortedRootNotes]);
 
   // ── Multi-select ────────────────────────────────────────────────────
-  const { selectedNotes, handleNoteClick, clearSelection, removeFromSelection } =
-    useMultiSelect({ filteredTree, fNotes, expanded, openNote });
+  const { selectedNotes, handleNoteClick, clearSelection, removeFromSelection } = useMultiSelect({
+    filteredTree,
+    fNotes,
+    expanded,
+    openNote,
+  });
 
   // Keep refs in sync for useSidebarDrag (which is instantiated earlier)
   multiSelectRef.current = selectedNotes;
@@ -1184,7 +1228,10 @@ export default function BoojyNotes() {
     };
     if (syncState === "syncing") return { ...base, animation: "syncGlow 2s ease-in-out infinite" };
     if (syncState === "error")
-      return { ...base, boxShadow: `0 0 0 2.5px ${theme.BG.dark}, 0 0 0 4.5px ${theme.SEMANTIC.error}` };
+      return {
+        ...base,
+        boxShadow: `0 0 0 2.5px ${theme.BG.dark}, 0 0 0 4.5px ${theme.SEMANTIC.error}`,
+      };
     if (syncState === "offline") return { ...base, opacity: 0.4 };
     return base;
   };
@@ -1380,16 +1427,19 @@ export default function BoojyNotes() {
             }}
           >
             {(() => {
-              const paneIds = splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
+              const paneIds =
+                splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
               return paneIds.map((pId, idx) => {
                 const pane = splitState.panes[pId];
                 if (!pane) return null;
                 const paneActiveNote = pane.activeNote;
                 const paneNote = paneActiveNote ? noteData[paneActiveNote] : null;
                 const paneNoteTitle = paneNote?.title;
-                const paneBacklinks = paneNoteTitle ? getBacklinksForNote(backlinkIndex, paneNoteTitle) : [];
+                const paneBacklinks = paneNoteTitle
+                  ? getBacklinksForNote(backlinkIndex, paneNoteTitle)
+                  : [];
                 return (
-                  <React.Fragment key={pId}>
+                  <Fragment key={pId}>
                     {idx > 0 && (
                       <SplitDivider
                         splitMode={splitState.splitMode}
@@ -1402,14 +1452,17 @@ export default function BoojyNotes() {
                         containerRef={splitContainerRef}
                       />
                     )}
-                    <div style={{
-                      flex: idx === 0
-                        ? `0 0 ${splitState.dividerPosition}%`
-                        : `0 0 ${100 - splitState.dividerPosition}%`,
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}>
+                    <div
+                      style={{
+                        flex:
+                          idx === 0
+                            ? `0 0 ${splitState.dividerPosition}%`
+                            : `0 0 ${100 - splitState.dividerPosition}%`,
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
                       <PaneContainer
                         paneId={pId}
                         isActive={activePaneId === pId}
@@ -1463,7 +1516,7 @@ export default function BoojyNotes() {
                         onTabPointerDown={handleTabPointerDown}
                       />
                     </div>
-                  </React.Fragment>
+                  </Fragment>
                 );
               });
             })()}
@@ -1539,7 +1592,9 @@ export default function BoojyNotes() {
             transition: "background 0.15s",
           }}
           onMouseEnter={() =>
-            rightPanelHandles.current.forEach((h) => h && (h.style.background = theme.ACCENT.primary))
+            rightPanelHandles.current.forEach(
+              (h) => h && (h.style.background = theme.ACCENT.primary),
+            )
           }
           onMouseLeave={() => {
             if (!isDragging.current) {
@@ -1827,7 +1882,9 @@ export default function BoojyNotes() {
                     setter(rgbToHex(...next));
                   }}
                 />
-                <span style={{ width: 24, textAlign: "right", fontSize: 10, color: theme.TEXT.muted }}>
+                <span
+                  style={{ width: 24, textAlign: "right", fontSize: 10, color: theme.TEXT.muted }}
+                >
                   {rgb[i]}
                 </span>
               </div>
@@ -1985,7 +2042,15 @@ export default function BoojyNotes() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span>Theme</span>
-                <div style={{ display: "flex", borderRadius: 5, overflow: "hidden", border: `1px solid ${theme.BG.divider}`, marginLeft: "auto" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    borderRadius: 5,
+                    overflow: "hidden",
+                    border: `1px solid ${theme.BG.divider}`,
+                    marginLeft: "auto",
+                  }}
+                >
                   {["night", "day", "auto"].map((s) => (
                     <button
                       key={s}
@@ -2609,8 +2674,8 @@ export default function BoojyNotes() {
           }}
         >
           <div style={{ flex: 1 }}>
-            Your notes are saved locally on this browser. Sign in to sync across devices — free
-            with 100MB cloud storage.
+            Your notes are saved locally on this browser. Sign in to sync across devices — free with
+            100MB cloud storage.
             <br />
             <button
               onClick={() => {
@@ -2772,8 +2837,8 @@ export default function BoojyNotes() {
                 lineHeight: 1.5,
               }}
             >
-              {pendingFirstSync.noteCount} note{pendingFirstSync.noteCount !== 1 ? "s" : ""} will
-              be uploaded to your account.
+              {pendingFirstSync.noteCount} note{pendingFirstSync.noteCount !== 1 ? "s" : ""} will be
+              uploaded to your account.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button

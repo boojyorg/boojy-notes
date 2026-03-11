@@ -488,7 +488,11 @@ export function useEditorHandlers({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       const blockType = blocks[blockIndex].type;
-      const isList = blockType === "bullet" || blockType === "checkbox" || blockType === "numbered" || blockType === "blockquote";
+      const isList =
+        blockType === "bullet" ||
+        blockType === "checkbox" ||
+        blockType === "numbered" ||
+        blockType === "blockquote";
 
       if (isList && text.trim() === "") {
         el.innerHTML = "<br>";
@@ -660,7 +664,11 @@ export function useEditorHandlers({
       e.preventDefault();
       const newBlockId = genBlockId();
       const startType = blocks[startIdx].type;
-      const isList = startType === "bullet" || startType === "checkbox" || startType === "numbered" || startType === "blockquote";
+      const isList =
+        startType === "bullet" ||
+        startType === "checkbox" ||
+        startType === "numbered" ||
+        startType === "blockquote";
       commitNoteData((prev) => {
         const next = { ...prev };
         const n = { ...next[noteId] };

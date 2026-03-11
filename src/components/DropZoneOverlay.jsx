@@ -15,13 +15,23 @@ export default function DropZoneOverlay({ zone, visible }) {
       styles = { top: rect.top, left: rect.left, width: half.width, height: rect.height };
       break;
     case "right":
-      styles = { top: rect.top, left: rect.left + half.width, width: half.width, height: rect.height };
+      styles = {
+        top: rect.top,
+        left: rect.left + half.width,
+        width: half.width,
+        height: rect.height,
+      };
       break;
     case "top":
       styles = { top: rect.top, left: rect.left, width: rect.width, height: half.height };
       break;
     case "bottom":
-      styles = { top: rect.top + half.height, left: rect.left, width: rect.width, height: half.height };
+      styles = {
+        top: rect.top + half.height,
+        left: rect.left,
+        width: rect.width,
+        height: half.height,
+      };
       break;
     default:
       return null;

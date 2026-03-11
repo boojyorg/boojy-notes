@@ -56,7 +56,11 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
   const [syncState, setSyncState] = useState("idle");
   const [lastSynced, setLastSynced] = useState(() => localStorage.getItem(LAST_SYNC_KEY) || null);
   const [storageUsed, setStorageUsed] = useState(() => {
-    try { return parseInt(localStorage.getItem(STORAGE_USED_KEY) || "0", 10) || 0; } catch { return 0; }
+    try {
+      return parseInt(localStorage.getItem(STORAGE_USED_KEY) || "0", 10) || 0;
+    } catch {
+      return 0;
+    }
   });
   const [conflictToast, setConflictToast] = useState(null);
   const [pendingFirstSync, setPendingFirstSync] = useState(null);
@@ -172,7 +176,9 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       // First sync ever: push all local notes to server (parallel with concurrency limit)
       if (!lastSyncedRef.current) {
         const allNotes = Object.values(noteDataRef.current);
-        console.log(`[sync] First sync: pushing ${allNotes.length} notes (concurrency: ${PUSH_CONCURRENCY})`);
+        console.log(
+          `[sync] First sync: pushing ${allNotes.length} notes (concurrency: ${PUSH_CONCURRENCY})`,
+        );
         const t0 = performance.now();
         for (let i = 0; i < allNotes.length; i += PUSH_CONCURRENCY) {
           const batch = allNotes.slice(i, i + PUSH_CONCURRENCY);
@@ -198,7 +204,9 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
             }),
           );
         }
-        console.log(`[sync] First sync push complete in ${((performance.now() - t0) / 1000).toFixed(1)}s`);
+        console.log(
+          `[sync] First sync push complete in ${((performance.now() - t0) / 1000).toFixed(1)}s`,
+        );
         dirtyNotes.current.clear();
         saveVersionMap(versionMap.current);
       } else {
@@ -285,7 +293,9 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
           setStorageUsed(totalStorageBytes);
           localStorage.setItem(STORAGE_USED_KEY, String(totalStorageBytes));
         }
-        console.log(`[sync] Pull complete: ${remoteNotes?.length || 0} notes, storage: ${totalStorageBytes} bytes`);
+        console.log(
+          `[sync] Pull complete: ${remoteNotes?.length || 0} notes, storage: ${totalStorageBytes} bytes`,
+        );
 
         // --- Now push dirty notes with up-to-date version numbers ---
         const dirty = [...dirtyNotes.current];

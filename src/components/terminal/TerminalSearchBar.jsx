@@ -69,16 +69,20 @@ export default function TerminalSearchBar({ searchAddon, onClose }) {
           width: 160,
         }}
       />
-      <button onClick={findPrev} title="Previous (Shift+Enter)" style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        color: TEXT.secondary,
-        padding: 4,
-        borderRadius: 4,
-        display: "flex",
-        alignItems: "center",
-      }}>
+      <button
+        onClick={findPrev}
+        title="Previous (Shift+Enter)"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: TEXT.secondary,
+          padding: 4,
+          borderRadius: 4,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path
             d="M2 7L5 3L8 7"
@@ -89,16 +93,20 @@ export default function TerminalSearchBar({ searchAddon, onClose }) {
           />
         </svg>
       </button>
-      <button onClick={findNext} title="Next (Enter)" style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        color: TEXT.secondary,
-        padding: 4,
-        borderRadius: 4,
-        display: "flex",
-        alignItems: "center",
-      }}>
+      <button
+        onClick={findNext}
+        title="Next (Enter)"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: TEXT.secondary,
+          padding: 4,
+          borderRadius: 4,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path
             d="M2 3L5 7L8 3"
@@ -109,16 +117,20 @@ export default function TerminalSearchBar({ searchAddon, onClose }) {
           />
         </svg>
       </button>
-      <button onClick={onClose} title="Close (Esc)" style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        color: TEXT.secondary,
-        padding: 4,
-        borderRadius: 4,
-        display: "flex",
-        alignItems: "center",
-      }}>
+      <button
+        onClick={onClose}
+        title="Close (Esc)"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: TEXT.secondary,
+          padding: 4,
+          borderRadius: 4,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path
             d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"

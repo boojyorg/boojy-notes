@@ -1,4 +1,3 @@
-
 const Icon = ({ children, size = 14, ...props }) => (
   <svg
     width={size}

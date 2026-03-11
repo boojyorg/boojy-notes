@@ -2,7 +2,14 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { htmlToInlineMarkdown, sanitizeInlineHtml } from "../utils/inlineFormatting";
 
-export default function FindBar({ editorRef, blocks, blockRefs, noteId, commitTextChange, onClose }) {
+export default function FindBar({
+  editorRef,
+  blocks,
+  blockRefs,
+  noteId,
+  commitTextChange,
+  onClose,
+}) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
 
@@ -178,10 +185,7 @@ export default function FindBar({ editorRef, blocks, blockRefs, noteId, commitTe
       const blks = [...n.content.blocks];
       for (let i = 0; i < blks.length; i++) {
         if (blks[i].text && blks[i].text.toLowerCase().includes(searchTerm.toLowerCase())) {
-          const regex = new RegExp(
-            searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-            "gi",
-          );
+          const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
           blks[i] = { ...blks[i], text: blks[i].text.replace(regex, replaceTerm) };
         }
       }
@@ -281,22 +285,47 @@ export default function FindBar({ editorRef, blocks, blockRefs, noteId, commitTe
             fontFamily: "inherit",
           }}
         />
-        <span style={{ fontSize: 11, color: TEXT.muted, whiteSpace: "nowrap", minWidth: 40, textAlign: "center" }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: TEXT.muted,
+            whiteSpace: "nowrap",
+            minWidth: 40,
+            textAlign: "center",
+          }}
+        >
           {matches.length > 0 ? `${activeMatchIndex + 1} of ${matches.length}` : "0 of 0"}
         </span>
         <button onClick={goPrev} style={btnStyle} title="Previous (Shift+Enter)">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 9L6 3M6 3L3 6M6 3L9 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M6 9L6 3M6 3L3 6M6 3L9 6"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
         <button onClick={goNext} style={btnStyle} title="Next (Enter)">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 3L6 9M6 9L3 6M6 9L9 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M6 3L6 9M6 9L3 6M6 9L9 6"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
         <button onClick={onClose} style={btnStyle} title="Close (Escape)">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            <path
+              d="M3 3L9 9M9 3L3 9"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
       </div>
@@ -330,7 +359,11 @@ export default function FindBar({ editorRef, blocks, blockRefs, noteId, commitTe
           <button onClick={handleReplace} style={{ ...btnStyle, fontSize: 11 }} title="Replace">
             Replace
           </button>
-          <button onClick={handleReplaceAll} style={{ ...btnStyle, fontSize: 11 }} title="Replace All">
+          <button
+            onClick={handleReplaceAll}
+            style={{ ...btnStyle, fontSize: 11 }}
+            title="Replace All"
+          >
             All
           </button>
         </div>

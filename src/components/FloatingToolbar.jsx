@@ -23,11 +23,7 @@ function ToolbarBtn({ label, active, onClick, style = {} }) {
         alignItems: "center",
         justifyContent: "center",
         fontSize: 13,
-        background: active
-          ? `${ACCENT.primary}30`
-          : hovered
-            ? theme.overlay(0.08)
-            : "transparent",
+        background: active ? `${ACCENT.primary}30` : hovered ? theme.overlay(0.08) : "transparent",
         color: active ? ACCENT.primary : TEXT.primary,
         transition: "background 0.1s, color 0.1s",
         ...style,

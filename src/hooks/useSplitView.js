@@ -88,16 +88,15 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
 
   // Active pane's tabs and activeNote
   const activePaneId = splitState.activePaneId;
-  const firstPaneId = splitState.splitMode
-    ? PANE_IDS[splitState.splitMode][0]
-    : "left";
+  const firstPaneId = splitState.splitMode ? PANE_IDS[splitState.splitMode][0] : "left";
   const activePane = splitState.panes[activePaneId] || splitState.panes[firstPaneId];
   const activeNote = activePane.activeNote;
   const tabs = activePane.tabs;
 
   // Flat accessors for single-pane mode
   const allTabs = (splitState.panes.left || splitState.panes[firstPaneId])?.tabs || [];
-  const primaryActiveNote = (splitState.panes.left || splitState.panes[firstPaneId])?.activeNote || null;
+  const primaryActiveNote =
+    (splitState.panes.left || splitState.panes[firstPaneId])?.activeNote || null;
 
   // --- Setters ---
 
@@ -203,9 +202,10 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
     setSplitState((prev) => {
       if (prev.splitMode) {
         // Already split — open note as tab in other pane
-        const otherPaneId = prev.activePaneId === "left" || prev.activePaneId === "top"
-          ? (PANE_IDS[prev.splitMode]?.[1] || "right")
-          : (PANE_IDS[prev.splitMode]?.[0] || "left");
+        const otherPaneId =
+          prev.activePaneId === "left" || prev.activePaneId === "top"
+            ? PANE_IDS[prev.splitMode]?.[1] || "right"
+            : PANE_IDS[prev.splitMode]?.[0] || "left";
         const otherPane = prev.panes[otherPaneId];
         const newTabs = otherPane.tabs.includes(noteId)
           ? otherPane.tabs
@@ -248,7 +248,8 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
       for (const t of secondTabs) {
         if (!mergedTabs.includes(t)) mergedTabs.push(t);
       }
-      const activeNoteId = prev.panes[prev.activePaneId]?.activeNote || prev.panes[firstId]?.activeNote;
+      const activeNoteId =
+        prev.panes[prev.activePaneId]?.activeNote || prev.panes[firstId]?.activeNote;
       return {
         splitMode: null,
         activePaneId: "left",
@@ -267,9 +268,10 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
       const pane = prev.panes[paneId];
       if (pane && pane.tabs.length === 0) {
         // Collapse split
-        const otherId = paneId === "left" || paneId === "top"
-          ? (PANE_IDS[prev.splitMode]?.[1] || "right")
-          : (PANE_IDS[prev.splitMode]?.[0] || "left");
+        const otherId =
+          paneId === "left" || paneId === "top"
+            ? PANE_IDS[prev.splitMode]?.[1] || "right"
+            : PANE_IDS[prev.splitMode]?.[0] || "left";
         const otherPane = prev.panes[otherId] || createPane();
         return {
           ...prev,

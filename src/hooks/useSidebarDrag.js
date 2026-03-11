@@ -1,6 +1,10 @@
 import { useRef, useEffect } from "react";
 import { runAutoScroll } from "../utils/domHelpers";
-import { findTabBarUnderCursor, computeInsertionIndex, getInsertionLinePosition } from "../utils/tabBarHitTest";
+import {
+  findTabBarUnderCursor,
+  computeInsertionIndex,
+  getInsertionLinePosition,
+} from "../utils/tabBarHitTest";
 
 export function useSidebarDrag({
   noteDataRef,
@@ -71,7 +75,8 @@ export function useSidebarDrag({
     const rect = el.getBoundingClientRect();
 
     // Build compact pill ghost instead of cloned DOM element
-    const noteTitle = (type === "note" && noteDataRef.current[id]?.title) || el.textContent?.trim() || "Untitled";
+    const noteTitle =
+      (type === "note" && noteDataRef.current[id]?.title) || el.textContent?.trim() || "Untitled";
     const pill = document.createElement("div");
     Object.assign(pill.style, {
       position: "fixed",
@@ -242,12 +247,17 @@ export function useSidebarDrag({
 
       // Check if over the editor area for split-drop
       if (sd.type === "note" && splitPaneWithNote) {
-        const editorArea = document.querySelector("[data-split-container]") ||
+        const editorArea =
+          document.querySelector("[data-split-container]") ||
           document.querySelector(".editor-scroll")?.parentElement;
         if (editorArea) {
           const editorRect = editorArea.getBoundingClientRect();
-          if (pointerX >= editorRect.left && pointerX <= editorRect.right &&
-              pointerY >= editorRect.top && pointerY <= editorRect.bottom) {
+          if (
+            pointerX >= editorRect.left &&
+            pointerX <= editorRect.right &&
+            pointerY >= editorRect.top &&
+            pointerY <= editorRect.bottom
+          ) {
             const relX = (pointerX - editorRect.left) / editorRect.width;
             const relY = (pointerY - editorRect.top) / editorRect.height;
             const EDGE = 0.2;
@@ -266,8 +276,11 @@ export function useSidebarDrag({
               if (!sd.editorOverlay) {
                 const overlay = document.createElement("div");
                 Object.assign(overlay.style, {
-                  position: "fixed", zIndex: "998", pointerEvents: "none",
-                  transition: "all 0.15s ease", borderRadius: "4px",
+                  position: "fixed",
+                  zIndex: "998",
+                  pointerEvents: "none",
+                  transition: "all 0.15s ease",
+                  borderRadius: "4px",
                 });
                 document.body.appendChild(overlay);
                 sd.editorOverlay = overlay;
@@ -275,16 +288,47 @@ export function useSidebarDrag({
               const half = { width: editorRect.width / 2, height: editorRect.height / 2 };
               let s;
               switch (editorZone.side) {
-                case "left": s = { top: editorRect.top, left: editorRect.left, width: half.width, height: editorRect.height }; break;
-                case "right": s = { top: editorRect.top, left: editorRect.left + half.width, width: half.width, height: editorRect.height }; break;
-                case "top": s = { top: editorRect.top, left: editorRect.left, width: editorRect.width, height: half.height }; break;
-                case "bottom": s = { top: editorRect.top + half.height, left: editorRect.left, width: editorRect.width, height: half.height }; break;
+                case "left":
+                  s = {
+                    top: editorRect.top,
+                    left: editorRect.left,
+                    width: half.width,
+                    height: editorRect.height,
+                  };
+                  break;
+                case "right":
+                  s = {
+                    top: editorRect.top,
+                    left: editorRect.left + half.width,
+                    width: half.width,
+                    height: editorRect.height,
+                  };
+                  break;
+                case "top":
+                  s = {
+                    top: editorRect.top,
+                    left: editorRect.left,
+                    width: editorRect.width,
+                    height: half.height,
+                  };
+                  break;
+                case "bottom":
+                  s = {
+                    top: editorRect.top + half.height,
+                    left: editorRect.left,
+                    width: editorRect.width,
+                    height: half.height,
+                  };
+                  break;
               }
               Object.assign(sd.editorOverlay.style, {
                 display: "block",
-                top: s.top + "px", left: s.left + "px",
-                width: s.width + "px", height: s.height + "px",
-                background: `${accentColor}15`, border: `2px solid ${accentColor}40`,
+                top: s.top + "px",
+                left: s.left + "px",
+                width: s.width + "px",
+                height: s.height + "px",
+                background: `${accentColor}15`,
+                border: `2px solid ${accentColor}40`,
               });
             } else if (sd.editorOverlay) {
               sd.editorOverlay.style.display = "none";
@@ -401,8 +445,10 @@ export function useSidebarDrag({
           splitPaneWithNote(target.zone.direction, noteId);
         } else if (splitStateRef?.current?.splitMode && openNoteInPane) {
           // Already split — determine which pane from cursor position
-          const paneIds = splitStateRef.current.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
-          const targetPaneId = target.zone.side === "right" || target.zone.side === "bottom" ? paneIds[1] : paneIds[0];
+          const paneIds =
+            splitStateRef.current.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
+          const targetPaneId =
+            target.zone.side === "right" || target.zone.side === "bottom" ? paneIds[1] : paneIds[0];
           openNoteInPane(noteId, targetPaneId);
         }
         cleanupSidebarDrag();
@@ -478,15 +524,14 @@ export function useSidebarDrag({
 
           // Discover sibling folder names from the rendered DOM
           const scrollEl = sidebarScrollRef.current;
-          const allFolderEls = scrollEl
-            ? scrollEl.querySelectorAll("[data-folder-path]")
-            : [];
+          const allFolderEls = scrollEl ? scrollEl.querySelectorAll("[data-folder-path]") : [];
           const folderNames = [];
           for (const el of allFolderEls) {
             const p = el.dataset.folderPath;
-            const isDirectChild = parentPath === ""
-              ? !p.includes("/")
-              : p.startsWith(parentPath + "/") && !p.slice(parentPath.length + 1).includes("/");
+            const isDirectChild =
+              parentPath === ""
+                ? !p.includes("/")
+                : p.startsWith(parentPath + "/") && !p.slice(parentPath.length + 1).includes("/");
             if (isDirectChild) {
               const name = parentPath === "" ? p : p.slice(parentPath.length + 1);
               if (!folderNames.includes(name)) folderNames.push(name);

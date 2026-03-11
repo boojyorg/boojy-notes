@@ -97,7 +97,10 @@ export function useInlineFormatting({
     }
   }, []);
 
-  const toggleStrikethrough = useCallback((sel) => toggleWrappingTag(sel, "DEL"), [toggleWrappingTag]);
+  const toggleStrikethrough = useCallback(
+    (sel) => toggleWrappingTag(sel, "DEL"),
+    [toggleWrappingTag],
+  );
   const toggleHighlight = useCallback((sel) => toggleWrappingTag(sel, "MARK"), [toggleWrappingTag]);
 
   const getLinkContext = useCallback(() => {
@@ -147,29 +150,39 @@ export function useInlineFormatting({
     };
   }, []);
 
-  const applyFormat = useCallback((format) => {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    if (format === "bold") {
-      document.execCommand("bold");
-    } else if (format === "italic") {
-      document.execCommand("italic");
-    } else if (format === "code") {
-      toggleInlineCode(sel);
-    } else if (format === "strikethrough") {
-      toggleStrikethrough(sel);
-    } else if (format === "highlight") {
-      toggleHighlight(sel);
-    } else if (format === "link") {
-      // Open link editor popover instead of using prompt()
-      if (onOpenLinkEditor) {
-        onOpenLinkEditor();
-        return; // Don't dismiss toolbar yet — popover will handle it
+  const applyFormat = useCallback(
+    (format) => {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      if (format === "bold") {
+        document.execCommand("bold");
+      } else if (format === "italic") {
+        document.execCommand("italic");
+      } else if (format === "code") {
+        toggleInlineCode(sel);
+      } else if (format === "strikethrough") {
+        toggleStrikethrough(sel);
+      } else if (format === "highlight") {
+        toggleHighlight(sel);
+      } else if (format === "link") {
+        // Open link editor popover instead of using prompt()
+        if (onOpenLinkEditor) {
+          onOpenLinkEditor();
+          return; // Don't dismiss toolbar yet — popover will handle it
+        }
       }
-    }
-    reReadBlockFromDom(sel);
-    setToolbarState(null);
-  }, [reReadBlockFromDom, toggleInlineCode, toggleStrikethrough, toggleHighlight, onOpenLinkEditor, setToolbarState]);
+      reReadBlockFromDom(sel);
+      setToolbarState(null);
+    },
+    [
+      reReadBlockFromDom,
+      toggleInlineCode,
+      toggleStrikethrough,
+      toggleHighlight,
+      onOpenLinkEditor,
+      setToolbarState,
+    ],
+  );
 
   const detectActiveFormats = useCallback(() => {
     const sel = window.getSelection();
