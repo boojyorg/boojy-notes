@@ -18,3 +18,8 @@ createRoot(document.getElementById("root")).render(
     </ThemeProvider>
   </StrictMode>,
 );
+
+// Register service worker for PWA (web only, not Electron)
+if (!window.electronAPI && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}

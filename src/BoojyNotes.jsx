@@ -205,6 +205,11 @@ export default function BoojyNotes() {
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
   const [spellCheckLanguages, setSpellCheckLanguages] = useState(["en-US"]);
 
+  // ── Onboarding & persistence warning toasts (web only) ────────────
+  const [onboardingToast, setOnboardingToast] = useState(false);
+  const [persistenceWarning, setPersistenceWarning] = useState(false);
+  const persistenceShownRef = useRef(false);
+
   // ── Refs ────────────────────────────────────────────────────────────
   const sidebarHandles = useRef([]);
   const rightPanelHandles = useRef([]);
@@ -231,13 +236,11 @@ export default function BoojyNotes() {
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
-  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll, conflictToast, dismissConflictToast } = useSync(
-    user,
-    profile,
-    noteData,
-    setNoteData,
-    activeNote,
-  );
+  const {
+    syncState, lastSynced, storageUsed, storageLimitMB, syncAll,
+    conflictToast, dismissConflictToast,
+    pendingFirstSync, confirmFirstSync, cancelFirstSync,
+  } = useSync(user, profile, noteData, setNoteData, activeNote);
   const {
     isElectron: isDesktop,
     notesDir,
@@ -883,6 +886,39 @@ export default function BoojyNotes() {
       discardDraft(prevId);
     }
   }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Onboarding toast (Feature A): show after 3rd note for anon web users ──
+  useEffect(() => {
+    if (window.electronAPI) return;
+    if (user) return;
+    const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
+    if (noteCount >= 3 && !localStorage.getItem("boojy-onboarding-dismissed")) {
+      setOnboardingToast(true);
+    }
+  }, [noteData, user]);
+
+  // Auto-dismiss onboarding toast after 15s
+  useEffect(() => {
+    if (!onboardingToast) return;
+    const t = setTimeout(() => setOnboardingToast(false), 15000);
+    return () => clearTimeout(t);
+  }, [onboardingToast]);
+
+  // ── Persistence warning (Feature F): show after 5+ notes for anon web users ──
+  useEffect(() => {
+    if (window.electronAPI) return;
+    if (user) return;
+    if (persistenceShownRef.current) return;
+    const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
+    if (
+      noteCount > 5 &&
+      localStorage.getItem("boojy-onboarding-dismissed") &&
+      !localStorage.getItem("boojy-persistence-warning-dismissed")
+    ) {
+      setPersistenceWarning(true);
+      persistenceShownRef.current = true;
+    }
+  }, [noteData, user]);
 
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
@@ -2549,6 +2585,231 @@ export default function BoojyNotes() {
           pointer-events: none;
         }
       `}</style>
+
+      {/* Onboarding toast (bottom-left, web only) */}
+      {onboardingToast && !user && !window.electronAPI && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: 24,
+            background: accentColor,
+            color: "#fff",
+            padding: "14px 20px",
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 500,
+            zIndex: 9999,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            maxWidth: 380,
+            animation: "fadeIn 0.25s ease",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            Your notes are saved locally on this browser. Sign in to sync across devices — free
+            with 100MB cloud storage.
+            <br />
+            <button
+              onClick={() => {
+                setOnboardingToast(false);
+                localStorage.setItem("boojy-onboarding-dismissed", "true");
+                setSettingsOpen(true);
+                setSettingsTab("profile");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#fff",
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                marginTop: 6,
+              }}
+            >
+              Sign in
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setOnboardingToast(false);
+              localStorage.setItem("boojy-onboarding-dismissed", "true");
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.7)",
+              cursor: "pointer",
+              fontSize: 16,
+              lineHeight: 1,
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            {"\u2715"}
+          </button>
+        </div>
+      )}
+
+      {/* Persistence warning toast (bottom-left, web only) */}
+      {persistenceWarning && !user && !window.electronAPI && !onboardingToast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: 24,
+            background: theme.BG.elevated,
+            color: theme.TEXT.primary,
+            padding: "14px 20px",
+            borderRadius: 10,
+            fontSize: 13,
+            fontWeight: 500,
+            zIndex: 9999,
+            boxShadow: theme.modalShadow,
+            maxWidth: 380,
+            animation: "fadeIn 0.25s ease",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 12,
+            border: `1px solid ${theme.BG.divider}`,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            You have {Object.keys(noteData).filter((id) => !noteData[id]._draft).length} notes
+            stored only in this browser. Sign in to back them up.
+            <br />
+            <button
+              onClick={() => {
+                setPersistenceWarning(false);
+                localStorage.setItem("boojy-persistence-warning-dismissed", "true");
+                setSettingsOpen(true);
+                setSettingsTab("profile");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: accentColor,
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                marginTop: 6,
+              }}
+            >
+              Sign in
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setPersistenceWarning(false);
+              localStorage.setItem("boojy-persistence-warning-dismissed", "true");
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: theme.TEXT.muted,
+              cursor: "pointer",
+              fontSize: 16,
+              lineHeight: 1,
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            {"\u2715"}
+          </button>
+        </div>
+      )}
+
+      {/* First-sync confirmation modal */}
+      {pendingFirstSync && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "fadeIn 0.15s ease",
+          }}
+          onClick={cancelFirstSync}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: theme.modalBg,
+              borderRadius: 14,
+              padding: "32px 36px",
+              boxShadow: theme.modalShadow,
+              maxWidth: 380,
+              width: "90%",
+              textAlign: "center",
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 12px",
+                fontSize: 18,
+                fontWeight: 600,
+                color: theme.TEXT.primary,
+              }}
+            >
+              Sync your notes
+            </h3>
+            <p
+              style={{
+                margin: "0 0 24px",
+                fontSize: 14,
+                color: theme.TEXT.secondary,
+                lineHeight: 1.5,
+              }}
+            >
+              {pendingFirstSync.noteCount} note{pendingFirstSync.noteCount !== 1 ? "s" : ""} will
+              be uploaded to your account.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={cancelFirstSync}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: `1px solid ${theme.BG.divider}`,
+                  background: "transparent",
+                  color: theme.TEXT.secondary,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Not Now
+              </button>
+              <button
+                onClick={confirmFirstSync}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: accentColor,
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Sync Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Conflict toast notification */}
       {conflictToast && (
