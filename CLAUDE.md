@@ -32,10 +32,12 @@ When making bug fixes or feature changes:
 
 ## Release Process
 
-1. Update CHANGELOG.md with release date
-2. Commit all changes
-3. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
-4. Build and distribute
+1. Bump version in `package.json` (the app version in Settings reads from here automatically — never hardcode versions elsewhere)
+2. Update CHANGELOG.md heading from "Unreleased" to the version number and date
+3. Run `npm test` and `npm run format:check` before committing to catch CI failures early
+4. Commit all changes
+5. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
+6. Build and distribute
 
 ## Code Signing Secrets (GitHub)
 

@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { version as appVersion } from "../../package.json";
 import boojyLogo from "/assets/boojy-logo.png";
 import boojyN from "/assets/boojy-notes-text-N.png";
 import boojyTes from "/assets/boojy-notes.text-tes.png";
@@ -411,7 +412,7 @@ export default function SettingsModal({
                 <img src={boojyTes} alt="" style={{ height: 26 }} draggable="false" />
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>
-                v0.1.1
+                v{appVersion}
               </span>
             </div>
           </div>
