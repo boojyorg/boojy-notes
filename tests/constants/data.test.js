@@ -37,6 +37,7 @@ describe("SLASH_COMMANDS", () => {
       "image",
       "code",
       "callout",
+      "blockquote",
       "table",
       "file",
       "embed",
