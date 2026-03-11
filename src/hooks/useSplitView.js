@@ -262,6 +262,89 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
     });
   }, []);
 
+  // Insert tab at specific index in a pane (reorders if already present)
+  const insertTabInPane = useCallback((paneId, noteId, index) => {
+    setSplitState((prev) => {
+      const pane = prev.panes[paneId];
+      if (!pane) return prev;
+      const newTabs = pane.tabs.filter((t) => t !== noteId);
+      const idx = Math.max(0, Math.min(index, newTabs.length));
+      newTabs.splice(idx, 0, noteId);
+      return {
+        ...prev,
+        activePaneId: paneId,
+        panes: {
+          ...prev.panes,
+          [paneId]: { tabs: newTabs, activeNote: noteId },
+        },
+      };
+    });
+  }, []);
+
+  // Atomic move: remove from source, insert at index in target (single setState)
+  const moveTabToPaneAtIndex = useCallback((noteId, fromPaneId, toPaneId, insertIndex) => {
+    setSplitState((prev) => {
+      const fromPane = prev.panes[fromPaneId];
+      const toPane = prev.panes[toPaneId];
+      if (!fromPane || !toPane) return prev;
+
+      if (fromPaneId === toPaneId) {
+        // Same pane — pure reorder
+        const newTabs = fromPane.tabs.filter((t) => t !== noteId);
+        const idx = Math.max(0, Math.min(insertIndex, newTabs.length));
+        newTabs.splice(idx, 0, noteId);
+        return {
+          ...prev,
+          panes: {
+            ...prev.panes,
+            [fromPaneId]: { tabs: newTabs, activeNote: noteId },
+          },
+        };
+      }
+
+      // Cross-pane move
+      const newFromTabs = fromPane.tabs.filter((t) => t !== noteId);
+      let newFromActive = fromPane.activeNote;
+      if (fromPane.activeNote === noteId) {
+        newFromActive = newFromTabs[newFromTabs.length - 1] || null;
+      }
+
+      const newToTabs = toPane.tabs.filter((t) => t !== noteId);
+      const idx = Math.max(0, Math.min(insertIndex, newToTabs.length));
+      newToTabs.splice(idx, 0, noteId);
+
+      return {
+        ...prev,
+        activePaneId: toPaneId,
+        panes: {
+          ...prev.panes,
+          [fromPaneId]: { tabs: newFromTabs, activeNote: newFromActive },
+          [toPaneId]: { tabs: newToTabs, activeNote: noteId },
+        },
+      };
+    });
+  }, []);
+
+  // Duplicate tab to another pane at index (Option+drag)
+  const duplicateTabToPane = useCallback((noteId, toPaneId, insertIndex) => {
+    setSplitState((prev) => {
+      const toPane = prev.panes[toPaneId];
+      if (!toPane) return prev;
+      if (toPane.tabs.includes(noteId)) return prev; // already present
+      const newTabs = [...toPane.tabs];
+      const idx = Math.max(0, Math.min(insertIndex, newTabs.length));
+      newTabs.splice(idx, 0, noteId);
+      return {
+        ...prev,
+        activePaneId: toPaneId,
+        panes: {
+          ...prev.panes,
+          [toPaneId]: { tabs: newTabs, activeNote: noteId },
+        },
+      };
+    });
+  }, []);
+
   // Open note in specific pane (or active pane)
   const openNoteInPane = useCallback((noteId, targetPaneId) => {
     setSplitState((prev) => {
@@ -333,6 +416,9 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
     closeSplit,
     closePaneIfEmpty,
     moveTabToPane,
+    insertTabInPane,
+    moveTabToPaneAtIndex,
+    duplicateTabToPane,
     openNoteInPane,
     removeNoteFromAllPanes,
     getOtherPaneId,

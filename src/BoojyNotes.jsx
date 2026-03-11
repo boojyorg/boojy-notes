@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -15,6 +15,8 @@ import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTerminal } from "./hooks/useTerminal";
 import { useSearch } from "./hooks/useSearch";
 import { useTheme } from "./hooks/useTheme";
+import { useSplitView } from "./hooks/useSplitView";
+import { useTabDrag } from "./hooks/useTabDrag";
 import { BG, TEXT, ACCENT, SEMANTIC, BRAND } from "./constants/colors";
 import { FOLDER_TREE } from "./constants/data";
 import { hexToRgb, rgbToHex } from "./utils/colorUtils";
@@ -31,6 +33,8 @@ import WikilinkMenu from "./components/WikilinkMenu";
 import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import EditorArea from "./components/EditorArea";
+import PaneContainer from "./components/PaneContainer";
+import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
 import TerminalPanel from "./components/terminal/TerminalPanel";
 
@@ -50,7 +54,8 @@ export default function BoojyNotes() {
     const saved = loadFromStorage();
     return saved?.expanded || { Boojy: true };
   });
-  const [activeNote, setActiveNote] = useState(() => {
+  // Split view state — manages tabs + activeNote per pane
+  const initialActiveNote = (() => {
     const ui = (() => {
       try {
         return JSON.parse(localStorage.getItem("boojy-ui-state"));
@@ -61,8 +66,8 @@ export default function BoojyNotes() {
     if (ui?.activeNote) return ui.activeNote;
     const saved = loadFromStorage();
     return saved?.activeNote && saved.noteData?.[saved.activeNote] ? saved.activeNote : null;
-  });
-  const [tabs, setTabs] = useState(() => {
+  })();
+  const initialTabs = (() => {
     const ui = (() => {
       try {
         return JSON.parse(localStorage.getItem("boojy-ui-state"));
@@ -77,7 +82,32 @@ export default function BoojyNotes() {
       if (valid.length > 0) return valid;
     }
     return [];
-  });
+  })();
+  const {
+    splitState,
+    splitStateRef,
+    activeNote,
+    tabs,
+    setActiveNote,
+    setTabs,
+    activePaneId,
+    setActivePaneId,
+    setDividerPosition,
+    splitPane,
+    splitPaneWithNote,
+    closeSplit,
+    closePaneIfEmpty,
+    moveTabToPane,
+    insertTabInPane,
+    moveTabToPaneAtIndex,
+    duplicateTabToPane,
+    openNoteInPane,
+    removeNoteFromAllPanes,
+    getOtherPaneId,
+    getSplitStateForPersistence,
+    setActiveNoteForPane,
+    setTabsForPane,
+  } = useSplitView({ initialTabs, initialActiveNote });
   const [collapsed, setCollapsed] = useState(false);
   const [rightPanel, setRightPanel] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -144,14 +174,14 @@ export default function BoojyNotes() {
     return {};
   });
 
-  // Update native window title when active note changes
+  // Update native window title when active note or its title changes
+  const activeNoteTitle = noteData[activeNote]?.title;
   useEffect(() => {
-    const title =
-      activeNote && noteData[activeNote]
-        ? noteData[activeNote].title + " - Boojy Notes"
-        : "Boojy Notes";
+    const title = activeNoteTitle
+      ? activeNoteTitle + " - Boojy Notes"
+      : "Boojy Notes";
     window.electronAPI?.setWindowTitle(title);
-  }, [activeNote, noteData]);
+  }, [activeNote, activeNoteTitle]);
 
   const [, forceRender] = useState(0);
   const [slashMenu, setSlashMenu] = useState(null);
@@ -193,6 +223,7 @@ export default function BoojyNotes() {
   wikilinkMenuRef.current = wikilinkMenu;
   const editorScrollRef = useRef(null);
   const sidebarScrollRef = useRef(null);
+  const splitContainerRef = useRef(null);
 
   // ── Shared refs ─────────────────────────────────────────────────────
   const syncGeneration = useRef(0);
@@ -200,11 +231,12 @@ export default function BoojyNotes() {
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
-  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll } = useSync(
+  const { syncState, lastSynced, storageUsed, storageLimitMB, syncAll, conflictToast, dismissConflictToast } = useSync(
     user,
     profile,
     noteData,
     setNoteData,
+    activeNote,
   );
   const {
     isElectron: isDesktop,
@@ -351,7 +383,23 @@ export default function BoojyNotes() {
       dragTooltipCount,
       selectedNotesRef: multiSelectRef,
       clearSelectionRef: clearSelectionRef,
+      splitStateRef,
+      splitPaneWithNote,
+      openNoteInPane,
+      insertTabInPane,
     });
+  const { handleTabPointerDown } = useTabDrag({
+    splitState,
+    splitPaneWithNote,
+    moveTabToPane,
+    moveTabToPaneAtIndex,
+    duplicateTabToPane,
+    openNoteInPane,
+    setTabsForPane,
+    closePaneIfEmpty,
+    accentColor,
+    chromeBg,
+  });
   const {
     handleEditorKeyDown,
     handleEditorInput,
@@ -474,16 +522,18 @@ export default function BoojyNotes() {
     });
   }, []);
 
-  // Listen for menu export/import events
+  // Listen for menu export/import events (use refs to avoid re-registering on every noteData change)
+  const handleExportRef = useRef({ pdf: null, docx: null });
   useEffect(() => {
     if (!window.electronAPI) return;
     const cleanups = [];
     if (window.electronAPI.onMenuExport) {
       cleanups.push(
         window.electronAPI.onMenuExport((fmt) => {
-          if (!activeNote || !noteData[activeNote]) return;
-          if (fmt === "pdf") handleExportPdf(activeNote);
-          else if (fmt === "docx") handleExportDocx(activeNote);
+          const id = activeNoteRef.current;
+          if (!id || !noteDataRef.current[id]) return;
+          if (fmt === "pdf") handleExportRef.current.pdf?.(id);
+          else if (fmt === "docx") handleExportRef.current.docx?.(id);
         }),
       );
     }
@@ -497,17 +547,20 @@ export default function BoojyNotes() {
       );
     }
     return () => cleanups.forEach((fn) => fn && fn());
-  }, [activeNote, noteData]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
+  // Editor fade-in + title sync (only in single-pane mode; PaneContainer has its own)
   useEffect(() => {
+    if (splitState.splitMode) return;
     setEditorFadeIn(false);
     setSelectedImageBlockId(null);
     setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
-  }, [activeNote]);
+  }, [activeNote, splitState.splitMode]);
 
   useLayoutEffect(() => {
+    if (splitState.splitMode) return;
     const title = noteData[activeNote]?.content?.title;
     if (titleRef.current && title !== undefined) {
       if (title === "") {
@@ -574,9 +627,25 @@ export default function BoojyNotes() {
         setTimeout(() => searchInputRef.current?.focus(), 250);
         return;
       }
-      if (mod && e.key === "\\") {
+      if (mod && e.shiftKey && e.key === "\\") {
+        e.preventDefault();
+        if (splitState.splitMode) {
+          closeSplit();
+        } else {
+          splitPane("vertical");
+        }
+        return;
+      }
+      if (mod && !e.shiftKey && e.key === "\\") {
         e.preventDefault();
         setRightPanel((v) => !v);
+        return;
+      }
+      // Cmd+1 / Cmd+2 to switch active pane
+      if (mod && splitState.splitMode && (e.key === "1" || e.key === "2")) {
+        e.preventDefault();
+        const ids = splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
+        setActivePaneId(e.key === "1" ? ids[0] : ids[1]);
         return;
       }
       if (mod && e.shiftKey && (e.key === "T" || e.key === "t")) {
@@ -614,11 +683,16 @@ export default function BoojyNotes() {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("boojy-ui-state", JSON.stringify({ tabs, activeNote, expanded }));
+        localStorage.setItem("boojy-ui-state", JSON.stringify({
+          tabs,
+          activeNote,
+          expanded,
+          splitState: getSplitStateForPersistence(),
+        }));
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
-  }, [tabs, activeNote, expanded]);
+  }, [tabs, activeNote, expanded, splitState]);
 
   useEffect(() => {
     if (window.electronAPI) return;
@@ -671,7 +745,9 @@ export default function BoojyNotes() {
     loadMeta();
   }, [fsLoading]);
 
+  // Selection change → floating toolbar (only in single-pane mode; split panes have their own)
   useEffect(() => {
+    if (splitStateRef.current.splitMode) return; // PaneContainer handles its own
     const onSelChange = () => {
       const sel = window.getSelection();
       if (!sel.rangeCount || sel.isCollapsed) {
@@ -709,9 +785,11 @@ export default function BoojyNotes() {
     };
     document.addEventListener("selectionchange", onSelChange);
     return () => document.removeEventListener("selectionchange", onSelChange);
-  }, [activeNote]);
+  }, [activeNote, splitState.splitMode]);
 
+  // Focus block layout effect (only in single-pane mode; split panes have their own)
   useLayoutEffect(() => {
+    if (splitState.splitMode) return; // PaneContainer handles its own
     if (focusBlockId.current) {
       cleanOrphanNodes(editorRef.current);
       const targetId = focusBlockId.current;
@@ -752,10 +830,28 @@ export default function BoojyNotes() {
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
   // Reset stale activeNote that points to a deleted/missing note
+  // Use a ref to track previously known IDs so we only clean up on actual deletions
+  const prevNoteIdsRef = useRef(null);
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote && !noteData[activeNote]) {
       setActiveNote(null);
+    }
+    // Only check pane tabs when notes were actually removed (not on every text edit)
+    if (splitState.splitMode) {
+      const currentIds = Object.keys(noteData);
+      const prevIds = prevNoteIdsRef.current;
+      if (prevIds && currentIds.length < prevIds.length) {
+        const currentSet = new Set(currentIds);
+        for (const [, pane] of Object.entries(splitState.panes)) {
+          for (const tabId of pane.tabs) {
+            if (!currentSet.has(tabId)) {
+              removeNoteFromAllPanes(tabId);
+            }
+          }
+        }
+      }
+      prevNoteIdsRef.current = currentIds;
     }
   }, [fsLoading, noteData, activeNote]);
 
@@ -845,6 +941,29 @@ export default function BoojyNotes() {
     [openNote, createNote],
   );
 
+  // Wikilink Cmd+Click — open in other pane (or create split)
+  const handleWikilinkCmdClick = useCallback(
+    (targetTitle) => {
+      const lc = targetTitle.trim().toLowerCase();
+      const found = Object.entries(noteDataRef.current).find(([, n]) => (n.title || "").toLowerCase() === lc);
+      const noteId = found ? found[0] : null;
+      if (!noteId) {
+        // Create and open in other pane
+        createNote(null, targetTitle);
+        return;
+      }
+      if (splitState.splitMode) {
+        // Open in the other pane
+        const otherPaneId = getOtherPaneId();
+        if (otherPaneId) openNoteInPane(noteId, otherPaneId);
+      } else {
+        // Create split and open in new right pane
+        splitPaneWithNote("vertical", noteId);
+      }
+    },
+    [splitState.splitMode, getOtherPaneId, openNoteInPane, splitPaneWithNote, createNote, noteDataRef],
+  );
+
   // Wikilink autocomplete select handler — replace raw [[filter text with [[Title]]
   const handleWikilinkSelect = useCallback(
     (title) => {
@@ -904,6 +1023,9 @@ export default function BoojyNotes() {
     },
     [noteData],
   );
+  // Keep export refs in sync for IPC handler (defined earlier to avoid re-registering on every noteData change)
+  handleExportRef.current.pdf = handleExportPdf;
+  handleExportRef.current.docx = handleExportDocx;
 
   // ── Import handler for folder context menu ─────────────────────────
   const handleImportIntoFolder = useCallback((folderId) => {
@@ -1047,37 +1169,39 @@ export default function BoojyNotes() {
         transition: `background-color ${theme.transitionMs}ms ease, color ${theme.transitionMs}ms ease`,
       }}
     >
-      {/* Title bar with traffic lights and centered title */}
-      <div
-        style={{
-          height: 28,
-          background: chromeBg,
-          WebkitAppRegion: "drag",
-          flexShrink: 0,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span
+      {/* Title bar with traffic lights and centered title (desktop only) */}
+      {isDesktop && (
+        <div
           style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: theme.TEXT.secondary,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: "40%",
-            pointerEvents: "none",
-            userSelect: "none",
+            height: 28,
+            background: chromeBg,
+            WebkitAppRegion: "drag",
+            flexShrink: 0,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {activeNote && noteData[activeNote]
-            ? noteData[activeNote].title + " - Boojy Notes"
-            : "Boojy Notes"}
-        </span>
-      </div>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: theme.TEXT.secondary,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "40%",
+              pointerEvents: "none",
+              userSelect: "none",
+            }}
+          >
+            {activeNote && noteData[activeNote]
+              ? noteData[activeNote].title + " - Boojy Notes"
+              : "Boojy Notes"}
+          </span>
+        </div>
+      )}
       <TopBar
         chromeBg={chromeBg}
         accentColor={accentColor}
@@ -1117,6 +1241,15 @@ export default function BoojyNotes() {
         rightPanelHandles={rightPanelHandles}
         tabScrollRef={tabScrollRef}
         tabAreaWidth={tabAreaWidth}
+        splitMode={splitState.splitMode}
+        onTabPointerDown={handleTabPointerDown}
+        panes={splitState.panes}
+        activePaneId={activePaneId}
+        dividerPosition={splitState.dividerPosition}
+        setActiveNoteForPane={setActiveNoteForPane}
+        setActivePaneId={setActivePaneId}
+        setTabsForPane={setTabsForPane}
+        closePaneIfEmpty={closePaneIfEmpty}
       />
 
       {/* === MAIN AREA === */}
@@ -1198,59 +1331,163 @@ export default function BoojyNotes() {
           }}
         />
 
-        <EditorArea
-          onEditorClick={clearSelection}
-          note={note}
-          activeNote={activeNote}
-          editorFadeIn={editorFadeIn}
-          editorRef={editorRef}
-          editorScrollRef={editorScrollRef}
-          titleRef={titleRef}
-          blockRefs={blockRefs}
-          noteDataRef={noteDataRef}
-          focusBlockId={focusBlockId}
-          focusCursorPos={focusCursorPos}
-          forceRender={forceRender}
-          accentColor={accentColor}
-          editorBg={editorBg}
-          settingsFontSize={settingsFontSize}
-          handleEditorKeyDown={handleEditorKeyDown}
-          handleEditorInput={handleEditorInput}
-          handleEditorPaste={handleEditorPaste}
-          handleEditorPointerDown={handleEditorPointerDown}
-          handleEditorMouseDown={handleEditorMouseDown}
-          handleEditorMouseUp={handleEditorMouseUp}
-          handleEditorFocus={handleEditorFocus}
-          handleEditorDragOver={handleEditorDragOver}
-          handleEditorDragLeave={handleEditorDragLeave}
-          handleEditorDrop={handleEditorDrop}
-          commitTextChange={commitTextChange}
-          syncGeneration={syncGeneration}
-          flipCheck={flipCheck}
-          deleteBlock={deleteBlock}
-          registerBlockRef={registerBlockRef}
-          insertBlockAfter={insertBlockAfter}
-          updateCodeText={updateCodeText}
-          updateCodeLang={updateCodeLang}
-          updateCallout={updateCallout}
-          updateTableRows={updateTableRows}
-          updateBlockProperty={updateBlockProperty}
-          backlinks={currentBacklinks}
-          onWikilinkClick={handleWikilinkClick}
-          onOpenBacklink={openNote}
-          toolbarState={toolbarState}
-          detectActiveFormats={detectActiveFormats}
-          applyFormat={applyFormat}
-          noteTitleSet={noteTitleSet}
-          linkPopover={linkPopover}
-          setLinkPopover={setLinkPopover}
-          reReadBlockFromDom={reReadBlockFromDom}
-          selectedImageBlockId={selectedImageBlockId}
-          setSelectedImageBlockId={setSelectedImageBlockId}
-          lightbox={lightbox}
-          setLightbox={setLightbox}
-          openNote={openNote}
-        />
+        {/* Editor area — single pane or split */}
+        {splitState.splitMode ? (
+          <div
+            ref={splitContainerRef}
+            data-split-container
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: splitState.splitMode === "vertical" ? "row" : "column",
+              overflow: "hidden",
+            }}
+          >
+            {(() => {
+              const paneIds = splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
+              return paneIds.map((pId, idx) => {
+                const pane = splitState.panes[pId];
+                if (!pane) return null;
+                const paneActiveNote = pane.activeNote;
+                const paneNote = paneActiveNote ? noteData[paneActiveNote] : null;
+                const paneNoteTitle = paneNote?.title;
+                const paneBacklinks = paneNoteTitle ? getBacklinksForNote(backlinkIndex, paneNoteTitle) : [];
+                return (
+                  <React.Fragment key={pId}>
+                    {idx > 0 && (
+                      <SplitDivider
+                        splitMode={splitState.splitMode}
+                        dividerPosition={splitState.dividerPosition}
+                        setDividerPosition={setDividerPosition}
+                        onSnapClose={(side) => {
+                          // Snap-closing a side closes that pane
+                          closeSplit();
+                        }}
+                        containerRef={splitContainerRef}
+                      />
+                    )}
+                    <div style={{
+                      flex: idx === 0
+                        ? `0 0 ${splitState.dividerPosition}%`
+                        : `0 0 ${100 - splitState.dividerPosition}%`,
+                      overflow: "hidden",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}>
+                      <PaneContainer
+                        paneId={pId}
+                        isActive={activePaneId === pId}
+                        tabs={pane.tabs}
+                        activeNote={paneActiveNote}
+                        noteData={noteData}
+                        noteDataRef={noteDataRef}
+                        newTabId={newTabId}
+                        closingTabs={closingTabs}
+                        setActiveNote={(noteId) => setActiveNoteForPane(pId, noteId)}
+                        closeTab={(e, id) => {
+                          e.stopPropagation();
+                          setTabsForPane(pId, (prev) => prev.filter((t) => t !== id));
+                          if (paneActiveNote === id) {
+                            const remaining = pane.tabs.filter((t) => t !== id);
+                            setActiveNoteForPane(pId, remaining[remaining.length - 1] || null);
+                          }
+                          // Check if pane becomes empty after tab close
+                          setTimeout(() => closePaneIfEmpty(pId), 200);
+                        }}
+                        tabFlip={tabFlip}
+                        activeTabBg={activeTabBg}
+                        chromeBg={chromeBg}
+                        accentColor={accentColor}
+                        editorBg={editorBg}
+                        settingsFontSize={settingsFontSize}
+                        setNoteData={setNoteData}
+                        commitNoteData={commitNoteData}
+                        commitTextChange={commitTextChange}
+                        syncGeneration={syncGeneration}
+                        slashMenuRef={slashMenuRef}
+                        setSlashMenu={setSlashMenu}
+                        wikilinkMenuRef={wikilinkMenuRef}
+                        setWikilinkMenu={setWikilinkMenu}
+                        onWikilinkClick={handleWikilinkClick}
+                        onWikilinkCmdClick={handleWikilinkCmdClick}
+                        openNote={(noteId) => openNoteInPane(noteId, pId)}
+                        onOpenBacklink={(noteId) => openNoteInPane(noteId, pId)}
+                        backlinks={paneBacklinks}
+                        noteTitleSet={noteTitleSet}
+                        lightbox={lightbox}
+                        setLightbox={setLightbox}
+                        onPaneClick={setActivePaneId}
+                        showTabBar={splitState.splitMode === "horizontal" && idx === 1}
+                        tabAreaWidth={tabAreaWidth}
+                        onEditorClick={clearSelection}
+                        pushHistory={pushHistory}
+                        popHistory={popHistory}
+                        setDragTooltip={setDragTooltip}
+                        dragTooltipCount={dragTooltipCount}
+                        onTabPointerDown={handleTabPointerDown}
+                      />
+                    </div>
+                  </React.Fragment>
+                );
+              });
+            })()}
+          </div>
+        ) : (
+          <EditorArea
+            onEditorClick={clearSelection}
+            note={note}
+            activeNote={activeNote}
+            editorFadeIn={editorFadeIn}
+            editorRef={editorRef}
+            editorScrollRef={editorScrollRef}
+            titleRef={titleRef}
+            blockRefs={blockRefs}
+            noteDataRef={noteDataRef}
+            focusBlockId={focusBlockId}
+            focusCursorPos={focusCursorPos}
+            forceRender={forceRender}
+            accentColor={accentColor}
+            editorBg={editorBg}
+            settingsFontSize={settingsFontSize}
+            handleEditorKeyDown={handleEditorKeyDown}
+            handleEditorInput={handleEditorInput}
+            handleEditorPaste={handleEditorPaste}
+            handleEditorPointerDown={handleEditorPointerDown}
+            handleEditorMouseDown={handleEditorMouseDown}
+            handleEditorMouseUp={handleEditorMouseUp}
+            handleEditorFocus={handleEditorFocus}
+            handleEditorDragOver={handleEditorDragOver}
+            handleEditorDragLeave={handleEditorDragLeave}
+            handleEditorDrop={handleEditorDrop}
+            commitTextChange={commitTextChange}
+            syncGeneration={syncGeneration}
+            flipCheck={flipCheck}
+            deleteBlock={deleteBlock}
+            registerBlockRef={registerBlockRef}
+            insertBlockAfter={insertBlockAfter}
+            updateCodeText={updateCodeText}
+            updateCodeLang={updateCodeLang}
+            updateCallout={updateCallout}
+            updateTableRows={updateTableRows}
+            updateBlockProperty={updateBlockProperty}
+            backlinks={currentBacklinks}
+            onWikilinkClick={handleWikilinkClick}
+            onWikilinkCmdClick={handleWikilinkCmdClick}
+            onOpenBacklink={openNote}
+            toolbarState={toolbarState}
+            detectActiveFormats={detectActiveFormats}
+            applyFormat={applyFormat}
+            noteTitleSet={noteTitleSet}
+            linkPopover={linkPopover}
+            setLinkPopover={setLinkPopover}
+            reReadBlockFromDom={reReadBlockFromDom}
+            selectedImageBlockId={selectedImageBlockId}
+            setSelectedImageBlockId={setSelectedImageBlockId}
+            lightbox={lightbox}
+            setLightbox={setLightbox}
+            openNote={openNote}
+          />
+        )}
 
         {/* Right panel drag handle — bottom */}
         <div
@@ -1412,6 +1649,9 @@ export default function BoojyNotes() {
         storageUsed={storageUsed}
         storageLimitMB={storageLimitMB}
         onSync={syncAll}
+        noteData={noteData}
+        setActiveNote={setActiveNote}
+        setSettingsOpenFromParent={setSettingsOpen}
         isDesktop={isDesktop}
         notesDir={notesDir}
         changeNotesDir={changeNotesDir}
@@ -2309,6 +2549,34 @@ export default function BoojyNotes() {
           pointer-events: none;
         }
       `}</style>
+
+      {/* Conflict toast notification */}
+      {conflictToast && (
+        <div
+          onClick={() => {
+            setActiveNote(conflictToast.conflictId);
+            dismissConflictToast();
+          }}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: theme.SEMANTIC?.warning || "#f59e0b",
+            color: "#000",
+            padding: "12px 20px",
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: "pointer",
+            zIndex: 9999,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            maxWidth: 360,
+            animation: "fadeIn 0.2s ease",
+          }}
+        >
+          Conflict detected on &ldquo;{conflictToast.noteTitle}&rdquo; — click to view copy
+        </div>
+      )}
     </div>
   );
 }

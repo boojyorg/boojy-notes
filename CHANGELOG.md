@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Features
+- **VS Code-style drag & drop** — Tab reordering within the same tab bar via drag insertion line; drag tabs across panes at exact positions; sidebar drag uses compact pill ghost (max 200px) with count badge for multi-drag; 20% edge zones (up from 10%) for split creation; vertical accent-colored insertion line shows exact drop position in any tab bar; Option+drag duplicates a tab to another pane; Escape cancels any drag in progress; sidebar ghost now moves in 2D (follows cursor into editor area)
 - **Split view** — Open two notes side by side with `Cmd+Shift+\`; each pane has its own tab bar, editor, floating toolbar, and find bar; draggable divider with double-click-to-reset and snap-to-close; `Cmd+1`/`Cmd+2` to switch active pane (indicated by accent border); `Cmd+Click` on wikilinks opens the linked note in the other pane (creates split if needed); drag tabs between panes or to edge zones to create splits; drag notes from sidebar into editor edge zones to create splits; same note can be open in both panes with shared content but independent scroll/cursor; split state persists across app restarts; closing the last tab in a pane auto-collapses back to single view; supports both vertical and horizontal splits; works in Day and Night themes
 
 ### Bug Fixes

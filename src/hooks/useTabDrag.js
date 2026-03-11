@@ -1,12 +1,15 @@
 import { useRef, useEffect, useCallback } from "react";
+import { findTabBarUnderCursor, computeInsertionIndex, getInsertionLinePosition } from "../utils/tabBarHitTest";
 
 const HOLD_DELAY = 200;
-const EDGE_ZONE = 0.1; // 10% of editor area
+const EDGE_ZONE = 0.2; // 20% of editor area
 
 export function useTabDrag({
   splitState,
   splitPaneWithNote,
   moveTabToPane,
+  moveTabToPaneAtIndex,
+  duplicateTabToPane,
   openNoteInPane,
   setTabsForPane,
   closePaneIfEmpty,
@@ -24,16 +27,24 @@ export function useTabDrag({
     overlay: null,
     moveHandler: null,
     upHandler: null,
+    // New fields for insertion line
+    tabInsertLine: null,
+    targetPaneId: null,
+    insertIndex: null,
+    escHandler: null,
+    isOptionHeld: false,
   });
 
   const cleanup = useCallback(() => {
     const d = drag.current;
     if (d.cloneEl?.parentNode) d.cloneEl.parentNode.removeChild(d.cloneEl);
     if (d.overlay?.parentNode) d.overlay.parentNode.removeChild(d.overlay);
+    if (d.tabInsertLine?.parentNode) d.tabInsertLine.parentNode.removeChild(d.tabInsertLine);
     if (d.holdTimer) clearTimeout(d.holdTimer);
     document.body.classList.remove("block-dragging");
     if (d.moveHandler) window.removeEventListener("pointermove", d.moveHandler);
     if (d.upHandler) window.removeEventListener("pointerup", d.upHandler);
+    if (d.escHandler) window.removeEventListener("keydown", d.escHandler);
     d.active = false;
     d.noteId = null;
     d.sourcePaneId = null;
@@ -42,10 +53,14 @@ export function useTabDrag({
     d.overlay = null;
     d.moveHandler = null;
     d.upHandler = null;
+    d.tabInsertLine = null;
+    d.targetPaneId = null;
+    d.insertIndex = null;
+    d.escHandler = null;
+    d.isOptionHeld = false;
   }, []);
 
   const getDropZone = useCallback((clientX, clientY) => {
-    // Find the editor area (the main area between sidebar and right panel)
     const editorArea = document.querySelector("[data-split-container]") ||
       document.querySelector(".editor-scroll");
     if (!editorArea) return null;
@@ -122,7 +137,7 @@ export function useTabDrag({
     d.noteId = noteId;
     d.sourcePaneId = sourcePaneId;
 
-    // Create floating ghost
+    // Create floating ghost (tab rectangle)
     const rect = tabEl.getBoundingClientRect();
     const clone = tabEl.cloneNode(true);
     Object.assign(clone.style, {
@@ -145,12 +160,35 @@ export function useTabDrag({
     d.offsetX = rect.left - d.startX + rect.width / 2;
     d.offsetY = pointerY - rect.top;
 
+    // Create vertical insertion line element
+    const line = document.createElement("div");
+    Object.assign(line.style, {
+      position: "fixed",
+      width: "2px",
+      zIndex: "999",
+      pointerEvents: "none",
+      display: "none",
+      borderRadius: "1px",
+      background: accentColor,
+      transition: "left 50ms ease, top 50ms ease",
+    });
+    document.body.appendChild(line);
+    d.tabInsertLine = line;
+
+    // Escape handler
+    const escHandler = (e) => {
+      if (e.key === "Escape") {
+        cleanup();
+      }
+    };
+    window.addEventListener("keydown", escHandler);
+    d.escHandler = escHandler;
+
     document.body.classList.add("block-dragging");
-  }, [chromeBg]);
+  }, [chromeBg, accentColor, cleanup]);
 
   const handleTabPointerDown = useCallback((e, noteId, sourcePaneId) => {
     if (e.button !== 0) return;
-    // Don't start drag on close button
     if (e.target.closest(".tab-close")) return;
 
     const d = drag.current;
@@ -173,7 +211,6 @@ export function useTabDrag({
         if (Math.hypot(dx, dy) > 5) {
           clearTimeout(d.holdTimer);
           d.holdTimer = null;
-          // Immediate drag on movement
           activateDrag(noteId, sourcePaneId, tabEl, pY);
         }
       }
@@ -181,11 +218,42 @@ export function useTabDrag({
         d.cloneEl.style.left = ev.clientX - (d.cloneEl.offsetWidth / 2) + "px";
         d.cloneEl.style.top = ev.clientY - d.offsetY + "px";
 
+        // Track Option key
+        d.isOptionHeld = ev.altKey;
+
+        // Check tab bar hit first
+        const tabBarHit = findTabBarUnderCursor(ev.clientX, ev.clientY);
+        if (tabBarHit) {
+          const idx = computeInsertionIndex(tabBarHit.tabBarEl, ev.clientX);
+          const pos = getInsertionLinePosition(tabBarHit.tabBarEl, idx);
+
+          // Show insertion line
+          if (d.tabInsertLine) {
+            Object.assign(d.tabInsertLine.style, {
+              display: "block",
+              left: pos.x - 1 + "px",
+              top: pos.top + "px",
+              height: pos.height + "px",
+            });
+          }
+
+          // Hide split overlay
+          showOverlay(null);
+
+          d.targetPaneId = tabBarHit.paneId;
+          d.insertIndex = idx;
+          return;
+        }
+
+        // Not over tab bar — hide insertion line
+        if (d.tabInsertLine) d.tabInsertLine.style.display = "none";
+        d.targetPaneId = null;
+        d.insertIndex = null;
+
+        // Fall through to existing split overlay logic
         const zone = getDropZone(ev.clientX, ev.clientY);
 
-        // If already split, disable edge zone drops (max 2 panes)
         if (splitState.splitMode && zone && zone.side !== "center") {
-          // Instead of creating new split, check if over a specific pane's tab bar
           showOverlay(null);
         } else {
           showOverlay(zone);
@@ -200,21 +268,35 @@ export function useTabDrag({
       }
 
       if (d.active) {
+        // Tab bar insertion drop
+        if (d.targetPaneId != null && d.insertIndex != null) {
+          if (d.targetPaneId === sourcePaneId) {
+            // Same pane — reorder
+            moveTabToPaneAtIndex(noteId, sourcePaneId, sourcePaneId, d.insertIndex);
+          } else if (d.isOptionHeld) {
+            // Option+drag — duplicate
+            duplicateTabToPane(noteId, d.targetPaneId, d.insertIndex);
+          } else {
+            // Cross-pane move at index
+            moveTabToPaneAtIndex(noteId, sourcePaneId, d.targetPaneId, d.insertIndex);
+            setTimeout(() => closePaneIfEmpty(sourcePaneId), 50);
+          }
+          cleanup();
+          return;
+        }
+
+        // Existing edge-zone / cross-pane logic
         const zone = getDropZone(ev.clientX, ev.clientY);
 
         if (zone && !splitState.splitMode) {
-          // Not yet split
           if (zone.side !== "center" && zone.direction) {
-            // Create split in that direction, move tab to new pane
             splitPaneWithNote(zone.direction, noteId);
-            // Remove from source pane if it had multiple tabs
             if (sourcePaneId) {
               setTabsForPane(sourcePaneId, (prev) => prev.filter((t) => t !== noteId));
               setTimeout(() => closePaneIfEmpty(sourcePaneId), 50);
             }
           }
         } else if (zone && splitState.splitMode) {
-          // Already split — determine target pane from cursor position
           const paneIds = splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
           const containerEl = document.querySelector("[data-split-container]");
           if (containerEl) {
@@ -244,7 +326,7 @@ export function useTabDrag({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }, [splitState, activateDrag, getDropZone, showOverlay, splitPaneWithNote, moveTabToPane,
-      setTabsForPane, closePaneIfEmpty, cleanup]);
+      moveTabToPaneAtIndex, duplicateTabToPane, setTabsForPane, closePaneIfEmpty, cleanup]);
 
   // Cleanup on unmount
   useEffect(() => () => cleanup(), [cleanup]);
