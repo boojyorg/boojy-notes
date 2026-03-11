@@ -12,7 +12,9 @@ const SYNC_DEBOUNCE_MS = 2000;
 const LAST_SYNC_KEY = "boojy-sync-last";
 const VERSION_MAP_KEY = "boojy-sync-versions";
 const DIRTY_PERSIST_KEY = "boojy-sync-dirty";
+const STORAGE_USED_KEY = "boojy-sync-storage";
 const REMOTE_UPDATE_STALE_MS = 5000;
+const PUSH_CONCURRENCY = 5;
 
 function loadVersionMap() {
   try {
@@ -53,7 +55,9 @@ function generateConflictId() {
 export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
   const [syncState, setSyncState] = useState("idle");
   const [lastSynced, setLastSynced] = useState(() => localStorage.getItem(LAST_SYNC_KEY) || null);
-  const [storageUsed, setStorageUsed] = useState(0);
+  const [storageUsed, setStorageUsed] = useState(() => {
+    try { return parseInt(localStorage.getItem(STORAGE_USED_KEY) || "0", 10) || 0; } catch { return 0; }
+  });
   const [conflictToast, setConflictToast] = useState(null);
   const [pendingFirstSync, setPendingFirstSync] = useState(null);
 
@@ -165,31 +169,125 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
     setSyncState("syncing");
 
     try {
-      // First sync ever: push all local notes to server
+      // First sync ever: push all local notes to server (parallel with concurrency limit)
       if (!lastSyncedRef.current) {
         const allNotes = Object.values(noteDataRef.current);
-        for (const note of allNotes) {
-          const result = await pushNote(note, null);
-          if (result?.version) {
-            versionMap.current[note.id] = result.version;
-          }
-          channelRef.current?.send({
-            type: "broadcast",
-            event: "note_upsert",
-            payload: {
-              id: note.id,
-              title: note.title,
-              folder: note.folder || null,
-              path: note.path || null,
-              content: note.content,
-              words: note.words || 0,
-            },
-          });
+        console.log(`[sync] First sync: pushing ${allNotes.length} notes (concurrency: ${PUSH_CONCURRENCY})`);
+        const t0 = performance.now();
+        for (let i = 0; i < allNotes.length; i += PUSH_CONCURRENCY) {
+          const batch = allNotes.slice(i, i + PUSH_CONCURRENCY);
+          const results = await Promise.all(
+            batch.map(async (note) => {
+              const result = await pushNote(note, null);
+              if (result?.version) {
+                versionMap.current[note.id] = result.version;
+              }
+              channelRef.current?.send({
+                type: "broadcast",
+                event: "note_upsert",
+                payload: {
+                  id: note.id,
+                  title: note.title,
+                  folder: note.folder || null,
+                  path: note.path || null,
+                  content: note.content,
+                  words: note.words || 0,
+                },
+              });
+              return result;
+            }),
+          );
         }
+        console.log(`[sync] First sync push complete in ${((performance.now() - t0) / 1000).toFixed(1)}s`);
         dirtyNotes.current.clear();
         saveVersionMap(versionMap.current);
       } else {
-        // Push dirty notes with conflict detection
+        // --- Pull-before-push: fetch remote changes first so we have latest versions ---
+        console.log(`[sync] Pulling changes since ${lastSyncedRef.current || "(full pull)"}`);
+        const pullResult = await pullNotes(lastSyncedRef.current);
+        const remoteNotes = pullResult?.notes;
+        const totalStorageBytes = pullResult?.totalStorageBytes;
+
+        if (remoteNotes?.length > 0) {
+          const parsedRemotes = [];
+          const deletedRemotes = [];
+          for (const remote of remoteNotes) {
+            if (remote.deleted) {
+              deletedRemotes.push(remote.note_id);
+            } else if (remote.content) {
+              try {
+                const raw = remote.content.trim();
+                let noteObj;
+
+                if (raw.startsWith("---")) {
+                  const fm = parseFrontmatter(raw);
+                  if (fm) {
+                    noteObj = {
+                      id: remote.note_id,
+                      title: fm.title,
+                      folder: fm.folder,
+                      path: fm.path,
+                      content: { title: fm.title, blocks: markdownToBlocks(fm.body) },
+                      words: fm.words,
+                    };
+                  }
+                } else {
+                  const parsed = JSON.parse(raw);
+                  noteObj = {
+                    id: remote.note_id,
+                    title: parsed.title || remote.title,
+                    folder: parsed.folder || null,
+                    path: parsed.path || null,
+                    content: parsed.content,
+                    words: parsed.words || 0,
+                  };
+                }
+
+                if (noteObj) parsedRemotes.push(noteObj);
+              } catch {
+                // Skip unparseable notes
+              }
+            }
+            // Track version from pulled notes — critical for push to use correct expectedVersion
+            if (remote.version) {
+              versionMap.current[remote.note_id] = remote.version;
+            }
+          }
+
+          if (parsedRemotes.length > 0 || deletedRemotes.length > 0) {
+            for (const noteId of deletedRemotes) {
+              remoteUpdateIds.current.set(noteId, Date.now());
+            }
+            for (const note of parsedRemotes) {
+              remoteUpdateIds.current.set(note.id, Date.now());
+            }
+
+            setNoteData((prev) => {
+              const next = { ...prev };
+              for (const noteId of deletedRemotes) {
+                if (!dirtyNotes.current.has(noteId)) {
+                  delete next[noteId];
+                }
+              }
+              for (const note of parsedRemotes) {
+                if (!dirtyNotes.current.has(note.id)) {
+                  next[note.id] = note;
+                }
+              }
+              return next;
+            });
+          }
+
+          saveVersionMap(versionMap.current);
+        }
+
+        if (totalStorageBytes != null) {
+          setStorageUsed(totalStorageBytes);
+          localStorage.setItem(STORAGE_USED_KEY, String(totalStorageBytes));
+        }
+        console.log(`[sync] Pull complete: ${remoteNotes?.length || 0} notes, storage: ${totalStorageBytes} bytes`);
+
+        // --- Now push dirty notes with up-to-date version numbers ---
         const dirty = [...dirtyNotes.current];
         for (const noteId of dirty) {
           const note = noteDataRef.current[noteId];
@@ -241,11 +339,6 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
                 conflictTitle,
               });
 
-              // If not actively editing this note, pull the server version
-              if (activeNoteIdRef.current !== noteId) {
-                // Server version will be pulled in the pull phase below
-              }
-
               // Update version from server's conflict response
               if (result.serverVersion) {
                 versionMap.current[noteId] = result.serverVersion;
@@ -291,89 +384,6 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       }
       if (deleted.length > 0) saveVersionMap(versionMap.current);
 
-      // Pull remote changes
-      const { notes: remoteNotes } = await pullNotes(lastSyncedRef.current);
-
-      if (remoteNotes?.length > 0) {
-        const parsedRemotes = [];
-        const deletedRemotes = [];
-        for (const remote of remoteNotes) {
-          if (remote.deleted) {
-            deletedRemotes.push(remote.note_id);
-          } else if (remote.content) {
-            try {
-              const raw = remote.content.trim();
-              let noteObj;
-
-              if (raw.startsWith("---")) {
-                const fm = parseFrontmatter(raw);
-                if (fm) {
-                  noteObj = {
-                    id: remote.note_id,
-                    title: fm.title,
-                    folder: fm.folder,
-                    path: fm.path,
-                    content: { title: fm.title, blocks: markdownToBlocks(fm.body) },
-                    words: fm.words,
-                  };
-                }
-              } else {
-                const parsed = JSON.parse(raw);
-                noteObj = {
-                  id: remote.note_id,
-                  title: parsed.title || remote.title,
-                  folder: parsed.folder || null,
-                  path: parsed.path || null,
-                  content: parsed.content,
-                  words: parsed.words || 0,
-                };
-              }
-
-              if (noteObj) parsedRemotes.push(noteObj);
-            } catch {
-              // Content not in expected format — skip this note
-            }
-          }
-          // Track version from pulled notes
-          if (remote.version) {
-            versionMap.current[remote.note_id] = remote.version;
-          }
-        }
-
-        if (parsedRemotes.length > 0 || deletedRemotes.length > 0) {
-          // Mark these as remote updates so dirty detection skips them
-          for (const noteId of deletedRemotes) {
-            remoteUpdateIds.current.set(noteId, Date.now());
-          }
-          for (const note of parsedRemotes) {
-            remoteUpdateIds.current.set(note.id, Date.now());
-          }
-
-          setNoteData((prev) => {
-            const next = { ...prev };
-            for (const noteId of deletedRemotes) {
-              if (!dirtyNotes.current.has(noteId)) {
-                delete next[noteId];
-              }
-            }
-            for (const note of parsedRemotes) {
-              if (!dirtyNotes.current.has(note.id)) {
-                next[note.id] = note;
-              }
-            }
-            return next;
-          });
-        }
-
-        saveVersionMap(versionMap.current);
-      }
-
-      // Compute storage from remote response
-      if (remoteNotes) {
-        const totalBytes = remoteNotes.reduce((sum, n) => sum + (n.size_bytes || 0), 0);
-        setStorageUsed(totalBytes);
-      }
-
       // Clear persisted dirty data on successful sync
       if (dirtyNotes.current.size === 0) {
         localStorage.removeItem(DIRTY_PERSIST_KEY);
@@ -386,8 +396,9 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       setLastSynced(now);
       localStorage.setItem(LAST_SYNC_KEY, now);
       if (syncState !== "conflict") setSyncState("synced");
+      console.log(`[sync] Sync complete at ${now}`);
     } catch (err) {
-      console.error("Sync error:", err);
+      console.error("[sync] Sync error:", err);
       setSyncState("error");
     } finally {
       isSyncing.current = false;

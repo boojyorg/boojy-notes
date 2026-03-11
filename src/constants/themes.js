@@ -77,6 +77,9 @@ export const NIGHT = {
   searchInputBg: "#18191E",
   modalBg: "rgba(20,22,35,0.95)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
+  splitDivider: "#3A3D4A",
+  splitActiveBorder: "#A4CACE",
+  splitDropZone: "rgba(164, 202, 206, 0.10)",
 };
 
 export const DAY = {
@@ -157,4 +160,7 @@ export const DAY = {
   searchInputBg: "#FFFFFF",
   modalBg: "rgba(255,255,255,0.97)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08)",
+  splitDivider: "#A8C4D8",
+  splitActiveBorder: "#E8C020",
+  splitDropZone: "rgba(232, 192, 32, 0.10)",
 };

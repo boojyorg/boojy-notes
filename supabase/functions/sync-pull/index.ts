@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const supabase = createAdminClient();
     let query = supabase
       .from("notes_metadata")
-      .select("note_id, title, content_hash, size_bytes, updated_at, deleted")
+      .select("note_id, title, content_hash, size_bytes, updated_at, deleted, version")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false });
 
@@ -34,6 +34,17 @@ Deno.serve(async (req) => {
 
     const { data: notes, error: dbError } = await query;
     if (dbError) throw new Error(`Database error: ${dbError.message}`);
+
+    // Always compute total storage for the user (regardless of `since` filter)
+    const { data: storageData } = await supabase
+      .from("notes_metadata")
+      .select("size_bytes")
+      .eq("user_id", userId)
+      .eq("deleted", false);
+    const totalStorageBytes = (storageData || []).reduce(
+      (sum: number, n: { size_bytes: number | null }) => sum + (n.size_bytes || 0),
+      0,
+    );
 
     // Fetch content from R2 for non-deleted notes
     const results = await Promise.all(
@@ -48,7 +59,7 @@ Deno.serve(async (req) => {
     );
 
     return new Response(
-      JSON.stringify({ notes: results }),
+      JSON.stringify({ notes: results, totalStorageBytes }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

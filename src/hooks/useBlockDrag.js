@@ -62,7 +62,7 @@ export function useBlockDrag({
     window.getSelection().removeAllRanges();
     setToolbarState(null);
 
-    bd.originalBlocks = structuredClone(blocks);
+    bd.originalBlocks = [...blocks];
     bd.blockId = blockId;
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;

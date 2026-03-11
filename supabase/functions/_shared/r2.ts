@@ -26,6 +26,9 @@ export async function putObject(key: string, body: string): Promise<void> {
 export async function getObject(key: string): Promise<string | null> {
   try {
     const response = await s3.getObject(key);
+    if (response instanceof Response) {
+      return await response.text();
+    }
     return await new Response(response).text();
   } catch (e) {
     if (e.code === "NoSuchKey" || e.message?.includes("Not Found")) {

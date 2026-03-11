@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { UndoIcon, RedoIcon, SidebarToggleIcon, CloseIcon, HelpIcon } from "./Icons";
+import { UndoIcon, RedoIcon, SidebarToggleIcon, HelpIcon } from "./Icons";
 import HelpDropdown from "./HelpDropdown";
+import PaneTabBar from "./PaneTabBar";
 import boojyN from "/assets/boojy-notes-text-N.png";
 import boojyTes from "/assets/boojy-notes.text-tes.png";
 
@@ -97,6 +98,15 @@ export default function TopBar({
   rightPanelHandles,
   tabScrollRef,
   tabAreaWidth,
+  splitMode,
+  onTabPointerDown,
+  panes,
+  activePaneId,
+  dividerPosition,
+  setActiveNoteForPane,
+  setActivePaneId,
+  setTabsForPane,
+  closePaneIfEmpty,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -157,7 +167,11 @@ export default function TopBar({
                 width: "100%",
                 height: "100%",
                 borderRadius: "50%",
-                background: accentColor,
+                background:
+                  syncState === "conflict" ? "#f59e0b" :
+                  syncState === "offline" ? "#9ca3af" :
+                  syncState === "error" ? "#ef4444" :
+                  accentColor,
               }}
             />
           </button>
@@ -280,145 +294,116 @@ export default function TopBar({
       />
 
       {/* Top-middle — tabs */}
-      <div
-        ref={tabScrollRef}
-        className="tab-scroll"
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          flex: 1,
-          overflow: "auto",
-          height: "100%",
-          background: tabFlip ? activeTabBg : "transparent",
-        }}
-      >
-        {(() => {
-          const tabW = Math.min(200, Math.max(100, tabAreaWidth / Math.max(1, tabs.length)));
-          return tabs.flatMap((tId, i) => {
-            const t = noteData[tId];
-            if (!t) return [];
-            const act = activeNote === tId;
-            const els = [];
-            els.push(
-              <div
-                key={`div-${tId}`}
-                style={{
-                  width: i === 0 ? 1 : 2,
-                  background: BG.divider,
-                  opacity: 0.6,
-                  alignSelf: "stretch",
-                  flexShrink: 0,
-                }}
-              />,
-            );
-            const isNew = newTabId === tId;
-            const isClosing = closingTabs.has(tId);
-            els.push(
-              <button
-                key={tId}
-                className={`tab-btn${act ? " tab-active" : ""}`}
-                onClick={() => {
-                  if (!isClosing) setActiveNote(tId);
-                }}
-                style={{
-                  background: tabFlip
-                    ? act
-                      ? chromeBg
-                      : activeTabBg
-                    : act
-                      ? activeTabBg
-                      : "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "0 8px 0 10px",
-                  width: tabW,
-                  minWidth: tabW,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  color: act ? TEXT.primary : TEXT.secondary,
-                  fontSize: 13.5,
-                  fontFamily: "inherit",
-                  fontWeight: act ? 600 : 400,
-                  whiteSpace: "nowrap",
-                  transition: "background 0.15s, color 0.15s",
-                  height: "100%",
-                  overflow: "hidden",
-                  animation: isNew
-                    ? "tabSlideIn 0.2s ease forwards"
-                    : isClosing
-                      ? "tabSlideOut 0.18s ease forwards"
-                      : "none",
-                }}
-                onMouseEnter={(e) => {
-                  if (!act) {
-                    hBg(e.currentTarget, BG.elevated);
-                    e.currentTarget.style.color = TEXT.primary;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!act) {
-                    hBg(e.currentTarget, "transparent");
-                    e.currentTarget.style.color = act ? TEXT.primary : TEXT.secondary;
-                  }
-                }}
-              >
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    flex: 1,
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {t.title || "Untitled"}
-                </span>
-                <span
-                  className="tab-close"
-                  onClick={(e) => closeTab(e, tId)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: 16,
-                    borderRadius: 4,
-                    flexShrink: 0,
-                    color: TEXT.secondary,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = BG.surface;
-                    e.currentTarget.style.color = TEXT.primary;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = TEXT.secondary;
-                  }}
-                >
-                  <CloseIcon />
-                </span>
-              </button>,
-            );
-            if (i === tabs.length - 1) {
-              els.push(
-                <div
-                  key="div-end"
-                  style={{
-                    width: 2,
-                    background: BG.divider,
-                    opacity: 0.6,
-                    alignSelf: "stretch",
-                    flexShrink: 0,
-                  }}
-                />,
-              );
-            }
-            return els;
-          });
-        })()}
-      </div>
+      {splitMode === "vertical" && panes ? (() => {
+        const closePaneTab = (paneId) => (e, id) => {
+          e.stopPropagation();
+          const pane = panes[paneId];
+          setTabsForPane(paneId, (prev) => prev.filter((t) => t !== id));
+          if (pane?.activeNote === id) {
+            const remaining = (pane?.tabs || []).filter((t) => t !== id);
+            setActiveNoteForPane(paneId, remaining[remaining.length - 1] || null);
+          }
+          setTimeout(() => closePaneIfEmpty(paneId), 200);
+        };
+        // Correct tab divider position to align with editor split divider.
+        // TopBar sidebar/right-panel sections are wider than main area counterparts
+        // due to padding/border differences, so percentage flex-basis needs a px offset.
+        const sidebarPad = 22; // padding: 0 8px 0 14px
+        const rightPad = 20;   // padding: 0 10px 0 10px
+        const leftExtra = collapsed ? sidebarWidth + sidebarPad : sidebarPad;
+        const rightExtra = rightPanel ? rightPad : rightPanelWidth + rightPad;
+        const totalExtra = leftExtra + rightExtra;
+        const correction = (dividerPosition / 100) * totalExtra - leftExtra;
+        return (
+          <div style={{ flex: 1, display: 'flex', minWidth: 0, overflow: 'hidden', height: '100%' }}>
+            <PaneTabBar
+              tabs={panes.left?.tabs || []}
+              activeNote={panes.left?.activeNote}
+              noteData={noteData}
+              newTabId={newTabId}
+              closingTabs={closingTabs}
+              setActiveNote={(noteId) => { setActivePaneId("left"); setActiveNoteForPane("left", noteId); }}
+              closeTab={closePaneTab("left")}
+              tabFlip={tabFlip}
+              activeTabBg={activeTabBg}
+              chromeBg={chromeBg}
+              tabAreaWidth={tabAreaWidth * (dividerPosition / 100)}
+              tabScrollRef={null}
+              onTabPointerDown={onTabPointerDown}
+              paneId="left"
+              style={{ flex: `0 0 calc(${dividerPosition}% + ${correction}px)`, overflow: "auto" }}
+            />
+            <div style={{
+              width: 4, background: chromeBg,
+              borderRight: `1px solid ${BG.divider}`,
+              flexShrink: 0, alignSelf: "stretch", boxSizing: "border-box",
+            }} />
+            <PaneTabBar
+              tabs={panes.right?.tabs || []}
+              activeNote={panes.right?.activeNote}
+              noteData={noteData}
+              newTabId={newTabId}
+              closingTabs={closingTabs}
+              setActiveNote={(noteId) => { setActivePaneId("right"); setActiveNoteForPane("right", noteId); }}
+              closeTab={closePaneTab("right")}
+              tabFlip={tabFlip}
+              activeTabBg={activeTabBg}
+              chromeBg={chromeBg}
+              tabAreaWidth={tabAreaWidth * ((100 - dividerPosition) / 100)}
+              tabScrollRef={null}
+              onTabPointerDown={onTabPointerDown}
+              paneId="right"
+              style={{ flex: `0 0 calc(${100 - dividerPosition}% - ${correction}px)`, overflow: "auto" }}
+            />
+          </div>
+        );
+      })() : splitMode === "horizontal" && panes ? (() => {
+        const closeTopTab = (e, id) => {
+          e.stopPropagation();
+          const pane = panes.top;
+          setTabsForPane("top", (prev) => prev.filter((t) => t !== id));
+          if (pane?.activeNote === id) {
+            const remaining = (pane?.tabs || []).filter((t) => t !== id);
+            setActiveNoteForPane("top", remaining[remaining.length - 1] || null);
+          }
+          setTimeout(() => closePaneIfEmpty("top"), 200);
+        };
+        return (
+          <PaneTabBar
+            tabs={panes.top?.tabs || []}
+            activeNote={panes.top?.activeNote}
+            noteData={noteData}
+            newTabId={newTabId}
+            closingTabs={closingTabs}
+            setActiveNote={(noteId) => { setActivePaneId("top"); setActiveNoteForPane("top", noteId); }}
+            closeTab={closeTopTab}
+            tabFlip={tabFlip}
+            activeTabBg={activeTabBg}
+            chromeBg={chromeBg}
+            tabAreaWidth={tabAreaWidth}
+            tabScrollRef={tabScrollRef}
+            onTabPointerDown={onTabPointerDown}
+            paneId="top"
+          />
+        );
+      })() : (
+        <PaneTabBar
+          tabs={tabs}
+          activeNote={activeNote}
+          noteData={noteData}
+          newTabId={newTabId}
+          closingTabs={closingTabs}
+          setActiveNote={setActiveNote}
+          closeTab={closeTab}
+          tabFlip={tabFlip}
+          activeTabBg={activeTabBg}
+          chromeBg={chromeBg}
+          tabAreaWidth={tabAreaWidth}
+          tabScrollRef={tabScrollRef}
+          onTabPointerDown={onTabPointerDown}
+          paneId="left"
+        />
+      )}
 
       {/* Top-right drag handle */}
       <div

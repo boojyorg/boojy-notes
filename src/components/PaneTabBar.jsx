@@ -18,7 +18,6 @@ export default function PaneTabBar({
   chromeBg,
   tabAreaWidth,
   tabScrollRef,
-  accentBorder,
   onTabPointerDown,
   paneId,
   variant = "topbar",
@@ -30,7 +29,7 @@ export default function PaneTabBar({
   const tabW = Math.min(200, Math.max(100, tabAreaWidth / Math.max(1, tabs.length)));
 
   const baseStyle = variant === "pane"
-    ? { display: "flex", alignItems: "stretch", flexShrink: 0, height: 36, overflow: "auto" }
+    ? { display: "flex", alignItems: "stretch", flexShrink: 0, height: 44, overflow: "auto" }
     : { display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" };
 
   return (
@@ -40,8 +39,8 @@ export default function PaneTabBar({
       data-pane-tab-bar={paneId}
       style={{
         ...baseStyle,
-        background: tabFlip ? activeTabBg : "transparent",
-        borderBottom: accentBorder ? `2px solid ${accentBorder}` : "none",
+        background: tabFlip ? activeTabBg : (variant === "pane" ? chromeBg : "transparent"),
+        borderBottom: "none",
         boxSizing: "border-box",
         ...styleProp,
       }}

@@ -20,6 +20,9 @@ export default function SettingsModal({
   storageUsed,
   storageLimitMB,
   onSync,
+  noteData,
+  setActiveNote,
+  setSettingsOpenFromParent,
   isDesktop,
   notesDir,
   changeNotesDir,
@@ -378,20 +381,20 @@ export default function SettingsModal({
               <img
                 src={boojyLogo}
                 alt="Boojy"
-                style={{ height: 12, objectFit: "contain", alignSelf: "flex-start" }}
+                style={{ height: 36, objectFit: "contain", alignSelf: "flex-start" }}
                 draggable="false"
               />
-              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <img
                   src={boojyN}
                   alt=""
-                  style={{ height: 12 }}
+                  style={{ height: 29 }}
                   draggable="false"
                 />
                 <div
                   style={{
-                    width: 8,
-                    height: 8,
+                    width: 17,
+                    height: 17,
                     borderRadius: "50%",
                     background: accentColor,
                     flexShrink: 0,
@@ -402,12 +405,12 @@ export default function SettingsModal({
                 <img
                   src={boojyTes}
                   alt=""
-                  style={{ height: 11 }}
+                  style={{ height: 26 }}
                   draggable="false"
                 />
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>
-                v0.1.0
+                v0.1.1
               </span>
             </div>
           </div>
@@ -1034,18 +1037,40 @@ export default function SettingsModal({
                     ? "Syncing\u2026"
                     : syncState === "error"
                       ? "Sync error"
-                      : syncState === "synced"
-                        ? "Synced"
-                        : "Idle";
+                      : syncState === "conflict"
+                        ? "Conflict detected"
+                        : syncState === "offline"
+                          ? "Offline"
+                          : syncState === "synced"
+                            ? "Synced"
+                            : "Idle";
                 const dotColor =
                   syncState === "syncing"
                     ? accentColor
                     : syncState === "error"
                       ? SEMANTIC.error
-                      : syncState === "synced"
-                        ? "#4CAF50"
-                        : TEXT.muted;
-                const storageMB = (storageUsed / (1024 * 1024)).toFixed(1);
+                      : syncState === "conflict"
+                        ? "#f59e0b"
+                        : syncState === "offline"
+                          ? "#9ca3af"
+                          : syncState === "synced"
+                            ? "#4CAF50"
+                            : TEXT.muted;
+                const conflictNotes = noteData
+                  ? Object.values(noteData).filter((n) => n.title && n.title.includes("(conflict "))
+                  : [];
+                const formatBytes = (bytes) => {
+                  if (bytes < 1024) return `${bytes} B`;
+                  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+                  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+                };
+                const formatMB = (mb) => {
+                  if (mb >= 1024) return `${(mb / 1024).toFixed(0)} GB`;
+                  return `${mb.toFixed(0)} MB`;
+                };
+                const storageLabel = formatBytes(storageUsed);
+                const limitLabel = storageLimitMB ? formatMB(storageLimitMB) : "—";
                 const storagePct = storageLimitMB
                   ? Math.min(100, (storageUsed / (storageLimitMB * 1024 * 1024)) * 100)
                   : 0;
@@ -1121,7 +1146,7 @@ export default function SettingsModal({
                       >
                         <span style={{ fontSize: 13, color: TEXT.muted }}>Storage</span>
                         <span style={{ fontSize: 13, color: TEXT.secondary }}>
-                          {storageMB} / {storageLimitMB ? storageLimitMB.toFixed(1) : "—"} MB
+                          {storageLabel} / {limitLabel}
                         </span>
                       </div>
                       <div
@@ -1159,7 +1184,7 @@ export default function SettingsModal({
                         cursor: syncState === "syncing" ? "default" : "pointer",
                         fontFamily: "inherit",
                         transition: "all 0.15s",
-                        marginBottom: 32,
+                        marginBottom: conflictNotes.length > 0 ? 16 : 32,
                       }}
                       onMouseEnter={(e) => {
                         if (syncState !== "syncing")
@@ -1171,6 +1196,76 @@ export default function SettingsModal({
                     >
                       {syncState === "syncing" ? "Syncing\u2026" : "Sync now"}
                     </button>
+
+                    {/* Conflict copies */}
+                    {conflictNotes.length > 0 && (
+                      <div style={{ marginBottom: 32 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#f59e0b",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                            marginBottom: 8,
+                          }}
+                        >
+                          {conflictNotes.length} conflict {conflictNotes.length === 1 ? "copy" : "copies"}
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {conflictNotes.map((note) => (
+                            <div
+                              key={note.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "6px 10px",
+                                borderRadius: 6,
+                                background: theme.overlay(0.04),
+                                border: `1px solid ${theme.overlay(0.06)}`,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: TEXT.secondary,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                  marginRight: 8,
+                                }}
+                              >
+                                {note.title}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setActiveNote(note.id);
+                                  setSettingsOpenFromParent(false);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: accentColor,
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  cursor: "pointer",
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  fontFamily: "inherit",
+                                  flexShrink: 0,
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                              >
+                                Open
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

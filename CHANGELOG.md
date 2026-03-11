@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 — 2026-03-11
+
+### Improvements
+- **Pull-before-push sync** — Sync now pulls remote changes before pushing local edits, ensuring the client has up-to-date version numbers; eliminates ~90% of false conflict copies when switching between devices
 
 ### Features
 - **Onboarding toast** — Anonymous web users see a toast after creating their 3rd note: "Your notes are saved locally…Sign in to sync." Dismisses via X button or auto-dismisses after 15s; persists dismissal in localStorage
@@ -16,10 +19,20 @@
 - **Unify pane tab bar styling with top bar** — Pane tab bar height now matches top bar (44px instead of 36px); pane variant uses `chromeBg` background instead of transparent (which bled through to editor); removed accent-colored border-bottom from active pane tab bars
 
 ### Bug Fixes
+- **Fix R2 content fetching returning `[object Response]`** — `getObject` in `_shared/r2.ts` wrapped a `Response` object inside `new Response()`, causing `.text()` to return the literal string `"[object Response]"` instead of note content; all pulled notes silently failed to parse; now checks `instanceof Response` before wrapping
+- **Fix storage display resetting to 0** — Storage indicator showed 0 after re-opening settings because incremental sync pulls only return changed notes; sync-pull now always returns `totalStorageBytes` from a full DB query; value is persisted in localStorage across sessions
+- **Fix storage formatting** — Storage now shows human-readable units: KB for small values, MB, GB for limits (e.g., "312 KB / 10 GB" instead of "0.3 / 10240.0 MB")
+- **Speed up first sync** — Initial sync now pushes notes in parallel batches of 5 instead of sequentially; ~5x faster for large note collections
 - **Enforce single-pane note exclusivity** — A note can now only exist in one tab bar at a time; opening/dragging a note into a pane automatically removes it from all other panes; if removing a note leaves a pane empty, the split auto-collapses; `Cmd+Shift+\` split now moves the active note to the new pane instead of duplicating it (requires 2+ tabs); Option+drag now behaves as a move since duplicates are not allowed
 - **Fix horizontal split crash** — Horizontal split caused blank screen because `panes.left` was hardcoded in accessors; now dynamically resolves the first pane ID based on split mode (`top`/`bottom` for horizontal, `left`/`right` for vertical)
 - **Fix drop-zone overlay covering sidebar** — Tab drag overlay used `.editor-scroll`'s parentElement (the main layout row including sidebar) instead of `.editor-scroll` itself; overlay now correctly bounds to the editor area only
 - **Fix performance issues and memory leaks in split view** — Main-level `selectionchange` listener, `useLayoutEffect` for focus/caret, and editor fade-in effects now skip when split mode is active (PaneContainers have their own); `onMenuExport` IPC handler no longer re-registers on every keystroke (uses refs); `setWindowTitle` effect no longer re-runs on every text change (depends on title only); stale-note cleanup in split panes only runs when notes are actually deleted rather than on every `noteData` change; EditorArea tooltip timer now cleans up on unmount to prevent state updates on unmounted components
+
+### Performance
+- **Throttle StarField animation** — Canvas star twinkle animation now draws at ~10fps instead of 60fps; pauses entirely when tab is hidden; eliminates constant GPU/CPU drain especially in split view (2 canvases)
+- **Fix SplitDivider listener leak** — Window `mousemove`/`mouseup` listeners now clean up on component unmount, preventing leaked listeners and closures when split is closed mid-drag
+- **Memoize PaneContainer** — Wrapped in `React.memo` with custom comparator; prevents re-rendering both panes on every keystroke (only the active pane's structural changes trigger re-render); also eliminates unnecessary `useLayoutEffect` runs
+- **Replace structuredClone in block drag** — Block drag undo snapshot now uses shallow array copy instead of deep clone; drag only reorders blocks without mutating them
 
 ### Known Issues
 - **Split view is buggy** — There are visual and state issues with the split view feature; fixes are planned

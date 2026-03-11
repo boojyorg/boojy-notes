@@ -92,7 +92,16 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
     ro.observe(parent);
 
     const emptyMult = mode === "empty" ? 1.6 : 1.0;
+    const FRAME_INTERVAL = 100; // ~10fps — stars twinkle slowly, no need for 60fps
+    let lastDrawTime = 0;
     const draw = (time) => {
+      animRef.current = requestAnimationFrame(draw);
+
+      // Skip frame if tab is hidden or interval hasn't elapsed
+      if (document.hidden) return;
+      if (time - lastDrawTime < FRAME_INTERVAL) return;
+      lastDrawTime = time;
+
       const cw = parent.clientWidth;
       const ch = Math.max(parent.scrollHeight, parent.clientHeight);
 
@@ -139,7 +148,6 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
         if (s.radius > 1.0) ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
-      animRef.current = requestAnimationFrame(draw);
     };
     animRef.current = requestAnimationFrame(draw);
 

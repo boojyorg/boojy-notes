@@ -17,13 +17,39 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { noteId, title, content, updatedAt } = await req.json();
+    const { noteId, title, content, updatedAt, expectedVersion } = await req.json();
 
     if (!noteId || content === undefined) {
       return new Response(JSON.stringify({ error: "noteId and content are required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const supabase = createAdminClient();
+
+    // Conflict detection: check current version if expectedVersion is provided
+    if (expectedVersion != null) {
+      const { data: existing } = await supabase
+        .from("notes_metadata")
+        .select("version")
+        .eq("user_id", userId)
+        .eq("note_id", noteId)
+        .single();
+
+      if (existing && existing.version !== expectedVersion) {
+        return new Response(
+          JSON.stringify({
+            conflict: true,
+            noteId,
+            serverVersion: existing.version,
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // Upload content to R2
@@ -37,8 +63,17 @@ Deno.serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Upsert metadata
-    const supabase = createAdminClient();
+    // Get current version to increment
+    const { data: currentRow } = await supabase
+      .from("notes_metadata")
+      .select("version")
+      .eq("user_id", userId)
+      .eq("note_id", noteId)
+      .single();
+
+    const newVersion = (currentRow?.version || 0) + 1;
+
+    // Upsert metadata with incremented version
     const { error: dbError } = await supabase
       .from("notes_metadata")
       .upsert(
@@ -51,6 +86,7 @@ Deno.serve(async (req) => {
           r2_key: r2Key,
           updated_at: updatedAt || new Date().toISOString(),
           deleted: false,
+          version: newVersion,
         },
         { onConflict: "user_id,note_id" },
       );
@@ -58,7 +94,7 @@ Deno.serve(async (req) => {
     if (dbError) throw new Error(`Database error: ${dbError.message}`);
 
     return new Response(
-      JSON.stringify({ success: true, noteId, sizeBytes, contentHash }),
+      JSON.stringify({ success: true, noteId, version: newVersion, sizeBytes, contentHash }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

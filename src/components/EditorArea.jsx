@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
@@ -72,6 +72,7 @@ const EditorArea = memo(function EditorArea({
   setLightbox,
   openNote: openNoteProp,
   onEditorClick,
+  onWikilinkCmdClick,
 }) {
   const { theme } = useTheme();
   const { TEXT, ACCENT } = theme;
@@ -83,6 +84,9 @@ const EditorArea = memo(function EditorArea({
   const [linkTooltip, setLinkTooltip] = useState(null);
   const tooltipTimer = useRef(null);
   const editorContainerRef = useRef(null);
+
+  // Clean up tooltip timer on unmount to prevent state updates on unmounted component
+  useEffect(() => () => clearTimeout(tooltipTimer.current), []);
 
   const onNavigateToNote = useCallback(
     (target, create) => {
@@ -579,7 +583,13 @@ const EditorArea = memo(function EditorArea({
                 if (wikilink) {
                   e.preventDefault();
                   const target = wikilink.getAttribute("data-target");
-                  if (target && onWikilinkClick) onWikilinkClick(target);
+                  if (target) {
+                    if (e.metaKey && onWikilinkCmdClick) {
+                      onWikilinkCmdClick(target);
+                    } else if (onWikilinkClick) {
+                      onWikilinkClick(target);
+                    }
+                  }
                   return;
                 }
               }}
