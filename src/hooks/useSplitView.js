@@ -6,6 +6,47 @@ function createPane(tabs = [], activeNote = null) {
   return { tabs, activeNote };
 }
 
+/** Remove noteId from all panes except keepPaneId. Returns panes unchanged if no removal needed. */
+function removeFromOtherPanes(panes, noteId, keepPaneId) {
+  let changed = false;
+  const newPanes = {};
+  for (const [id, pane] of Object.entries(panes)) {
+    if (id === keepPaneId || !pane.tabs.includes(noteId)) {
+      newPanes[id] = pane;
+      continue;
+    }
+    changed = true;
+    const newTabs = pane.tabs.filter((t) => t !== noteId);
+    let newActive = pane.activeNote;
+    if (pane.activeNote === noteId) {
+      newActive = newTabs[newTabs.length - 1] || null;
+    }
+    newPanes[id] = { tabs: newTabs, activeNote: newActive };
+  }
+  return changed ? newPanes : panes;
+}
+
+/** If in split mode and either pane is empty, collapse to single view. */
+function collapseIfEmpty(state) {
+  if (!state.splitMode) return state;
+  const [firstId, secondId] = PANE_IDS[state.splitMode];
+  const firstPane = state.panes[firstId];
+  const secondPane = state.panes[secondId];
+  if (firstPane.tabs.length > 0 && secondPane.tabs.length > 0) return state;
+  // Keep the non-empty pane (or first if both empty)
+  const keepPane = firstPane.tabs.length > 0 ? firstPane : secondPane;
+  return {
+    ...state,
+    splitMode: null,
+    activePaneId: "left",
+    dividerPosition: 50,
+    panes: {
+      left: { ...keepPane },
+      right: createPane(),
+    },
+  };
+}
+
 function migrateFromFlat(tabs, activeNote) {
   return {
     splitMode: null,
@@ -94,13 +135,18 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
       const paneId = prev.activePaneId;
       const pane = prev.panes[paneId];
       const newTabs = typeof updater === "function" ? updater(pane.tabs) : updater;
-      return {
-        ...prev,
-        panes: {
-          ...prev.panes,
-          [paneId]: { ...pane, tabs: newTabs },
-        },
+      // Find newly added noteIds and remove them from other panes
+      const oldSet = new Set(pane.tabs);
+      let panes = {
+        ...prev.panes,
+        [paneId]: { ...pane, tabs: newTabs },
       };
+      for (const noteId of newTabs) {
+        if (!oldSet.has(noteId)) {
+          panes = removeFromOtherPanes(panes, noteId, paneId);
+        }
+      }
+      return collapseIfEmpty({ ...prev, panes });
     });
   }, []);
 
@@ -136,18 +182,18 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
     setSplitState((prev) => {
       if (prev.splitMode) return prev; // Already split
       const leftPane = prev.panes.left;
+      if (!leftPane.activeNote || leftPane.tabs.length < 2) return prev; // Need 2+ tabs to split
       const [firstId, secondId] = PANE_IDS[direction];
+      const firstTabs = leftPane.tabs.filter((t) => t !== leftPane.activeNote);
+      const firstActive = firstTabs[firstTabs.length - 1] || null;
       return {
         ...prev,
         splitMode: direction,
         activePaneId: secondId,
         dividerPosition: 50,
         panes: {
-          [firstId]: { ...leftPane },
-          [secondId]: createPane(
-            leftPane.activeNote ? [leftPane.activeNote] : [],
-            leftPane.activeNote,
-          ),
+          [firstId]: { tabs: firstTabs, activeNote: firstActive },
+          [secondId]: createPane([leftPane.activeNote], leftPane.activeNote),
         },
       };
     });
@@ -164,24 +210,28 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
         const newTabs = otherPane.tabs.includes(noteId)
           ? otherPane.tabs
           : [...otherPane.tabs, noteId];
-        return {
-          ...prev,
-          activePaneId: otherPaneId,
-          panes: {
-            ...prev.panes,
-            [otherPaneId]: { tabs: newTabs, activeNote: noteId },
-          },
+        let panes = {
+          ...prev.panes,
+          [otherPaneId]: { tabs: newTabs, activeNote: noteId },
         };
+        panes = removeFromOtherPanes(panes, noteId, otherPaneId);
+        return collapseIfEmpty({ ...prev, activePaneId: otherPaneId, panes });
       }
       const leftPane = prev.panes.left;
       const [firstId, secondId] = PANE_IDS[direction];
+      // Remove noteId from first pane if present
+      const firstTabs = leftPane.tabs.filter((t) => t !== noteId);
+      let firstActive = leftPane.activeNote;
+      if (firstActive === noteId) {
+        firstActive = firstTabs[firstTabs.length - 1] || null;
+      }
       return {
         ...prev,
         splitMode: direction,
         activePaneId: secondId,
         dividerPosition: 50,
         panes: {
-          [firstId]: { ...leftPane },
+          [firstId]: { tabs: firstTabs, activeNote: firstActive },
           [secondId]: createPane(noteId ? [noteId] : [], noteId),
         },
       };
@@ -270,14 +320,12 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
       const newTabs = pane.tabs.filter((t) => t !== noteId);
       const idx = Math.max(0, Math.min(index, newTabs.length));
       newTabs.splice(idx, 0, noteId);
-      return {
-        ...prev,
-        activePaneId: paneId,
-        panes: {
-          ...prev.panes,
-          [paneId]: { tabs: newTabs, activeNote: noteId },
-        },
+      let panes = {
+        ...prev.panes,
+        [paneId]: { tabs: newTabs, activeNote: noteId },
       };
+      panes = removeFromOtherPanes(panes, noteId, paneId);
+      return collapseIfEmpty({ ...prev, activePaneId: paneId, panes });
     });
   }, []);
 
@@ -325,23 +373,20 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
     });
   }, []);
 
-  // Duplicate tab to another pane at index (Option+drag)
+  // Duplicate tab to another pane at index (Option+drag — now enforces exclusivity, effectively a move)
   const duplicateTabToPane = useCallback((noteId, toPaneId, insertIndex) => {
     setSplitState((prev) => {
       const toPane = prev.panes[toPaneId];
       if (!toPane) return prev;
-      if (toPane.tabs.includes(noteId)) return prev; // already present
-      const newTabs = [...toPane.tabs];
+      const newTabs = toPane.tabs.filter((t) => t !== noteId);
       const idx = Math.max(0, Math.min(insertIndex, newTabs.length));
       newTabs.splice(idx, 0, noteId);
-      return {
-        ...prev,
-        activePaneId: toPaneId,
-        panes: {
-          ...prev.panes,
-          [toPaneId]: { tabs: newTabs, activeNote: noteId },
-        },
+      let panes = {
+        ...prev.panes,
+        [toPaneId]: { tabs: newTabs, activeNote: noteId },
       };
+      panes = removeFromOtherPanes(panes, noteId, toPaneId);
+      return collapseIfEmpty({ ...prev, activePaneId: toPaneId, panes });
     });
   }, []);
 
@@ -352,14 +397,12 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
       const pane = prev.panes[paneId];
       if (!pane) return prev;
       const newTabs = pane.tabs.includes(noteId) ? pane.tabs : [...pane.tabs, noteId];
-      return {
-        ...prev,
-        activePaneId: paneId,
-        panes: {
-          ...prev.panes,
-          [paneId]: { tabs: newTabs, activeNote: noteId },
-        },
+      let panes = {
+        ...prev.panes,
+        [paneId]: { tabs: newTabs, activeNote: noteId },
       };
+      panes = removeFromOtherPanes(panes, noteId, paneId);
+      return collapseIfEmpty({ ...prev, activePaneId: paneId, panes });
     });
   }, []);
 
