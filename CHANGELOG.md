@@ -1,15 +1,36 @@
 # Changelog
 
-## 0.1.1 — 2026-03-09
+## Unreleased
+
+### Features
+- **Split view** — Open two notes side by side with `Cmd+Shift+\`; each pane has its own tab bar, editor, floating toolbar, and find bar; draggable divider with double-click-to-reset and snap-to-close; `Cmd+1`/`Cmd+2` to switch active pane (indicated by accent border); `Cmd+Click` on wikilinks opens the linked note in the other pane (creates split if needed); drag tabs between panes or to edge zones to create splits; drag notes from sidebar into editor edge zones to create splits; same note can be open in both panes with shared content but independent scroll/cursor; split state persists across app restarts; closing the last tab in a pane auto-collapses back to single view; supports both vertical and horizontal splits; works in Day and Night themes
 
 ### Bug Fixes
+- **Fix horizontal split crash** — Horizontal split caused blank screen because `panes.left` was hardcoded in accessors; now dynamically resolves the first pane ID based on split mode (`top`/`bottom` for horizontal, `left`/`right` for vertical)
+- **Fix drop-zone overlay covering sidebar** — Tab drag overlay used `.editor-scroll`'s parentElement (the main layout row including sidebar) instead of `.editor-scroll` itself; overlay now correctly bounds to the editor area only
+- **Fix performance issues and memory leaks in split view** — Main-level `selectionchange` listener, `useLayoutEffect` for focus/caret, and editor fade-in effects now skip when split mode is active (PaneContainers have their own); `onMenuExport` IPC handler no longer re-registers on every keystroke (uses refs); `setWindowTitle` effect no longer re-runs on every text change (depends on title only); stale-note cleanup in split panes only runs when notes are actually deleted rather than on every `noteData` change; EditorArea tooltip timer now cleans up on unmount to prevent state updates on unmounted components
+
+### Known Issues
+- **Split view is buggy** — There are visual and state issues with the split view feature; fixes are planned
+
+## 0.1.1 — 2026-03-09
+
+### Features
+- **Sync conflict resolution** — When simultaneous edits are made on different devices, a conflict copy is created (e.g. "Note Title (conflict 2026-03-09 12:00:04)") so no data is ever lost; clickable toast notification appears for 8s; conflict copies listed in Settings > Sync with quick-open buttons
+- **Offline sync recovery** — Dirty notes and their content are persisted to localStorage so edits survive app crashes and tab closes while offline; sync resumes automatically on reconnect with online/offline detection
+- **Sync status indicators** — Sync dot in TopBar and Settings reflects conflict (yellow), offline (gray), and error (red) states in addition to syncing/synced/idle
+- **Hide title bar on web** — The draggable title bar with note name is now only shown in the Electron desktop app
+
+### Bug Fixes
+- **Fix sync function routing** — Client was calling a non-existent unified `sync` function; now correctly calls separate `sync-push`, `sync-pull`, `sync-delete` edge functions
+- **Fix isRemoteUpdate race condition** — Replaced single boolean flag with a Map of noteId-to-timestamp entries; stale entries auto-cleaned after 5s to prevent blocking dirty detection
+- **Remove dead storage_usage subscription** — Removed realtime subscription to non-existent `storage_usage` table; 60s polling fallback already covers missed broadcasts
 - **Fix logo images missing in production build** — TopBar and Settings modal images used absolute paths (`/assets/...`) that don't resolve under Electron's `file://` protocol; now imported as ES modules so Vite bundles them correctly
 - **Fix memory leaks from drag event listeners** — Block drag, sidebar drag, and table drag-to-create handlers added `pointermove`/`pointerup` listeners to `window` that weren't removed if the component unmounted mid-drag; now stored in refs and cleaned up on unmount
 
-### Features
-- **Table edge-zone interactions** — Replaced the hover toolbar with edge-based interaction zones: click the left edge to select a row, click the top edge to select a column, hold and drag to reorder rows/columns (400ms hold-to-drag with floating clone and insertion line), hover the bottom/right edge for a `+` button to add rows/columns (click for one, drag to create multiple with live preview and counter badge), right-click context menus for insert/delete operations with column alignment controls, keyboard shortcuts (Arrow keys to move selection, Backspace/Delete to remove, Escape to deselect); header row is locked and cannot be dragged or deleted
+### Features (continued)
 
-### Features
+- **Table edge-zone interactions** — Replaced the hover toolbar with edge-based interaction zones: click the left edge to select a row, click the top edge to select a column, hold and drag to reorder rows/columns (400ms hold-to-drag with floating clone and insertion line), hover the bottom/right edge for a `+` button to add rows/columns (click for one, drag to create multiple with live preview and counter badge), right-click context menus for insert/delete operations with column alignment controls, keyboard shortcuts (Arrow keys to move selection, Backspace/Delete to remove, Escape to deselect); header row is locked and cannot be dragged or deleted
 - **Help button & cheat sheet** — Added a (?) help icon in the top-right corner of the toolbar; clicking it opens a floating quick-reference dropdown with categorized editing syntax, keyboard shortcuts, and feature tips; closes on click-outside or Escape; works in both Day and Night themes
 
 ### Bug Fixes
