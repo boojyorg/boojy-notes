@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — 2026-03-12
+
+### Features
+- **Cross-platform CI release workflow** — GitHub Actions workflow builds macOS and Windows installers on tag push (`v*`), with macOS code signing and notarization
+- **Auto-updater** — App checks for updates on startup via `electron-updater` and GitHub Releases; new "Updates" section in Settings with auto-update toggle, version display, download progress bar, and "Restart & Update" button
+
 ## 0.1.2 — 2026-03-11
 
 ### Improvements

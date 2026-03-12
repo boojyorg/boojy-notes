@@ -31,6 +31,11 @@ export default function SettingsModal({
   spellCheckLanguages,
   onToggleSpellCheck,
   onChangeSpellCheckLanguages,
+  autoUpdateEnabled,
+  onToggleAutoUpdate,
+  updateStatus,
+  onCheckForUpdate,
+  onInstallUpdate,
 }) {
   const {
     theme,
@@ -159,6 +164,14 @@ export default function SettingsModal({
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
+    if (type === "updates")
+      return (
+        <svg {...props}>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      );
     return null;
   };
 
@@ -167,6 +180,7 @@ export default function SettingsModal({
     ...(isDesktop ? [{ id: "storage", label: "Storage" }] : []),
     ...(loggedIn ? [{ id: "sync", label: "Sync" }] : []),
     { id: "appearance", label: "Appearance" },
+    ...(isDesktop ? [{ id: "updates", label: "Updates" }] : []),
   ];
 
   const scrollToSection = (id) => {
@@ -1571,6 +1585,173 @@ export default function SettingsModal({
                 </div>
               )}
             </div>
+
+            {/* ─── Updates ─── */}
+            {isDesktop && (
+              <div ref={(el) => (sectionRefs.current.updates = el)}>
+                <SectionHeader title="Updates" />
+
+                {/* Current version */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "2px 0",
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: TEXT.muted }}>Current version</span>
+                  <span style={{ fontSize: 13, color: TEXT.secondary }}>v{appVersion}</span>
+                </div>
+
+                {/* Auto-update toggle */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 0 2px",
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: TEXT.muted }}>Auto-update</span>
+                  <div
+                    onClick={() => onToggleAutoUpdate && onToggleAutoUpdate(!autoUpdateEnabled)}
+                    style={{
+                      width: 36,
+                      height: 20,
+                      borderRadius: 10,
+                      background: autoUpdateEnabled ? accentColor : theme.overlay(0.06),
+                      border: autoUpdateEnabled ? "none" : `1px solid ${theme.overlay(0.08)}`,
+                      position: "relative",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        position: "absolute",
+                        top: 3,
+                        left: autoUpdateEnabled ? 19 : 3,
+                        transition: "left 0.15s",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Update status */}
+                <div style={{ padding: "10px 0 2px" }}>
+                  {updateStatus?.state === "checking" && (
+                    <span style={{ fontSize: 12, color: TEXT.muted }}>Checking for updates...</span>
+                  )}
+                  {updateStatus?.state === "up-to-date" && (
+                    <span style={{ fontSize: 12, color: TEXT.muted }}>Up to date</span>
+                  )}
+                  {updateStatus?.state === "available" && (
+                    <span style={{ fontSize: 12, color: ACCENT.primary }}>
+                      Update available: v{updateStatus.version}
+                    </span>
+                  )}
+                  {updateStatus?.state === "downloading" && (
+                    <div>
+                      <span style={{ fontSize: 12, color: TEXT.muted }}>
+                        Downloading... {updateStatus.percent}%
+                      </span>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          height: 4,
+                          borderRadius: 2,
+                          background: theme.overlay(0.06),
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${updateStatus.percent}%`,
+                            height: "100%",
+                            background: accentColor,
+                            borderRadius: 2,
+                            transition: "width 0.3s",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {updateStatus?.state === "downloaded" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span style={{ fontSize: 12, color: ACCENT.primary }}>
+                        v{updateStatus.version} ready to install
+                      </span>
+                      <button
+                        onClick={onInstallUpdate}
+                        style={{
+                          background: accentColor,
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "4px 12px",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        Restart & Update
+                      </button>
+                    </div>
+                  )}
+                  {updateStatus?.state === "error" && (
+                    <span style={{ fontSize: 12, color: SEMANTIC?.error || "#f44" }}>
+                      Update error: {updateStatus.message}
+                    </span>
+                  )}
+                  {(!updateStatus || updateStatus.state === "idle") && (
+                    <span style={{ fontSize: 12, color: TEXT.muted }}>No update check yet</span>
+                  )}
+                </div>
+
+                {/* Check for Updates button */}
+                <div style={{ padding: "8px 0" }}>
+                  <button
+                    onClick={onCheckForUpdate}
+                    disabled={
+                      updateStatus?.state === "checking" || updateStatus?.state === "downloading"
+                    }
+                    style={{
+                      background: theme.overlay(0.05),
+                      border: `1px solid ${theme.overlay(0.08)}`,
+                      borderRadius: 6,
+                      color: TEXT.secondary,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      padding: "5px 14px",
+                      cursor:
+                        updateStatus?.state === "checking" || updateStatus?.state === "downloading"
+                          ? "not-allowed"
+                          : "pointer",
+                      opacity:
+                        updateStatus?.state === "checking" || updateStatus?.state === "downloading"
+                          ? 0.5
+                          : 1,
+                      transition: "background 0.15s",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Check for Updates
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Content footer */}
             <div style={{ flex: 1 }} />

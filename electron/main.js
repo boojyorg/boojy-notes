@@ -15,6 +15,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { watch } from "chokidar";
+import { autoUpdater } from "electron-updater";
 import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "./markdown.js";
 import { registerTerminalIPC, killAllTerminals } from "./terminal.js";
 
@@ -710,6 +711,67 @@ ipcMain.handle("toggle-spellcheck", (_event, { enabled, languages }) => {
   return settings;
 });
 
+// ─── Auto-updater ───
+
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+let updateStatus = { state: "idle" };
+
+function sendUpdateStatus(status) {
+  updateStatus = status;
+  if (mainWindow) mainWindow.webContents.send("update-status", status);
+}
+
+autoUpdater.on("checking-for-update", () => {
+  sendUpdateStatus({ state: "checking" });
+});
+
+autoUpdater.on("update-available", (info) => {
+  sendUpdateStatus({ state: "available", version: info.version });
+});
+
+autoUpdater.on("update-not-available", () => {
+  sendUpdateStatus({ state: "up-to-date" });
+});
+
+autoUpdater.on("download-progress", (progress) => {
+  sendUpdateStatus({
+    state: "downloading",
+    percent: Math.round(progress.percent),
+  });
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  sendUpdateStatus({ state: "downloaded", version: info.version });
+});
+
+autoUpdater.on("error", (err) => {
+  sendUpdateStatus({ state: "error", message: err?.message || "Update error" });
+});
+
+ipcMain.handle("check-for-update", () => {
+  autoUpdater.checkForUpdates().catch(() => {});
+});
+
+ipcMain.handle("get-update-status", () => updateStatus);
+
+ipcMain.handle("install-update", () => {
+  autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle("set-auto-update", (_event, enabled) => {
+  const settings = loadSettings();
+  settings.autoUpdateEnabled = enabled;
+  saveSettings(settings);
+  return settings;
+});
+
+ipcMain.handle("get-auto-update", () => {
+  const settings = loadSettings();
+  return settings.autoUpdateEnabled !== false;
+});
+
 // ─── Export IPC handlers ───
 
 ipcMain.handle("export:pdf", async (_event, { html, title }) => {
@@ -946,6 +1008,14 @@ app.whenReady().then(() => {
 
   startWatcher();
   registerTerminalIPC(ipcMain, () => mainWindow, getNotesDir);
+
+  // Auto-update check on startup
+  if (!process.env.VITE_DEV_SERVER_URL) {
+    const s = loadSettings();
+    if (s.autoUpdateEnabled !== false) {
+      autoUpdater.checkForUpdates().catch(() => {});
+    }
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -217,6 +217,10 @@ export default function BoojyNotes() {
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
   const [spellCheckLanguages, setSpellCheckLanguages] = useState(["en-US"]);
 
+  // ── Auto-update state (desktop only) ────────────────────────────────
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
+  const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
+
   // ── Onboarding & persistence warning toasts (web only) ────────────
   const [onboardingToast, setOnboardingToast] = useState(false);
   const [persistenceWarning, setPersistenceWarning] = useState(false);
@@ -549,6 +553,14 @@ export default function BoojyNotes() {
       if (s.spellCheckEnabled !== undefined) setSpellCheckEnabled(s.spellCheckEnabled !== false);
       if (s.spellCheckLanguages) setSpellCheckLanguages(s.spellCheckLanguages);
     });
+  }, []);
+
+  // Load auto-update settings and listen for update status events (desktop only)
+  useEffect(() => {
+    if (!window.electronAPI?.getAutoUpdate) return;
+    window.electronAPI.getAutoUpdate().then((enabled) => setAutoUpdateEnabled(enabled));
+    const cleanup = window.electronAPI.onUpdateStatus?.((status) => setUpdateStatus(status));
+    return () => cleanup?.();
   }, []);
 
   // Listen for menu export/import events (use refs to avoid re-registering on every noteData change)
@@ -1129,6 +1141,20 @@ export default function BoojyNotes() {
     },
     [spellCheckEnabled],
   );
+
+  // ── Auto-update handlers ─────────────────────────────────────────
+  const handleToggleAutoUpdate = useCallback((enabled) => {
+    setAutoUpdateEnabled(enabled);
+    window.electronAPI?.setAutoUpdate?.(enabled);
+  }, []);
+
+  const handleCheckForUpdate = useCallback(() => {
+    window.electronAPI?.checkForUpdate?.();
+  }, []);
+
+  const handleInstallUpdate = useCallback(() => {
+    window.electronAPI?.installUpdate?.();
+  }, []);
 
   const { derivedRootNotes, folderNoteMap } = useMemo(() => {
     const roots = [];
@@ -1750,6 +1776,11 @@ export default function BoojyNotes() {
         spellCheckLanguages={spellCheckLanguages}
         onToggleSpellCheck={handleToggleSpellCheck}
         onChangeSpellCheckLanguages={handleChangeSpellCheckLanguages}
+        autoUpdateEnabled={autoUpdateEnabled}
+        onToggleAutoUpdate={handleToggleAutoUpdate}
+        updateStatus={updateStatus}
+        onCheckForUpdate={handleCheckForUpdate}
+        onInstallUpdate={handleInstallUpdate}
       />
 
       {/* Dev toast */}
