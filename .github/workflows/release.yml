@@ -28,18 +28,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and package
+      # macOS: signed build (when certificate secrets are configured)
+      - name: Build and package (macOS signed)
+        if: runner.os == 'macOS' && env.HAS_CERT == 'true'
         run: npm run build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing (skip if secrets not set)
+          HAS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MACOS_CERTIFICATE != '' }}
-          # macOS notarization
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # macOS: unsigned build (when no certificate secrets)
+      - name: Build and package (macOS unsigned)
+        if: runner.os == 'macOS' && env.HAS_CERT != 'true'
+        run: npm run build:electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HAS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # Windows build
+      - name: Build and package (Windows)
+        if: runner.os == 'Windows'
+        run: npm run build:electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
