@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -28,13 +31,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check for signing certificate
+        id: cert-check
+        if: runner.os == 'macOS'
+        shell: bash
+        run: echo "has_cert=${{ secrets.MACOS_CERTIFICATE != '' }}" >> "$GITHUB_OUTPUT"
+
       # macOS: signed build (when certificate secrets are configured)
       - name: Build and package (macOS signed)
-        if: runner.os == 'macOS' && env.HAS_CERT == 'true'
+        if: runner.os == 'macOS' && steps.cert-check.outputs.has_cert == 'true'
         run: npm run build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HAS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -43,11 +51,10 @@ jobs:
 
       # macOS: unsigned build (when no certificate secrets)
       - name: Build and package (macOS unsigned)
-        if: runner.os == 'macOS' && env.HAS_CERT != 'true'
+        if: runner.os == 'macOS' && steps.cert-check.outputs.has_cert != 'true'
         run: npm run build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HAS_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       # Windows build
@@ -56,17 +63,3 @@ jobs:
         run: npm run build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifacts to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          fail_on_unmatched_files: false
-          files: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.exe
-            dist/*.blockmap
-            dist/latest-mac.yml
-            dist/latest.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
