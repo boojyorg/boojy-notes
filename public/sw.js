@@ -1,4 +1,4 @@
-const CACHE_NAME = "boojy-notes-v1";
+const CACHE_NAME = "boojy-notes-v2";
 
 const PRECACHE_URLS = [
   "/",
@@ -27,7 +27,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for API/Supabase, cache-first for app shell
+// Fetch: network-first for API, stale-while-revalidate for app shell
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
@@ -44,22 +44,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for app shell (HTML, JS, CSS, fonts, images)
+  // Stale-while-revalidate for app shell: serve cached immediately,
+  // fetch fresh copy in background and update cache for next load
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        // Only cache successful same-origin responses
-        if (
-          response.ok &&
-          url.origin === self.location.origin &&
-          event.request.method === "GET"
-        ) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request).then((response) => {
+          if (
+            response.ok &&
+            url.origin === self.location.origin &&
+            event.request.method === "GET"
+          ) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        });
+        return cached || fetchPromise;
+      })
+    )
   );
 });
