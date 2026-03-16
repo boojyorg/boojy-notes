@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { isElectron, isNative } from "../utils/platform";
+import { getAPI } from "../services/apiProvider";
 
 const WRITE_DEBOUNCE_MS = 500;
-const isElectron = typeof window !== "undefined" && !!window.electronAPI;
 
 // Compare blocks structurally (type, text, checked) ignoring IDs
 function blocksEqual(a, b) {
@@ -40,7 +41,7 @@ export function useFileSystem(
   setSidebarOrder,
 ) {
   const [notesDir, setNotesDir] = useState(null);
-  const [loading, setLoading] = useState(isElectron);
+  const [loading, setLoading] = useState(isNative);
 
   const prevNoteData = useRef(null);
   const dirtyNotes = useRef(new Set());
@@ -52,15 +53,16 @@ export function useFileSystem(
 
   // ─── Initial load from disk ───
   useEffect(() => {
-    if (!isElectron) return;
+    if (!isNative) return;
+    const api = getAPI();
 
     let cancelled = false;
     (async () => {
       try {
-        const dir = await window.electronAPI.getNotesDir();
+        const dir = await api.getNotesDir();
         if (!cancelled) setNotesDir(dir);
 
-        const diskNotes = await window.electronAPI.readAllNotes();
+        const diskNotes = await api.readAllNotes();
         if (cancelled) return;
 
         if (Object.keys(diskNotes).length > 0) {
@@ -83,7 +85,7 @@ export function useFileSystem(
           const current = noteDataRef.current;
           if (Object.keys(current).length > 0) {
             for (const note of Object.values(current)) {
-              await window.electronAPI.writeNote(note);
+              await api.writeNote(note);
             }
           }
         }
@@ -101,7 +103,7 @@ export function useFileSystem(
 
   // ─── Detect local changes and debounce writes ───
   useEffect(() => {
-    if (!isElectron) return;
+    if (!isNative) return;
 
     if (isExternalUpdate.current) {
       isExternalUpdate.current = false;
@@ -139,7 +141,8 @@ export function useFileSystem(
 
   // ─── Flush writes to disk ───
   const flush = useCallback(async () => {
-    if (!isElectron) return;
+    if (!isNative) return;
+    const api = getAPI();
 
     const dirty = [...dirtyNotes.current];
     for (const noteId of dirty) {
@@ -150,7 +153,7 @@ export function useFileSystem(
       }
       if (note) {
         try {
-          await window.electronAPI.writeNote(note);
+          await api.writeNote(note);
         } catch (err) {
           console.error("useFileSystem: write failed", noteId, err);
         }
@@ -163,10 +166,10 @@ export function useFileSystem(
       try {
         const trashInfo = trashedNotesRef?.current?.get(noteId);
         if (trashInfo) {
-          await window.electronAPI.trashNote(noteId, trashInfo.title, trashInfo.folder);
+          await api.trashNote(noteId, trashInfo.title, trashInfo.folder);
           trashedNotesRef.current.delete(noteId);
         } else {
-          await window.electronAPI.deleteNoteFile(noteId);
+          await api.deleteNoteFile(noteId);
         }
       } catch (err) {
         console.error("useFileSystem: delete failed", noteId, err);
@@ -178,7 +181,7 @@ export function useFileSystem(
   const flushRef = useRef(flush);
   flushRef.current = flush;
 
-  // ─── Listen for external file changes (chokidar → IPC) ───
+  // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
   useEffect(() => {
     if (!isElectron) return;
 
@@ -322,5 +325,5 @@ export function useFileSystem(
     }
   }, [setNoteData, setCustomFolders]);
 
-  return { isElectron, notesDir, loading, changeNotesDir };
+  return { isElectron, isNative, notesDir, loading, changeNotesDir };
 }

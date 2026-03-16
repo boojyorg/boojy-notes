@@ -1,4 +1,6 @@
 import { useRef, useEffect } from "react";
+import { isNative } from "../utils/platform";
+import { getAPI } from "../services/apiProvider";
 import { runAutoScroll } from "../utils/domHelpers";
 import {
   findTabBarUnderCursor,
@@ -51,8 +53,8 @@ export function useSidebarDrag({
       ...prev,
       [folderPath]: { ...(prev[folderPath] || {}), ...meta },
     }));
-    if (window.electronAPI?.writeMeta) {
-      window.electronAPI.writeMeta(folderPath, { ...(sidebarOrder[folderPath] || {}), ...meta });
+    if (isNative && getAPI()?.writeMeta) {
+      getAPI().writeMeta(folderPath, { ...(sidebarOrder[folderPath] || {}), ...meta });
     }
   };
 

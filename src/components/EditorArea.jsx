@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { getAPI } from "../services/apiProvider";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
@@ -39,6 +40,7 @@ const EditorArea = memo(
     handleEditorKeyDown,
     handleEditorInput,
     handleEditorPaste,
+    handleEditorCopy,
     handleEditorPointerDown,
     handleEditorMouseDown,
     handleEditorMouseUp,
@@ -278,10 +280,11 @@ const EditorArea = memo(
 
     const handleImageReplace = useCallback(
       async (noteId, blockIndex) => {
-        if (!window.electronAPI) return;
-        const picked = await window.electronAPI.pickImageFile();
+        const api = getAPI();
+        if (!api) return;
+        const picked = await api.pickImageFile();
         if (!picked) return;
-        const filename = await window.electronAPI.saveImage({
+        const filename = await api.saveImage({
           fileName: picked.fileName,
           dataBase64: picked.dataBase64,
         });
@@ -291,21 +294,24 @@ const EditorArea = memo(
     );
 
     const handleImageCopyImage = useCallback((src) => {
-      if (window.electronAPI?.copyImageToClipboard) {
-        window.electronAPI.copyImageToClipboard(src);
+      const api = getAPI();
+      if (api?.copyImageToClipboard) {
+        api.copyImageToClipboard(src);
       }
     }, []);
 
     const handleFileOpen = useCallback(async (src) => {
-      if (!window.electronAPI?.resolveAttachment) return;
-      const absPath = await window.electronAPI.resolveAttachment(src);
-      if (absPath) window.electronAPI.openPath(absPath);
+      const api = getAPI();
+      if (!api?.resolveAttachment) return;
+      const absPath = await api.resolveAttachment(src);
+      if (absPath && api.openPath) api.openPath(absPath);
     }, []);
 
     const handleFileShowInFolder = useCallback(async (src) => {
-      if (!window.electronAPI?.resolveAttachment) return;
-      const absPath = await window.electronAPI.resolveAttachment(src);
-      if (absPath) window.electronAPI.showItemInFolder(absPath);
+      const api = getAPI();
+      if (!api?.resolveAttachment) return;
+      const absPath = await api.resolveAttachment(src);
+      if (absPath && api.showItemInFolder) api.showItemInFolder(absPath);
     }, []);
 
     // Click outside image to deselect
@@ -543,6 +549,7 @@ const EditorArea = memo(
                 }}
                 onInput={handleEditorInput}
                 onPaste={handleEditorPaste}
+                onCopy={handleEditorCopy}
                 onPointerDown={handleEditorPointerDown}
                 onMouseMove={handleEditorMouseMove}
                 onMouseLeave={handleEditorMouseLeave}
@@ -571,8 +578,9 @@ const EditorArea = memo(
                     e.preventDefault();
                     const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
                     if (url) {
-                      if (window.electronAPI?.openExternal) {
-                        window.electronAPI.openExternal(url);
+                      const api = getAPI();
+                      if (api?.openExternal) {
+                        api.openExternal(url);
                       } else {
                         window.open(url, "_blank");
                       }
@@ -703,8 +711,8 @@ const EditorArea = memo(
                 url={linkCtxMenu.url}
                 onOpen={() => {
                   if (linkCtxMenu.linkType === "external") {
-                    if (window.electronAPI?.openExternal)
-                      window.electronAPI.openExternal(linkCtxMenu.url);
+                    const api = getAPI();
+                    if (api?.openExternal) api.openExternal(linkCtxMenu.url);
                     else window.open(linkCtxMenu.url, "_blank");
                   } else {
                     if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);

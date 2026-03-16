@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.5 — 2026-03-16
+
+### Bug Fixes
+- **Fix copy/paste losing paragraph breaks and block types in web browser** — Pasting HTML with block-level elements (`<p>`, `<div>`, `<li>`, headings) no longer merges all text together; `sanitizeNode` now inserts `<br>` separators when unwrapping block elements. Copy handler now encodes block structure (type, text, metadata) via custom clipboard data so pasting within the editor preserves H1/H2/H3, bullets, checkboxes, blockquotes, and numbered list types. External paste and plain-text fallback still work as before
+- **Fix editor lag on long documents** — Eliminated two redundant DOMParser calls per keystroke by introducing `domNodeToMarkdown()` that walks live DOM elements directly; hoisted 10 regex pattern compilations from per-keystroke to module scope; added length guard to skip pattern matching on blocks with real content
+
+### Features
+- **Android support** — Added Android platform via Capacitor; all existing iOS Capacitor code (filesystem, attachments, settings, camera) works identically on Android with zero code changes; added Android back button handling
+- **Capacitor iOS support** — Added Capacitor integration for iOS, reusing the existing React codebase; implemented unified API provider pattern (`src/services/apiProvider.js`) so all 14+ files that reference the native API use a single abstraction instead of direct `window.electronAPI` calls; created `src/services/nativeAPI.js` implementing the full electronAPI interface (~46 methods) backed by Capacitor plugins with .md file storage format matching Electron for future iCloud sync; added cross-platform attachment URL resolution, platform detection utilities, and Capacitor project skeleton with iOS platform
+
+### Improvements
+- **Component test coverage** — Added first component/integration tests (EditableBlock, SlashMenu, useBlockOperations) using @testing-library/react; set up test infrastructure with vitest jsdom environment, global mocks, and block data factories; total tests: 200 (up from 158)
+
+## 0.1.4 — 2026-03-16
+
+### Bug Fixes
+- **Fix multi-block copy/paste collapsing into one block** — Copying text across multiple blocks and pasting now preserves all blocks and their types (headings, bullets, checkboxes, etc.) instead of merging everything into a single paragraph; also adds custom copy/cut handlers for cross-block selections and splits external multi-line pastes into separate blocks
+
+### Features
+- **Mobile responsive layout** — Full mobile-friendly layout for viewports ≤768px: hamburger menu opens sidebar as slide-in overlay with backdrop, compact top bar with note title and new-note button, full-screen settings with stacked sections, auto-close sidebar on note select, auto-open sidebar when no note selected
+
+### Improvements
+- **Larger mobile top bar buttons** — Increased top bar height to 48px, icon sizes to 19px, and button padding to 12px for better touch targets on mobile
+- **Opaque mobile settings background** — Settings modal uses solid `BG.darkest` on mobile instead of semi-transparent `modalBg` to prevent editor content bleeding through
+- **Full-screen mobile sidebar** — Sidebar now covers the entire screen (top: 0) instead of starting below the top bar, eliminating the ghostly blur effect; backdrop opacity increased to 0.55
+
+### Known Bugs
+- **"Type / for commands..." placeholder too dim in dark mode** — The empty-block placeholder text is barely visible in dark mode; should be brighter
+- **Placeholder doesn't reappear after idle** — After typing and then pausing for a few seconds, the "Type / for commands..." placeholder should fade back in over ~1s to remind users of the slash command feature
+
 ## 0.1.3 — 2026-03-12
 
 ### Features

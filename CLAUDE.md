@@ -35,9 +35,17 @@ When making bug fixes or feature changes:
 1. Bump version in `package.json` (the app version in Settings reads from here automatically — never hardcode versions elsewhere)
 2. Update CHANGELOG.md heading from "Unreleased" to the version number and date
 3. Run `npm test` and `npm run format:check` before committing to catch CI failures early
-4. Commit all changes
+4. Commit all changes and push to `master`
 5. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
-6. Build and distribute
+
+## Deployment
+
+Three platforms are deployed via two independent pipelines:
+
+- **Web (boojy.org):** Cloudflare Pages auto-deploys on every push to `master`. Project name: `boojy`. Builds with `ELECTRON_DISABLE=1 npm run build` and serves from `dist/`.
+- **macOS + Windows:** GitHub Actions (`release.yml`) triggers on `v*` tag push. Builds Electron installers and uploads them to the GitHub Release.
+
+This means pushing to `master` (step 4) deploys the web version, and pushing the tag (step 5) builds the desktop installers. Both happen as part of a single release.
 
 ## Code Signing Secrets (GitHub)
 

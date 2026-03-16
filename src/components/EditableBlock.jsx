@@ -1,6 +1,8 @@
 import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
+import { resolveAttachmentUrl, resolveAttachmentUrlSync } from "../utils/attachmentUrl";
+import { getAPI } from "../services/apiProvider";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -27,7 +29,15 @@ function ImageBlock({
   const containerRef = useRef(null);
   const dragRef = useRef(null);
 
-  const resolvedSrc = src ? (src.startsWith("data:") ? src : `boojy-att://${src}`) : "";
+  const [resolvedSrc, setResolvedSrc] = useState(() => {
+    if (!src) return "";
+    const sync = resolveAttachmentUrlSync(src);
+    return sync || "";
+  });
+  useEffect(() => {
+    if (!src || src.startsWith("data:")) return;
+    resolveAttachmentUrl(src).then(setResolvedSrc);
+  }, [src]);
 
   const [ctxMenu, setCtxMenu] = useState(null);
 
@@ -318,10 +328,12 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
   const [ctxMenu, setCtxMenu] = useState(null);
 
   useEffect(() => {
-    if (fileSize == null && src && window.electronAPI?.getFileSize) {
-      window.electronAPI.getFileSize(src).then((s) => {
-        if (s != null) setFileSize(s);
-      });
+    if (fileSize == null && src && getAPI()?.getFileSize) {
+      getAPI()
+        .getFileSize(src)
+        .then((s) => {
+          if (s != null) setFileSize(s);
+        });
     }
   }, [src, fileSize]);
 

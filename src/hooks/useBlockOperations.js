@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import { genBlockId } from "../utils/storage";
+import { isNative } from "../utils/platform";
+import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
   commitNoteData,
@@ -95,7 +97,8 @@ export function useBlockOperations({
   const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
   const saveAndInsertImage = async (noteId, afterIndex, file) => {
-    if (!window.electronAPI) return;
+    const api = getAPI();
+    if (!api) return;
     try {
       const dataBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -116,13 +119,13 @@ export function useBlockOperations({
         finalFileName = `paste-${ts}${ext}`;
       }
       if (IMAGE_EXTS.has(ext)) {
-        const filename = await window.electronAPI.saveImage({
+        const filename = await api.saveImage({
           fileName: finalFileName,
           dataBase64,
         });
         insertImageBlock(noteId, afterIndex, filename, finalFileName.replace(/\.[^.]+$/, ""));
       } else {
-        const result = await window.electronAPI.saveAttachment({ fileName: file.name, dataBase64 });
+        const result = await api.saveAttachment({ fileName: file.name, dataBase64 });
         insertFileBlock(noteId, afterIndex, result.filename, result.filename, result.size);
       }
     } catch (err) {

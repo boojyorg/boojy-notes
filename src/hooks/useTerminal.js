@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { isElectron } from "../utils/platform";
 
 let tabIdCounter = 0;
 
@@ -54,8 +55,9 @@ export function useTerminal() {
   // Cleanup all PTYs on unmount
   useEffect(() => {
     return () => {
-      const api = window.electronAPI?.terminal;
-      if (api) api.killAll().catch(() => {});
+      if (isElectron && window.electronAPI?.terminal) {
+        window.electronAPI.terminal.killAll().catch(() => {});
+      }
     };
   }, []);
 

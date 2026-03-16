@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { htmlToInlineMarkdown, sanitizeInlineHtml } from "../utils/inlineFormatting";
+import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
 export default function FindBar({
   editorRef,
@@ -128,7 +128,7 @@ export default function FindBar({
     if (!el) return;
 
     // Read current text, replace the match
-    const currentText = htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML));
+    const currentText = domNodeToMarkdown(el);
     const lowerText = currentText.toLowerCase();
     const lowerTerm = searchTerm.toLowerCase();
 

@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { getBlockFromNode } from "../utils/domHelpers";
-import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../utils/inlineFormatting";
+import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
 export function useInlineFormatting({
   blockRefs,
@@ -20,8 +20,7 @@ export function useInlineFormatting({
     const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
     if (!info) return;
-    const rawHtml = sanitizeInlineHtml(info.el.innerHTML);
-    const text = htmlToInlineMarkdown(rawHtml)
+    const text = domNodeToMarkdown(info.el)
       .replace(/[\n\r]+$/, "")
       .replace(/^[\n\r]+/, "");
     updateBlockText(activeNoteRef.current, info.blockIndex, text);

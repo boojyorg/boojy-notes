@@ -1,10 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
-import {
-  inlineMarkdownToHtml,
-  htmlToInlineMarkdown,
-  sanitizeInlineHtml,
-} from "../utils/inlineFormatting";
+import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
 
@@ -129,7 +125,7 @@ export default function TableBlock({
 
   const handleCellBlur = useCallback(
     (e, rowIdx, colIdx) => {
-      const value = htmlToInlineMarkdown(sanitizeInlineHtml(e.target.innerHTML));
+      const value = domNodeToMarkdown(e.target);
       if (value !== rows[rowIdx][colIdx]) {
         updateCell(rowIdx, colIdx, value);
       }

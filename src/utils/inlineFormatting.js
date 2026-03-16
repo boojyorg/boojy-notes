@@ -227,10 +227,25 @@ function sanitizeNode(sourceNode) {
         }
 
         frag.appendChild(el);
-      } else if (tag === "DIV" || tag === "P") {
-        // Unwrap block elements, keep content
+      } else if (
+        tag === "DIV" ||
+        tag === "P" ||
+        tag === "LI" ||
+        tag === "H1" ||
+        tag === "H2" ||
+        tag === "H3" ||
+        tag === "H4" ||
+        tag === "H5" ||
+        tag === "H6"
+      ) {
+        // Unwrap block elements, but preserve separation as line breaks
         const innerFrag = sanitizeNode(child);
-        frag.appendChild(innerFrag);
+        if (innerFrag.textContent.trim()) {
+          if (frag.childNodes.length > 0 && frag.lastChild?.nodeName !== "BR") {
+            frag.appendChild(document.createElement("br"));
+          }
+          frag.appendChild(innerFrag);
+        }
       } else {
         // Unknown tag: recurse children only (strip the tag)
         const innerFrag = sanitizeNode(child);
@@ -243,6 +258,76 @@ function sanitizeNode(sourceNode) {
   const container = document.createElement("div");
   container.appendChild(frag);
   return container;
+}
+
+/**
+ * Convert a live DOM element's childNodes directly to inline markdown.
+ * Merges sanitizeInlineHtml + htmlToInlineMarkdown into a single walk —
+ * no DOMParser, no innerHTML serialisation. Use this on the hot path
+ * (every keystroke) where `el` is already in the document.
+ */
+export function domNodeToMarkdown(element) {
+  if (!element) return "";
+  return walkLiveNode(element);
+}
+
+function walkLiveNode(node) {
+  let result = "";
+  for (const child of node.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      result += child.textContent;
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const tag = child.nodeName;
+      const inner = walkLiveNode(child);
+
+      if (tag === "STRONG" || tag === "B") {
+        if (inner.trim()) result += `**${inner}**`;
+      } else if (tag === "EM" || tag === "I") {
+        if (inner.trim()) result += `*${inner}*`;
+      } else if (tag === "CODE") {
+        if (inner.trim()) result += `\`${inner}\``;
+      } else if (tag === "DEL" || tag === "S") {
+        if (inner.trim()) result += `~~${inner}~~`;
+      } else if (tag === "MARK") {
+        if (inner.trim()) result += `==${inner}==`;
+      } else if (tag === "A") {
+        const href = child.getAttribute("href") || "";
+        const linkText = inner.replace(/\u2197/g, "");
+        if (linkText === href) {
+          result += linkText;
+        } else {
+          result += `[${linkText}](${href})`;
+        }
+      } else if (tag === "SPAN") {
+        if (child.classList.contains("external-link-icon")) {
+          continue;
+        }
+        if (child.classList.contains("wikilink")) {
+          const target = child.getAttribute("data-target") || inner;
+          if (target === inner) {
+            result += `[[${inner}]]`;
+          } else {
+            result += `[[${target}|${inner}]]`;
+          }
+        } else if (child.classList.contains("inline-tag")) {
+          result += inner;
+        } else {
+          result += inner;
+        }
+      } else if (tag === "BR") {
+        if (child.nextSibling) result += "\n";
+      } else if (tag === "DIV") {
+        const divContent = walkLiveNode(child);
+        if (divContent) {
+          if (result && !result.endsWith("\n")) result += "\n";
+          result += divContent;
+        }
+      } else {
+        result += inner;
+      }
+    }
+  }
+  return result;
 }
 
 /**

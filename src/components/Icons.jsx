@@ -73,8 +73,8 @@ export const CloseIcon = () => (
     />
   </svg>
 );
-export const UndoIcon = () => (
-  <Icon size={16.5}>
+export const UndoIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
     <path
       d="M4 6H10C11.66 6 13 7.34 13 9C13 10.66 11.66 12 10 12H8"
       stroke="currentColor"
@@ -91,8 +91,8 @@ export const UndoIcon = () => (
     />
   </Icon>
 );
-export const RedoIcon = () => (
-  <Icon size={16.5}>
+export const RedoIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
     <path
       d="M12 6H6C4.34 6 3 7.34 3 9C3 10.66 4.34 12 6 12H8"
       stroke="currentColor"
@@ -162,6 +162,18 @@ export const HelpIcon = () => (
     >
       ?
     </text>
+  </Icon>
+);
+export const HamburgerIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
+    <path d="M2.5 4.5H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <path d="M2.5 8H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <path d="M2.5 11.5H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </Icon>
+);
+export const PlusIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
+    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </Icon>
 );
 export const TrashIcon = () => (

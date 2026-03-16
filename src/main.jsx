@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./context/ThemeContext";
 import BoojyNotes from "./BoojyNotes";
+import { isWeb, isCapacitor } from "./utils/platform";
 
 // Inject CSS Custom Highlight API styles for find-in-note
 const highlightStyle = document.createElement("style");
@@ -19,7 +20,25 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>,
 );
 
-// Register service worker for PWA (web only, not Electron)
-if (!window.electronAPI && "serviceWorker" in navigator) {
+// Register service worker for PWA (web only, not Electron or Capacitor)
+if (isWeb && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+// Dismiss Capacitor splash screen after render
+if (isCapacitor) {
+  import("@capacitor/splash-screen").then(({ SplashScreen }) => {
+    SplashScreen.hide();
+  });
+
+  // Handle Android hardware back button
+  import("@capacitor/app").then(({ App }) => {
+    App.addListener("backButton", ({ canGoBack }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        App.minimizeApp();
+      }
+    });
+  });
 }

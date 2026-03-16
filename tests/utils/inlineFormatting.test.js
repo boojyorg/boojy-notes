@@ -7,6 +7,7 @@ import {
   stripMarkdownFormatting,
   htmlToInlineMarkdown,
   sanitizeInlineHtml,
+  domNodeToMarkdown,
 } from "../../src/utils/inlineFormatting.js";
 
 // --- inlineMarkdownToHtml ---
@@ -237,5 +238,108 @@ describe("sanitizeInlineHtml", () => {
 
   it("strips empty formatting tags", () => {
     expect(sanitizeInlineHtml("<strong>  </strong>")).toBe("");
+  });
+});
+
+// --- domNodeToMarkdown ---
+
+function makeEl(html) {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  return div;
+}
+
+describe("domNodeToMarkdown", () => {
+  it("returns empty for null", () => {
+    expect(domNodeToMarkdown(null)).toBe("");
+  });
+
+  it("returns plain text from text nodes", () => {
+    expect(domNodeToMarkdown(makeEl("hello world"))).toBe("hello world");
+  });
+
+  it("converts strong to bold markdown", () => {
+    expect(domNodeToMarkdown(makeEl("<strong>bold</strong>"))).toBe("**bold**");
+  });
+
+  it("converts b to bold markdown", () => {
+    expect(domNodeToMarkdown(makeEl("<b>bold</b>"))).toBe("**bold**");
+  });
+
+  it("converts em to italic markdown", () => {
+    expect(domNodeToMarkdown(makeEl("<em>italic</em>"))).toBe("*italic*");
+  });
+
+  it("converts i to italic markdown", () => {
+    expect(domNodeToMarkdown(makeEl("<i>italic</i>"))).toBe("*italic*");
+  });
+
+  it("converts code to backticks", () => {
+    expect(domNodeToMarkdown(makeEl("<code>x</code>"))).toBe("`x`");
+  });
+
+  it("converts del to strikethrough", () => {
+    expect(domNodeToMarkdown(makeEl("<del>deleted</del>"))).toBe("~~deleted~~");
+  });
+
+  it("converts mark to highlight", () => {
+    expect(domNodeToMarkdown(makeEl("<mark>highlighted</mark>"))).toBe("==highlighted==");
+  });
+
+  it("converts wikilink span", () => {
+    const html = '<span class="wikilink" data-target="My Note">My Note</span>';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("[[My Note]]");
+  });
+
+  it("converts aliased wikilink span", () => {
+    const html = '<span class="wikilink" data-target="Target">Display</span>';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("[[Target|Display]]");
+  });
+
+  it("converts link with different text to markdown link", () => {
+    const html = '<a href="https://example.com">Click<span class="external-link-icon">\u2197</span></a>';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("[Click](https://example.com)");
+  });
+
+  it("converts bare URL link to plain URL", () => {
+    const html = '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("https://example.com");
+  });
+
+  it("skips external-link-icon spans", () => {
+    const html = 'text<span class="external-link-icon">\u2197</span>more';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("textmore");
+  });
+
+  it("passes through inline-tag spans", () => {
+    const html = '<span class="inline-tag">#mytag</span>';
+    expect(domNodeToMarkdown(makeEl(html))).toBe("#mytag");
+  });
+
+  it("skips empty formatting elements", () => {
+    expect(domNodeToMarkdown(makeEl("<strong>  </strong>"))).toBe("");
+  });
+
+  it("handles nested formatting", () => {
+    expect(domNodeToMarkdown(makeEl("<strong><em>both</em></strong>"))).toBe("***both***");
+  });
+
+  it("handles mixed content", () => {
+    const html = "hello <strong>bold</strong> and <em>italic</em>";
+    expect(domNodeToMarkdown(makeEl(html))).toBe("hello **bold** and *italic*");
+  });
+
+  it("produces same output as htmlToInlineMarkdown for typical content", () => {
+    const cases = [
+      "<strong>bold</strong> text",
+      "<em>italic</em>",
+      "<code>code</code>",
+      '<span class="wikilink" data-target="Note">Note</span>',
+      "<del>deleted</del>",
+      "<mark>marked</mark>",
+    ];
+    for (const html of cases) {
+      expect(domNodeToMarkdown(makeEl(html))).toBe(htmlToInlineMarkdown(html));
+    }
   });
 });

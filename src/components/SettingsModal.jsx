@@ -6,6 +6,7 @@ import boojyN from "/assets/boojy-notes-text-N.png";
 import boojyTes from "/assets/boojy-notes.text-tes.png";
 
 export default function SettingsModal({
+  isMobile,
   settingsOpen,
   setSettingsOpen,
   settingsTab,
@@ -236,7 +237,7 @@ export default function SettingsModal({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          width: 280,
+          width: isMobile ? "100%" : 280,
           height: 36,
           borderRadius: 8,
           background: hovered ? theme.overlay(0.08) : theme.overlay(0.05),
@@ -259,188 +260,228 @@ export default function SettingsModal({
     );
   };
 
+  // ── Branding footer (shared between mobile & desktop) ──
+  const BrandingFooter = () => (
+    <div style={{ padding: "24px 0 16px", display: "flex", flexDirection: "column", gap: 3 }}>
+      <img
+        src={boojyLogo}
+        alt="Boojy"
+        style={{ height: 36, objectFit: "contain", alignSelf: "flex-start" }}
+        draggable="false"
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+        <img src={boojyN} alt="" style={{ height: 29 }} draggable="false" />
+        <div
+          style={{
+            width: 17,
+            height: 17,
+            borderRadius: "50%",
+            background: accentColor,
+            flexShrink: 0,
+            position: "relative",
+            top: 0.5,
+          }}
+        />
+        <img src={boojyTes} alt="" style={{ height: 26 }} draggable="false" />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>
+        v{appVersion}
+      </span>
+    </div>
+  );
+
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={() => setSettingsOpen(false)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 400,
-          background: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
-      />
+      {/* Backdrop — desktop only */}
+      {!isMobile && (
+        <div
+          onClick={() => setSettingsOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 400,
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+        />
+      )}
 
       {/* Modal */}
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 401,
-          width: 640,
-          maxHeight: 480,
-          background: theme.modalBg,
-          border: `1px solid ${theme.overlay(0.06)}`,
-          borderRadius: 16,
-          boxShadow: theme.modalShadow,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
+        style={
+          isMobile
+            ? {
+                position: "fixed",
+                inset: 0,
+                zIndex: 401,
+                background: BG.darkest,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }
+            : {
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 401,
+                width: 640,
+                maxHeight: 480,
+                background: theme.modalBg,
+                border: `1px solid ${theme.overlay(0.06)}`,
+                borderRadius: 16,
+                boxShadow: theme.modalShadow,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }
+        }
       >
         {/* Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
+            justifyContent: isMobile ? "flex-start" : "center",
+            padding: isMobile ? "12px 16px" : 16,
             position: "relative",
             borderBottom: `1px solid ${theme.overlay(0.06)}`,
             flexShrink: 0,
+            gap: isMobile ? 12 : 0,
           }}
         >
+          {isMobile ? (
+            <button
+              onClick={() => setSettingsOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 8,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                color: TEXT.secondary,
+                fontSize: 18,
+              }}
+            >
+              {"\u2190"}
+            </button>
+          ) : null}
           <span style={{ fontSize: 18, fontWeight: 600, color: TEXT.primary }}>Settings</span>
-          <button
-            onClick={() => setSettingsOpen(false)}
-            style={{
-              position: "absolute",
-              right: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "none",
-              border: "none",
-              color: TEXT.muted,
-              fontSize: 16,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "color 0.15s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
-          >
-            {"\u2715"}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => setSettingsOpen(false)}
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: "none",
+                border: "none",
+                color: TEXT.muted,
+                fontSize: 16,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
+            >
+              {"\u2715"}
+            </button>
+          )}
         </div>
 
-        {/* Body: sidebar + content */}
+        {/* Body: sidebar + content (desktop) or just content (mobile) */}
         <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-          {/* Sidebar */}
-          <div
-            style={{
-              width: 160,
-              flexShrink: 0,
-              padding: "16px 12px",
-              borderRight: `1px solid ${theme.overlay(0.06)}`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-            }}
-          >
-            {sidebarItems.map((item) => {
-              const active = settingsTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  style={{
-                    height: 36,
-                    borderRadius: 8,
-                    paddingLeft: 12,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontSize: 14,
-                    fontWeight: 500,
-                    background: active ? `${ACCENT.primary}1A` : "transparent",
-                    border: "none",
-                    color: active ? ACCENT.primary : TEXT.secondary,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    transition: "background 0.15s, color 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = theme.overlay(0.03);
-                      e.currentTarget.style.color = TEXT.primary;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = TEXT.secondary;
-                    }
-                  }}
-                >
-                  <span
+          {/* Sidebar — desktop only */}
+          {!isMobile && (
+            <div
+              style={{
+                width: 160,
+                flexShrink: 0,
+                padding: "16px 12px",
+                borderRight: `1px solid ${theme.overlay(0.06)}`,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              {sidebarItems.map((item) => {
+                const active = settingsTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
                     style={{
-                      width: 20,
+                      height: 36,
+                      borderRadius: 8,
+                      paddingLeft: 12,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      gap: 10,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      background: active ? `${ACCENT.primary}1A` : "transparent",
+                      border: "none",
+                      color: active ? ACCENT.primary : TEXT.secondary,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "background 0.15s, color 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.background = theme.overlay(0.03);
+                        e.currentTarget.style.color = TEXT.primary;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = TEXT.secondary;
+                      }
                     }}
                   >
-                    <SidebarIcon type={item.id} color={active ? ACCENT.primary : TEXT.muted} />
-                  </span>
-                  {item.label}
-                </button>
-              );
-            })}
-            {/* Spacer */}
-            <div style={{ flex: 1 }} />
-            {/* Sidebar footer — branding */}
-            <div
-              style={{ padding: "0 12px 16px", display: "flex", flexDirection: "column", gap: 3 }}
-            >
-              <img
-                src={boojyLogo}
-                alt="Boojy"
-                style={{ height: 36, objectFit: "contain", alignSelf: "flex-start" }}
-                draggable="false"
-              />
-              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <img src={boojyN} alt="" style={{ height: 29 }} draggable="false" />
-                <div
-                  style={{
-                    width: 17,
-                    height: 17,
-                    borderRadius: "50%",
-                    background: accentColor,
-                    flexShrink: 0,
-                    position: "relative",
-                    top: 0.5,
-                  }}
-                />
-                <img src={boojyTes} alt="" style={{ height: 26 }} draggable="false" />
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: TEXT.muted, marginTop: 9 }}>
-                v{appVersion}
-              </span>
+                    <span
+                      style={{
+                        width: 20,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <SidebarIcon type={item.id} color={active ? ACCENT.primary : TEXT.muted} />
+                    </span>
+                    {item.label}
+                  </button>
+                );
+              })}
+              {/* Spacer */}
+              <div style={{ flex: 1 }} />
+              {/* Sidebar footer — branding */}
+              <BrandingFooter />
             </div>
-          </div>
+          )}
 
           {/* Content area */}
           <div
             ref={contentRef}
-            onScroll={handleScroll}
+            onScroll={isMobile ? undefined : handleScroll}
             style={{
               flex: 1,
-              padding: 24,
+              padding: isMobile ? "16px 20px" : 24,
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
+              ...(isMobile ? { WebkitOverflowScrolling: "touch" } : {}),
             }}
           >
             {/* --- Profile --- */}
@@ -1755,6 +1796,7 @@ export default function SettingsModal({
 
             {/* Content footer */}
             <div style={{ flex: 1 }} />
+            {isMobile && <BrandingFooter />}
             <div style={{ textAlign: "center", padding: "23px 0 16px" }}>
               <span style={{ fontSize: 14, color: TEXT.muted }}>Made by Tyr @ </span>
               <a

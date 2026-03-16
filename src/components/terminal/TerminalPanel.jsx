@@ -3,6 +3,7 @@ import TerminalTabBar from "./TerminalTabBar";
 import TerminalInstance from "./TerminalInstance";
 import TerminalSearchBar from "./TerminalSearchBar";
 import { useTheme } from "../../hooks/useTheme";
+import { isElectron } from "../../utils/platform";
 
 export default function TerminalPanel({
   terminals,
@@ -25,7 +26,7 @@ export default function TerminalPanel({
 
   // Auto-create first terminal when panel opens with none
   useEffect(() => {
-    if (isOpen && terminals.length === 0 && window.electronAPI?.terminal) {
+    if (isOpen && terminals.length === 0 && isElectron && window.electronAPI?.terminal) {
       createTerminal();
     }
   }, [isOpen]);
@@ -70,7 +71,7 @@ export default function TerminalPanel({
   if (!isOpen) return null;
 
   // No electron API — show placeholder
-  if (!window.electronAPI?.terminal) {
+  if (!isElectron || !window.electronAPI?.terminal) {
     return (
       <div
         style={{

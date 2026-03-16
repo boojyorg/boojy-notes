@@ -51,6 +51,8 @@ import PaneContainer from "./components/PaneContainer";
 import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
 import TerminalPanel from "./components/terminal/TerminalPanel";
+import { isElectron, isNative, isWeb } from "./utils/platform";
+import { getAPI } from "./services/apiProvider";
 
 export default function BoojyNotes() {
   const { theme, isDark, themeMode, setThemeMode } = useTheme();
@@ -170,7 +172,7 @@ export default function BoojyNotes() {
   }, [isDark]);
 
   const [noteData, setNoteData] = useState(() => {
-    if (window.electronAPI) return {};
+    if (isNative) return {};
     const saved = loadFromStorage();
     if (saved?.noteData) {
       let maxId = 0;
@@ -192,7 +194,7 @@ export default function BoojyNotes() {
   const activeNoteTitle = noteData[activeNote]?.title;
   useEffect(() => {
     const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
-    window.electronAPI?.setWindowTitle(title);
+    if (isElectron) getAPI()?.setWindowTitle(title);
   }, [activeNote, activeNoteTitle]);
 
   const [, forceRender] = useState(0);
@@ -201,7 +203,7 @@ export default function BoojyNotes() {
   const [ctxMenu, setCtxMenu] = useState(null);
   const [renamingFolder, setRenamingFolder] = useState(null);
   const [customFolders, setCustomFolders] = useState(() => {
-    if (window.electronAPI) return [];
+    if (isNative) return [];
     const saved = loadFromStorage();
     return saved?.customFolders || [];
   });
@@ -266,6 +268,7 @@ export default function BoojyNotes() {
   } = useSync(user, profile, noteData, setNoteData, activeNote);
   const {
     isElectron: isDesktop,
+    isNative: hasNativeFS,
     notesDir,
     loading: fsLoading,
     changeNotesDir,
@@ -440,6 +443,7 @@ export default function BoojyNotes() {
     handleEditorMouseDown,
     handleEditorFocus,
     handleEditorPaste,
+    handleEditorCopy,
     handleEditorDragOver,
     handleEditorDragLeave,
     handleEditorDrop,
@@ -531,12 +535,13 @@ export default function BoojyNotes() {
 
   // ── Effects ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!window.electronAPI?.readTrash) return;
+    const api = getAPI();
+    if (!api?.readTrash) return;
     if (fsLoading) return;
     (async () => {
       try {
-        await window.electronAPI.purgeTrash(null);
-        const trashed = await window.electronAPI.readTrash();
+        await api.purgeTrash(null);
+        const trashed = await api.readTrash();
         if (trashed && Object.keys(trashed).length > 0) {
           setTrashedNotes(trashed);
         }
@@ -548,8 +553,9 @@ export default function BoojyNotes() {
 
   // Load settings on mount (spell check, etc.)
   useEffect(() => {
-    if (!window.electronAPI?.getSettings) return;
-    window.electronAPI.getSettings().then((s) => {
+    const api = getAPI();
+    if (!api?.getSettings) return;
+    api.getSettings().then((s) => {
       if (s.spellCheckEnabled !== undefined) setSpellCheckEnabled(s.spellCheckEnabled !== false);
       if (s.spellCheckLanguages) setSpellCheckLanguages(s.spellCheckLanguages);
     });
@@ -557,7 +563,7 @@ export default function BoojyNotes() {
 
   // Load auto-update settings and listen for update status events (desktop only)
   useEffect(() => {
-    if (!window.electronAPI?.getAutoUpdate) return;
+    if (!isElectron || !window.electronAPI?.getAutoUpdate) return;
     window.electronAPI.getAutoUpdate().then((enabled) => setAutoUpdateEnabled(enabled));
     const cleanup = window.electronAPI.onUpdateStatus?.((status) => setUpdateStatus(status));
     return () => cleanup?.();
@@ -566,7 +572,7 @@ export default function BoojyNotes() {
   // Listen for menu export/import events (use refs to avoid re-registering on every noteData change)
   const handleExportRef = useRef({ pdf: null, docx: null });
   useEffect(() => {
-    if (!window.electronAPI) return;
+    if (!isElectron || !window.electronAPI) return;
     const cleanups = [];
     if (window.electronAPI.onMenuExport) {
       cleanups.push(
@@ -739,7 +745,7 @@ export default function BoojyNotes() {
   }, [tabs, activeNote, expanded, splitState]);
 
   useEffect(() => {
-    if (window.electronAPI) return;
+    if (isNative) return;
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(
@@ -770,18 +776,19 @@ export default function BoojyNotes() {
   }, []);
 
   useEffect(() => {
-    if (!window.electronAPI?.readMeta) return;
+    const api = getAPI();
+    if (!api?.readMeta) return;
     if (fsLoading) return;
     const loadMeta = async () => {
       const order = {};
-      const rootMeta = await window.electronAPI.readMeta("");
+      const rootMeta = await api.readMeta("");
       if (rootMeta) order[""] = rootMeta;
       const allPaths = new Set();
       for (const n of Object.values(noteData)) {
         if (n.folder) allPaths.add(n.folder);
       }
       for (const fp of allPaths) {
-        const meta = await window.electronAPI.readMeta(fp);
+        const meta = await api.readMeta(fp);
         if (meta) order[fp] = meta;
       }
       setSidebarOrder(order);
@@ -930,7 +937,7 @@ export default function BoojyNotes() {
 
   // ── Onboarding toast (Feature A): show after 3rd note for anon web users ──
   useEffect(() => {
-    if (window.electronAPI) return;
+    if (isNative) return;
     if (user) return;
     const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
     if (noteCount >= 3 && !localStorage.getItem("boojy-onboarding-dismissed")) {
@@ -947,7 +954,7 @@ export default function BoojyNotes() {
 
   // ── Persistence warning (Feature F): show after 5+ notes for anon web users ──
   useEffect(() => {
-    if (window.electronAPI) return;
+    if (isNative) return;
     if (user) return;
     if (persistenceShownRef.current) return;
     const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
@@ -1096,9 +1103,9 @@ export default function BoojyNotes() {
   const handleExportPdf = useCallback(
     (noteId) => {
       const n = noteData[noteId];
-      if (!n || !window.electronAPI?.exportPdf) return;
+      if (!n || !getAPI()?.exportPdf) return;
       const html = blocksToHtml(n.content.blocks, n.title);
-      window.electronAPI.exportPdf({ html, title: n.title });
+      getAPI().exportPdf({ html, title: n.title });
     },
     [noteData],
   );
@@ -1106,8 +1113,8 @@ export default function BoojyNotes() {
   const handleExportDocx = useCallback(
     (noteId) => {
       const n = noteData[noteId];
-      if (!n || !window.electronAPI?.exportDocx) return;
-      window.electronAPI.exportDocx({ blocks: n.content.blocks, title: n.title });
+      if (!n || !getAPI()?.exportDocx) return;
+      getAPI().exportDocx({ blocks: n.content.blocks, title: n.title });
     },
     [noteData],
   );
@@ -1117,16 +1124,16 @@ export default function BoojyNotes() {
 
   // ── Import handler for folder context menu ─────────────────────────
   const handleImportIntoFolder = useCallback((folderId) => {
-    if (!window.electronAPI?.importMarkdown) return;
-    window.electronAPI.importMarkdown({ targetFolder: folderId });
+    if (!getAPI()?.importMarkdown) return;
+    getAPI().importMarkdown({ targetFolder: folderId });
   }, []);
 
   // ── Spell check handlers ───────────────────────────────────────────
   const handleToggleSpellCheck = useCallback(
     (enabled) => {
       setSpellCheckEnabled(enabled);
-      if (window.electronAPI?.toggleSpellcheck) {
-        window.electronAPI.toggleSpellcheck({ enabled, languages: spellCheckLanguages });
+      if (getAPI()?.toggleSpellcheck) {
+        getAPI().toggleSpellcheck({ enabled, languages: spellCheckLanguages });
       }
     },
     [spellCheckLanguages],
@@ -1135,8 +1142,8 @@ export default function BoojyNotes() {
   const handleChangeSpellCheckLanguages = useCallback(
     (languages) => {
       setSpellCheckLanguages(languages);
-      if (window.electronAPI?.toggleSpellcheck) {
-        window.electronAPI.toggleSpellcheck({ enabled: spellCheckEnabled, languages });
+      if (getAPI()?.toggleSpellcheck) {
+        getAPI().toggleSpellcheck({ enabled: spellCheckEnabled, languages });
       }
     },
     [spellCheckEnabled],
@@ -1567,6 +1574,7 @@ export default function BoojyNotes() {
             handleEditorKeyDown={handleEditorKeyDown}
             handleEditorInput={handleEditorInput}
             handleEditorPaste={handleEditorPaste}
+            handleEditorCopy={handleEditorCopy}
             handleEditorPointerDown={handleEditorPointerDown}
             handleEditorMouseDown={handleEditorMouseDown}
             handleEditorMouseUp={handleEditorMouseUp}
@@ -2683,7 +2691,7 @@ export default function BoojyNotes() {
       `}</style>
 
       {/* Onboarding toast (bottom-left, web only) */}
-      {onboardingToast && !user && !window.electronAPI && (
+      {onboardingToast && !user && isWeb && (
         <div
           style={{
             position: "fixed",
@@ -2752,7 +2760,7 @@ export default function BoojyNotes() {
       )}
 
       {/* Persistence warning toast (bottom-left, web only) */}
-      {persistenceWarning && !user && !window.electronAPI && !onboardingToast && (
+      {persistenceWarning && !user && isWeb && !onboardingToast && (
         <div
           style={{
             position: "fixed",

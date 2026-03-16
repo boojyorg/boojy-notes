@@ -1,5 +1,7 @@
 import { genNoteId, genBlockId } from "../utils/storage";
 import { FOLDER_TREE } from "../constants/data";
+import { isNative } from "../utils/platform";
+import { getAPI } from "../services/apiProvider";
 
 export function useNoteCrud({
   commitNoteData,
@@ -47,7 +49,7 @@ export function useNoteCrud({
   const deleteNote = (noteId) => {
     const note = noteDataRef.current[noteId];
     if (!note) return;
-    if (window.electronAPI?.trashNote) {
+    if (isNative && getAPI()?.trashNote) {
       trashedNotesRef.current.set(noteId, { title: note.title, folder: note.folder });
       setTrashedNotes((prev) => ({
         ...prev,
@@ -83,8 +85,8 @@ export function useNoteCrud({
           noteOrder: entry.noteOrder.filter((id) => id !== noteId),
         },
       };
-      if (window.electronAPI?.writeMeta) {
-        window.electronAPI.writeMeta(folderKey, updated[folderKey]);
+      if (isNative && getAPI()?.writeMeta) {
+        getAPI().writeMeta(folderKey, updated[folderKey]);
       }
       return updated;
     });
@@ -146,7 +148,7 @@ export function useNoteCrud({
     );
     const noteIds = noteEntries.map(([id]) => id);
 
-    if (window.electronAPI?.trashNote) {
+    if (isNative && getAPI()?.trashNote) {
       const trashBatch = {};
       for (const [id, n] of noteEntries) {
         trashedNotesRef.current.set(id, { title: n.title, folder: n.folder });
@@ -194,8 +196,8 @@ export function useNoteCrud({
           ...next[parentPath],
           folderOrder: next[parentPath].folderOrder.filter((f) => f !== folderName),
         };
-        if (window.electronAPI?.writeMeta) {
-          window.electronAPI.writeMeta(parentPath, next[parentPath]);
+        if (isNative && getAPI()?.writeMeta) {
+          getAPI().writeMeta(parentPath, next[parentPath]);
         }
       }
       return next;
@@ -203,9 +205,9 @@ export function useNoteCrud({
   };
 
   const restoreNote = async (noteId) => {
-    if (!window.electronAPI?.restoreNote) return;
+    if (!isNative || !getAPI()?.restoreNote) return;
     try {
-      const note = await window.electronAPI.restoreNote(noteId);
+      const note = await getAPI().restoreNote(noteId);
       if (!note) return;
       const { _filePath, _migrated, ...cleanNote } = note;
       commitNoteData((prev) => ({ ...prev, [cleanNote.id]: cleanNote }));
@@ -227,9 +229,9 @@ export function useNoteCrud({
 
   const permanentDeleteNote = async (noteId) => {
     if (!window.confirm("Permanently delete? This cannot be undone.")) return;
-    if (!window.electronAPI?.purgeTrash) return;
+    if (!isNative || !getAPI()?.purgeTrash) return;
     try {
-      await window.electronAPI.purgeTrash([noteId]);
+      await getAPI().purgeTrash([noteId]);
       setTrashedNotes((prev) => {
         const next = { ...prev };
         delete next[noteId];
@@ -242,9 +244,9 @@ export function useNoteCrud({
 
   const emptyAllTrash = async () => {
     if (!window.confirm("Permanently delete all items in trash?")) return;
-    if (!window.electronAPI?.emptyTrash) return;
+    if (!isNative || !getAPI()?.emptyTrash) return;
     try {
-      await window.electronAPI.emptyTrash();
+      await getAPI().emptyTrash();
       setTrashedNotes({});
     } catch (err) {
       console.error("Empty trash failed", err);
