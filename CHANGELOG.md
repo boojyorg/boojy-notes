@@ -1,5 +1,64 @@
 # Changelog
 
+## Unreleased
+
+### Performance
+- **Fix StarField animation bottleneck causing INP lag** — Cap canvas to viewport height (sticky positioning) instead of full scrollHeight (~64MB → ~5MB pixel buffer), replace expensive `ctx.shadowBlur` glow with cheap two-circle technique, cache layout dimensions to eliminate forced reflows from animation loop, replace continuous rAF with 5-second interval (near-zero CPU during typing), debounce ResizeObserver (200ms), wrap in `React.memo`. *(INP lag persists — additional bottlenecks remain elsewhere)*
+- **Throttle localStorage persistence (web)** — Increased full noteData localStorage debounce from 300ms to 2000ms, reducing `JSON.stringify` calls ~7x during typing. Added `beforeunload` flush as safety net
+- **Short-circuit EditorArea memo comparator** — Text-only edits now skip the O(n) block-structure comparison loop entirely via `textOnlyEdit` ref fast-path
+- **Replace `structuredClone` with shallow block copy** — History snapshots use shallow spread + array copy instead of `structuredClone`, reducing snapshot time from ~2-5ms to ~0.5ms
+- **Fix dead `textOnlyEdit` fast-path** — The EditorArea memo comparator fast-path was dead code because `noteTitlesKey` useMemo consumed and reset the flag before the comparator ran. Added separate `textOnlyEditForEditor` ref that EditorArea consumes independently
+- **Optimize beforeunload effect** — Replaced `noteData`-dependent beforeunload effect with a ref-based approach, eliminating effect churn (listener teardown/re-register) on every noteData change
+- **Add `[perf]` console diagnostics** — Temporary `console.warn` instrumentation on hot paths (cloneNote, localStorage writes, memo comparators, pointerDown) to identify INP bottlenecks in DevTools
+
+### Bug Fixes (continued)
+- **Fix service worker `Failed to fetch` error** — Added `.catch()` to background fetch in stale-while-revalidate strategy; added offline fallback response for API calls when both network and cache miss
+
+### Improvements
+- **Extract GlobalStyles component** — Moved the ~450-line global `<style>` block (keyframes, scrollbar styles, code block styles, link/wikilink styles, table styles, callout styles, Prism token colors) from `BoojyNotes.jsx` into a standalone `GlobalStyles` component
+- **Extract DevOverlay component** — Moved the ~400-line dev tools overlay (color sliders, theme/style selectors, dev toast, gear button) into a lazy-loaded `DevOverlay` component that is tree-shaken from production builds via `React.lazy` + `import.meta.env.DEV` guard
+- **EditorArea context migration** — `EditorArea` now reads `accentColor`, `editorBg` from `useLayout()` and `settingsFontSize` from `useSettings()` directly, removing 3 props from EditorArea and PaneContainer call sites and memo comparators
+- **BoojyNotes reduced from 2,930 → 2,033 lines** (-897 lines, 31% reduction)
+
+### Bug Fixes
+- **Surface silent errors as toasts** — Added user-visible toast notifications for 5 previously silent error paths: trash loading failure, localStorage save failure (storage full), image save failure (`useBlockOperations`), image slash command failure, and file slash command failure (`useEditorHandlers`)
+
+### Tests
+- **53 new tests across 5 files** — `useNoteNavigation` (8 tests), `useSplitView` (24 tests), `useSearch` (13 tests), `TopBar` component (5 tests), `Sidebar` component (3 tests). Total: 348 → 412 tests, 20 → 25 test files
+
+### Features
+- **React ErrorBoundary** — New `ErrorBoundary` component catches unhandled React errors and shows a recovery UI with error details, stack trace, "Reload App" and "Copy Error" buttons. Automatically flushes `noteDataRef` to localStorage as emergency backup on crash
+- **Toast notification system** — New `useToast` hook and `Toast` component for surfacing file operation errors (disk write failures, trash errors, directory changes) via dismissible bottom-left toast notifications with error/warning/info variants
+- **Sync retry with exponential backoff** — Failed syncs now retry up to 3 times with exponential backoff (2s, 4s, 8s) before showing error state. New "retrying" sync state shows animated dot during retry attempts
+- **Unhandled promise rejection logging** — Added global `unhandledrejection` listener in `main.jsx` for better error visibility
+
+### Improvements
+- **React Context extraction** — Extracted three contexts from the 3,077-line `BoojyNotes.jsx` god component:
+  - `NoteDataContext` (split into data + actions sub-contexts for performance) — owns `noteData`, `setNoteData`, `useHistory`, `syncGeneration`, `activeNoteRef`
+  - `SettingsContext` — owns font size, spell check, auto-update, AI settings, auth state, and related effects
+  - `LayoutContext` — owns sidebar/panel dimensions, colors, tab styles, and panel resize logic
+- **Prop drilling reduction** — `SettingsModal` dropped ~25 props, `TopBar` dropped ~15 props, `Sidebar` dropped 3 props, `TerminalPanel` dropped 4 props by consuming contexts directly
+- **Test infrastructure** — Added supabase mock and `structuredClone` polyfill to test setup; added `makeNote` factory to test helpers; created `providers.jsx` with `mockContexts()` and `renderWithProviders()` for component tests
+
+### Bug Fixes
+- **Fix markdown shortcut reversion** — `commitNoteData` now cancels any pending debounced text flush before applying structural changes, preventing the 300ms timer from overwriting markdown shortcut conversions (`# ` → h1, `- ` → bullet, `[] ` → checkbox, etc.) with stale ref data
+- **Fix blank screen on launch** — `useSync` referenced `editedNoteHint` before it was declared by `useHistory`; moved `useHistory` call before `useSync` to fix the ReferenceError
+- **Fix missing favicon** — Added `<link rel="icon">` to `index.html` pointing to `favicon-32.png` in the public directory
+- **Fix Geist font MIME type error** — Removed broken jsdelivr CDN link for Geist font that was returning `text/plain` instead of `text/css`; the font wasn't loading anyway, so this just eliminates a failed network request and console error
+
+### Improvements
+- **Sidebar caching: O(1) ref check** — Replaced O(n log n) folder-key string computation with a `textOnlyEditForSidebar` ref that skips `derivedRootNotes`/`folderNoteMap` rebuild entirely on text-only edits; cached `filteredTree` by input reference equality to avoid redundant `filterTree` calls when search/folder structure hasn't changed
+- **Editor performance: 6 keystroke-path optimizations** — Pre-compile regex patterns at module scope instead of per-keystroke; use live DOM walking (`domNodeToMarkdown`) instead of double DOMParser round-trips; batch `setNoteData` calls with `requestAnimationFrame` to coalesce rapid keystrokes into one React update; debounce `savePersistedDirty` localStorage writes (1s) to avoid blocking main thread; skip `noteTitlesKey` recomputation on text-only edits; short-circuit sync dirty-detection loop with edited-note hint instead of iterating all notes
+- **Pointer INP optimization** — Added CSS `contain: content` to all text block types (p, h1–h3, bullet, numbered, checkbox, blockquote) so layout changes in one block don't trigger reflow of sibling blocks; debounced `selectionchange` listeners via `requestAnimationFrame` to avoid forced synchronous layout from `getBoundingClientRect()` on every click
+- **INP phase 2: sub-100ms keyboard interactions** — Removed 6 `[perf]` console.log calls from hot paths (2–5ms savings per keystroke in Chrome); wrapped debounced `setNoteData` flush in `startTransition` so React can interrupt reconciliation during user interactions; deferred `structuredClone` in `pushHistory` via `queueMicrotask` to move 5–30ms off the first-keystroke synchronous path; used `useDeferredValue` for word count so `stripMarkdownFormatting` runs in a subsequent frame; added folder-assignment key caching to skip sidebar `derivedRootNotes`/`folderNoteMap` rebuild on text-only edits
+
+### Features
+- **Tab / Shift+Tab block indentation** — Obsidian/Notion-style indent/outdent for bullet lists, numbered lists, checkboxes, blockquotes, paragraphs, and headings. Tab indents a block (up to 6 levels), Shift+Tab outdents. Visual rendering adds 24px padding per indent level. Bullet characters cycle through ● / ○ / ▪ by indent depth. Numbered lists maintain independent counters per indent level. Enter on an indented list item preserves indent; Enter on an empty indented list item outdents by 1. Backspace at position 0 or on empty indented block outdents before deleting/merging. Copy/paste preserves indent. Markdown serialization uses 2-space indentation for lists. Code blocks and tables are unaffected (they handle Tab internally).
+- **Multi-provider AI chat panel** — Added AI chat as a tab type in the right panel, coexisting with terminal tabs. Users can create AI chat tabs via the new `[✦]` button in the tab bar. Supports Anthropic, OpenAI, Google Gemini, and local/custom models (Ollama, LM Studio). Each AI tab maintains an independent conversation with streaming responses, markdown rendering, and a copy button on AI messages.
+- **AI Settings** — New "AI" section in Settings with provider selection, model dropdown, API key input (masked with show/test buttons), base URL override for proxies/local models, context toggle, and max tokens configuration. API keys are stored securely via Electron's `safeStorage` on desktop, `@capacitor/preferences` on mobile, and `localStorage` on web.
+- **Note context for AI** — Toggle "ctx: on/off" in the AI chat header to include the current note's content as context in AI conversations.
+- **Unified tab bar** — Terminal and AI tabs coexist in the same tab bar with type-specific icons (`>_` for terminal, `✦` for AI). On web/mobile where terminal isn't available, only the AI tab button appears. Default tab auto-created based on platform (terminal on desktop, AI on web).
+
 ## 0.1.5 — 2026-03-16
 
 ### Bug Fixes
