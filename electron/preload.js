@@ -77,6 +77,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Window
   setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
 
+  // Secure storage (safeStorage)
+  secureStorage: {
+    store: (key, value) => ipcRenderer.invoke("secure-store", key, value),
+    read: (key) => ipcRenderer.invoke("secure-read", key),
+    delete: (key) => ipcRenderer.invoke("secure-delete", key),
+  },
+
   // Terminal
   terminal: {
     create: (opts) => ipcRenderer.invoke("terminal:create", opts),

@@ -14,87 +14,96 @@ export function useInlineFormatting({
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
 
-  const reReadBlockFromDom = useCallback((sel) => {
-    if (!sel) sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
-    const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
-    if (!info) return;
-    const text = domNodeToMarkdown(info.el)
-      .replace(/[\n\r]+$/, "")
-      .replace(/^[\n\r]+/, "");
-    updateBlockText(activeNoteRef.current, info.blockIndex, text);
-  }, []);
+  const reReadBlockFromDom = useCallback(
+    (sel) => {
+      if (!sel) sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
+      const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
+      if (!info) return;
+      const text = domNodeToMarkdown(info.el)
+        .replace(/[\n\r]+$/, "")
+        .replace(/^[\n\r]+/, "");
+      updateBlockText(activeNoteRef.current, info.blockIndex, text);
+    },
+    [blockRefs, editorRef, noteDataRef, updateBlockText],
+  );
 
-  const toggleInlineCode = useCallback((sel) => {
-    if (!sel.rangeCount || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    let node = sel.anchorNode;
-    let codeEl = null;
-    while (node && node !== editorRef.current) {
-      if (node.nodeName === "CODE") {
-        codeEl = node;
-        break;
+  const toggleInlineCode = useCallback(
+    (sel) => {
+      if (!sel.rangeCount || sel.isCollapsed) return;
+      const range = sel.getRangeAt(0);
+      let node = sel.anchorNode;
+      let codeEl = null;
+      while (node && node !== editorRef.current) {
+        if (node.nodeName === "CODE") {
+          codeEl = node;
+          break;
+        }
+        node = node.parentNode;
       }
-      node = node.parentNode;
-    }
-    if (codeEl) {
-      const textNode = document.createTextNode(codeEl.textContent);
-      codeEl.parentNode.replaceChild(textNode, codeEl);
-      const r = document.createRange();
-      r.selectNodeContents(textNode);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    } else {
-      const code = document.createElement("code");
-      try {
-        range.surroundContents(code);
-      } catch (_) {
-        const frag = range.extractContents();
-        code.appendChild(frag);
-        range.insertNode(code);
+      if (codeEl) {
+        const textNode = document.createTextNode(codeEl.textContent);
+        codeEl.parentNode.replaceChild(textNode, codeEl);
+        const r = document.createRange();
+        r.selectNodeContents(textNode);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      } else {
+        const code = document.createElement("code");
+        try {
+          range.surroundContents(code);
+        } catch {
+          const frag = range.extractContents();
+          code.appendChild(frag);
+          range.insertNode(code);
+        }
+        const r = document.createRange();
+        r.selectNodeContents(code);
+        sel.removeAllRanges();
+        sel.addRange(r);
       }
-      const r = document.createRange();
-      r.selectNodeContents(code);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    }
-  }, []);
+    },
+    [editorRef],
+  );
 
-  const toggleWrappingTag = useCallback((sel, tagName) => {
-    if (!sel.rangeCount || sel.isCollapsed) return;
-    const range = sel.getRangeAt(0);
-    let node = sel.anchorNode;
-    let existing = null;
-    while (node && node !== editorRef.current) {
-      if (node.nodeName === tagName) {
-        existing = node;
-        break;
+  const toggleWrappingTag = useCallback(
+    (sel, tagName) => {
+      if (!sel.rangeCount || sel.isCollapsed) return;
+      const range = sel.getRangeAt(0);
+      let node = sel.anchorNode;
+      let existing = null;
+      while (node && node !== editorRef.current) {
+        if (node.nodeName === tagName) {
+          existing = node;
+          break;
+        }
+        node = node.parentNode;
       }
-      node = node.parentNode;
-    }
-    if (existing) {
-      const textNode = document.createTextNode(existing.textContent);
-      existing.parentNode.replaceChild(textNode, existing);
-      const r = document.createRange();
-      r.selectNodeContents(textNode);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    } else {
-      const el = document.createElement(tagName.toLowerCase());
-      try {
-        range.surroundContents(el);
-      } catch (_) {
-        const frag = range.extractContents();
-        el.appendChild(frag);
-        range.insertNode(el);
+      if (existing) {
+        const textNode = document.createTextNode(existing.textContent);
+        existing.parentNode.replaceChild(textNode, existing);
+        const r = document.createRange();
+        r.selectNodeContents(textNode);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      } else {
+        const el = document.createElement(tagName.toLowerCase());
+        try {
+          range.surroundContents(el);
+        } catch {
+          const frag = range.extractContents();
+          el.appendChild(frag);
+          range.insertNode(el);
+        }
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        sel.removeAllRanges();
+        sel.addRange(r);
       }
-      const r = document.createRange();
-      r.selectNodeContents(el);
-      sel.removeAllRanges();
-      sel.addRange(r);
-    }
-  }, []);
+    },
+    [editorRef],
+  );
 
   const toggleStrikethrough = useCallback(
     (sel) => toggleWrappingTag(sel, "DEL"),
@@ -147,7 +156,7 @@ export function useInlineFormatting({
       position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
       savedRange,
     };
-  }, []);
+  }, [editorRef]);
 
   const applyFormat = useCallback(
     (format) => {
@@ -210,7 +219,7 @@ export function useInlineFormatting({
       strikethrough: isFormatActive(["DEL", "S"]),
       highlight: isFormatActive(["MARK"]),
     };
-  }, []);
+  }, [editorRef]);
 
   return { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext };
 }

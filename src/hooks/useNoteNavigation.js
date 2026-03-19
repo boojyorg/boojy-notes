@@ -5,7 +5,7 @@ export function useNoteNavigation({
   setActiveNote,
   tabs,
   setTabs,
-  expanded,
+  expanded: _expanded,
   setExpanded,
 }) {
   const [newTabId, setNewTabId] = useState(null);

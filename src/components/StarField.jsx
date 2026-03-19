@@ -142,7 +142,7 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
     <canvas
       ref={canvasRef}
       style={{
-        position: "sticky",
+        position: "absolute",
         top: 0,
         left: 0,
         width: "100%",

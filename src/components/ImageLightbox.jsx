@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 export default function ImageLightbox({ src, alt, onClose }) {
+  const containerRef = useRef(null);
+  useFocusTrap(containerRef, !!src);
+
   useEffect(() => {
     const handleKey = (e) => {
       if (
@@ -22,6 +26,10 @@ export default function ImageLightbox({ src, alt, onClose }) {
 
   return (
     <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image lightbox"
       onClick={onClose}
       style={{
         position: "fixed",

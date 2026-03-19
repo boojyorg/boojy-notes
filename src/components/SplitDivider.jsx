@@ -6,7 +6,7 @@ const MIN_SECONDARY_PX = 150;
 
 export default function SplitDivider({
   splitMode,
-  dividerPosition,
+  dividerPosition: _dividerPosition,
   setDividerPosition,
   onSnapClose,
   containerRef,
@@ -31,7 +31,6 @@ export default function SplitDivider({
       const container = containerRef?.current;
       if (!container) return;
 
-      const startPos = splitMode === "vertical" ? e.clientX : e.clientY;
       const containerRect = container.getBoundingClientRect();
       const containerSize = splitMode === "vertical" ? containerRect.width : containerRect.height;
       const containerStart = splitMode === "vertical" ? containerRect.left : containerRect.top;

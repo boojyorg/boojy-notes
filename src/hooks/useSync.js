@@ -52,7 +52,7 @@ function generateConflictId() {
   return "note-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
 }
 
-export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
+export function useSync(user, profile, noteData, setNoteData, activeNoteId, editedNoteHint) {
   const [syncState, setSyncState] = useState("idle");
   const [lastSynced, setLastSynced] = useState(() => localStorage.getItem(LAST_SYNC_KEY) || null);
   const [storageUsed, setStorageUsed] = useState(() => {
@@ -68,6 +68,9 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
   const dirtyNotes = useRef(new Set());
   const deletedNotes = useRef(new Set());
   const syncTimer = useRef(null);
+  const dirtyPersistTimer = useRef(null);
+  const retryCount = useRef(0);
+  const retryTimer = useRef(null);
   const prevNoteData = useRef(null);
   const isSyncing = useRef(false);
   const noteDataRef = useRef(noteData);
@@ -131,14 +134,22 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       return;
     }
 
-    for (const id of Object.keys(noteData)) {
-      // Skip if this was a remote update
-      if (remoteUpdateIds.current.has(id)) {
-        remoteUpdateIds.current.delete(id);
-        continue;
+    // Fix 6: short-circuit when we know which note was edited
+    const hintId = editedNoteHint?.current;
+    if (hintId) {
+      editedNoteHint.current = null;
+      if (!remoteUpdateIds.current.has(hintId) && prev[hintId] !== noteData[hintId]) {
+        dirtyNotes.current.add(hintId);
       }
-      if (!prev[id] || prev[id] !== noteData[id]) {
-        dirtyNotes.current.add(id);
+    } else {
+      for (const id of Object.keys(noteData)) {
+        if (remoteUpdateIds.current.has(id)) {
+          remoteUpdateIds.current.delete(id);
+          continue;
+        }
+        if (!prev[id] || prev[id] !== noteData[id]) {
+          dirtyNotes.current.add(id);
+        }
       }
     }
 
@@ -155,11 +166,15 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
     prevNoteData.current = noteData;
 
     if (dirtyNotes.current.size > 0 || deletedNotes.current.size > 0) {
-      // Persist dirty state for offline recovery
-      savePersistedDirty([...dirtyNotes.current], noteDataRef.current);
+      // Fix 4: debounce localStorage persistence to avoid blocking on every keystroke
+      clearTimeout(dirtyPersistTimer.current);
+      dirtyPersistTimer.current = setTimeout(() => {
+        savePersistedDirty([...dirtyNotes.current], noteDataRef.current);
+      }, 1000);
       clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(() => syncAllRef.current(), SYNC_DEBOUNCE_MS);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- editedNoteHint is a ref, intentionally excluded
   }, [noteData, user, cleanStaleRemoteUpdates]);
 
   const syncAll = useCallback(async () => {
@@ -182,7 +197,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
         const t0 = performance.now();
         for (let i = 0; i < allNotes.length; i += PUSH_CONCURRENCY) {
           const batch = allNotes.slice(i, i + PUSH_CONCURRENCY);
-          const results = await Promise.all(
+          await Promise.all(
             batch.map(async (note) => {
               const result = await pushNote(note, null);
               if (result?.version) {
@@ -405,11 +420,20 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       const now = new Date().toISOString();
       setLastSynced(now);
       localStorage.setItem(LAST_SYNC_KEY, now);
+      retryCount.current = 0;
       if (syncState !== "conflict") setSyncState("synced");
       console.log(`[sync] Sync complete at ${now}`);
     } catch (err) {
       console.error("[sync] Sync error:", err);
-      setSyncState("error");
+      if (retryCount.current < 3) {
+        const delay = 2000 * Math.pow(2, retryCount.current);
+        retryCount.current++;
+        setSyncState("retrying");
+        console.log(`[sync] Retrying in ${delay}ms (attempt ${retryCount.current}/3)`);
+        retryTimer.current = setTimeout(() => syncAllRef.current(), delay);
+      } else {
+        setSyncState("error");
+      }
     } finally {
       isSyncing.current = false;
     }
@@ -434,6 +458,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       deletedNotes.current.clear();
       setPendingFirstSync(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id to avoid re-running on object reference changes
   }, [user?.id]);
 
   // Sync when tab becomes visible
@@ -446,6 +471,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id
   }, [user?.id]);
 
   // Online/offline detection
@@ -464,6 +490,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id
   }, [user?.id]);
 
   // Realtime Broadcast: receive note changes from other devices instantly
@@ -509,6 +536,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       channelRef.current = null;
       supabase?.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id
   }, [user?.id, setNoteData]);
 
   // Poll for remote changes every 60s (fallback in case Realtime drops)
@@ -520,11 +548,16 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId) {
       }
     }, 60000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id
   }, [user?.id]);
 
   // Cleanup
   useEffect(() => {
-    return () => clearTimeout(syncTimer.current);
+    return () => {
+      clearTimeout(syncTimer.current);
+      clearTimeout(dirtyPersistTimer.current);
+      clearTimeout(retryTimer.current);
+    };
   }, []);
 
   // Auto-dismiss conflict toast after 8s

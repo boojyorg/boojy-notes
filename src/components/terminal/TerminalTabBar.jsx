@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { isElectron } from "../../utils/platform";
 import { CloseIcon } from "../Icons";
+import { spacing } from "../../tokens/spacing";
+import { radius } from "../../tokens/radius";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -13,6 +16,7 @@ export default function TerminalTabBar({
   activeTabBg,
   chromeBg,
   onNewTerminal,
+  onNewAITab,
   onCloseTerminal,
   onRenameTerminal,
   onClearTerminal,
@@ -60,6 +64,9 @@ export default function TerminalTabBar({
 
   const tabW = Math.min(200, Math.max(100, areaWidth / Math.max(1, terminals.length)));
 
+  // Can show terminal buttons?
+  const canTerminal = isElectron && !!window.electronAPI?.terminal;
+
   return (
     <div
       style={{
@@ -85,6 +92,7 @@ export default function TerminalTabBar({
       >
         {terminals.map((t, i) => {
           const act = activeTerminalId === t.id;
+          const isAI = t.type === "ai";
           return [
             <div
               key={`div-${t.id}`}
@@ -105,7 +113,7 @@ export default function TerminalTabBar({
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
-                setCtxMenu({ id: t.id, x: e.clientX, y: e.clientY });
+                setCtxMenu({ id: t.id, type: t.type, x: e.clientX, y: e.clientY });
               }}
               style={{
                 background: act ? activeTabBg : "transparent",
@@ -140,28 +148,42 @@ export default function TerminalTabBar({
                 }
               }}
             >
-              {/* Terminal icon */}
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ flexShrink: 0, marginRight: 5, opacity: 0.7 }}
-              >
-                <path
-                  d="M4 5L7 8L4 11"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M8.5 11H12"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
+              {/* Tab type icon */}
+              {isAI ? (
+                <span
+                  style={{
+                    flexShrink: 0,
+                    marginRight: 5,
+                    opacity: 0.7,
+                    fontSize: 11,
+                    lineHeight: 1,
+                  }}
+                >
+                  &#10022;
+                </span>
+              ) : (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  style={{ flexShrink: 0, marginRight: 5, opacity: 0.7 }}
+                >
+                  <path
+                    d="M4 5L7 8L4 11"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.5 11H12"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
               <span
                 style={{
                   overflow: "hidden",
@@ -209,7 +231,7 @@ export default function TerminalTabBar({
                   alignItems: "center",
                   justifyContent: "center",
                   height: 16,
-                  borderRadius: 4,
+                  borderRadius: radius.sm,
                   flexShrink: 0,
                   color: TEXT.secondary,
                 }}
@@ -242,33 +264,73 @@ export default function TerminalTabBar({
         })}
       </div>
 
-      {/* "+" new terminal button */}
-      <button
-        onClick={onNewTerminal}
-        title="New terminal"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "0 8px",
-          display: "flex",
-          alignItems: "center",
-          color: TEXT.muted,
-          fontSize: 16,
-          flexShrink: 0,
-          transition: "color 0.15s, background 0.15s",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = TEXT.primary;
-          e.currentTarget.style.background = BG.elevated;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = TEXT.muted;
-          e.currentTarget.style.background = "transparent";
-        }}
-      >
-        +
-      </button>
+      {/* New tab buttons — [>_] for terminal, [✦] for AI */}
+      <div style={{ display: "flex", flexShrink: 0 }}>
+        {canTerminal && (
+          <button
+            onClick={onNewTerminal}
+            title="New terminal"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0 6px",
+              display: "flex",
+              alignItems: "center",
+              color: TEXT.muted,
+              fontSize: 12,
+              flexShrink: 0,
+              transition: "color 0.15s, background 0.15s",
+              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = TEXT.primary;
+              e.currentTarget.style.background = BG.elevated;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = TEXT.muted;
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 5L7 8L4 11"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M8.5 11H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+        <button
+          onClick={onNewAITab}
+          title="New AI chat"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 6px",
+            display: "flex",
+            alignItems: "center",
+            color: TEXT.muted,
+            fontSize: 14,
+            flexShrink: 0,
+            transition: "color 0.15s, background 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = TEXT.primary;
+            e.currentTarget.style.background = BG.elevated;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = TEXT.muted;
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          &#10022;
+        </button>
+      </div>
 
       {/* Context menu */}
       {ctxMenu && (
@@ -279,8 +341,8 @@ export default function TerminalTabBar({
             top: ctxMenu.y,
             background: BG.elevated,
             border: `1px solid ${BG.divider}`,
-            borderRadius: 6,
-            padding: "4px 0",
+            borderRadius: radius.default,
+            padding: `${spacing.xs}px 0`,
             zIndex: 1000,
             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
             minWidth: 140,
@@ -288,21 +350,37 @@ export default function TerminalTabBar({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {[
-            {
-              label: "Rename",
-              action: () => {
-                setRenamingId(ctxMenu.id);
-                setRenameValue(terminals.find((t) => t.id === ctxMenu.id)?.title || "");
-              },
-            },
-            { label: "Clear", action: () => onClearTerminal(ctxMenu.id) },
-            { label: "Restart", action: () => onRestartTerminal(ctxMenu.id) },
-            { sep: true },
-            { label: "Kill", action: () => onCloseTerminal(ctxMenu.id), color: "#FF5C57" },
-          ].map((item, i) =>
+          {(ctxMenu.type === "terminal"
+            ? [
+                {
+                  label: "Rename",
+                  action: () => {
+                    setRenamingId(ctxMenu.id);
+                    setRenameValue(terminals.find((t) => t.id === ctxMenu.id)?.title || "");
+                  },
+                },
+                { label: "Clear", action: () => onClearTerminal(ctxMenu.id) },
+                { label: "Restart", action: () => onRestartTerminal(ctxMenu.id) },
+                { sep: true },
+                { label: "Kill", action: () => onCloseTerminal(ctxMenu.id), color: "#FF5C57" },
+              ]
+            : [
+                {
+                  label: "Rename",
+                  action: () => {
+                    setRenamingId(ctxMenu.id);
+                    setRenameValue(terminals.find((t) => t.id === ctxMenu.id)?.title || "");
+                  },
+                },
+                { sep: true },
+                { label: "Close", action: () => onCloseTerminal(ctxMenu.id), color: "#FF5C57" },
+              ]
+          ).map((item, i) =>
             item.sep ? (
-              <div key={i} style={{ height: 1, background: BG.divider, margin: "4px 0" }} />
+              <div
+                key={i}
+                style={{ height: 1, background: BG.divider, margin: `${spacing.xs}px 0` }}
+              />
             ) : (
               <div
                 key={i}

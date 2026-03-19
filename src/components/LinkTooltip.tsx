@@ -1,6 +1,11 @@
 import { useTheme } from "../hooks/useTheme";
 
-export default function LinkTooltip({ url, position }) {
+interface LinkTooltipProps {
+  url: string | null;
+  position: { top: number; left: number } | null;
+}
+
+export default function LinkTooltip({ url, position }: LinkTooltipProps) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
 

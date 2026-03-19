@@ -15,7 +15,7 @@ export function useSidebarDrag({
   setExpanded,
   sidebarOrder,
   setSidebarOrder,
-  customFolders,
+  customFolders: _customFolders,
   sidebarScrollRef,
   accentColor,
   chromeBg,
@@ -700,6 +700,7 @@ export function useSidebarDrag({
     window.addEventListener("pointerup", onUp);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupSidebarDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupSidebarDrag(), []);
 
   return { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder };

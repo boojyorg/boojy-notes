@@ -1,6 +1,63 @@
 # Changelog
 
-## Unreleased
+## 0.1.6 (2026-03-19)
+
+### Bug Fixes
+- **Fix editor top gap** — Change StarField from `position: sticky` to `position: absolute` and reduce editor top padding from 28px to 12px to eliminate the blank gap above the first block
+- **Fix split-pane crash** — Add missing `Fragment` import removed during lint cleanup; `Cmd+Shift+\` no longer crashes
+- **Fix stale closure in global keydown handler** — `Cmd+N`, `Cmd+Shift+\`, and undo/redo now read current `activeNote`, `noteData`, and `splitState` via refs instead of stale closure values
+- **Fix undo crash on deleted note** — Guard `undo()`/`redo()` against deleted notes so `Cmd+Z` after deleting a note no longer throws
+- **Fix stale AI chat context** — Add `noteData` to `activeNoteContext` useMemo deps so block edits propagate to AI panel
+- **Fix cross-tab stale cache** — Auto-clear `loadFromStorage()` cache after initial read so multi-tab usage reads fresh data from localStorage
+- **Fix deleted-note ghost writes** — Skip notes missing from `noteDataRef` during flush to prevent deleted notes from being re-written to disk
+- **Fix split-pane data loss** — Flush pending debounced text changes before applying new `commitTextChange` to prevent one pane from overwriting the other
+- **Fix code blocks with triple backticks** — Use 4-backtick fences when code content contains triple backticks; parser now handles variable-length fences
+- **Fix folder rename with path separators** — Strip `/` and `\` from folder names to prevent phantom nested folders
+
+### Architecture
+- **Break god component (Phase 1)** — Extracted `BoojyNotes.jsx` from 2,060 to ~1,500 lines via three new contexts (`SidebarContext`, `OverlayContext`) and five extracted components (`TitleBar`, `OnboardingToast`, `PersistenceWarning`, `FirstSyncModal`, `ConflictToast`). Sidebar props reduced from 35+ to 13.
+- **SidebarContext** — Manages search state, sidebar tree data, folder expansion, custom folders, trash, and all derived data computations. Sidebar.jsx now consumes via `useSidebar()` hook instead of props.
+- **OverlayContext** — Centralizes overlay state (context menu, slash menu, wikilink menu, drag tooltip, lightbox) shared across multiple components.
+
+### Lint Cleanup (Phase 2)
+- **Fix ESLint JSX detection** — Added `react/jsx-uses-vars` and `react/jsx-uses-react` rules to properly detect JSX component usage
+- **Remove ~150 unused variable warnings** — Cleaned up destructured context values not used directly in BoojyNotes.jsx, dead imports across codebase
+- **Fix exhaustive-deps warnings** — Added missing stable ref dependencies, added eslint-disable comments with reasons for intentional patterns
+
+### Design Tokens (Phase 6)
+- **Add `radius.default` token** — Added `default: 6` to radius tokens matching the most common borderRadius in the codebase
+- **Migrate settings components to design tokens** — Replaced hardcoded pixel values with token imports (`spacing`, `radius`, `fontSize`, `fontWeight`) across `SettingsModal`, `AppearanceTab`, `EditorTab`, `AITab`, `ExportTab`, `ProfileTab`, `AboutTab`, `TerminalPanel`, and `TerminalTabBar`. Adopted `buttonBase` spread in ProfileTab and EditorTab for primary action buttons
+
+### TypeScript (Phase 7)
+- **Convert 13 files to TypeScript** — Tier 1: `random.ts`, `colorUtils.ts`, `storage.ts`, `useTheme.ts` (already .ts), `useIsMobile.ts`, `useToast.ts`, `Toast.tsx`, `SpacerBlock.tsx`. Tier 2: `FrontmatterBlock.tsx`, `LinkTooltip.tsx`, `DropZoneOverlay.tsx`, `usePaneRefs.ts`
+- **Full type annotations** — All converted files use explicit interfaces for props and return types, importing from existing `src/types/` definitions
+
+### Improvements
+- **Accessibility hardening (Phase 3)** — Added ARIA roles and keyboard navigation across 8 components: `ContextMenu` (`role="menu"`, `role="menuitem"`, arrow/enter/escape keyboard nav with `activeIndex` tracking), `WikilinkMenu` (`role="listbox"`, `role="option"`, `aria-selected`), `PaneTabBar` (`role="tablist"`, `role="tab"`, `aria-selected`), `EditableBlock` checkbox (`role="checkbox"`, `aria-checked`), `TableBlock` (`scope="col"` on `<th>`), `ImageLightbox` (`role="dialog"`, `aria-modal`, `aria-label`, `useFocusTrap`), `FloatingToolbar` (`role="toolbar"`, `aria-label`, `aria-pressed` on buttons), `Toast` (`role="alert"`, `aria-live="assertive"`)
+- **Add `useFocusTrap` hook for modal focus management** — Traps Tab/Shift+Tab within a container, focuses first element on open, restores focus on close. Applied to SettingsModal with `role="dialog"` and `aria-modal`
+- **Add ARIA roles to Sidebar** — `role="tree"` on note list, `role="treeitem"` on folders/notes, `aria-expanded` on folders, `aria-selected` on active note
+- **Add ARIA roles to SlashMenu** — `role="menu"` on container, `role="menuitem"` on each command item
+- **Add skip-to-content link** — Hidden link at top of app that becomes visible on focus, jumps to `#main-content`
+- **Split `useEditorHandlers` into focused sub-hooks** — Extracted 1,370-line monolith into 6 files under `src/hooks/editor/`: `useKeyboardHandlers.js` (keydown handling), `useInputHandler.js` (contenteditable input + markdown shortcuts), `usePasteHandler.js` (paste + copy), `useDragDropHandlers.js` (drag/drop), `useSlashCommands.js` (slash command execution), `useMouseHandlers.js` (mouse events + focus). `useEditorHandlers.js` is now a ~65-line compositor that wires up sub-hooks and returns the same public API
+- **Split `electron/main.js` into focused modules** — Extracted 1,079-line monolith into 6 files: `noteFileManager.js` (note CRUD, index, attachments, import/export), `trashManager.js` (trash IPC handlers), `fileWatcher.js` (chokidar setup), `settingsManager.js` (config, spellcheck, auto-update), `secureStorage.js` (safeStorage IPC). `main.js` is now a 243-line orchestrator that creates the window and wires up modules
+
+### TypeScript
+- **Define core data types** — Added `src/types/notes.ts` (Block, BlockType, NoteContent, NoteData, NoteStore), `src/types/editor.ts` (SlashMenuState, WikilinkMenuState, ToolbarState, LinkPopoverState, LightboxState), `src/types/settings.ts` (AISettings, SyncState, User, Profile)
+- **Add global type declarations** — Created `src/types/global.d.ts` with `Window.electronAPI` interface and Vite client types
+- **Fix markdown.js TS errors** — Added JSDoc type annotations to fix 3 TypeScript errors in the shared markdown module
+
+### Testing
+- **Add Playwright E2E tests** — Installed `@playwright/test` and `@axe-core/playwright`. Initial test suite: app loads, note creation, settings modal, keyboard shortcuts, and accessibility audit (zero critical violations)
+- **Add E2E to CI** — GitHub Actions now runs Playwright tests after build step
+
+### CI & Security
+- **Fix vitest environment** — Changed test environment from `node` to `jsdom` so DOM-dependent tests run correctly
+- **Add coverage thresholds** — Set minimum coverage: 60% lines/statements, 50% branches, 55% functions
+- **Add npm audit to CI** — CI now runs `npm audit --audit-level=high` and fixed all 4 high-severity vulnerabilities (tar, undici)
+- **Add pre-commit hooks** — Installed `husky` + `lint-staged` to auto-run Prettier and ESLint on staged files
+- **Add Dependabot** — Weekly npm dependency update PRs via `.github/dependabot.yml`
+- **Add engines field** — `package.json` now requires Node >= 18.0.0
+- **CI runs coverage** — Changed CI test step from `npm test` to `npm run test:coverage`
 
 ### Performance
 - **Fix StarField animation bottleneck causing INP lag** — Cap canvas to viewport height (sticky positioning) instead of full scrollHeight (~64MB → ~5MB pixel buffer), replace expensive `ctx.shadowBlur` glow with cheap two-circle technique, cache layout dimensions to eliminate forced reflows from animation loop, replace continuous rAF with 5-second interval (near-zero CPU during typing), debounce ResizeObserver (200ms), wrap in `React.memo`. *(INP lag persists — additional bottlenecks remain elsewhere)*
@@ -15,6 +72,10 @@
 - **Fix service worker `Failed to fetch` error** — Added `.catch()` to background fetch in stale-while-revalidate strategy; added offline fallback response for API calls when both network and cache miss
 
 ### Improvements
+- **Split `SettingsModal` into tab components** — Extracted 2,212-line monolith into 7 files under `src/components/settings/`: `SettingsModal.jsx` (shell + tab nav, 401 lines), `ProfileTab.jsx`, `AppearanceTab.jsx`, `EditorTab.jsx`, `AITab.jsx`, `ExportTab.jsx`, `AboutTab.jsx`. Each tab consumes contexts directly
+- **Create design token system** — Added `src/tokens/` (spacing, radius, typography, shadows) and `src/styles/` (buttons, inputs) for consistent styling across components
+- **Deduplicate markdown converters** — Consolidated `blocksToMarkdown`/`markdownToBlocks` into `src/utils/markdown.js` as single source of truth. `electron/markdown.js` and `src/services/sync.js` now re-export from the shared module. Sync now uses the full parser (supports code blocks, tables, callouts, embeds, blockquotes)
+- **Extract block type renderers from EditableBlock** — Moved `ImageBlock`, `FileBlock`, `EmbedBlock`, and `SpacerBlock` into standalone files under `src/components/blocks/`. EditableBlock now acts as a dispatcher, delegating to the appropriate block component based on type. Pure refactor with no behavior changes
 - **Extract GlobalStyles component** — Moved the ~450-line global `<style>` block (keyframes, scrollbar styles, code block styles, link/wikilink styles, table styles, callout styles, Prism token colors) from `BoojyNotes.jsx` into a standalone `GlobalStyles` component
 - **Extract DevOverlay component** — Moved the ~400-line dev tools overlay (color sliders, theme/style selectors, dev toast, gear button) into a lazy-loaded `DevOverlay` component that is tree-shaken from production builds via `React.lazy` + `import.meta.env.DEV` guard
 - **EditorArea context migration** — `EditorArea` now reads `accentColor`, `editorBg` from `useLayout()` and `settingsFontSize` from `useSettings()` directly, removing 3 props from EditorArea and PaneContainer call sites and memo comparators

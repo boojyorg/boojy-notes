@@ -10,7 +10,15 @@ export function useTerminal() {
 
   const createTerminal = useCallback(() => {
     const id = `tab-${++tabIdCounter}`;
-    const entry = { id, title: "zsh" };
+    const entry = { id, type: "terminal", title: "zsh" };
+    setTerminals((prev) => [...prev, entry]);
+    setActiveTerminalId(id);
+    return entry;
+  }, []);
+
+  const createAITab = useCallback(() => {
+    const id = `tab-${++tabIdCounter}`;
+    const entry = { id, type: "ai", title: "AI Chat" };
     setTerminals((prev) => [...prev, entry]);
     setActiveTerminalId(id);
     return entry;
@@ -67,6 +75,7 @@ export function useTerminal() {
     setActiveTerminalId,
     xtermInstances,
     createTerminal,
+    createAITab,
     closeTerminal,
     renameTerminal,
     restartTerminal,

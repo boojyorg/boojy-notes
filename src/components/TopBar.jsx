@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useLayout } from "../context/LayoutContext";
+import { useNoteDataActions } from "../context/NoteDataContext";
+import { useSettings } from "../context/SettingsContext";
 import { UndoIcon, RedoIcon, SidebarToggleIcon, HelpIcon, HamburgerIcon, PlusIcon } from "./Icons";
 import HelpDropdown from "./HelpDropdown";
 import PaneTabBar from "./PaneTabBar";
@@ -59,19 +62,6 @@ function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime
 }
 
 export default function TopBar({
-  chromeBg,
-  accentColor,
-  topBarEdge,
-  tabFlip,
-  activeTabBg,
-  sidebarWidth,
-  rightPanelWidth,
-  collapsed,
-  setCollapsed,
-  canUndo,
-  canRedo,
-  undo,
-  redo,
   tabs,
   activeNote,
   noteData,
@@ -79,22 +69,13 @@ export default function TopBar({
   closingTabs,
   setActiveNote,
   closeTab,
-  setSettingsOpen,
-  setSettingsTab,
   syncState,
   syncDotStyle,
-  rightPanel,
-  setRightPanel,
   note,
   wordCount,
   charCount,
   charCountNoSpaces,
   readingTime,
-  startDrag,
-  startRightDrag,
-  isDragging,
-  sidebarHandles,
-  rightPanelHandles,
   tabScrollRef,
   tabAreaWidth,
   splitMode,
@@ -110,6 +91,26 @@ export default function TopBar({
   createNote,
   noteTitle,
 }) {
+  const {
+    chromeBg,
+    accentColor,
+    topBarEdge,
+    tabFlip,
+    activeTabBg,
+    sidebarWidth,
+    rightPanelWidth,
+    collapsed,
+    setCollapsed,
+    rightPanel,
+    setRightPanel,
+    sidebarHandles,
+    rightPanelHandles,
+    isDragging,
+    startDrag,
+    startRightDrag,
+  } = useLayout();
+  const { canUndo, canRedo, undo, redo } = useNoteDataActions();
+  const { setSettingsOpen, setSettingsTab } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const [helpOpen, setHelpOpen] = useState(false);
@@ -158,6 +159,7 @@ export default function TopBar({
 
         {/* Logo — tap opens settings */}
         <button
+          data-testid="settings-button"
           onClick={() => {
             setSettingsOpen(true);
             setSettingsTab("profile");
@@ -302,6 +304,7 @@ export default function TopBar({
         >
           <img src={boojyN} alt="" style={{ height: 23.5 }} draggable="false" />
           <button
+            data-testid="settings-button"
             onClick={() => {
               setSettingsOpen(true);
               setSettingsTab("profile");

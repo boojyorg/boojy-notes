@@ -18,6 +18,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         onMouseDown={() => setSlashMenu(null)}
       />
       <div
+        role="menu"
+        aria-label="Slash commands"
         style={{
           position: "fixed",
           top: slashMenu.rect.top,
@@ -40,6 +42,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           filtered.map((cmd, i) => (
             <div
               key={cmd.id}
+              role="menuitem"
               onClick={() => {
                 executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
                 setSlashMenu(null);

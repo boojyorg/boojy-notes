@@ -1,4 +1,4 @@
-export function hexToRgb(hex) {
+export function hexToRgb(hex: string): [number, number, number] {
   return [
     parseInt(hex.slice(1, 3), 16),
     parseInt(hex.slice(3, 5), 16),
@@ -6,8 +6,8 @@ export function hexToRgb(hex) {
   ];
 }
 
-export function rgbToHex(r, g, b) {
-  const h = (x) =>
+export function rgbToHex(r: number, g: number, b: number): string {
+  const h = (x: number) =>
     Math.max(0, Math.min(255, Math.round(x)))
       .toString(16)
       .padStart(2, "0");

@@ -5,7 +5,7 @@ export function usePanelResize({
   rightPanelHandles,
   setSidebarWidth,
   setRightPanelWidth,
-  chromeBg,
+  chromeBg: _chromeBg,
 }) {
   const isDragging = useRef(false);
 

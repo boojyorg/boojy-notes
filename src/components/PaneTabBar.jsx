@@ -38,6 +38,8 @@ export default function PaneTabBar({
       ref={tabScrollRef}
       className="tab-scroll"
       data-pane-tab-bar={paneId}
+      role="tablist"
+      aria-label="Open notes"
       style={{
         ...baseStyle,
         background: tabFlip ? activeTabBg : variant === "pane" ? chromeBg : "transparent",
@@ -69,6 +71,8 @@ export default function PaneTabBar({
           <button
             key={tId}
             data-tab-id={tId}
+            role="tab"
+            aria-selected={act}
             className={`tab-btn${act ? " tab-active" : ""}`}
             onClick={() => {
               if (!isClosing) setActiveNote(tId);

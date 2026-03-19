@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { genBlockId } from "../utils/storage";
-import { isNative } from "../utils/platform";
+// isNative removed — no longer used in this module
 import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
@@ -9,6 +9,7 @@ export function useBlockOperations({
   blockRefs,
   focusBlockId,
   focusCursorPos,
+  onError,
 }) {
   const updateBlockText = (noteId, blockIndex, newText) => {
     commitTextChange((prev) => {
@@ -22,9 +23,10 @@ export function useBlockOperations({
     });
   };
 
-  const insertBlockAfter = (noteId, afterIndex, type = "p", text = "") => {
+  const insertBlockAfter = (noteId, afterIndex, type = "p", text = "", opts = {}) => {
     const newBlock = { id: genBlockId(), type, text };
     if (type === "checkbox") newBlock.checked = false;
+    if (opts.indent) newBlock.indent = opts.indent;
     commitNoteData((prev) => {
       const next = { ...prev };
       const n = { ...next[noteId] };
@@ -130,78 +132,114 @@ export function useBlockOperations({
       }
     } catch (err) {
       console.error("saveAndInsertImage failed", err);
+      onError?.("Failed to save image");
     }
   };
 
-  const flipCheck = useCallback((noteId, blockIndex) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], checked: !blocks[blockIndex].checked };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  }, []);
+  const flipCheck = useCallback(
+    (noteId, blockIndex) => {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blocks = [...n.content.blocks];
+        blocks[blockIndex] = { ...blocks[blockIndex], checked: !blocks[blockIndex].checked };
+        n.content = { ...n.content, blocks };
+        next[noteId] = n;
+        return next;
+      });
+    },
+    [commitNoteData],
+  );
 
-  const registerBlockRef = useCallback((id, el) => {
-    if (el) blockRefs.current[id] = el;
-    else delete blockRefs.current[id];
-  }, []);
+  const registerBlockRef = useCallback(
+    (id, el) => {
+      if (el) blockRefs.current[id] = el;
+      else delete blockRefs.current[id];
+    },
+    [blockRefs],
+  );
 
   // --- Code block operations ---
-  const updateCodeText = useCallback((noteId, blockIndex, newText) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  }, []);
+  const updateCodeText = useCallback(
+    (noteId, blockIndex, newText) => {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blocks = [...n.content.blocks];
+        blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
+        n.content = { ...n.content, blocks };
+        next[noteId] = n;
+        return next;
+      });
+    },
+    [commitNoteData],
+  );
 
-  const updateCodeLang = useCallback((noteId, blockIndex, lang) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], lang };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  }, []);
+  const updateCodeLang = useCallback(
+    (noteId, blockIndex, lang) => {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blocks = [...n.content.blocks];
+        blocks[blockIndex] = { ...blocks[blockIndex], lang };
+        n.content = { ...n.content, blocks };
+        next[noteId] = n;
+        return next;
+      });
+    },
+    [commitNoteData],
+  );
 
   // --- Callout operations ---
-  const updateCallout = useCallback((noteId, blockIndex, updates) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], ...updates };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  }, []);
+  const updateCallout = useCallback(
+    (noteId, blockIndex, updates) => {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blocks = [...n.content.blocks];
+        blocks[blockIndex] = { ...blocks[blockIndex], ...updates };
+        n.content = { ...n.content, blocks };
+        next[noteId] = n;
+        return next;
+      });
+    },
+    [commitNoteData],
+  );
 
   // --- Table operations ---
-  const updateTableRows = useCallback((noteId, blockIndex, rows, alignments) => {
+  const updateTableRows = useCallback(
+    (noteId, blockIndex, rows, alignments) => {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blocks = [...n.content.blocks];
+        const updated = { ...blocks[blockIndex], rows };
+        if (alignments !== undefined) updated.alignments = alignments;
+        blocks[blockIndex] = updated;
+        n.content = { ...n.content, blocks };
+        next[noteId] = n;
+        return next;
+      });
+    },
+    [commitNoteData],
+  );
+
+  const updateBlockIndent = (noteId, blockIndex, delta) => {
+    let blockId = null;
     commitNoteData((prev) => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
-      const updated = { ...blocks[blockIndex], rows };
-      if (alignments !== undefined) updated.alignments = alignments;
-      blocks[blockIndex] = updated;
+      const block = blocks[blockIndex];
+      blockId = block.id;
+      const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
+      blocks[blockIndex] = { ...block, indent: newIndent };
       n.content = { ...n.content, blocks };
       next[noteId] = n;
       return next;
     });
-  }, []);
+    if (blockId) focusBlockId.current = blockId;
+  };
 
   return {
     updateBlockText,
@@ -217,5 +255,6 @@ export function useBlockOperations({
     updateCodeLang,
     updateCallout,
     updateTableRows,
+    updateBlockIndent,
   };
 }

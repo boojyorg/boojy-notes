@@ -17,6 +17,7 @@ export function useNoteCrud({
   setTrashedNotes,
   setRenamingFolder,
   setSidebarOrder,
+  onError,
 }) {
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
@@ -111,6 +112,8 @@ export function useNoteCrud({
   };
 
   const renameFolder = (oldPath, newName) => {
+    if (!newName) return;
+    newName = newName.replace(/[/\\]/g, "-");
     if (!newName) return;
     const parts = oldPath.split("/");
     parts[parts.length - 1] = newName;
@@ -224,6 +227,7 @@ export function useNoteCrud({
       });
     } catch (err) {
       console.error("Restore note failed", err);
+      onError?.("Failed to restore note from trash");
     }
   };
 
@@ -239,6 +243,7 @@ export function useNoteCrud({
       });
     } catch (err) {
       console.error("Permanent delete failed", err);
+      onError?.("Failed to permanently delete note");
     }
   };
 
@@ -250,6 +255,7 @@ export function useNoteCrud({
       setTrashedNotes({});
     } catch (err) {
       console.error("Empty trash failed", err);
+      onError?.("Failed to empty trash");
     }
   };
 

@@ -1,9 +1,14 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import TerminalTabBar from "./TerminalTabBar";
 import TerminalInstance from "./TerminalInstance";
 import TerminalSearchBar from "./TerminalSearchBar";
+import AIChat from "../ai/AIChat";
 import { useTheme } from "../../hooks/useTheme";
+import { useAI } from "../../hooks/useAI";
+import { useSettings } from "../../context/SettingsContext";
+import { useLayout } from "../../context/LayoutContext";
 import { isElectron } from "../../utils/platform";
+import { fontSize } from "../../tokens/typography";
 
 export default function TerminalPanel({
   terminals,
@@ -11,34 +16,50 @@ export default function TerminalPanel({
   setActiveTerminalId,
   xtermInstances,
   createTerminal,
+  createAITab,
   closeTerminal,
   renameTerminal,
   restartTerminal,
   clearTerminal,
   markExited,
-  chromeBg,
-  activeTabBg,
   isOpen,
+  // AI props
+  onAIModelChange,
+  onOpenAISettings,
+  noteContext,
+  sendContext,
+  onToggleContext,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
+  const { aiSettings } = useSettings();
+  const { chromeBg, activeTabBg, accentColor } = useLayout();
   const [searchOpen, setSearchOpen] = useState(false);
+  const aiHook = useAI();
 
-  // Auto-create first terminal when panel opens with none
+  // Auto-create first tab when panel opens with none
   useEffect(() => {
-    if (isOpen && terminals.length === 0 && isElectron && window.electronAPI?.terminal) {
-      createTerminal();
+    if (isOpen && terminals.length === 0) {
+      if (isElectron && window.electronAPI?.terminal) {
+        createTerminal();
+      } else {
+        // Web/mobile: auto-create AI tab
+        createAITab();
+      }
     }
   }, [isOpen]);
+
+  // Get the active tab object
+  const activeTab = terminals.find((t) => t.id === activeTerminalId);
+  const isActiveTerminal = activeTab?.type === "terminal" || (!activeTab?.type && activeTab);
 
   // Keyboard shortcuts when terminal focused
   useEffect(() => {
     const handler = (e) => {
-      if (!isOpen) return;
+      if (!isOpen || !isActiveTerminal) return;
       const mod = e.metaKey || e.ctrlKey;
       // Cmd+F — search in terminal
       if (mod && e.key === "f") {
-        // Only intercept if a terminal element is focused
         const active = document.activeElement;
         const termContainer = document.querySelector("[data-terminal-panel]");
         if (termContainer?.contains(active) || active?.closest?.(".xterm")) {
@@ -57,7 +78,7 @@ export default function TerminalPanel({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, activeTerminalId, clearTerminal]);
+  }, [isOpen, activeTerminalId, clearTerminal, isActiveTerminal]);
 
   // Close search when switching tabs
   useEffect(() => {
@@ -69,24 +90,6 @@ export default function TerminalPanel({
     : null;
 
   if (!isOpen) return null;
-
-  // No electron API — show placeholder
-  if (!isElectron || !window.electronAPI?.terminal) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: TEXT.muted,
-          fontSize: 12,
-        }}
-      >
-        Terminal requires Electron
-      </div>
-    );
-  }
 
   return (
     <div
@@ -106,6 +109,7 @@ export default function TerminalPanel({
         activeTabBg={activeTabBg}
         chromeBg={chromeBg}
         onNewTerminal={() => createTerminal()}
+        onNewAITab={() => createAITab()}
         onCloseTerminal={closeTerminal}
         onRenameTerminal={renameTerminal}
         onClearTerminal={clearTerminal}
@@ -113,16 +117,53 @@ export default function TerminalPanel({
       />
 
       <div style={{ flex: 1, position: "relative", overflow: "hidden", background: BG.editor }}>
-        {terminals.map((t) => (
-          <TerminalInstance
-            key={t.id}
-            terminalId={t.id}
-            isVisible={activeTerminalId === t.id}
-            chromeBg={chromeBg}
-            xtermInstances={xtermInstances}
-            onExited={markExited}
-          />
-        ))}
+        {/* Terminal instances — only render terminal type tabs */}
+        {terminals
+          .filter((t) => t.type === "terminal" || !t.type)
+          .map((t) => (
+            <TerminalInstance
+              key={t.id}
+              terminalId={t.id}
+              isVisible={activeTerminalId === t.id}
+              chromeBg={chromeBg}
+              xtermInstances={xtermInstances}
+              onExited={markExited}
+            />
+          ))}
+
+        {/* AI chat instances — render for AI type tabs */}
+        {terminals
+          .filter((t) => t.type === "ai")
+          .map((t) => (
+            <div
+              key={t.id}
+              style={{
+                display: activeTerminalId === t.id ? "flex" : "none",
+                flexDirection: "column",
+                height: "100%",
+                position: "absolute",
+                inset: 0,
+              }}
+            >
+              <AIChat
+                tabId={t.id}
+                messages={aiHook.getMessages(t.id)}
+                isStreaming={aiHook.isStreaming(t.id)}
+                error={aiHook.getError(t.id)}
+                onSend={(tabId, text) => {
+                  aiHook.sendMessage(tabId, text, aiSettings, sendContext ? noteContext : null);
+                }}
+                onCancel={(tabId) => aiHook.cancelStreaming(tabId)}
+                aiSettings={aiSettings}
+                onModelChange={onAIModelChange}
+                onOpenSettings={onOpenAISettings}
+                noteContext={noteContext}
+                sendContext={sendContext}
+                onToggleContext={onToggleContext}
+                accentColor={accentColor}
+              />
+            </div>
+          ))}
 
         {terminals.length === 0 && (
           <div
@@ -132,11 +173,11 @@ export default function TerminalPanel({
               alignItems: "center",
               justifyContent: "center",
               color: TEXT.muted,
-              fontSize: 12,
+              fontSize: fontSize.sm,
               height: "100%",
             }}
           >
-            No terminals open
+            No tabs open
           </div>
         )}
 

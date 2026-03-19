@@ -1,5 +1,8 @@
 import { useEffect, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useLayout } from "../context/LayoutContext";
+import { useNoteData } from "../context/NoteDataContext";
+import { useSidebar } from "../context/SidebarContext";
 import { ChevronRight, ChevronDown, FolderIcon, FileIcon, SearchIcon, TrashIcon } from "./Icons";
 
 const hBg = (el, c) => {
@@ -7,48 +10,46 @@ const hBg = (el, c) => {
 };
 
 const Sidebar = memo(function Sidebar({
-  search,
-  setSearch,
-  searchFocused,
-  setSearchFocused,
-  searchInputRef,
-  sidebarWidth,
-  accentColor,
-  selectionStyle,
-  filteredTree,
-  fNotes,
-  noteData,
   activeNote,
-  expanded,
   toggle,
   openNote,
   setCtxMenu,
-  renamingFolder,
-  setRenamingFolder,
   renameFolder,
   createFolder,
   createNote,
   handleSidebarPointerDown,
-  sidebarScrollRef,
-  trashedNotes,
-  trashExpanded,
-  setTrashExpanded,
   emptyAllTrash,
-  restoreNote,
-  permanentDeleteNote,
-  searchMode,
-  searchResults,
-  activeResultIndex,
-  navigateResults,
-  clearSearch,
   handleSearchResultOpen,
-  getActiveResult,
   selectedNotes,
   handleNoteClick,
   clearSelection,
 }) {
+  const { sidebarWidth, accentColor, selectionStyle } = useLayout();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { noteData } = useNoteData();
+  const {
+    search,
+    setSearch,
+    searchFocused,
+    setSearchFocused,
+    searchInputRef,
+    sidebarScrollRef,
+    expanded,
+    filteredTree,
+    fNotes,
+    renamingFolder,
+    setRenamingFolder,
+    trashedNotes,
+    trashExpanded,
+    setTrashExpanded,
+    searchMode,
+    searchResults,
+    activeResultIndex,
+    navigateResults,
+    clearSearch,
+    getActiveResult,
+  } = useSidebar();
 
   // Render a note row at given depth
   const renderNote = (nId, depth) => {
@@ -60,6 +61,8 @@ const Sidebar = memo(function Sidebar({
       <button
         key={nId}
         data-note-id={nId}
+        role="treeitem"
+        aria-selected={act}
         onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
         className="sidebar-note"
         onContextMenu={(e) => {
@@ -138,6 +141,8 @@ const Sidebar = memo(function Sidebar({
       <div key={folderPath}>
         <button
           data-folder-path={folderPath}
+          role="treeitem"
+          aria-expanded={isOpen}
           onClick={() => toggle(folderPath)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -488,6 +493,8 @@ const Sidebar = memo(function Sidebar({
         <>
           <div
             ref={sidebarScrollRef}
+            role="tree"
+            aria-label="Notes"
             onPointerDown={handleSidebarPointerDown}
             style={{
               flex: 1,

@@ -93,10 +93,9 @@ export function useSplitView({ initialTabs, initialActiveNote }) {
   const activeNote = activePane.activeNote;
   const tabs = activePane.tabs;
 
-  // Flat accessors for single-pane mode
-  const allTabs = (splitState.panes.left || splitState.panes[firstPaneId])?.tabs || [];
-  const primaryActiveNote =
-    (splitState.panes.left || splitState.panes[firstPaneId])?.activeNote || null;
+  // Flat accessors for single-pane mode (kept for future use)
+  // const allTabs = (splitState.panes.left || splitState.panes[firstPaneId])?.tabs || [];
+  // const primaryActiveNote = (splitState.panes.left || splitState.panes[firstPaneId])?.activeNote || null;
 
   // --- Setters ---
 

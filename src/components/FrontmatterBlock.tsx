@@ -1,6 +1,11 @@
 import { useState } from "react";
+import type { Block } from "../types/notes";
 
-export default function FrontmatterBlock({ block }) {
+interface FrontmatterBlockProps {
+  block: Block;
+}
+
+export default function FrontmatterBlock({ block }: FrontmatterBlockProps) {
   const [expanded, setExpanded] = useState(false);
 
   const text = block.text || "";

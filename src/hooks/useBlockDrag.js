@@ -257,6 +257,7 @@ export function useBlockDrag({
   };
 
   const handleEditorPointerDown = (e) => {
+    const t0 = performance.now();
     if (e.button !== 0) return;
     if (e.target.closest(".checkbox-box, button, img, .delete-btn")) return;
     const blocks = noteDataRef.current[activeNote]?.content?.blocks;
@@ -316,8 +317,11 @@ export function useBlockDrag({
     bd.upHandler = onUp;
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    const dt = performance.now() - t0;
+    if (dt > 2) console.warn(`[perf] handleEditorPointerDown: ${dt.toFixed(1)}ms`);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupBlockDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupBlockDrag(), []);
 
   return { blockDrag, handleEditorPointerDown, cancelBlockDrag };

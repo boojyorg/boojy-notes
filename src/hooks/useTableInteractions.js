@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 
 export function useTableInteractions({
   block,
@@ -9,10 +9,14 @@ export function useTableInteractions({
   accentColor,
   cellRefs,
 }) {
-  const rows = block.rows || [
-    ["", ""],
-    ["", ""],
-  ];
+  const defaultRows = useMemo(
+    () => [
+      ["", ""],
+      ["", ""],
+    ],
+    [],
+  );
+  const rows = block.rows || defaultRows;
   const colCount = rows[0]?.length || 2;
   const alignments = block.alignments || [];
 

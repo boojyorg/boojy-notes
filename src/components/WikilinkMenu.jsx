@@ -54,6 +54,8 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
   return (
     <div
       ref={menuRef}
+      role="listbox"
+      aria-label="Link suggestions"
       style={{
         position: "fixed",
         top: position.top,
@@ -78,6 +80,8 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
         filtered.slice(0, 10).map((n, i) => (
           <div
             key={n.id}
+            role="option"
+            aria-selected={i === selectedIndex}
             onMouseDown={(e) => {
               e.preventDefault();
               onSelect(n.title);

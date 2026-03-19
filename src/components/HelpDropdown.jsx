@@ -62,7 +62,7 @@ export default function HelpDropdown({ open, onClose, toggleRef }) {
       document.removeEventListener("keydown", handleKey);
       document.removeEventListener("mousedown", handleClick);
     };
-  }, [open, onClose]);
+  }, [open, onClose, toggleRef]);
 
   if (!open) return null;
 

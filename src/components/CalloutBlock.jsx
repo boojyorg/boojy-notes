@@ -238,7 +238,6 @@ export default function CalloutBlock({
   const [iconRect, setIconRect] = useState(null);
 
   const { theme } = useTheme();
-  const { TEXT, BG } = theme;
 
   const scrollRestoreRef = useRef(null);
 
@@ -272,6 +271,7 @@ export default function CalloutBlock({
 
   /* ─── Scroll restoration (runs after DOM sync, before paint) ─── */
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs every render to restore scroll position before paint
   useLayoutEffect(() => {
     if (!scrollRestoreRef.current) return;
     const { el, top } = scrollRestoreRef.current;

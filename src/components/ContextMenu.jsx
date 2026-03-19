@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 
 const hBg = (el, c) => {
@@ -30,6 +30,39 @@ const ContextMenu = memo(function ContextMenu({
   const { BG, TEXT, SEMANTIC } = theme;
 
   const [moveSubmenu, setMoveSubmenu] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const itemsRef = useRef([]);
+
+  // Keyboard navigation — hooks must be above early return
+  const handleKeyDown = useCallback(
+    (e) => {
+      const items = itemsRef.current;
+      if (!items.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((i) => (i + 1) % items.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => (i - 1 + items.length) % items.length);
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const idx = activeIndex;
+        if (idx >= 0 && idx < items.length) {
+          items[idx].action();
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setCtxMenu(null);
+      }
+    },
+    [activeIndex, setCtxMenu],
+  );
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [ctxMenu, handleKeyDown]);
 
   if (!ctxMenu) return null;
 
@@ -167,10 +200,15 @@ const ContextMenu = memo(function ContextMenu({
               },
             ];
 
+  itemsRef.current = items;
+
   return (
     <>
       <div onClick={() => setCtxMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 250 }} />
       <div
+        role="menu"
+        aria-label="Context menu"
+        aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}
         style={{
           position: "fixed",
           top: ctxMenu.y,
@@ -185,13 +223,20 @@ const ContextMenu = memo(function ContextMenu({
           animation: "fadeIn 0.1s ease",
         }}
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <button
             key={item.label}
+            id={`ctx-item-${index}`}
+            role="menuitem"
             onClick={item.action}
+            onMouseEnter={(e) => {
+              setActiveIndex(index);
+              hBg(e.currentTarget, BG.surface);
+            }}
+            onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
             style={{
               width: "100%",
-              background: "none",
+              background: index === activeIndex ? BG.surface : "none",
               border: "none",
               padding: "7px 14px",
               cursor: "pointer",
@@ -204,8 +249,6 @@ const ContextMenu = memo(function ContextMenu({
               justifyContent: "space-between",
               alignItems: "center",
             }}
-            onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
-            onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
           >
             {item.label}
             {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}

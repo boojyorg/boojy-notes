@@ -14,7 +14,7 @@ export function useTabDrag({
   moveTabToPane,
   moveTabToPaneAtIndex,
   duplicateTabToPane,
-  openNoteInPane,
+  openNoteInPane: _openNoteInPane,
   setTabsForPane,
   closePaneIfEmpty,
   accentColor,

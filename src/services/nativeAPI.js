@@ -7,7 +7,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Preferences } from "@capacitor/preferences";
 import { Browser } from "@capacitor/browser";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-import { blocksToMarkdown, markdownToBlocks } from "../../electron/markdown.js";
+import { blocksToMarkdown, markdownToBlocks } from "../utils/markdown.js";
 
 const NOTES_DIR = "BoojyNotes";
 const INDEX_FILE = `${NOTES_DIR}/.boojy-index.json`;
@@ -584,6 +584,20 @@ const capacitorAPI = {
   setAutoUpdate: asyncNoop,
   getAutoUpdate: async () => false,
   onUpdateStatus: noopUnsub,
+
+  // Secure storage (uses Preferences on mobile — keyStorage.js handles this directly)
+  secureStorage: {
+    store: async (key, value) => {
+      await Preferences.set({ key: `boojy-ai-key-${key}`, value });
+    },
+    read: async (key) => {
+      const { value } = await Preferences.get({ key: `boojy-ai-key-${key}` });
+      return value || "";
+    },
+    delete: async (key) => {
+      await Preferences.remove({ key: `boojy-ai-key-${key}` });
+    },
+  },
 
   // Terminal (no-op on mobile)
   terminal: {

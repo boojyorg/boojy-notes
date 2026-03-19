@@ -1,6 +1,16 @@
 import { useTheme } from "../hooks/useTheme";
 
-export default function DropZoneOverlay({ zone, visible }) {
+interface DropZone {
+  side: "left" | "right" | "top" | "bottom" | "center";
+  rect: { top: number; left: number; width: number; height: number };
+}
+
+interface DropZoneOverlayProps {
+  zone: DropZone | null;
+  visible: boolean;
+}
+
+export default function DropZoneOverlay({ zone, visible }: DropZoneOverlayProps) {
   const { theme } = useTheme();
 
   if (!visible || !zone) return null;
@@ -9,7 +19,7 @@ export default function DropZoneOverlay({ zone, visible }) {
   if (!rect || side === "center") return null;
 
   const half = { width: rect.width / 2, height: rect.height / 2 };
-  let styles;
+  let styles: { top: number; left: number; width: number; height: number };
   switch (side) {
     case "left":
       styles = { top: rect.top, left: rect.left, width: half.width, height: rect.height };
@@ -42,7 +52,7 @@ export default function DropZoneOverlay({ zone, visible }) {
       style={{
         position: "fixed",
         ...styles,
-        background: theme.splitDropZone || `${theme.ACCENT.primary}15`,
+        background: (theme as Record<string, string>).splitDropZone || `${theme.ACCENT.primary}15`,
         border: `2px solid ${theme.ACCENT.primary}40`,
         borderRadius: 4,
         zIndex: 998,

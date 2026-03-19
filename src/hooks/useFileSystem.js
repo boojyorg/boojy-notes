@@ -39,6 +39,7 @@ export function useFileSystem(
   trashedNotesRef,
   syncGeneration,
   setSidebarOrder,
+  onError,
 ) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
@@ -91,6 +92,7 @@ export function useFileSystem(
         }
       } catch (err) {
         console.error("useFileSystem: initial load failed", err);
+        onError?.("Failed to load notes from disk");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -99,6 +101,7 @@ export function useFileSystem(
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; including it would re-run initial load
   }, [setNoteData, setCustomFolders]);
 
   // ─── Detect local changes and debounce writes ───
@@ -147,7 +150,7 @@ export function useFileSystem(
     const dirty = [...dirtyNotes.current];
     for (const noteId of dirty) {
       const note = noteDataRef.current[noteId];
-      if (note?._draft) {
+      if (!note || note._draft) {
         dirtyNotes.current.delete(noteId);
         continue;
       }
@@ -156,6 +159,7 @@ export function useFileSystem(
           await api.writeNote(note);
         } catch (err) {
           console.error("useFileSystem: write failed", noteId, err);
+          onError?.("Failed to save note to disk");
         }
       }
       dirtyNotes.current.delete(noteId);
@@ -173,10 +177,12 @@ export function useFileSystem(
         }
       } catch (err) {
         console.error("useFileSystem: delete failed", noteId, err);
+        onError?.("Failed to delete note file");
       }
       deletedNotes.current.delete(noteId);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; trashedNotesRef is a ref
+  }, [trashedNotesRef]);
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
@@ -266,10 +272,11 @@ export function useFileSystem(
         }
       } catch (err) {
         console.error("useFileSystem: folder sync failed", err);
+        onError?.("Failed to sync folders from disk");
       }
     };
 
-    const unsubDelete = window.electronAPI.onFileDeleted(({ filePath }) => {
+    const unsubDelete = window.electronAPI.onFileDeleted(({ filePath: _filePath }) => {
       // Re-read all notes and sync folders to remove stale entries
       (async () => {
         try {
@@ -293,7 +300,8 @@ export function useFileSystem(
       unsubChange();
       unsubDelete();
     };
-  }, [setNoteData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/setSidebarOrder/syncGeneration are stable refs/setters
+  }, [setNoteData, setCustomFolders, setSidebarOrder, syncGeneration]);
 
   // Cleanup timer
   useEffect(() => {
@@ -322,7 +330,9 @@ export function useFileSystem(
       });
     } catch (err) {
       console.error("useFileSystem: changeNotesDir failed", err);
+      onError?.("Failed to change notes directory");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
   }, [setNoteData, setCustomFolders]);
 
   return { isElectron, isNative, notesDir, loading, changeNotesDir };

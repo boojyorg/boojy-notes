@@ -30,7 +30,7 @@ function MenuItem({ label, onClick }) {
 export default function LinkContextMenu({
   position,
   linkType,
-  url,
+  url: _url,
   onOpen,
   onCopy,
   onEdit,

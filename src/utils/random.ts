@@ -1,4 +1,4 @@
-export function mulberry32(seed) {
+export function mulberry32(seed: number): () => number {
   return function () {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -8,7 +8,7 @@ export function mulberry32(seed) {
   };
 }
 
-export function hashString(str) {
+export function hashString(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);

@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useLayout } from "../context/LayoutContext";
+import { useSettings } from "../context/SettingsContext";
 import { getAPI } from "../services/apiProvider";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
@@ -23,6 +25,7 @@ const EMPTY_FORMATS = {
 
 const EditorArea = memo(
   function EditorArea({
+    textOnlyEditForEditor,
     note,
     activeNote,
     editorFadeIn,
@@ -34,9 +37,6 @@ const EditorArea = memo(
     focusBlockId,
     focusCursorPos,
     forceRender,
-    accentColor,
-    editorBg,
-    settingsFontSize,
     handleEditorKeyDown,
     handleEditorInput,
     handleEditorPaste,
@@ -79,6 +79,8 @@ const EditorArea = memo(
   }) {
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
+    const { accentColor, editorBg } = useLayout();
+    const { settingsFontSize } = useSettings();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -379,7 +381,7 @@ const EditorArea = memo(
           <div
             key={activeNote}
             style={{
-              padding: "28px 56px 80px 56px",
+              padding: "12px 56px 80px 56px",
               maxWidth: 720,
               marginLeft: 40,
               marginRight: "auto",
@@ -430,6 +432,7 @@ const EditorArea = memo(
               ref={titleRef}
               contentEditable
               suppressContentEditableWarning
+              data-title
               data-placeholder="Untitled"
               className={!note.title ? "empty-title" : undefined}
               onInput={(e) => {
@@ -601,15 +604,23 @@ const EditorArea = memo(
                     return;
                   }
                 }}
+                data-editor
                 style={{ outline: "none" }}
               >
                 {(() => {
-                  let numCounter = 0;
+                  let numCounters = {};
                   return note.content.blocks.map((block, i) => {
+                    let numberedIndex;
                     if (block.type === "numbered") {
-                      numCounter++;
+                      const indent = block.indent || 0;
+                      numCounters[indent] = (numCounters[indent] || 0) + 1;
+                      // Reset deeper-level counters
+                      Object.keys(numCounters).forEach((k) => {
+                        if (+k > indent) delete numCounters[k];
+                      });
+                      numberedIndex = numCounters[indent];
                     } else {
-                      numCounter = 0;
+                      numCounters = {};
                     }
                     return (
                       <EditableBlock
@@ -623,7 +634,7 @@ const EditorArea = memo(
                         syncGen={syncGeneration.current}
                         accentColor={accentColor}
                         fontSize={settingsFontSize}
-                        numberedIndex={block.type === "numbered" ? numCounter : undefined}
+                        numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
                         onUpdateCode={updateCodeText}
                         onUpdateLang={updateCodeLang}
                         onUpdateCallout={updateCallout}
@@ -769,6 +780,15 @@ const EditorArea = memo(
     );
   },
   (prev, next) => {
+    const t0 = performance.now();
+
+    // Fast path: text-only edits don't change block structure, and the
+    // contentEditable DOM is already correct — skip the block loop entirely.
+    if (next.textOnlyEditForEditor?.current) {
+      next.textOnlyEditForEditor.current = false; // consume the flag
+      return true;
+    }
+
     // Custom comparator: avoid re-render on pure text edits
     // Compare note by block structure (ids + types), not by reference
     const pBlocks = prev.note?.content?.blocks;
@@ -776,7 +796,12 @@ const EditorArea = memo(
     if (pBlocks !== nBlocks) {
       if (!pBlocks || !nBlocks || pBlocks.length !== nBlocks.length) return false;
       for (let i = 0; i < pBlocks.length; i++) {
-        if (pBlocks[i].id !== nBlocks[i].id || pBlocks[i].type !== nBlocks[i].type) return false;
+        if (
+          pBlocks[i].id !== nBlocks[i].id ||
+          pBlocks[i].type !== nBlocks[i].type ||
+          pBlocks[i].indent !== nBlocks[i].indent
+        )
+          return false;
         // Code blocks manage their own textarea — must re-render on text/lang changes
         if (
           pBlocks[i].type === "code" &&
@@ -793,19 +818,21 @@ const EditorArea = memo(
     }
     // Check path changed (folder move / breadcrumb)
     if (prev.note?.path !== next.note?.path) return false;
-    return (
+    const result =
       prev.activeNote === next.activeNote &&
       prev.editorFadeIn === next.editorFadeIn &&
-      prev.accentColor === next.accentColor &&
-      prev.editorBg === next.editorBg &&
-      prev.settingsFontSize === next.settingsFontSize &&
       prev.toolbarState === next.toolbarState &&
       prev.noteTitleSet === next.noteTitleSet &&
       prev.linkPopover === next.linkPopover &&
       prev.selectedImageBlockId === next.selectedImageBlockId &&
       prev.lightbox === next.lightbox &&
-      prev.backlinks === next.backlinks
-    );
+      prev.backlinks === next.backlinks;
+    const dt = performance.now() - t0;
+    if (dt > 0.5)
+      console.warn(
+        `[perf] EditorArea memo comparator: ${dt.toFixed(2)}ms, blocks: ${next.note?.content?.blocks?.length}`,
+      );
+    return result;
   },
 );
 

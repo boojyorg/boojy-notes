@@ -88,6 +88,7 @@ export function ThemeProvider({ children }) {
       style.textContent = "";
     }, ms + 50);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isFirstRender is a stable ref-like object created with useMemo
   }, [resolvedMode]);
 
   const theme = resolvedMode === "day" ? DAY : NIGHT;

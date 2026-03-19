@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useLayout } from "../context/LayoutContext";
 import { usePaneRefs } from "../hooks/usePaneRefs";
 import { useEditorHandlers } from "../hooks/useEditorHandlers";
 import { useBlockOperations } from "../hooks/useBlockOperations";
@@ -11,6 +12,7 @@ import EditorArea from "./EditorArea";
 
 export default memo(
   function PaneContainer({
+    textOnlyEditForEditor,
     paneId,
     isActive,
     tabs,
@@ -24,9 +26,6 @@ export default memo(
     tabFlip,
     activeTabBg,
     chromeBg,
-    accentColor,
-    editorBg,
-    settingsFontSize,
     setNoteData,
     commitNoteData,
     commitTextChange,
@@ -54,6 +53,7 @@ export default memo(
     onTabPointerDown,
   }) {
     const { theme } = useTheme();
+    const { accentColor, editorBg } = useLayout();
 
     // Per-pane refs
     const { editorRef, editorScrollRef, titleRef, blockRefs, focusBlockId, focusCursorPos } =
@@ -89,6 +89,7 @@ export default memo(
       updateCodeLang,
       updateCallout,
       updateTableRows,
+      updateBlockIndent,
     } = useBlockOperations({
       commitNoteData,
       commitTextChange,
@@ -151,6 +152,7 @@ export default memo(
       mouseIsDown,
       setToolbarState,
       onOpenLinkEditor: openLinkEditor,
+      updateBlockIndent,
     });
 
     // Block drag for this pane
@@ -230,8 +232,19 @@ export default memo(
           left: rect.left - editorRect.left + rect.width / 2,
         });
       };
-      document.addEventListener("selectionchange", onSelChange);
-      return () => document.removeEventListener("selectionchange", onSelChange);
+      let rafId = null;
+      const debouncedSelChange = () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          onSelChange();
+        });
+      };
+      document.addEventListener("selectionchange", debouncedSelChange);
+      return () => {
+        cancelAnimationFrame(rafId);
+        document.removeEventListener("selectionchange", debouncedSelChange);
+      };
     }, [activeNote]);
 
     // Focus block layout effect (per-pane)
@@ -309,6 +322,7 @@ export default memo(
         )}
         <EditorArea
           onEditorClick={onEditorClick}
+          textOnlyEditForEditor={textOnlyEditForEditor}
           note={note}
           activeNote={activeNote}
           editorFadeIn={editorFadeIn}
@@ -320,9 +334,6 @@ export default memo(
           focusBlockId={focusBlockId}
           focusCursorPos={focusCursorPos}
           forceRender={forceRender}
-          accentColor={accentColor}
-          editorBg={editorBg}
-          settingsFontSize={settingsFontSize}
           handleEditorKeyDown={handleEditorKeyDown}
           handleEditorInput={handleEditorInput}
           handleEditorPaste={handleEditorPaste}
@@ -365,13 +376,12 @@ export default memo(
     );
   },
   (prev, next) => {
+    const t0 = performance.now();
+
     // Skip re-render when only unrelated noteData changed (e.g. typing in other pane)
     if (prev.activeNote !== next.activeNote) return false;
     if (prev.tabs !== next.tabs) return false;
     if (prev.isActive !== next.isActive) return false;
-    if (prev.accentColor !== next.accentColor) return false;
-    if (prev.editorBg !== next.editorBg) return false;
-    if (prev.settingsFontSize !== next.settingsFontSize) return false;
     if (prev.showTabBar !== next.showTabBar) return false;
     if (prev.tabAreaWidth !== next.tabAreaWidth) return false;
     if (prev.activeTabBg !== next.activeTabBg) return false;
@@ -411,6 +421,8 @@ export default memo(
       if (prev.noteData[tabId]?.title !== next.noteData[tabId]?.title) return false;
     }
 
+    const dt = performance.now() - t0;
+    if (dt > 0.5) console.warn(`[perf] PaneContainer memo comparator: ${dt.toFixed(2)}ms`);
     return true;
   },
 );

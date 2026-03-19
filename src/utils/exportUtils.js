@@ -1,4 +1,4 @@
-import { stripMarkdownFormatting } from "./inlineFormatting";
+// stripMarkdownFormatting removed — not used in this module
 
 /**
  * Convert inline markdown to simple HTML (for export, without interactive wikilink elements).

@@ -7,7 +7,7 @@ import {
   groupByFolder,
 } from "../utils/search";
 
-export function useSearch(noteData, noteDataRef) {
+export function useSearch(noteData, _noteDataRef) {
   const searchIndexRef = useRef(new Map());
   const debounceRef = useRef(null);
   const prevNoteIdsRef = useRef(new Set());

@@ -108,7 +108,7 @@ export function placeCaret(el, pos = 0) {
     sel.removeAllRanges();
     sel.addRange(range);
     return true;
-  } catch (_) {
+  } catch {
     try {
       let ancestor = el.parentElement;
       while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
@@ -120,7 +120,7 @@ export function placeCaret(el, pos = 0) {
       sel.removeAllRanges();
       sel.addRange(range);
       return true;
-    } catch (__) {
+    } catch {
       return false;
     }
   }

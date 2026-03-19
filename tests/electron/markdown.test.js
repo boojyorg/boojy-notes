@@ -5,7 +5,7 @@ import {
   parseTableRow,
   parseFrontmatterYaml,
   parseFrontmatter,
-} from "../../electron/markdown.js";
+} from "../../src/utils/markdown.js";
 
 // --- blocksToMarkdown ---
 
@@ -83,7 +83,13 @@ describe("blocksToMarkdown", () => {
 
   it("converts callout", () => {
     const result = blocksToMarkdown([
-      { type: "callout", calloutTypeRaw: "warning", calloutFold: "", title: "Careful", text: "be safe" },
+      {
+        type: "callout",
+        calloutTypeRaw: "warning",
+        calloutFold: "",
+        title: "Careful",
+        text: "be safe",
+      },
     ]);
     expect(result).toBe("> [!warning] Careful\n> be safe");
   });
@@ -97,7 +103,13 @@ describe("blocksToMarkdown", () => {
 
   it("converts table", () => {
     const result = blocksToMarkdown([
-      { type: "table", rows: [["A", "B"], ["1", "2"]] },
+      {
+        type: "table",
+        rows: [
+          ["A", "B"],
+          ["1", "2"],
+        ],
+      },
     ]);
     expect(result).toBe("| A | B |\n| --- | --- |\n| 1 | 2 |");
   });
@@ -213,7 +225,10 @@ describe("markdownToBlocks", () => {
     const blocks = markdownToBlocks(md);
     expect(blocks[0]).toMatchObject({
       type: "table",
-      rows: [["Name", "Age"], ["Alice", "30"]],
+      rows: [
+        ["Name", "Age"],
+        ["Alice", "30"],
+      ],
     });
   });
 
@@ -234,7 +249,11 @@ describe("markdownToBlocks", () => {
 
   it("parses markdown image", () => {
     const blocks = markdownToBlocks("![alt text](http://example.com/img.png)");
-    expect(blocks[0]).toMatchObject({ type: "image", src: "http://example.com/img.png", alt: "alt text" });
+    expect(blocks[0]).toMatchObject({
+      type: "image",
+      src: "http://example.com/img.png",
+      alt: "alt text",
+    });
   });
 
   it("returns empty paragraph for empty input", () => {

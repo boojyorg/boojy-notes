@@ -102,7 +102,7 @@ export default function CodeBlock({
 
   useEffect(() => {
     autoResize();
-  }, [code]);
+  }, [code, autoResize]);
 
   // Handle input changes
   const handleInput = useCallback(
@@ -415,7 +415,7 @@ export default function CodeBlock({
 }
 
 /* ---- Context menu rendered as a portal ---- */
-function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete, onClose }) {
+function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete, onClose: _onClose }) {
   const [langSub, setLangSub] = useState(false);
   const menuRef = useRef(null);
   const subRef = useRef(null);

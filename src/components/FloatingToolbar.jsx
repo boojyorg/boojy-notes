@@ -1,12 +1,14 @@
 import { memo, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 
-function ToolbarBtn({ label, active, onClick, style = {} }) {
+function ToolbarBtn({ label, active, onClick, style = {}, ariaLabel }) {
   const { theme } = useTheme();
   const { ACCENT, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
   return (
     <button
+      aria-pressed={active}
+      aria-label={ariaLabel}
       onMouseDown={(e) => {
         e.preventDefault();
         onClick();
@@ -41,6 +43,8 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   if (!position) return null;
   return (
     <div
+      role="toolbar"
+      aria-label="Text formatting"
       style={{
         position: "absolute",
         top: position.top,
@@ -59,24 +63,28 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
     >
       <ToolbarBtn
         label="B"
+        ariaLabel="Bold"
         active={activeFormats.bold}
         onClick={() => onFormat("bold")}
         style={{ fontWeight: 700 }}
       />
       <ToolbarBtn
         label="I"
+        ariaLabel="Italic"
         active={activeFormats.italic}
         onClick={() => onFormat("italic")}
         style={{ fontStyle: "italic" }}
       />
       <ToolbarBtn
         label={<span style={{ textDecoration: "line-through" }}>S</span>}
+        ariaLabel="Strikethrough"
         active={activeFormats.strikethrough}
         onClick={() => onFormat("strikethrough")}
         style={{ fontWeight: 600 }}
       />
       <ToolbarBtn
         label="H"
+        ariaLabel="Highlight"
         active={activeFormats.highlight}
         onClick={() => onFormat("highlight")}
         style={{
@@ -86,12 +94,14 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
       />
       <ToolbarBtn
         label="</>"
+        ariaLabel="Inline code"
         active={activeFormats.code}
         onClick={() => onFormat("code")}
         style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10 }}
       />
       <ToolbarBtn
         label="Link"
+        ariaLabel="Link"
         active={activeFormats.link}
         onClick={() => onFormat("link")}
         style={{ fontSize: 11 }}

@@ -228,6 +228,7 @@ export default function TableBlock({
               {rows[0]?.map((cell, colIdx) => (
                 <th
                   key={colIdx}
+                  scope="col"
                   ref={(el) => {
                     cellRefs.current[`0-${colIdx}`] = el;
                   }}

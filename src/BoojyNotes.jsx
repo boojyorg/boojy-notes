@@ -1,45 +1,37 @@
-import {
+import React, {
   useState,
   useEffect,
   useLayoutEffect,
   useRef,
   useCallback,
   useMemo,
+  useDeferredValue,
   Fragment,
 } from "react";
-import { useAuth } from "./hooks/useAuth";
+import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
+import { useSettings } from "./context/SettingsContext";
+import { useLayout } from "./context/LayoutContext";
+import { useSidebar } from "./context/SidebarContext";
+import { useOverlay } from "./context/OverlayContext";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
-import { useHistory } from "./hooks/useHistory";
 import { useNoteNavigation } from "./hooks/useNoteNavigation";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
 import { useInlineFormatting } from "./hooks/useInlineFormatting";
-import { usePanelResize } from "./hooks/usePanelResize";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTerminal } from "./hooks/useTerminal";
-import { useSearch } from "./hooks/useSearch";
 import { useTheme } from "./hooks/useTheme";
 import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
-import { FOLDER_TREE } from "./constants/data";
-import { hexToRgb, rgbToHex } from "./utils/colorUtils";
-import { setBlockIdCounter, STORAGE_KEY, loadFromStorage } from "./utils/storage";
+import { STORAGE_KEY, loadFromStorage } from "./utils/storage";
 import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
-import {
-  sortByOrder,
-  buildTree,
-  collectPaths,
-  filterTree,
-  pathsToTree,
-  naturalCompare,
-} from "./utils/sidebarTree";
 import SettingsModal from "./components/SettingsModal";
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -51,25 +43,107 @@ import PaneContainer from "./components/PaneContainer";
 import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
 import TerminalPanel from "./components/terminal/TerminalPanel";
+import GlobalStyles from "./components/GlobalStyles";
+import Toast from "./components/Toast";
+import TitleBar from "./components/TitleBar";
+import OnboardingToast from "./components/OnboardingToast";
+import PersistenceWarning from "./components/PersistenceWarning";
+import FirstSyncModal from "./components/FirstSyncModal";
+import ConflictToast from "./components/ConflictToast";
+import { useToast } from "./hooks/useToast";
 import { isElectron, isNative, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 
+const DevOverlay = import.meta.env.DEV ? React.lazy(() => import("./components/DevOverlay")) : null;
+
 export default function BoojyNotes() {
-  const { theme, isDark, themeMode, setThemeMode } = useTheme();
+  const { theme } = useTheme();
+  const { toasts, showToast, dismissToast } = useToast();
+
+  // ── Contexts ───────────────────────────────────────────────────────
+  const { noteData } = useNoteData();
+  const {
+    setNoteData,
+    syncGeneration,
+    activeNoteRef,
+    undo,
+    redo,
+    commitNoteData,
+    commitTextChange,
+    pushHistory,
+    popHistory,
+    noteDataRef,
+    textOnlyEdit,
+    textOnlyEditForEditor,
+    editedNoteHint,
+  } = useNoteDataActions();
+
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    setSettingsTab,
+    user,
+    profile,
+    aiSettings,
+    setAISettings,
+    updateAISetting,
+  } = useSettings();
+
+  const {
+    collapsed,
+    setCollapsed,
+    rightPanel,
+    setRightPanel,
+    sidebarWidth,
+    rightPanelWidth,
+    chromeBg,
+    editorBg,
+    accentColor,
+    activeTabBg,
+    tabFlip,
+    setTabFlip,
+    sidebarHandles,
+    rightPanelHandles,
+    isDragging,
+    startDrag,
+    startRightDrag,
+  } = useLayout();
+
+  const {
+    search,
+    searchInputRef,
+    sidebarScrollRef,
+    expanded,
+    setExpanded,
+    customFolders,
+    setCustomFolders,
+    setTrashedNotes,
+    trashedNotesRef,
+    sidebarOrder,
+    setSidebarOrder,
+    setRenamingFolder,
+    filteredTree,
+    fNotes,
+    folderList,
+  } = useSidebar();
+
+  const {
+    ctxMenu,
+    setCtxMenu,
+    dragTooltip,
+    setDragTooltip,
+    dragTooltipCount,
+    lightbox,
+    setLightbox,
+    slashMenu,
+    setSlashMenu,
+    slashMenuRef,
+    wikilinkMenu,
+    setWikilinkMenu,
+    wikilinkMenuRef,
+  } = useOverlay();
 
   // ── State ──────────────────────────────────────────────────────────
-  const [expanded, setExpanded] = useState(() => {
-    const ui = (() => {
-      try {
-        return JSON.parse(localStorage.getItem("boojy-ui-state"));
-      } catch {
-        return null;
-      }
-    })();
-    if (ui?.expanded) return ui.expanded;
-    const saved = loadFromStorage();
-    return saved?.expanded || { Boojy: true };
-  });
   // Split view state — manages tabs + activeNote per pane
   const initialActiveNote = (() => {
     const ui = (() => {
@@ -124,104 +198,24 @@ export default function BoojyNotes() {
     setActiveNoteForPane,
     setTabsForPane,
   } = useSplitView({ initialTabs, initialActiveNote });
-  const [collapsed, setCollapsed] = useState(false);
-  const [rightPanel, setRightPanel] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
-  const [rightPanelWidth, setRightPanelWidth] = useState(220);
-  const [search, setSearch] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [settingsFontSize, setSettingsFontSize] = useState(15);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("profile");
-  const {
-    user,
-    profile,
-    signInWithEmail,
-    signUpWithEmail,
-    signInWithOAuth,
-    signOut,
-    resendVerification,
-  } = useAuth();
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(window.location.search);
-    if (hash.includes("access_token") || params.has("code")) {
-      setSettingsOpen(true);
-      setSettingsTab("profile");
-    }
-  }, []);
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
-  const [devToast, setDevToast] = useState(null);
-  const [chromeBg, setChromeBg] = useState(theme.BG.dark);
-  const [editorBg, setEditorBg] = useState(theme.BG.editor);
-  const [topBarEdge, setTopBarEdge] = useState("B");
-  const [createBtnStyle, setCreateBtnStyle] = useState("A");
-  const [accentColor, setAccentColor] = useState(theme.ACCENT.primary);
-  const [activeTabBg, setActiveTabBg] = useState("#1C1C20");
-  const [tabFlip, setTabFlip] = useState(false);
-  const [selectionStyle, setSelectionStyle] = useState("B");
-
-  useEffect(() => {
-    setChromeBg(theme.BG.dark);
-    setEditorBg(theme.BG.editor);
-    setAccentColor(theme.ACCENT.primary);
-    setActiveTabBg(isDark ? "#1C1C20" : "#e2e6f2");
-  }, [isDark]);
-
-  const [noteData, setNoteData] = useState(() => {
-    if (isNative) return {};
-    const saved = loadFromStorage();
-    if (saved?.noteData) {
-      let maxId = 0;
-      for (const n of Object.values(saved.noteData)) {
-        for (const b of n.content.blocks) {
-          if (b.id?.startsWith("blk-")) {
-            const num = parseInt(b.id.slice(4), 10);
-            if (num > maxId) maxId = num;
-          }
-        }
-      }
-      setBlockIdCounter(maxId);
-      return saved.noteData;
-    }
-    return {};
-  });
 
   // Update native window title when active note or its title changes
   const activeNoteTitle = noteData[activeNote]?.title;
+  const activeNoteContext = useMemo(() => {
+    if (!activeNote || !noteData[activeNote]) return "";
+    const n = noteData[activeNote];
+    return `# ${n.title}\n\n${(n.content?.blocks || []).map((b) => b.text || "").join("\n")}`;
+  }, [activeNote, noteData]);  
   useEffect(() => {
     const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
     if (isElectron) getAPI()?.setWindowTitle(title);
   }, [activeNote, activeNoteTitle]);
 
   const [, forceRender] = useState(0);
-  const [slashMenu, setSlashMenu] = useState(null);
-  const [wikilinkMenu, setWikilinkMenu] = useState(null);
-  const [ctxMenu, setCtxMenu] = useState(null);
-  const [renamingFolder, setRenamingFolder] = useState(null);
-  const [customFolders, setCustomFolders] = useState(() => {
-    if (isNative) return [];
-    const saved = loadFromStorage();
-    return saved?.customFolders || [];
-  });
-  const [trashedNotes, setTrashedNotes] = useState({});
-  const [trashExpanded, setTrashExpanded] = useState(false);
-  const trashedNotesRef = useRef(new Map());
   const [toolbarState, setToolbarState] = useState(null);
-  const [sidebarOrder, setSidebarOrder] = useState({});
-  const [dragTooltip, setDragTooltip] = useState(null);
-  const dragTooltipCount = useRef({ editor: 0, sidebar: 0 });
-
-  // ── Spell check state ──────────────────────────────────────────────
-  const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
-  const [spellCheckLanguages, setSpellCheckLanguages] = useState(["en-US"]);
-
-  // ── Auto-update state (desktop only) ────────────────────────────────
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
-  const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
 
   // ── Onboarding & persistence warning toasts (web only) ────────────
   const [onboardingToast, setOnboardingToast] = useState(false);
@@ -229,10 +223,7 @@ export default function BoojyNotes() {
   const persistenceShownRef = useRef(false);
 
   // ── Refs ────────────────────────────────────────────────────────────
-  const sidebarHandles = useRef([]);
-  const rightPanelHandles = useRef([]);
   const tabScrollRef = useRef(null);
-  const searchInputRef = useRef(null);
   const [tabAreaWidth, setTabAreaWidth] = useState(600);
   const blockRefs = useRef({});
   const editorRef = useRef(null);
@@ -240,17 +231,10 @@ export default function BoojyNotes() {
   const focusBlockId = useRef(null);
   const focusCursorPos = useRef(null);
   const mouseIsDown = useRef(false);
-  const slashMenuRef = useRef(slashMenu);
-  slashMenuRef.current = slashMenu;
-  const wikilinkMenuRef = useRef(wikilinkMenu);
-  wikilinkMenuRef.current = wikilinkMenu;
   const editorScrollRef = useRef(null);
-  const sidebarScrollRef = useRef(null);
   const splitContainerRef = useRef(null);
 
-  // ── Shared refs ─────────────────────────────────────────────────────
-  const syncGeneration = useRef(0);
-  const activeNoteRef = useRef(activeNote);
+  // ── Sync activeNoteRef from context ─────────────────────────────────
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
@@ -265,10 +249,9 @@ export default function BoojyNotes() {
     pendingFirstSync,
     confirmFirstSync,
     cancelFirstSync,
-  } = useSync(user, profile, noteData, setNoteData, activeNote);
+  } = useSync(user, profile, noteData, setNoteData, activeNote, editedNoteHint);
   const {
     isElectron: isDesktop,
-    isNative: hasNativeFS,
     notesDir,
     loading: fsLoading,
     changeNotesDir,
@@ -279,21 +262,8 @@ export default function BoojyNotes() {
     trashedNotesRef,
     syncGeneration,
     setSidebarOrder,
+    showToast,
   );
-
-  // ── App hooks ───────────────────────────────────────────────────────
-  const {
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    commitNoteData,
-    commitTextChange,
-    pushHistory,
-    popHistory,
-    isUndoRedo,
-    noteDataRef,
-  } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({
     activeNote,
     setActiveNote,
@@ -329,13 +299,13 @@ export default function BoojyNotes() {
     setTrashedNotes,
     setRenamingFolder,
     setSidebarOrder,
+    onError: showToast,
   });
   const {
     updateBlockText,
     insertBlockAfter,
     deleteBlock,
     updateBlockProperty,
-    insertImageBlock,
     insertFileBlock,
     saveAndInsertImage,
     flipCheck,
@@ -344,22 +314,22 @@ export default function BoojyNotes() {
     updateCodeLang,
     updateCallout,
     updateTableRows,
+    updateBlockIndent,
   } = useBlockOperations({
     commitNoteData,
     commitTextChange,
     blockRefs,
     focusBlockId,
     focusCursorPos,
+    onError: showToast,
   });
 
   // Image selection + lightbox state
   const [selectedImageBlockId, setSelectedImageBlockId] = useState(null);
-  const [lightbox, setLightbox] = useState(null);
 
   // Link popover state
   const [linkPopover, setLinkPopover] = useState(null);
   const openLinkEditor = useCallback(() => {
-    // getLinkContext is called from within useInlineFormatting
     if (getLinkContextRef.current) {
       const ctx = getLinkContextRef.current();
       if (ctx) setLinkPopover(ctx);
@@ -379,13 +349,6 @@ export default function BoojyNotes() {
     });
   getLinkContextRef.current = getLinkContext;
 
-  const { isDragging, startDrag, startRightDrag } = usePanelResize({
-    sidebarHandles,
-    rightPanelHandles,
-    setSidebarWidth,
-    setRightPanelWidth,
-    chromeBg,
-  });
   const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
     activeNote,
@@ -403,27 +366,26 @@ export default function BoojyNotes() {
   });
   const multiSelectRef = useRef(null);
   const clearSelectionRef = useRef(null);
-  const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder } =
-    useSidebarDrag({
-      noteDataRef,
-      setNoteData,
-      expanded,
-      setExpanded,
-      sidebarOrder,
-      setSidebarOrder,
-      customFolders,
-      sidebarScrollRef,
-      accentColor,
-      chromeBg,
-      setDragTooltip,
-      dragTooltipCount,
-      selectedNotesRef: multiSelectRef,
-      clearSelectionRef: clearSelectionRef,
-      splitStateRef,
-      splitPaneWithNote,
-      openNoteInPane,
-      insertTabInPane,
-    });
+  const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag } = useSidebarDrag({
+    noteDataRef,
+    setNoteData,
+    expanded,
+    setExpanded,
+    sidebarOrder,
+    setSidebarOrder,
+    customFolders,
+    sidebarScrollRef,
+    accentColor,
+    chromeBg,
+    setDragTooltip,
+    dragTooltipCount,
+    selectedNotesRef: multiSelectRef,
+    clearSelectionRef: clearSelectionRef,
+    splitStateRef,
+    splitPaneWithNote,
+    openNoteInPane,
+    insertTabInPane,
+  });
   const { handleTabPointerDown } = useTabDrag({
     splitState,
     splitPaneWithNote,
@@ -473,6 +435,8 @@ export default function BoojyNotes() {
     mouseIsDown,
     setToolbarState,
     onOpenLinkEditor: openLinkEditor,
+    updateBlockIndent,
+    onError: showToast,
   });
   const {
     terminals,
@@ -480,27 +444,32 @@ export default function BoojyNotes() {
     setActiveTerminalId,
     xtermInstances,
     createTerminal,
+    createAITab,
     closeTerminal,
     renameTerminal,
     restartTerminal,
     clearTerminal,
     markExited,
   } = useTerminal();
-  const {
-    searchMode,
-    searchResults,
-    activeResultIndex,
-    search: runSearch,
-    clearSearch,
-    navigateResults,
-    getActiveResult,
-  } = useSearch(noteData, noteDataRef);
 
-  // Wire search input to fuzzy search — clear multi-select when entering search
+  const handleAIModelChange = useCallback(
+    (model) => updateAISetting("model", model),
+    [updateAISetting],
+  );
+
+  const handleOpenAISettings = useCallback(() => {
+    setSettingsOpen(true);
+    setSettingsTab("ai");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleToggleAIContext = useCallback(() => {
+    setAISettings((prev) => ({ ...prev, sendContext: !prev.sendContext }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Wire search → clear multi-select
   useEffect(() => {
-    runSearch(search);
     if (search && clearSelectionRef.current) clearSelectionRef.current();
-  }, [search, runSearch]);
+  }, [search]);
 
   const scrollToSearchMatch = useCallback(
     (noteId, matchBlockId) => {
@@ -547,29 +516,12 @@ export default function BoojyNotes() {
         }
       } catch (err) {
         console.error("Failed to load trash", err);
+        showToast("Failed to load trash");
       }
     })();
-  }, [fsLoading]);
+  }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load settings on mount (spell check, etc.)
-  useEffect(() => {
-    const api = getAPI();
-    if (!api?.getSettings) return;
-    api.getSettings().then((s) => {
-      if (s.spellCheckEnabled !== undefined) setSpellCheckEnabled(s.spellCheckEnabled !== false);
-      if (s.spellCheckLanguages) setSpellCheckLanguages(s.spellCheckLanguages);
-    });
-  }, []);
-
-  // Load auto-update settings and listen for update status events (desktop only)
-  useEffect(() => {
-    if (!isElectron || !window.electronAPI?.getAutoUpdate) return;
-    window.electronAPI.getAutoUpdate().then((enabled) => setAutoUpdateEnabled(enabled));
-    const cleanup = window.electronAPI.onUpdateStatus?.((status) => setUpdateStatus(status));
-    return () => cleanup?.();
-  }, []);
-
-  // Listen for menu export/import events (use refs to avoid re-registering on every noteData change)
+  // Listen for menu export/import events
   const handleExportRef = useRef({ pdf: null, docx: null });
   useEffect(() => {
     if (!isElectron || !window.electronAPI) return;
@@ -594,9 +546,9 @@ export default function BoojyNotes() {
       );
     }
     return () => cleanups.forEach((fn) => fn && fn());
-  }, []); // eslint-disable-line
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Editor fade-in + title sync (only in single-pane mode; PaneContainer has its own)
+  // Editor fade-in + title sync (only in single-pane mode)
   useEffect(() => {
     if (splitState.splitMode) return;
     setEditorFadeIn(false);
@@ -604,7 +556,7 @@ export default function BoojyNotes() {
     setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
-  }, [activeNote, splitState.splitMode]);
+  }, [activeNote, splitState.splitMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     if (splitState.splitMode) return;
@@ -625,6 +577,14 @@ export default function BoojyNotes() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Refs for values read inside global keydown handler — avoids stale closures
+  const activeNoteKbRef = useRef(activeNote);
+  activeNoteKbRef.current = activeNote;
+  const noteDataKbRef = useRef(noteData);
+  noteDataKbRef.current = noteData;
+  const splitStateKbRef = useRef(splitState);
+  splitStateKbRef.current = splitState;
 
   useEffect(() => {
     const handler = (e) => {
@@ -658,8 +618,9 @@ export default function BoojyNotes() {
       }
       if (mod && e.key === "n") {
         e.preventDefault();
-        // If a draft is already active, focus its title instead of creating another
-        if (activeNote && noteData[activeNote]?._draft) {
+        const curActive = activeNoteKbRef.current;
+        const curNoteData = noteDataKbRef.current;
+        if (curActive && curNoteData[curActive]?._draft) {
           if (titleRef.current) {
             titleRef.current.focus();
           }
@@ -676,7 +637,8 @@ export default function BoojyNotes() {
       }
       if (mod && e.shiftKey && e.key === "\\") {
         e.preventDefault();
-        if (splitState.splitMode) {
+        const curSplit = splitStateKbRef.current;
+        if (curSplit.splitMode) {
           closeSplit();
         } else {
           splitPane("vertical");
@@ -688,10 +650,10 @@ export default function BoojyNotes() {
         setRightPanel((v) => !v);
         return;
       }
-      // Cmd+1 / Cmd+2 to switch active pane
-      if (mod && splitState.splitMode && (e.key === "1" || e.key === "2")) {
+      const curSplit = splitStateKbRef.current;
+      if (mod && curSplit.splitMode && (e.key === "1" || e.key === "2")) {
         e.preventDefault();
-        const ids = splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
+        const ids = curSplit.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
         setActivePaneId(e.key === "1" ? ids[0] : ids[1]);
         return;
       }
@@ -715,17 +677,12 @@ export default function BoojyNotes() {
       }
       if (import.meta.env.DEV && mod && e.key === ",") {
         e.preventDefault();
-        setTabFlip((v) => {
-          const next = !v;
-          setDevToast(`Tab style: ${next ? "B" : "A"}`);
-          setTimeout(() => setDevToast(null), 1500);
-          return next;
-        });
+        setTabFlip((v) => !v);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [settingsOpen, rightPanel, activeTerminalId]);
+  }, [settingsOpen, rightPanel, activeTerminalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -742,11 +699,12 @@ export default function BoojyNotes() {
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
-  }, [tabs, activeNote, expanded, splitState]);
+  }, [tabs, activeNote, expanded, splitState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isNative) return;
     const timer = setTimeout(() => {
+      const t0 = performance.now();
       try {
         localStorage.setItem(
           STORAGE_KEY,
@@ -754,10 +712,33 @@ export default function BoojyNotes() {
         );
       } catch (e) {
         console.warn("Failed to save to localStorage:", e);
+        showToast("Failed to save — storage may be full", "warning");
       }
-    }, 300);
+      const dt = performance.now() - t0;
+      if (dt > 5)
+        console.warn(
+          `[perf] localStorage.setItem: ${dt.toFixed(1)}ms (${Object.keys(noteData).length} notes)`,
+        );
+    }, 2000);
     return () => clearTimeout(timer);
-  }, [noteData, tabs, activeNote, expanded, customFolders]);
+  }, [noteData, tabs, activeNote, expanded, customFolders]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Safety net: flush noteData to localStorage on page unload (web only)
+  const beforeunloadDataRef = useRef({ noteData, tabs, activeNote, expanded, customFolders });
+  beforeunloadDataRef.current = { noteData, tabs, activeNote, expanded, customFolders };
+
+  useEffect(() => {
+    if (isNative) return;
+    const flush = () => {
+      const t0 = performance.now();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(beforeunloadDataRef.current));
+      } catch {}
+      console.warn(`[perf] beforeunload flush: ${(performance.now() - t0).toFixed(1)}ms`);
+    };
+    window.addEventListener("beforeunload", flush);
+    return () => window.removeEventListener("beforeunload", flush);
+  }, []);
 
   useEffect(() => {
     const onBlur = () => {
@@ -773,7 +754,7 @@ export default function BoojyNotes() {
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onVisChange);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const api = getAPI();
@@ -794,11 +775,11 @@ export default function BoojyNotes() {
       setSidebarOrder(order);
     };
     loadMeta();
-  }, [fsLoading]);
+  }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Selection change → floating toolbar (only in single-pane mode; split panes have their own)
+  // Selection change → floating toolbar (only in single-pane mode)
   useEffect(() => {
-    if (splitStateRef.current.splitMode) return; // PaneContainer handles its own
+    if (splitStateRef.current.splitMode) return;
     const onSelChange = () => {
       const sel = window.getSelection();
       if (!sel.rangeCount || sel.isCollapsed) {
@@ -834,13 +815,24 @@ export default function BoojyNotes() {
         left: rect.left - editorRect.left + rect.width / 2,
       });
     };
-    document.addEventListener("selectionchange", onSelChange);
-    return () => document.removeEventListener("selectionchange", onSelChange);
-  }, [activeNote, splitState.splitMode]);
+    let rafId = null;
+    const debouncedSelChange = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        onSelChange();
+      });
+    };
+    document.addEventListener("selectionchange", debouncedSelChange);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("selectionchange", debouncedSelChange);
+    };
+  }, [activeNote, splitState.splitMode]); // eslint-disable-line react-hooks/exhaustive-deps -- splitStateRef is a stable ref
 
-  // Focus block layout effect (only in single-pane mode; split panes have their own)
+  // Focus block layout effect (only in single-pane mode)
   useLayoutEffect(() => {
-    if (splitState.splitMode) return; // PaneContainer handles its own
+    if (splitState.splitMode) return;
     if (focusBlockId.current) {
       cleanOrphanNodes(editorRef.current);
       const targetId = focusBlockId.current;
@@ -860,7 +852,6 @@ export default function BoojyNotes() {
         const freshEl = blockRefs.current[targetId];
         if (freshEl) placeCaret(freshEl, targetPos);
       });
-      // Scroll cursor into view if it's in the bottom 20% of the editor
       setTimeout(() => {
         const scrollEl = editorScrollRef.current;
         if (!scrollEl) return;
@@ -868,7 +859,6 @@ export default function BoojyNotes() {
         if (!blockEl) return;
         const blockRect = blockEl.getBoundingClientRect();
         const scrollRect = scrollEl.getBoundingClientRect();
-        // If the block's bottom is zero, it hasn't laid out yet — skip
         if (blockRect.bottom === 0) return;
         const threshold = scrollRect.top + scrollRect.height * 0.8;
         if (blockRect.bottom > threshold) {
@@ -880,15 +870,12 @@ export default function BoojyNotes() {
   });
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
-  // Reset stale activeNote that points to a deleted/missing note
-  // Use a ref to track previously known IDs so we only clean up on actual deletions
   const prevNoteIdsRef = useRef(null);
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote && !noteData[activeNote]) {
       setActiveNote(null);
     }
-    // Only check pane tabs when notes were actually removed (not on every text edit)
     if (splitState.splitMode) {
       const currentIds = Object.keys(noteData);
       const prevIds = prevNoteIdsRef.current;
@@ -904,16 +891,14 @@ export default function BoojyNotes() {
       }
       prevNoteIdsRef.current = currentIds;
     }
-  }, [fsLoading, noteData, activeNote]);
+  }, [fsLoading, noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-create draft note when no note is active
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote) return;
     createDraftNote();
   }, [activeNote, fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Promote draft to real note on first meaningful edit
   useEffect(() => {
     if (!activeNote) return;
     const n = noteData[activeNote];
@@ -925,7 +910,6 @@ export default function BoojyNotes() {
     }
   }, [noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Discard empty draft when navigating away
   const prevActiveRef = useRef(null);
   useEffect(() => {
     const prevId = prevActiveRef.current;
@@ -935,7 +919,7 @@ export default function BoojyNotes() {
     }
   }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Onboarding toast (Feature A): show after 3rd note for anon web users ──
+  // ── Onboarding toast (web only) ──────────────────────────────────────
   useEffect(() => {
     if (isNative) return;
     if (user) return;
@@ -945,14 +929,13 @@ export default function BoojyNotes() {
     }
   }, [noteData, user]);
 
-  // Auto-dismiss onboarding toast after 15s
   useEffect(() => {
     if (!onboardingToast) return;
     const t = setTimeout(() => setOnboardingToast(false), 15000);
     return () => clearTimeout(t);
   }, [onboardingToast]);
 
-  // ── Persistence warning (Feature F): show after 5+ notes for anon web users ──
+  // ── Persistence warning (web only) ───────────────────────────────────
   useEffect(() => {
     if (isNative) return;
     if (user) return;
@@ -971,9 +954,11 @@ export default function BoojyNotes() {
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
   const noteBlocks = note?.content?.blocks;
+  const deferredBlocks = useDeferredValue(noteBlocks);
   const { wordCount, charCount, charCountNoSpaces, readingTime } = useMemo(() => {
-    if (!noteBlocks) return { wordCount: 0, charCount: 0, charCountNoSpaces: 0, readingTime: 1 };
-    const plainText = noteBlocks
+    if (!deferredBlocks)
+      return { wordCount: 0, charCount: 0, charCountNoSpaces: 0, readingTime: 1 };
+    const plainText = deferredBlocks
       .filter((b) => b.text)
       .map((b) => stripMarkdownFormatting(b.text))
       .join(" ");
@@ -984,22 +969,27 @@ export default function BoojyNotes() {
       charCountNoSpaces: plainText.replace(/\s/g, "").length,
       readingTime: Math.max(1, Math.ceil(wc / 200)),
     };
-  }, [noteBlocks]);
+  }, [deferredBlocks]);
 
   // Note title set for broken wikilink detection
-  // Stabilise the Set reference: only rebuild when actual titles change (not on every text edit)
-  const noteTitlesKey = useMemo(
-    () =>
-      Object.values(noteData)
-        .map((n) => (n.title || "").trim().toLowerCase())
-        .filter(Boolean)
-        .sort()
-        .join("\0"),
-    [noteData],
-  );
+  const lastTitlesKey = useRef("");
+  const noteTitlesKey = useMemo(() => {
+    if (textOnlyEdit.current) {
+      textOnlyEdit.current = false;
+      return lastTitlesKey.current;
+    }
+    const key = Object.values(noteData)
+      .map((n) => (n.title || "").trim().toLowerCase())
+      .filter(Boolean)
+      .sort()
+      .join("\0");
+    lastTitlesKey.current = key;
+    return key;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteData]);
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
 
-  // Backlink index — only rebuild when note structure changes (not on every text edit)
+  // Backlink index
   const backlinkIndex = useMemo(
     () => buildBacklinkIndex(noteDataRef.current),
     [noteTitlesKey, activeNote], // eslint-disable-line react-hooks/exhaustive-deps
@@ -1010,7 +1000,7 @@ export default function BoojyNotes() {
     [backlinkIndex, noteTitle],
   );
 
-  // Wikilink click handler — find note by title and open it
+  // Wikilink click handler
   const handleWikilinkClick = useCallback(
     (targetTitle) => {
       const lc = targetTitle.trim().toLowerCase();
@@ -1020,14 +1010,12 @@ export default function BoojyNotes() {
       if (found) {
         openNote(found[0]);
       } else {
-        // Create new note with the target title
         createNote(null, targetTitle);
       }
     },
-    [openNote, createNote],
+    [openNote, createNote, noteDataRef],
   );
 
-  // Wikilink Cmd+Click — open in other pane (or create split)
   const handleWikilinkCmdClick = useCallback(
     (targetTitle) => {
       const lc = targetTitle.trim().toLowerCase();
@@ -1036,16 +1024,13 @@ export default function BoojyNotes() {
       );
       const noteId = found ? found[0] : null;
       if (!noteId) {
-        // Create and open in other pane
         createNote(null, targetTitle);
         return;
       }
       if (splitState.splitMode) {
-        // Open in the other pane
         const otherPaneId = getOtherPaneId();
         if (otherPaneId) openNoteInPane(noteId, otherPaneId);
       } else {
-        // Create split and open in new right pane
         splitPaneWithNote("vertical", noteId);
       }
     },
@@ -1059,7 +1044,7 @@ export default function BoojyNotes() {
     ],
   );
 
-  // Wikilink autocomplete select handler — replace raw [[filter text with [[Title]]
+  // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
     (title) => {
       const menu = wikilinkMenuRef.current;
@@ -1068,21 +1053,19 @@ export default function BoojyNotes() {
       const blocks = noteDataRef.current[noteId]?.content?.blocks;
       if (!blocks || !blocks[blockIndex]) return;
       const oldText = blocks[blockIndex].text || "";
-      // Find the [[ that opened the menu and replace everything from there to cursor
       const match = oldText.match(/\[\[([^\]]*)$/);
       if (match) {
         const newText = oldText.slice(0, match.index) + `[[${title}]]`;
         commitTextChange((prev) => {
           const next = { ...prev };
           const n = { ...next[noteId] };
-          const blocks = [...n.content.blocks];
-          blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
-          n.content = { ...n.content, blocks };
+          const b = [...n.content.blocks];
+          b[blockIndex] = { ...b[blockIndex], text: newText };
+          n.content = { ...n.content, blocks: b };
           next[noteId] = n;
           return next;
         });
         syncGeneration.current++;
-        // Place cursor after the closing ]]
         focusBlockId.current = blocks[blockIndex].id;
         focusCursorPos.current = newText.length;
       }
@@ -1096,6 +1079,7 @@ export default function BoojyNotes() {
       noteDataRef,
       focusBlockId,
       setWikilinkMenu,
+      wikilinkMenuRef,
     ],
   );
 
@@ -1118,101 +1102,22 @@ export default function BoojyNotes() {
     },
     [noteData],
   );
-  // Keep export refs in sync for IPC handler (defined earlier to avoid re-registering on every noteData change)
   handleExportRef.current.pdf = handleExportPdf;
   handleExportRef.current.docx = handleExportDocx;
 
-  // ── Import handler for folder context menu ─────────────────────────
   const handleImportIntoFolder = useCallback((folderId) => {
     if (!getAPI()?.importMarkdown) return;
     getAPI().importMarkdown({ targetFolder: folderId });
   }, []);
 
-  // ── Spell check handlers ───────────────────────────────────────────
-  const handleToggleSpellCheck = useCallback(
-    (enabled) => {
-      setSpellCheckEnabled(enabled);
-      if (getAPI()?.toggleSpellcheck) {
-        getAPI().toggleSpellcheck({ enabled, languages: spellCheckLanguages });
-      }
-    },
-    [spellCheckLanguages],
-  );
-
-  const handleChangeSpellCheckLanguages = useCallback(
-    (languages) => {
-      setSpellCheckLanguages(languages);
-      if (getAPI()?.toggleSpellcheck) {
-        getAPI().toggleSpellcheck({ enabled: spellCheckEnabled, languages });
-      }
-    },
-    [spellCheckEnabled],
-  );
-
-  // ── Auto-update handlers ─────────────────────────────────────────
-  const handleToggleAutoUpdate = useCallback((enabled) => {
-    setAutoUpdateEnabled(enabled);
-    window.electronAPI?.setAutoUpdate?.(enabled);
-  }, []);
-
-  const handleCheckForUpdate = useCallback(() => {
-    window.electronAPI?.checkForUpdate?.();
-  }, []);
-
-  const handleInstallUpdate = useCallback(() => {
-    window.electronAPI?.installUpdate?.();
-  }, []);
-
-  const { derivedRootNotes, folderNoteMap } = useMemo(() => {
-    const roots = [];
-    const map = {};
-    for (const [id, n] of Object.entries(noteData)) {
-      if (n._draft) continue; // Hide drafts from sidebar
-      if (n.folder) {
-        if (!map[n.folder]) map[n.folder] = [];
-        map[n.folder].push(id);
-      } else {
-        roots.push(id);
-      }
-    }
-    return { derivedRootNotes: roots, folderNoteMap: map };
-  }, [noteData]);
-
-  const { allFolders, knownPaths } = useMemo(() => {
-    const allPaths = new Set([...customFolders, ...Object.keys(folderNoteMap)]);
-    const folders = [...FOLDER_TREE, ...pathsToTree([...allPaths])];
-    const paths = new Set(collectPaths(folders));
-    return { allFolders: folders, knownPaths: paths };
-  }, [customFolders, folderNoteMap]);
-
-  const { folderTree, sortedRootNotes } = useMemo(() => {
-    const rawFolderTree = buildTree(allFolders, folderNoteMap, sidebarOrder);
-    const hasRootOrder = sidebarOrder[""]?.folderOrder?.length > 0;
-    const tree = hasRootOrder
-      ? sortByOrder(rawFolderTree, sidebarOrder[""].folderOrder, (f) => f.name)
-      : [...rawFolderTree].sort((a, b) => naturalCompare(a.name, b.name));
-    const sorted = sortByOrder(derivedRootNotes, sidebarOrder[""]?.noteOrder, (id) => id);
-    return { folderTree: tree, sortedRootNotes: sorted };
-  }, [allFolders, folderNoteMap, sidebarOrder, derivedRootNotes]);
-
-  const { filteredTree, fNotes } = useMemo(() => {
-    const lc = (s) => s.toLowerCase();
-    const filtered = filterTree(folderTree, search ? lc(search) : "", noteData);
-    const notes = search
-      ? sortedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
-      : sortedRootNotes;
-    return { filteredTree: filtered, fNotes: notes };
-  }, [folderTree, search, noteData, sortedRootNotes]);
-
   // ── Multi-select ────────────────────────────────────────────────────
-  const { selectedNotes, handleNoteClick, clearSelection, removeFromSelection } = useMultiSelect({
+  const { selectedNotes, handleNoteClick, clearSelection } = useMultiSelect({
     filteredTree,
     fNotes,
     expanded,
     openNote,
   });
 
-  // Keep refs in sync for useSidebarDrag (which is instantiated earlier)
   multiSelectRef.current = selectedNotes;
   clearSelectionRef.current = clearSelection;
 
@@ -1240,13 +1145,7 @@ export default function BoojyNotes() {
     [setNoteData, clearSelection],
   );
 
-  const folderList = useMemo(() => [...knownPaths].sort(), [knownPaths]);
-
   // ── UI helpers ──────────────────────────────────────────────────────
-  const hBg = (el, c) => {
-    el.style.background = c;
-  };
-
   const syncDotStyle = () => {
     const base = {
       width: 19,
@@ -1259,7 +1158,8 @@ export default function BoojyNotes() {
       top: 1,
       transition: "transform 0.15s",
     };
-    if (syncState === "syncing") return { ...base, animation: "syncGlow 2s ease-in-out infinite" };
+    if (syncState === "syncing" || syncState === "retrying")
+      return { ...base, animation: "syncGlow 2s ease-in-out infinite" };
     if (syncState === "error")
       return {
         ...base,
@@ -1278,60 +1178,41 @@ export default function BoojyNotes() {
         background: theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
-        fontFamily: "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         color: theme.TEXT.primary,
         overflow: "hidden",
         fontSize: 13,
         transition: `background-color ${theme.transitionMs}ms ease, color ${theme.transitionMs}ms ease`,
       }}
     >
-      {/* Title bar with traffic lights and centered title (desktop only) */}
-      {isDesktop && (
-        <div
-          style={{
-            height: 28,
-            background: chromeBg,
-            WebkitAppRegion: "drag",
-            flexShrink: 0,
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: theme.TEXT.secondary,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: "40%",
-              pointerEvents: "none",
-              userSelect: "none",
-            }}
-          >
-            {activeNote && noteData[activeNote]
-              ? noteData[activeNote].title + " - Boojy Notes"
-              : "Boojy Notes"}
-          </span>
-        </div>
-      )}
+      <a
+        href="#main-content"
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: "auto",
+          width: "1px",
+          height: "1px",
+          overflow: "hidden",
+          zIndex: 99999,
+        }}
+        onFocus={(e) => {
+          e.target.style.left = "10px";
+          e.target.style.top = "10px";
+          e.target.style.width = "auto";
+          e.target.style.height = "auto";
+        }}
+        onBlur={(e) => {
+          e.target.style.left = "-9999px";
+          e.target.style.width = "1px";
+          e.target.style.height = "1px";
+        }}
+      >
+        Skip to content
+      </a>
+
+      {isDesktop && <TitleBar activeNote={activeNote} noteData={noteData} chromeBg={chromeBg} />}
       <TopBar
-        chromeBg={chromeBg}
-        accentColor={accentColor}
-        topBarEdge={topBarEdge}
-        tabFlip={tabFlip}
-        activeTabBg={activeTabBg}
-        sidebarWidth={sidebarWidth}
-        rightPanelWidth={rightPanelWidth}
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        undo={undo}
-        redo={redo}
         tabs={tabs}
         activeNote={activeNote}
         noteData={noteData}
@@ -1339,22 +1220,13 @@ export default function BoojyNotes() {
         closingTabs={closingTabs}
         setActiveNote={setActiveNote}
         closeTab={closeTab}
-        setSettingsOpen={setSettingsOpen}
-        setSettingsTab={setSettingsTab}
         syncState={syncState}
         syncDotStyle={syncDotStyle}
-        rightPanel={rightPanel}
-        setRightPanel={setRightPanel}
         note={note}
         wordCount={wordCount}
         charCount={charCount}
         charCountNoSpaces={charCountNoSpaces}
         readingTime={readingTime}
-        startDrag={startDrag}
-        startRightDrag={startRightDrag}
-        isDragging={isDragging}
-        sidebarHandles={sidebarHandles}
-        rightPanelHandles={rightPanelHandles}
         tabScrollRef={tabScrollRef}
         tabAreaWidth={tabAreaWidth}
         splitMode={splitState.splitMode}
@@ -1369,7 +1241,7 @@ export default function BoojyNotes() {
       />
 
       {/* === MAIN AREA === */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div id="main-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Sidebar wrapper */}
         <div
           style={{
@@ -1384,47 +1256,23 @@ export default function BoojyNotes() {
           }}
         >
           <Sidebar
-            search={search}
-            setSearch={setSearch}
-            searchFocused={searchFocused}
-            setSearchFocused={setSearchFocused}
-            searchInputRef={searchInputRef}
-            sidebarWidth={sidebarWidth}
-            accentColor={accentColor}
-            selectionStyle={selectionStyle}
-            filteredTree={filteredTree}
-            fNotes={fNotes}
-            noteData={noteData}
             activeNote={activeNote}
-            expanded={expanded}
             toggle={toggle}
             openNote={openNote}
             setCtxMenu={setCtxMenu}
-            renamingFolder={renamingFolder}
-            setRenamingFolder={setRenamingFolder}
             renameFolder={renameFolder}
             createFolder={createFolder}
             createNote={createNote}
             handleSidebarPointerDown={handleSidebarPointerDown}
-            sidebarScrollRef={sidebarScrollRef}
-            trashedNotes={trashedNotes}
-            trashExpanded={trashExpanded}
-            setTrashExpanded={setTrashExpanded}
             emptyAllTrash={emptyAllTrash}
-            searchMode={searchMode}
-            searchResults={searchResults}
-            activeResultIndex={activeResultIndex}
-            navigateResults={navigateResults}
-            clearSearch={clearSearch}
             handleSearchResultOpen={handleSearchResultOpen}
-            getActiveResult={getActiveResult}
             selectedNotes={selectedNotes}
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
           />
         </div>
 
-        {/* Sidebar drag handle — bottom */}
+        {/* Sidebar drag handle */}
         <div
           ref={(el) => {
             if (el) sidebarHandles.current[1] = el;
@@ -1478,10 +1326,7 @@ export default function BoojyNotes() {
                         splitMode={splitState.splitMode}
                         dividerPosition={splitState.dividerPosition}
                         setDividerPosition={setDividerPosition}
-                        onSnapClose={(side) => {
-                          // Snap-closing a side closes that pane
-                          closeSplit();
-                        }}
+                        onSnapClose={() => closeSplit()}
                         containerRef={splitContainerRef}
                       />
                     )}
@@ -1497,6 +1342,7 @@ export default function BoojyNotes() {
                       }}
                     >
                       <PaneContainer
+                        textOnlyEditForEditor={textOnlyEditForEditor}
                         paneId={pId}
                         isActive={activePaneId === pId}
                         tabs={pane.tabs}
@@ -1513,15 +1359,11 @@ export default function BoojyNotes() {
                             const remaining = pane.tabs.filter((t) => t !== id);
                             setActiveNoteForPane(pId, remaining[remaining.length - 1] || null);
                           }
-                          // Check if pane becomes empty after tab close
                           setTimeout(() => closePaneIfEmpty(pId), 200);
                         }}
                         tabFlip={tabFlip}
                         activeTabBg={activeTabBg}
                         chromeBg={chromeBg}
-                        accentColor={accentColor}
-                        editorBg={editorBg}
-                        settingsFontSize={settingsFontSize}
                         setNoteData={setNoteData}
                         commitNoteData={commitNoteData}
                         commitTextChange={commitTextChange}
@@ -1557,6 +1399,7 @@ export default function BoojyNotes() {
         ) : (
           <EditorArea
             onEditorClick={clearSelection}
+            textOnlyEditForEditor={textOnlyEditForEditor}
             note={note}
             activeNote={activeNote}
             editorFadeIn={editorFadeIn}
@@ -1568,9 +1411,6 @@ export default function BoojyNotes() {
             focusBlockId={focusBlockId}
             focusCursorPos={focusCursorPos}
             forceRender={forceRender}
-            accentColor={accentColor}
-            editorBg={editorBg}
-            settingsFontSize={settingsFontSize}
             handleEditorKeyDown={handleEditorKeyDown}
             handleEditorInput={handleEditorInput}
             handleEditorPaste={handleEditorPaste}
@@ -1612,7 +1452,7 @@ export default function BoojyNotes() {
           />
         )}
 
-        {/* Right panel drag handle — bottom */}
+        {/* Right panel drag handle */}
         <div
           ref={(el) => {
             if (el) rightPanelHandles.current[1] = el;
@@ -1661,14 +1501,18 @@ export default function BoojyNotes() {
             setActiveTerminalId={setActiveTerminalId}
             xtermInstances={xtermInstances}
             createTerminal={createTerminal}
+            createAITab={createAITab}
             closeTerminal={closeTerminal}
             renameTerminal={renameTerminal}
             restartTerminal={restartTerminal}
             clearTerminal={clearTerminal}
             markExited={markExited}
-            chromeBg={chromeBg}
-            activeTabBg={activeTabBg}
             isOpen={rightPanel}
+            onAIModelChange={handleAIModelChange}
+            onOpenAISettings={handleOpenAISettings}
+            noteContext={activeNoteContext}
+            sendContext={aiSettings.sendContext}
+            onToggleContext={handleToggleAIContext}
           />
         </div>
       </div>
@@ -1753,22 +1597,6 @@ export default function BoojyNotes() {
       )}
 
       <SettingsModal
-        settingsOpen={settingsOpen}
-        setSettingsOpen={setSettingsOpen}
-        settingsTab={settingsTab}
-        setSettingsTab={setSettingsTab}
-        accentColor={accentColor}
-        fontSize={settingsFontSize}
-        setFontSize={setSettingsFontSize}
-        user={user}
-        profile={profile}
-        authActions={{
-          signInWithEmail,
-          signUpWithEmail,
-          signInWithOAuth,
-          signOut,
-          resendVerification,
-        }}
         syncState={syncState}
         lastSynced={lastSynced}
         storageUsed={storageUsed}
@@ -1776,1170 +1604,91 @@ export default function BoojyNotes() {
         onSync={syncAll}
         noteData={noteData}
         setActiveNote={setActiveNote}
-        setSettingsOpenFromParent={setSettingsOpen}
         isDesktop={isDesktop}
         notesDir={notesDir}
         changeNotesDir={changeNotesDir}
-        spellCheckEnabled={spellCheckEnabled}
-        spellCheckLanguages={spellCheckLanguages}
-        onToggleSpellCheck={handleToggleSpellCheck}
-        onChangeSpellCheckLanguages={handleChangeSpellCheckLanguages}
-        autoUpdateEnabled={autoUpdateEnabled}
-        onToggleAutoUpdate={handleToggleAutoUpdate}
-        updateStatus={updateStatus}
-        onCheckForUpdate={handleCheckForUpdate}
-        onInstallUpdate={handleInstallUpdate}
       />
 
-      {/* Dev toast */}
-      {import.meta.env.DEV && devToast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: theme.BG.elevated,
-            border: `1px solid ${theme.BG.divider}`,
-            borderRadius: 8,
-            padding: "6px 16px",
-            fontSize: 12,
-            color: theme.TEXT.primary,
-            fontWeight: 500,
-            zIndex: 200,
-            animation: "fadeIn 0.15s ease",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-          }}
-        >
-          {devToast}
-        </div>
+      {import.meta.env.DEV && DevOverlay && (
+        <React.Suspense fallback={null}>
+          <DevOverlay open={devOverlay} onClose={() => setDevOverlay(false)} />
+        </React.Suspense>
       )}
 
-      {/* Dev gear button */}
-      {import.meta.env.DEV && (
-        <button
-          onClick={() => setDevOverlay((v) => !v)}
-          style={{
-            position: "fixed",
-            bottom: 16,
-            right: 16,
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            border: `1px solid ${theme.BG.divider}`,
-            background: devOverlay ? theme.BG.surface : `${theme.BG.elevated}aa`,
-            color: devOverlay ? theme.ACCENT.primary : theme.TEXT.muted,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            zIndex: 201,
-            fontSize: 14,
-            transition: "background 0.15s, color 0.15s, transform 0.15s",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.color = theme.ACCENT.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.color = devOverlay ? theme.ACCENT.primary : theme.TEXT.muted;
-          }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="8" cy="8" r="2.5" />
-            <path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.4 3.4l.85.85M11.75 11.75l.85.85M3.4 12.6l.85-.85M11.75 4.25l.85-.85" />
-          </svg>
-        </button>
-      )}
+      <GlobalStyles />
 
-      {/* Dev tools overlay */}
-      {import.meta.env.DEV &&
-        devOverlay &&
-        (() => {
-          const aRgb = hexToRgb(accentColor);
-          const cRgb = hexToRgb(chromeBg);
-          const eRgb = hexToRgb(editorBg);
-          const tRgb = hexToRgb(activeTabBg);
-          const sliderTrack = {
-            width: "100%",
-            height: 4,
-            appearance: "none",
-            WebkitAppearance: "none",
-            background: theme.BG.divider,
-            borderRadius: 2,
-            outline: "none",
-            cursor: "pointer",
-          };
-          const sliderCss = `
-          .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${theme.TEXT.primary}; cursor: pointer; border: 2px solid ${theme.BG.elevated}; }
-          .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${theme.BG.divider}; border-radius: 2px; }
-        `;
-          const channels = ["R", "G", "B"];
-          const rgbSliders = (rgb, setter) =>
-            channels.map((ch, i) => (
-              <div
-                key={ch}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: i < 2 ? 4 : 0,
-                }}
-              >
-                <span
-                  style={{
-                    width: 10,
-                    fontSize: 10,
-                    color: ch === "R" ? "#E57373" : ch === "G" ? "#81C784" : "#64B5F6",
-                    fontWeight: 600,
-                  }}
-                >
-                  {ch}
-                </span>
-                <input
-                  className="dev-slider"
-                  type="range"
-                  min="0"
-                  max="255"
-                  value={rgb[i]}
-                  style={sliderTrack}
-                  onChange={(e) => {
-                    const next = [...rgb];
-                    next[i] = +e.target.value;
-                    setter(rgbToHex(...next));
-                  }}
-                />
-                <span
-                  style={{ width: 24, textAlign: "right", fontSize: 10, color: theme.TEXT.muted }}
-                >
-                  {rgb[i]}
-                </span>
-              </div>
-            ));
-          return (
-            <div
-              style={{
-                position: "fixed",
-                bottom: 52,
-                right: 16,
-                width: 280,
-                background: theme.BG.elevated,
-                border: `1px solid ${theme.BG.divider}`,
-                borderRadius: 10,
-                padding: 16,
-                zIndex: 200,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 14,
-                fontSize: 12,
-                color: theme.TEXT.secondary,
-                fontFamily: "inherit",
-                animation: "slideUp 0.15s ease",
-              }}
-            >
-              <style>{sliderCss}</style>
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
-                <span style={{ fontWeight: 600, color: theme.TEXT.primary, fontSize: 13 }}>
-                  Dev Tools
-                </span>
-                <button
-                  onClick={() => setDevOverlay(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: theme.TEXT.muted,
-                    cursor: "pointer",
-                    fontSize: 14,
-                  }}
-                >
-                  {"\u2715"}
-                </button>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Top Bar Edge</span>
-                <div
-                  style={{
-                    display: "flex",
-                    borderRadius: 5,
-                    overflow: "hidden",
-                    border: `1px solid ${theme.BG.divider}`,
-                    marginLeft: "auto",
-                  }}
-                >
-                  {["A", "B", "C", "D"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setTopBarEdge(s);
-                        setDevToast(
-                          `Top bar: ${s === "A" ? "Shadow+line" : s === "B" ? "Shadow" : s === "C" ? "Line" : "None"}`,
-                        );
-                        setTimeout(() => setDevToast(null), 1500);
-                      }}
-                      style={{
-                        background: topBarEdge === s ? theme.TEXT.primary : "transparent",
-                        color: topBarEdge === s ? theme.BG.darkest : theme.TEXT.muted,
-                        border: "none",
-                        padding: "3px 10px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.12s, color 0.12s",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Create Buttons</span>
-                <div
-                  style={{
-                    display: "flex",
-                    borderRadius: 5,
-                    overflow: "hidden",
-                    border: `1px solid ${theme.BG.divider}`,
-                    marginLeft: "auto",
-                  }}
-                >
-                  {["A", "B", "C"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setCreateBtnStyle(s);
-                        setDevToast(
-                          `Create btns: ${s === "A" ? "Default" : s === "B" ? "Ghost" : "Accent"}`,
-                        );
-                        setTimeout(() => setDevToast(null), 1500);
-                      }}
-                      style={{
-                        background: createBtnStyle === s ? theme.TEXT.primary : "transparent",
-                        color: createBtnStyle === s ? theme.BG.darkest : theme.TEXT.muted,
-                        border: "none",
-                        padding: "3px 10px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.12s, color 0.12s",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Selection</span>
-                <div
-                  style={{
-                    display: "flex",
-                    borderRadius: 5,
-                    overflow: "hidden",
-                    border: `1px solid ${theme.BG.divider}`,
-                    marginLeft: "auto",
-                  }}
-                >
-                  {["A", "B"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setSelectionStyle(s);
-                        setDevToast(`Selection: ${s === "A" ? "Glow bar" : "Pill"}`);
-                        setTimeout(() => setDevToast(null), 1500);
-                      }}
-                      style={{
-                        background: selectionStyle === s ? theme.TEXT.primary : "transparent",
-                        color: selectionStyle === s ? theme.BG.darkest : theme.TEXT.muted,
-                        border: "none",
-                        padding: "3px 10px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.12s, color 0.12s",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>Theme</span>
-                <div
-                  style={{
-                    display: "flex",
-                    borderRadius: 5,
-                    overflow: "hidden",
-                    border: `1px solid ${theme.BG.divider}`,
-                    marginLeft: "auto",
-                  }}
-                >
-                  {["night", "day", "auto"].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setThemeMode(s);
-                        setDevToast(`Theme: ${s}`);
-                        setTimeout(() => setDevToast(null), 1500);
-                      }}
-                      style={{
-                        background: themeMode === s ? theme.TEXT.primary : "transparent",
-                        color: themeMode === s ? theme.BG.darkest : theme.TEXT.muted,
-                        border: "none",
-                        padding: "3px 10px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.12s, color 0.12s",
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ height: 1, background: theme.BG.divider }} />
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span>Accent Color</span>
-                  <code style={{ color: accentColor }}>{accentColor}</code>
-                </div>
-                {rgbSliders(aRgb, setAccentColor)}
-                <div
-                  style={{
-                    height: 8,
-                    marginTop: 6,
-                    borderRadius: 3,
-                    background: accentColor,
-                    border: `1px solid ${theme.BG.divider}`,
-                  }}
-                />
-              </div>
-              <div style={{ height: 1, background: theme.BG.divider }} />
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 6,
-                  }}
-                >
-                  <span>Active Tab BG</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ color: theme.TEXT.primary }}>{activeTabBg}</code>
-                    <button
-                      onClick={() => {
-                        setTabFlip(!tabFlip);
-                        setDevToast(`Tab flip: ${!tabFlip ? "ON" : "OFF"}`);
-                        setTimeout(() => setDevToast(null), 1500);
-                      }}
-                      style={{
-                        background: tabFlip ? theme.TEXT.primary : "transparent",
-                        color: tabFlip ? theme.BG.darkest : theme.TEXT.muted,
-                        border: `1px solid ${theme.BG.divider}`,
-                        borderRadius: 4,
-                        padding: "2px 8px",
-                        fontSize: 10,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.12s, color 0.12s",
-                      }}
-                    >
-                      FLIP
-                    </button>
-                  </div>
-                </div>
-                {rgbSliders(tRgb, setActiveTabBg)}
-                <div
-                  style={{
-                    height: 8,
-                    marginTop: 6,
-                    borderRadius: 3,
-                    background: activeTabBg,
-                    border: `1px solid ${theme.BG.divider}`,
-                  }}
-                />
-              </div>
-              <div style={{ height: 1, background: theme.BG.divider }} />
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span>Chrome BG</span>
-                  <code style={{ color: theme.TEXT.primary }}>{chromeBg}</code>
-                </div>
-                {rgbSliders(cRgb, setChromeBg)}
-                <div
-                  style={{
-                    height: 8,
-                    marginTop: 6,
-                    borderRadius: 3,
-                    background: chromeBg,
-                    border: `1px solid ${theme.BG.divider}`,
-                  }}
-                />
-              </div>
-              <div style={{ height: 1, background: theme.BG.divider }} />
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span>Editor BG</span>
-                  <code style={{ color: theme.TEXT.primary }}>{editorBg}</code>
-                </div>
-                {rgbSliders(eRgb, setEditorBg)}
-                <div
-                  style={{
-                    height: 8,
-                    marginTop: 6,
-                    borderRadius: 3,
-                    background: editorBg,
-                    border: `1px solid ${theme.BG.divider}`,
-                  }}
-                />
-              </div>
-              <div style={{ height: 1, background: theme.BG.divider }} />
-              <button
-                onClick={() => {
-                  setChromeBg(theme.BG.dark);
-                  setEditorBg(theme.BG.editor);
-                  setAccentColor(theme.ACCENT.primary);
-                  setActiveTabBg("#1C1C20");
-                  setTabFlip(false);
-                }}
-                style={{
-                  background: "none",
-                  border: `1px solid ${theme.BG.divider}`,
-                  borderRadius: 4,
-                  color: theme.TEXT.muted,
-                  fontSize: 11,
-                  padding: "4px 10px",
-                  cursor: "pointer",
-                  alignSelf: "flex-start",
-                }}
-              >
-                Reset colours
-              </button>
-            </div>
-          );
-        })()}
-
-      <style>{`
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes syncGlow {
-          0%, 100% { box-shadow: 0 0 4px ${theme.BRAND.orange}40; }
-          50% { box-shadow: 0 0 14px ${theme.BRAND.orange}80, 0 0 24px ${theme.BRAND.orange}30; }
-        }
-        @keyframes syncDotPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes fadeInToolbar {
-          from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes tabSlideIn {
-          from { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
-          to { max-width: 200px; opacity: 1; }
-        }
-        @keyframes tabSlideOut {
-          from { max-width: 200px; opacity: 1; }
-          to { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
-        }
-        .sidebar-dragging * { transition: none !important; }
-        body.block-dragging { cursor: grabbing !important; user-select: none !important; }
-        body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
-        [data-drag-slot] { transition: opacity 150ms ease; }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${theme.BG.hover}; box-shadow: 0 0 4px ${theme.BG.hover}40; }
-        .tab-scroll::-webkit-scrollbar { height: 0px; }
-        .tab-scroll::-webkit-scrollbar-track { background: transparent; }
-        .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
-        .tab-scroll:hover::-webkit-scrollbar { height: 5px; }
-        .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
-        .editor-scroll::-webkit-scrollbar-thumb { background: transparent; }
-        .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
-        input::placeholder { color: ${theme.TEXT.muted}; }
-        [contenteditable]:focus { outline: none; }
-        .checkbox-box:active { transform: scale(0.85); }
-        .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
-        .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }
-        .tab-btn > .tab-close:hover { opacity: 1 !important; }
-        [data-block-id] code {
-          background: ${theme.inlineCode.bg};
-          border: 1px solid ${theme.inlineCode.border};
-          border-radius: 3px;
-          padding: 1px 4px;
-          font-family: 'SF Mono', 'Fira Code', monospace;
-          font-size: 0.9em;
-        }
-        [data-block-id] a {
-          color: ${theme.link.color};
-          text-decoration: underline;
-          text-decoration-color: ${theme.link.underline};
-          cursor: pointer;
-        }
-        [data-block-id] a:hover {
-          text-decoration-color: ${theme.link.color};
-          background: ${theme.link.hoverBg};
-          border-radius: 2px;
-        }
-        [data-block-id] .external-link-icon {
-          font-size: 0.65em;
-          opacity: 0.5;
-          vertical-align: super;
-          user-select: none;
-          pointer-events: none;
-          margin-left: 1px;
-        }
-        [data-block-id] a:hover .external-link-icon {
-          opacity: 0.8;
-        }
-        [data-block-id] del {
-          text-decoration: line-through;
-          text-decoration-color: ${theme.ACCENT.primary};
-          text-decoration-thickness: 1.5px;
-          color: inherit;
-        }
-        [data-block-id] mark {
-          background: ${theme.mark.bg};
-          color: inherit;
-          border-radius: 2px;
-          padding: 0 2px;
-        }
-        [data-block-id] .inline-tag {
-          color: ${theme.ACCENT.primary};
-          opacity: 0.7;
-          font-size: 0.92em;
-        }
-        [data-block-id] .wikilink {
-          color: ${theme.wikilink.color};
-          text-decoration: underline;
-          text-decoration-style: dotted;
-          text-decoration-color: ${theme.wikilink.underline};
-          cursor: pointer;
-        }
-        [data-block-id] .wikilink:hover {
-          text-decoration-color: ${theme.wikilink.color};
-        }
-        [data-block-id] .wikilink-broken {
-          color: ${theme.wikilinkBroken.color};
-          text-decoration-style: dashed;
-          text-decoration-color: ${theme.wikilinkBroken.underline};
-        }
-        [data-block-id] .wikilink-broken:hover {
-          color: ${theme.wikilinkBroken.hoverColor};
-          text-decoration-color: ${theme.wikilinkBroken.hoverUnderline};
-        }
-        .code-block {
-          position: relative;
-          background: ${theme.codeBlockBg};
-          border: 1px solid ${theme.codeBlockBorder};
-          border-radius: 8px;
-          margin: 8px 0;
-          padding: 14px 16px;
-          transition: border-color 0.15s;
-        }
-        .code-block:focus-within {
-          border-color: ${theme.codeBlockBorderFocus};
-        }
-        .code-body {
-          position: relative;
-          overflow: hidden;
-        }
-        .code-textarea {
-          display: block;
-          width: 100%;
-          min-height: 22px;
-          padding: 0;
-          margin: 0;
-          background: transparent;
-          color: transparent;
-          -webkit-text-fill-color: transparent;
-          caret-color: ${theme.caretColor};
-          border: none;
-          outline: none;
-          resize: none;
-          overflow: hidden;
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          font-size: 13px;
-          line-height: 1.6;
-          tab-size: 4;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          position: relative;
-          z-index: 1;
-        }
-        .code-textarea::selection {
-          background: ${theme.codeSelection};
-          -webkit-text-fill-color: transparent;
-        }
-        .code-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          margin: 0;
-          padding: 0;
-          background: transparent;
-          border: none;
-          pointer-events: none;
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          font-size: 13px;
-          line-height: 1.6;
-          tab-size: 4;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          color: ${theme.TEXT.primary};
-          overflow: hidden;
-        }
-        .code-overlay code {
-          display: block;
-          font-family: inherit;
-          font-size: inherit;
-          line-height: inherit;
-          background: transparent;
-          border: none;
-          padding: 0;
-          border-radius: 0;
-        }
-        .code-line {
-          position: relative;
-          display: block;
-        }
-        .code-copy-wrapper {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          z-index: 2;
-          opacity: 0;
-          transition: opacity 0.15s;
-          pointer-events: auto;
-        }
-        .code-block:hover .code-copy-wrapper {
-          opacity: 1;
-        }
-        .code-copy-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
-          border: 1px solid ${theme.codeCopy.border};
-          background: ${theme.codeCopy.bg};
-          color: ${theme.codeCopy.color};
-          cursor: pointer;
-          transition: background 0.15s, color 0.15s;
-          padding: 0;
-        }
-        .code-copy-btn:hover {
-          background: ${theme.codeCopy.hoverBg};
-          color: ${theme.codeCopy.hoverColor};
-        }
-        .code-lang-anchor {
-          position: absolute;
-          bottom: 8px;
-          right: 10px;
-          z-index: 2;
-        }
-        .code-lang {
-          font-size: 11px;
-          color: ${theme.codeLang.color};
-          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-          user-select: none;
-          cursor: pointer;
-          transition: color 0.15s;
-        }
-        .code-lang:hover {
-          color: ${theme.codeLang.hoverColor};
-        }
-        .code-lang-dropdown {
-          position: absolute;
-          bottom: calc(100% + 6px);
-          right: 0;
-          min-width: 140px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-          max-height: 260px;
-          overflow-y: auto;
-        }
-        .code-lang-option {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          padding: 6px 12px;
-          border: none;
-          background: none;
-          color: ${theme.TEXT.secondary};
-          font-size: 12px;
-          font-family: inherit;
-          cursor: pointer;
-          text-align: left;
-        }
-        .code-lang-option:hover {
-          background: ${theme.codeLangOption.hoverBg};
-          color: ${theme.TEXT.primary};
-        }
-        .code-lang-option-active {
-          color: ${theme.TEXT.primary};
-        }
-        /* Code block context menu */
-        .code-ctx-menu {
-          position: fixed;
-          z-index: 9999;
-          min-width: 170px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        .code-ctx-item {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          padding: 7px 14px;
-          font-size: 12.5px;
-          color: ${theme.TEXT.primary};
-          background: none;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          position: relative;
-          gap: 4px;
-        }
-        .code-ctx-item:hover {
-          background: rgba(255,255,255,0.06);
-        }
-        .code-ctx-danger { color: #f87171; }
-        .code-ctx-danger:hover { background: rgba(248,113,113,0.1); }
-        .code-ctx-active { color: ${theme.ACCENT.primary}; }
-        .code-ctx-sep {
-          height: 1px;
-          background: ${theme.BG.divider};
-          margin: 4px 0;
-        }
-        .code-ctx-submenu-trigger {
-          position: relative;
-        }
-        .code-ctx-submenu {
-          position: absolute;
-          left: 100%;
-          top: 0;
-          min-width: 150px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        /* Prism.js token colors */
-        .token.comment, .token.prolog, .token.doctype, .token.cdata { color: #636980; font-style: italic; }
-        .token.punctuation { color: #9B9EB0; }
-        .token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol { color: #FF9E64; }
-        .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin { color: #9ECE6A; }
-        .token.operator, .token.entity, .token.url { color: #89DDFF; }
-        .token.atrule, .token.attr-value, .token.keyword { color: #BB9AF7; }
-        .token.function, .token.class-name { color: #7AA2F7; }
-        .token.regex, .token.important, .token.variable { color: #E0AF68; }
-        .token.important, .token.bold { font-weight: bold; }
-        .token.italic { font-style: italic; }
-        /* Callout block styles */
-        .callout-block {
-          margin: 8px 0;
-        }
-        .callout-icon-btn:hover {
-          background: ${theme.calloutIconHover} !important;
-        }
-        .callout-title:empty::before {
-          content: attr(data-placeholder);
-          opacity: 0.35;
-          pointer-events: none;
-        }
-        .callout-body:empty::before {
-          content: attr(data-placeholder);
-          color: ${theme.TEXT.muted};
-          opacity: 0.5;
-          pointer-events: none;
-        }
-        .callout-body p { margin: 0; }
-        /* Table block styles */
-        .table-outer {
-          position: relative;
-          outline: none;
-        }
-        .table-block-wrapper {
-          overflow-x: auto;
-          border-radius: 8px;
-          border: 1px solid ${theme.BG.divider};
-        }
-        .table-block {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 14px;
-        }
-        .table-block th, .table-block td {
-          border: 1px solid ${theme.BG.divider};
-          padding: 8px 12px;
-          text-align: left;
-          outline: none;
-          min-width: 80px;
-        }
-        .table-block th {
-          background: ${theme.tableTh};
-          font-weight: 600;
-          color: ${theme.TEXT.primary};
-        }
-        .table-block td {
-          color: ${theme.TEXT.primary};
-          background: transparent;
-        }
-        .table-block td:focus, .table-block th:focus {
-          box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}50;
-        }
-        /* Edge zones */
-        .table-left-zone { cursor: grab; }
-        .table-left-zone:active { cursor: grabbing; }
-        .table-top-zone { cursor: grab; }
-        .table-top-zone:active { cursor: grabbing; }
-        /* Add row/column bars */
-        .table-bottom-zone:hover, .table-right-zone:hover {
-          background: ${theme.ACCENT.primary}0A;
-        }
-        /* Preview rows */
-        .table-preview-row td {
-          background: ${theme.ACCENT.primary}08 !important;
-          border-style: dashed !important;
-        }
-        /* Frontmatter block styles */
-        .frontmatter-block {
-          border-radius: 8px;
-          border: 1px solid ${theme.BG.divider};
-          background: ${theme.frontmatter};
-          margin: 8px 0;
-          overflow: hidden;
-        }
-        .frontmatter-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px 12px;
-          cursor: pointer;
-          font-size: 12px;
-          color: ${theme.TEXT.muted};
-          transition: color 0.15s;
-        }
-        .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
-        .frontmatter-body {
-          padding: 8px 12px;
-          border-top: 1px solid ${theme.BG.divider};
-          font-family: 'SF Mono', 'Fira Code', monospace;
-          font-size: 12px;
-          line-height: 1.6;
-          color: ${theme.TEXT.secondary};
-          white-space: pre-wrap;
-        }
-        .empty-block {
-          position: relative;
-        }
-        .empty-block::before {
-          content: attr(data-placeholder);
-          color: ${theme.TEXT.muted};
-          opacity: 0.4;
-          position: absolute;
-          pointer-events: none;
-        }
-        .empty-title::before {
-          content: attr(data-placeholder);
-          color: ${theme.TEXT.muted};
-          opacity: 0.35;
-          position: absolute;
-          top: 0;
-          left: 0;
-          pointer-events: none;
-        }
-      `}</style>
-
-      {/* Onboarding toast (bottom-left, web only) */}
       {onboardingToast && !user && isWeb && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: 24,
-            background: accentColor,
-            color: "#fff",
-            padding: "14px 20px",
-            borderRadius: 10,
-            fontSize: 13,
-            fontWeight: 500,
-            zIndex: 9999,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-            maxWidth: 380,
-            animation: "fadeIn 0.25s ease",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
+        <OnboardingToast
+          accentColor={accentColor}
+          onSignIn={() => {
+            setOnboardingToast(false);
+            localStorage.setItem("boojy-onboarding-dismissed", "true");
+            setSettingsOpen(true);
+            setSettingsTab("profile");
           }}
-        >
-          <div style={{ flex: 1 }}>
-            Your notes are saved locally on this browser. Sign in to sync across devices — free with
-            100MB cloud storage.
-            <br />
-            <button
-              onClick={() => {
-                setOnboardingToast(false);
-                localStorage.setItem("boojy-onboarding-dismissed", "true");
-                setSettingsOpen(true);
-                setSettingsTab("profile");
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#fff",
-                textDecoration: "underline",
-                cursor: "pointer",
-                padding: 0,
-                fontSize: 13,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
-              Sign in
-            </button>
-          </div>
-          <button
-            onClick={() => {
-              setOnboardingToast(false);
-              localStorage.setItem("boojy-onboarding-dismissed", "true");
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,0.7)",
-              cursor: "pointer",
-              fontSize: 16,
-              lineHeight: 1,
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            {"\u2715"}
-          </button>
-        </div>
+          onDismiss={() => {
+            setOnboardingToast(false);
+            localStorage.setItem("boojy-onboarding-dismissed", "true");
+          }}
+        />
       )}
 
-      {/* Persistence warning toast (bottom-left, web only) */}
       {persistenceWarning && !user && isWeb && !onboardingToast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: 24,
-            background: theme.BG.elevated,
-            color: theme.TEXT.primary,
-            padding: "14px 20px",
-            borderRadius: 10,
-            fontSize: 13,
-            fontWeight: 500,
-            zIndex: 9999,
-            boxShadow: theme.modalShadow,
-            maxWidth: 380,
-            animation: "fadeIn 0.25s ease",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            border: `1px solid ${theme.BG.divider}`,
+        <PersistenceWarning
+          noteCount={Object.keys(noteData).filter((id) => !noteData[id]._draft).length}
+          accentColor={accentColor}
+          onSignIn={() => {
+            setPersistenceWarning(false);
+            localStorage.setItem("boojy-persistence-warning-dismissed", "true");
+            setSettingsOpen(true);
+            setSettingsTab("profile");
           }}
-        >
-          <div style={{ flex: 1 }}>
-            You have {Object.keys(noteData).filter((id) => !noteData[id]._draft).length} notes
-            stored only in this browser. Sign in to back them up.
-            <br />
-            <button
-              onClick={() => {
-                setPersistenceWarning(false);
-                localStorage.setItem("boojy-persistence-warning-dismissed", "true");
-                setSettingsOpen(true);
-                setSettingsTab("profile");
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: accentColor,
-                textDecoration: "underline",
-                cursor: "pointer",
-                padding: 0,
-                fontSize: 13,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
-              Sign in
-            </button>
-          </div>
-          <button
-            onClick={() => {
-              setPersistenceWarning(false);
-              localStorage.setItem("boojy-persistence-warning-dismissed", "true");
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              color: theme.TEXT.muted,
-              cursor: "pointer",
-              fontSize: 16,
-              lineHeight: 1,
-              padding: 0,
-              flexShrink: 0,
-            }}
-          >
-            {"\u2715"}
-          </button>
-        </div>
+          onDismiss={() => {
+            setPersistenceWarning(false);
+            localStorage.setItem("boojy-persistence-warning-dismissed", "true");
+          }}
+        />
       )}
 
-      {/* First-sync confirmation modal */}
       {pendingFirstSync && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            zIndex: 10000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            animation: "fadeIn 0.15s ease",
-          }}
-          onClick={cancelFirstSync}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: theme.modalBg,
-              borderRadius: 14,
-              padding: "32px 36px",
-              boxShadow: theme.modalShadow,
-              maxWidth: 380,
-              width: "90%",
-              textAlign: "center",
-            }}
-          >
-            <h3
-              style={{
-                margin: "0 0 12px",
-                fontSize: 18,
-                fontWeight: 600,
-                color: theme.TEXT.primary,
-              }}
-            >
-              Sync your notes
-            </h3>
-            <p
-              style={{
-                margin: "0 0 24px",
-                fontSize: 14,
-                color: theme.TEXT.secondary,
-                lineHeight: 1.5,
-              }}
-            >
-              {pendingFirstSync.noteCount} note{pendingFirstSync.noteCount !== 1 ? "s" : ""} will be
-              uploaded to your account.
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button
-                onClick={cancelFirstSync}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: 8,
-                  border: `1px solid ${theme.BG.divider}`,
-                  background: "transparent",
-                  color: theme.TEXT.secondary,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                }}
-              >
-                Not Now
-              </button>
-              <button
-                onClick={confirmFirstSync}
-                style={{
-                  padding: "8px 20px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: accentColor,
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Sync Now
-              </button>
-            </div>
-          </div>
-        </div>
+        <FirstSyncModal
+          noteCount={pendingFirstSync.noteCount}
+          accentColor={accentColor}
+          onConfirm={confirmFirstSync}
+          onCancel={cancelFirstSync}
+        />
       )}
 
-      {/* Conflict toast notification */}
       {conflictToast && (
-        <div
+        <ConflictToast
+          noteTitle={conflictToast.noteTitle}
           onClick={() => {
             setActiveNote(conflictToast.conflictId);
             dismissConflictToast();
           }}
+        />
+      )}
+
+      {toasts.length > 0 && (
+        <div
           style={{
             position: "fixed",
             bottom: 24,
-            right: 24,
-            background: theme.SEMANTIC?.warning || "#f59e0b",
-            color: "#000",
-            padding: "12px 20px",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: "pointer",
+            left: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
             zIndex: 9999,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            maxWidth: 360,
-            animation: "fadeIn 0.2s ease",
           }}
         >
-          Conflict detected on &ldquo;{conflictToast.noteTitle}&rdquo; — click to view copy
+          {toasts.map((t) => (
+            <Toast
+              key={t.id}
+              message={t.message}
+              type={t.type}
+              onDismiss={() => dismissToast(t.id)}
+            />
+          ))}
         </div>
       )}
     </div>

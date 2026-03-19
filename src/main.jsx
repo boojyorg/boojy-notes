@@ -1,6 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./context/ThemeContext";
+import { NoteDataProvider } from "./context/NoteDataContext";
+import { SettingsProvider } from "./context/SettingsContext";
+import { LayoutProvider } from "./context/LayoutContext";
+import { SidebarProvider } from "./context/SidebarContext";
+import { OverlayProvider } from "./context/OverlayContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { isWeb, isCapacitor } from "./utils/platform";
 
@@ -12,10 +18,25 @@ highlightStyle.textContent = `
 `;
 document.head.appendChild(highlightStyle);
 
+// Log unhandled promise rejections
+window.addEventListener("unhandledrejection", (e) => console.error("[unhandled]", e.reason));
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThemeProvider>
-      <BoojyNotes />
+      <NoteDataProvider>
+        <SettingsProvider>
+          <LayoutProvider>
+            <SidebarProvider>
+              <OverlayProvider>
+                <ErrorBoundary>
+                  <BoojyNotes />
+                </ErrorBoundary>
+              </OverlayProvider>
+            </SidebarProvider>
+          </LayoutProvider>
+        </SettingsProvider>
+      </NoteDataProvider>
     </ThemeProvider>
   </StrictMode>,
 );
