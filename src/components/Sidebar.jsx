@@ -293,6 +293,7 @@ const Sidebar = memo(function Sidebar({
               ref={searchInputRef}
               type="text"
               autoFocus
+              aria-label="Search notes"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
 export default function FindBar({
@@ -245,7 +246,7 @@ export default function FindBar({
         position: "absolute",
         top: 0,
         right: 0,
-        zIndex: 50,
+        zIndex: Z.FIND_BAR,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
         borderRadius: "0 0 0 8px",

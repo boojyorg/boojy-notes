@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from "react";
 import { mulberry32, hashString } from "../utils/random";
+import { Z } from "../constants/zIndex";
 
 const StarField = ({ mode = "empty", seed = "__default__" }) => {
   const canvasRef = useRef(null);
@@ -147,7 +148,7 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
         left: 0,
         width: "100%",
         pointerEvents: "none",
-        zIndex: 0,
+        zIndex: Z.STARFIELD,
       }}
     />
   );

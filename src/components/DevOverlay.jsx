@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { hexToRgb, rgbToHex } from "../utils/colorUtils";
 
@@ -141,7 +142,7 @@ export default function DevOverlay({ open, onClose }) {
             fontSize: 12,
             color: theme.TEXT.primary,
             fontWeight: 500,
-            zIndex: 200,
+            zIndex: Z.DROPDOWN,
             animation: "fadeIn 0.15s ease",
             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
           }}
@@ -167,7 +168,7 @@ export default function DevOverlay({ open, onClose }) {
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          zIndex: 201,
+          zIndex: Z.DROPDOWN_TOP,
           fontSize: 14,
           transition: "background 0.15s, color 0.15s, transform 0.15s",
           backdropFilter: "blur(8px)",
@@ -208,7 +209,7 @@ export default function DevOverlay({ open, onClose }) {
           border: `1px solid ${theme.BG.divider}`,
           borderRadius: 10,
           padding: 16,
-          zIndex: 200,
+          zIndex: Z.DROPDOWN,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           display: "flex",
           flexDirection: "column",

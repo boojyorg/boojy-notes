@@ -1,3 +1,5 @@
+import { Z } from "../constants/zIndex";
+
 export default function OnboardingToast({ accentColor, onSignIn, onDismiss }) {
   return (
     <div
@@ -11,7 +13,7 @@ export default function OnboardingToast({ accentColor, onSignIn, onDismiss }) {
         borderRadius: 10,
         fontSize: 13,
         fontWeight: 500,
-        zIndex: 9999,
+        zIndex: Z.TOAST,
         boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
         maxWidth: 380,
         animation: "fadeIn 0.25s ease",

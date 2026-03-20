@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { SLASH_COMMANDS } from "../constants/data";
 
 export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand }) {
@@ -14,7 +15,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
   return (
     <>
       <div
-        style={{ position: "fixed", inset: 0, zIndex: 199 }}
+        style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
         onMouseDown={() => setSlashMenu(null)}
       />
       <div
@@ -24,7 +25,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           position: "fixed",
           top: slashMenu.rect.top,
           left: slashMenu.rect.left,
-          zIndex: 200,
+          zIndex: Z.DROPDOWN,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
           borderRadius: 10,
@@ -43,6 +44,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
             <div
               key={cmd.id}
               role="menuitem"
+              aria-selected={i === slashMenu.selectedIndex}
               onClick={() => {
                 executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
                 setSlashMenu(null);

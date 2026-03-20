@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 const MIN_PX = 250;
 const MIN_SECONDARY_PX = 150;
@@ -100,7 +101,7 @@ export default function SplitDivider({
         boxSizing: "border-box",
         flexShrink: 0,
         transition: dragging.current ? "none" : "background 0.15s, border-color 0.15s",
-        zIndex: 1,
+        zIndex: Z.BASE,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = theme.ACCENT.primary;

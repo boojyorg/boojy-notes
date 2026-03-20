@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 const isMac = navigator.platform.toUpperCase().includes("MAC");
 const mod = isMac ? "\u2318" : "Ctrl";
@@ -82,7 +83,7 @@ export default function HelpDropdown({ open, onClose, toggleRef }) {
         borderRadius: 10,
         padding: "12px 0",
         fontSize: 12,
-        zIndex: 200,
+        zIndex: Z.DROPDOWN,
         boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       }}
     >

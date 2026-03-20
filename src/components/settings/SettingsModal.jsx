@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
@@ -84,6 +85,13 @@ export default function SettingsModal({
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
+    if (type === "ai")
+      return (
+        <svg {...props}>
+          <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" />
+          <path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+        </svg>
+      );
     if (type === "updates")
       return (
         <svg {...props}>
@@ -158,7 +166,7 @@ export default function SettingsModal({
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 400,
+            zIndex: Z.SETTINGS,
             background: "rgba(0,0,0,0.5)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
@@ -178,7 +186,7 @@ export default function SettingsModal({
             ? {
                 position: "fixed",
                 inset: 0,
-                zIndex: 401,
+                zIndex: Z.SETTINGS_INNER,
                 background: BG.darkest,
                 display: "flex",
                 flexDirection: "column",
@@ -189,7 +197,7 @@ export default function SettingsModal({
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                zIndex: 401,
+                zIndex: Z.SETTINGS_INNER,
                 width: 640,
                 maxHeight: 480,
                 background: theme.modalBg,

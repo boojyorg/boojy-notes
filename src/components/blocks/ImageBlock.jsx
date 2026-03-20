@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 import { resolveAttachmentUrl, resolveAttachmentUrlSync } from "../../utils/attachmentUrl";
 
 function ImageBlock({
@@ -153,7 +154,7 @@ function ImageBlock({
     background: "#fff",
     border: `2px solid ${accentColor}`,
     cursor: pos === "nw" || pos === "se" ? "nwse-resize" : "nesw-resize",
-    zIndex: 5,
+    zIndex: Z.ELEMENT_OVERLAY,
     ...(pos === "nw" ? { top: -5, left: -5 } : {}),
     ...(pos === "ne" ? { top: -5, right: -5 } : {}),
     ...(pos === "sw" ? { bottom: -5, left: -5 } : {}),
@@ -221,6 +222,8 @@ function ImageBlock({
       {ctxMenu && (
         <div
           className="image-context-menu"
+          role="menu"
+          aria-label="Image options"
           style={{
             position: "fixed",
             top: ctxMenu.top,
@@ -230,7 +233,7 @@ function ImageBlock({
             borderRadius: 8,
             padding: 4,
             minWidth: 180,
-            zIndex: 300,
+            zIndex: Z.CONTEXT_MENU,
             boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
             backdropFilter: "blur(12px)",
           }}

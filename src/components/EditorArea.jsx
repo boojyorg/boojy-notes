@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { getAPI } from "../services/apiProvider";
@@ -79,7 +80,7 @@ const EditorArea = memo(
   }) {
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
-    const { accentColor, editorBg } = useLayout();
+    const { accentColor, editorBg, collapsed } = useLayout();
     const { settingsFontSize } = useSettings();
 
     // Find bar state
@@ -382,15 +383,15 @@ const EditorArea = memo(
             key={activeNote}
             style={{
               padding: "12px 56px 80px 56px",
-              maxWidth: 720,
+              maxWidth: collapsed ? 840 : 720,
               marginLeft: 40,
               marginRight: "auto",
               width: "100%",
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
-              transition: "opacity 0.2s ease, transform 0.2s ease",
+              transition: "max-width 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
               position: "relative",
-              zIndex: 1,
+              zIndex: Z.BASE,
             }}
           >
             {/* Breadcrumb */}

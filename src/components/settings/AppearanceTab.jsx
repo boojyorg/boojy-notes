@@ -1,12 +1,14 @@
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
+import { SCALE_OPTIONS } from "../../constants/data";
 import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
 
 export default function AppearanceTab({ SectionHeader }) {
-  const { settingsFontSize, setSettingsFontSize } = useSettings();
+  const { settingsFontSize, setSettingsFontSize, uiScale, setUiScale } = useSettings();
+
   const { accentColor } = useLayout();
 
   const {
@@ -94,6 +96,38 @@ export default function AppearanceTab({ SectionHeader }) {
             +
           </button>
         </div>
+      </div>
+
+      {/* UI Scale row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 0 2px",
+        }}
+      >
+        <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>UI Scale</span>
+        <select
+          value={uiScale}
+          onChange={(e) => setUiScale(Number(e.target.value))}
+          style={{
+            background: theme.overlay(0.05),
+            border: `1px solid ${theme.overlay(0.08)}`,
+            borderRadius: radius.sm,
+            color: TEXT.secondary,
+            fontSize: fontSize.sm,
+            padding: "2px 4px",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {SCALE_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}%{s === 100 ? " (Default)" : ""}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Theme row */}

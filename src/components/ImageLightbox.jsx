@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { Z } from "../constants/zIndex";
 
 export default function ImageLightbox({ src, alt, onClose }) {
   const containerRef = useRef(null);
@@ -38,7 +39,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 1000,
+        zIndex: Z.LIGHTBOX,
         animation: "lightbox-fade-in 0.15s ease",
         cursor: "zoom-out",
       }}

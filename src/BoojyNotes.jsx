@@ -28,6 +28,8 @@ import { useTheme } from "./hooks/useTheme";
 import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
 import { STORAGE_KEY, loadFromStorage } from "./utils/storage";
+import { SCALE_OPTIONS } from "./constants/data";
+import { Z } from "./constants/zIndex";
 import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
@@ -82,6 +84,8 @@ export default function BoojyNotes() {
     settingsOpen,
     setSettingsOpen,
     setSettingsTab,
+    uiScale,
+    setUiScale,
     user,
     profile,
     aiSettings,
@@ -208,9 +212,10 @@ export default function BoojyNotes() {
     if (!activeNote || !noteData[activeNote]) return "";
     const n = noteData[activeNote];
     return `# ${n.title}\n\n${(n.content?.blocks || []).map((b) => b.text || "").join("\n")}`;
-  }, [activeNote, noteData]);  
+  }, [activeNote, noteData]);
   useEffect(() => {
     const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
+    document.title = title;
     if (isElectron) getAPI()?.setWindowTitle(title);
   }, [activeNote, activeNoteTitle]);
 
@@ -585,6 +590,8 @@ export default function BoojyNotes() {
   noteDataKbRef.current = noteData;
   const splitStateKbRef = useRef(splitState);
   splitStateKbRef.current = splitState;
+  const uiScaleKbRef = useRef(uiScale);
+  uiScaleKbRef.current = uiScale;
 
   useEffect(() => {
     const handler = (e) => {
@@ -670,6 +677,26 @@ export default function BoojyNotes() {
           closeTerminal(activeTerminalId);
           return;
         }
+      }
+      // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
+      if (mod && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        const cur = uiScaleKbRef.current;
+        const next = SCALE_OPTIONS.find((s) => s > cur);
+        if (next) setUiScale(next);
+        return;
+      }
+      if (mod && e.key === "-") {
+        e.preventDefault();
+        const cur = uiScaleKbRef.current;
+        const next = [...SCALE_OPTIONS].reverse().find((s) => s < cur);
+        if (next) setUiScale(next);
+        return;
+      }
+      if (mod && e.key === "0") {
+        e.preventDefault();
+        setUiScale(100);
+        return;
       }
       if (import.meta.env.DEV && mod && e.key === ".") {
         e.preventDefault();
@@ -1174,7 +1201,7 @@ export default function BoojyNotes() {
     <div
       style={{
         width: "100%",
-        height: "100vh",
+        height: `${10000 / uiScale}vh`,
         background: theme.BG.darkest,
         display: "flex",
         flexDirection: "column",
@@ -1194,7 +1221,7 @@ export default function BoojyNotes() {
           width: "1px",
           height: "1px",
           overflow: "hidden",
-          zIndex: 99999,
+          zIndex: Z.ERROR_BOUNDARY,
         }}
         onFocus={(e) => {
           e.target.style.left = "10px";
@@ -1549,7 +1576,7 @@ export default function BoojyNotes() {
       {wikilinkMenu && (
         <>
           <div
-            style={{ position: "fixed", inset: 0, zIndex: 199 }}
+            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
             onMouseDown={() => setWikilinkMenu(null)}
           />
           <WikilinkMenu
@@ -1577,7 +1604,7 @@ export default function BoojyNotes() {
             fontSize: 12,
             color: theme.TEXT.primary,
             fontWeight: 500,
-            zIndex: 1100,
+            zIndex: Z.OVERLAY,
             pointerEvents: "none",
             animation: "fadeIn 0.2s ease",
             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
@@ -1678,7 +1705,7 @@ export default function BoojyNotes() {
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            zIndex: 9999,
+            zIndex: Z.TOAST,
           }}
         >
           {toasts.map((t) => (

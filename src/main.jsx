@@ -10,6 +10,14 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { isWeb, isCapacitor } from "./utils/platform";
 
+// Apply saved UI scale immediately to prevent flash
+const savedScale = localStorage.getItem("boojy-ui-scale");
+if (savedScale && savedScale !== "100") {
+  const scale = Number(savedScale);
+  document.documentElement.style.zoom = `${scale}%`;
+  document.documentElement.style.minHeight = `${10000 / scale}vh`;
+}
+
 // Inject CSS Custom Highlight API styles for find-in-note
 const highlightStyle = document.createElement("style");
 highlightStyle.textContent = `

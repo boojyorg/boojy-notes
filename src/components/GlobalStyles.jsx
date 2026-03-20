@@ -38,7 +38,7 @@ export default function GlobalStyles() {
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         [data-drag-slot] { transition: opacity 150ms ease; }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: ${theme.BG.divider} transparent; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; border-radius: 3px; }

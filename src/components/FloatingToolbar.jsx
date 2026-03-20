@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 function ToolbarBtn({ label, active, onClick, style = {}, ariaLabel }) {
   const { theme } = useTheme();
@@ -57,7 +58,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         borderRadius: 8,
         padding: "4px 4px",
         boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-        zIndex: 100,
+        zIndex: Z.TOOLBAR,
         animation: "fadeInToolbar 0.12s ease-out",
       }}
     >
@@ -89,7 +90,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         onClick={() => onFormat("highlight")}
         style={{
           fontWeight: 600,
-          background: activeFormats.highlight ? "rgba(255,230,0,0.15)" : undefined,
+          background: activeFormats.highlight ? theme.mark.bg : undefined,
         }}
       />
       <ToolbarBtn

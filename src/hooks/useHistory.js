@@ -107,6 +107,9 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     textFlushTimer.current = setTimeout(() => {
       textFlushTimer.current = null;
       hasPendingFlush.current = false;
+      textOnlyEdit.current = false;
+      textOnlyEditForSidebar.current = false;
+      textOnlyEditForEditor.current = false;
       startTransition(() => {
         setNoteData(noteDataRef.current);
       });

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 
 export default function TerminalSearchBar({ searchAddon, onClose }) {
   const { theme } = useTheme();
@@ -45,7 +46,7 @@ export default function TerminalSearchBar({ searchAddon, onClose }) {
         alignItems: "center",
         gap: 4,
         boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-        zIndex: 10,
+        zIndex: Z.TERMINAL_SEARCH,
         animation: "fadeIn 0.15s ease",
       }}
     >

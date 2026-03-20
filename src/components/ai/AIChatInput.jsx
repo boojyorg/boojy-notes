@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 import { getModelsForProvider } from "../../services/ai/models";
 
 export default function AIChatInput({
@@ -143,7 +144,7 @@ export default function AIChatInput({
         {modelPickerOpen && (
           <>
             <div
-              style={{ position: "fixed", inset: 0, zIndex: 99 }}
+              style={{ position: "fixed", inset: 0, zIndex: Z.AI_BACKDROP }}
               onClick={() => setModelPickerOpen(false)}
             />
             <div
@@ -156,7 +157,7 @@ export default function AIChatInput({
                 border: `1px solid ${BG.divider}`,
                 borderRadius: 6,
                 padding: "4px 0",
-                zIndex: 100,
+                zIndex: Z.TOOLBAR,
                 boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                 minWidth: 160,
               }}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 import { getAPI } from "../../services/apiProvider";
 
 function formatFileSize(bytes) {
@@ -136,7 +137,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
             borderRadius: 8,
             padding: 4,
             minWidth: 180,
-            zIndex: 300,
+            zIndex: Z.CONTEXT_MENU,
             boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
             backdropFilter: "blur(12px)",
           }}

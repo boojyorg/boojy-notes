@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteDataActions } from "../context/NoteDataContext";
 import { useSettings } from "../context/SettingsContext";
@@ -48,7 +49,7 @@ function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime
             fontSize: 11,
             color: TEXT.secondary,
             whiteSpace: "nowrap",
-            zIndex: 100,
+            zIndex: Z.TOOLBAR,
             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
           }}
         >
@@ -112,7 +113,7 @@ export default function TopBar({
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const { setSettingsOpen, setSettingsTab } = useSettings();
   const { theme } = useTheme();
-  const { BG, TEXT, ACCENT } = theme;
+  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
   const [helpOpen, setHelpOpen] = useState(false);
   const helpBtnRef = useRef(null);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
@@ -131,7 +132,7 @@ export default function TopBar({
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
-          zIndex: 2,
+          zIndex: Z.TOPBAR_INNER,
           position: "relative",
           padding: "0 8px",
           gap: 4,
@@ -282,7 +283,7 @@ export default function TopBar({
         display: "flex",
         alignItems: "center",
         flexShrink: 0,
-        zIndex: 2,
+        zIndex: Z.TOPBAR_INNER,
         position: "relative",
       }}
     >
@@ -321,11 +322,11 @@ export default function TopBar({
                 borderRadius: "50%",
                 background:
                   syncState === "conflict"
-                    ? "#f59e0b"
+                    ? SEMANTIC.warning
                     : syncState === "offline"
-                      ? "#9ca3af"
+                      ? TEXT.muted
                       : syncState === "error"
-                        ? "#ef4444"
+                        ? SEMANTIC.error
                         : accentColor,
               }}
             />

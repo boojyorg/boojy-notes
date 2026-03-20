@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 export default function LinkEditPopover({ position, initialUrl, onApply, onRemove, onDismiss }) {
   const { theme } = useTheme();
@@ -47,7 +48,7 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
         position: "absolute",
         top: position.top,
         left: position.left,
-        zIndex: 200,
+        zIndex: Z.DROPDOWN,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
         borderRadius: 8,

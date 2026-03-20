@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -204,7 +205,10 @@ const ContextMenu = memo(function ContextMenu({
 
   return (
     <>
-      <div onClick={() => setCtxMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 250 }} />
+      <div
+        onClick={() => setCtxMenu(null)}
+        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
+      />
       <div
         role="menu"
         aria-label="Context menu"
@@ -213,7 +217,7 @@ const ContextMenu = memo(function ContextMenu({
           position: "fixed",
           top: ctxMenu.y,
           left: ctxMenu.x,
-          zIndex: 300,
+          zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
           borderRadius: 8,

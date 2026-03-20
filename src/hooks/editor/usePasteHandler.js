@@ -6,6 +6,7 @@ import {
   stripMarkdownFormatting,
 } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
+import { markdownToBlocks } from "../../utils/markdown";
 
 export function usePasteHandler({
   noteDataRef,
@@ -172,28 +173,51 @@ export function usePasteHandler({
         if (!beforeText.trim()) {
           // Before cursor is empty: replace current block with first pasted block
           const first = pastedBlocks[0];
-          const replaced = { ...currentBlock, type: first.type, text: first.text };
-          if (first.checked !== undefined) replaced.checked = first.checked;
-          else delete replaced.checked;
-          if (first.indent) replaced.indent = first.indent;
-          newBlocks.push(replaced);
+          if (!isEditableBlock(first)) {
+            const nb = { ...first, id: currentBlock.id };
+            delete nb.fullBlock;
+            newBlocks.push(nb);
+          } else {
+            const replaced = {
+              ...currentBlock,
+              type: first.type,
+              text: first.text,
+            };
+            if (first.checked !== undefined) replaced.checked = first.checked;
+            else delete replaced.checked;
+            if (first.indent) replaced.indent = first.indent;
+            newBlocks.push(replaced);
+          }
         } else {
           // Keep current block with before-text
           newBlocks.push({ ...currentBlock, text: beforeText });
           // First pasted block as new block
           const first = pastedBlocks[0];
-          const nb = { id: genBlockId(), type: first.type, text: first.text };
-          if (first.checked !== undefined) nb.checked = first.checked;
-          newBlocks.push(nb);
+          if (!isEditableBlock(first)) {
+            const nb = { ...first, id: genBlockId() };
+            delete nb.fullBlock;
+            newBlocks.push(nb);
+          } else {
+            const nb = { id: genBlockId(), type: first.type, text: first.text };
+            if (first.checked !== undefined) nb.checked = first.checked;
+            if (first.indent) nb.indent = first.indent;
+            newBlocks.push(nb);
+          }
         }
 
         // Remaining pasted blocks
         for (let i = 1; i < pastedBlocks.length; i++) {
           const pb = pastedBlocks[i];
-          const nb = { id: genBlockId(), type: pb.type, text: pb.text };
-          if (pb.checked !== undefined) nb.checked = pb.checked;
-          if (pb.indent) nb.indent = pb.indent;
-          newBlocks.push(nb);
+          if (!isEditableBlock(pb)) {
+            const nb = { ...pb, id: genBlockId() };
+            delete nb.fullBlock;
+            newBlocks.push(nb);
+          } else {
+            const nb = { id: genBlockId(), type: pb.type, text: pb.text };
+            if (pb.checked !== undefined) nb.checked = pb.checked;
+            if (pb.indent) nb.indent = pb.indent;
+            newBlocks.push(nb);
+          }
         }
 
         // Append after-text to last block or create new P block
@@ -233,51 +257,122 @@ export function usePasteHandler({
       }
     }
 
-    e.preventDefault();
-    const htmlData = e.clipboardData.getData("text/html");
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
+    // Multi-line external paste: parse as markdown blocks
+    if (textData.includes("\n")) {
+      e.preventDefault();
+      const pastedBlocks = markdownToBlocks(textData);
+      if (!pastedBlocks.length) return;
 
-    if (!range.collapsed) {
-      const startInfo = getBlock(range.startContainer);
-      const endInfo = getBlock(range.endContainer);
-      if (startInfo && endInfo && startInfo.blockIndex !== endInfo.blockIndex) {
-        const startEl = startInfo.el;
-        const endEl = endInfo.el;
-        const preRange = document.createRange();
-        preRange.selectNodeContents(startEl);
-        preRange.setEnd(range.startContainer, range.startOffset);
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+
+      let startIdx, deleteCount, beforeText, afterText;
+
+      if (!range.collapsed) {
+        const startInfo = getBlock(range.startContainer);
+        const endInfo = getBlock(range.endContainer);
+        if (!startInfo || !endInfo) return;
+        startIdx = startInfo.blockIndex;
+        deleteCount = endInfo.blockIndex - startIdx;
+
+        const preR = document.createRange();
+        preR.selectNodeContents(startInfo.el);
+        preR.setEnd(range.startContainer, range.startOffset);
         const preDiv = document.createElement("div");
-        preDiv.appendChild(preRange.cloneContents());
-        const beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-        const postRange = document.createRange();
-        postRange.selectNodeContents(endEl);
-        postRange.setStart(range.endContainer, range.endOffset);
+        preDiv.appendChild(preR.cloneContents());
+        beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
+
+        const postR = document.createRange();
+        postR.selectNodeContents(endInfo.el);
+        postR.setStart(range.endContainer, range.endOffset);
         const postDiv = document.createElement("div");
-        postDiv.appendChild(postRange.cloneContents());
-        const afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-        const pastedMd = htmlData ? htmlToInlineMarkdown(sanitizeInlineHtml(htmlData)) : textData;
-        const startIdx = startInfo.blockIndex;
-        const endIdx = endInfo.blockIndex;
-        const startBlockId = noteDataRef.current[currentNote].content.blocks[startIdx].id;
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[currentNote] };
-          const blks = [...n.content.blocks];
-          blks[startIdx] = { ...blks[startIdx], text: beforeText + pastedMd + afterText };
-          blks.splice(startIdx + 1, endIdx - startIdx);
-          n.content = { ...n.content, blocks: blks };
-          next[currentNote] = n;
-          return next;
-        });
-        syncGeneration.current++;
-        focusBlockId.current = startBlockId;
-        focusCursorPos.current = (beforeText + pastedMd).length;
-        return;
+        postDiv.appendChild(postR.cloneContents());
+        afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
+      } else {
+        const info = getBlock(sel.anchorNode);
+        if (!info) return;
+        startIdx = info.blockIndex;
+        deleteCount = 0;
+
+        const preR = document.createRange();
+        preR.selectNodeContents(info.el);
+        preR.setEnd(range.startContainer, range.startOffset);
+        const preDiv = document.createElement("div");
+        preDiv.appendChild(preR.cloneContents());
+        beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
+
+        const postR = document.createRange();
+        postR.selectNodeContents(info.el);
+        postR.setStart(range.endContainer, range.endOffset);
+        const postDiv = document.createElement("div");
+        postDiv.appendChild(postR.cloneContents());
+        afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
       }
+
+      const blocks = noteDataRef.current[currentNote].content.blocks;
+      const currentBlock = blocks[startIdx];
+      const newBlocks = [];
+
+      if (!beforeText.trim()) {
+        const first = pastedBlocks[0];
+        const replaced = { ...currentBlock, type: first.type, text: first.text };
+        if (first.checked !== undefined) replaced.checked = first.checked;
+        else delete replaced.checked;
+        if (first.indent) replaced.indent = first.indent;
+        newBlocks.push(replaced);
+      } else {
+        newBlocks.push({ ...currentBlock, text: beforeText });
+        const first = pastedBlocks[0];
+        const nb = { id: genBlockId(), type: first.type, text: first.text };
+        if (first.checked !== undefined) nb.checked = first.checked;
+        if (first.indent) nb.indent = first.indent;
+        newBlocks.push(nb);
+      }
+
+      for (let i = 1; i < pastedBlocks.length; i++) {
+        const pb = pastedBlocks[i];
+        const nb = { id: genBlockId(), type: pb.type, text: pb.text };
+        if (pb.checked !== undefined) nb.checked = pb.checked;
+        if (pb.indent) nb.indent = pb.indent;
+        newBlocks.push(nb);
+      }
+
+      if (afterText.trim()) {
+        const last = newBlocks[newBlocks.length - 1];
+        if (last.type === "p" || last.type === currentBlock.type) {
+          last.text = (last.text || "") + afterText;
+        } else {
+          newBlocks.push({ id: genBlockId(), type: "p", text: afterText });
+        }
+      }
+
+      const lastBlock = newBlocks[newBlocks.length - 1];
+
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[currentNote] };
+        const blks = [...n.content.blocks];
+        blks.splice(startIdx, 1 + deleteCount, ...newBlocks);
+        n.content = { ...n.content, blocks: blks };
+        next[currentNote] = n;
+        return next;
+      });
+      syncGeneration.current++;
+      focusBlockId.current = lastBlock.id;
+      focusCursorPos.current = (lastBlock.text || "").length;
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const el = blockRefs.current[lastBlock.id];
+          if (el) placeCaret(el, (lastBlock.text || "").length);
+        }, 0);
+      });
+      return;
     }
 
+    // Single-line external paste: insert inline
+    e.preventDefault();
+    const htmlData = e.clipboardData.getData("text/html");
     if (htmlData) {
       const sanitized = sanitizeInlineHtml(htmlData);
       document.execCommand("insertHTML", false, sanitized);
@@ -321,7 +416,14 @@ export function usePasteHandler({
     for (let i = startIdx; i <= endIdx; i++) {
       const block = blocks[i];
       const el = blockRefs.current[block.id];
-      if (!el || !isEditableBlock(block)) continue;
+      if (!isEditableBlock(block)) {
+        // Preserve non-editable blocks (code, table, callout, image, file) in full
+        const entry = { ...block, fullBlock: true };
+        delete entry.id;
+        copiedBlocks.push(entry);
+        continue;
+      }
+      if (!el) continue;
 
       let text;
       let fullBlock = false;

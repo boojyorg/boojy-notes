@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
+import { Z } from "../constants/zIndex";
 
 export default function TableBlock({
   block,
@@ -193,7 +194,7 @@ export default function TableBlock({
           width: 24,
           bottom: 0,
           cursor: "grab",
-          zIndex: 5,
+          zIndex: Z.ELEMENT_OVERLAY,
         }}
         onMouseEnter={() => setLeftZoneHovered(true)}
         onMouseLeave={() => setLeftZoneHovered(false)}
@@ -210,7 +211,7 @@ export default function TableBlock({
           right: -28,
           height: 24,
           cursor: "grab",
-          zIndex: 5,
+          zIndex: Z.ELEMENT_OVERLAY,
         }}
         onMouseEnter={() => setTopZoneHovered(true)}
         onMouseLeave={() => setTopZoneHovered(false)}
@@ -386,7 +387,7 @@ export default function TableBlock({
             fontWeight: 600,
             borderRadius: 10,
             pointerEvents: "none",
-            zIndex: 200,
+            zIndex: Z.DROPDOWN,
           }}
         >
           +{createBadge.count}

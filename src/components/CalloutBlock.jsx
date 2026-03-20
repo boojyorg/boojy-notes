@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import {
   Pencil,
@@ -169,14 +170,16 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
           e.preventDefault();
           onClose();
         }}
-        style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+        style={{ position: "fixed", inset: 0, zIndex: Z.CALLOUT_BACKDROP }}
       />
       <div
         ref={listRef}
         className="callout-picker"
+        role="listbox"
+        aria-label="Callout type picker"
         style={{
           position: "fixed",
-          zIndex: 9999,
+          zIndex: Z.TOAST,
           ...style,
           width: 180,
           maxHeight: 320,

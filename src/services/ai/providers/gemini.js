@@ -4,7 +4,7 @@
 
 export async function* stream(messages, { apiKey, model, baseUrl, maxTokens, signal }) {
   const base = baseUrl || "https://generativelanguage.googleapis.com";
-  const url = `${base}/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const url = `${base}/v1beta/models/${model}:streamGenerateContent?alt=sse`;
 
   // Convert chat messages to Gemini format
   const contents = messages.map((m) => ({
@@ -21,7 +21,7 @@ export async function* stream(messages, { apiKey, model, baseUrl, maxTokens, sig
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify(body),
     signal,
   });

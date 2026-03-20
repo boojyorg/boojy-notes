@@ -90,12 +90,16 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
   useEffect(() => {
     const persisted = loadPersistedDirty();
     if (persisted?.ids?.length > 0) {
-      for (const id of persisted.ids) {
+      // Filter out IDs for notes that no longer exist (deleted locally before crash)
+      const validIds = persisted.ids.filter(
+        (id) => noteDataRef.current[id] || persisted.notes?.[id],
+      );
+      for (const id of validIds) {
         dirtyNotes.current.add(id);
       }
       // Restore persisted note content if not already in noteData
       if (persisted.notes) {
-        const missing = Object.keys(persisted.notes).filter((id) => !noteDataRef.current[id]);
+        const missing = validIds.filter((id) => !noteDataRef.current[id] && persisted.notes[id]);
         if (missing.length > 0) {
           setNoteData((prev) => {
             const next = { ...prev };
@@ -283,6 +287,18 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
             }
             for (const note of parsedRemotes) {
               remoteUpdateIds.current.set(note.id, Date.now());
+            }
+
+            // Surface conflict toast if a locally dirty note was deleted remotely
+            for (const noteId of deletedRemotes) {
+              if (dirtyNotes.current.has(noteId)) {
+                const note = noteDataRef.current[noteId];
+                setConflictToast({
+                  noteTitle: note?.title || "Untitled",
+                  conflictId: noteId,
+                  conflictTitle: `"${note?.title || "Untitled"}" was deleted on another device but has local edits — keeping local copy`,
+                });
+              }
             }
 
             setNoteData((prev) => {
@@ -550,6 +566,17 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id
   }, [user?.id]);
+
+  // Persist dirty notes immediately on page unload to avoid data loss on crash
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      if (dirtyNotes.current.size > 0) {
+        savePersistedDirty([...dirtyNotes.current], noteDataRef.current);
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
 
   // Cleanup
   useEffect(() => {

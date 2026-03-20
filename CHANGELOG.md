@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.1.7 (2026-03-20)
+
+### Features
+- **UI Scale setting** — New dropdown in Settings → Appearance to adjust UI zoom (50%–200%), persists across restarts
+- **Zoom keyboard shortcuts** — Cmd+Plus / Cmd+Minus to step through UI scale values, Cmd+0 to reset to 100%
+- **Multi-line indent/dedent in code blocks** — Tab/Shift+Tab with multi-line selection now indents/dedents each selected line instead of replacing the selection
+- **Firefox scrollbar styling** — Add `scrollbar-width: thin` and `scrollbar-color` for Firefox compatibility alongside existing WebKit scrollbar styles
+
+### Improvements
+- **Centralized z-index constants** — Replace all hardcoded z-index values across 30 components with `Z.*` constants from `src/constants/zIndex.js`; fixes ImageLightbox/TerminalTabBar collision (lightbox now stacks above terminal)
+- **AI icon in Settings sidebar** — AI tab now has a sparkles icon matching other sidebar tab icons
+- **Monochrome slash menu icons** — Image and File icons replaced with monochrome Unicode chars that respect theme colors; Table now shows `| | |` shortcut hint
+- **Adaptive editor max-width** — Editor content area expands from 720px to 840px when sidebar is collapsed, with smooth transition
+- **Theme-aware sync status colors** — TopBar sync indicator now uses `SEMANTIC.warning`/`SEMANTIC.error`/`TEXT.muted` from theme instead of hardcoded hex colors
+- **Theme-aware highlight button** — FloatingToolbar highlight active state now uses `theme.mark.bg` instead of hardcoded yellow
+- **useCallback for panel resize** — Wrap `startDrag`/`startRightDrag` in `useCallback` to prevent unnecessary child re-renders
+- **ARIA accessibility** — Add `aria-selected` to SlashMenu items, `role="listbox"` + `aria-label` to CalloutBlock picker, `aria-label` to sidebar search input, `role="menu"` + `aria-label` to ImageBlock context menu
+
+### Security
+- **Gemini API key moved to header** — API key no longer exposed in URL query string (which leaks to browser history/logs/Referer); now sent via `x-goog-api-key` header
+- **Path traversal fix in attachment protocol** — `boojy-att://` handler now validates resolved path stays inside notes directory, preventing `../../` traversal to arbitrary files
+- **Path traversal fix in note file manager** — `sanitizeFilename` now rejects `..` and `.` components to prevent folder names escaping the notes directory
+- **CI audit no longer silently ignored** — Changed `npm audit --audit-level=high || true` to `npm audit --audit-level=critical` so critical vulnerabilities fail the build
+
+### Bug Fixes
+- **Fix copy across non-editable blocks** — Copying a selection spanning code blocks, tables, callouts, images, or file blocks no longer silently drops them; non-editable blocks are now preserved in full during internal copy/paste
+- **Fix first pasted block losing indent** — When pasting indented blocks into the middle of a paragraph, the first pasted block now correctly preserves its indentation level
+- **Fix UI Scale viewport issues** — Setting UI Scale to any non-100% value no longer causes white gaps (< 100%) or content cutoff (> 100%); root div height now uses zoom-compensated `vh` formula alongside `minHeight` on `<html>` for full Firefox compatibility
+- **Fix browser tab title** — Browser tab now dynamically updates to show the active note name (e.g. "COMP208 - Week 8 - Boojy Notes") instead of always showing "Boojy Notes"
+- **Fix external paste** — Pasting multi-line content from external apps (Obsidian, etc.) now creates proper blocks (headings, lists, paragraphs) via `markdownToBlocks()` instead of flattening everything into a single line
+- **Fix sync race on remote delete** — When a note is deleted on another device but has local edits, a conflict toast is now shown instead of silently deleting the note
+- **Fix orphaned persisted dirty notes** — On load, persisted dirty note IDs are filtered to exclude notes that were already deleted locally (prevents ghost entries after crash)
+- **Fix textOnlyEdit flags stuck forever** — `textOnlyEdit`, `textOnlyEditForSidebar`, and `textOnlyEditForEditor` flags are now cleared in the text flush callback, preventing sidebar/editor memo comparators from skipping renders indefinitely
+- **Fix offline edits lost on crash** — Dirty notes are now persisted synchronously via `beforeunload` handler, not just via the 1-second debounced timer
+
 ## 0.1.6 (2026-03-19)
 
 ### Bug Fixes

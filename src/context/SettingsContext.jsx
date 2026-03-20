@@ -12,6 +12,19 @@ export function SettingsProvider({ children }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState("profile");
 
+  // UI Scale state
+  const [uiScale, setUiScale] = useState(() => {
+    const saved = localStorage.getItem("boojy-ui-scale");
+    return saved ? Number(saved) : 100;
+  });
+
+  // Apply zoom and persist when scale changes
+  useEffect(() => {
+    document.documentElement.style.zoom = `${uiScale}%`;
+    document.documentElement.style.minHeight = uiScale !== 100 ? `${10000 / uiScale}vh` : "";
+    localStorage.setItem("boojy-ui-scale", String(uiScale));
+  }, [uiScale]);
+
   const {
     user,
     profile,
@@ -121,6 +134,8 @@ export function SettingsProvider({ children }) {
       setSettingsOpen,
       settingsTab,
       setSettingsTab,
+      uiScale,
+      setUiScale,
       user,
       profile,
       signInWithEmail,
@@ -145,6 +160,7 @@ export function SettingsProvider({ children }) {
       settingsFontSize,
       settingsOpen,
       settingsTab,
+      uiScale,
       user,
       profile,
       signInWithEmail,

@@ -36,7 +36,8 @@ When making bug fixes or feature changes:
 2. Update CHANGELOG.md heading from "Unreleased" to the version number and date
 3. Run `npm test` and `npm run format:check` before committing to catch CI failures early
 4. Commit all changes and push to `master`
-5. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
+5. Review `ROADMAP.md` — move completed items, reassess priorities
+6. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
 
 ## Deployment
 

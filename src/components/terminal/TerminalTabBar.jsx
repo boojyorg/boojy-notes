@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
+import { Z } from "../../constants/zIndex";
 import { isElectron } from "../../utils/platform";
 import { CloseIcon } from "../Icons";
 import { spacing } from "../../tokens/spacing";
@@ -343,7 +344,7 @@ export default function TerminalTabBar({
             border: `1px solid ${BG.divider}`,
             borderRadius: radius.default,
             padding: `${spacing.xs}px 0`,
-            zIndex: 1000,
+            zIndex: Z.TERMINAL_TAB,
             boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
             minWidth: 140,
             fontSize: 12,

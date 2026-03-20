@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 export default function PersistenceWarning({ noteCount, accentColor, onSignIn, onDismiss }) {
   const { theme } = useTheme();
@@ -14,7 +15,7 @@ export default function PersistenceWarning({ noteCount, accentColor, onSignIn, o
         borderRadius: 10,
         fontSize: 13,
         fontWeight: 500,
-        zIndex: 9999,
+        zIndex: Z.TOAST,
         boxShadow: theme.modalShadow,
         maxWidth: 380,
         animation: "fadeIn 0.25s ease",

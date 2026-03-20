@@ -121,35 +121,50 @@ export default function CodeBlock({
       const ta = textareaRef.current;
       if (!ta) return;
 
-      // Tab — insert 4 spaces
+      // Tab — indent (supports multi-line selection)
       if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
-        const newVal = val.substring(0, start) + "    " + val.substring(end);
-        ta.value = newVal;
-        ta.selectionStart = ta.selectionEnd = start + 4;
-        onUpdateCode(noteId, blockIndex, newVal);
+
+        if (start === end) {
+          // Single cursor: insert 4 spaces
+          const newVal = val.substring(0, start) + "    " + val.substring(end);
+          ta.value = newVal;
+          ta.selectionStart = ta.selectionEnd = start + 4;
+        } else {
+          // Multi-line: indent each selected line
+          const firstLineStart = val.lastIndexOf("\n", start - 1) + 1;
+          const lines = val.substring(firstLineStart, end).split("\n");
+          const indented = lines.map((l) => "    " + l).join("\n");
+          const newVal = val.substring(0, firstLineStart) + indented + val.substring(end);
+          ta.value = newVal;
+          ta.selectionStart = firstLineStart;
+          ta.selectionEnd = firstLineStart + indented.length;
+        }
+        onUpdateCode(noteId, blockIndex, ta.value);
         autoResize();
         return;
       }
 
-      // Shift+Tab — remove 4 leading spaces from current line
+      // Shift+Tab — dedent (supports multi-line selection)
       if (e.key === "Tab" && e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
         const start = ta.selectionStart;
+        const end = ta.selectionEnd;
         const val = ta.value;
-        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-        if (val.substring(lineStart, lineStart + 4) === "    ") {
-          const newVal = val.substring(0, lineStart) + val.substring(lineStart + 4);
-          ta.value = newVal;
-          ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - 4);
-          onUpdateCode(noteId, blockIndex, newVal);
-          autoResize();
-        }
+        const firstLineStart = val.lastIndexOf("\n", start - 1) + 1;
+        const lines = val.substring(firstLineStart, end).split("\n");
+        const dedented = lines.map((l) => (l.startsWith("    ") ? l.substring(4) : l)).join("\n");
+        const newVal = val.substring(0, firstLineStart) + dedented + val.substring(end);
+        ta.value = newVal;
+        ta.selectionStart = firstLineStart;
+        ta.selectionEnd = firstLineStart + dedented.length;
+        onUpdateCode(noteId, blockIndex, ta.value);
+        autoResize();
         return;
       }
 

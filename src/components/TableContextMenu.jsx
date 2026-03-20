@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 function MenuItem({ label, onClick, danger }) {
   const { theme } = useTheme();
@@ -223,7 +224,7 @@ export default function TableContextMenu({
         borderRadius: 8,
         padding: 4,
         minWidth: 180,
-        zIndex: 300,
+        zIndex: Z.CONTEXT_MENU,
         boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
         backdropFilter: "blur(12px)",
       }}

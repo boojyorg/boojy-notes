@@ -6,7 +6,10 @@ import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "./markdown
 // ─── Filename helpers ───
 
 function sanitizeFilename(name) {
-  return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "Untitled";
+  let sanitized = name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "Untitled";
+  // Prevent path traversal via ".." or "." components
+  if (sanitized === ".." || sanitized === ".") sanitized = "_";
+  return sanitized;
 }
 
 function noteToFilePath(note, notesDir) {

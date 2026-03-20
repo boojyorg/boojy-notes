@@ -74,14 +74,22 @@ app.whenReady().then(() => {
   protocol.handle("boojy-att", (request) => {
     const relativePath = decodeURIComponent(request.url.slice("boojy-att://".length));
     const notesDir = getNotesDir();
-    // Try exact relative path first, then attachments/ folder, then legacy .attachments/
-    let absPath = path.join(notesDir, relativePath);
+    const resolvedNotesDir = path.resolve(notesDir);
+
+    // Try exact relative path first, then attachments/ folder
+    let absPath = path.resolve(path.join(notesDir, relativePath));
     if (!fs.existsSync(absPath)) {
-      const inAttachments = path.join(notesDir, "attachments", relativePath);
-      if (fs.existsSync(inAttachments)) {
+      const inAttachments = path.resolve(path.join(notesDir, "attachments", relativePath));
+      if (inAttachments.startsWith(resolvedNotesDir + path.sep) && fs.existsSync(inAttachments)) {
         absPath = inAttachments;
       }
     }
+
+    // Prevent path traversal: resolved path must stay inside notes directory
+    if (!absPath.startsWith(resolvedNotesDir + path.sep)) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
     return net.fetch("file://" + absPath.replace(/\\/g, "/"));
   });
 

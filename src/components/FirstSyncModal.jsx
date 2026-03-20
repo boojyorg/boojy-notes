@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 export default function FirstSyncModal({ noteCount, accentColor, onConfirm, onCancel }) {
   const { theme } = useTheme();
@@ -10,7 +11,7 @@ export default function FirstSyncModal({ noteCount, accentColor, onConfirm, onCa
         background: "rgba(0,0,0,0.5)",
         backdropFilter: "blur(4px)",
         WebkitBackdropFilter: "blur(4px)",
-        zIndex: 10000,
+        zIndex: Z.FIRST_SYNC,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

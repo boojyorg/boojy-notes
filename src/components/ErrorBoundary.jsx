@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { Z } from "../constants/zIndex";
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -39,7 +40,7 @@ export default class ErrorBoundary extends Component {
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            zIndex: 99999,
+            zIndex: Z.ERROR_BOUNDARY,
           }}
         >
           <div

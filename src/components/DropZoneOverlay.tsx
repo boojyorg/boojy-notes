@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 interface DropZone {
   side: "left" | "right" | "top" | "bottom" | "center";
@@ -55,7 +56,7 @@ export default function DropZoneOverlay({ zone, visible }: DropZoneOverlayProps)
         background: (theme as Record<string, string>).splitDropZone || `${theme.ACCENT.primary}15`,
         border: `2px solid ${theme.ACCENT.primary}40`,
         borderRadius: 4,
-        zIndex: 998,
+        zIndex: Z.DROP_ZONE,
         pointerEvents: "none",
         transition: "all 0.15s ease",
       }}

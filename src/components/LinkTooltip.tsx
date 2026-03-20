@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 interface LinkTooltipProps {
   url: string | null;
@@ -27,7 +28,7 @@ export default function LinkTooltip({ url, position }: LinkTooltipProps) {
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
         pointerEvents: "none",
-        zIndex: 100,
+        zIndex: Z.TOOLBAR,
         fontFamily: "'SF Mono', 'Fira Code', monospace",
         boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
       }}

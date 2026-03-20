@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { Z } from "../constants/zIndex";
 
 export default function ConflictToast({ noteTitle, onClick }) {
   const { theme } = useTheme();
@@ -16,7 +17,7 @@ export default function ConflictToast({ noteTitle, onClick }) {
         fontSize: 13,
         fontWeight: 500,
         cursor: "pointer",
-        zIndex: 9999,
+        zIndex: Z.TOAST,
         boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
         maxWidth: 360,
         animation: "fadeIn 0.2s ease",
