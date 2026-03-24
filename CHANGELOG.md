@@ -1,5 +1,56 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+- **Export HTML title escaping** — PDF export now escapes `&` in note titles before `<`/`>`, preventing double-encoding of entities
+- **Block/note ID collision resistance** — `genBlockId`/`genNoteId` now use random suffixes instead of a sequential counter that reset on restart
+- **Wikilink attribute escaping** — `data-target` attribute now escapes quotes, preventing attribute breakout for note titles containing `"`
+- **URL auto-link trailing punctuation** — Bare URL regex no longer captures trailing `)`, `.`, `,`, etc. as part of the URL
+- **URL auto-link inside existing links** — Bare URL regex no longer matches URLs already inside `href="..."` attributes
+- **Italic formatting inside bold** — `*italic*` regex now uses lookbehind/lookahead to avoid consuming `**bold**` markers
+
+### Improvements
+- **Sync timeout** — Pull and push operations now have a 30-second timeout; stalled network calls no longer block sync indefinitely
+- **Sync offline detection** — Sync now distinguishes between network failures (shows "offline") and server errors (retries then shows "error"), instead of treating all failures as retryable errors
+- **Broadcast payload validation** — Realtime note updates from other devices now validate `content.blocks` is an array, preventing malformed payloads from corrupting local state
+
+### Security
+- **Terminal opts validation** — Preload now whitelists terminal creation options (cols, rows, cwd only), preventing arbitrary opts from reaching node-pty
+- **File size limit on pick-file** — Electron file picker now rejects files larger than 100 MB with a user-facing dialog, preventing memory exhaustion
+- **AI key storage warning** — Web/mobile AI settings now show a warning that API keys are stored in unencrypted browser local storage
+
+### Improvements
+- **Extract useAppKeyboard hook** — Global keyboard shortcuts (undo/redo, zoom, new note, split view, etc.) moved from BoojyNotes.jsx to `src/hooks/useAppKeyboard.js`
+- **Extract useAppPersistence hook** — localStorage save effects and beforeunload flush moved from BoojyNotes.jsx to `src/hooks/useAppPersistence.js`
+- **Split TopBar** — 701-line TopBar.jsx split into TopBarMobile (166 lines), TopBarDesktop (545 lines), and a thin 8-line router
+- **Memo heavy components** — Added React.memo to TopBar, CalloutBlock, CodeBlock, and TableBlock to reduce unnecessary re-renders
+- **Focus-visible CSS** — Replaced blanket `outline: none` with `:focus-visible` styles; all interactive elements now show focus rings when using keyboard navigation
+- **Focus traps on menus** — Added useFocusTrap to SlashMenu, WikilinkMenu, and ContextMenu so keyboard focus stays within open menus
+- **ARIA on editor blocks** — Added `role="textbox"`, `aria-multiline`, `aria-label` to paragraph, heading, bullet, and numbered blocks; added `role="region"` and `aria-label` to editor container and title field
+- **Sync status announcements** — Added visually-hidden `aria-live` region in TopBar that announces sync state changes to screen readers
+- **DOCX export: all block types** — Added blockquote, image (alt text fallback), file (filename), and embed handling to DOCX export
+- **Import file size limit** — Markdown, HTML, and folder imports now reject files larger than 50 MB
+- **Platform feature warnings** — Capacitor no-op stubs for export/import now log warnings instead of silently returning
+- **Backslash escapes in formatting** — `\*`, `\~`, `` \` ``, `\=` now render literally instead of triggering formatting
+- **Lazy load SettingsModal + TerminalPanel** — Both heavy components are now code-split and loaded on demand
+
+### Security
+- **Terminal cwd validation** — Terminal working directory is now validated to be within the user's home directory, preventing path traversal
+- **Typed electronAPI interface** — Removed `[key: string]: any` catch-all from global.d.ts; all IPC methods now have explicit types
+- **Cross-tab sync** — Added BroadcastChannel for instant note sync between browser tabs (no more waiting for 60s poll)
+- **Schema versioning** — Added schema version tracking and migration framework to localStorage storage layer
+- **IndexedDB fallback** — When localStorage quota is exceeded, note data automatically falls back to IndexedDB
+- **TypeScript strict mode** — Enabled `strict: true` in tsconfig with `strictNullChecks`, `strictFunctionTypes`, etc. Fixed all TSX type errors.
+- **Discriminated Block union** — Block type in `src/types/notes.ts` is now a discriminated union with per-variant required fields (CodeBlock requires `lang`, ImageBlock requires `src`, etc.)
+- **EditorContext** — Created `src/context/EditorContext.jsx` to hold stable editor values (refs, handlers, block operations). EditorArea props reduced from 51 to 18. Custom memo comparator preserved — only reactive values stay as props.
+- **Context provider tests** — Added tests for ThemeContext (theme toggle, persistence, auto mode) and NoteDataContext (initialization, validation, data/actions split)
+- **Settings + Terminal tests** — Added tests for SettingsModal (ARIA, tab switching, close) and TerminalPanel (visibility, tab create/close, active instance)
+- **Callout body parsing** — Callout body no longer breaks on `[!word]` appearing mid-text; only breaks on a proper nested callout syntax at start of line
+- **Table alignment normalization** — Table parser now normalizes alignment array to match header column count, preventing undefined access on mismatched tables
+- **Note data validation on load** — Notes loaded from localStorage are now validated to have `content.blocks` array; malformed entries are silently dropped instead of crashing
+- **Unified top bar height** — Desktop top bar and pane tab bar increased from 44px to 48px, matching mobile and the Boojy Design System spec
+
 ## v0.1.7 (2026-03-20)
 
 ### Features

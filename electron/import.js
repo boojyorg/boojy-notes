@@ -1,6 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 
+const MAX_IMPORT_SIZE = 50 * 1024 * 1024; // 50 MB
+
+function checkFileSize(fp) {
+  const size = fs.statSync(fp).size;
+  if (size > MAX_IMPORT_SIZE) {
+    throw new Error(
+      `File too large: ${path.basename(fp)} (${(size / 1024 / 1024).toFixed(0)} MB, max 50 MB)`,
+    );
+  }
+}
+
 function ensureUniqueFilePath(filePath) {
   if (!fs.existsSync(filePath)) return filePath;
   const dir = path.dirname(filePath);
@@ -14,6 +25,7 @@ function ensureUniqueFilePath(filePath) {
 export function importMarkdownFiles(filePaths, targetDir) {
   const imported = [];
   for (const fp of filePaths) {
+    checkFileSize(fp);
     const dest = ensureUniqueFilePath(path.join(targetDir, path.basename(fp)));
     fs.copyFileSync(fp, dest);
     imported.push(dest);
@@ -31,8 +43,10 @@ export function importMarkdownFolder(folderPath, targetDir) {
       } else if (/\.(md|markdown|txt)$/i.test(entry.name)) {
         const destDir = path.join(targetDir, relBase);
         fs.mkdirSync(destDir, { recursive: true });
+        const srcPath = path.join(dir, entry.name);
+        checkFileSize(srcPath);
         const dest = ensureUniqueFilePath(path.join(destDir, entry.name));
-        fs.copyFileSync(path.join(dir, entry.name), dest);
+        fs.copyFileSync(srcPath, dest);
         imported.push(dest);
       }
     }
@@ -46,6 +60,7 @@ export async function importHtmlFiles(filePaths, targetDir) {
   const td = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced" });
   const imported = [];
   for (const fp of filePaths) {
+    checkFileSize(fp);
     const html = fs.readFileSync(fp, "utf-8");
     const md = td.turndown(html);
     const name = path.basename(fp, path.extname(fp)) + ".md";

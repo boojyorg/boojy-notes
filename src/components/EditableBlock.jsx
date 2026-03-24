@@ -245,6 +245,9 @@ const EditableBlock = memo(
           data-block-id={block.id}
           data-placeholder="Type / for commands..."
           className={blockIndex === 0 && block.text === "" ? "empty-block" : undefined}
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Paragraph"
           style={{
             contain: "content",
             margin: "0 0 6px",
@@ -263,6 +266,7 @@ const EditableBlock = memo(
         <h1
           ref={elRef}
           data-block-id={block.id}
+          aria-label="Heading 1"
           style={{
             contain: "content",
             fontSize: 28,
@@ -283,6 +287,7 @@ const EditableBlock = memo(
         <h2
           ref={elRef}
           data-block-id={block.id}
+          aria-label="Heading 2"
           style={{
             contain: "content",
             fontSize: 22,
@@ -303,6 +308,7 @@ const EditableBlock = memo(
         <h3
           ref={elRef}
           data-block-id={block.id}
+          aria-label="Heading 3"
           style={{
             contain: "content",
             fontSize: 16.5,
@@ -346,7 +352,12 @@ const EditableBlock = memo(
           >
             {"\u25CF"}
           </span>
-          <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
+          <span
+            ref={elRef}
+            role="textbox"
+            aria-label="Bullet item"
+            style={{ color: TEXT.primary, outline: "none", flex: 1 }}
+          />
         </div>
       );
     }
@@ -381,7 +392,12 @@ const EditableBlock = memo(
           >
             {numberedIndex}.
           </span>
-          <span ref={elRef} style={{ color: TEXT.primary, outline: "none", flex: 1 }} />
+          <span
+            ref={elRef}
+            role="textbox"
+            aria-label="Numbered item"
+            style={{ color: TEXT.primary, outline: "none", flex: 1 }}
+          />
         </div>
       );
     }

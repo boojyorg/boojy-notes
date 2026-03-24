@@ -7,6 +7,7 @@ import { useBlockOperations } from "../hooks/useBlockOperations";
 import { useInlineFormatting } from "../hooks/useInlineFormatting";
 import { useBlockDrag } from "../hooks/useBlockDrag";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "../utils/domHelpers";
+import { EditorProvider } from "../context/EditorContext";
 import PaneTabBar from "./PaneTabBar";
 import EditorArea from "./EditorArea";
 
@@ -320,58 +321,63 @@ export default memo(
             variant="pane"
           />
         )}
-        <EditorArea
-          onEditorClick={onEditorClick}
-          textOnlyEditForEditor={textOnlyEditForEditor}
-          note={note}
-          activeNote={activeNote}
-          editorFadeIn={editorFadeIn}
-          editorRef={editorRef}
-          editorScrollRef={editorScrollRef}
-          titleRef={titleRef}
-          blockRefs={blockRefs}
-          noteDataRef={noteDataRef}
-          focusBlockId={focusBlockId}
-          focusCursorPos={focusCursorPos}
-          forceRender={forceRender}
-          handleEditorKeyDown={handleEditorKeyDown}
-          handleEditorInput={handleEditorInput}
-          handleEditorPaste={handleEditorPaste}
-          handleEditorPointerDown={handleEditorPointerDown}
-          handleEditorMouseDown={handleEditorMouseDown}
-          handleEditorMouseUp={handleEditorMouseUp}
-          handleEditorFocus={handleEditorFocus}
-          handleEditorDragOver={handleEditorDragOver}
-          handleEditorDragLeave={handleEditorDragLeave}
-          handleEditorDrop={handleEditorDrop}
-          commitTextChange={commitTextChange}
-          syncGeneration={syncGeneration}
-          flipCheck={flipCheck}
-          deleteBlock={deleteBlock}
-          registerBlockRef={registerBlockRef}
-          insertBlockAfter={insertBlockAfter}
-          updateCodeText={updateCodeText}
-          updateCodeLang={updateCodeLang}
-          updateCallout={updateCallout}
-          updateTableRows={updateTableRows}
-          updateBlockProperty={updateBlockProperty}
-          backlinks={backlinks}
-          onWikilinkClick={onWikilinkClick}
-          onWikilinkCmdClick={onWikilinkCmdClick}
-          onOpenBacklink={onOpenBacklink}
-          toolbarState={toolbarState}
-          detectActiveFormats={detectActiveFormats}
-          applyFormat={applyFormat}
-          noteTitleSet={noteTitleSet}
-          linkPopover={linkPopover}
-          setLinkPopover={setLinkPopover}
-          reReadBlockFromDom={reReadBlockFromDom}
-          selectedImageBlockId={selectedImageBlockId}
-          setSelectedImageBlockId={setSelectedImageBlockId}
-          lightbox={lightbox}
-          setLightbox={setLightbox}
-          openNote={openNote}
-        />
+        <EditorProvider
+          value={{
+            editorRef,
+            editorScrollRef,
+            titleRef,
+            blockRefs,
+            noteDataRef,
+            focusBlockId,
+            focusCursorPos,
+            forceRender,
+            handleEditorKeyDown,
+            handleEditorInput,
+            handleEditorPaste,
+            handleEditorPointerDown,
+            handleEditorMouseDown,
+            handleEditorMouseUp,
+            handleEditorFocus,
+            handleEditorDragOver,
+            handleEditorDragLeave,
+            handleEditorDrop,
+            commitTextChange,
+            syncGeneration,
+            flipCheck,
+            deleteBlock,
+            registerBlockRef,
+            insertBlockAfter,
+            updateCodeText,
+            updateCodeLang,
+            updateCallout,
+            updateTableRows,
+            updateBlockProperty,
+            detectActiveFormats,
+            applyFormat,
+            reReadBlockFromDom,
+          }}
+        >
+          <EditorArea
+            onEditorClick={onEditorClick}
+            textOnlyEditForEditor={textOnlyEditForEditor}
+            note={note}
+            activeNote={activeNote}
+            editorFadeIn={editorFadeIn}
+            backlinks={backlinks}
+            onWikilinkClick={onWikilinkClick}
+            onWikilinkCmdClick={onWikilinkCmdClick}
+            onOpenBacklink={onOpenBacklink}
+            toolbarState={toolbarState}
+            noteTitleSet={noteTitleSet}
+            linkPopover={linkPopover}
+            setLinkPopover={setLinkPopover}
+            selectedImageBlockId={selectedImageBlockId}
+            setSelectedImageBlockId={setSelectedImageBlockId}
+            lightbox={lightbox}
+            setLightbox={setLightbox}
+            openNote={openNote}
+          />
+        </EditorProvider>
       </div>
     );
   },

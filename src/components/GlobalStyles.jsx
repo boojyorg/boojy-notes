@@ -51,7 +51,9 @@ export default function GlobalStyles() {
         .editor-scroll::-webkit-scrollbar-thumb { background: transparent; }
         .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
         input::placeholder { color: ${theme.TEXT.muted}; }
-        [contenteditable]:focus { outline: none; }
+        [contenteditable]:focus:not(:focus-visible) { outline: none; }
+        *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
+        [contenteditable]:focus-visible { outline: none; }
         .checkbox-box:active { transform: scale(0.85); }
         .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
         .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }

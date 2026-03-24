@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Reset module state between tests
-let genBlockId, genNoteId, loadFromStorage, STORAGE_KEY, setBlockIdCounter;
+let genBlockId, genNoteId, loadFromStorage, STORAGE_KEY;
 
 beforeEach(async () => {
   vi.resetModules();
@@ -13,7 +13,6 @@ beforeEach(async () => {
   genNoteId = mod.genNoteId;
   loadFromStorage = mod.loadFromStorage;
   STORAGE_KEY = mod.STORAGE_KEY;
-  setBlockIdCounter = mod.setBlockIdCounter;
 });
 
 describe("STORAGE_KEY", () => {
@@ -57,13 +56,25 @@ describe("genBlockId", () => {
     expect(id).toMatch(/^blk-/);
   });
 
-  it("increments counter", () => {
-    setBlockIdCounter(0);
+  it("generates unique IDs", () => {
     const id1 = genBlockId();
     const id2 = genBlockId();
-    // Both should contain incrementing suffix numbers
-    const suffix1 = parseInt(id1.split("-").pop(), 10);
-    const suffix2 = parseInt(id2.split("-").pop(), 10);
-    expect(suffix2).toBe(suffix1 + 1);
+    expect(id1).not.toBe(id2);
+    // Both should match blk-{timestamp}-{random} format
+    expect(id1).toMatch(/^blk-\d+-[a-z0-9]+$/);
+    expect(id2).toMatch(/^blk-\d+-[a-z0-9]+$/);
+  });
+
+  it("generates unique IDs across many calls", () => {
+    const ids = new Set();
+    for (let i = 0; i < 100; i++) {
+      ids.add(genBlockId());
+    }
+    expect(ids.size).toBe(100);
+  });
+
+  it("genNoteId uses random suffix format", () => {
+    const id = genNoteId();
+    expect(id).toMatch(/^note-\d+-[a-z0-9]+$/);
   });
 });

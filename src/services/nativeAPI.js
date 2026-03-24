@@ -520,6 +520,9 @@ function getNotesDir() {
 const noop = () => {};
 const asyncNoop = async () => {};
 const noopUnsub = () => () => {};
+const unsupportedOp = (feature) => async () => {
+  console.warn(`[Boojy] ${feature} is not available on this platform`);
+};
 
 const capacitorAPI = {
   // Core note operations
@@ -562,12 +565,12 @@ const capacitorAPI = {
   chooseNotesDir: asyncNoop,
   setWindowTitle: noop,
 
-  // Export/Import (no-op on mobile for now)
-  exportPdf: asyncNoop,
-  exportDocx: asyncNoop,
-  importMarkdown: asyncNoop,
-  importHtml: asyncNoop,
-  importFolder: asyncNoop,
+  // Export/Import (not available on mobile)
+  exportPdf: unsupportedOp("PDF export"),
+  exportDocx: unsupportedOp("DOCX export"),
+  importMarkdown: unsupportedOp("Markdown import"),
+  importHtml: unsupportedOp("HTML import"),
+  importFolder: unsupportedOp("Folder import"),
 
   // Menu listeners (no-op — no native menu on mobile)
   onMenuExport: noopUnsub,

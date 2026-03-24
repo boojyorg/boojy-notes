@@ -12,7 +12,8 @@ interface DropZoneOverlayProps {
 }
 
 export default function DropZoneOverlay({ zone, visible }: DropZoneOverlayProps) {
-  const { theme } = useTheme();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { theme } = useTheme() as { theme: Record<string, any> };
 
   if (!visible || !zone) return null;
 

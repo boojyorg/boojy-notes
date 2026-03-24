@@ -13,6 +13,14 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 1. Escape HTML entities (prevent XSS / accidental tag injection)
   s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+  // 1b. Protect backslash-escaped characters (e.g., \* \~ \= \`)
+  // Replace \X with a placeholder, then restore after all formatting
+  const escapes = [];
+  s = s.replace(/\\([*~`=[\]#])/g, (_, ch) => {
+    escapes.push(ch);
+    return `\x00ESC${escapes.length - 1}\x00`;
+  });
+
   // 2. Inline code (must be first so formatting inside backticks is preserved literally)
   s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
@@ -22,8 +30,8 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 4. Bold (**text**)
   s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-  // 5. Italic (*text*) — single asterisks, but not inside words like file*name
-  s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  // 5. Italic (*text*) — single asterisks, not part of bold ** markers
+  s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 
   // 6. Strikethrough (~~text~~)
   s = s.replace(/~~(.+?)~~/g, "<del>$1</del>");
@@ -32,15 +40,16 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   s = s.replace(/==(.+?)==/g, "<mark>$1</mark>");
 
   // 8. Wikilinks [[Target]] or [[Target|Display]]
+  const escAttr = (v) => v.replace(/"/g, "&quot;");
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
     const broken =
       noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
-    return `<span class="wikilink${broken}" data-target="${target}">${display}</span>`;
+    return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${display}</span>`;
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
     const broken =
       noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
-    return `<span class="wikilink${broken}" data-target="${target}">${target}</span>`;
+    return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${target}</span>`;
   });
 
   // 9. Markdown links [text](url)
@@ -49,14 +58,16 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     '<a href="$2" class="external-link" data-url="$2">$1<span class="external-link-icon" contenteditable="false">\u2197</span></a>',
   );
 
-  // 10. Auto-link bare URLs (https://... not already inside an <a> tag)
-  s = s.replace(
-    /(^|[^"'>])(https?:\/\/[^\s<]+)/g,
-    '$1<a href="$2" class="external-link bare-url" data-url="$2">$2<span class="external-link-icon" contenteditable="false">\u2197</span></a>',
-  );
+  // 10. Auto-link bare URLs (https://... not already inside an <a> tag or href)
+  s = s.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"}>])/g, (_, pre, url) => {
+    return `${pre}<a href="${url}" class="external-link bare-url" data-url="${url}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
+  });
 
   // 11. Tags (#tag but not # at line start which is heading)
   s = s.replace(/(^|[\s(])#([a-zA-Z][\w/-]*)/g, '$1<span class="inline-tag">#$2</span>');
+
+  // Restore backslash-escaped characters
+  s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => escapes[parseInt(i, 10)]);
 
   return s;
 }

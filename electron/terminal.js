@@ -22,13 +22,20 @@ function resolveShell(preferred) {
 }
 
 function resolveCwd(preferred, getNotesDir) {
-  let cwd = preferred || (getNotesDir ? getNotesDir() : os.homedir());
+  const home = os.homedir();
+  let cwd = preferred || (getNotesDir ? getNotesDir() : home);
+  // Resolve to absolute and validate within home directory
+  const path = require("node:path");
+  cwd = path.resolve(cwd);
+  if (!cwd.startsWith(home + path.sep) && cwd !== home) {
+    cwd = home;
+  }
   if (!fs.existsSync(cwd)) {
     try {
       fs.mkdirSync(cwd, { recursive: true });
     } catch {}
   }
-  if (!fs.existsSync(cwd)) cwd = os.homedir();
+  if (!fs.existsSync(cwd)) cwd = home;
   return cwd;
 }
 

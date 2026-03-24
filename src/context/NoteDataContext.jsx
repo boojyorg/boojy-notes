@@ -1,6 +1,6 @@
-import { createContext, useState, useRef, useContext, useMemo } from "react";
+import { createContext, useState, useEffect, useRef, useContext, useMemo } from "react";
 import { useHistory } from "../hooks/useHistory";
-import { setBlockIdCounter, loadFromStorage } from "../utils/storage";
+import { loadFromStorage, loadFromIDB } from "../utils/storage";
 import { isNative } from "../utils/platform";
 
 const NoteDataContext = createContext(null);
@@ -10,21 +10,37 @@ export function NoteDataProvider({ children }) {
   const [noteData, setNoteData] = useState(() => {
     if (isNative) return {};
     const saved = loadFromStorage();
-    if (saved?.noteData) {
-      let maxId = 0;
-      for (const n of Object.values(saved.noteData)) {
-        for (const b of n.content.blocks) {
-          if (b.id?.startsWith("blk-")) {
-            const num = parseInt(b.id.slice(4), 10);
-            if (num > maxId) maxId = num;
-          }
+    if (saved?.noteData && typeof saved.noteData === "object") {
+      // Validate: each note must have content.blocks array
+      const validated = {};
+      for (const [id, note] of Object.entries(saved.noteData)) {
+        if (note && Array.isArray(note.content?.blocks)) {
+          validated[id] = note;
         }
       }
-      setBlockIdCounter(maxId);
-      return saved.noteData;
+      return validated;
     }
     return {};
   });
+
+  // Fallback: if localStorage was empty, try IndexedDB (async)
+  useEffect(() => {
+    if (isNative) return;
+    if (Object.keys(noteData).length > 0) return; // already loaded
+    loadFromIDB().then((saved) => {
+      if (saved?.noteData && typeof saved.noteData === "object") {
+        const validated = {};
+        for (const [id, note] of Object.entries(saved.noteData)) {
+          if (note && Array.isArray(note.content?.blocks)) {
+            validated[id] = note;
+          }
+        }
+        if (Object.keys(validated).length > 0) {
+          setNoteData(validated);
+        }
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncGeneration = useRef(0);
   const activeNoteRef = useRef(null);

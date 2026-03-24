@@ -3,6 +3,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
 import { PROVIDERS, getModelsForProvider } from "../../services/ai/models";
+import { isElectron } from "../../utils/platform";
 import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
@@ -121,6 +122,18 @@ export default function AITab({ isDesktop, onAIKeyTest, SectionHeader }) {
         <span style={{ fontSize: 12, color: TEXT.muted, display: "block", marginBottom: 5 }}>
           API Key{aiSettings?.provider === "local" ? " (optional)" : ""}
         </span>
+        {!isElectron && aiSettings?.provider !== "local" && (
+          <span
+            style={{
+              fontSize: 11,
+              color: SEMANTIC.warning,
+              display: "block",
+              marginBottom: 5,
+            }}
+          >
+            Keys are stored in browser local storage (not encrypted).
+          </span>
+        )}
         <div style={{ display: "flex", gap: 6 }}>
           <input
             type={showAiKey ? "text" : "password"}

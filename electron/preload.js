@@ -86,7 +86,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Terminal
   terminal: {
-    create: (opts) => ipcRenderer.invoke("terminal:create", opts),
+    create: (opts) => {
+      const safe = {};
+      if (typeof opts?.cols === "number") safe.cols = opts.cols;
+      if (typeof opts?.rows === "number") safe.rows = opts.rows;
+      if (typeof opts?.cwd === "string") safe.cwd = opts.cwd;
+      return ipcRenderer.invoke("terminal:create", safe);
+    },
     write: (id, data) => ipcRenderer.send("terminal:write", { id, data }),
     resize: (id, cols, rows) => ipcRenderer.send("terminal:resize", { id, cols, rows }),
     kill: (id) => ipcRenderer.invoke("terminal:kill", id),

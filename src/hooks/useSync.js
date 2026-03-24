@@ -15,6 +15,14 @@ const DIRTY_PERSIST_KEY = "boojy-sync-dirty";
 const STORAGE_USED_KEY = "boojy-sync-storage";
 const REMOTE_UPDATE_STALE_MS = 5000;
 const PUSH_CONCURRENCY = 5;
+const SYNC_TIMEOUT_MS = 30000;
+
+function withTimeout(promise, ms = SYNC_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Sync timeout")), ms)),
+  ]);
+}
 
 function loadVersionMap() {
   try {
@@ -82,9 +90,37 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
   // Replace boolean isRemoteUpdate with a Map of noteId → timestamp
   const remoteUpdateIds = useRef(new Map());
 
+  // Cross-tab sync via BroadcastChannel
+  const localChannelRef = useRef(null);
+
   noteDataRef.current = noteData;
   lastSyncedRef.current = lastSynced;
   activeNoteIdRef.current = activeNoteId;
+
+  // BroadcastChannel: sync note changes between browser tabs
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const bc = new BroadcastChannel("boojy-tab-sync");
+    localChannelRef.current = bc;
+    bc.onmessage = (e) => {
+      const { type, noteId, note, deletedId } = e.data || {};
+      if (type === "note-updated" && noteId && note) {
+        remoteUpdateIds.current.set(noteId, Date.now());
+        setNoteData((prev) => ({ ...prev, [noteId]: note }));
+      } else if (type === "note-deleted" && deletedId) {
+        remoteUpdateIds.current.set(deletedId, Date.now());
+        setNoteData((prev) => {
+          const next = { ...prev };
+          delete next[deletedId];
+          return next;
+        });
+      }
+    };
+    return () => {
+      bc.close();
+      localChannelRef.current = null;
+    };
+  }, [setNoteData]);
 
   // Load persisted dirty notes on mount
   useEffect(() => {
@@ -169,6 +205,22 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
 
     prevNoteData.current = noteData;
 
+    // Broadcast local changes to other tabs
+    if (localChannelRef.current) {
+      if (hintId && noteData[hintId]) {
+        localChannelRef.current.postMessage({
+          type: "note-updated",
+          noteId: hintId,
+          note: noteData[hintId],
+        });
+      }
+      for (const id of Object.keys(prev)) {
+        if (!noteData[id]) {
+          localChannelRef.current.postMessage({ type: "note-deleted", deletedId: id });
+        }
+      }
+    }
+
     if (dirtyNotes.current.size > 0 || deletedNotes.current.size > 0) {
       // Fix 4: debounce localStorage persistence to avoid blocking on every keystroke
       clearTimeout(dirtyPersistTimer.current);
@@ -203,7 +255,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
           const batch = allNotes.slice(i, i + PUSH_CONCURRENCY);
           await Promise.all(
             batch.map(async (note) => {
-              const result = await pushNote(note, null);
+              const result = await withTimeout(pushNote(note, null));
               if (result?.version) {
                 versionMap.current[note.id] = result.version;
               }
@@ -231,7 +283,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       } else {
         // --- Pull-before-push: fetch remote changes first so we have latest versions ---
         console.log(`[sync] Pulling changes since ${lastSyncedRef.current || "(full pull)"}`);
-        const pullResult = await pullNotes(lastSyncedRef.current);
+        const pullResult = await withTimeout(pullNotes(lastSyncedRef.current));
         const remoteNotes = pullResult?.notes;
         const totalStorageBytes = pullResult?.totalStorageBytes;
 
@@ -334,7 +386,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
           const note = noteDataRef.current[noteId];
           if (note) {
             const expectedVersion = versionMap.current[noteId] || null;
-            const result = await pushNote(note, expectedVersion);
+            const result = await withTimeout(pushNote(note, expectedVersion));
 
             if (result?.conflict) {
               // Conflict detected — create a conflict copy
@@ -350,7 +402,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
               };
 
               // Push the conflict copy (new note, no expectedVersion)
-              const copyResult = await pushNote(conflictNote, null);
+              const copyResult = await withTimeout(pushNote(conflictNote, null));
               if (copyResult?.version) {
                 versionMap.current[conflictId] = copyResult.version;
               }
@@ -414,7 +466,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       // Push deletes
       const deleted = [...deletedNotes.current];
       for (const noteId of deleted) {
-        await deleteNoteRemote(noteId);
+        await withTimeout(deleteNoteRemote(noteId));
         channelRef.current?.send({
           type: "broadcast",
           event: "note_delete",
@@ -441,7 +493,16 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       console.log(`[sync] Sync complete at ${now}`);
     } catch (err) {
       console.error("[sync] Sync error:", err);
-      if (retryCount.current < 3) {
+      // Detect network failures (fetch errors, DNS failures, etc.)
+      const isNetworkError =
+        !navigator.onLine ||
+        err?.message === "Failed to fetch" ||
+        err?.message === "Sync timeout" ||
+        err?.message?.includes("NetworkError") ||
+        err?.name === "TypeError";
+      if (isNetworkError) {
+        setSyncState("offline");
+      } else if (retryCount.current < 3) {
         const delay = 2000 * Math.pow(2, retryCount.current);
         retryCount.current++;
         setSyncState("retrying");
@@ -517,12 +578,13 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
     const channel = supabase
       .channel(`notes-sync:${user.id}`)
       .on("broadcast", { event: "note_upsert" }, ({ payload }) => {
-        // Validate payload
+        // Validate payload structure
         if (
           !payload?.id ||
           typeof payload.id !== "string" ||
           typeof payload.title !== "string" ||
-          typeof payload.content !== "object"
+          typeof payload.content !== "object" ||
+          !Array.isArray(payload.content?.blocks)
         ) {
           return;
         }

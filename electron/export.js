@@ -30,7 +30,10 @@ export async function exportToPDF(htmlContent, title, savePath, options = {}) {
 }
 
 function wrapInPrintHtml(body, title) {
-  const escapedTitle = (title || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escapedTitle = (title || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   return `<!DOCTYPE html><html><head><title>${escapedTitle}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 0 auto; padding: 40px; color: #222; line-height: 1.6; }
@@ -110,6 +113,47 @@ export async function exportToDocx(blocks, title, savePath) {
         break;
       case "callout":
         children.push(buildDocxCallout(block));
+        break;
+      case "blockquote":
+        children.push(
+          new Paragraph({
+            children: parseInlineRuns(block.text),
+            indent: { left: 720 },
+            border: {
+              left: { style: BorderStyle.SINGLE, size: 6, color: "999999" },
+            },
+          }),
+        );
+        break;
+      case "image":
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: block.alt || block.src || "[Image]",
+                italics: true,
+                color: "666666",
+              }),
+            ],
+          }),
+        );
+        break;
+      case "file":
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `\uD83D\uDCCE ${block.filename || block.src || "[File attachment]"}`,
+                color: "666666",
+              }),
+            ],
+          }),
+        );
+        break;
+      case "embed":
+        if (block.text) {
+          children.push(new Paragraph({ children: parseInlineRuns(block.text) }));
+        }
         break;
       case "spacer":
         children.push(new Paragraph({ text: "" }));

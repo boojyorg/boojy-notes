@@ -30,7 +30,7 @@ export default function PaneTabBar({
 
   const baseStyle =
     variant === "pane"
-      ? { display: "flex", alignItems: "stretch", flexShrink: 0, height: 44, overflow: "auto" }
+      ? { display: "flex", alignItems: "stretch", flexShrink: 0, height: 48, overflow: "auto" }
       : { display: "flex", alignItems: "stretch", flex: 1, overflow: "auto", height: "100%" };
 
   return (

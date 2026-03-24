@@ -25,7 +25,7 @@ export function buildBacklinkIndex(noteData) {
       while ((match = WIKILINK_RE.exec(block.text)) !== null) {
         const target = match[1].trim().toLowerCase();
         if (!index.has(target)) index.set(target, []);
-        const existing = index.get(target);
+        const existing = /** @type {Array} */ (index.get(target));
         // Avoid duplicate entries from same note
         if (!existing.some((e) => e.sourceNoteId === noteId)) {
           existing.push({

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
@@ -56,7 +56,7 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export default function CodeBlock({
+export default memo(function CodeBlock({
   block,
   noteId,
   blockIndex,
@@ -427,7 +427,7 @@ export default function CodeBlock({
       )}
     </div>
   );
-}
+});
 
 /* ---- Context menu rendered as a portal ---- */
 function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete, onClose: _onClose }) {

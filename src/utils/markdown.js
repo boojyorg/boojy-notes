@@ -206,7 +206,7 @@ export function markdownToBlocks(md) {
       const bodyLines = [];
       i++;
       while (i < lines.length && /^>\s?/.test(lines[i])) {
-        if (/^>\s*\[!\w+\]/.test(lines[i])) break;
+        if (/^>\s*\[!\w+\][+-]?\s/.test(lines[i]) || /^>\s*\[!\w+\][+-]?$/.test(lines[i])) break;
         bodyLines.push(lines[i].replace(/^>\s?/, ""));
         i++;
       }
@@ -259,6 +259,9 @@ export function markdownToBlocks(md) {
         i++;
       }
       const colCount = rows[0].length;
+      // Normalize alignment array to match header column count
+      while (alignments.length < colCount) alignments.push("left");
+      if (alignments.length > colCount) alignments.length = colCount;
       for (let r = 1; r < rows.length; r++) {
         while (rows[r].length < colCount) rows[r].push("");
         if (rows[r].length > colCount) rows[r] = rows[r].slice(0, colCount);

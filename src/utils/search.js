@@ -1,4 +1,3 @@
-// @ts-check
 // Pure search functions — no React dependencies.
 
 import { stripMarkdownFormatting } from "./inlineFormatting";

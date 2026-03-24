@@ -5,7 +5,7 @@ interface SpacerBlockProps {
 }
 
 export default function SpacerBlock({ blockId }: SpacerBlockProps) {
-  const { theme } = useTheme();
+  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
   const { BG } = theme;
 
   return (

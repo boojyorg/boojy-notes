@@ -28,9 +28,7 @@ describe("inlineMarkdownToHtml", () => {
   });
 
   it("converts bold+italic", () => {
-    expect(inlineMarkdownToHtml("***bold italic***")).toBe(
-      "<strong><em>bold italic</em></strong>",
-    );
+    expect(inlineMarkdownToHtml("***bold italic***")).toBe("<strong><em>bold italic</em></strong>");
   });
 
   it("converts bold", () => {
@@ -90,6 +88,79 @@ describe("inlineMarkdownToHtml", () => {
     expect(result).toContain("<strong>bold</strong>");
     expect(result).toContain("<em>italic</em>");
     expect(result).toContain("<code>code</code>");
+  });
+
+  // --- Bug fix regression tests ---
+
+  it("escapes quotes in wikilink data-target", () => {
+    const result = inlineMarkdownToHtml('[[He said "hello"]]');
+    expect(result).toContain('data-target="He said &quot;hello&quot;"');
+  });
+
+  it("escapes quotes in aliased wikilink data-target", () => {
+    const result = inlineMarkdownToHtml('[[She said "hi"|display]]');
+    expect(result).toContain('data-target="She said &quot;hi&quot;"');
+  });
+
+  it("does not match trailing punctuation in bare URLs", () => {
+    const result = inlineMarkdownToHtml("See https://example.com.");
+    // The period should NOT be part of the href
+    expect(result).toContain('href="https://example.com"');
+  });
+
+  it("does not match trailing paren in bare URLs", () => {
+    const result = inlineMarkdownToHtml("(https://example.com)");
+    // The closing paren should NOT be part of the href
+    expect(result).not.toContain('href="https://example.com)"');
+  });
+
+  it("does not double-link URLs inside markdown links", () => {
+    const result = inlineMarkdownToHtml("[Click](https://example.com)");
+    // Should have exactly one <a> tag, not a nested auto-link
+    const aCount = (result.match(/<a /g) || []).length;
+    expect(aCount).toBe(1);
+  });
+
+  it("handles italic inside bold correctly", () => {
+    // **bold *italic* bold** — italic inside bold should not break bold
+    const result = inlineMarkdownToHtml("**bold *italic* bold**");
+    expect(result).toContain("<strong>");
+    expect(result).toContain("<em>italic</em>");
+  });
+
+  it("does not treat ** markers as italic", () => {
+    // Lone ** should become bold, not be consumed by italic regex
+    const result = inlineMarkdownToHtml("**bold text**");
+    expect(result).toBe("<strong>bold text</strong>");
+    expect(result).not.toContain("<em>");
+  });
+
+  it("handles backslash-escaped asterisks", () => {
+    const result = inlineMarkdownToHtml("\\*not italic\\*");
+    expect(result).not.toContain("<em>");
+    expect(result).toContain("*not italic*");
+  });
+
+  it("handles backslash-escaped tildes", () => {
+    const result = inlineMarkdownToHtml("\\~\\~not deleted\\~\\~");
+    expect(result).not.toContain("<del>");
+    expect(result).toContain("~~not deleted~~");
+  });
+
+  it("handles backslash-escaped backticks", () => {
+    const result = inlineMarkdownToHtml("\\`not code\\`");
+    expect(result).not.toContain("<code>");
+    expect(result).toContain("`not code`");
+  });
+
+  it("handles & in HTML entity escaping", () => {
+    const result = inlineMarkdownToHtml("Tom & Jerry");
+    expect(result).toContain("Tom &amp; Jerry");
+  });
+
+  it("double-escapes pre-existing entities correctly", () => {
+    const result = inlineMarkdownToHtml("already &lt; escaped");
+    expect(result).toContain("&amp;lt;");
   });
 });
 
@@ -192,12 +263,14 @@ describe("htmlToInlineMarkdown", () => {
   });
 
   it("converts link to markdown", () => {
-    const html = '<a href="https://example.com">Click<span class="external-link-icon">\u2197</span></a>';
+    const html =
+      '<a href="https://example.com">Click<span class="external-link-icon">\u2197</span></a>';
     expect(htmlToInlineMarkdown(html)).toBe("[Click](https://example.com)");
   });
 
   it("converts bare URL link", () => {
-    const html = '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
+    const html =
+      '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
     expect(htmlToInlineMarkdown(html)).toBe("https://example.com");
   });
 });
@@ -297,12 +370,14 @@ describe("domNodeToMarkdown", () => {
   });
 
   it("converts link with different text to markdown link", () => {
-    const html = '<a href="https://example.com">Click<span class="external-link-icon">\u2197</span></a>';
+    const html =
+      '<a href="https://example.com">Click<span class="external-link-icon">\u2197</span></a>';
     expect(domNodeToMarkdown(makeEl(html))).toBe("[Click](https://example.com)");
   });
 
   it("converts bare URL link to plain URL", () => {
-    const html = '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
+    const html =
+      '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
     expect(domNodeToMarkdown(makeEl(html))).toBe("https://example.com");
   });
 

@@ -1,4 +1,3 @@
-// @ts-check
 // Pure tree-building logic for the sidebar folder structure.
 
 /** @typedef {import("../types.d.ts").SidebarNode} SidebarNode */

@@ -7,7 +7,7 @@ interface LinkTooltipProps {
 }
 
 export default function LinkTooltip({ url, position }: LinkTooltipProps) {
-  const { theme } = useTheme();
+  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
   const { BG, TEXT } = theme;
 
   if (!url || !position) return null;

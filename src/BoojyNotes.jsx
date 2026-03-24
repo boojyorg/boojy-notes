@@ -27,24 +27,24 @@ import { useTerminal } from "./hooks/useTerminal";
 import { useTheme } from "./hooks/useTheme";
 import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
-import { STORAGE_KEY, loadFromStorage } from "./utils/storage";
-import { SCALE_OPTIONS } from "./constants/data";
+import { loadFromStorage } from "./utils/storage";
 import { Z } from "./constants/zIndex";
 import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
-import SettingsModal from "./components/SettingsModal";
+const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
 import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
+import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
 import PaneContainer from "./components/PaneContainer";
 import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
-import TerminalPanel from "./components/terminal/TerminalPanel";
+const TerminalPanel = React.lazy(() => import("./components/terminal/TerminalPanel"));
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import TitleBar from "./components/TitleBar";
@@ -53,6 +53,8 @@ import PersistenceWarning from "./components/PersistenceWarning";
 import FirstSyncModal from "./components/FirstSyncModal";
 import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
+import { useAppKeyboard } from "./hooks/useAppKeyboard";
+import { useAppPersistence } from "./hooks/useAppPersistence";
 import { isElectron, isNative, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 
@@ -583,189 +585,46 @@ export default function BoojyNotes() {
     return () => ro.disconnect();
   }, []);
 
-  // Refs for values read inside global keydown handler — avoids stale closures
-  const activeNoteKbRef = useRef(activeNote);
-  activeNoteKbRef.current = activeNote;
-  const noteDataKbRef = useRef(noteData);
-  noteDataKbRef.current = noteData;
-  const splitStateKbRef = useRef(splitState);
-  splitStateKbRef.current = splitState;
-  const uiScaleKbRef = useRef(uiScale);
-  uiScaleKbRef.current = uiScale;
+  useAppKeyboard({
+    activeNote,
+    noteData,
+    splitState,
+    uiScale,
+    settingsOpen,
+    rightPanel,
+    activeTerminalId,
+    blockDrag,
+    sidebarDrag,
+    titleRef,
+    searchInputRef,
+    undo,
+    redo,
+    createNote,
+    setSettingsOpen,
+    setCollapsed,
+    setRightPanel,
+    setActivePaneId,
+    setUiScale,
+    setTabFlip,
+    splitPane,
+    closeSplit,
+    createTerminal,
+    closeTerminal,
+    cancelBlockDrag,
+    cancelSidebarDrag,
+    setDevOverlay,
+  });
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "Escape" && blockDrag.current.active) {
-        e.preventDefault();
-        cancelBlockDrag();
-        return;
-      }
-      if (e.key === "Escape" && sidebarDrag.current.active) {
-        e.preventDefault();
-        cancelSidebarDrag();
-        return;
-      }
-      if (e.key === "Escape" && settingsOpen) {
-        e.preventDefault();
-        setSettingsOpen(false);
-        return;
-      }
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      if (mod && e.key === "z" && e.shiftKey) {
-        e.preventDefault();
-        redo();
-      }
-      if (mod && e.key === "y") {
-        e.preventDefault();
-        redo();
-      }
-      if (mod && e.key === "n") {
-        e.preventDefault();
-        const curActive = activeNoteKbRef.current;
-        const curNoteData = noteDataKbRef.current;
-        if (curActive && curNoteData[curActive]?._draft) {
-          if (titleRef.current) {
-            titleRef.current.focus();
-          }
-          return;
-        }
-        createNote(null);
-        return;
-      }
-      if (mod && e.key === "p") {
-        e.preventDefault();
-        setCollapsed(false);
-        setTimeout(() => searchInputRef.current?.focus(), 250);
-        return;
-      }
-      if (mod && e.shiftKey && e.key === "\\") {
-        e.preventDefault();
-        const curSplit = splitStateKbRef.current;
-        if (curSplit.splitMode) {
-          closeSplit();
-        } else {
-          splitPane("vertical");
-        }
-        return;
-      }
-      if (mod && !e.shiftKey && e.key === "\\") {
-        e.preventDefault();
-        setRightPanel((v) => !v);
-        return;
-      }
-      const curSplit = splitStateKbRef.current;
-      if (mod && curSplit.splitMode && (e.key === "1" || e.key === "2")) {
-        e.preventDefault();
-        const ids = curSplit.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
-        setActivePaneId(e.key === "1" ? ids[0] : ids[1]);
-        return;
-      }
-      if (mod && e.shiftKey && (e.key === "T" || e.key === "t")) {
-        if (rightPanel) {
-          e.preventDefault();
-          createTerminal();
-          return;
-        }
-      }
-      if (mod && e.shiftKey && (e.key === "W" || e.key === "w")) {
-        if (rightPanel && activeTerminalId) {
-          e.preventDefault();
-          closeTerminal(activeTerminalId);
-          return;
-        }
-      }
-      // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
-      if (mod && (e.key === "=" || e.key === "+")) {
-        e.preventDefault();
-        const cur = uiScaleKbRef.current;
-        const next = SCALE_OPTIONS.find((s) => s > cur);
-        if (next) setUiScale(next);
-        return;
-      }
-      if (mod && e.key === "-") {
-        e.preventDefault();
-        const cur = uiScaleKbRef.current;
-        const next = [...SCALE_OPTIONS].reverse().find((s) => s < cur);
-        if (next) setUiScale(next);
-        return;
-      }
-      if (mod && e.key === "0") {
-        e.preventDefault();
-        setUiScale(100);
-        return;
-      }
-      if (import.meta.env.DEV && mod && e.key === ".") {
-        e.preventDefault();
-        setDevOverlay((v) => !v);
-      }
-      if (import.meta.env.DEV && mod && e.key === ",") {
-        e.preventDefault();
-        setTabFlip((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [settingsOpen, rightPanel, activeTerminalId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        localStorage.setItem(
-          "boojy-ui-state",
-          JSON.stringify({
-            tabs,
-            activeNote,
-            expanded,
-            splitState: getSplitStateForPersistence(),
-          }),
-        );
-      } catch {}
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [tabs, activeNote, expanded, splitState]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (isNative) return;
-    const timer = setTimeout(() => {
-      const t0 = performance.now();
-      try {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ noteData, tabs, activeNote, expanded, customFolders }),
-        );
-      } catch (e) {
-        console.warn("Failed to save to localStorage:", e);
-        showToast("Failed to save — storage may be full", "warning");
-      }
-      const dt = performance.now() - t0;
-      if (dt > 5)
-        console.warn(
-          `[perf] localStorage.setItem: ${dt.toFixed(1)}ms (${Object.keys(noteData).length} notes)`,
-        );
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [noteData, tabs, activeNote, expanded, customFolders]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Safety net: flush noteData to localStorage on page unload (web only)
-  const beforeunloadDataRef = useRef({ noteData, tabs, activeNote, expanded, customFolders });
-  beforeunloadDataRef.current = { noteData, tabs, activeNote, expanded, customFolders };
-
-  useEffect(() => {
-    if (isNative) return;
-    const flush = () => {
-      const t0 = performance.now();
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(beforeunloadDataRef.current));
-      } catch {}
-      console.warn(`[perf] beforeunload flush: ${(performance.now() - t0).toFixed(1)}ms`);
-    };
-    window.addEventListener("beforeunload", flush);
-    return () => window.removeEventListener("beforeunload", flush);
-  }, []);
+  useAppPersistence({
+    tabs,
+    activeNote,
+    expanded,
+    splitState,
+    noteData,
+    customFolders,
+    getSplitStateForPersistence,
+    showToast,
+  });
 
   useEffect(() => {
     const onBlur = () => {
@@ -1424,59 +1283,64 @@ export default function BoojyNotes() {
             })()}
           </div>
         ) : (
-          <EditorArea
-            onEditorClick={clearSelection}
-            textOnlyEditForEditor={textOnlyEditForEditor}
-            note={note}
-            activeNote={activeNote}
-            editorFadeIn={editorFadeIn}
-            editorRef={editorRef}
-            editorScrollRef={editorScrollRef}
-            titleRef={titleRef}
-            blockRefs={blockRefs}
-            noteDataRef={noteDataRef}
-            focusBlockId={focusBlockId}
-            focusCursorPos={focusCursorPos}
-            forceRender={forceRender}
-            handleEditorKeyDown={handleEditorKeyDown}
-            handleEditorInput={handleEditorInput}
-            handleEditorPaste={handleEditorPaste}
-            handleEditorCopy={handleEditorCopy}
-            handleEditorPointerDown={handleEditorPointerDown}
-            handleEditorMouseDown={handleEditorMouseDown}
-            handleEditorMouseUp={handleEditorMouseUp}
-            handleEditorFocus={handleEditorFocus}
-            handleEditorDragOver={handleEditorDragOver}
-            handleEditorDragLeave={handleEditorDragLeave}
-            handleEditorDrop={handleEditorDrop}
-            commitTextChange={commitTextChange}
-            syncGeneration={syncGeneration}
-            flipCheck={flipCheck}
-            deleteBlock={deleteBlock}
-            registerBlockRef={registerBlockRef}
-            insertBlockAfter={insertBlockAfter}
-            updateCodeText={updateCodeText}
-            updateCodeLang={updateCodeLang}
-            updateCallout={updateCallout}
-            updateTableRows={updateTableRows}
-            updateBlockProperty={updateBlockProperty}
-            backlinks={currentBacklinks}
-            onWikilinkClick={handleWikilinkClick}
-            onWikilinkCmdClick={handleWikilinkCmdClick}
-            onOpenBacklink={openNote}
-            toolbarState={toolbarState}
-            detectActiveFormats={detectActiveFormats}
-            applyFormat={applyFormat}
-            noteTitleSet={noteTitleSet}
-            linkPopover={linkPopover}
-            setLinkPopover={setLinkPopover}
-            reReadBlockFromDom={reReadBlockFromDom}
-            selectedImageBlockId={selectedImageBlockId}
-            setSelectedImageBlockId={setSelectedImageBlockId}
-            lightbox={lightbox}
-            setLightbox={setLightbox}
-            openNote={openNote}
-          />
+          <EditorProvider
+            value={{
+              editorRef,
+              editorScrollRef,
+              titleRef,
+              blockRefs,
+              noteDataRef,
+              focusBlockId,
+              focusCursorPos,
+              forceRender,
+              handleEditorKeyDown,
+              handleEditorInput,
+              handleEditorPaste,
+              handleEditorCopy,
+              handleEditorPointerDown,
+              handleEditorMouseDown,
+              handleEditorMouseUp,
+              handleEditorFocus,
+              handleEditorDragOver,
+              handleEditorDragLeave,
+              handleEditorDrop,
+              commitTextChange,
+              syncGeneration,
+              flipCheck,
+              deleteBlock,
+              registerBlockRef,
+              insertBlockAfter,
+              updateCodeText,
+              updateCodeLang,
+              updateCallout,
+              updateTableRows,
+              updateBlockProperty,
+              detectActiveFormats,
+              applyFormat,
+              reReadBlockFromDom,
+            }}
+          >
+            <EditorArea
+              onEditorClick={clearSelection}
+              textOnlyEditForEditor={textOnlyEditForEditor}
+              note={note}
+              activeNote={activeNote}
+              editorFadeIn={editorFadeIn}
+              backlinks={currentBacklinks}
+              onWikilinkClick={handleWikilinkClick}
+              onWikilinkCmdClick={handleWikilinkCmdClick}
+              onOpenBacklink={openNote}
+              toolbarState={toolbarState}
+              noteTitleSet={noteTitleSet}
+              linkPopover={linkPopover}
+              setLinkPopover={setLinkPopover}
+              selectedImageBlockId={selectedImageBlockId}
+              setSelectedImageBlockId={setSelectedImageBlockId}
+              lightbox={lightbox}
+              setLightbox={setLightbox}
+              openNote={openNote}
+            />
+          </EditorProvider>
         )}
 
         {/* Right panel drag handle */}
@@ -1522,25 +1386,27 @@ export default function BoojyNotes() {
             transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
           }}
         >
-          <TerminalPanel
-            terminals={terminals}
-            activeTerminalId={activeTerminalId}
-            setActiveTerminalId={setActiveTerminalId}
-            xtermInstances={xtermInstances}
-            createTerminal={createTerminal}
-            createAITab={createAITab}
-            closeTerminal={closeTerminal}
-            renameTerminal={renameTerminal}
-            restartTerminal={restartTerminal}
-            clearTerminal={clearTerminal}
-            markExited={markExited}
-            isOpen={rightPanel}
-            onAIModelChange={handleAIModelChange}
-            onOpenAISettings={handleOpenAISettings}
-            noteContext={activeNoteContext}
-            sendContext={aiSettings.sendContext}
-            onToggleContext={handleToggleAIContext}
-          />
+          <React.Suspense fallback={null}>
+            <TerminalPanel
+              terminals={terminals}
+              activeTerminalId={activeTerminalId}
+              setActiveTerminalId={setActiveTerminalId}
+              xtermInstances={xtermInstances}
+              createTerminal={createTerminal}
+              createAITab={createAITab}
+              closeTerminal={closeTerminal}
+              renameTerminal={renameTerminal}
+              restartTerminal={restartTerminal}
+              clearTerminal={clearTerminal}
+              markExited={markExited}
+              isOpen={rightPanel}
+              onAIModelChange={handleAIModelChange}
+              onOpenAISettings={handleOpenAISettings}
+              noteContext={activeNoteContext}
+              sendContext={aiSettings.sendContext}
+              onToggleContext={handleToggleAIContext}
+            />
+          </React.Suspense>
         </div>
       </div>
 
@@ -1623,18 +1489,20 @@ export default function BoojyNotes() {
         />
       )}
 
-      <SettingsModal
-        syncState={syncState}
-        lastSynced={lastSynced}
-        storageUsed={storageUsed}
-        storageLimitMB={storageLimitMB}
-        onSync={syncAll}
-        noteData={noteData}
-        setActiveNote={setActiveNote}
-        isDesktop={isDesktop}
-        notesDir={notesDir}
-        changeNotesDir={changeNotesDir}
-      />
+      <React.Suspense fallback={null}>
+        <SettingsModal
+          syncState={syncState}
+          lastSynced={lastSynced}
+          storageUsed={storageUsed}
+          storageLimitMB={storageLimitMB}
+          onSync={syncAll}
+          noteData={noteData}
+          setActiveNote={setActiveNote}
+          isDesktop={isDesktop}
+          notesDir={notesDir}
+          changeNotesDir={changeNotesDir}
+        />
+      </React.Suspense>
 
       {import.meta.env.DEV && DevOverlay && (
         <React.Suspense fallback={null}>

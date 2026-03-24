@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 
 export default function WikilinkMenu({ position, filter, noteData, onSelect, onDismiss }) {
@@ -8,6 +9,7 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const menuRef = useRef(null);
+  useFocusTrap(menuRef, !!position);
 
   const noteTitles = useMemo(() => {
     if (!noteData) return [];

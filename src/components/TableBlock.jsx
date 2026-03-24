@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
 import { Z } from "../constants/zIndex";
 
-export default function TableBlock({
+export default memo(function TableBlock({
   block,
   noteId,
   blockIndex,
@@ -411,4 +411,4 @@ export default function TableBlock({
       )}
     </div>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 
 const hBg = (el, c) => {
@@ -33,6 +34,8 @@ const ContextMenu = memo(function ContextMenu({
   const [moveSubmenu, setMoveSubmenu] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const itemsRef = useRef([]);
+  const menuContainerRef = useRef(null);
+  useFocusTrap(menuContainerRef, !!ctxMenu);
 
   // Keyboard navigation — hooks must be above early return
   const handleKeyDown = useCallback(
@@ -210,6 +213,7 @@ const ContextMenu = memo(function ContextMenu({
         style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
       />
       <div
+        ref={menuContainerRef}
         role="menu"
         aria-label="Context menu"
         aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}

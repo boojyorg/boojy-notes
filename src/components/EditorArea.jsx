@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
+import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
@@ -30,46 +31,13 @@ const EditorArea = memo(
     note,
     activeNote,
     editorFadeIn,
-    editorRef,
-    editorScrollRef,
-    titleRef,
-    blockRefs,
-    noteDataRef,
-    focusBlockId,
-    focusCursorPos,
-    forceRender,
-    handleEditorKeyDown,
-    handleEditorInput,
-    handleEditorPaste,
-    handleEditorCopy,
-    handleEditorPointerDown,
-    handleEditorMouseDown,
-    handleEditorMouseUp,
-    handleEditorFocus,
-    handleEditorDragOver,
-    handleEditorDragLeave,
-    handleEditorDrop,
-    commitTextChange,
-    syncGeneration,
-    flipCheck,
-    deleteBlock,
-    registerBlockRef,
-    insertBlockAfter,
-    updateCodeText,
-    updateCodeLang,
-    updateCallout,
-    updateTableRows,
-    updateBlockProperty,
     backlinks,
     onWikilinkClick,
     onOpenBacklink,
     toolbarState,
-    detectActiveFormats,
-    applyFormat,
     noteTitleSet,
     linkPopover,
     setLinkPopover,
-    reReadBlockFromDom,
     selectedImageBlockId,
     setSelectedImageBlockId,
     lightbox,
@@ -78,6 +46,41 @@ const EditorArea = memo(
     onEditorClick,
     onWikilinkCmdClick,
   }) {
+    const {
+      editorRef,
+      editorScrollRef,
+      titleRef,
+      blockRefs,
+      noteDataRef,
+      focusBlockId,
+      focusCursorPos,
+      forceRender,
+      handleEditorKeyDown,
+      handleEditorInput,
+      handleEditorPaste,
+      handleEditorCopy,
+      handleEditorPointerDown,
+      handleEditorMouseDown,
+      handleEditorMouseUp,
+      handleEditorFocus,
+      handleEditorDragOver,
+      handleEditorDragLeave,
+      handleEditorDrop,
+      commitTextChange,
+      syncGeneration,
+      flipCheck,
+      deleteBlock,
+      registerBlockRef,
+      insertBlockAfter,
+      updateCodeText,
+      updateCodeLang,
+      updateCallout,
+      updateTableRows,
+      updateBlockProperty,
+      detectActiveFormats,
+      applyFormat,
+      reReadBlockFromDom,
+    } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
     const { accentColor, editorBg, collapsed } = useLayout();
@@ -435,6 +438,8 @@ const EditorArea = memo(
               suppressContentEditableWarning
               data-title
               data-placeholder="Untitled"
+              role="textbox"
+              aria-label="Note title"
               className={!note.title ? "empty-title" : undefined}
               onInput={(e) => {
                 const newTitle = e.currentTarget.innerText;
@@ -521,6 +526,8 @@ const EditorArea = memo(
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
+                role="region"
+                aria-label="Note editor"
                 onKeyDown={(e) => {
                   // Cmd+F: toggle find bar
                   const mod = e.ctrlKey || e.metaKey;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
@@ -226,7 +226,7 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
 
 /* ─── CalloutBlock ─── */
 
-export default function CalloutBlock({
+export default memo(function CalloutBlock({
   block,
   noteId,
   blockIndex,
@@ -517,4 +517,4 @@ export default function CalloutBlock({
         )}
     </div>
   );
-}
+});

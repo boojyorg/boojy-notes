@@ -1,10 +1,14 @@
+import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 import { SLASH_COMMANDS } from "../constants/data";
 
 export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
+  const menuRef = useRef(null);
+  useFocusTrap(menuRef, !!slashMenu);
 
   if (!slashMenu) return null;
 
@@ -19,6 +23,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         onMouseDown={() => setSlashMenu(null)}
       />
       <div
+        ref={menuRef}
         role="menu"
         aria-label="Slash commands"
         style={{
