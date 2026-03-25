@@ -75,7 +75,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "electron": "^40.6.1",
     "electron-builder": "^26.8.1",
-    "eslint": "^9.39.4",
+    "eslint": "^10.0.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.4.0",
