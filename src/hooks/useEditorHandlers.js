@@ -20,6 +20,8 @@ export function useEditorHandlers({
   setSlashMenu,
   wikilinkMenuRef,
   setWikilinkMenu,
+  tagMenuRef,
+  setTagMenu,
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
@@ -64,6 +66,8 @@ export function useEditorHandlers({
     setSlashMenu,
     wikilinkMenuRef,
     setWikilinkMenu,
+    tagMenuRef,
+    setTagMenu,
     updateBlockText,
     insertBlockAfter,
   });

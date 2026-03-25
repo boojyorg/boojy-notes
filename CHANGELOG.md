@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+## v0.1.9 (2026-03-25)
+
+### Bug Fixes
+- **Paste focus race condition** — Multi-block paste now retries caret placement until the target block is mounted, instead of using unreliable nested rAF+setTimeout
+- **saveVersionMap called per deletion** — Version map is now persisted once after processing all deletions, not on every iteration
+- **localStorage cache fragility** — Removed fragile setTimeout-based cache in `loadFromStorage()`; each call now reads fresh from localStorage, fixing potential multi-tab inconsistency
+- **Sync race condition** — `isSyncing` flag is now set immediately on entry to prevent duplicate syncs from rapid visibility/online events
+- **ErrorBoundary ignores theme** — Error screen now uses CSS custom properties from the active theme with dark fallbacks, instead of hardcoded colors
+- **Image/file insertion broken on web** — `getAPI()` returned null on web, silently breaking slash command images, file attachments, and image paste/drag. Added a web API with browser-native file picker and data URI storage.
+- **Images stuck in loading state** — `loading="lazy"` + `display: none` on `<img>` created a deadlock where the browser refused to load hidden lazy images. Fixed by using `opacity: 0` instead and skipping lazy loading for data URIs.
+
+### Features
+- **Markdown image shortcut** — Typing `![alt](url)` in a block now auto-converts to an image block, matching how `- ` converts to a bullet list
+- **Clickable tags** — `#tags` in notes are now clickable; clicking opens sidebar search filtered to notes with that tag
+- **Tag autocomplete** — Typing `#` followed by letters shows a dropdown of existing tags with note counts, like wikilink autocomplete
+- **Tag search** — Typing `#` in the sidebar search shows all tags as browsable pills with counts; clicking a tag filters to matching notes
+
+### Improvements
+- **Left-aligned images** — Images now align to the left like text, with resize handles on the right side only
+- **Aspect-ratio-aware image sizing** — New images auto-size based on shape: landscape → 100%, square → 70%, portrait → 50%. Existing images are unaffected.
+- **Hover-to-resize images** — Resize handles now appear on hover instead of requiring a click to select first. Single click opens lightbox directly. Resizing no longer accidentally triggers the full-size view.
+- **Block-level error boundary** — If a single block crashes during render, only that block shows an error fallback with a delete button. The rest of the editor stays usable.
+
+### Accessibility
+- **Sidebar search clear button** — Added `aria-label="Clear search"` to the icon-only close button
+- **Tab close button** — Added `role="button"` and `aria-label="Close tab"` to tab close controls in PaneTabBar
+
+## v0.1.8 (2026-03-24)
 
 ### Bug Fixes
 - **Export HTML title escaping** — PDF export now escapes `&` in note titles before `<`/`>`, preventing double-encoding of entities

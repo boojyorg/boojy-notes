@@ -44,7 +44,7 @@ export function useSlashCommands({
           type: "image",
           src: filename,
           alt: picked.fileName.replace(/\.[^.]+$/, ""),
-          width: 100,
+          width: 0,
           text: "",
         };
         const paraBlock = { id: genBlockId(), type: "p", text: "" };
@@ -103,7 +103,7 @@ export function useSlashCommands({
             type: "image",
             src: filename,
             alt: picked.fileName.replace(/\.[^.]+$/, ""),
-            width: 100,
+            width: 0,
             text: "",
           };
           const paraBlock = { id: genBlockId(), type: "p", text: "" };

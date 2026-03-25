@@ -67,18 +67,14 @@ export async function loadFromIDB(): Promise<Record<string, unknown> | null> {
   }
 }
 
-let _cachedStorage: Record<string, unknown> | null | undefined;
 export const loadFromStorage = (): Record<string, unknown> | null => {
-  if (_cachedStorage !== undefined) return _cachedStorage;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    _cachedStorage = raw ? JSON.parse(raw) : null;
-    if (_cachedStorage) _cachedStorage = migrateSchema(_cachedStorage);
+    let data = raw ? JSON.parse(raw) : null;
+    if (data) data = migrateSchema(data);
+    return data;
   } catch (e) {
     console.warn("Failed to load from localStorage:", e);
-    _cachedStorage = null;
+    return null;
   }
-  // Auto-clear cache after a tick so subsequent calls re-read from localStorage
-  setTimeout(() => { _cachedStorage = undefined; }, 0);
-  return _cachedStorage ?? null;
 };

@@ -23,6 +23,7 @@ function ImageBlock({
   const [loading, setLoading] = useState(true);
   const containerRef = useRef(null);
   const dragRef = useRef(null);
+  const justDragged = useRef(false);
 
   const [resolvedSrc, setResolvedSrc] = useState(() => {
     if (!src) return "";
@@ -61,11 +62,12 @@ function ImageBlock({
 
   const handleClick = (e) => {
     e.stopPropagation();
-    if (isSelected) {
-      onLightbox();
-    } else {
-      onSelect();
+    if (justDragged.current) {
+      justDragged.current = false;
+      return;
     }
+    onSelect();
+    onLightbox();
   };
 
   const handleResizeStart = (e, corner) => {
@@ -79,7 +81,7 @@ function ImageBlock({
 
     const onMove = (me) => {
       const dx = corner === "nw" || corner === "sw" ? startX - me.clientX : me.clientX - startX;
-      const newPx = Math.max(editorWidth * 0.1, Math.min(editorWidth, startWidth + dx * 2));
+      const newPx = Math.max(editorWidth * 0.1, Math.min(editorWidth, startWidth + dx));
       const newPct = Math.round((newPx / editorWidth) * 100);
       dragRef.current = newPct;
       if (containerRef.current) {
@@ -92,6 +94,7 @@ function ImageBlock({
       if (dragRef.current != null) {
         onUpdateWidth(Math.max(10, Math.min(100, dragRef.current)));
         dragRef.current = null;
+        justDragged.current = true;
       }
     };
     document.addEventListener("mousemove", onMove);
@@ -162,7 +165,7 @@ function ImageBlock({
   });
 
   return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
+    <div style={{ display: "flex", justifyContent: "flex-start" }}>
       <div
         ref={containerRef}
         onMouseEnter={() => setHovered(true)}
@@ -179,7 +182,7 @@ function ImageBlock({
               ? `2px solid ${accentColor}55`
               : "2px solid transparent",
           transition: "border-color 0.15s",
-          cursor: isSelected ? "zoom-in" : "pointer",
+          cursor: "pointer",
         }}
       >
         {loading && (
@@ -198,24 +201,38 @@ function ImageBlock({
           src={resolvedSrc}
           alt={alt || ""}
           draggable="false"
-          loading="lazy"
-          onLoad={() => setLoading(false)}
+          loading={resolvedSrc?.startsWith("data:") ? undefined : "lazy"}
+          onLoad={(e) => {
+            if (!width) {
+              const img = e.currentTarget;
+              const ratio = img.naturalWidth / img.naturalHeight;
+              const autoWidth = ratio > 1.5 ? 100 : ratio >= 0.75 ? 70 : 50;
+              onUpdateWidth(autoWidth);
+            }
+            setLoading(false);
+          }}
           onError={() => {
             setErrored(true);
             setLoading(false);
           }}
           style={{
-            display: loading ? "none" : "block",
             width: "100%",
             borderRadius: 6,
+            ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
           }}
         />
-        {isSelected && !loading && (
+        {hovered && !loading && (
           <>
-            <div onMouseDown={handleCorner("nw")} style={cornerStyle("nw")} />
-            <div onMouseDown={handleCorner("ne")} style={cornerStyle("ne")} />
-            <div onMouseDown={handleCorner("sw")} style={cornerStyle("sw")} />
-            <div onMouseDown={handleCorner("se")} style={cornerStyle("se")} />
+            <div
+              onMouseDown={handleCorner("ne")}
+              onClick={(e) => e.stopPropagation()}
+              style={cornerStyle("ne")}
+            />
+            <div
+              onMouseDown={handleCorner("se")}
+              onClick={(e) => e.stopPropagation()}
+              style={cornerStyle("se")}
+            />
           </>
         )}
       </div>

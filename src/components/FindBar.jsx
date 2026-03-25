@@ -9,6 +9,7 @@ export default function FindBar({
   blockRefs,
   noteId,
   commitTextChange,
+  initialShowReplace,
   onClose,
 }) {
   const { theme } = useTheme();
@@ -18,7 +19,7 @@ export default function FindBar({
   const [replaceTerm, setReplaceTerm] = useState("");
   const [matches, setMatches] = useState([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
-  const [showReplace, setShowReplace] = useState(false);
+  const [showReplace, setShowReplace] = useState(!!initialShowReplace);
   const inputRef = useRef(null);
 
   useEffect(() => {

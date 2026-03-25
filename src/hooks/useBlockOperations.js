@@ -64,7 +64,7 @@ export function useBlockOperations({
     });
   };
 
-  const insertImageBlock = (noteId, afterIndex, src, alt = "", width = 100) => {
+  const insertImageBlock = (noteId, afterIndex, src, alt = "", width = 0) => {
     const imgBlock = { id: genBlockId(), type: "image", src, alt, width, text: "" };
     const paraBlock = { id: genBlockId(), type: "p", text: "" };
     commitNoteData((prev) => {

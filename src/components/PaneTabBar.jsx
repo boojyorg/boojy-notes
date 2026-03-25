@@ -135,6 +135,8 @@ export default function PaneTabBar({
               {t.title || "Untitled"}
             </span>
             <span
+              role="button"
+              aria-label="Close tab"
               className="tab-close"
               onClick={(e) => closeTab(e, tId)}
               style={{

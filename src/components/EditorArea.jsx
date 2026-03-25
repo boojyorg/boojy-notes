@@ -8,6 +8,7 @@ import { getAPI } from "../services/apiProvider";
 import { BreadcrumbChevron } from "./Icons";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
+import BlockErrorBoundary from "./BlockErrorBoundary";
 import FloatingToolbar from "./FloatingToolbar";
 import BacklinksPanel from "./BacklinksPanel";
 import LinkTooltip from "./LinkTooltip";
@@ -33,6 +34,7 @@ const EditorArea = memo(
     editorFadeIn,
     backlinks,
     onWikilinkClick,
+    onTagClick,
     onOpenBacklink,
     toolbarState,
     noteTitleSet,
@@ -88,6 +90,7 @@ const EditorArea = memo(
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
+    const [findBarReplace, setFindBarReplace] = useState(false);
 
     // Link tooltip state
     const [linkTooltip, setLinkTooltip] = useState(null);
@@ -519,7 +522,11 @@ const EditorArea = memo(
                   blockRefs={blockRefs}
                   noteId={activeNote}
                   commitTextChange={commitTextChange}
-                  onClose={() => setFindBarOpen(false)}
+                  initialShowReplace={findBarReplace}
+                  onClose={() => {
+                    setFindBarOpen(false);
+                    setFindBarReplace(false);
+                  }}
                 />
               )}
               <div
@@ -529,11 +536,18 @@ const EditorArea = memo(
                 role="region"
                 aria-label="Note editor"
                 onKeyDown={(e) => {
-                  // Cmd+F: toggle find bar
+                  // Cmd+F: toggle find bar, Cmd+H: find with replace
                   const mod = e.ctrlKey || e.metaKey;
                   if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {
                     e.preventDefault();
+                    setFindBarReplace(false);
                     setFindBarOpen((v) => !v);
+                    return;
+                  }
+                  if (mod && (e.key === "h" || e.key === "H") && !e.shiftKey) {
+                    e.preventDefault();
+                    setFindBarReplace(true);
+                    setFindBarOpen(true);
                     return;
                   }
                   // Handle image selection keys
@@ -598,6 +612,12 @@ const EditorArea = memo(
                     }
                     return;
                   }
+                  const tag = e.target.closest(".inline-tag");
+                  if (tag) {
+                    const tagName = tag.getAttribute("data-tag");
+                    if (tagName && onTagClick) onTagClick(tagName);
+                    return;
+                  }
                   const wikilink = e.target.closest(".wikilink");
                   if (wikilink) {
                     e.preventDefault();
@@ -631,35 +651,40 @@ const EditorArea = memo(
                       numCounters = {};
                     }
                     return (
-                      <EditableBlock
+                      <BlockErrorBoundary
                         key={block.id + "-" + block.type}
-                        block={block}
-                        blockIndex={i}
-                        noteId={activeNote}
-                        onCheckToggle={flipCheck}
-                        onDeleteBlock={deleteBlock}
-                        registerRef={registerBlockRef}
-                        syncGen={syncGeneration.current}
-                        accentColor={accentColor}
-                        fontSize={settingsFontSize}
-                        numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
-                        onUpdateCode={updateCodeText}
-                        onUpdateLang={updateCodeLang}
-                        onUpdateCallout={updateCallout}
-                        onUpdateTableRows={updateTableRows}
-                        noteTitleSet={noteTitleSet}
-                        onBlockNav={handleBlockNav}
-                        isImageSelected={selectedImageBlockId === block.id}
-                        onImageSelect={handleImageSelect}
-                        onImageLightbox={handleImageLightbox}
-                        onImageReplace={handleImageReplace}
-                        onImageCopyImage={handleImageCopyImage}
-                        onUpdateBlockProperty={updateBlockProperty}
-                        onFileOpen={handleFileOpen}
-                        onFileShowInFolder={handleFileShowInFolder}
-                        noteDataRef={noteDataRef}
-                        onNavigateToNote={onNavigateToNote}
-                      />
+                        blockId={block.id}
+                        onDelete={() => deleteBlock(activeNote, i)}
+                      >
+                        <EditableBlock
+                          block={block}
+                          blockIndex={i}
+                          noteId={activeNote}
+                          onCheckToggle={flipCheck}
+                          onDeleteBlock={deleteBlock}
+                          registerRef={registerBlockRef}
+                          syncGen={syncGeneration.current}
+                          accentColor={accentColor}
+                          fontSize={settingsFontSize}
+                          numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
+                          onUpdateCode={updateCodeText}
+                          onUpdateLang={updateCodeLang}
+                          onUpdateCallout={updateCallout}
+                          onUpdateTableRows={updateTableRows}
+                          noteTitleSet={noteTitleSet}
+                          onBlockNav={handleBlockNav}
+                          isImageSelected={selectedImageBlockId === block.id}
+                          onImageSelect={handleImageSelect}
+                          onImageLightbox={handleImageLightbox}
+                          onImageReplace={handleImageReplace}
+                          onImageCopyImage={handleImageCopyImage}
+                          onUpdateBlockProperty={updateBlockProperty}
+                          onFileOpen={handleFileOpen}
+                          onFileShowInFolder={handleFileShowInFolder}
+                          noteDataRef={noteDataRef}
+                          onNavigateToNote={onNavigateToNote}
+                        />
+                      </BlockErrorBoundary>
                     );
                   });
                 })()}

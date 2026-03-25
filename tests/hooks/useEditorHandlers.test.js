@@ -85,6 +85,7 @@ function setup(blocks, noteId = "note-1") {
   const focusCursorPos = { current: null };
   const slashMenuRef = { current: null };
   const wikilinkMenuRef = { current: null };
+  const tagMenuRef = { current: null };
   const syncGeneration = { current: 0 };
   const mouseIsDown = { current: false };
 
@@ -126,6 +127,13 @@ function setup(blocks, noteId = "note-1") {
       wikilinkMenuRef.current = v;
     }
   });
+  const setTagMenu = vi.fn((v) => {
+    if (typeof v === "function") {
+      tagMenuRef.current = v(tagMenuRef.current);
+    } else {
+      tagMenuRef.current = v;
+    }
+  });
   const setToolbarState = vi.fn();
   const onOpenLinkEditor = vi.fn();
   const updateBlockIndent = vi.fn();
@@ -143,6 +151,8 @@ function setup(blocks, noteId = "note-1") {
     setSlashMenu,
     wikilinkMenuRef,
     setWikilinkMenu,
+    tagMenuRef,
+    setTagMenu,
     syncGeneration,
     updateBlockText,
     insertBlockAfter,

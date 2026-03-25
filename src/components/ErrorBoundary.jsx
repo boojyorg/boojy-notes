@@ -34,8 +34,8 @@ export default class ErrorBoundary extends Component {
           style={{
             position: "fixed",
             inset: 0,
-            background: "#1a1a1e",
-            color: "#e0e0e0",
+            background: "var(--boojy-error-bg, #1a1a1e)",
+            color: "var(--boojy-error-text, #e0e0e0)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -47,7 +47,7 @@ export default class ErrorBoundary extends Component {
             style={{
               maxWidth: 520,
               padding: 32,
-              background: "#26262b",
+              background: "var(--boojy-error-surface, #26262b)",
               borderRadius: 12,
               boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
             }}
@@ -57,7 +57,7 @@ export default class ErrorBoundary extends Component {
                 margin: "0 0 8px",
                 fontSize: 20,
                 fontWeight: 600,
-                color: "#ff6b6b",
+                color: "var(--boojy-error-danger, #ff6b6b)",
               }}
             >
               Something went wrong
@@ -66,7 +66,7 @@ export default class ErrorBoundary extends Component {
               style={{
                 margin: "0 0 16px",
                 fontSize: 14,
-                color: "#aaa",
+                color: "var(--boojy-error-muted, #aaa)",
                 lineHeight: 1.5,
               }}
             >
@@ -77,9 +77,9 @@ export default class ErrorBoundary extends Component {
               style={{
                 margin: "0 0 16px",
                 fontSize: 13,
-                color: "#ccc",
+                color: "var(--boojy-error-text, #ccc)",
                 fontFamily: "monospace",
-                background: "#1a1a1e",
+                background: "var(--boojy-error-bg, #1a1a1e)",
                 padding: "8px 12px",
                 borderRadius: 6,
                 wordBreak: "break-word",
@@ -91,13 +91,13 @@ export default class ErrorBoundary extends Component {
               style={{
                 marginBottom: 20,
                 fontSize: 12,
-                color: "#888",
+                color: "var(--boojy-error-muted, #888)",
               }}
             >
               <summary style={{ cursor: "pointer", marginBottom: 8 }}>Stack trace</summary>
               <pre
                 style={{
-                  background: "#1a1a1e",
+                  background: "var(--boojy-error-bg, #1a1a1e)",
                   padding: 12,
                   borderRadius: 6,
                   overflow: "auto",
@@ -117,7 +117,7 @@ export default class ErrorBoundary extends Component {
                 onClick={() => window.location.reload()}
                 style={{
                   padding: "8px 20px",
-                  background: "#4a6cf7",
+                  background: "var(--boojy-error-accent, #4a6cf7)",
                   color: "#fff",
                   border: "none",
                   borderRadius: 6,
@@ -135,9 +135,9 @@ export default class ErrorBoundary extends Component {
                 }}
                 style={{
                   padding: "8px 20px",
-                  background: "#3a3a40",
-                  color: "#ccc",
-                  border: "1px solid #555",
+                  background: "var(--boojy-error-surface, #3a3a40)",
+                  color: "var(--boojy-error-text, #ccc)",
+                  border: "1px solid var(--boojy-error-muted, #555)",
                   borderRadius: 6,
                   cursor: "pointer",
                   fontSize: 13,

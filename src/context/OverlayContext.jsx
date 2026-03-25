@@ -13,6 +13,9 @@ export function OverlayProvider({ children }) {
   const [wikilinkMenu, setWikilinkMenu] = useState(null);
   const wikilinkMenuRef = useRef(null);
   wikilinkMenuRef.current = wikilinkMenu;
+  const [tagMenu, setTagMenu] = useState(null);
+  const tagMenuRef = useRef(null);
+  tagMenuRef.current = tagMenu;
 
   const value = useMemo(
     () => ({
@@ -29,8 +32,11 @@ export function OverlayProvider({ children }) {
       wikilinkMenu,
       setWikilinkMenu,
       wikilinkMenuRef,
+      tagMenu,
+      setTagMenu,
+      tagMenuRef,
     }),
-    [ctxMenu, dragTooltip, lightbox, slashMenu, wikilinkMenu],
+    [ctxMenu, dragTooltip, lightbox, slashMenu, wikilinkMenu, tagMenu],
   );
 
   return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>;

@@ -244,15 +244,19 @@ export function usePasteHandler({
         syncGeneration.current++;
         focusBlockId.current = lastBlock.id;
         focusCursorPos.current = (lastBlock.text || "").length;
-        // Re-place cursor after all layout effects and innerHTML syncs settle
+        // Re-place cursor after React re-render mounts the new block
         const deferredId = lastBlock.id;
         const deferredPos = (lastBlock.text || "").length;
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            const el = blockRefs.current[deferredId];
-            if (el) placeCaret(el, deferredPos);
-          }, 0);
-        });
+        let attempts = 0;
+        const tryPlace = () => {
+          const el = blockRefs.current[deferredId];
+          if (el && el.isConnected) {
+            placeCaret(el, deferredPos);
+          } else if (++attempts < 10) {
+            requestAnimationFrame(tryPlace);
+          }
+        };
+        requestAnimationFrame(tryPlace);
         return;
       }
     }
@@ -361,12 +365,20 @@ export function usePasteHandler({
       syncGeneration.current++;
       focusBlockId.current = lastBlock.id;
       focusCursorPos.current = (lastBlock.text || "").length;
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const el = blockRefs.current[lastBlock.id];
-          if (el) placeCaret(el, (lastBlock.text || "").length);
-        }, 0);
-      });
+      {
+        const targetId = lastBlock.id;
+        const targetPos = (lastBlock.text || "").length;
+        let attempts = 0;
+        const tryPlace = () => {
+          const el = blockRefs.current[targetId];
+          if (el && el.isConnected) {
+            placeCaret(el, targetPos);
+          } else if (++attempts < 10) {
+            requestAnimationFrame(tryPlace);
+          }
+        };
+        requestAnimationFrame(tryPlace);
+      }
       return;
     }
 

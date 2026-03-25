@@ -1,8 +1,9 @@
-import { useEffect, memo } from "react";
+import { useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
+import { extractAllTags } from "../utils/tags";
 import { ChevronRight, ChevronDown, FolderIcon, FileIcon, SearchIcon, TrashIcon } from "./Icons";
 
 const hBg = (el, c) => {
@@ -50,6 +51,18 @@ const Sidebar = memo(function Sidebar({
     clearSearch,
     getActiveResult,
   } = useSidebar();
+
+  // Tag suggestions for # search
+  const tagSuggestions = useMemo(() => {
+    if (!search.startsWith("#")) return null;
+    const tagMap = extractAllTags(noteData);
+    const filter = search.slice(1).toLowerCase();
+    const tags = [...tagMap.entries()]
+      .map(([tag, noteIds]) => ({ tag, count: noteIds.size }))
+      .filter((t) => !filter || t.tag.toLowerCase().includes(filter))
+      .sort((a, b) => b.count - a.count);
+    return tags;
+  }, [search, noteData]);
 
   // Render a note row at given depth
   const renderNote = (nId, depth) => {
@@ -333,6 +346,7 @@ const Sidebar = memo(function Sidebar({
           )}
           {search && (
             <button
+              aria-label="Clear search"
               onClick={(e) => {
                 e.stopPropagation();
                 setSearch("");
@@ -365,6 +379,68 @@ const Sidebar = memo(function Sidebar({
       {/* Search results or File tree */}
       {searchMode && searchResults.results.length > 0 ? (
         <div ref={sidebarScrollRef} style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
+          {tagSuggestions && tagSuggestions.length > 0 && (
+            <div style={{ padding: "4px 14px 8px" }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: TEXT.muted,
+                  fontWeight: 500,
+                  marginBottom: 6,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Tags
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {tagSuggestions.slice(0, 20).map((t) => (
+                  <button
+                    key={t.tag}
+                    onClick={() => setSearch(`#${t.tag}`)}
+                    style={{
+                      background: `${ACCENT.primary}15`,
+                      color: ACCENT.primary,
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "2px 8px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${ACCENT.primary}30`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${ACCENT.primary}15`;
+                    }}
+                  >
+                    <span>#{t.tag}</span>
+                    <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
+                  </button>
+                ))}
+              </div>
+              {searchResults.results.length > 0 && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: TEXT.muted,
+                    fontWeight: 500,
+                    marginTop: 10,
+                    marginBottom: 2,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Notes
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
             {searchResults.totalCount <= 20
               ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
@@ -478,18 +554,68 @@ const Sidebar = memo(function Sidebar({
           ))}
         </div>
       ) : searchMode && searchResults.results.length === 0 ? (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: TEXT.muted,
-            fontSize: 13,
-          }}
-        >
-          No notes found
-        </div>
+        tagSuggestions && tagSuggestions.length > 0 ? (
+          <div ref={sidebarScrollRef} style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
+            <div style={{ padding: "4px 14px 8px" }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: TEXT.muted,
+                  fontWeight: 500,
+                  marginBottom: 6,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {search === "#" ? "All Tags" : "Tags"}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {tagSuggestions.slice(0, 30).map((t) => (
+                  <button
+                    key={t.tag}
+                    onClick={() => setSearch(`#${t.tag}`)}
+                    style={{
+                      background: `${ACCENT.primary}15`,
+                      color: ACCENT.primary,
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "2px 8px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${ACCENT.primary}30`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${ACCENT.primary}15`;
+                    }}
+                  >
+                    <span>#{t.tag}</span>
+                    <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: TEXT.muted,
+              fontSize: 13,
+            }}
+          >
+            No notes found
+          </div>
+        )
       ) : (
         <>
           <div

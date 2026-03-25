@@ -5,6 +5,14 @@ export default function GlobalStyles() {
 
   return (
     <style>{`
+        :root {
+          --boojy-error-bg: ${theme.BG.primary};
+          --boojy-error-surface: ${theme.BG.surface};
+          --boojy-error-text: ${theme.TEXT.primary};
+          --boojy-error-muted: ${theme.TEXT.muted};
+          --boojy-error-accent: ${theme.ACCENT.primary};
+          --boojy-error-danger: ${theme.SEMANTIC?.danger || "#ff6b6b"};
+        }
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes syncGlow {
           0%, 100% { box-shadow: 0 0 4px ${theme.BRAND.orange}40; }
@@ -104,6 +112,10 @@ export default function GlobalStyles() {
           color: ${theme.ACCENT.primary};
           opacity: 0.7;
           font-size: 0.92em;
+          cursor: pointer;
+        }
+        [data-block-id] .inline-tag:hover {
+          opacity: 1;
         }
         [data-block-id] .wikilink {
           color: ${theme.wikilink.color};

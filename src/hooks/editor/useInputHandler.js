@@ -30,6 +30,8 @@ export function useInputHandler({
   setSlashMenu,
   wikilinkMenuRef,
   setWikilinkMenu,
+  tagMenuRef,
+  setTagMenu,
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
@@ -95,6 +97,33 @@ export function useInputHandler({
       }
     }
 
+    // Auto-convert markdown image syntax: ![alt](url)
+    const imgMatch = text.match(/^!\[([^\]]*)\]\((\S+)\)$/);
+    if (imgMatch) {
+      el.innerHTML = "<br>";
+      const imgBlock = {
+        ...currentBlock,
+        text: "",
+        type: "image",
+        src: imgMatch[2],
+        alt: imgMatch[1],
+        width: 0,
+      };
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blks = [...n.content.blocks];
+        blks.splice(blockIndex, 1, imgBlock, paraBlock);
+        n.content = { ...n.content, blocks: blks };
+        next[noteId] = n;
+        return next;
+      });
+      focusBlockId.current = paraBlock.id;
+      focusCursorPos.current = 0;
+      return;
+    }
+
     const trimmed = text.trim();
     if (trimmed === "/") {
       const rect = el.getBoundingClientRect();
@@ -127,6 +156,20 @@ export function useInputHandler({
       });
     } else if (wikilinkMenuRef.current && wikilinkMenuRef.current.blockIndex === blockIndex) {
       setWikilinkMenu(null);
+    }
+
+    // Tag autocomplete detection: open # with at least one letter typed
+    const tagMatch = text.match(/(^|[\s(])#([a-zA-Z][\w/-]*)$/);
+    if (tagMatch) {
+      const rect = el.getBoundingClientRect();
+      setTagMenu({
+        noteId,
+        blockIndex,
+        filter: tagMatch[2],
+        rect: { top: rect.bottom + 4, left: rect.left },
+      });
+    } else if (tagMenuRef.current && tagMenuRef.current.blockIndex === blockIndex) {
+      setTagMenu(null);
     }
 
     // Auto-convert bare URLs: if text contains a URL followed by a space, re-render to style it

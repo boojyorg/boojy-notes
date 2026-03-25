@@ -64,7 +64,10 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   });
 
   // 11. Tags (#tag but not # at line start which is heading)
-  s = s.replace(/(^|[\s(])#([a-zA-Z][\w/-]*)/g, '$1<span class="inline-tag">#$2</span>');
+  s = s.replace(
+    /(^|[\s(])#([a-zA-Z][\w/-]*)/g,
+    '$1<span class="inline-tag" data-tag="$2">#$2</span>',
+  );
 
   // Restore backslash-escaped characters
   s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => escapes[parseInt(i, 10)]);

@@ -193,15 +193,16 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       }
     }
 
+    let versionMapDirty = false;
     for (const id of Object.keys(prev)) {
       if (!noteData[id]) {
         deletedNotes.current.add(id);
         dirtyNotes.current.delete(id);
-        // Clean up version map entry
         delete versionMap.current[id];
-        saveVersionMap(versionMap.current);
+        versionMapDirty = true;
       }
     }
+    if (versionMapDirty) saveVersionMap(versionMap.current);
 
     prevNoteData.current = noteData;
 
@@ -235,12 +236,13 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
 
   const syncAll = useCallback(async () => {
     if (!user || isSyncing.current) return;
+    isSyncing.current = true;
     if (!navigator.onLine) {
+      isSyncing.current = false;
       setSyncState("offline");
       return;
     }
 
-    isSyncing.current = true;
     setSyncState("syncing");
 
     try {

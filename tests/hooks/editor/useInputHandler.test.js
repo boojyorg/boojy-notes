@@ -52,6 +52,8 @@ describe("useInputHandler", () => {
       setSlashMenu: vi.fn(),
       wikilinkMenuRef: { current: null },
       setWikilinkMenu: vi.fn(),
+      tagMenuRef: { current: null },
+      setTagMenu: vi.fn(),
       syncGeneration: { current: 0 },
       updateBlockText: vi.fn(),
       insertBlockAfter: vi.fn(),

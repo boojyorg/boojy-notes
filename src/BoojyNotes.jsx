@@ -37,6 +37,7 @@ const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
+import TagMenu from "./components/TagMenu";
 import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
@@ -117,6 +118,7 @@ export default function BoojyNotes() {
 
   const {
     search,
+    setSearch,
     searchInputRef,
     sidebarScrollRef,
     expanded,
@@ -147,6 +149,9 @@ export default function BoojyNotes() {
     wikilinkMenu,
     setWikilinkMenu,
     wikilinkMenuRef,
+    tagMenu,
+    setTagMenu,
+    tagMenuRef,
   } = useOverlay();
 
   // ── State ──────────────────────────────────────────────────────────
@@ -430,6 +435,8 @@ export default function BoojyNotes() {
     setSlashMenu,
     wikilinkMenuRef,
     setWikilinkMenu,
+    tagMenuRef,
+    setTagMenu,
     syncGeneration,
     updateBlockText,
     insertBlockAfter,
@@ -969,6 +976,44 @@ export default function BoojyNotes() {
     ],
   );
 
+  // Tag click handler: sets sidebar search to #tagname
+  const handleTagClick = useCallback(
+    (tagName) => {
+      setSearch(`#${tagName}`);
+    },
+    [setSearch],
+  );
+
+  // Tag autocomplete select handler
+  const handleTagSelect = useCallback(
+    (tag) => {
+      const menu = tagMenuRef.current;
+      if (!menu) return;
+      const { noteId, blockIndex } = menu;
+      const blocks = noteDataRef.current[noteId]?.content?.blocks;
+      if (!blocks || !blocks[blockIndex]) return;
+      const oldText = blocks[blockIndex].text || "";
+      const match = oldText.match(/(^|[\s(])#([a-zA-Z][\w/-]*)$/);
+      if (match) {
+        const newText = oldText.slice(0, match.index + match[1].length) + `#${tag} `;
+        commitTextChange((prev) => {
+          const next = { ...prev };
+          const n = { ...next[noteId] };
+          const b = [...n.content.blocks];
+          b[blockIndex] = { ...b[blockIndex], text: newText };
+          n.content = { ...n.content, blocks: b };
+          next[noteId] = n;
+          return next;
+        });
+        syncGeneration.current++;
+        focusBlockId.current = blocks[blockIndex].id;
+        focusCursorPos.current = newText.length;
+      }
+      setTagMenu(null);
+    },
+    [commitTextChange, syncGeneration, noteDataRef, focusBlockId, setTagMenu, tagMenuRef],
+  );
+
   // ── Export handlers ─────────────────────────────────────────────────
   const handleExportPdf = useCallback(
     (noteId) => {
@@ -1258,7 +1303,10 @@ export default function BoojyNotes() {
                         setSlashMenu={setSlashMenu}
                         wikilinkMenuRef={wikilinkMenuRef}
                         setWikilinkMenu={setWikilinkMenu}
+                        tagMenuRef={tagMenuRef}
+                        setTagMenu={setTagMenu}
                         onWikilinkClick={handleWikilinkClick}
+                        onTagClick={handleTagClick}
                         onWikilinkCmdClick={handleWikilinkCmdClick}
                         openNote={(noteId) => openNoteInPane(noteId, pId)}
                         onOpenBacklink={(noteId) => openNoteInPane(noteId, pId)}
@@ -1451,6 +1499,22 @@ export default function BoojyNotes() {
             noteData={noteData}
             onSelect={handleWikilinkSelect}
             onDismiss={() => setWikilinkMenu(null)}
+          />
+        </>
+      )}
+
+      {tagMenu && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
+            onMouseDown={() => setTagMenu(null)}
+          />
+          <TagMenu
+            position={tagMenu.rect}
+            filter={tagMenu.filter}
+            noteData={noteData}
+            onSelect={handleTagSelect}
+            onDismiss={() => setTagMenu(null)}
           />
         </>
       )}
