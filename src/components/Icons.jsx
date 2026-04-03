@@ -164,6 +164,24 @@ export const HelpIcon = () => (
     </text>
   </Icon>
 );
+export const ChevronLeftIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
+    <path
+      d="M10.5 3L5.5 8L10.5 13"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Icon>
+);
+export const MoreHorizontalIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
+    <circle cx="4" cy="8" r="1.2" fill="currentColor" />
+    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+    <circle cx="12" cy="8" r="1.2" fill="currentColor" />
+  </Icon>
+);
 export const HamburgerIcon = ({ size = 16.5 }) => (
   <Icon size={size}>
     <path d="M2.5 4.5H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

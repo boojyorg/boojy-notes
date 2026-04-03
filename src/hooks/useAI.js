@@ -110,6 +110,7 @@ export function useAI() {
 
     const abort = new AbortController();
     abortRefs.current.set(tabId, abort);
+    let chunkTimer = null;
 
     try {
       const router = createAIRouter(aiConfig);
@@ -132,7 +133,11 @@ export function useAI() {
       allMessages.push({ role: "user", content: userContent });
 
       let fullResponse = "";
+      // Timeout: 60s for initial response, 30s between chunks
+      chunkTimer = setTimeout(() => abort.abort(), 60_000);
       for await (const chunk of router.chat(allMessages, { signal: abort.signal })) {
+        clearTimeout(chunkTimer);
+        chunkTimer = setTimeout(() => abort.abort(), 30_000);
         fullResponse += chunk;
         setConversations((prev) => {
           const convo = prev[tabId];
@@ -142,6 +147,7 @@ export function useAI() {
           return { ...prev, [tabId]: { ...convo, messages: msgs } };
         });
       }
+      clearTimeout(chunkTimer);
 
       setConversations((prev) => {
         const convo = prev[tabId];
@@ -172,6 +178,7 @@ export function useAI() {
       });
       scheduleSave();
     } finally {
+      clearTimeout(chunkTimer);
       abortRefs.current.delete(tabId);
     }
   }, []);

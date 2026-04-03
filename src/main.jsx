@@ -54,11 +54,19 @@ if (isWeb && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
-// Dismiss Capacitor splash screen after render
+// Configure Capacitor native UI
 if (isCapacitor) {
   import("@capacitor/splash-screen").then(({ SplashScreen }) => {
     SplashScreen.hide();
   });
+
+  // Transparent status bar so safe-area-inset-top works
+  import("@capacitor/status-bar")
+    .then(({ StatusBar, Style }) => {
+      StatusBar.setOverlaysWebView({ overlay: true });
+      StatusBar.setStyle({ style: Style.Dark });
+    })
+    .catch(() => {});
 
   // Handle Android hardware back button
   import("@capacitor/app").then(({ App }) => {

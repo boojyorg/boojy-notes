@@ -179,7 +179,7 @@ describe("SettingsModal", () => {
 
   it("renders back arrow instead of close button on mobile", () => {
     renderModal({ isMobile: true });
-    const backBtn = screen.getByText("\u2190");
+    const backBtn = screen.getByLabelText("Back");
     expect(backBtn).toBeInTheDocument();
     fireEvent.click(backBtn);
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);

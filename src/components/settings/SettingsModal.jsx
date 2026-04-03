@@ -13,6 +13,7 @@ import EditorTab from "./EditorTab";
 import AITab from "./AITab";
 import ExportTab from "./ExportTab";
 import { BrandingFooter, ContentFooter } from "./AboutTab";
+import { ChevronLeftIcon } from "../Icons";
 
 export default function SettingsModal({
   isMobile,
@@ -157,22 +158,205 @@ export default function SettingsModal({
     </div>
   );
 
+  // Mobile card wrapper for grouped settings rows
+  const MobileCard = ({ children }) => (
+    <div
+      style={{
+        background: BG.surface || theme.overlay(0.04),
+        borderRadius: 12,
+        overflow: "hidden",
+        marginBottom: spacing.sm,
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  // Mobile section header — uppercase, small, accent
+  const MobileSectionHeader = ({ title }) => (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: fontWeight.semibold,
+        color: ACCENT.primary,
+        textTransform: "uppercase",
+        letterSpacing: 1.2,
+        padding: `${spacing.xl}px 0 ${spacing.sm}px`,
+      }}
+    >
+      {title}
+    </div>
+  );
+
+  // ── Mobile layout ─────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: Z.SETTINGS_INNER,
+          background: BG.darkest,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            minHeight: 48,
+            background: BG.darkest,
+            display: "flex",
+            alignItems: "center",
+            gap: spacing.sm,
+            padding: "env(safe-area-inset-top, 0px) 4px 0 4px",
+            borderBottom: `1px solid ${theme.overlay(0.06)}`,
+            flexShrink: 0,
+          }}
+        >
+          <button
+            onClick={() => setSettingsOpen(false)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 12,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              color: TEXT.secondary,
+            }}
+            aria-label="Back"
+          >
+            <ChevronLeftIcon size={20} />
+          </button>
+          <span style={{ fontSize: 16, fontWeight: fontWeight.semibold, color: TEXT.primary }}>
+            Settings
+          </span>
+        </div>
+
+        {/* Scrollable content */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: `0 ${spacing.lg}px`,
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          }}
+        >
+          {/* Profile & Sync */}
+          <MobileSectionHeader title={loggedIn ? "Profile" : "Account"} />
+          <MobileCard>
+            <ProfileTab
+              isMobile={isMobile}
+              syncState={syncState}
+              lastSynced={lastSynced}
+              storageUsed={storageUsed}
+              storageLimitMB={storageLimitMB}
+              onSync={onSync}
+              noteData={noteData}
+              setActiveNote={setActiveNote}
+              SectionHeader={() => null}
+            />
+          </MobileCard>
+
+          {/* Appearance */}
+          <MobileSectionHeader title="Appearance" />
+          <MobileCard>
+            <AppearanceTab SectionHeader={() => null} />
+          </MobileCard>
+
+          {/* Editor (desktop-only features hidden inside) */}
+          {isDesktop && (
+            <>
+              <MobileSectionHeader title="Editor" />
+              <MobileCard>
+                <EditorTab isDesktop={isDesktop} SectionHeader={() => null} />
+              </MobileCard>
+            </>
+          )}
+
+          {/* AI */}
+          <MobileSectionHeader title="AI" />
+          <MobileCard>
+            <AITab isDesktop={isDesktop} onAIKeyTest={onAIKeyTest} SectionHeader={() => null} />
+          </MobileCard>
+
+          {/* Storage (desktop only) */}
+          {isDesktop && (
+            <>
+              <MobileSectionHeader title="Storage" />
+              <MobileCard>
+                <ExportTab
+                  isDesktop={isDesktop}
+                  notesDir={notesDir}
+                  changeNotesDir={changeNotesDir}
+                  SectionHeader={() => null}
+                />
+              </MobileCard>
+            </>
+          )}
+
+          {/* Footer links */}
+          <div
+            style={{
+              padding: `${spacing.xl}px 0`,
+              borderTop: `1px solid ${theme.overlay(0.06)}`,
+              marginTop: spacing.lg,
+            }}
+          >
+            <a
+              href="https://boojy.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "block",
+                padding: "12px 0",
+                fontSize: 14,
+                color: TEXT.secondary,
+                textDecoration: "none",
+              }}
+            >
+              About Boojy Notes
+            </a>
+          </div>
+
+          {/* N●tes logo + version */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              padding: "8px 0 24px",
+            }}
+          >
+            <BrandingFooter />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ────────────────────────────────────────────────
   return (
     <>
-      {/* Backdrop — desktop only */}
-      {!isMobile && (
-        <div
-          onClick={() => setSettingsOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: Z.SETTINGS,
-            background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-        />
-      )}
+      {/* Backdrop */}
+      <div
+        onClick={() => setSettingsOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: Z.SETTINGS,
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      />
 
       {/* Modal */}
       <div
@@ -181,188 +365,150 @@ export default function SettingsModal({
         aria-modal="true"
         aria-label="Settings"
         onClick={(e) => e.stopPropagation()}
-        style={
-          isMobile
-            ? {
-                position: "fixed",
-                inset: 0,
-                zIndex: Z.SETTINGS_INNER,
-                background: BG.darkest,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }
-            : {
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: Z.SETTINGS_INNER,
-                width: 640,
-                maxHeight: 480,
-                background: theme.modalBg,
-                border: `1px solid ${theme.overlay(0.06)}`,
-                borderRadius: radius.xl,
-                boxShadow: theme.modalShadow,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }
-        }
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: Z.SETTINGS_INNER,
+          width: 640,
+          maxHeight: 480,
+          background: theme.modalBg,
+          border: `1px solid ${theme.overlay(0.06)}`,
+          borderRadius: radius.xl,
+          boxShadow: theme.modalShadow,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
       >
         {/* Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: isMobile ? "flex-start" : "center",
-            padding: isMobile ? `${spacing.md}px ${spacing.lg}px` : spacing.lg,
+            justifyContent: "center",
+            padding: spacing.lg,
             position: "relative",
             borderBottom: `1px solid ${theme.overlay(0.06)}`,
             flexShrink: 0,
-            gap: isMobile ? spacing.md : 0,
           }}
         >
-          {isMobile ? (
-            <button
-              onClick={() => setSettingsOpen(false)}
-              style={{
-                background: "none",
-                border: "none",
-                padding: spacing.sm,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                color: TEXT.secondary,
-                fontSize: fontSize.xxl,
-              }}
-            >
-              {"\u2190"}
-            </button>
-          ) : null}
           <span
             style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.semibold, color: TEXT.primary }}
           >
             Settings
           </span>
-          {!isMobile && (
-            <button
-              onClick={() => setSettingsOpen(false)}
-              style={{
-                position: "absolute",
-                right: spacing.md,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 32,
-                height: 32,
-                borderRadius: radius.md,
-                background: "none",
-                border: "none",
-                color: TEXT.muted,
-                fontSize: fontSize.xl,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
-            >
-              {"\u2715"}
-            </button>
-          )}
+          <button
+            onClick={() => setSettingsOpen(false)}
+            style={{
+              position: "absolute",
+              right: spacing.md,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 32,
+              height: 32,
+              borderRadius: radius.md,
+              background: "none",
+              border: "none",
+              color: TEXT.muted,
+              fontSize: fontSize.xl,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
+          >
+            {"\u2715"}
+          </button>
         </div>
 
-        {/* Body: sidebar + content (desktop) or just content (mobile) */}
+        {/* Body: sidebar + content */}
         <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-          {/* Sidebar — desktop only */}
-          {!isMobile && (
-            <div
-              style={{
-                width: 160,
-                flexShrink: 0,
-                padding: `${spacing.lg}px ${spacing.md}px`,
-                borderRight: `1px solid ${theme.overlay(0.06)}`,
-                display: "flex",
-                flexDirection: "column",
-                gap: spacing.xs,
-              }}
-            >
-              {sidebarItems.map((item) => {
-                const active = settingsTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
+          {/* Sidebar */}
+          <div
+            style={{
+              width: 160,
+              flexShrink: 0,
+              padding: `${spacing.lg}px ${spacing.md}px`,
+              borderRight: `1px solid ${theme.overlay(0.06)}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: spacing.xs,
+            }}
+          >
+            {sidebarItems.map((item) => {
+              const active = settingsTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  style={{
+                    height: 36,
+                    borderRadius: radius.md,
+                    paddingLeft: spacing.md,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: fontSize.lg,
+                    fontWeight: fontWeight.medium,
+                    background: active ? `${ACCENT.primary}1A` : "transparent",
+                    border: "none",
+                    color: active ? ACCENT.primary : TEXT.secondary,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "background 0.15s, color 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = theme.overlay(0.03);
+                      e.currentTarget.style.color = TEXT.primary;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = TEXT.secondary;
+                    }
+                  }}
+                >
+                  <span
                     style={{
-                      height: 36,
-                      borderRadius: radius.md,
-                      paddingLeft: spacing.md,
+                      width: 20,
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
-                      fontSize: fontSize.lg,
-                      fontWeight: fontWeight.medium,
-                      background: active ? `${ACCENT.primary}1A` : "transparent",
-                      border: "none",
-                      color: active ? ACCENT.primary : TEXT.secondary,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      transition: "background 0.15s, color 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.background = theme.overlay(0.03);
-                        e.currentTarget.style.color = TEXT.primary;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = TEXT.secondary;
-                      }
+                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    <span
-                      style={{
-                        width: 20,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <SidebarIcon type={item.id} color={active ? ACCENT.primary : TEXT.muted} />
-                    </span>
-                    {item.label}
-                  </button>
-                );
-              })}
-              {/* Spacer */}
-              <div style={{ flex: 1 }} />
-              {/* Sidebar footer — branding */}
-              <BrandingFooter />
-            </div>
-          )}
+                    <SidebarIcon type={item.id} color={active ? ACCENT.primary : TEXT.muted} />
+                  </span>
+                  {item.label}
+                </button>
+              );
+            })}
+            <div style={{ flex: 1 }} />
+            <BrandingFooter />
+          </div>
 
           {/* Content area */}
           <div
             ref={contentRef}
-            onScroll={isMobile ? undefined : handleScroll}
+            onScroll={handleScroll}
             style={{
               flex: 1,
-              padding: isMobile ? `${spacing.lg}px ${spacing.xl}px` : spacing.xxl,
+              padding: spacing.xxl,
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
-              ...(isMobile ? { WebkitOverflowScrolling: "touch" } : {}),
             }}
           >
-            {/* --- Profile & Sync --- */}
             <div ref={(el) => (sectionRefs.current.profile = el)}>
               <ProfileTab
-                isMobile={isMobile}
+                isMobile={false}
                 syncState={syncState}
                 lastSynced={lastSynced}
                 storageUsed={storageUsed}
@@ -373,8 +519,6 @@ export default function SettingsModal({
                 SectionHeader={SectionHeader}
               />
             </div>
-
-            {/* --- Notes folder (desktop only) --- */}
             <div ref={(el) => (sectionRefs.current.storage = el)}>
               <ExportTab
                 isDesktop={isDesktop}
@@ -383,18 +527,12 @@ export default function SettingsModal({
                 SectionHeader={SectionHeader}
               />
             </div>
-
-            {/* --- Appearance --- */}
             <div ref={(el) => (sectionRefs.current.appearance = el)}>
               <AppearanceTab SectionHeader={SectionHeader} />
             </div>
-
-            {/* --- Editor & Updates --- */}
             <div ref={(el) => (sectionRefs.current.updates = el)}>
               <EditorTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
             </div>
-
-            {/* ─── AI ─── */}
             <div ref={(el) => (sectionRefs.current.ai = el)}>
               <AITab
                 isDesktop={isDesktop}
@@ -402,9 +540,7 @@ export default function SettingsModal({
                 SectionHeader={SectionHeader}
               />
             </div>
-
-            {/* Content footer */}
-            <ContentFooter isMobile={isMobile} />
+            <ContentFooter isMobile={false} />
           </div>
         </div>
       </div>

@@ -381,6 +381,7 @@ const EditorArea = memo(
           overflowY: "auto",
           background: editorBg,
           position: "relative",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {theme.starField && <StarField mode="editor" seed={activeNote || "__empty__"} />}

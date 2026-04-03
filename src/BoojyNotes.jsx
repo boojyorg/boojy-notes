@@ -46,6 +46,10 @@ import PaneContainer from "./components/PaneContainer";
 import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
 const TerminalPanel = React.lazy(() => import("./components/terminal/TerminalPanel"));
+import FloatingActionButton from "./components/mobile/FloatingActionButton";
+import MobileToolbar from "./components/mobile/MobileToolbar";
+import EditorMoreMenu from "./components/mobile/EditorMoreMenu";
+import { useKeyboard } from "./hooks/useKeyboard";
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import TitleBar from "./components/TitleBar";
@@ -56,14 +60,26 @@ import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
-import { isElectron, isNative, isWeb } from "./utils/platform";
+import { isElectron, isNative, isWeb, isCapacitor } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 const DevOverlay = import.meta.env.DEV ? React.lazy(() => import("./components/DevOverlay")) : null;
+
+const EMPTY_FORMATS = {
+  bold: false,
+  italic: false,
+  code: false,
+  link: false,
+  strikethrough: false,
+  highlight: false,
+};
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
   const { toasts, showToast, dismissToast } = useToast();
+  const isMobile = useIsMobile();
+  const mobileKeyboard = useKeyboard();
 
   // ── Contexts ───────────────────────────────────────────────────────
   const { noteData } = useNoteData();
@@ -228,6 +244,7 @@ export default function BoojyNotes() {
 
   const [, forceRender] = useState(0);
   const [toolbarState, setToolbarState] = useState(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // ── Onboarding & persistence warning toasts (web only) ────────────
   const [onboardingToast, setOnboardingToast] = useState(false);
@@ -669,6 +686,16 @@ export default function BoojyNotes() {
     };
     loadMeta();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync Capacitor status bar style with theme
+  useEffect(() => {
+    if (!isCapacitor) return;
+    import("@capacitor/status-bar")
+      .then(({ StatusBar, Style }) => {
+        StatusBar.setStyle({ style: theme.starField ? Style.Dark : Style.Light });
+      })
+      .catch(() => {});
+  }, [theme.starField]);
 
   // Selection change → floating toolbar (only in single-pane mode)
   useEffect(() => {
@@ -1144,6 +1171,7 @@ export default function BoojyNotes() {
 
       {isDesktop && <TitleBar activeNote={activeNote} noteData={noteData} chromeBg={chromeBg} />}
       <TopBar
+        isMobile={isMobile}
         tabs={tabs}
         activeNote={activeNote}
         noteData={noteData}
@@ -1154,6 +1182,9 @@ export default function BoojyNotes() {
         syncState={syncState}
         syncDotStyle={syncDotStyle}
         note={note}
+        noteTitle={noteTitle}
+        createNote={createNote}
+        onMorePress={() => setMoreMenuOpen(true)}
         wordCount={wordCount}
         charCount={charCount}
         charCountNoSpaces={charCountNoSpaces}
@@ -1175,16 +1206,28 @@ export default function BoojyNotes() {
       <div id="main-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Sidebar wrapper */}
         <div
-          style={{
-            width: collapsed ? 0 : sidebarWidth,
-            minWidth: collapsed ? 0 : sidebarWidth,
-            background: chromeBg,
-            display: "flex",
-            flexShrink: 0,
-            overflow: "hidden",
-            position: "relative",
-            transition: "width 0.2s ease, min-width 0.2s ease",
-          }}
+          style={
+            isMobile
+              ? {
+                  width: activeNote ? 0 : "100%",
+                  minWidth: activeNote ? 0 : "100%",
+                  background: chromeBg,
+                  display: "flex",
+                  flexShrink: 0,
+                  overflow: "hidden",
+                  position: "relative",
+                }
+              : {
+                  width: collapsed ? 0 : sidebarWidth,
+                  minWidth: collapsed ? 0 : sidebarWidth,
+                  background: chromeBg,
+                  display: "flex",
+                  flexShrink: 0,
+                  overflow: "hidden",
+                  position: "relative",
+                  transition: "width 0.2s ease, min-width 0.2s ease",
+                }
+          }
         >
           <Sidebar
             activeNote={activeNote}
@@ -1201,30 +1244,40 @@ export default function BoojyNotes() {
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
           />
+          {isMobile && !activeNote && (
+            <FloatingActionButton
+              onNewNote={() => createNote(null)}
+              onNewFolder={() => createFolder()}
+            />
+          )}
         </div>
 
-        {/* Sidebar drag handle */}
-        <div
-          ref={(el) => {
-            if (el) sidebarHandles.current[1] = el;
-          }}
-          onMouseDown={startDrag}
-          style={{
-            width: 4,
-            cursor: "col-resize",
-            background: chromeBg,
-            borderRight: `1px solid ${theme.BG.divider}`,
-            flexShrink: 0,
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={() =>
-            sidebarHandles.current.forEach((h) => h && (h.style.background = theme.ACCENT.primary))
-          }
-          onMouseLeave={() => {
-            if (!isDragging.current)
-              sidebarHandles.current.forEach((h) => h && (h.style.background = chromeBg));
-          }}
-        />
+        {/* Sidebar drag handle — desktop only */}
+        {!isMobile && (
+          <div
+            ref={(el) => {
+              if (el) sidebarHandles.current[1] = el;
+            }}
+            onMouseDown={startDrag}
+            style={{
+              width: 4,
+              cursor: "col-resize",
+              background: chromeBg,
+              borderRight: `1px solid ${theme.BG.divider}`,
+              flexShrink: 0,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={() =>
+              sidebarHandles.current.forEach(
+                (h) => h && (h.style.background = theme.ACCENT.primary),
+              )
+            }
+            onMouseLeave={() => {
+              if (!isDragging.current)
+                sidebarHandles.current.forEach((h) => h && (h.style.background = chromeBg));
+            }}
+          />
+        )}
 
         {/* Editor area — single pane or split */}
         {splitState.splitMode ? (
@@ -1331,132 +1384,178 @@ export default function BoojyNotes() {
             })()}
           </div>
         ) : (
-          <EditorProvider
-            value={{
-              editorRef,
-              editorScrollRef,
-              titleRef,
-              blockRefs,
-              noteDataRef,
-              focusBlockId,
-              focusCursorPos,
-              forceRender,
-              handleEditorKeyDown,
-              handleEditorInput,
-              handleEditorPaste,
-              handleEditorCopy,
-              handleEditorPointerDown,
-              handleEditorMouseDown,
-              handleEditorMouseUp,
-              handleEditorFocus,
-              handleEditorDragOver,
-              handleEditorDragLeave,
-              handleEditorDrop,
-              commitTextChange,
-              syncGeneration,
-              flipCheck,
-              deleteBlock,
-              registerBlockRef,
-              insertBlockAfter,
-              updateCodeText,
-              updateCodeLang,
-              updateCallout,
-              updateTableRows,
-              updateBlockProperty,
-              detectActiveFormats,
-              applyFormat,
-              reReadBlockFromDom,
-            }}
-          >
-            <EditorArea
-              onEditorClick={clearSelection}
-              textOnlyEditForEditor={textOnlyEditForEditor}
-              note={note}
-              activeNote={activeNote}
-              editorFadeIn={editorFadeIn}
-              backlinks={currentBacklinks}
-              onWikilinkClick={handleWikilinkClick}
-              onWikilinkCmdClick={handleWikilinkCmdClick}
-              onOpenBacklink={openNote}
-              toolbarState={toolbarState}
-              noteTitleSet={noteTitleSet}
-              linkPopover={linkPopover}
-              setLinkPopover={setLinkPopover}
-              selectedImageBlockId={selectedImageBlockId}
-              setSelectedImageBlockId={setSelectedImageBlockId}
-              lightbox={lightbox}
-              setLightbox={setLightbox}
-              openNote={openNote}
-            />
-          </EditorProvider>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <EditorProvider
+              value={{
+                editorRef,
+                editorScrollRef,
+                titleRef,
+                blockRefs,
+                noteDataRef,
+                focusBlockId,
+                focusCursorPos,
+                forceRender,
+                handleEditorKeyDown,
+                handleEditorInput,
+                handleEditorPaste,
+                handleEditorCopy,
+                handleEditorPointerDown,
+                handleEditorMouseDown,
+                handleEditorMouseUp,
+                handleEditorFocus,
+                handleEditorDragOver,
+                handleEditorDragLeave,
+                handleEditorDrop,
+                commitTextChange,
+                syncGeneration,
+                flipCheck,
+                deleteBlock,
+                registerBlockRef,
+                insertBlockAfter,
+                updateCodeText,
+                updateCodeLang,
+                updateCallout,
+                updateTableRows,
+                updateBlockProperty,
+                detectActiveFormats,
+                applyFormat,
+                reReadBlockFromDom,
+              }}
+            >
+              <EditorArea
+                isMobile={isMobile}
+                onEditorClick={clearSelection}
+                textOnlyEditForEditor={textOnlyEditForEditor}
+                note={note}
+                activeNote={activeNote}
+                editorFadeIn={editorFadeIn}
+                backlinks={currentBacklinks}
+                onWikilinkClick={handleWikilinkClick}
+                onWikilinkCmdClick={handleWikilinkCmdClick}
+                onOpenBacklink={openNote}
+                toolbarState={isMobile ? null : toolbarState}
+                noteTitleSet={noteTitleSet}
+                linkPopover={linkPopover}
+                setLinkPopover={setLinkPopover}
+                selectedImageBlockId={selectedImageBlockId}
+                setSelectedImageBlockId={setSelectedImageBlockId}
+                lightbox={lightbox}
+                setLightbox={setLightbox}
+                openNote={openNote}
+              />
+              {isMobile && (
+                <MobileToolbar
+                  isVisible={mobileKeyboard.isKeyboardVisible}
+                  activeNote={activeNote}
+                  note={note}
+                  activeFormats={toolbarState ? detectActiveFormats() : EMPTY_FORMATS}
+                  onDismiss={() => {
+                    document.activeElement?.blur();
+                  }}
+                  onImageInsert={() => {
+                    const api = getAPI();
+                    if (api?.pickImageFile) {
+                      api.pickImageFile().then((file) => {
+                        if (file) saveAndInsertImage(activeNote, note, file);
+                      });
+                    }
+                  }}
+                />
+              )}
+            </EditorProvider>
+          </div>
         )}
 
-        {/* Right panel drag handle */}
-        <div
-          ref={(el) => {
-            if (el) rightPanelHandles.current[1] = el;
-          }}
-          onMouseDown={startRightDrag}
-          style={{
-            width: 4,
-            cursor: "col-resize",
-            background: theme.BG.editor,
-            flexShrink: 0,
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={() =>
-            rightPanelHandles.current.forEach(
-              (h) => h && (h.style.background = theme.ACCENT.primary),
-            )
-          }
-          onMouseLeave={() => {
-            if (!isDragging.current) {
-              rightPanelHandles.current[0] &&
-                (rightPanelHandles.current[0].style.background = chromeBg);
-              rightPanelHandles.current[1] &&
-                (rightPanelHandles.current[1].style.background = theme.BG.editor);
+        {/* Right panel drag handle — desktop only */}
+        {!isMobile && (
+          <div
+            ref={(el) => {
+              if (el) rightPanelHandles.current[1] = el;
+            }}
+            onMouseDown={startRightDrag}
+            style={{
+              width: 4,
+              cursor: "col-resize",
+              background: theme.BG.editor,
+              flexShrink: 0,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={() =>
+              rightPanelHandles.current.forEach(
+                (h) => h && (h.style.background = theme.ACCENT.primary),
+              )
             }
-          }}
-        />
+            onMouseLeave={() => {
+              if (!isDragging.current) {
+                rightPanelHandles.current[0] &&
+                  (rightPanelHandles.current[0].style.background = chromeBg);
+                rightPanelHandles.current[1] &&
+                  (rightPanelHandles.current[1].style.background = theme.BG.editor);
+              }
+            }}
+          />
+        )}
 
-        {/* Right panel */}
-        <div
-          style={{
-            width: rightPanel ? rightPanelWidth : 0,
-            minWidth: rightPanel ? rightPanelWidth : 0,
-            background: theme.BG.editor,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            flexShrink: 0,
-            position: "relative",
-            borderLeft: `1px solid ${theme.BG.divider}`,
-            transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
-          }}
-        >
-          <React.Suspense fallback={null}>
-            <TerminalPanel
-              terminals={terminals}
-              activeTerminalId={activeTerminalId}
-              setActiveTerminalId={setActiveTerminalId}
-              xtermInstances={xtermInstances}
-              createTerminal={createTerminal}
-              createAITab={createAITab}
-              closeTerminal={closeTerminal}
-              renameTerminal={renameTerminal}
-              restartTerminal={restartTerminal}
-              clearTerminal={clearTerminal}
-              markExited={markExited}
-              isOpen={rightPanel}
-              onAIModelChange={handleAIModelChange}
-              onOpenAISettings={handleOpenAISettings}
-              noteContext={activeNoteContext}
-              sendContext={aiSettings.sendContext}
-              onToggleContext={handleToggleAIContext}
-            />
-          </React.Suspense>
-        </div>
+        {/* Right panel — desktop only */}
+        {!isMobile && (
+          <div
+            style={{
+              width: rightPanel ? rightPanelWidth : 0,
+              minWidth: rightPanel ? rightPanelWidth : 0,
+              background: theme.BG.editor,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              flexShrink: 0,
+              position: "relative",
+              borderLeft: `1px solid ${theme.BG.divider}`,
+              transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
+            }}
+          >
+            <React.Suspense fallback={null}>
+              <TerminalPanel
+                terminals={terminals}
+                activeTerminalId={activeTerminalId}
+                setActiveTerminalId={setActiveTerminalId}
+                xtermInstances={xtermInstances}
+                createTerminal={createTerminal}
+                createAITab={createAITab}
+                closeTerminal={closeTerminal}
+                renameTerminal={renameTerminal}
+                restartTerminal={restartTerminal}
+                clearTerminal={clearTerminal}
+                markExited={markExited}
+                isOpen={rightPanel}
+                onAIModelChange={handleAIModelChange}
+                onOpenAISettings={handleOpenAISettings}
+                noteContext={activeNoteContext}
+                sendContext={aiSettings.sendContext}
+                onToggleContext={handleToggleAIContext}
+              />
+            </React.Suspense>
+          </div>
+        )}
       </div>
+
+      {/* === Mobile More Menu === */}
+      {isMobile && (
+        <EditorMoreMenu
+          open={moreMenuOpen}
+          onClose={() => setMoreMenuOpen(false)}
+          activeNote={activeNote}
+          noteTitle={noteTitle}
+          noteData={noteData}
+          wordCount={wordCount}
+          charCount={charCount}
+          onDuplicate={duplicateNote}
+          onDelete={(id) => {
+            deleteNote(id);
+            setActiveNote(null);
+          }}
+          onMoveToFolder={(id, folder) => bulkMoveNotes([id], folder)}
+          folderList={folderList}
+        />
+      )}
 
       {/* === Overlays === */}
       <ContextMenu
@@ -1555,6 +1654,7 @@ export default function BoojyNotes() {
 
       <React.Suspense fallback={null}>
         <SettingsModal
+          isMobile={isMobile}
           syncState={syncState}
           lastSynced={lastSynced}
           storageUsed={storageUsed}
