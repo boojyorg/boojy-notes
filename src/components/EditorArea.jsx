@@ -28,6 +28,7 @@ const EMPTY_FORMATS = {
 
 const EditorArea = memo(
   function EditorArea({
+    isMobile,
     textOnlyEditForEditor,
     note,
     activeNote,
@@ -389,9 +390,9 @@ const EditorArea = memo(
           <div
             key={activeNote}
             style={{
-              padding: "12px 56px 80px 56px",
-              maxWidth: collapsed ? 840 : 720,
-              marginLeft: 40,
+              padding: isMobile ? "12px 20px 80px 20px" : "12px 56px 80px 56px",
+              maxWidth: isMobile ? "100%" : collapsed ? 840 : 720,
+              marginLeft: isMobile ? 0 : 40,
               marginRight: "auto",
               width: "100%",
               opacity: editorFadeIn ? 1 : 0,

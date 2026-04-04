@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+- **Mobile UI overhaul** — Larger N●tes logo (30px), settings gear icon in top bar, full-width search bar (40px tall), 48px row heights with 16px font for comfortable tap targets, accent-colored "+" on create buttons, safe area padding for trash section, and equal left/right editor margins (20px) replacing the asymmetric desktop layout
+
+### Bug Fixes
+- **Mobile back button bounces forward** — Pressing the back arrow in the mobile editor briefly showed the notes list then immediately re-opened the editor. Caused by the desktop draft-note auto-creation effect firing on mobile when `activeNote` became null. Fixed by skipping draft creation on mobile.
+
 ## v0.1.9 (2026-03-25)
 
 ### Bug Fixes

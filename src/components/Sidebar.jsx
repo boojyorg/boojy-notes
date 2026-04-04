@@ -24,6 +24,7 @@ const Sidebar = memo(function Sidebar({
   selectedNotes,
   handleNoteClick,
   clearSelection,
+  isMobile,
 }) {
   const { sidebarWidth, accentColor, selectionStyle } = useLayout();
   const { theme } = useTheme();
@@ -70,6 +71,9 @@ const Sidebar = memo(function Sidebar({
     if (!n || n._draft) return null;
     const act = activeNote === nId;
     const sel = selectedNotes?.has(nId);
+    const mobVPad = isMobile ? 12 : 4;
+    const mobFont = isMobile ? 16 : 14;
+    const mobGap = isMobile ? 8 : 5;
     return (
       <button
         key={nId}
@@ -109,15 +113,12 @@ const Sidebar = memo(function Sidebar({
                     : "3px solid transparent",
               }
             : {}),
-          padding:
-            selectionStyle === "B"
-              ? `4px 10px 4px ${7 + depth * 20 + 19}px`
-              : `4px 10px 4px ${7 + depth * 20 + 19}px`,
+          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19}px`,
           display: "flex",
           alignItems: "center",
-          gap: 5,
+          gap: mobGap,
           color: act || sel ? TEXT.primary : TEXT.secondary,
-          fontSize: 14,
+          fontSize: mobFont,
           fontFamily: "inherit",
           fontWeight: act ? 600 : 400,
           transition: "background 0.12s",
@@ -135,7 +136,7 @@ const Sidebar = memo(function Sidebar({
             hBg(e.currentTarget, `${accentColor}${selectionStyle === "B" ? "18" : "0A"}`);
         }}
       >
-        <FileIcon active={act || sel} />
+        <FileIcon active={act || sel} size={isMobile ? 18 : undefined} />
         <span
           style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
         >
@@ -166,13 +167,13 @@ const Sidebar = memo(function Sidebar({
             background: "none",
             border: "none",
             cursor: "pointer",
-            padding: `4px 10px 4px ${10 + depth * 20}px`,
+            padding: `${isMobile ? 12 : 4}px ${isMobile ? 16 : 10}px ${isMobile ? 12 : 4}px ${10 + depth * 20}px`,
             display: "flex",
             alignItems: "center",
-            gap: 5,
+            gap: isMobile ? 8 : 5,
             color: TEXT.secondary,
-            fontSize: 14,
-            fontWeight: 400,
+            fontSize: isMobile ? 16 : 14,
+            fontWeight: 500,
             fontFamily: "inherit",
             transition: "background 0.12s, color 0.12s",
             textAlign: "left",
@@ -195,7 +196,7 @@ const Sidebar = memo(function Sidebar({
           ) : (
             <span style={{ width: 14, flexShrink: 0 }} />
           )}
-          <FolderIcon open={isOpen} color={accentColor} />
+          <FolderIcon open={isOpen} color={accentColor} size={isMobile ? 18 : undefined} />
           {renamingFolder === folderPath ? (
             <input
               autoFocus
@@ -277,7 +278,7 @@ const Sidebar = memo(function Sidebar({
       }}
     >
       {/* Search */}
-      <div style={{ padding: "8px 10px" }}>
+      <div style={{ padding: isMobile ? "8px 16px" : "8px 10px" }}>
         <div
           onClick={() => {
             if (!searchFocused && !search) {
@@ -290,10 +291,10 @@ const Sidebar = memo(function Sidebar({
             alignItems: "center",
             gap: 8,
             background: theme.searchInputBg,
-            borderRadius: 14,
-            height: 28,
-            width: searchFocused || search ? sidebarWidth - 20 : 95,
-            padding: "0 10px",
+            borderRadius: isMobile ? 10 : 14,
+            height: isMobile ? 40 : 28,
+            width: isMobile || searchFocused || search ? "100%" : 95,
+            padding: isMobile ? "0 12px" : "0 10px",
             border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
             transition: "width 0.2s ease, border-color 0.2s ease",
             cursor: searchFocused || search ? "text" : "pointer",
@@ -301,11 +302,11 @@ const Sidebar = memo(function Sidebar({
           }}
         >
           <SearchIcon />
-          {searchFocused || search ? (
+          {isMobile || searchFocused || search ? (
             <input
               ref={searchInputRef}
               type="text"
-              autoFocus
+              autoFocus={!isMobile}
               aria-label="Search notes"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -334,10 +335,11 @@ const Sidebar = memo(function Sidebar({
                 border: "none",
                 outline: "none",
                 color: TEXT.primary,
-                fontSize: 13,
+                fontSize: isMobile ? 14 : 13,
                 width: "100%",
                 fontFamily: "inherit",
               }}
+              placeholder={isMobile ? "Search..." : undefined}
             />
           ) : (
             <span style={{ color: TEXT.muted, fontSize: 13, fontWeight: 500, userSelect: "none" }}>
@@ -639,12 +641,12 @@ const Sidebar = memo(function Sidebar({
                   border: "none",
                   cursor: "pointer",
                   background: "transparent",
-                  padding: `4px 10px 4px 10px`,
+                  padding: isMobile ? "12px 16px 12px 10px" : `4px 10px 4px 10px`,
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
+                  gap: isMobile ? 8 : 5,
                   color: TEXT.secondary,
-                  fontSize: 14,
+                  fontSize: isMobile ? 16 : 14,
                   fontFamily: "inherit",
                   fontWeight: 500,
                   opacity: 0.55,
@@ -663,7 +665,9 @@ const Sidebar = memo(function Sidebar({
                 }}
               >
                 <span style={{ width: 14, flexShrink: 0 }} />
-                <span style={{ width: 17, flexShrink: 0, textAlign: "center" }}>+</span>
+                <span style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}>
+                  +
+                </span>
                 <span>New Folder</span>
               </button>
             )}
@@ -678,12 +682,12 @@ const Sidebar = memo(function Sidebar({
                   cursor: "pointer",
                   background: "transparent",
                   borderLeft: "3px solid transparent",
-                  padding: `4px 10px 4px ${7 + 19}px`,
+                  padding: isMobile ? `12px 16px 12px ${7 + 19}px` : `4px 10px 4px ${7 + 19}px`,
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
+                  gap: isMobile ? 8 : 5,
                   color: TEXT.secondary,
-                  fontSize: 14,
+                  fontSize: isMobile ? 16 : 14,
                   fontFamily: "inherit",
                   fontWeight: 500,
                   opacity: 0.55,
@@ -701,7 +705,9 @@ const Sidebar = memo(function Sidebar({
                   e.currentTarget.style.opacity = "0.55";
                 }}
               >
-                <span style={{ width: 17, flexShrink: 0, textAlign: "center" }}>+</span>
+                <span style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}>
+                  +
+                </span>
                 <span>New Note</span>
               </button>
             )}
@@ -709,7 +715,13 @@ const Sidebar = memo(function Sidebar({
 
           {/* Trash Section */}
           {!search && (
-            <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "4px 0" }}>
+            <div
+              style={{
+                borderTop: `1px solid ${BG.divider}`,
+                padding: "4px 0",
+                paddingBottom: isMobile ? "env(safe-area-inset-bottom, 0px)" : undefined,
+              }}
+            >
               <button
                 onClick={() => setTrashExpanded((prev) => !prev)}
                 style={{
@@ -717,12 +729,12 @@ const Sidebar = memo(function Sidebar({
                   border: "none",
                   cursor: "pointer",
                   background: "transparent",
-                  padding: "4px 10px",
+                  padding: isMobile ? "12px 16px" : "4px 10px",
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
+                  gap: isMobile ? 8 : 5,
                   color: TEXT.secondary,
-                  fontSize: 14,
+                  fontSize: isMobile ? 16 : 14,
                   fontWeight: 400,
                   fontFamily: "inherit",
                   transition: "background 0.12s, color 0.12s",

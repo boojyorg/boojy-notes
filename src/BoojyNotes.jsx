@@ -816,8 +816,9 @@ export default function BoojyNotes() {
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote) return;
+    if (isMobile) return; // On mobile, null activeNote = show sidebar
     createDraftNote();
-  }, [activeNote, fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote, fsLoading, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!activeNote) return;
@@ -1243,6 +1244,7 @@ export default function BoojyNotes() {
             selectedNotes={selectedNotes}
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
+            isMobile={isMobile}
           />
           {isMobile && !activeNote && (
             <FloatingActionButton

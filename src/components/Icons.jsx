@@ -205,3 +205,14 @@ export const TrashIcon = () => (
     />
   </svg>
 );
+export const SettingsIcon = ({ size = 16.5 }) => (
+  <Icon size={size}>
+    <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2" />
+    <path
+      d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.05 3.05L4.1 4.1M11.9 11.9L12.95 12.95M12.95 3.05L11.9 4.1M4.1 11.9L3.05 12.95"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+  </Icon>
+);

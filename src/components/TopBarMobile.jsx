@@ -2,7 +2,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { Z } from "../constants/zIndex";
-import { ChevronLeftIcon, MoreHorizontalIcon } from "./Icons";
+import { ChevronLeftIcon, MoreHorizontalIcon, SettingsIcon } from "./Icons";
 import boojyN from "/assets/boojy-notes-text-N.png";
 import boojyTes from "/assets/boojy-notes.text-tes.png";
 
@@ -38,9 +38,14 @@ export default function TopBarMobile({
       style={{
         minHeight: 48,
         background: chromeBg,
-        boxShadow: topBarEdge === "A" || topBarEdge === "B" ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
+        boxShadow:
+          isEditing && (topBarEdge === "A" || topBarEdge === "B")
+            ? "0 2px 8px rgba(0,0,0,0.3)"
+            : "none",
         borderBottom:
-          topBarEdge === "A" || topBarEdge === "C" ? `1px solid ${BG.divider}25` : "none",
+          isEditing && (topBarEdge === "A" || topBarEdge === "C")
+            ? `1px solid ${BG.divider}25`
+            : "none",
         display: "flex",
         alignItems: "center",
         flexShrink: 0,
@@ -79,7 +84,7 @@ export default function TopBarMobile({
           </button>
         </>
       ) : (
-        /* ── Notes list mode: N●tes logo (tap → settings) ── */
+        /* ── Notes list mode: N●tes logo + ⚙ gear ── */
         <>
           <button
             data-testid="settings-button"
@@ -91,19 +96,19 @@ export default function TopBarMobile({
               background: "none",
               border: "none",
               cursor: "pointer",
-              padding: "4px 12px",
+              padding: "4px 16px",
               display: "flex",
               alignItems: "center",
-              gap: 3,
+              gap: 4,
               flexShrink: 0,
             }}
             title={`Settings · Sync: ${syncState}`}
           >
-            <img src={boojyN} alt="" style={{ height: 22 }} draggable="false" />
+            <img src={boojyN} alt="" style={{ height: 30 }} draggable="false" />
             <div
               style={{
-                width: 14,
-                height: 14,
+                width: 18,
+                height: 18,
                 borderRadius: "50%",
                 background:
                   syncState === "conflict"
@@ -116,11 +121,30 @@ export default function TopBarMobile({
                 flexShrink: 0,
               }}
             />
-            <img src={boojyTes} alt="" style={{ height: 20 }} draggable="false" />
+            <img src={boojyTes} alt="" style={{ height: 30 }} draggable="false" />
           </button>
 
-          {/* Spacer to push logo left */}
           <div style={{ flex: 1 }} />
+
+          <button
+            onClick={() => {
+              setSettingsOpen(true);
+              setSettingsTab("profile");
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 16px",
+              display: "flex",
+              alignItems: "center",
+              color: TEXT.muted,
+              flexShrink: 0,
+            }}
+            aria-label="Settings"
+          >
+            <SettingsIcon size={20} />
+          </button>
         </>
       )}
     </div>
