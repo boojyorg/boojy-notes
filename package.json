@@ -52,7 +52,7 @@
     "chokidar": "^5.0.0",
     "docx": "^9.6.0",
     "electron-updater": "^6.8.3",
-    "lucide-react": "^0.576.0",
+    "lucide-react": "^0.577.0",
     "node-pty": "^1.1.0",
     "prismjs": "^1.30.0",
     "react": "^19.1.0",
