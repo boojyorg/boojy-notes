@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 (2026-04-05)
 
 ### Improvements
 - **Mobile UI overhaul** — Larger N●tes logo (30px), settings gear icon in top bar, full-width search bar (40px tall), 48px row heights with 16px font for comfortable tap targets, accent-colored "+" on create buttons, safe area padding for trash section, and equal left/right editor margins (20px) replacing the asymmetric desktop layout
