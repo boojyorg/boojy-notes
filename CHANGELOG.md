@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Features
+- **Share format picker** — Mobile share menu now offers Plain Text, Markdown, and Copy to Clipboard options instead of sharing raw block text
+- **Onboarding hints** — 5 contextual tooltip hints for new users (slash commands, wikilinks, tags, swipe navigation, split view) that auto-dismiss after 8 seconds and never repeat
+- **Backlinks context** — Backlinks panel now shows the block text containing the wikilink with the link highlighted in accent color, instead of the first 100 characters of the source note
+
+### Improvements
+- **Themed syntax highlighting** — Prism.js code syntax colors now adapt to Night/Day themes instead of being hardcoded for dark mode only
+- **Themed callout colours** — Callout icon and title colors now follow the active theme, with proper light-mode variants for all 11 callout types
+- **Themed toast colours** — Error, warning, and info toasts now use theme semantic colors instead of hardcoded values
+- **Empty search state** — Search with no results now shows "No results for [query]" with a hint to try #tags, replacing the generic "No notes found"
+- **Desktop empty editor** — When no note is selected, shows guidance text over the star field: "Select a note from the sidebar / or press Cmd+N to create one"
+- **Sync status label** — "Syncing..." text appears next to the sync dot during active sync on both desktop and mobile
+- **First sync spinner** — FirstSyncModal shows a spinner animation while sync is in progress
+- **Disabled button consistency** — Disabled toolbar buttons now use `cursor: not-allowed` and `pointer-events: none`
+- **Hardcoded colors cleanup** — Replaced ~15 hardcoded hex colors across EditorMoreMenu, ConflictToast, TerminalTabBar, TableBlock, TopBarMobile, and GlobalStyles with theme tokens
+
+### Bug Fixes
+- **Silent error swallowing** — Added `console.error` logging to 15+ catch blocks across main.jsx, BoojyNotes, useTerminal, and nativeAPI that previously swallowed errors silently
+- **Perf instrumentation in production** — 6 `[perf]` console.warn calls now gated behind `import.meta.env.DEV` so they don't appear in production builds
+- **Share error feedback** — Mobile share failures now show toast messages instead of silently failing
+
 ## v0.2.0 (2026-04-05)
 
 ### Improvements

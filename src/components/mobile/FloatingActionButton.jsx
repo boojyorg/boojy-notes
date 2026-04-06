@@ -54,7 +54,7 @@ export default function FloatingActionButton({ onNewNote, onNewFolder }) {
     <div
       style={{
         position: "fixed",
-        bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(52px + env(safe-area-inset-bottom, 0px))",
         right: 16,
         zIndex: Z.FAB,
       }}
@@ -100,8 +100,8 @@ export default function FloatingActionButton({ onNewNote, onNewFolder }) {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         style={{
-          width: 56,
-          height: 56,
+          width: 48,
+          height: 48,
           borderRadius: "50%",
           background: theme.ACCENT.primary,
           border: "none",
@@ -115,7 +115,7 @@ export default function FloatingActionButton({ onNewNote, onNewFolder }) {
         }}
         aria-label="New note"
       >
-        <PlusIcon size={24} />
+        <PlusIcon size={22} />
       </button>
     </div>
   );

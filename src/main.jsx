@@ -51,7 +51,9 @@ createRoot(document.getElementById("root")).render(
 
 // Register service worker for PWA (web only, not Electron or Capacitor)
 if (isWeb && "serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  navigator.serviceWorker
+    .register("/sw.js")
+    .catch((e) => console.error("[sw] Registration failed:", e));
 }
 
 // Configure Capacitor native UI
@@ -66,7 +68,7 @@ if (isCapacitor) {
       StatusBar.setOverlaysWebView({ overlay: true });
       StatusBar.setStyle({ style: Style.Dark });
     })
-    .catch(() => {});
+    .catch((e) => console.error("[statusbar]:", e));
 
   // Handle Android hardware back button
   import("@capacitor/app").then(({ App }) => {

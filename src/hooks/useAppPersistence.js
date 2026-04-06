@@ -51,7 +51,7 @@ export function useAppPersistence({
         });
       }
       const dt = performance.now() - t0;
-      if (dt > 5)
+      if (import.meta.env.DEV && dt > 5)
         console.warn(
           `[perf] localStorage.setItem: ${dt.toFixed(1)}ms (${Object.keys(noteData).length} notes)`,
         );
@@ -70,7 +70,8 @@ export function useAppPersistence({
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(beforeunloadDataRef.current));
       } catch {}
-      console.warn(`[perf] beforeunload flush: ${(performance.now() - t0).toFixed(1)}ms`);
+      if (import.meta.env.DEV)
+        console.warn(`[perf] beforeunload flush: ${(performance.now() - t0).toFixed(1)}ms`);
     };
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);

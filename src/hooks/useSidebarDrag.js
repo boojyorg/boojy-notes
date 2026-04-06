@@ -64,6 +64,11 @@ export function useSidebarDrag({
     sd.type = type;
     sd.id = id;
 
+    // Prevent browser scroll during touch drag
+    const treeEl = el.closest("[role='tree']");
+    if (treeEl) treeEl.style.touchAction = "none";
+    sd._scrollEl = treeEl;
+
     // Determine dragged IDs for multi-drag
     const sel = selectedNotesRef?.current;
     const clearSel = clearSelectionRef?.current;
@@ -592,6 +597,10 @@ export function useSidebarDrag({
         .querySelectorAll("[data-folder-path]")
         .forEach((el) => (el.style.background = "none"));
     }
+    if (sd._scrollEl) {
+      sd._scrollEl.style.touchAction = "";
+      sd._scrollEl = null;
+    }
     document.body.classList.remove("block-dragging");
     sd.active = false;
     sd.type = null;
@@ -641,6 +650,9 @@ export function useSidebarDrag({
     const noteEl = e.target.closest("[data-note-id]");
     const folderEl = e.target.closest("[data-folder-path]");
     if (!noteEl && !folderEl) return;
+
+    // Prevent browser scroll takeover on touch devices
+    if (e.pointerType === "touch") e.preventDefault();
 
     if (!localStorage.getItem("boojy-drag-tooltip-sidebar")) {
       dragTooltipCount.current.sidebar++;

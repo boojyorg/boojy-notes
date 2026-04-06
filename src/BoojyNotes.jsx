@@ -60,6 +60,7 @@ import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
+import useOnboardingHints from "./hooks/useOnboardingHints";
 import { isElectron, isNative, isWeb, isCapacitor } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -228,6 +229,12 @@ export default function BoojyNotes() {
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
+
+  const { activeHint, dismissHint } = useOnboardingHints({
+    noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
+    isMobile,
+    isEditorFocused: !!activeNote,
+  });
 
   // Update native window title when active note or its title changes
   const activeNoteTitle = noteData[activeNote]?.title;
@@ -694,7 +701,7 @@ export default function BoojyNotes() {
       .then(({ StatusBar, Style }) => {
         StatusBar.setStyle({ style: theme.starField ? Style.Dark : Style.Light });
       })
-      .catch(() => {});
+      .catch((e) => console.error("[statusbar]:", e));
   }, [theme.starField]);
 
   // Selection change → floating toolbar (only in single-pane mode)
@@ -1444,6 +1451,8 @@ export default function BoojyNotes() {
                 lightbox={lightbox}
                 setLightbox={setLightbox}
                 openNote={openNote}
+                activeHint={activeHint}
+                dismissHint={dismissHint}
               />
               {isMobile && (
                 <MobileToolbar
@@ -1556,6 +1565,7 @@ export default function BoojyNotes() {
           }}
           onMoveToFolder={(id, folder) => bulkMoveNotes([id], folder)}
           folderList={folderList}
+          showToast={showToast}
         />
       )}
 
@@ -1715,6 +1725,7 @@ export default function BoojyNotes() {
         <FirstSyncModal
           noteCount={pendingFirstSync.noteCount}
           accentColor={accentColor}
+          isSyncing={syncState === "syncing"}
           onConfirm={confirmFirstSync}
           onCancel={cancelFirstSync}
         />
@@ -1747,6 +1758,7 @@ export default function BoojyNotes() {
               key={t.id}
               message={t.message}
               type={t.type}
+              theme={theme}
               onDismiss={() => dismissToast(t.id)}
             />
           ))}

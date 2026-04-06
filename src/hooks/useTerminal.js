@@ -64,7 +64,7 @@ export function useTerminal() {
   useEffect(() => {
     return () => {
       if (isElectron && window.electronAPI?.terminal) {
-        window.electronAPI.terminal.killAll().catch(() => {});
+        window.electronAPI.terminal.killAll().catch((e) => console.error("[terminal] Cleanup:", e));
       }
     };
   }, []);

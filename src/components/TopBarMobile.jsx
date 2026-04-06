@@ -2,7 +2,8 @@ import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { Z } from "../constants/zIndex";
-import { ChevronLeftIcon, MoreHorizontalIcon, SettingsIcon } from "./Icons";
+import { ChevronLeftIcon, MoreHorizontalIcon } from "./Icons";
+import { platform } from "../utils/platform";
 import boojyN from "/assets/boojy-notes-text-N.png";
 import boojyTes from "/assets/boojy-notes.text-tes.png";
 
@@ -107,21 +108,34 @@ export default function TopBarMobile({
             <img src={boojyN} alt="" style={{ height: 30 }} draggable="false" />
             <div
               style={{
-                width: 18,
-                height: 18,
+                width: 22,
+                height: 22,
                 borderRadius: "50%",
                 background:
                   syncState === "conflict"
-                    ? "#f59e0b"
+                    ? theme.SEMANTIC.warning
                     : syncState === "offline"
-                      ? "#9ca3af"
+                      ? TEXT.muted
                       : syncState === "error"
-                        ? "#ef4444"
+                        ? theme.SEMANTIC.error
                         : accentColor,
                 flexShrink: 0,
               }}
             />
             <img src={boojyTes} alt="" style={{ height: 30 }} draggable="false" />
+            {(syncState === "syncing" || syncState === "retrying") && (
+              <span
+                style={{
+                  fontSize: 10,
+                  color: theme.BRAND.orange,
+                  marginLeft: 2,
+                  opacity: 0.8,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Syncing&hellip;
+              </span>
+            )}
           </button>
 
           <div style={{ flex: 1 }} />
@@ -143,7 +157,9 @@ export default function TopBarMobile({
             }}
             aria-label="Settings"
           >
-            <SettingsIcon size={20} />
+            <span style={{ fontSize: 22, fontWeight: 700 }}>
+              {platform === "android" ? "\u22EE" : "\u22EF"}
+            </span>
           </button>
         </>
       )}

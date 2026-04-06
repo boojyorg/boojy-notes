@@ -169,7 +169,7 @@ export default memo(function TableBlock({
 
   const cellHighlightStyle = (rowIdx, colIdx) => {
     if (isRowSelected(rowIdx) || isColSelected(colIdx)) {
-      return { background: accentColor ? `${accentColor}20` : "rgba(164,202,206,0.12)" };
+      return { background: `${accentColor || theme.ACCENT.primary}20` };
     }
     return {};
   };
@@ -246,12 +246,8 @@ export default memo(function TableBlock({
                   style={{
                     fontWeight: 600,
                     background: isColSelected(colIdx)
-                      ? accentColor
-                        ? `${accentColor}20`
-                        : "rgba(164,202,206,0.12)"
-                      : accentColor
-                        ? `${accentColor}10`
-                        : undefined,
+                      ? `${accentColor || theme.ACCENT.primary}20`
+                      : `${accentColor || theme.ACCENT.primary}10`,
                     textAlign: alignments[colIdx] || "left",
                   }}
                 />
@@ -297,7 +293,7 @@ export default memo(function TableBlock({
                       key={ci}
                       style={{
                         textAlign: alignments[ci] || "left",
-                        background: accentColor ? `${accentColor}08` : "rgba(164,202,206,0.03)",
+                        background: `${accentColor || theme.ACCENT.primary}08`,
                         borderStyle: "dashed",
                       }}
                     >
@@ -327,7 +323,7 @@ export default memo(function TableBlock({
             borderBottom: `1px solid ${theme.BG.divider}`,
             borderLeft: "none",
             borderRadius: "0 8px 8px 0",
-            color: accentColor || "#A4CACE",
+            color: accentColor || theme.ACCENT.primary,
             fontSize: 15,
             opacity: rightZoneHovered ? 1 : 0,
             transition: "opacity 150ms",
@@ -357,7 +353,7 @@ export default memo(function TableBlock({
           borderBottom: `1px solid ${theme.BG.divider}`,
           borderTop: "none",
           borderRadius: "0 0 8px 8px",
-          color: accentColor || "#A4CACE",
+          color: accentColor || theme.ACCENT.primary,
           fontSize: 15,
           opacity: bottomZoneHovered ? 1 : 0,
           transition: "opacity 150ms",
@@ -381,7 +377,7 @@ export default memo(function TableBlock({
             left: createBadge.x,
             top: createBadge.y,
             padding: "2px 8px",
-            background: accentColor || "#A4CACE",
+            background: accentColor || theme.ACCENT.primary,
             color: "#fff",
             fontSize: 11,
             fontWeight: 600,

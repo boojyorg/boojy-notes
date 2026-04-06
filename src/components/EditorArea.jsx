@@ -13,6 +13,7 @@ import FloatingToolbar from "./FloatingToolbar";
 import BacklinksPanel from "./BacklinksPanel";
 import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
+import OnboardingHint from "./OnboardingHint";
 import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
 import FindBar from "./FindBar";
@@ -48,6 +49,8 @@ const EditorArea = memo(
     openNote: openNoteProp,
     onEditorClick,
     onWikilinkCmdClick,
+    activeHint,
+    dismissHint,
   }) {
     const {
       editorRef,
@@ -402,6 +405,9 @@ const EditorArea = memo(
               zIndex: Z.BASE,
             }}
           >
+            {activeHint && (
+              <OnboardingHint hint={activeHint} onDismiss={dismissHint} accentColor={accentColor} />
+            )}
             {/* Breadcrumb */}
             {note.path && (
               <div
@@ -810,7 +816,26 @@ const EditorArea = memo(
               />
             )}
           </div>
-        ) : null}
+        ) : (
+          !isMobile && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: Z.BASE + 1,
+                pointerEvents: "none",
+              }}
+            >
+              <div style={{ textAlign: "center", color: `${TEXT.muted}80`, fontSize: 14 }}>
+                <div>Select a note from the sidebar</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>or press ⌘N to create one</div>
+              </div>
+            </div>
+          )
+        )}
       </div>
     );
   },
@@ -861,9 +886,10 @@ const EditorArea = memo(
       prev.linkPopover === next.linkPopover &&
       prev.selectedImageBlockId === next.selectedImageBlockId &&
       prev.lightbox === next.lightbox &&
-      prev.backlinks === next.backlinks;
+      prev.backlinks === next.backlinks &&
+      prev.activeHint === next.activeHint;
     const dt = performance.now() - t0;
-    if (dt > 0.5)
+    if (import.meta.env.DEV && dt > 0.5)
       console.warn(
         `[perf] EditorArea memo comparator: ${dt.toFixed(2)}ms, blocks: ${next.note?.content?.blocks?.length}`,
       );

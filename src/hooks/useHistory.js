@@ -40,7 +40,8 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       const t0 = performance.now();
       const snapshot = cloneNote(noteToClone);
       const dt = performance.now() - t0;
-      if (dt > 1) console.warn(`[perf] pushHistory cloneNote: ${dt.toFixed(1)}ms`);
+      if (import.meta.env.DEV && dt > 1)
+        console.warn(`[perf] pushHistory cloneNote: ${dt.toFixed(1)}ms`);
       undoStack.current.push({ noteId, snapshot });
       if (undoStack.current.length > 50) undoStack.current.shift();
       redoStack.current = [];

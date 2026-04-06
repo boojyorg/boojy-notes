@@ -428,7 +428,8 @@ export default memo(
     }
 
     const dt = performance.now() - t0;
-    if (dt > 0.5) console.warn(`[perf] PaneContainer memo comparator: ${dt.toFixed(2)}ms`);
+    if (import.meta.env.DEV && dt > 0.5)
+      console.warn(`[perf] PaneContainer memo comparator: ${dt.toFixed(2)}ms`);
     return true;
   },
 );

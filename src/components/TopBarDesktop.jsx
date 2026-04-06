@@ -176,6 +176,19 @@ export default function TopBarDesktop({
             />
           </button>
           <img src={boojyTes} alt="" style={{ height: 21 }} draggable="false" />
+          {(syncState === "syncing" || syncState === "retrying") && (
+            <span
+              style={{
+                fontSize: 10,
+                color: theme.BRAND.orange,
+                marginLeft: 2,
+                opacity: 0.8,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Syncing&hellip;
+            </span>
+          )}
         </div>
         <span
           role="status"

@@ -41,7 +41,8 @@ async function readIndex() {
       encoding: Encoding.UTF8,
     });
     return JSON.parse(result.data);
-  } catch {
+  } catch (e) {
+    console.error("[fs] Failed to read index:", e);
     return {};
   }
 }
@@ -120,8 +121,8 @@ async function readAllNotes() {
           .split(/\s+/)
           .filter(Boolean).length,
       };
-    } catch {
-      // File missing — remove from index
+    } catch (e) {
+      console.error("[fs] Missing note file:", noteId, e);
       delete index[noteId];
     }
   }
@@ -157,8 +158,8 @@ async function writeNote(note) {
         path: oldPath,
         directory: Directory.Documents,
       });
-    } catch {
-      // Old file may not exist
+    } catch (e) {
+      console.error("[fs] Failed to delete old file:", oldPath, e);
     }
   }
 
@@ -176,8 +177,8 @@ async function deleteNoteFile(noteId) {
         path: filePath,
         directory: Directory.Documents,
       });
-    } catch {
-      // Already gone
+    } catch (e) {
+      console.error("[fs] Failed to delete note file:", filePath, e);
     }
     delete index[noteId];
     await saveIndex(index);
@@ -200,8 +201,8 @@ async function trashNote(noteId, title, folder) {
         encoding: Encoding.UTF8,
       });
       content = { blocks: markdownToBlocks(result.data) };
-    } catch {
-      // File missing
+    } catch (e) {
+      console.error("[fs] Failed to read note for trash:", filePath, e);
     }
   }
 
@@ -228,8 +229,8 @@ async function trashNote(noteId, title, folder) {
         path: filePath,
         directory: Directory.Documents,
       });
-    } catch {
-      // Already gone
+    } catch (e) {
+      console.error("[fs] Failed to delete original during trash:", filePath, e);
     }
   }
 
@@ -254,12 +255,13 @@ async function readTrash() {
         });
         const data = JSON.parse(result.data);
         trashed[data.id] = data;
-      } catch {
-        // Corrupt entry
+      } catch (e) {
+        console.error("[fs] Corrupt trash entry:", entry.name, e);
       }
     }
     return trashed;
-  } catch {
+  } catch (e) {
+    console.error("[fs] Failed to read trash:", e);
     return {};
   }
 }
@@ -307,8 +309,8 @@ async function purgeTrash(noteIds) {
             path: `${TRASH_DIR}/${id}.json`,
             directory: Directory.Documents,
           });
-        } catch {
-          // Already gone
+        } catch (e) {
+          console.error("[fs] Failed to purge trash entry:", id, e);
         }
       }
     }
@@ -321,8 +323,8 @@ async function purgeTrash(noteIds) {
         path: `${TRASH_DIR}/${id}.json`,
         directory: Directory.Documents,
       });
-    } catch {
-      // Already gone
+    } catch (e) {
+      console.error("[fs] Failed to purge trash entry:", id, e);
     }
   }
 }
@@ -339,12 +341,12 @@ async function emptyTrash() {
           path: `${TRASH_DIR}/${entry.name}`,
           directory: Directory.Documents,
         });
-      } catch {
-        // Ignore
+      } catch (e) {
+        console.error("[fs] Failed to delete trash file:", entry.name, e);
       }
     }
-  } catch {
-    // Trash dir doesn't exist
+  } catch (e) {
+    console.error("[fs] Failed to empty trash:", e);
   }
 }
 

@@ -318,7 +318,8 @@ export function useBlockDrag({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     const dt = performance.now() - t0;
-    if (dt > 2) console.warn(`[perf] handleEditorPointerDown: ${dt.toFixed(1)}ms`);
+    if (import.meta.env.DEV && dt > 2)
+      console.warn(`[perf] handleEditorPointerDown: ${dt.toFixed(1)}ms`);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupBlockDrag is stable (no deps), safe to omit

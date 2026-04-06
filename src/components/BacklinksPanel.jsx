@@ -1,5 +1,33 @@
 import { useTheme } from "../hooks/useTheme";
 
+function renderSnippet(snippet, wikilinkMatch, highlightColor) {
+  if (!wikilinkMatch || !snippet) return snippet || "";
+
+  // Find the [[wikilinkMatch]] or [[wikilinkMatch|label]] in the snippet
+  const wikiRe = new RegExp(
+    `\\[\\[${wikilinkMatch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\|[^\\]]+)?\\]\\]`,
+    "i",
+  );
+  const match = snippet.match(wikiRe);
+  if (!match) return snippet;
+
+  const idx = match.index;
+  const before = snippet.slice(Math.max(0, idx - 50), idx);
+  const after = snippet.slice(idx + match[0].length, idx + match[0].length + 50);
+  const prefix = idx > 50 ? "\u2026" : "";
+  const suffix = idx + match[0].length + 50 < snippet.length ? "\u2026" : "";
+
+  return (
+    <>
+      {prefix}
+      {before}
+      <span style={{ color: highlightColor, fontWeight: 500 }}>{match[0]}</span>
+      {after}
+      {suffix}
+    </>
+  );
+}
+
 export default function BacklinksPanel({ backlinks, onOpenNote, accentColor }) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -52,12 +80,14 @@ export default function BacklinksPanel({ backlinks, onOpenNote, accentColor }) {
               fontSize: 12,
               color: TEXT.muted,
               marginTop: 2,
+              lineHeight: 1.4,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
               overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
             }}
           >
-            {bl.snippet}
+            {renderSnippet(bl.snippet, bl.wikilinkMatch, accentColor || ACCENT.primary)}
           </div>
         </div>
       ))}

@@ -213,9 +213,13 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
                 transition: "background 0.1s",
               }}
             >
-              <Icon size={15} color={cfg.colour} strokeWidth={1.8} />
+              <Icon size={15} color={theme.callouts[key]?.colour || cfg.colour} strokeWidth={1.8} />
               <span style={{ flex: 1, fontSize: 13, color: TEXT.primary }}>{cfg.defaultTitle}</span>
-              {isActive && <span style={{ fontSize: 13, color: cfg.colour }}>&#10003;</span>}
+              {isActive && (
+                <span style={{ fontSize: 13, color: theme.callouts[key]?.colour || cfg.colour }}>
+                  &#10003;
+                </span>
+              )}
             </div>
           );
         })}
@@ -460,7 +464,11 @@ export default memo(function CalloutBlock({
           }}
           className="callout-icon-btn"
         >
-          <Icon size={17} color={config.colour} strokeWidth={1.8} />
+          <Icon
+            size={17}
+            color={theme.callouts[calloutType]?.colour || config.colour}
+            strokeWidth={1.8}
+          />
         </div>
         <div
           ref={titleRef}
@@ -472,7 +480,7 @@ export default memo(function CalloutBlock({
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             flex: 1,
-            color: config.colour,
+            color: theme.callouts[calloutType]?.colour || config.colour,
             fontWeight: 600,
             fontSize: 14,
             outline: "none",

@@ -363,7 +363,11 @@ export default function TerminalTabBar({
                 { label: "Clear", action: () => onClearTerminal(ctxMenu.id) },
                 { label: "Restart", action: () => onRestartTerminal(ctxMenu.id) },
                 { sep: true },
-                { label: "Kill", action: () => onCloseTerminal(ctxMenu.id), color: "#FF5C57" },
+                {
+                  label: "Kill",
+                  action: () => onCloseTerminal(ctxMenu.id),
+                  color: theme.SEMANTIC.error,
+                },
               ]
             : [
                 {
@@ -374,7 +378,11 @@ export default function TerminalTabBar({
                   },
                 },
                 { sep: true },
-                { label: "Close", action: () => onCloseTerminal(ctxMenu.id), color: "#FF5C57" },
+                {
+                  label: "Close",
+                  action: () => onCloseTerminal(ctxMenu.id),
+                  color: theme.SEMANTIC.error,
+                },
               ]
           ).map((item, i) =>
             item.sep ? (

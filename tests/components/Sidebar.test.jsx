@@ -304,12 +304,13 @@ describe("Sidebar", () => {
     expect(createNote).toHaveBeenCalledWith(null);
   });
 
-  it("renders 'No notes found' when searchMode is active but results are empty", () => {
+  it("renders empty search message when searchMode is active but results are empty", () => {
     const { getByText } = renderSidebar({
       searchMode: true,
       search: "xyz",
       searchResults: { results: [], groups: [], totalCount: 0 },
     });
-    expect(getByText("No notes found")).toBeInTheDocument();
+    expect(getByText(/No results for/)).toBeInTheDocument();
+    expect(getByText(/Try searching with #tags/)).toBeInTheDocument();
   });
 });

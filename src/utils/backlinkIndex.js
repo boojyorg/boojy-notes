@@ -31,7 +31,8 @@ export function buildBacklinkIndex(noteData) {
           existing.push({
             sourceNoteId: noteId,
             sourceTitle,
-            snippet: block.text.slice(0, 100),
+            snippet: block.text.slice(0, 200),
+            wikilinkMatch: match[1].trim(),
           });
         }
       }

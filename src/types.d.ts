@@ -60,6 +60,7 @@ export interface BacklinkEntry {
   sourceNoteId: string;
   sourceTitle: string;
   snippet: string;
+  wikilinkMatch: string;
 }
 
 export interface SlashCommand {

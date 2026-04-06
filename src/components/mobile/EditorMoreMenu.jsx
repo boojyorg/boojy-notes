@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { isCapacitor } from "../../utils/platform";
+import { blocksToMarkdown } from "../../utils/markdown";
 import BottomSheet from "./BottomSheet";
 
 function MenuItem({ icon, label, onClick, danger }) {
@@ -19,7 +20,7 @@ function MenuItem({ icon, label, onClick, danger }) {
         border: "none",
         cursor: "pointer",
         fontSize: 14,
-        color: danger ? "#FF5722" : theme.TEXT.primary,
+        color: danger ? theme.SEMANTIC.error : theme.TEXT.primary,
         textAlign: "left",
       }}
     >
@@ -52,6 +53,16 @@ function Separator() {
   return <div style={{ height: 1, background: theme.BG.divider, margin: "4px 16px" }} />;
 }
 
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/~~(.+?)~~/g, "$1")
+    .replace(/==(.+?)==/g, "$1")
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target, label) => label || target);
+}
+
 export default function EditorMoreMenu({
   open,
   onClose,
@@ -64,34 +75,74 @@ export default function EditorMoreMenu({
   onDelete,
   onMoveToFolder,
   folderList,
+  showToast,
 }) {
   const { theme } = useTheme();
   const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [showSharePicker, setShowSharePicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleShare = async () => {
-    const note = noteData?.[activeNote];
-    if (!note) return;
+  const getBlocks = () => noteData?.[activeNote]?.content?.blocks || [];
 
-    const text = (note.content?.blocks || []).map((b) => b.text || "").join("\n");
-    const shareData = { title: noteTitle || "Untitled", text };
+  const handleShareAs = async (format) => {
+    const blocks = getBlocks();
+    const title = noteTitle || "Untitled";
+
+    if (format === "clipboard") {
+      try {
+        await navigator.clipboard.writeText(blocksToMarkdown(blocks));
+        showToast?.("Copied to clipboard", "info");
+      } catch (e) {
+        console.error("[share] Clipboard failed:", e);
+        showToast?.("Failed to copy", "error");
+      }
+      setShowSharePicker(false);
+      onClose();
+      return;
+    }
+
+    const text =
+      format === "plain"
+        ? blocks.map((b) => stripMarkdown(b.text || "")).join("\n")
+        : blocksToMarkdown(blocks);
+
+    const shareData = { title, text };
 
     if (isCapacitor) {
       try {
         const { Share } = await import("@capacitor/share");
         await Share.share(shareData);
-      } catch {
-        // User cancelled or share failed
+      } catch (e) {
+        if (e?.message?.includes("cancel")) {
+          setShowSharePicker(false);
+          onClose();
+          return;
+        }
+        console.error("[share] Native share failed:", e);
+        showToast?.("Share failed", "error");
       }
     } else if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch {
-        // User cancelled
+      } catch (e) {
+        if (e?.name === "AbortError") {
+          setShowSharePicker(false);
+          onClose();
+          return;
+        }
+        console.error("[share] Web share failed:", e);
+        showToast?.("Share failed", "error");
       }
     } else {
-      await navigator.clipboard.writeText(text);
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast?.("Copied to clipboard", "info");
+      } catch (e) {
+        console.error("[share] Clipboard fallback failed:", e);
+      }
     }
+
+    setShowSharePicker(false);
     onClose();
   };
 
@@ -121,6 +172,7 @@ export default function EditorMoreMenu({
       open={open}
       onClose={() => {
         setShowFolderPicker(false);
+        setShowSharePicker(false);
         setShowDeleteConfirm(false);
         onClose();
       }}
@@ -135,7 +187,7 @@ export default function EditorMoreMenu({
               marginBottom: 8,
             }}
           >
-            Delete "{noteTitle || "Untitled"}"?
+            Delete &ldquo;{noteTitle || "Untitled"}&rdquo;?
           </div>
           <div style={{ fontSize: 13, color: theme.TEXT.muted, marginBottom: 16 }}>
             This note will be moved to Trash.
@@ -163,7 +215,7 @@ export default function EditorMoreMenu({
                 height: 40,
                 borderRadius: 8,
                 border: "none",
-                background: "#FF5722",
+                background: theme.SEMANTIC.error,
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 600,
@@ -173,6 +225,26 @@ export default function EditorMoreMenu({
               Delete
             </button>
           </div>
+        </div>
+      ) : showSharePicker ? (
+        <div style={{ padding: "4px 0 12px" }}>
+          <div
+            style={{
+              padding: "0 20px 8px",
+              fontSize: 13,
+              fontWeight: 600,
+              color: theme.TEXT.muted,
+            }}
+          >
+            SHARE AS
+          </div>
+          <MenuItem icon="📝" label="Plain Text" onClick={() => handleShareAs("plain")} />
+          <MenuItem icon="📋" label="Markdown" onClick={() => handleShareAs("markdown")} />
+          <MenuItem
+            icon="📎"
+            label="Copy to Clipboard"
+            onClick={() => handleShareAs("clipboard")}
+          />
         </div>
       ) : showFolderPicker ? (
         <div style={{ padding: "4px 0 12px", maxHeight: 300, overflowY: "auto" }}>
@@ -194,7 +266,7 @@ export default function EditorMoreMenu({
       ) : (
         <div style={{ padding: "4px 0 12px" }}>
           <MenuItem icon="📁" label="Move to Folder" onClick={() => setShowFolderPicker(true)} />
-          <MenuItem icon="📤" label="Share" onClick={handleShare} />
+          <MenuItem icon="📤" label="Share" onClick={() => setShowSharePicker(true)} />
           <MenuItem icon="📋" label="Duplicate" onClick={handleDuplicate} />
           <Separator />
           <InfoRow label={`${wordCount} words · ${charCount} characters`} />
