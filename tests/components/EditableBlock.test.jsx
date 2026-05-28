@@ -8,7 +8,14 @@ import { render } from "@testing-library/react";
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      BG: { darkest: "#1a1a1a", dark: "#222", surface: "#2a2a2a", elevated: "#333", hover: "#444", divider: "#555" },
+      BG: {
+        darkest: "#1a1a1a",
+        dark: "#222",
+        surface: "#2a2a2a",
+        elevated: "#333",
+        hover: "#444",
+        divider: "#555",
+      },
       TEXT: { primary: "#eee", secondary: "#bbb", muted: "#888" },
       ACCENT: "#A4CACE",
       overlay: (o) => `rgba(255,255,255,${o})`,

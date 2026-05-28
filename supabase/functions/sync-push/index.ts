@@ -74,22 +74,20 @@ Deno.serve(async (req) => {
     const newVersion = (currentRow?.version || 0) + 1;
 
     // Upsert metadata with incremented version
-    const { error: dbError } = await supabase
-      .from("notes_metadata")
-      .upsert(
-        {
-          user_id: userId,
-          note_id: noteId,
-          title: title || "Untitled",
-          content_hash: contentHash,
-          size_bytes: sizeBytes,
-          r2_key: r2Key,
-          updated_at: updatedAt || new Date().toISOString(),
-          deleted: false,
-          version: newVersion,
-        },
-        { onConflict: "user_id,note_id" },
-      );
+    const { error: dbError } = await supabase.from("notes_metadata").upsert(
+      {
+        user_id: userId,
+        note_id: noteId,
+        title: title || "Untitled",
+        content_hash: contentHash,
+        size_bytes: sizeBytes,
+        r2_key: r2Key,
+        updated_at: updatedAt || new Date().toISOString(),
+        deleted: false,
+        version: newVersion,
+      },
+      { onConflict: "user_id,note_id" },
+    );
 
     if (dbError) throw new Error(`Database error: ${dbError.message}`);
 

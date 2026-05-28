@@ -25,8 +25,10 @@ const FALLBACK_COLORS: Record<string, { bg: string; border: string }> = {
 
 function getColors(type: string, theme?: ToastTheme): { bg: string; border: string } {
   if (!theme) return FALLBACK_COLORS[type] || FALLBACK_COLORS.error;
-  if (type === "error") return { bg: toRgba(theme.SEMANTIC.error, 0.92), border: theme.SEMANTIC.error };
-  if (type === "warning") return { bg: toRgba(theme.SEMANTIC.warning, 0.92), border: theme.SEMANTIC.warning };
+  if (type === "error")
+    return { bg: toRgba(theme.SEMANTIC.error, 0.92), border: theme.SEMANTIC.error };
+  if (type === "warning")
+    return { bg: toRgba(theme.SEMANTIC.warning, 0.92), border: theme.SEMANTIC.warning };
   return { bg: toRgba(theme.ACCENT.primary, 0.92), border: theme.ACCENT.primary };
 }
 

@@ -4,7 +4,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useBlockOperations } from "../../src/hooks/useBlockOperations.js";
-import { makeNoteData, paragraph, checkbox as makeCheckbox, resetBlockCounter } from "../mocks/blocks.js";
+import {
+  makeNoteData,
+  paragraph,
+  checkbox as makeCheckbox,
+  resetBlockCounter,
+} from "../mocks/blocks.js";
 
 beforeEach(() => {
   resetBlockCounter();
@@ -24,10 +29,24 @@ function setup(initialBlocks) {
   const focusCursorPos = { current: null };
 
   const { result } = renderHook(() =>
-    useBlockOperations({ commitNoteData, commitTextChange, blockRefs, focusBlockId, focusCursorPos }),
+    useBlockOperations({
+      commitNoteData,
+      commitTextChange,
+      blockRefs,
+      focusBlockId,
+      focusCursorPos,
+    }),
   );
 
-  return { result, noteId, getNoteData: () => noteData, commitNoteData, commitTextChange, focusBlockId, focusCursorPos };
+  return {
+    result,
+    noteId,
+    getNoteData: () => noteData,
+    commitNoteData,
+    commitTextChange,
+    focusBlockId,
+    focusCursorPos,
+  };
 }
 
 describe("useBlockOperations", () => {

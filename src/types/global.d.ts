@@ -3,7 +3,11 @@
 interface Window {
   electronAPI?: {
     saveImage: (noteId: string, dataUrl: string) => Promise<string>;
-    saveAttachment: (noteId: string, name: string, data: ArrayBuffer) => Promise<{ filename: string; size: number }>;
+    saveAttachment: (
+      noteId: string,
+      name: string,
+      data: ArrayBuffer,
+    ) => Promise<{ filename: string; size: number }>;
     getFileSize: (filename: string) => Promise<number>;
     openExternal: (url: string) => void;
     showItemInFolder: (path: string) => void;

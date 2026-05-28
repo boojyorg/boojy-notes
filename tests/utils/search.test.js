@@ -138,9 +138,21 @@ describe("findMatchBlock", () => {
 
 describe("searchNotes", () => {
   const noteData = {
-    n1: { title: "JavaScript Guide", content: { blocks: [{ id: "b1", text: "Learn JS basics" }] }, lastModified: 100 },
-    n2: { title: "Python Tutorial", content: { blocks: [{ id: "b2", text: "Learn Python" }] }, lastModified: 200 },
-    n3: { title: "Meeting Notes", content: { blocks: [{ id: "b3", text: "Discuss project" }] }, lastModified: 300 },
+    n1: {
+      title: "JavaScript Guide",
+      content: { blocks: [{ id: "b1", text: "Learn JS basics" }] },
+      lastModified: 100,
+    },
+    n2: {
+      title: "Python Tutorial",
+      content: { blocks: [{ id: "b2", text: "Learn Python" }] },
+      lastModified: 200,
+    },
+    n3: {
+      title: "Meeting Notes",
+      content: { blocks: [{ id: "b3", text: "Discuss project" }] },
+      lastModified: 300,
+    },
   };
 
   it("returns empty for blank query", () => {

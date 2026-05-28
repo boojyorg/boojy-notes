@@ -6,6 +6,9 @@
 - **Native mobile (iOS/Android)** — Removed the Capacitor wrapper, all `@capacitor/*` packages, the native file API (`nativeAPI.js`), and the `ios/`/`android/` projects. The app now targets **web (responsive PWA) + desktop (Electron)** only. Mobile-browser users still get the touch-optimised layout via responsive web.
 - **AI chat** — Removed the in-app AI chat panel, multi-provider support (OpenAI/Gemini/Anthropic), API key storage, and the AI settings tab. Scope reduction to focus on core note-taking.
 
+### Internal
+- **Tooling: Biome replaces ESLint + Prettier** — Unified lint + format into a single fast tool (`biome.json`). Rules mirror the previous ESLint setup (a11y kept off for parity — a future opt-in); `dangerouslySetInnerHTML` allowed for the custom contentEditable editor. Pre-commit hook, CI, and the post-edit validation hook rewired accordingly.
+
 ### Features
 - **Share format picker** — Mobile share menu now offers Plain Text, Markdown, and Copy to Clipboard options instead of sharing raw block text
 - **Onboarding hints** — 5 contextual tooltip hints for new users (slash commands, wikilinks, tags, swipe navigation, split view) that auto-dismiss after 8 seconds and never repeat

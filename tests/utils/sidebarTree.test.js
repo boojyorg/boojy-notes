@@ -113,9 +113,7 @@ describe("filterTree", () => {
   });
 
   it("filters by note title", () => {
-    const nodes = [
-      { name: "Dev", notes: ["n1", "n2"], children: [] },
-    ];
+    const nodes = [{ name: "Dev", notes: ["n1", "n2"], children: [] }];
     const result = filterTree(nodes, "python", noteData);
     expect(result).toHaveLength(1);
     expect(result[0].notes).toEqual(["n2"]);

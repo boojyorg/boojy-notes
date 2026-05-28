@@ -15,10 +15,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src/ electron/",
-    "lint:fix": "eslint src/ electron/ --fix",
-    "format": "prettier --write \"src/**/*.{js,jsx}\" \"electron/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx}\" \"electron/**/*.js\"",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "test:e2e": "playwright test",
@@ -42,7 +44,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
-    "@eslint/js": "^9.39.4",
+    "@biomejs/biome": "^2.4.16",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -53,14 +55,9 @@
     "@vitest/coverage-v8": "^4.0.18",
     "electron": "^40.6.1",
     "electron-builder": "^26.8.1",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "globals": "^17.4.0",
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
     "vite-plugin-electron": "^0.29.0",
@@ -71,9 +68,8 @@
     "node": ">=18.0.0"
   },
   "lint-staged": {
-    "*.{js,jsx}": [
-      "prettier --write",
-      "eslint --fix"
+    "*.{js,jsx,ts,tsx,json}": [
+      "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
     ]
   },
   "build": {

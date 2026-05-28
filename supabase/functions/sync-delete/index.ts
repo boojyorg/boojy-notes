@@ -44,10 +44,9 @@ Deno.serve(async (req) => {
 
     if (dbError) throw new Error(`Database error: ${dbError.message}`);
 
-    return new Response(
-      JSON.stringify({ success: true, noteId }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ success: true, noteId }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,

@@ -58,10 +58,9 @@ Deno.serve(async (req) => {
       }),
     );
 
-    return new Response(
-      JSON.stringify({ notes: results, totalStorageBytes }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ notes: results, totalStorageBytes }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,

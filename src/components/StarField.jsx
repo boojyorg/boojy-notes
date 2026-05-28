@@ -135,7 +135,8 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
       window.removeEventListener("resize", handleResize);
       ro.disconnect();
       // Nuke canvas content
-      canvas.width = canvas.width; // eslint-disable-line no-self-assign -- intentional canvas clear
+      // biome-ignore lint/correctness/noSelfAssign: reassigning width clears the canvas
+      canvas.width = canvas.width;
     };
   }, [mode, seed]);
 

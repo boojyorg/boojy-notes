@@ -505,7 +505,7 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       if (isNetworkError) {
         setSyncState("offline");
       } else if (retryCount.current < 3) {
-        const delay = 2000 * Math.pow(2, retryCount.current);
+        const delay = 2000 * 2 ** retryCount.current;
         retryCount.current++;
         setSyncState("retrying");
         console.log(`[sync] Retrying in ${delay}ms (attempt ${retryCount.current}/3)`);

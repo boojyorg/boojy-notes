@@ -48,8 +48,14 @@ export async function saveToIDB(data: Record<string, unknown>): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(IDB_STORE, "readwrite");
     tx.objectStore(IDB_STORE).put(data, STORAGE_KEY);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
   });
 }
 
@@ -59,8 +65,14 @@ export async function loadFromIDB(): Promise<Record<string, unknown> | null> {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(IDB_STORE, "readonly");
       const req = tx.objectStore(IDB_STORE).get(STORAGE_KEY);
-      req.onsuccess = () => { db.close(); resolve(req.result || null); };
-      req.onerror = () => { db.close(); reject(req.error); };
+      req.onsuccess = () => {
+        db.close();
+        resolve(req.result || null);
+      };
+      req.onerror = () => {
+        db.close();
+        reject(req.error);
+      };
     });
   } catch {
     return null;

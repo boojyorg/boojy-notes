@@ -8,7 +8,14 @@ import { render, screen, cleanup } from "@testing-library/react";
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      BG: { darkest: "#1a1a1a", dark: "#222", surface: "#2a2a2a", elevated: "#333", hover: "#444", divider: "#555" },
+      BG: {
+        darkest: "#1a1a1a",
+        dark: "#222",
+        surface: "#2a2a2a",
+        elevated: "#333",
+        hover: "#444",
+        divider: "#555",
+      },
       TEXT: { primary: "#eee", secondary: "#bbb", muted: "#888" },
       ACCENT: "#A4CACE",
       overlay: (o) => `rgba(255,255,255,${o})`,
@@ -41,9 +48,7 @@ describe("SlashMenu", () => {
 
   it("filters commands by text", () => {
     const menu = { ...defaultMenu, filter: "head" };
-    render(
-      <SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
-    );
+    render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
     expect(screen.getAllByText("Heading 1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Heading 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Heading 3").length).toBeGreaterThan(0);
@@ -72,17 +77,13 @@ describe("SlashMenu", () => {
 
   it("shows 'No matching commands' when filter yields no results", () => {
     const menu = { ...defaultMenu, filter: "zzzznonexistent" };
-    render(
-      <SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
-    );
+    render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
     expect(screen.getByText("No matching commands")).toBeInTheDocument();
   });
 
   it("renders at the provided position", () => {
     const menu = { ...defaultMenu, rect: { top: 42, left: 99 } };
-    render(
-      <SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
-    );
+    render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
     // The menu container div should have the fixed position
     const menuEl = document.querySelector("[style*='top: 42px']");
     expect(menuEl).toBeInTheDocument();

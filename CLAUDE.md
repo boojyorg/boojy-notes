@@ -9,7 +9,7 @@ Read files directly when needed. Do not ask before reading.
 - **Desktop:** Electron 40
 - **Backend:** Supabase (auth + database), Cloudflare R2 (attachments)
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
-- **Linting:** ESLint 9 (flat config) + Prettier, enforced by Husky pre-commit hooks
+- **Linting/Formatting:** Biome 2 (single tool for lint + format, `biome.json`), enforced by Husky pre-commit hooks
 
 ## Project Structure
 
@@ -50,8 +50,9 @@ npm run dev           # Electron + Vite dev mode
 npm run dev:web       # Web-only dev (ELECTRON_DISABLE=1)
 npm test              # Unit tests (Vitest)
 npm run test:e2e      # E2E tests (Playwright, Chromium)
-npm run lint          # ESLint check
-npm run format:check  # Prettier check
+npm run lint          # Biome lint
+npm run format:check  # Biome format check
+npm run check         # Biome lint + format (combined)
 npm run typecheck     # TypeScript check
 npm run build:electron  # Build desktop installer
 ```
@@ -106,7 +107,7 @@ establish target context. When you resolve an item, flip its checkbox `- [ ]` �
 Active targets, unresolved compile failures, and manual UI bugs are centralized there.
 
 **Automated Validation Hook:** `.claude/settings.json` wires a `PostToolUse` hook
-(`.claude/hooks/post-edit-validation.sh`) that runs Prettier+ESLint → typecheck (`.ts/.tsx`
+(`.claude/hooks/post-edit-validation.sh`) that runs `biome check --write` → typecheck (`.ts/.tsx`
 only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit, and logs failures into
 `dreams.md` §2. Do not bypass it. During multi-file refactors it may log *transient*
 mid-edit typecheck failures — clear §2 back to "_None open._" once gates are green.

@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "https://deno.land/x/s3_lite_client@0.7.0/mod.ts";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "https://deno.land/x/s3_lite_client@0.7.0/mod.ts";
 
 const R2_ENDPOINT = Deno.env.get("R2_ENDPOINT")!;
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID")!;
