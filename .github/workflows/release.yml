@@ -23,13 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check for signing certificate
         id: cert-check
@@ -40,7 +42,7 @@ jobs:
       # macOS: signed build (when certificate secrets are configured)
       - name: Build and package (macOS signed)
         if: runner.os == 'macOS' && steps.cert-check.outputs.has_cert == 'true'
-        run: npm run build:electron
+        run: pnpm build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
@@ -52,7 +54,7 @@ jobs:
       # macOS: unsigned build (when no certificate secrets)
       - name: Build and package (macOS unsigned)
         if: runner.os == 'macOS' && steps.cert-check.outputs.has_cert != 'true'
-        run: npm run build:electron
+        run: pnpm build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -60,6 +62,6 @@ jobs:
       # Windows build
       - name: Build and package (Windows)
         if: runner.os == 'Windows'
-        run: npm run build:electron
+        run: pnpm build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

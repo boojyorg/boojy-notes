@@ -7,6 +7,7 @@
 - **AI chat** — Removed the in-app AI chat panel, multi-provider support (OpenAI/Gemini/Anthropic), API key storage, and the AI settings tab. Scope reduction to focus on core note-taking.
 
 ### Internal
+- **Tooling: pnpm replaces npm** — Switched the package manager to pnpm (`node-linker=hoisted` so `electron-builder` + `node-pty` resolve as before). CI workflows and docs updated. Verified the full desktop release build (DMG packaging with native node-pty rebuild) works under pnpm. _Note: the Cloudflare Pages build command must be switched to pnpm in the CF dashboard — it is not read from the repo._
 - **Tooling: Biome replaces ESLint + Prettier** — Unified lint + format into a single fast tool (`biome.json`). Rules mirror the previous ESLint setup (a11y kept off for parity — a future opt-in); `dangerouslySetInnerHTML` allowed for the custom contentEditable editor. Pre-commit hook, CI, and the post-edit validation hook rewired accordingly.
 
 ### Features

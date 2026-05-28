@@ -17,11 +17,12 @@ A minimal, markdown-based note-taking app for web and desktop.
 ### Prerequisites
 
 - Node.js 18+
+- pnpm (`corepack enable pnpm`)
 
 ### Setup
 
 ```sh
-npm install
+pnpm install
 cp .env.example .env.local
 ```
 
@@ -31,10 +32,10 @@ Fill in your Supabase and R2 keys in `.env.local` (see `.env.example` for the re
 
 ```sh
 # Browser only
-npm run dev:web
+pnpm dev:web
 
 # Electron (desktop + web)
-npm run dev
+pnpm dev
 ```
 
 ## Scripts

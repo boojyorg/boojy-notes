@@ -46,15 +46,16 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 ## Dev Workflow
 
 ```bash
-npm run dev           # Electron + Vite dev mode
-npm run dev:web       # Web-only dev (ELECTRON_DISABLE=1)
-npm test              # Unit tests (Vitest)
-npm run test:e2e      # E2E tests (Playwright, Chromium)
-npm run lint          # Biome lint
-npm run format:check  # Biome format check
-npm run check         # Biome lint + format (combined)
-npm run typecheck     # TypeScript check
-npm run build:electron  # Build desktop installer
+# Package manager: pnpm (node-linker=hoisted for electron-builder/node-pty)
+pnpm dev              # Electron + Vite dev mode
+pnpm dev:web          # Web-only dev (ELECTRON_DISABLE=1)
+pnpm test             # Unit tests (Vitest)
+pnpm test:e2e         # E2E tests (Playwright, Chromium)
+pnpm lint             # Biome lint
+pnpm format:check     # Biome format check
+pnpm check            # Biome lint + format (combined)
+pnpm typecheck        # TypeScript check
+pnpm build:electron   # Build desktop installer
 ```
 
 See `TESTING.md` for full platform testing docs (desktop, web preview).
@@ -64,7 +65,7 @@ See `TESTING.md` for full platform testing docs (desktop, web preview).
 - **Unit tests:** `tests/` directory, Vitest + jsdom + @testing-library/react
 - **E2E tests:** Playwright (Chromium only), configured in `playwright.config.js`
 - **Coverage thresholds:** 60% lines, 50% branches, 55% functions, 60% statements
-- **Before committing:** Always run `npm test` and `npm run format:check` — CI checks both
+- **Before committing:** Always run `pnpm test` and `pnpm format:check` — CI checks both
 - **Pre-commit hooks:** Husky + lint-staged auto-formats and lints staged files. Never skip with `--no-verify`.
 
 ## Changelog Workflow
@@ -79,14 +80,14 @@ When making bug fixes or feature changes:
 
 1. Bump version in `package.json` (Settings reads from here — never hardcode versions elsewhere)
 2. Update CHANGELOG.md heading from "Unreleased" to the version number and date
-3. Run `npm test` and `npm run format:check` before committing
+3. Run `pnpm test` and `pnpm format:check` before committing
 4. Commit all changes and push to `master`
 5. Review `docs/private/ROADMAP.md` — move completed items, reassess priorities
 6. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
 
 ## Deployment
 
-- **Web (boojy.org):** Cloudflare Pages auto-deploys on push to `master`. Build: `ELECTRON_DISABLE=1 npm run build`, serves from `dist/`.
+- **Web (boojy.org):** Cloudflare Pages auto-deploys on push to `master`. Build: `ELECTRON_DISABLE=1 pnpm build`, serves from `dist/`. **The CF Pages build command must be set to pnpm in the dashboard** (it does not read from the repo).
 - **macOS + Windows:** GitHub Actions (`release.yml`) triggers on `v*` tag push. Builds Electron installers, uploads to GitHub Release.
 
 Pushing to `master` deploys web; pushing the tag builds desktop installers.
