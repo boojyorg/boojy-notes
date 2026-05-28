@@ -1,13 +1,12 @@
 # Claude Code Instructions
 
-Boojy Notes — a block-based note-taking app for web, desktop, and mobile.
+Boojy Notes — a block-based note-taking app for web (responsive PWA) and desktop.
 Read files directly when needed. Do not ask before reading.
 
 ## Tech Stack
 
-- **Frontend:** React 19, Vite 6
+- **Frontend:** React 19, Vite 6 (responsive — mobile-browser layout via `useIsMobile`)
 - **Desktop:** Electron 40
-- **Mobile:** Capacitor 8 (iOS + Android)
 - **Backend:** Supabase (auth + database), Cloudflare R2 (attachments)
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
 - **Linting:** ESLint 9 (flat config) + Prettier, enforced by Husky pre-commit hooks
@@ -41,8 +40,8 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 - **State:** React Context API (6 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
 - **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`.
-- **Platform:** `src/utils/platform.js` exports `isElectron`, `isCapacitor`, `isWeb`, `isNative`. Services use `getAPI()` factory to return the right platform API.
-- **Web/mobile builds:** Set `ELECTRON_DISABLE=1` to exclude Electron code. The `dev:web` script does this automatically.
+- **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative` (`isNative === isElectron` — the only file-backed target). Services use `getAPI()` factory to return the Electron or web API.
+- **Web builds:** Set `ELECTRON_DISABLE=1` to exclude Electron code. The `dev:web` script does this automatically.
 
 ## Dev Workflow
 
@@ -57,7 +56,7 @@ npm run typecheck     # TypeScript check
 npm run build:electron  # Build desktop installer
 ```
 
-See `TESTING.md` for full platform testing docs (iOS, Android, web preview).
+See `TESTING.md` for full platform testing docs (desktop, web preview).
 
 ## Testing
 
@@ -90,6 +89,30 @@ When making bug fixes or feature changes:
 - **macOS + Windows:** GitHub Actions (`release.yml`) triggers on `v*` tag push. Builds Electron installers, uploads to GitHub Release.
 
 Pushing to `master` deploys web; pushing the tag builds desktop installers.
+
+## Docs system & working memory
+
+This repo uses the docs-system methodology (see `~/Documents/Vault/Projects/Claude Docs System.md`).
+Five docs, split by audience and time-horizon:
+
+- **`FEATURES.md`** — plain-language, recruiter/user-facing tour (no file paths or jargon).
+- **`README.md`** — dev/public-facing: what it is, stack, architecture, scripts.
+- **`CLAUDE.md`** (this file) — the agent's rules: architecture, conventions, workflow.
+- **`dreams.md`** — *live working memory*: active target (§1), incident logs (§2), gotchas (§3).
+- **`.claude/history/session_ledger.md`** — *append-only* per-session history.
+
+**Memory Synchronization Rule:** Read `dreams.md` at the start of every session to
+establish target context. When you resolve an item, flip its checkbox `- [ ]` → `- [x]`.
+Active targets, unresolved compile failures, and manual UI bugs are centralized there.
+
+**Automated Validation Hook:** `.claude/settings.json` wires a `PostToolUse` hook
+(`.claude/hooks/post-edit-validation.sh`) that runs Prettier+ESLint → typecheck (`.ts/.tsx`
+only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit, and logs failures into
+`dreams.md` §2. Do not bypass it. During multi-file refactors it may log *transient*
+mid-edit typecheck failures — clear §2 back to "_None open._" once gates are green.
+
+**Keep docs current:** architecture/roadmap changes update `README.md` + `CLAUDE.md` in the
+same commit; a release bumps `package.json` + `CHANGELOG.md`; feature changes update `FEATURES.md`.
 
 ## Conventions
 

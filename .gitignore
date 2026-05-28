@@ -33,8 +33,6 @@ Thumbs.db
 .packages
 *.iml
 ui/
-android/
-ios/
 macos/
 windows/
 

@@ -8,39 +8,6 @@ if (typeof globalThis.structuredClone === "undefined") {
   globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
 }
 
-// Mock @capacitor/core to return isNativePlatform() === false in test environment
-vi.mock("@capacitor/core", () => ({
-  Capacitor: {
-    isNativePlatform: () => false,
-    getPlatform: () => "web",
-    convertFileSrc: (uri) => uri,
-  },
-}));
-
-vi.mock("@capacitor/filesystem", () => ({
-  Filesystem: {},
-  Directory: { Documents: "DOCUMENTS" },
-  Encoding: { UTF8: "utf8" },
-}));
-
-vi.mock("@capacitor/preferences", () => ({
-  Preferences: { get: async () => ({ value: null }), set: async () => {} },
-}));
-
-vi.mock("@capacitor/browser", () => ({
-  Browser: { open: async () => {} },
-}));
-
-vi.mock("@capacitor/camera", () => ({
-  Camera: { getPhoto: async () => null },
-  CameraResultType: { Base64: "base64" },
-  CameraSource: { Photos: "PHOTOS" },
-}));
-
-vi.mock("@capacitor/splash-screen", () => ({
-  SplashScreen: { hide: async () => {} },
-}));
-
 // Stub window.electronAPI for component tests running in jsdom
 if (typeof globalThis.window !== "undefined") {
   globalThis.window.electronAPI = {

@@ -4,7 +4,6 @@ import { renderHook, act } from "@testing-library/react";
 
 vi.mock("../../src/utils/platform", () => ({
   isElectron: false,
-  isCapacitor: false,
   isNative: false,
   platform: "web",
 }));

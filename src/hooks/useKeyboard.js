@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { isCapacitor } from "../utils/platform";
 
 /**
- * Detects virtual keyboard visibility and height on mobile.
- * Uses visualViewport API (works on iOS Safari + Android Chrome)
- * and Capacitor Keyboard plugin events when available.
+ * Detects virtual keyboard visibility and height on mobile browsers.
+ * Uses the visualViewport API (works on iOS Safari + Android Chrome).
  */
 export function useKeyboard() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -30,29 +28,6 @@ export function useKeyboard() {
 
     vv.addEventListener("resize", onResize);
     return () => vv.removeEventListener("resize", onResize);
-  }, []);
-
-  // Capacitor Keyboard plugin — more reliable on native
-  useEffect(() => {
-    if (!isCapacitor) return;
-    let cleanup = null;
-
-    import("@capacitor/keyboard").then(({ Keyboard }) => {
-      const showListener = Keyboard.addListener("keyboardWillShow", (info) => {
-        setIsKeyboardVisible(true);
-        setKeyboardHeight(info.keyboardHeight);
-      });
-      const hideListener = Keyboard.addListener("keyboardWillHide", () => {
-        setIsKeyboardVisible(false);
-        setKeyboardHeight(0);
-      });
-      cleanup = () => {
-        showListener.then((h) => h.remove());
-        hideListener.then((h) => h.remove());
-      };
-    });
-
-    return () => cleanup?.();
   }, []);
 
   return { isKeyboardVisible, keyboardHeight };

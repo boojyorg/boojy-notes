@@ -1,14 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock @capacitor/core before importing the module
-vi.mock("@capacitor/core", () => ({
-  Capacitor: {
-    isNativePlatform: () => false,
-    getPlatform: () => "web",
-  },
-}));
-
-let isElectron, isNative, isWeb, isCapacitor, platform;
+let isElectron, isNative, isWeb, platform;
 
 beforeEach(async () => {
   vi.resetModules();
@@ -18,7 +10,6 @@ beforeEach(async () => {
   isElectron = mod.isElectron;
   isNative = mod.isNative;
   isWeb = mod.isWeb;
-  isCapacitor = mod.isCapacitor;
   platform = mod.platform;
 });
 
@@ -31,16 +22,11 @@ describe("platform detection", () => {
     expect(isNative).toBe(false);
   });
 
-  it("isWeb is correct based on env", () => {
-    // In test env, neither Electron nor Capacitor is active, so isWeb should be true
+  it("isWeb is true when not electron", () => {
     expect(isWeb).toBe(true);
   });
 
-  it("isCapacitor is false in test environment", () => {
-    expect(isCapacitor).toBe(false);
-  });
-
-  it("platform string is 'web' when not electron or capacitor", () => {
+  it("platform string is 'web' when not electron", () => {
     expect(platform).toBe("web");
   });
 });

@@ -26,7 +26,6 @@ vi.mock("../../src/hooks/useHistory", () => ({
 vi.mock("../../src/utils/platform", () => ({
   isNative: false,
   isElectron: false,
-  isCapacitor: false,
   isWeb: true,
   platform: "web",
 }));

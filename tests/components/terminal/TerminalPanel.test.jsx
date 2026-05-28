@@ -56,7 +56,6 @@ vi.mock("../../../src/context/LayoutContext", () => ({
 
 vi.mock("../../../src/utils/platform", () => ({
   isElectron: false,
-  isCapacitor: false,
   isNative: false,
   isWeb: true,
   platform: "web",

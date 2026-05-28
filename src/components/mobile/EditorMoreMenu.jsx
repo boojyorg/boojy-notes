@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { isCapacitor } from "../../utils/platform";
 import { blocksToMarkdown } from "../../utils/markdown";
 import BottomSheet from "./BottomSheet";
 
@@ -108,20 +107,7 @@ export default function EditorMoreMenu({
 
     const shareData = { title, text };
 
-    if (isCapacitor) {
-      try {
-        const { Share } = await import("@capacitor/share");
-        await Share.share(shareData);
-      } catch (e) {
-        if (e?.message?.includes("cancel")) {
-          setShowSharePicker(false);
-          onClose();
-          return;
-        }
-        console.error("[share] Native share failed:", e);
-        showToast?.("Share failed", "error");
-      }
-    } else if (navigator.share) {
+    if (navigator.share) {
       try {
         await navigator.share(shareData);
       } catch (e) {

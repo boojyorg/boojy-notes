@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Removed
+- **Native mobile (iOS/Android)** — Removed the Capacitor wrapper, all `@capacitor/*` packages, the native file API (`nativeAPI.js`), and the `ios/`/`android/` projects. The app now targets **web (responsive PWA) + desktop (Electron)** only. Mobile-browser users still get the touch-optimised layout via responsive web.
 - **AI chat** — Removed the in-app AI chat panel, multi-provider support (OpenAI/Gemini/Anthropic), API key storage, and the AI settings tab. Scope reduction to focus on core note-taking.
 
 ### Features

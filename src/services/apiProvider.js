@@ -1,5 +1,4 @@
-import { isElectron, isCapacitor } from "../utils/platform";
-import capacitorAPI from "./nativeAPI";
+import { isElectron } from "../utils/platform";
 
 function pickFileWeb(accept) {
   return new Promise((resolve) => {
@@ -55,6 +54,5 @@ const webAPI = {
 
 export function getAPI() {
   if (isElectron) return window.electronAPI;
-  if (isCapacitor) return capacitorAPI;
   return webAPI;
 }

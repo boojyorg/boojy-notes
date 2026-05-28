@@ -1,7 +1,6 @@
-import { Capacitor } from "@capacitor/core";
-
 export const isElectron = typeof window !== "undefined" && !!window.electronAPI;
-export const isCapacitor = typeof window !== "undefined" && Capacitor.isNativePlatform();
-export const isNative = isElectron || isCapacitor;
+// `isNative` means a file-backed platform (local .md storage via the native API).
+// Capacitor (iOS/Android) was removed, so the only native target is now Electron.
+export const isNative = isElectron;
 export const isWeb = !isNative;
-export const platform = isElectron ? "electron" : isCapacitor ? Capacitor.getPlatform() : "web";
+export const platform = isElectron ? "electron" : "web";

@@ -93,4 +93,4 @@ electron/
 
 ## Roadmap
 
-The app is planned to migrate from React + Electron to **Flutter** for a single codebase across web, desktop, and mobile.
+Focus is on the **web platform** (responsive PWA on [boojy.org](https://boojy.org)), with Electron as the desktop shell. Native mobile (iOS/Android via Capacitor) was removed in v0.3.0 to reduce scope.

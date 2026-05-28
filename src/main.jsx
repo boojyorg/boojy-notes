@@ -8,7 +8,7 @@ import { SidebarProvider } from "./context/SidebarContext";
 import { OverlayProvider } from "./context/OverlayContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
-import { isWeb, isCapacitor } from "./utils/platform";
+import { isWeb } from "./utils/platform";
 
 // Apply saved UI scale immediately to prevent flash
 const savedScale = localStorage.getItem("boojy-ui-scale");
@@ -49,35 +49,9 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>,
 );
 
-// Register service worker for PWA (web only, not Electron or Capacitor)
+// Register service worker for PWA (web only, not Electron)
 if (isWeb && "serviceWorker" in navigator) {
   navigator.serviceWorker
     .register("/sw.js")
     .catch((e) => console.error("[sw] Registration failed:", e));
-}
-
-// Configure Capacitor native UI
-if (isCapacitor) {
-  import("@capacitor/splash-screen").then(({ SplashScreen }) => {
-    SplashScreen.hide();
-  });
-
-  // Transparent status bar so safe-area-inset-top works
-  import("@capacitor/status-bar")
-    .then(({ StatusBar, Style }) => {
-      StatusBar.setOverlaysWebView({ overlay: true });
-      StatusBar.setStyle({ style: Style.Dark });
-    })
-    .catch((e) => console.error("[statusbar]:", e));
-
-  // Handle Android hardware back button
-  import("@capacitor/app").then(({ App }) => {
-    App.addListener("backButton", ({ canGoBack }) => {
-      if (canGoBack) {
-        window.history.back();
-      } else {
-        App.minimizeApp();
-      }
-    });
-  });
 }

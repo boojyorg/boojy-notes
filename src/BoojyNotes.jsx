@@ -61,7 +61,7 @@ import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import useOnboardingHints from "./hooks/useOnboardingHints";
-import { isElectron, isNative, isWeb, isCapacitor } from "./utils/platform";
+import { isElectron, isNative, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -663,16 +663,6 @@ export default function BoojyNotes() {
     };
     loadMeta();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync Capacitor status bar style with theme
-  useEffect(() => {
-    if (!isCapacitor) return;
-    import("@capacitor/status-bar")
-      .then(({ StatusBar, Style }) => {
-        StatusBar.setStyle({ style: theme.starField ? Style.Dark : Style.Light });
-      })
-      .catch((e) => console.error("[statusbar]:", e));
-  }, [theme.starField]);
 
   // Selection change → floating toolbar (only in single-pane mode)
   useEffect(() => {
