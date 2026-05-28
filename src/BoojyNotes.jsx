@@ -100,18 +100,8 @@ export default function BoojyNotes() {
     editedNoteHint,
   } = useNoteDataActions();
 
-  const {
-    settingsOpen,
-    setSettingsOpen,
-    setSettingsTab,
-    uiScale,
-    setUiScale,
-    user,
-    profile,
-    aiSettings,
-    setAISettings,
-    updateAISetting,
-  } = useSettings();
+  const { settingsOpen, setSettingsOpen, setSettingsTab, uiScale, setUiScale, user, profile } =
+    useSettings();
 
   const {
     collapsed,
@@ -238,11 +228,6 @@ export default function BoojyNotes() {
 
   // Update native window title when active note or its title changes
   const activeNoteTitle = noteData[activeNote]?.title;
-  const activeNoteContext = useMemo(() => {
-    if (!activeNote || !noteData[activeNote]) return "";
-    const n = noteData[activeNote];
-    return `# ${n.title}\n\n${(n.content?.blocks || []).map((b) => b.text || "").join("\n")}`;
-  }, [activeNote, noteData]);
   useEffect(() => {
     const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
     document.title = title;
@@ -482,27 +467,12 @@ export default function BoojyNotes() {
     setActiveTerminalId,
     xtermInstances,
     createTerminal,
-    createAITab,
     closeTerminal,
     renameTerminal,
     restartTerminal,
     clearTerminal,
     markExited,
   } = useTerminal();
-
-  const handleAIModelChange = useCallback(
-    (model) => updateAISetting("model", model),
-    [updateAISetting],
-  );
-
-  const handleOpenAISettings = useCallback(() => {
-    setSettingsOpen(true);
-    setSettingsTab("ai");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleToggleAIContext = useCallback(() => {
-    setAISettings((prev) => ({ ...prev, sendContext: !prev.sendContext }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wire search → clear multi-select
   useEffect(() => {
@@ -1530,18 +1500,12 @@ export default function BoojyNotes() {
                 setActiveTerminalId={setActiveTerminalId}
                 xtermInstances={xtermInstances}
                 createTerminal={createTerminal}
-                createAITab={createAITab}
                 closeTerminal={closeTerminal}
                 renameTerminal={renameTerminal}
                 restartTerminal={restartTerminal}
                 clearTerminal={clearTerminal}
                 markExited={markExited}
                 isOpen={rightPanel}
-                onAIModelChange={handleAIModelChange}
-                onOpenAISettings={handleOpenAISettings}
-                noteContext={activeNoteContext}
-                sendContext={aiSettings.sendContext}
-                onToggleContext={handleToggleAIContext}
               />
             </React.Suspense>
           </div>

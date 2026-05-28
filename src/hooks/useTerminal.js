@@ -16,14 +16,6 @@ export function useTerminal() {
     return entry;
   }, []);
 
-  const createAITab = useCallback(() => {
-    const id = `tab-${++tabIdCounter}`;
-    const entry = { id, type: "ai", title: "AI Chat" };
-    setTerminals((prev) => [...prev, entry]);
-    setActiveTerminalId(id);
-    return entry;
-  }, []);
-
   const closeTerminal = useCallback((id) => {
     // Instance will unmount when removed from state → kills its own PTY
     xtermInstances.current.delete(id);
@@ -75,7 +67,6 @@ export function useTerminal() {
     setActiveTerminalId,
     xtermInstances,
     createTerminal,
-    createAITab,
     closeTerminal,
     renameTerminal,
     restartTerminal,

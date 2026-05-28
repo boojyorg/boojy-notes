@@ -17,7 +17,6 @@ export default function TerminalTabBar({
   activeTabBg,
   chromeBg,
   onNewTerminal,
-  onNewAITab,
   onCloseTerminal,
   onRenameTerminal,
   onClearTerminal,
@@ -93,7 +92,6 @@ export default function TerminalTabBar({
       >
         {terminals.map((t, i) => {
           const act = activeTerminalId === t.id;
-          const isAI = t.type === "ai";
           return [
             <div
               key={`div-${t.id}`}
@@ -149,42 +147,28 @@ export default function TerminalTabBar({
                 }
               }}
             >
-              {/* Tab type icon */}
-              {isAI ? (
-                <span
-                  style={{
-                    flexShrink: 0,
-                    marginRight: 5,
-                    opacity: 0.7,
-                    fontSize: 11,
-                    lineHeight: 1,
-                  }}
-                >
-                  &#10022;
-                </span>
-              ) : (
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  style={{ flexShrink: 0, marginRight: 5, opacity: 0.7 }}
-                >
-                  <path
-                    d="M4 5L7 8L4 11"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8.5 11H12"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
+              {/* Terminal prompt icon */}
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{ flexShrink: 0, marginRight: 5, opacity: 0.7 }}
+              >
+                <path
+                  d="M4 5L7 8L4 11"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.5 11H12"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
               <span
                 style={{
                   overflow: "hidden",
@@ -305,32 +289,6 @@ export default function TerminalTabBar({
             </svg>
           </button>
         )}
-        <button
-          onClick={onNewAITab}
-          title="New AI chat"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "0 6px",
-            display: "flex",
-            alignItems: "center",
-            color: TEXT.muted,
-            fontSize: 14,
-            flexShrink: 0,
-            transition: "color 0.15s, background 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = TEXT.primary;
-            e.currentTarget.style.background = BG.elevated;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = TEXT.muted;
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          &#10022;
-        </button>
       </div>
 
       {/* Context menu */}

@@ -46,17 +46,6 @@ const defaultSettings = {
   setAutoUpdateEnabled: vi.fn(),
   updateStatus: { state: "idle" },
   setUpdateStatus: vi.fn(),
-  aiSettings: {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    baseUrl: "",
-    maxTokens: 4096,
-    sendContext: true,
-    apiKey: "",
-  },
-  setAISettings: vi.fn(),
-  updateAISetting: vi.fn(),
-  saveAIKey: vi.fn(),
 };
 
 const defaultLayout = {

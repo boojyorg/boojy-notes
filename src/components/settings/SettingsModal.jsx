@@ -10,7 +10,6 @@ import { fontSize, fontWeight } from "../../tokens/typography";
 import ProfileTab from "./ProfileTab";
 import AppearanceTab from "./AppearanceTab";
 import EditorTab from "./EditorTab";
-import AITab from "./AITab";
 import ExportTab from "./ExportTab";
 import { BrandingFooter, ContentFooter } from "./AboutTab";
 import { ChevronLeftIcon } from "../Icons";
@@ -27,7 +26,6 @@ export default function SettingsModal({
   isDesktop,
   notesDir,
   changeNotesDir,
-  onAIKeyTest,
 }) {
   const { settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, user } = useSettings();
 
@@ -86,13 +84,6 @@ export default function SettingsModal({
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
-    if (type === "ai")
-      return (
-        <svg {...props}>
-          <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" />
-          <path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
-        </svg>
-      );
     if (type === "updates")
       return (
         <svg {...props}>
@@ -109,7 +100,6 @@ export default function SettingsModal({
     ...(isDesktop ? [{ id: "storage", label: "Storage" }] : []),
     ...(loggedIn ? [{ id: "sync", label: "Sync" }] : []),
     { id: "appearance", label: "Appearance" },
-    { id: "ai", label: "AI" },
     ...(isDesktop ? [{ id: "updates", label: "Updates" }] : []),
   ];
 
@@ -280,12 +270,6 @@ export default function SettingsModal({
               </MobileCard>
             </>
           )}
-
-          {/* AI */}
-          <MobileSectionHeader title="AI" />
-          <MobileCard>
-            <AITab isDesktop={isDesktop} onAIKeyTest={onAIKeyTest} SectionHeader={() => null} />
-          </MobileCard>
 
           {/* Storage (desktop only) */}
           {isDesktop && (
@@ -532,13 +516,6 @@ export default function SettingsModal({
             </div>
             <div ref={(el) => (sectionRefs.current.updates = el)}>
               <EditorTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
-            </div>
-            <div ref={(el) => (sectionRefs.current.ai = el)}>
-              <AITab
-                isDesktop={isDesktop}
-                onAIKeyTest={onAIKeyTest}
-                SectionHeader={SectionHeader}
-              />
             </div>
             <ContentFooter isMobile={false} />
           </div>

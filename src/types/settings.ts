@@ -1,10 +1,3 @@
-export interface AISettings {
-  provider: string;
-  model: string;
-  apiKey: string;
-  sendContext: boolean;
-}
-
 export type SyncState = "idle" | "syncing" | "retrying" | "error" | "offline";
 
 export interface User {

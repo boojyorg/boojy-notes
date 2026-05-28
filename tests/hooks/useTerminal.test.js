@@ -71,20 +71,6 @@ describe("useTerminal", () => {
     expect(result.current.terminals[0].title).toBe("my-shell");
   });
 
-  it("createAITab adds an AI type tab", () => {
-    const { result } = renderHook(() => useTerminal());
-
-    let entry;
-    act(() => {
-      entry = result.current.createAITab();
-    });
-
-    expect(result.current.terminals).toHaveLength(1);
-    expect(result.current.terminals[0].type).toBe("ai");
-    expect(result.current.terminals[0].title).toBe("AI Chat");
-    expect(result.current.activeTerminalId).toBe(entry.id);
-  });
-
   it("closeTerminal sets activeTerminalId to null when last terminal is closed", () => {
     const { result } = renderHook(() => useTerminal());
 

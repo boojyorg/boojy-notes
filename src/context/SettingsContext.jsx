@@ -1,7 +1,5 @@
-import { createContext, useState, useEffect, useCallback, useContext, useMemo } from "react";
+import { createContext, useState, useEffect, useContext, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { readKey, storeKey } from "../services/ai/keyStorage";
-import { getDefaultModel } from "../services/ai/models";
 import { isElectron } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 
@@ -53,61 +51,6 @@ export function SettingsProvider({ children }) {
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
   const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
 
-  // AI Settings state
-  const [aiSettings, setAISettings] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("boojy-ai-settings"));
-      return {
-        provider: saved?.provider || "anthropic",
-        model: saved?.model || "claude-sonnet-4-6",
-        baseUrl: saved?.baseUrl || "",
-        maxTokens: saved?.maxTokens || 4096,
-        sendContext: saved?.sendContext !== false,
-        apiKey: "", // loaded async below
-      };
-    } catch {
-      return {
-        provider: "anthropic",
-        model: "claude-sonnet-4-6",
-        baseUrl: "",
-        maxTokens: 4096,
-        sendContext: true,
-        apiKey: "",
-      };
-    }
-  });
-
-  // Load API key on mount and when provider changes
-  useEffect(() => {
-    readKey(aiSettings.provider).then((key) => {
-      setAISettings((prev) => ({ ...prev, apiKey: key || "" }));
-    });
-  }, [aiSettings.provider]);
-
-  // Persist non-secret AI settings
-  useEffect(() => {
-    const { apiKey: _apiKey, ...rest } = aiSettings;
-    localStorage.setItem("boojy-ai-settings", JSON.stringify(rest));
-  }, [aiSettings]);
-
-  const updateAISetting = useCallback((key, value) => {
-    setAISettings((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "provider") {
-        next.model = getDefaultModel(value);
-      }
-      return next;
-    });
-  }, []);
-
-  const saveAIKey = useCallback(
-    async (key) => {
-      await storeKey(aiSettings.provider, key);
-      setAISettings((prev) => ({ ...prev, apiKey: key }));
-    },
-    [aiSettings.provider],
-  );
-
   // Load settings on mount (spell check, etc.)
   useEffect(() => {
     const api = getAPI();
@@ -151,10 +94,6 @@ export function SettingsProvider({ children }) {
       setAutoUpdateEnabled,
       updateStatus,
       setUpdateStatus,
-      aiSettings,
-      setAISettings,
-      updateAISetting,
-      saveAIKey,
     }),
     [
       settingsFontSize,
@@ -172,9 +111,6 @@ export function SettingsProvider({ children }) {
       spellCheckLanguages,
       autoUpdateEnabled,
       updateStatus,
-      aiSettings,
-      updateAISetting,
-      saveAIKey,
     ],
   );
 

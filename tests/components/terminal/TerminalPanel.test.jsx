@@ -30,18 +30,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
   }),
 }));
 
-vi.mock("../../../src/hooks/useAI", () => ({
-  useAI: () => ({
-    getMessages: vi.fn(() => []),
-    isStreaming: vi.fn(() => false),
-    getError: vi.fn(() => null),
-    sendMessage: vi.fn(),
-    cancelStreaming: vi.fn(),
-  }),
-}));
-
 const settingsState = {
-  aiSettings: {},
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
   settingsTab: "profile",
@@ -83,9 +72,6 @@ vi.mock("../../../src/components/terminal/TerminalTabBar", () => ({
         <button data-testid="new-terminal-btn" onClick={props.onNewTerminal}>
           New Terminal
         </button>
-        <button data-testid="new-ai-btn" onClick={props.onNewAITab}>
-          New AI
-        </button>
         {props.terminals.map((t) => (
           <div key={t.id} data-testid={`tab-${t.id}`}>
             <span>{t.title}</span>
@@ -111,10 +97,6 @@ vi.mock("../../../src/components/terminal/TerminalSearchBar", () => ({
   default: () => <div data-testid="search-bar" />,
 }));
 
-vi.mock("../../../src/components/ai/AIChat", () => ({
-  default: () => <div data-testid="ai-chat" />,
-}));
-
 // ── Import component after mocks ──────────────────────────────────────────────
 import TerminalPanel from "../../../src/components/terminal/TerminalPanel.jsx";
 
@@ -126,18 +108,12 @@ const defaultProps = {
   setActiveTerminalId: vi.fn(),
   xtermInstances: { current: new Map() },
   createTerminal: vi.fn(),
-  createAITab: vi.fn(),
   closeTerminal: vi.fn(),
   renameTerminal: vi.fn(),
   restartTerminal: vi.fn(),
   clearTerminal: vi.fn(),
   markExited: vi.fn(),
   isOpen: true,
-  onAIModelChange: vi.fn(),
-  onOpenAISettings: vi.fn(),
-  noteContext: null,
-  sendContext: false,
-  onToggleContext: vi.fn(),
 };
 
 function renderPanel(overrides = {}) {
@@ -198,7 +174,7 @@ describe("TerminalPanel", () => {
   it("passes terminal list to TerminalTabBar", () => {
     const terminals = [
       { id: "t1", title: "zsh", type: "terminal" },
-      { id: "t2", title: "AI Chat", type: "ai" },
+      { id: "t2", title: "bash", type: "terminal" },
     ];
     renderPanel({ terminals, activeTerminalId: "t1" });
     expect(screen.getByTestId("tab-t1")).toBeInTheDocument();

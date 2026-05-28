@@ -74,9 +74,6 @@ vi.mock("../../../src/components/settings/AppearanceTab", () => ({
 vi.mock("../../../src/components/settings/EditorTab", () => ({
   default: () => <div data-testid="editor-tab">Editor</div>,
 }));
-vi.mock("../../../src/components/settings/AITab", () => ({
-  default: () => <div data-testid="ai-tab">AI</div>,
-}));
 vi.mock("../../../src/components/settings/ExportTab", () => ({
   default: () => <div data-testid="export-tab">Export</div>,
 }));
@@ -102,7 +99,6 @@ const defaultProps = {
   isDesktop: true,
   notesDir: "/notes",
   changeNotesDir: vi.fn(),
-  onAIKeyTest: vi.fn(),
 };
 
 function renderModal(overrides = {}) {
@@ -190,6 +186,5 @@ describe("SettingsModal", () => {
     expect(screen.getByTestId("profile-tab")).toBeInTheDocument();
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
     expect(screen.getByTestId("editor-tab")).toBeInTheDocument();
-    expect(screen.getByTestId("ai-tab")).toBeInTheDocument();
   });
 });

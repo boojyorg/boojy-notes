@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Removed
+- **AI chat** — Removed the in-app AI chat panel, multi-provider support (OpenAI/Gemini/Anthropic), API key storage, and the AI settings tab. Scope reduction to focus on core note-taking.
+
 ### Features
 - **Share format picker** — Mobile share menu now offers Plain Text, Markdown, and Copy to Clipboard options instead of sharing raw block text
 - **Onboarding hints** — 5 contextual tooltip hints for new users (slash commands, wikilinks, tags, swipe navigation, split view) that auto-dismiss after 8 seconds and never repeat

@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import TerminalTabBar from "./TerminalTabBar";
 import TerminalInstance from "./TerminalInstance";
 import TerminalSearchBar from "./TerminalSearchBar";
-import AIChat from "../ai/AIChat";
 import { useTheme } from "../../hooks/useTheme";
-import { useAI } from "../../hooks/useAI";
-import { useSettings } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
 import { isElectron } from "../../utils/platform";
 import { fontSize } from "../../tokens/typography";
@@ -16,36 +13,22 @@ export default function TerminalPanel({
   setActiveTerminalId,
   xtermInstances,
   createTerminal,
-  createAITab,
   closeTerminal,
   renameTerminal,
   restartTerminal,
   clearTerminal,
   markExited,
   isOpen,
-  // AI props
-  onAIModelChange,
-  onOpenAISettings,
-  noteContext,
-  sendContext,
-  onToggleContext,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
-  const { aiSettings } = useSettings();
-  const { chromeBg, activeTabBg, accentColor } = useLayout();
+  const { chromeBg, activeTabBg } = useLayout();
   const [searchOpen, setSearchOpen] = useState(false);
-  const aiHook = useAI();
 
-  // Auto-create first tab when panel opens with none
+  // Auto-create first tab when panel opens with none (desktop terminal only)
   useEffect(() => {
-    if (isOpen && terminals.length === 0) {
-      if (isElectron && window.electronAPI?.terminal) {
-        createTerminal();
-      } else {
-        // Web/mobile: auto-create AI tab
-        createAITab();
-      }
+    if (isOpen && terminals.length === 0 && isElectron && window.electronAPI?.terminal) {
+      createTerminal();
     }
   }, [isOpen]);
 
@@ -109,7 +92,6 @@ export default function TerminalPanel({
         activeTabBg={activeTabBg}
         chromeBg={chromeBg}
         onNewTerminal={() => createTerminal()}
-        onNewAITab={() => createAITab()}
         onCloseTerminal={closeTerminal}
         onRenameTerminal={renameTerminal}
         onClearTerminal={clearTerminal}
@@ -129,40 +111,6 @@ export default function TerminalPanel({
               xtermInstances={xtermInstances}
               onExited={markExited}
             />
-          ))}
-
-        {/* AI chat instances — render for AI type tabs */}
-        {terminals
-          .filter((t) => t.type === "ai")
-          .map((t) => (
-            <div
-              key={t.id}
-              style={{
-                display: activeTerminalId === t.id ? "flex" : "none",
-                flexDirection: "column",
-                height: "100%",
-                position: "absolute",
-                inset: 0,
-              }}
-            >
-              <AIChat
-                tabId={t.id}
-                messages={aiHook.getMessages(t.id)}
-                isStreaming={aiHook.isStreaming(t.id)}
-                error={aiHook.getError(t.id)}
-                onSend={(tabId, text) => {
-                  aiHook.sendMessage(tabId, text, aiSettings, sendContext ? noteContext : null);
-                }}
-                onCancel={(tabId) => aiHook.cancelStreaming(tabId)}
-                aiSettings={aiSettings}
-                onModelChange={onAIModelChange}
-                onOpenSettings={onOpenAISettings}
-                noteContext={noteContext}
-                sendContext={sendContext}
-                onToggleContext={onToggleContext}
-                accentColor={accentColor}
-              />
-            </div>
           ))}
 
         {terminals.length === 0 && (
