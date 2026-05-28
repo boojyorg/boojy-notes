@@ -7,32 +7,36 @@ Boojy Notes runs on Desktop (Electron) and Web (PWA). This doc covers how to bui
 | Tool | Required for |
 |------|-------------|
 | Node.js (v18+) | All platforms |
+| pnpm (`corepack enable pnpm`) | Package management |
 
 ## Unit Tests
 
 ```bash
-npm test              # Run all tests once
-npm run test:watch    # Watch mode (re-runs on file changes)
-npm run test:coverage # Run with coverage report
+pnpm test              # Run all tests once
+pnpm test:watch        # Watch mode (re-runs on file changes)
+pnpm test:coverage     # Run with coverage report
 ```
 
 ## Linting & Formatting
 
+Linting and formatting are handled by [Biome](https://biomejs.dev) (`biome.json`).
+
 ```bash
-npm run lint          # Check for lint errors
-npm run lint:fix      # Auto-fix lint errors
-npm run format:check  # Check formatting (runs in CI)
-npm run format        # Auto-format files
+pnpm lint              # Check for lint errors
+pnpm lint:fix          # Auto-fix lint errors
+pnpm format:check      # Check formatting (runs in CI)
+pnpm format            # Auto-format files
+pnpm check             # Lint + format in one pass
 ```
 
-Run `npm test` and `npm run format:check` before committing to catch CI failures early.
+Run `pnpm test` and `pnpm format:check` before committing to catch CI failures early.
 
 ## Desktop (Electron)
 
 ### Development
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This starts Vite + Electron in dev mode with hot reload.
@@ -40,7 +44,7 @@ This starts Vite + Electron in dev mode with hot reload.
 ### Build Installer
 
 ```bash
-npm run build:electron
+pnpm build:electron
 ```
 
 Produces platform-specific installers (`.dmg` on macOS, `.exe`/NSIS on Windows, `.AppImage` on Linux) in the `dist/` output directory.
@@ -54,16 +58,16 @@ The web build is fully responsive — the small-screen (mobile browser) layout i
 ### Development
 
 ```bash
-npm run dev:web
+pnpm dev:web
 ```
 
 ### Production Preview
 
 ```bash
-ELECTRON_DISABLE=1 npm run build
-npm run preview
+ELECTRON_DISABLE=1 pnpm build
+pnpm preview
 ```
 
 ### Deployment
 
-Web deploys automatically to [boojy.org](https://boojy.org) via Cloudflare Pages on every push to `master`. The Cloudflare build command is `ELECTRON_DISABLE=1 npm run build`, serving from `dist/`.
+Web deploys automatically to [boojy.org](https://boojy.org) via Cloudflare Pages on every push to `master`. The Cloudflare build command is `ELECTRON_DISABLE=1 pnpm build`, serving from `dist/`. **Set this build command in the Cloudflare Pages dashboard — it is not read from the repo.**

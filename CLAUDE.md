@@ -10,6 +10,7 @@ Read files directly when needed. Do not ask before reading.
 - **Backend:** Supabase (auth + database), Cloudflare R2 (attachments)
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
 - **Linting/Formatting:** Biome 2 (single tool for lint + format, `biome.json`), enforced by Husky pre-commit hooks
+- **Package manager:** pnpm (`.npmrc` `node-linker=hoisted` for electron-builder/node-pty)
 
 ## Project Structure
 

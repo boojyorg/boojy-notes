@@ -47,41 +47,37 @@ pnpm dev
 | `build`            | Production build (web)               |
 | `build:electron`   | Production build + Electron packager |
 | `preview`          | Preview the production build locally |
+| `test`             | Run unit tests (Vitest)              |
+| `lint`             | Lint with Biome                      |
+| `format:check`     | Check formatting with Biome          |
+| `check`            | Biome lint + format in one pass      |
+| `typecheck`        | TypeScript type-check (`tsc --noEmit`) |
+
+All scripts run via `pnpm <script>`.
 
 ## Project Structure
 
 ```text
-assets/
-  boojy-logo.png          # Brand logo
-  boojy-notes-text-N.png  # "N" wordmark segment
-  boojy-notes.text-tes.png # "tes" wordmark segment
 src/
   BoojyNotes.jsx        # App root
   main.jsx              # Entry point
-  components/
-    EditableBlock.jsx    # Block-based editor
-    Icons.jsx            # SVG icon components
-    SettingsModal.jsx    # Settings UI
-    StarField.jsx        # Seeded star field background
-  hooks/
-    useAuth.js           # Authentication state
-    useFileSystem.js     # Local file read/write (Electron)
-    useSync.js           # Cloud sync logic
-  constants/
-    colors.js            # Theme palette
-    data.js              # Static data and defaults
-  utils/
-    colorUtils.js        # Color manipulation helpers
-    random.js            # Seeded random number generator
-    storage.js           # localStorage abstraction
-  services/
-    sync.js              # Sync service
+  components/           # UI components (EditableBlock, Sidebar, TopBar, StarField, …)
+    blocks/             # Block types (code, table, callout, image, file, embed)
+    mobile/             # Mobile-browser UI (toolbar, bottom sheet, FAB)
+    settings/           # Settings modal panels (SettingsModal, ProfileTab, …)
+    terminal/           # Terminal emulator (Electron only)
+  context/              # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
+  hooks/                # Custom hooks (useSync, useFileSystem, useNoteStats, …)
+    editor/             # Editor hooks (keyboard, paste, drag, slash commands)
+  services/             # Platform services (apiProvider, sync)
+  utils/                # Helpers (storage.ts, search, markdown, inlineFormatting, platform)
+  constants/            # Themes, colors, z-index, data defaults
+  styles/               # Shared style objects
+  tokens/               # Design tokens (spacing, radius, typography, shadows)
+  types/                # TypeScript definitions
   lib/
-    supabase.js          # Supabase client init
-electron/
-  main.js               # Electron main process
-  preload.js             # Preload script (IPC bridge)
-  markdown.js            # Markdown file read/write
+    supabase.js         # Supabase client init
+electron/               # Electron main process (IPC, file I/O, terminal, export/import)
 ```
 
 ## Tech Stack
@@ -91,6 +87,8 @@ electron/
 - **Electron 40** — Desktop shell
 - **Supabase** — Auth and database
 - **Chokidar** — File system watching (Electron)
+- **pnpm** — Package manager
+- **Biome** — Linting + formatting
 
 ## Roadmap
 
