@@ -5,7 +5,6 @@ import React, {
   useRef,
   useCallback,
   useMemo,
-  useDeferredValue,
   Fragment,
 } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
@@ -29,7 +28,6 @@ import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
 import { loadFromStorage } from "./utils/storage";
 import { Z } from "./constants/zIndex";
-import { stripMarkdownFormatting } from "./utils/inlineFormatting";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
@@ -61,7 +59,10 @@ import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import useOnboardingHints from "./hooks/useOnboardingHints";
-import { isElectron, isNative, isWeb } from "./utils/platform";
+import { useNoteStats } from "./hooks/useNoteStats";
+import { useWebNags } from "./hooks/useWebNags";
+import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { isElectron, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -226,22 +227,16 @@ export default function BoojyNotes() {
     isEditorFocused: !!activeNote,
   });
 
-  // Update native window title when active note or its title changes
-  const activeNoteTitle = noteData[activeNote]?.title;
-  useEffect(() => {
-    const title = activeNoteTitle ? activeNoteTitle + " - Boojy Notes" : "Boojy Notes";
-    document.title = title;
-    if (isElectron) getAPI()?.setWindowTitle(title);
-  }, [activeNote, activeNoteTitle]);
+  // Keep document + native window title in sync with the active note
+  useDocumentTitle(activeNote, noteData[activeNote]?.title);
 
   const [, forceRender] = useState(0);
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // ── Onboarding & persistence warning toasts (web only) ────────────
-  const [onboardingToast, setOnboardingToast] = useState(false);
-  const [persistenceWarning, setPersistenceWarning] = useState(false);
-  const persistenceShownRef = useRef(false);
+  const { onboardingToast, setOnboardingToast, persistenceWarning, setPersistenceWarning } =
+    useWebNags({ noteData, user });
 
   // ── Refs ────────────────────────────────────────────────────────────
   const tabScrollRef = useRef(null);
@@ -807,57 +802,11 @@ export default function BoojyNotes() {
     }
   }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Onboarding toast (web only) ──────────────────────────────────────
-  useEffect(() => {
-    if (isNative) return;
-    if (user) return;
-    const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
-    if (noteCount >= 3 && !localStorage.getItem("boojy-onboarding-dismissed")) {
-      setOnboardingToast(true);
-    }
-  }, [noteData, user]);
-
-  useEffect(() => {
-    if (!onboardingToast) return;
-    const t = setTimeout(() => setOnboardingToast(false), 15000);
-    return () => clearTimeout(t);
-  }, [onboardingToast]);
-
-  // ── Persistence warning (web only) ───────────────────────────────────
-  useEffect(() => {
-    if (isNative) return;
-    if (user) return;
-    if (persistenceShownRef.current) return;
-    const noteCount = Object.keys(noteData).filter((id) => !noteData[id]._draft).length;
-    if (
-      noteCount > 5 &&
-      localStorage.getItem("boojy-onboarding-dismissed") &&
-      !localStorage.getItem("boojy-persistence-warning-dismissed")
-    ) {
-      setPersistenceWarning(true);
-      persistenceShownRef.current = true;
-    }
-  }, [noteData, user]);
-
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
-  const noteBlocks = note?.content?.blocks;
-  const deferredBlocks = useDeferredValue(noteBlocks);
-  const { wordCount, charCount, charCountNoSpaces, readingTime } = useMemo(() => {
-    if (!deferredBlocks)
-      return { wordCount: 0, charCount: 0, charCountNoSpaces: 0, readingTime: 1 };
-    const plainText = deferredBlocks
-      .filter((b) => b.text)
-      .map((b) => stripMarkdownFormatting(b.text))
-      .join(" ");
-    const wc = plainText.trim() ? plainText.trim().split(/\s+/).filter(Boolean).length : 0;
-    return {
-      wordCount: wc,
-      charCount: plainText.length,
-      charCountNoSpaces: plainText.replace(/\s/g, "").length,
-      readingTime: Math.max(1, Math.ceil(wc / 200)),
-    };
-  }, [deferredBlocks]);
+  const { wordCount, charCount, charCountNoSpaces, readingTime } = useNoteStats(
+    note?.content?.blocks,
+  );
 
   // Note title set for broken wikilink detection
   const lastTitlesKey = useRef("");
