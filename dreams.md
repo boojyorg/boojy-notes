@@ -96,7 +96,8 @@ _None open._
 - [ ] Destructive actions w/o confirm: right-click→Delete (web has no Trash → gone) +
   **Empty Trash** (single click, irreversible). `ContextMenu.jsx:163`, `Sidebar.jsx:829`.
 - [ ] Focus dropped after closing overlays (Settings/slash/context menus) — must re-click editor.
-- [ ] Settings modal: Escape doesn't close (only backdrop click). `SettingsModal.jsx`.
+- [~] ~~Settings modal: Escape doesn't close~~ **FALSE POSITIVE** (interactive pass 2026-05-29:
+  Escape DOES close Settings on the desktop web build). Audit agent was wrong; dropped.
 - [ ] FindBar shows "0 of 0" silently on Firefox/older Safari (no CSS Highlight API).
 - [ ] Backlinks panel entries are `div onClick` — not keyboard-activatable. `BacklinksPanel.jsx:57`.
 - [ ] Mobile TopBar title not tappable to rename. `TopBarMobile.jsx:68`.
@@ -119,6 +120,35 @@ _None open._
 **Calibration note:** the agent-flagged "TagMenu space dismisses" was over-rated High — tags are
 single-token so space legitimately ends a tag; the only real issue is `preventDefault` swallows
 that space (minor). `TagMenu.jsx:48`.
+
+### 🖥️ Interactive pass findings (2026-05-29, Playwright drive of `dev:web`)
+
+> Ran the actual app to catch runtime/visual bugs the static audit structurally couldn't.
+- ✅ **Placeholder fix verified live** — `.empty-block::before` content is `none` once text is typed; no overlap.
+- ✅ **Wikilink #2 (no-navigation) verified live** — active note unchanged after selecting from `[[ ]]` menu.
+- ✅ Editor core clean: markdown (`#`, `**bold**`, `*italic*`), slash menu (all block types), undo/redo, new note, Settings modal — all render correctly. **Zero console errors/warnings** across every flow.
+- 🔎 **2 audit false-positives corrected:** TagMenu-space (above) and Settings-Escape (now struck through in Tier 2).
+- [ ] 🐛 **NEW — orphaned onboarding hint bubble** (Med, interactive-only find). The "Type / for
+  commands" onboarding tooltip floats detached top-center of the editor, not anchored to anything
+  (see screenshots). Static audit missed it; only visible when running. Worth repositioning/anchoring.
+- [x] 🐛 **FIXED 2026-05-29 — Wikilink menu selection was fully broken** (user-reported; my
+  removing the nav call exposed TWO latent bugs the earlier Playwright run actually caught but I
+  wrongly explained away — lesson: trust the failing test). Both now fixed + verified live via
+  click AND Enter:
+  1. **Enter inserted a newline instead of selecting.** `WikilinkMenu`'s window keydown listener
+     called `preventDefault()` but not `stopPropagation()`, so Enter bubbled to the editor's
+     keydown handler, which split the block. Fix: `stopPropagation()` on the keys the menu owns.
+     `WikilinkMenu.jsx`.
+  2. **Clicking inserted nothing.** `handleWikilinkSelect` ran from a *native* window listener, so
+     React never re-rendered the (text-optimised) editor → the `syncGen` DOM-resync effect never
+     fired → the inserted `]]` was invisible. `commitTextChange`→`commitNoteData`, reorder, and
+     `flushSync` all FAILED to force the re-render. Fix that worked: write the rendered HTML to the
+     block element **directly** (`inlineMarkdownToHtml` → `el.innerHTML`, the `useInputHandler`
+     pattern) + place caret at end; keep `commitNoteData` for state. `BoojyNotes.jsx`.
+  - **Architecture note for next time:** the syncGen re-sync mechanism does NOT work when invoked
+    from a native event listener (only React synthetic events re-render the optimised editor). The
+    wikilink menu is the only menu using a native window listener; the slash menu uses the React
+    keydown path. Worth unifying eventually.
 
 ### ⚠️ Known Gotchas
 

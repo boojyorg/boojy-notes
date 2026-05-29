@@ -30,14 +30,22 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
 
   useEffect(() => {
     const handler = (e) => {
+      // While the menu is open it OWNS these keys. stopPropagation is essential:
+      // without it the event bubbles to the editor's keydown handler, which
+      // splits the block / inserts a newline (preventDefault alone doesn't stop
+      // that programmatic insert — only stopPropagation keeps the key from
+      // reaching the editor at all).
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
         e.preventDefault();
+        e.stopPropagation();
         if (filtered.length > 0) {
           onSelect(filtered[selectedIndex]?.title || filter);
         } else {
@@ -45,6 +53,7 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         onDismiss();
       }
     };

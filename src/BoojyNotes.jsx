@@ -31,6 +31,7 @@ import { Z } from "./constants/zIndex";
 import { blocksToHtml } from "./utils/exportUtils";
 import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
 import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
+import { inlineMarkdownToHtml } from "./utils/inlineFormatting";
 const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -893,7 +894,9 @@ export default function BoojyNotes() {
       const match = oldText.match(/\[\[([^\]]*)$/);
       if (match) {
         const newText = oldText.slice(0, match.index) + `[[${title}]]`;
-        commitTextChange((prev) => {
+        // Update state for persistence/sync.
+        syncGeneration.current++;
+        commitNoteData((prev) => {
           const next = { ...prev };
           const n = { ...next[noteId] };
           const b = [...n.content.blocks];
@@ -902,13 +905,36 @@ export default function BoojyNotes() {
           next[noteId] = n;
           return next;
         });
-        syncGeneration.current++;
+        // This handler fires from WikilinkMenu's *native* keydown listener, where
+        // React won't re-render the (text-optimised) editor — so the syncGen
+        // DOM-resync effect never runs and the link would stay invisible. Write
+        // the rendered HTML to the block directly (same approach useInputHandler
+        // uses for markdown conversions) and drop the caret at the end.
+        const el = blockRefs.current[blocks[blockIndex].id];
+        if (el) {
+          el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSet);
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
         focusBlockId.current = blocks[blockIndex].id;
         focusCursorPos.current = newText.length;
       }
       setWikilinkMenu(null);
     },
-    [commitTextChange, syncGeneration, noteDataRef, focusBlockId, setWikilinkMenu, wikilinkMenuRef],
+    [
+      commitNoteData,
+      syncGeneration,
+      noteDataRef,
+      focusBlockId,
+      setWikilinkMenu,
+      wikilinkMenuRef,
+      blockRefs,
+      noteTitleSet,
+    ],
   );
 
   // Tag click handler: sets sidebar search to #tagname
