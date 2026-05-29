@@ -9,9 +9,11 @@
 **Status:** v0.3.0 **pushed + tagged** (web-only pivot + Biome + pnpm + BoojyNotes slice-1).
 v0.3.0 GitHub Release **published** (2026-05-29, marked Latest — macOS DMG + Windows EXE live).
 CI **GREEN** since the sidebar a11y fix. App live at `notes.boojy.org`; landing at `boojy.org/notes`.
-**Latest (uncommitted):** terminal removed (tagged `terminal-snapshot`) + top bar simplified;
-dated code-quality reviews written. All local gates green — awaiting manual `dev`/`dev:web`
-walkthrough, then 2 commits (docs review + terminal removal).
+**Latest:** **v0.4.0 cut + tagged** (2026-05-29) — terminal removed (`terminal-snapshot` tag for
+re-add) + top bar simplified, web delete-confirm, bug/a11y batch. Pushed `master` (web auto-deploys);
+`v0.4.0` tag triggers desktop DMG/EXE build. CI actions bumped to `@v6` (Node 24 runtime); project
+build/test stays on Node 22 (Node 24 hangs Playwright install — pinned w/ comment). Dated
+code-quality reviews added under `docs/`.
 
 **Then:** 4-agent bug audit → shipped 6 bug fixes (sync staleness, wikilink nav+selection,
 folder rename, mobile image, placeholder overlap) — all verified, incl. an interactive Playwright
@@ -27,9 +29,10 @@ live via Playwright. Tier-3 a11y clusters remain in §3.
 new, 8.8→8.9). **Removed the terminal** (right panel + toggle + `node-pty`/xterm; 9 files deleted,
 ~9 wiring edits) — pre-removal state tagged `terminal-snapshot` for easy re-add. Reworked the
 desktop top bar: no right toggle/column, tabs full-width, word count pinned left of help
-(`RIGHT_CLUSTER_W` fixed cluster). All gates green (572 tests, coverage 46.3%/47.6% still above
-floor, typecheck/biome/format clean, web build OK). **Not yet committed; desktop DMG build +
-`pnpm dev`/`dev:web` walkthrough still to verify manually.**
+(`RIGHT_CLUSTER_W` fixed cluster, thin dividers both sides). **Shipped as v0.4.0** — committed,
+pushed, tagged; CI green, walkthrough done, desktop DMG/EXE build succeeded (no node-pty rebuild).
+Also bumped CI actions to `@v6` (Node 24 runtime); project build/test pinned to Node 22 (Node 24
+hangs Playwright install — see §3).
 
 ### Current milestone (checklist)
 
@@ -41,7 +44,8 @@ floor, typecheck/biome/format clean, web build OK). **Not yet committed; desktop
 - [x] Fix CI coverage gate (thresholds → floor at actuals)
 - [x] **Confirm web is live** — `notes.boojy.org` live (user-confirmed 2026-05-29); landing at `boojy.org/notes`
 - [x] **Fix sidebar-tree a11y violation → green E2E/CI** (New Folder/New Note buttons under `role="tree"` given `role="treeitem"`; verified all 5 E2E pass locally, 2026-05-29)
-- [x] **Remove terminal** (tagged `terminal-snapshot`) + simplify top bar — gates green, awaiting manual walkthrough + commit
+- [x] **Remove terminal** (tagged `terminal-snapshot`) + simplify top bar — **shipped in v0.4.0** (committed, walkthrough done, installers built)
+- [x] **Release v0.4.0** — package.json + CHANGELOG bumped, tag pushed, DMG/EXE built OK (2026-05-29)
 - [ ] (optional) Phase 3 cont.: `ProfileTab` (915) / `Sidebar` (897)
 - [x] Desktop installers + fix `boojy.org/notes` version text: tag `v0.3.0` (pushed 2026-05-29)
 - [ ] (optional) Create `FEATURES.md` (docs-system gap)
@@ -234,13 +238,21 @@ that space (minor). `TagMenu.jsx:48`.
 
 ### ⚠️ Known Gotchas
 
-- **pnpm blocks native build scripts by default** (pnpm 10). node-pty/esbuild/electron won't
+- **CI Node version is pinned to 22, NOT 24** (2026-05-29). `node-version: 24` in setup-node
+  **deterministically hangs** `playwright install --with-deps chromium` on the GH runner image
+  (the Install Playwright step stalls indefinitely after the Chromium download — hung ~19m on two
+  consecutive runs; instant green on revert to 22). The *actions* run on Node 24 via `@v6` — only
+  the project build/test runtime is held at 22. Don't rebump `node-version` without fixing the
+  Playwright install side first (pin browser deps / split the step). Comment left on the line.
+- **node-pty/xterm removed in v0.4.0** (terminal cut). The two node-pty gotchas below are
+  **obsolete unless the terminal is re-added** (revert tag `terminal-snapshot`).
+- _(obsolete, terminal-only)_ **pnpm blocks native build scripts by default** (pnpm 10). node-pty/esbuild/electron won't
   build until listed in `pnpm.onlyBuiltDependencies` (package.json). Symptom: missing native
-  binary + an "Ignored build scripts" warning after install.
-- **node-pty 1.1.0 loads from `prebuilds/`** (darwin/win32), NOT `build/Release/`. A missing
+  binary + an "Ignored build scripts" warning after install. _(esbuild/electron still apply.)_
+- _(obsolete, terminal-only)_ **node-pty 1.1.0 loads from `prebuilds/`** (darwin/win32), NOT `build/Release/`. A missing
   `build/Release/*.node` is normal — verify with `node -e "require('node-pty')"` instead.
-- **electron-builder works under pnpm** with `.npmrc` `node-linker=hoisted`; it detects
-  `pm=pnpm` and rebuilds node-pty against Electron. Verified producing a DMG.
+- **electron-builder works under pnpm** with `.npmrc` `node-linker=hoisted`; verified producing a
+  DMG (v0.4.0 build was clean with no native node-pty rebuild needed post-removal).
 - **Cloudflare Pages build command lives in the dashboard, not the repo.** After npm→pnpm it
   should be `ELECTRON_DISABLE=1 pnpm build` there. (Likely fine — CF auto-detects pnpm-lock for
   install and `npm run build` just runs vite — but confirm the deploy is green.)

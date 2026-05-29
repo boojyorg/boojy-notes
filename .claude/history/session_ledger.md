@@ -30,6 +30,52 @@ _Next session target; anything worth remembering._
 
 ---
 
+## 2026-05-29 · Ship v0.4.0 (commit terminal removal) + CI Node-24 tooling · master
+
+> Continues the same-day "terminal removal" entry below — that work was pending-commit
+> there; this entry records committing it, the CI tooling, and cutting the release.
+
+### Session Work
+
+| Task | Outcome |
+|---|---|
+| Commit + push terminal removal | Split into 2 commits: docs reviews `5551564`, terminal removal + top-bar polish `5e11bfc`. Pushed `38d0148..5e11bfc`. Tag `terminal-snapshot` pushed (re-add hatch). CI green (1m32s) incl. E2E/axe. |
+| Bump CI actions off deprecated Node 20 | `actions/checkout`, `setup-node`, `pnpm/action-setup` `@v4 → @v6` (Node 24 runtime) in ci.yml + release.yml. `730af91`. CI green, deprecation annotation gone. |
+| Attempt project build/test on Node 24 | `node-version 22 → 24` (`04ced74`) — **deterministically hung** `playwright install --with-deps chromium` (2 consecutive runs stuck ~19m on that step; cancelled both). |
+| Revert to Node 22 | `node-version → 22` with explanatory comment (`571f756`). CI green 1m13s, Install Playwright cleared in seconds. Actions stay `@v6` so deprecation fix holds. |
+| Cut v0.4.0 | Minor bump (feature removal — consistent w/ v0.3.0 scoping). `package.json → 0.4.0`, CHANGELOG `Unreleased → 0.4.0 — 2026-05-29`. `f6a2228`. Tag `v0.4.0` pushed → DMG/EXE build **succeeded** (user-confirmed; first installer build post-node-pty removal, no native rebuild). |
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| typecheck | ✓ clean (earlier in session) |
+| lint / format:check | ✓ Biome clean |
+| test / coverage | ✓ 572 passed; coverage above floor |
+| E2E | ✓ green in CI (Node 22) |
+| build / release | ✓ web auto-deploy + macOS DMG + Windows EXE built successfully (v0.4.0) |
+| CI (post-push) | ✓ green on `5e11bfc`, `730af91`, `571f756`, `f6a2228` (hung+cancelled on the Node-24 attempt `04ced74`) |
+
+### Code velocity
+
+Full session: 6 commits, 30 files, **+284 / −1,887** (net ≈ −1,600), 2 tags. Deletion-dominated
+(terminal removal) + operational (CI tooling, release ops). This entry's slice: 4 commits
+(3 CI config + 1 release), small diffs — operational, not code.
+
+### Cost / telemetry
+
+Per `/cost` (not separately captured). Qualitative: long multi-phase session — 3 Explore agents
+during code-quality research, then heavy edit + CI-polling/watch activity; no local DMG build (CI did it).
+
+### Notes — next session targets
+
+1. **Node 24 for project build:** blocked by a Playwright `install --with-deps` hang on the runner. If wanted later, fix on the Playwright side (pin browser deps / split the install step), don't just rebump `node-version`.
+2. **GH Actions resilience:** no `timeout-minutes` on CI jobs — a hung step burns toward the 6h limit. Consider adding a job/step timeout so future hangs fail fast.
+3. **Terminal re-add:** revert from tag `terminal-snapshot` when bringing it back polished.
+4. Still deferred: Phase 3 `ProfileTab`/`Sidebar` decomposition; `FEATURES.md` docs-system gap.
+
+---
+
 ## 2026-05-29 · Dated code-quality reviews + terminal removal + top-bar polish · master
 
 ### Session Work
