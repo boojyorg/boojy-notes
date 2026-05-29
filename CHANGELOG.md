@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-05-29
 
 ### Removed
 - **Terminal panel** — Removed the desktop terminal (the right-hand panel, its toggle, and the `node-pty` + xterm dependencies). It was Electron-only — on the web app the toggle opened an empty panel — and it's the most tangential feature to note-taking, so it's been pulled while the core gets polished. The pre-removal state is tagged `terminal-snapshot` for an easy future re-add. The top bar is simpler as a result: no right-panel toggle, no reserved right column, tabs now extend the full width, and the word count sits just left of the help button — bracketed by a thin divider on each side, matching the sidebar handle (identical layout on web and desktop). `Cmd+\` (which toggled the panel) is now unbound; `Cmd+Shift+\` split view is unchanged.
