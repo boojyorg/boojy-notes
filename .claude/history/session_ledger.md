@@ -30,6 +30,55 @@ _Next session target; anything worth remembering._
 
 ---
 
+## 2026-05-29 · Audit backlog cleanup — Tier-1 #6/#7/#8 + Tier-2 QoL batch · master
+
+### Session Work
+
+| Task | Outcome |
+|---|---|
+| Verify + fix unverified Tier-1 (#5–#10) | Read each. #7 link-URL not escaped (attribute injection) → `escAttr` in steps 9/10. #6 first-sync gate: visibilitychange/online/poll bypassed the confirm dialog & uploaded all notes; added `firstSyncGateRef` (cancel keeps it up). #8 strikethrough/highlight toggle flattened nested bold → unwrap instead of stringify. `b591f0c` |
+| Triage the rest | #5 (paste nesting) verified **not a bug** (sanitizeNode always unwraps block els). #9 (two undo steps) deferred — arguably-correct granularity. #10 (global block-id counter) deferred — Low + riskier fix. +4 regression tests. |
+| Tier-2 QoL batch | Built reusable themed confirm primitive (`requestConfirm` in OverlayContext + `ConfirmDialog`, role=alertdialog, Esc/Enter, danger styling); web note/folder/bulk delete confirm, desktop skips (trash recoverable). FindBar "n/a"+tooltip when no CSS Highlight API. Backlinks keyboard-activatable. Mobile TopBar title tap-to-focus. Auth `aria-busy`. Fixed mobile delete msg lying "moved to Trash" on web. `ad8a926` |
+| Corrected a false-positive | "Focus dropped after closing overlays" — Settings/slash/context menus already restore focus via `useFocusTrap`; no fix needed. Created then deleted an unused `useReturnFocus` hook rather than leave dead code. |
+| Interactive verification | Playwright drive of `dev:web`: right-click→Delete→dialog→Cancel keeps note→Delete removes it; 0 console errors; visual screenshot check of the themed dialog. +6 ConfirmDialog tests. |
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| typecheck | ✓ clean |
+| lint / format:check | ✓ Biome, 0 errors (5 pre-existing useOptionalChain warnings in untouched ProfileTab lines) |
+| test / coverage | ✓ 585 passed (was 574; +11 new), coverage gate green |
+| E2E | not run locally this session (covered by CI) |
+| build / release | n/a (no release) |
+| CI (post-push) | ✓ **GREEN** both pushes — `26629033028` (b591f0c), `26629695702` (ad8a926) |
+| Interactive (Playwright drive) | ✓ delete-confirm flow verified live (appear / cancel-keeps / confirm-removes), 0 console errors |
+
+### Code velocity
+
+2 commits, 18 files · **+596 / −44**. Code session (not operational). Biggest: new
+`ConfirmDialog.jsx` (+131) & its test (+112), `BoojyNotes.jsx` (+79), `OverlayContext.jsx` (+37).
+
+### Cost / telemetry
+
+Per `/cost`. Moderate: file-reads to verify the unverified Tier-1 bugs + one live Playwright
+drive (browser launch + screenshot reads). No subagents. Cheaper than the prior audit session.
+
+### Notes — next session targets
+
+1. **Tier-3 a11y cluster** (dreams.md §3) — sidebar focus ring (inline `outline:none` overrides
+   global + low-contrast global ring), icon-button `aria-label`s (TopBar/Help/Settings),
+   context-menu roles + focus traps (Link/Table/Image/CalloutPicker), low-contrast theme tokens
+   (DAY/NIGHT muted, DAY accent-as-text/wikilink), sidebar arrow-key nav, PaneTabBar nested
+   interactive, ProfileTab input labels. Biome a11y lint is OFF — these are manual/axe-driven.
+2. Deferred Tier-1 #10 (markdownToBlocks global ID counter → content-stable IDs; riskier).
+3. Orphaned onboarding-hint bubble (interactive find) — reposition/anchor it.
+4. Optional carry-overs: Phase-3 decomposition (`ProfileTab` 915 / `Sidebar` 897); `FEATURES.md`
+   still missing; `boojy.org/notes` download links still hardcoded to v0.1.3 (now unblocked).
+5. Optional polish: visible spinner on the auth button (only `aria-busy` added this session).
+
+---
+
 ## 2026-05-29 · Codebase bug audit + 6 fixes (incl. wikilink saga) · master
 
 ### Session Work

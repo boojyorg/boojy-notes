@@ -47,7 +47,7 @@ live via Playwright. Tier-3 a11y clusters remain in §3.
 
 ### 🚨 Automated Incident Logs (Script Prepended)
 
-_None open._ <!-- 2026-05-29: cleared transient mid-edit hook failures (test was being authored); all gates green (579 tests pass, typecheck + format clean). -->
+_None open._ <!-- 2026-05-29: all gates green (585 tests pass, typecheck + format clean, CI green both pushes). -->
 
 <!-- The post-edit-validation hook automatically injects compiler/test errors beneath this line -->
 
