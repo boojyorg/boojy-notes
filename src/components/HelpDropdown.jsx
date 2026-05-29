@@ -28,7 +28,6 @@ const SECTIONS = [
       [`${mod} E`, "Inline code"],
       [`${mod} \u21e7 H`, "Highlight"],
       [`${mod} \u21e7 X`, "Strikethrough"],
-      [`${mod} \\`, "Toggle panel"],
       [`${mod} N`, "New note"],
       [`${mod} F`, "Find in note"],
     ],
@@ -38,7 +37,6 @@ const SECTIONS = [
     items: [
       ["> [!tip]", "Callout blocks"],
       ["```", "Code blocks"],
-      [`${mod} \``, "Terminal"],
     ],
   },
 ];

@@ -22,7 +22,6 @@ import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
-import { useTerminal } from "./hooks/useTerminal";
 import { useTheme } from "./hooks/useTheme";
 import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
@@ -44,7 +43,6 @@ import EditorArea from "./components/EditorArea";
 import PaneContainer from "./components/PaneContainer";
 import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
-const TerminalPanel = React.lazy(() => import("./components/terminal/TerminalPanel"));
 import FloatingActionButton from "./components/mobile/FloatingActionButton";
 import MobileToolbar from "./components/mobile/MobileToolbar";
 import EditorMoreMenu from "./components/mobile/EditorMoreMenu";
@@ -109,10 +107,7 @@ export default function BoojyNotes() {
   const {
     collapsed,
     setCollapsed,
-    rightPanel,
-    setRightPanel,
     sidebarWidth,
-    rightPanelWidth,
     chromeBg,
     editorBg,
     accentColor,
@@ -120,10 +115,8 @@ export default function BoojyNotes() {
     tabFlip,
     setTabFlip,
     sidebarHandles,
-    rightPanelHandles,
     isDragging,
     startDrag,
-    startRightDrag,
   } = useLayout();
 
   const {
@@ -461,19 +454,6 @@ export default function BoojyNotes() {
     updateBlockIndent,
     onError: showToast,
   });
-  const {
-    terminals,
-    activeTerminalId,
-    setActiveTerminalId,
-    xtermInstances,
-    createTerminal,
-    closeTerminal,
-    renameTerminal,
-    restartTerminal,
-    clearTerminal,
-    markExited,
-  } = useTerminal();
-
   // Wire search → clear multi-select
   useEffect(() => {
     if (search && clearSelectionRef.current) clearSelectionRef.current();
@@ -592,8 +572,6 @@ export default function BoojyNotes() {
     splitState,
     uiScale,
     settingsOpen,
-    rightPanel,
-    activeTerminalId,
     blockDrag,
     sidebarDrag,
     titleRef,
@@ -603,14 +581,11 @@ export default function BoojyNotes() {
     createNote,
     setSettingsOpen,
     setCollapsed,
-    setRightPanel,
     setActivePaneId,
     setUiScale,
     setTabFlip,
     splitPane,
     closeSplit,
-    createTerminal,
-    closeTerminal,
     cancelBlockDrag,
     cancelSidebarDrag,
     setDevOverlay,
@@ -1465,70 +1440,6 @@ export default function BoojyNotes() {
                 />
               )}
             </EditorProvider>
-          </div>
-        )}
-
-        {/* Right panel drag handle — desktop only */}
-        {!isMobile && (
-          <div
-            ref={(el) => {
-              if (el) rightPanelHandles.current[1] = el;
-            }}
-            onMouseDown={startRightDrag}
-            style={{
-              width: 4,
-              cursor: "col-resize",
-              background: theme.BG.editor,
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={() =>
-              rightPanelHandles.current.forEach(
-                (h) => h && (h.style.background = theme.ACCENT.primary),
-              )
-            }
-            onMouseLeave={() => {
-              if (!isDragging.current) {
-                rightPanelHandles.current[0] &&
-                  (rightPanelHandles.current[0].style.background = chromeBg);
-                rightPanelHandles.current[1] &&
-                  (rightPanelHandles.current[1].style.background = theme.BG.editor);
-              }
-            }}
-          />
-        )}
-
-        {/* Right panel — desktop only */}
-        {!isMobile && (
-          <div
-            style={{
-              width: rightPanel ? rightPanelWidth : 0,
-              minWidth: rightPanel ? rightPanelWidth : 0,
-              background: theme.BG.editor,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              flexShrink: 0,
-              position: "relative",
-              borderLeft: `1px solid ${theme.BG.divider}`,
-              transition: isDragging.current ? "none" : "width 0.2s ease, min-width 0.2s ease",
-            }}
-          >
-            <React.Suspense fallback={null}>
-              <TerminalPanel
-                terminals={terminals}
-                activeTerminalId={activeTerminalId}
-                setActiveTerminalId={setActiveTerminalId}
-                xtermInstances={xtermInstances}
-                createTerminal={createTerminal}
-                closeTerminal={closeTerminal}
-                renameTerminal={renameTerminal}
-                restartTerminal={restartTerminal}
-                clearTerminal={clearTerminal}
-                markExited={markExited}
-                isOpen={rightPanel}
-              />
-            </React.Suspense>
           </div>
         )}
       </div>

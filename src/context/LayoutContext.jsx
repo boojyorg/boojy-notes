@@ -8,9 +8,7 @@ export function LayoutProvider({ children }) {
   const { theme, isDark } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [rightPanel, setRightPanel] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
-  const [rightPanelWidth, setRightPanelWidth] = useState(220);
 
   const [chromeBg, setChromeBg] = useState(theme.BG.dark);
   const [editorBg, setEditorBg] = useState(theme.BG.editor);
@@ -30,13 +28,10 @@ export function LayoutProvider({ children }) {
   }, [isDark, theme.BG.dark, theme.BG.editor, theme.ACCENT.primary]);
 
   const sidebarHandles = useRef([]);
-  const rightPanelHandles = useRef([]);
 
-  const { isDragging, startDrag, startRightDrag } = usePanelResize({
+  const { isDragging, startDrag } = usePanelResize({
     sidebarHandles,
-    rightPanelHandles,
     setSidebarWidth,
-    setRightPanelWidth,
     chromeBg,
   });
 
@@ -44,12 +39,8 @@ export function LayoutProvider({ children }) {
     () => ({
       collapsed,
       setCollapsed,
-      rightPanel,
-      setRightPanel,
       sidebarWidth,
       setSidebarWidth,
-      rightPanelWidth,
-      setRightPanelWidth,
       chromeBg,
       setChromeBg,
       editorBg,
@@ -67,16 +58,12 @@ export function LayoutProvider({ children }) {
       createBtnStyle,
       setCreateBtnStyle,
       sidebarHandles,
-      rightPanelHandles,
       isDragging,
       startDrag,
-      startRightDrag,
     }),
     [
       collapsed,
-      rightPanel,
       sidebarWidth,
-      rightPanelWidth,
       chromeBg,
       editorBg,
       accentColor,
@@ -87,7 +74,6 @@ export function LayoutProvider({ children }) {
       createBtnStyle,
       isDragging,
       startDrag,
-      startRightDrag,
     ],
   );
 

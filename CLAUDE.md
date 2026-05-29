@@ -10,7 +10,7 @@ Read files directly when needed. Do not ask before reading.
 - **Backend:** Supabase (auth + database), Cloudflare R2 (attachments)
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
 - **Linting/Formatting:** Biome 2 (single tool for lint + format, `biome.json`), enforced by Husky pre-commit hooks
-- **Package manager:** pnpm (`.npmrc` `node-linker=hoisted` for electron-builder/node-pty)
+- **Package manager:** pnpm (`.npmrc` `node-linker=hoisted` for electron-builder)
 
 ## Project Structure
 
@@ -20,8 +20,7 @@ src/
 ├── main.jsx                # Entry point, provider setup
 ├── components/             # UI components (EditableBlock, EditorArea, Sidebar, TopBar, etc.)
 │   ├── blocks/             # Block type components (code, table, callout, image, etc.)
-│   ├── settings/           # Settings modal panels
-│   └── terminal/           # Terminal emulator components
+│   └── settings/           # Settings modal panels
 ├── context/                # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay)
 ├── hooks/                  # Custom hooks (useSync, useHistory, useFileSystem, etc.)
 │   └── editor/             # Editor-specific hooks (keyboard, paste, drag, slash commands)
@@ -31,7 +30,7 @@ src/
 ├── styles/                 # Shared style objects (buttons, inputs)
 ├── tokens/                 # Design tokens (spacing, radius, typography, shadows)
 └── types/                  # TypeScript type definitions
-electron/                   # Electron main process (IPC, file I/O, terminal, export/import)
+electron/                   # Electron main process (IPC, file I/O, export/import)
 tests/                      # Unit + E2E tests
 docs/private/               # Private docs (gitignored): roadmap, strategies, code signing
 ```
@@ -53,7 +52,7 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 ## Dev Workflow
 
 ```bash
-# Package manager: pnpm (node-linker=hoisted for electron-builder/node-pty)
+# Package manager: pnpm (node-linker=hoisted for electron-builder)
 pnpm dev              # Electron + Vite dev mode
 pnpm dev:web          # Web-only dev (ELECTRON_DISABLE=1)
 pnpm test             # Unit tests (Vitest)

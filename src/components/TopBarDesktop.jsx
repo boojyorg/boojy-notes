@@ -14,6 +14,11 @@ const hBg = (el, c) => {
   el.style.background = c;
 };
 
+// Fixed width of the top-right cluster (word count + help). Kept fixed (rather
+// than content-width) so the layout doesn't jitter as the word count changes
+// digits, and so the split-mode tab-divider correction stays deterministic.
+const RIGHT_CLUSTER_W = 132;
+
 function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
@@ -96,16 +101,11 @@ export default function TopBarDesktop({
     tabFlip,
     activeTabBg,
     sidebarWidth,
-    rightPanelWidth,
     collapsed,
     setCollapsed,
-    rightPanel,
-    setRightPanel,
     sidebarHandles,
-    rightPanelHandles,
     isDragging,
     startDrag,
-    startRightDrag,
   } = useLayout();
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const { setSettingsOpen, setSettingsTab } = useSettings();
@@ -338,9 +338,11 @@ export default function TopBarDesktop({
           // TopBar sidebar/right-panel sections are wider than main area counterparts
           // due to padding/border differences, so percentage flex-basis needs a px offset.
           const sidebarPad = 22; // padding: 0 8px 0 14px
-          const rightPad = 20; // padding: 0 10px 0 10px
+          const rightPad = 20; // cluster padding: 0 10px
           const leftExtra = collapsed ? sidebarWidth + sidebarPad : sidebarPad;
-          const rightExtra = rightPanel ? rightPad : rightPanelWidth + rightPad;
+          // Editor area has no right panel now; the tab strip is shortened only
+          // by the fixed word-count/help cluster on the right.
+          const rightExtra = RIGHT_CLUSTER_W + rightPad;
           const totalExtra = leftExtra + rightExtra;
           const correction = (dividerPosition / 100) * totalExtra - leftExtra;
           return (
@@ -459,84 +461,23 @@ export default function TopBarDesktop({
         />
       )}
 
-      {/* Top-right drag handle */}
-      <div
-        ref={(el) => {
-          if (el) rightPanelHandles.current[0] = el;
-        }}
-        onMouseDown={startRightDrag}
-        style={{
-          width: 4,
-          cursor: "col-resize",
-          background: chromeBg,
-          flexShrink: 0,
-          transition: "background 0.15s",
-          alignSelf: "stretch",
-        }}
-        onMouseEnter={() =>
-          rightPanelHandles.current.forEach((h) => h && (h.style.background = ACCENT.primary))
-        }
-        onMouseLeave={() => {
-          if (!isDragging.current) {
-            rightPanelHandles.current[0] &&
-              (rightPanelHandles.current[0].style.background = chromeBg);
-            rightPanelHandles.current[1] &&
-              (rightPanelHandles.current[1].style.background = BG.editor);
-          }
-        }}
-      />
-
-      {/* Top-right — panel toggle, word count */}
+      {/* Top-right — word count + help (fixed-width cluster, pinned right) */}
       <div
         style={{
-          width: rightPanelWidth,
+          width: RIGHT_CLUSTER_W,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-start",
+          justifyContent: "flex-end",
           gap: 4,
-          padding: "0 10px 0 10px",
+          padding: "0 10px",
           height: "100%",
+          // Thin divider mirroring the sidebar handle's line on the left of the tabs.
+          // border-box keeps the cluster exactly RIGHT_CLUSTER_W wide for the split math.
+          boxSizing: "border-box",
           borderLeft: `1px solid ${BG.divider}`,
         }}
       >
-        <button
-          onClick={() => setRightPanel(!rightPanel)}
-          title="Toggle right panel (\u2318\\)"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 5,
-            borderRadius: 5,
-            display: "flex",
-            alignItems: "center",
-            color: TEXT.secondary,
-            transition: "background 0.15s, color 0.15s",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            hBg(e.currentTarget, BG.surface);
-            e.currentTarget.style.color = TEXT.primary;
-          }}
-          onMouseLeave={(e) => {
-            hBg(e.currentTarget, "transparent");
-            e.currentTarget.style.color = TEXT.secondary;
-          }}
-        >
-          <svg width="16.5" height="16.5" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-            <rect
-              x="1.5"
-              y="2.5"
-              width="13"
-              height="11"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-            <path d="M10 2.5V13.5" stroke="currentColor" strokeWidth="1.3" />
-          </svg>
-        </button>
         {note && (
           <WordCountTooltip
             wordCount={wordCount}
@@ -545,8 +486,6 @@ export default function TopBarDesktop({
             readingTime={readingTime}
           />
         )}
-        {/* Spacer — inherits drag from parent */}
-        <div style={{ flex: 1 }} />
         <div style={{ position: "relative", flexShrink: 0 }}>
           <button
             ref={helpBtnRef}

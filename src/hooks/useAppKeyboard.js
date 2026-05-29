@@ -11,8 +11,6 @@ export function useAppKeyboard({
   splitState,
   uiScale,
   settingsOpen,
-  rightPanel,
-  activeTerminalId,
   blockDrag,
   sidebarDrag,
   titleRef,
@@ -23,14 +21,11 @@ export function useAppKeyboard({
   createNote,
   setSettingsOpen,
   setCollapsed,
-  setRightPanel,
   setActivePaneId,
   setUiScale,
   setTabFlip,
   splitPane,
   closeSplit,
-  createTerminal,
-  closeTerminal,
   cancelBlockDrag,
   cancelSidebarDrag,
   setDevOverlay,
@@ -104,31 +99,12 @@ export function useAppKeyboard({
         }
         return;
       }
-      if (mod && !e.shiftKey && e.key === "\\") {
-        e.preventDefault();
-        setRightPanel((v) => !v);
-        return;
-      }
       const curSplit = splitStateRef.current;
       if (mod && curSplit.splitMode && (e.key === "1" || e.key === "2")) {
         e.preventDefault();
         const ids = curSplit.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
         setActivePaneId(e.key === "1" ? ids[0] : ids[1]);
         return;
-      }
-      if (mod && e.shiftKey && (e.key === "T" || e.key === "t")) {
-        if (rightPanel) {
-          e.preventDefault();
-          createTerminal();
-          return;
-        }
-      }
-      if (mod && e.shiftKey && (e.key === "W" || e.key === "w")) {
-        if (rightPanel && activeTerminalId) {
-          e.preventDefault();
-          closeTerminal(activeTerminalId);
-          return;
-        }
       }
       // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
       if (mod && (e.key === "=" || e.key === "+")) {
@@ -161,5 +137,5 @@ export function useAppKeyboard({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [settingsOpen, rightPanel, activeTerminalId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [settingsOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 }

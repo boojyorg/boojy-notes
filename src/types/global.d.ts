@@ -35,25 +35,10 @@ interface Window {
     secureStore: (key: string, value: string) => Promise<void>;
     secureRead: (key: string) => Promise<string | null>;
     secureDelete: (key: string) => Promise<void>;
-    createTerminal: (id: string) => void;
-    writeTerminal: (id: string, data: string) => void;
-    resizeTerminal: (id: string, cols: number, rows: number) => void;
-    onTerminalData: (callback: (id: string, data: string) => void) => () => void;
-    onTerminalExit: (callback: (id: string, code: number) => void) => () => void;
-    killTerminal: (id: string) => void;
     secureStorage?: {
       store: (key: string, value: string) => Promise<void>;
       read: (key: string) => Promise<string | null>;
       delete: (key: string) => Promise<void>;
-    };
-    terminal?: {
-      create: (opts: { cols?: number; rows?: number; cwd?: string }) => Promise<{ id: string }>;
-      write: (id: string, data: string) => void;
-      resize: (id: string, cols: number, rows: number) => void;
-      kill: (id: string) => Promise<void>;
-      killAll: () => Promise<void>;
-      onData: (callback: (payload: { id: string; data: string }) => void) => () => void;
-      onExit: (callback: (payload: { id: string; code: number }) => void) => () => void;
     };
     getNotesDir?: () => Promise<string>;
     chooseNotesDir?: () => Promise<string | null>;

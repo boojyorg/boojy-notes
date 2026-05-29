@@ -1,8 +1,7 @@
-import { app, BrowserWindow, ipcMain, Menu, protocol, net, nativeTheme } from "electron";
+import { app, BrowserWindow, Menu, protocol, net, nativeTheme } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { registerTerminalIPC, killAllTerminals } from "./terminal.js";
 import { registerNoteFileIPC } from "./noteFileManager.js";
 import { registerTrashIPC } from "./trashManager.js";
 import { startWatcher, suppressWatcher, closeWatcher } from "./fileWatcher.js";
@@ -223,7 +222,6 @@ app.whenReady().then(() => {
   });
 
   restartWatcher();
-  registerTerminalIPC(ipcMain, () => mainWindow, getNotesDir);
 
   checkForUpdatesOnStartup();
 
@@ -233,11 +231,9 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  killAllTerminals();
   if (process.platform !== "darwin") app.quit();
 });
 
 app.on("before-quit", () => {
-  killAllTerminals();
   closeWatcher();
 });

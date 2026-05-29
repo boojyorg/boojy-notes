@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Removed
+- **Terminal panel** — Removed the desktop terminal (the right-hand panel, its toggle, and the `node-pty` + xterm dependencies). It was Electron-only — on the web app the toggle opened an empty panel — and it's the most tangential feature to note-taking, so it's been pulled while the core gets polished. The pre-removal state is tagged `terminal-snapshot` for an easy future re-add. The top bar is simpler as a result: no right-panel toggle, no reserved right column, tabs now extend the full width, and the word count sits just left of the help button — bracketed by a thin divider on each side, matching the sidebar handle (identical layout on web and desktop). `Cmd+\` (which toggled the panel) is now unbound; `Cmd+Shift+\` split view is unchanged.
+
 ### Bug Fixes
 - **Placeholder no longer overlaps typed text** — On a new note, the "Type / for commands…" hint used to linger behind the first line you typed until you reached a second line. It now hides the moment you start typing, because visibility is driven by the block's actual emptiness (`:empty` / a lone `<br>`) instead of the debounced saved text.
 - **Open note now updates on sync** — When a note open in the editor was changed on another device or browser tab, the change updated internally but the visible text stayed stale until you switched notes. Remote pulls, realtime updates, and cross-tab broadcasts now refresh the editor immediately (only for the open note, so in-progress edits elsewhere aren't disturbed).

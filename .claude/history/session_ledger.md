@@ -30,6 +30,52 @@ _Next session target; anything worth remembering._
 
 ---
 
+## 2026-05-29 · Dated code-quality reviews + terminal removal + top-bar polish · master
+
+### Session Work
+
+| Task | Outcome |
+|---|---|
+| Dated code-quality reviews | `git mv docs/CODE_QUALITY.md → docs/2026-03-24-CODE_QUALITY.md` (history preserved, forward-link header). New `docs/2026-05-29-CODE_QUALITY.md` (143 lines): consolidation checkpoint, 8.8→8.9. Platform & Security ↑ (Capacitor/AI gone), Test coverage honestly ↓ 8.5→8 (600→585 raw, ~47% actual). 3 parallel Explore agents gathered current state across 12 areas. |
+| Remove terminal (decision) | Agreed to pull it "for the moment, polish core, add back later" — Electron-only (empty panel on web), most tangential feature, `node-pty` is the riskiest build step. Tagged `terminal-snapshot` on `38d0148` for easy revert-based re-add. |
+| Delete terminal subsystem | 9 files removed (~1,520 lines): `src/components/terminal/*` (4), `useTerminal.js`, `terminalTheme.js`, `electron/terminal.js`, 2 terminal tests. Deps dropped: `node-pty` + 4 `@xterm/*` → `pnpm install` removed 68 packages. |
+| Unpick wiring | `LayoutContext` (rightPanel state), `usePanelResize` (startRightDrag), `useAppKeyboard` (Cmd+\ + Cmd+Shift+T/W), `BoojyNotes` (useTerminal + right panel render), `electron/main.js`+`preload.js`, `global.d.ts`, `HelpDropdown`, `zIndex`. |
+| Rework TopBarDesktop | Removed right-panel toggle + right drag handle + reserved 220px column. Word count + help now a fixed `RIGHT_CLUSTER_W`=132 cluster pinned right (count left of help), tabs flex full width. Recomputed split-mode tab-divider correction for the new geometry. Added thin `BG.divider` line on the cluster's left edge to mirror the sidebar handle (user request; `box-sizing: border-box` keeps width exact). |
+| Docs | CHANGELOG `### Removed`; README + CLAUDE.md structure/dev-notes de-terminal'd; dreams.md §1 synced. |
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| typecheck | ✓ clean (exit 0) |
+| lint / format:check | ✓ Biome exit 0 (pre-existing warnings only), format clean |
+| test / coverage | ✓ 572 passed / 43 files; coverage 46.3% stmts / 47.6% lines — above 45/42/43/43 floor, **no re-floor needed** (removal nudged it up) |
+| E2E | not run this session (axe E2E unaffected by removal) |
+| build / release | ✓ `ELECTRON_DISABLE=1 pnpm build` clean (no TerminalPanel chunk). DMG build **not** run — left for manual verify (the payoff: no node-pty rebuild) |
+| CI (post-push) | n/a — not committed/pushed yet |
+| Manual walkthrough | ⏳ pending — user confirmed the thin-line tweak visually; full `pnpm dev`/`dev:web` pass still owed before commit |
+
+### Code velocity
+
+26 tracked files changed **+78 / −1,875** (net ≈ −1,650) + 1 untracked new doc (143 lines).
+Deletion-dominated — correct shape for a feature removal. Largest: TopBarDesktop (−93),
+BoojyNotes (−89), plus the 9 file deletes. Operationally: 1 tag created, 68 packages removed.
+
+### Cost / telemetry
+
+Per `/cost` (not separately captured here). Qualitative drivers: edit-heavy (many small
+targeted Edits + greps), 3 parallel Explore agents during the code-quality research phase,
+no expensive DMG build run.
+
+### Notes — next session targets
+
+1. **Commit pending** — two logical commits worth splitting: (a) dated code-quality reviews, (b) terminal removal + top-bar polish. Nothing pushed yet.
+2. **Manual verify before/after commit:** `pnpm dev:web` + `pnpm dev` walkthrough (tab divider both sides, word-count hides on empty editor, Cmd+Shift+\ splits, no terminal IPC errors); optionally `pnpm build:electron` to confirm no node-pty rebuild.
+3. Terminal re-add path: revert from tag `terminal-snapshot` when ready to bring it back polished.
+4. Still optional/deferred: Phase 3 `ProfileTab`/`Sidebar` decomposition; `FEATURES.md` docs-system gap.
+
+---
+
 ## 2026-05-29 · Audit backlog cleanup — Tier-1 #6/#7/#8 + Tier-2 QoL batch · master
 
 ### Session Work

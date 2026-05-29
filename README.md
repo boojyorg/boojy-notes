@@ -65,7 +65,6 @@ src/
     blocks/             # Block types (code, table, callout, image, file, embed)
     mobile/             # Mobile-browser UI (toolbar, bottom sheet, FAB)
     settings/           # Settings modal panels (SettingsModal, ProfileTab, …)
-    terminal/           # Terminal emulator (Electron only)
   context/              # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
   hooks/                # Custom hooks (useSync, useFileSystem, useNoteStats, …)
     editor/             # Editor hooks (keyboard, paste, drag, slash commands)
@@ -77,7 +76,7 @@ src/
   types/                # TypeScript definitions
   lib/
     supabase.js         # Supabase client init
-electron/               # Electron main process (IPC, file I/O, terminal, export/import)
+electron/               # Electron main process (IPC, file I/O, export/import)
 ```
 
 ## Tech Stack
