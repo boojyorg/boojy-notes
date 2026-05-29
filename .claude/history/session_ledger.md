@@ -61,8 +61,18 @@ _Next session target; anything worth remembering._
 
 ### Cost / telemetry
 
-Per `/cost`. Moderate: file-reads to verify the unverified Tier-1 bugs + one live Playwright
-drive (browser launch + screenshot reads). No subagents. Cheaper than the prior audit session.
+`/cost` reports **$108.77** for the whole wall-session — but that is **cumulative across both
+of today's ledger entries** (this Tier-1/Tier-2 cleanup *and* the earlier audit + wikilink saga
+below); the session was never `/clear`ed (13h11m wall / 3h04m API). Breakdown: Opus 4.8 **$102.04**
+(334k in / 663k out / **127.1m cache read** / 3.2m cache write), Sonnet 4.6 $6.46 (the audit's
+subagents), Haiku $0.27.
+
+**Drivers (per `/cost`'s own attribution):** 71% of 24h usage from *subagent-heavy* sessions (the
+4-agent audit — NOT this cleanup, which used zero subagents) and 66% at *>150k context* (one long
+un-cleared session — the 127m Opus cache-read is the tell). **This cleanup specifically** was the
+cheap part: file-reads + one Playwright drive, no subagents. **Lever for next time:** `/clear`
+between independent phases — folding the audit, the wikilink debugging, and two QoL batches into
+one 13h context is what ran the cache-read (and the bill) up.
 
 ### Notes — next session targets
 
