@@ -7,8 +7,8 @@
 ## 1. 🎯 Active Engineering Target
 
 **Status:** v0.3.0 **pushed + tagged** (web-only pivot + Biome + pnpm + BoojyNotes slice-1).
-Desktop release build passed (installers sit as a **draft** GitHub Release — publish after DMG
-check). Sidebar a11y violation **fixed** → **CI is GREEN** (run `26623799556`) for the first
+v0.3.0 GitHub Release **published** (2026-05-29, marked Latest — macOS DMG + Windows EXE live).
+Sidebar a11y violation **fixed** → **CI is GREEN** (run `26623799556`) for the first
 time since ~Mar 2026. `boojy.org/notes` version text now reads the `v0.3.0` tag. App is live at
 `notes.boojy.org`; landing page at `boojy.org/notes`.
 
@@ -49,6 +49,77 @@ _None open._
 
 ## 3. 🗺️ Strategic Backlog & Architecture Scratchpad
 
+### 🐛 Audit Backlog — bugs + QoL + a11y (2026-05-29, 4 parallel Sonnet auditors)
+
+> Triaged sweep of the whole codebase. `✓` = Claude verified by reading the code; `?` =
+> agent-reported, NOT yet verified (confirm before fixing). Tackle Tier 1 #2/#3/#4 first
+> (small, low-risk, high-value); #1 is most important but needs runtime testing.
+
+**Tier 1 — correctness bugs**
+- [x] **#1 ✓ FIXED 2026-05-29 — Remote edits didn't appear in the open note** (High). Threaded
+  `syncGeneration` into `useSync`; bump it (only when the applied note === `activeNoteIdRef`) at
+  the 3 remote-apply sites: cross-tab BroadcastChannel, pull-merge, realtime upsert. Open-note-
+  only guard avoids clobbering an in-progress edit elsewhere. `useSync.js`. _Still want a live
+  two-device/two-tab runtime check to confirm._
+- [x] **#2 ✓ FIXED 2026-05-29 — Wikilink autocomplete navigated away.** Dropped the
+  `handleWikilinkClick(title)` call in `handleWikilinkSelect`; link inserts, cursor stays put.
+- [x] **#3 ✓ FIXED 2026-05-29 — Nested folder rename orphaned it.** `useNoteCrud.js:145` now
+  writes `newPath` not `newName`.
+- [x] **#4 ✓ FIXED 2026-05-29 — Mobile image insert broken.** `saveAndInsertImage` now accepts
+  either a File/Blob or the `{fileName,dataBase64}` picker result; mobile toolbar passes a real
+  `afterIndex` (end of note). (Confirmed both platforms' `pickImageFile` return the picker shape.)
+- [ ] **#5 ? Paste HTML-nesting corruption** (agent: Critical, UNVERIFIED). `sanitizeNode` may
+  nest a block `<div>` inside inline tags → broken bold/italic/code on paste.
+  `inlineFormatting.js:235,271`. _Verify first._
+- [ ] **#6 ? `cancelFirstSync` doesn't block later auto-trigger** (agent: High, UNVERIFIED).
+  visibilitychange/online listeners may fire full first-sync push after you cancelled →
+  uploads all local notes unconfirmed. `useSync.js:547,559`. _Verify first._
+- [ ] **#7 ? Link URL attr not escaped** (agent: High, UNVERIFIED). `inlineMarkdownToHtml` step 9
+  interpolates URL into `href="$2"` without `escAttr` (already defined L43). `inlineFormatting.js:56`.
+- [ ] **#8 ? Strikethrough/highlight toggle strips nested formatting** (agent: Med). Replaces
+  element with `textContent`. `useInlineFormatting.js:83`.
+- [ ] **#9 ? Type+Enter pushes two undo steps** (agent: Med). `pushHistory` microtask timing.
+  `useHistory.js:35`.
+- [ ] **#10 ? `markdownToBlocks` global ID counter** (agent: Low). Re-sync in same session
+  remounts all block DOM (lost cursor/edit). `markdown.js:34`.
+- [x] **#11 ✓ FIXED 2026-05-29 (pending visual verify) — Empty-block placeholder overlapped
+  typed text** (Med, USER-REPORTED — **the QoL auditor missed this**). "Type / for commands…"
+  lingered behind the first line until a second line existed, because the `empty-block` class
+  was gated on the debounced `block.text===""` rather than live DOM emptiness. Fix: make the
+  class stable (first block) + show via CSS `.empty-block:empty / :has(>br:only-child)::before`
+  (empty blocks hold a `<br>`, so plain `:empty` alone was insufficient). `EditableBlock.jsx:247`,
+  `GlobalStyles.jsx:458`. _Audit-miss lesson: the UX agent reviewed code statically and never
+  ran the app, so a debounce/render-timing visual bug was invisible to it — interactive bugs
+  need a running-app pass, not just code review._
+
+**Tier 2 — high-impact QoL**
+- [ ] Destructive actions w/o confirm: right-click→Delete (web has no Trash → gone) +
+  **Empty Trash** (single click, irreversible). `ContextMenu.jsx:163`, `Sidebar.jsx:829`.
+- [ ] Focus dropped after closing overlays (Settings/slash/context menus) — must re-click editor.
+- [ ] Settings modal: Escape doesn't close (only backdrop click). `SettingsModal.jsx`.
+- [ ] FindBar shows "0 of 0" silently on Firefox/older Safari (no CSS Highlight API).
+- [ ] Backlinks panel entries are `div onClick` — not keyboard-activatable. `BacklinksPanel.jsx:57`.
+- [ ] Mobile TopBar title not tappable to rename. `TopBarMobile.jsx:68`.
+- [ ] Auth submit button shows "..." with no `aria-busy`/spinner. `ProfileTab.jsx:473`.
+
+**Tier 3 — accessibility clusters** (E2E axe only catches *critical* on initial screen)
+- [ ] Sidebar focus ring invisible — inline `outline:none` overrides global (`Sidebar.jsx:97,
+  225,336,481`); global ring also 25%-opacity, fails contrast (`GlobalStyles.jsx:66`).
+- [ ] Icon-only buttons use `title` not `aria-label` — TopBar undo/redo/toggles/Help/Settings;
+  Help & Settings close (`✕`) buttons. Cluster fix. `TopBarDesktop.jsx:221+`, `HelpDropdown.jsx:102`.
+- [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
+  reachable; missing roles + focus traps. Also SlashMenu `aria-selected` on `menuitem` is invalid.
+- [ ] Low-contrast theme tokens fail AA: DAY/NIGHT `TEXT.muted`, DAY accent-as-text, DAY wikilink.
+  `themes.js:16,122,124,169`.
+- [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (the
+  "aspirational tree" gap). `Sidebar.jsx:627,78,156`. _Overlaps the planned sidebar-keyboard-nav._
+- [ ] PaneTabBar: `<span role=button>` nested inside `<button role=tab>` — invalid. `PaneTabBar.jsx:137`.
+- [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.
+
+**Calibration note:** the agent-flagged "TagMenu space dismisses" was over-rated High — tags are
+single-token so space legitimately ends a tag; the only real issue is `preventDefault` swallows
+that space (minor). `TagMenu.jsx:48`.
+
 ### ⚠️ Known Gotchas
 
 - **pnpm blocks native build scripts by default** (pnpm 10). node-pty/esbuild/electron won't
@@ -74,8 +145,10 @@ _None open._
 - **`boojy.org/notes` download buttons are hardcoded to `v0.1.3`** (in the *separate* `Boojy`
   website repo: `website/src/pages/NotesPage.tsx:16,29,41` — macOS DMG, Windows EXE, hero CTA).
   The *version text* on that page auto-updates from the latest GitHub tag (`useNotesVersion.ts`),
-  but the install links don't. Bump them when a tagged release publishes installers. (Deferred,
-  user-acknowledged 2026-05-29.)
+  but the install links don't. **NOW UNBLOCKED** — v0.3.0 is published with assets
+  (`Boojy-Notes-0.3.0-arm64.dmg`, `Boojy-Notes-Setup-0.3.0.exe`). Bump the 3 hardcoded URLs to
+  v0.3.0. NB: v0.2.0/v0.1.9 releases are still *drafts* — v0.1.3 was the last published before
+  v0.3.0. (Deferred, user-acknowledged 2026-05-29.)
 
 ### Cost / telemetry notes
 

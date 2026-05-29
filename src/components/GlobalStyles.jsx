@@ -455,7 +455,20 @@ export default function GlobalStyles() {
         .empty-block {
           position: relative;
         }
-        .empty-block::before {
+        /* Placeholder shows only while the first block is visually empty.
+           An "empty" contentEditable block holds a single <br> (set in
+           EditableBlock for caret placement), so match that — and also a
+           truly-empty node. As soon as real text is typed, neither matches
+           and the placeholder hides immediately (no dependency on the
+           debounced block.text, which was the cause of it lingering). */
+        .empty-block:empty::before {
+          content: attr(data-placeholder);
+          color: ${theme.TEXT.muted};
+          opacity: 0.4;
+          position: absolute;
+          pointer-events: none;
+        }
+        .empty-block:has(> br:only-child)::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
           opacity: 0.4;

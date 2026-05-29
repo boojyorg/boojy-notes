@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Bug Fixes
+- **Placeholder no longer overlaps typed text** — On a new note, the "Type / for commands…" hint used to linger behind the first line you typed until you reached a second line. It now hides the moment you start typing, because visibility is driven by the block's actual emptiness (`:empty` / a lone `<br>`) instead of the debounced saved text.
 - **Open note now updates on sync** — When a note open in the editor was changed on another device or browser tab, the change updated internally but the visible text stayed stale until you switched notes. Remote pulls, realtime updates, and cross-tab broadcasts now refresh the editor immediately (only for the open note, so in-progress edits elsewhere aren't disturbed).
 - **Wikilink autocomplete no longer jumps away** — Picking a note from the `[[ ]]` menu now just inserts the link and keeps your place, instead of navigating to the linked note and losing your cursor mid-sentence.
 - **Nested folder rename fixed** — Renaming a folder inside another folder (e.g. `Work/Projects` → `Clients`) no longer orphans an empty entry at the sidebar root; the renamed folder stays nested correctly.

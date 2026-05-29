@@ -244,7 +244,7 @@ const EditableBlock = memo(
           ref={elRef}
           data-block-id={block.id}
           data-placeholder="Type / for commands..."
-          className={blockIndex === 0 && block.text === "" ? "empty-block" : undefined}
+          className={blockIndex === 0 ? "empty-block" : undefined}
           role="textbox"
           aria-multiline="true"
           aria-label="Paragraph"
