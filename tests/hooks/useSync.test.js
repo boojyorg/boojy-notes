@@ -621,4 +621,47 @@ describe("useSync", () => {
     expect(pushNote).toHaveBeenCalled();
     vi.useRealTimers();
   });
+
+  it("does not push while first-sync confirmation is pending (auto-trigger gated)", async () => {
+    const user = { id: "u1" };
+    const noteData = { n1: makeNote("n1") };
+    pushNote.mockResolvedValue({ version: 1 });
+
+    const { result } = renderSync({ user, noteData });
+    // Dialog is showing — gate must block an online auto-trigger from uploading.
+    expect(result.current.pendingFirstSync).not.toBeNull();
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await act(async () => {});
+
+    // Our note (title "Test") must not have been pushed while gated.
+    // (Assert on our note specifically — other tests' async syncs can race into the shared mock.)
+    const pushedOurNote = pushNote.mock.calls.some((c) => c[0]?.title === "Test");
+    expect(pushedOurNote).toBe(false);
+  });
+
+  it("cancelFirstSync keeps the gate up so later auto-triggers still don't push", async () => {
+    const user = { id: "u1" };
+    const noteData = { n1: makeNote("n1") };
+    pushNote.mockResolvedValue({ version: 1 });
+
+    const { result } = renderSync({ user, noteData });
+    expect(result.current.pendingFirstSync).not.toBeNull();
+
+    act(() => {
+      result.current.cancelFirstSync();
+    });
+    expect(result.current.pendingFirstSync).toBeNull();
+
+    // Declining must not silently upload the local notes on the next visibility/online event.
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await act(async () => {});
+
+    const pushedOurNote = pushNote.mock.calls.some((c) => c[0]?.title === "Test");
+    expect(pushedOurNote).toBe(false);
+  });
 });

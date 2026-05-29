@@ -42,7 +42,7 @@ Audit backlog (Tier-2 QoL, Tier-3 a11y, unverified Tier-1 #5-10) remains in §3.
 
 ### 🚨 Automated Incident Logs (Script Prepended)
 
-_None open._
+_None open._ <!-- 2026-05-29: cleared transient mid-edit hook failures (test was being authored); all gates green (579 tests pass, typecheck + format clean). -->
 
 <!-- The post-edit-validation hook automatically injects compiler/test errors beneath this line -->
 
@@ -73,20 +73,33 @@ _None open._
 - [x] **#4 ✓ FIXED 2026-05-29 — Mobile image insert broken.** `saveAndInsertImage` now accepts
   either a File/Blob or the `{fileName,dataBase64}` picker result; mobile toolbar passes a real
   `afterIndex` (end of note). (Confirmed both platforms' `pickImageFile` return the picker shape.)
-- [ ] **#5 ? Paste HTML-nesting corruption** (agent: Critical, UNVERIFIED). `sanitizeNode` may
-  nest a block `<div>` inside inline tags → broken bold/italic/code on paste.
-  `inlineFormatting.js:235,271`. _Verify first._
-- [ ] **#6 ? `cancelFirstSync` doesn't block later auto-trigger** (agent: High, UNVERIFIED).
-  visibilitychange/online listeners may fire full first-sync push after you cancelled →
-  uploads all local notes unconfirmed. `useSync.js:547,559`. _Verify first._
-- [ ] **#7 ? Link URL attr not escaped** (agent: High, UNVERIFIED). `inlineMarkdownToHtml` step 9
-  interpolates URL into `href="$2"` without `escAttr` (already defined L43). `inlineFormatting.js:56`.
-- [ ] **#8 ? Strikethrough/highlight toggle strips nested formatting** (agent: Med). Replaces
-  element with `textContent`. `useInlineFormatting.js:83`.
-- [ ] **#9 ? Type+Enter pushes two undo steps** (agent: Med). `pushHistory` microtask timing.
-  `useHistory.js:35`.
-- [ ] **#10 ? `markdownToBlocks` global ID counter** (agent: Low). Re-sync in same session
-  remounts all block DOM (lost cursor/edit). `markdown.js:34`.
+- [x] **#5 ✓ VERIFIED NOT A BUG 2026-05-29 — Paste HTML-nesting corruption.** Read `sanitizeNode`:
+  it always *unwraps* block elements (DIV/P/H*) into `<br>` + content, so a block `<div>` can
+  never end up nested inside an inline tag. Worst case is a `<br>` inside `<strong>`, which is
+  valid. No corruption path. Dropped. `inlineFormatting.js:244-267`.
+- [x] **#6 ✓ FIXED 2026-05-29 — `cancelFirstSync` didn't block later auto-trigger** (High, REAL).
+  While the first-sync dialog was pending, any visibilitychange/online/60s-poll event called
+  `syncAll`, which saw `!lastSyncedRef` and pushed every local note — bypassing the dialog. Cancel
+  only hid it. Added a `firstSyncGateRef`: raised when the dialog opens, `syncAll` early-returns
+  while it's up; confirm lowers it then syncs; **cancel keeps it up** so declining truly prevents
+  the upload; logout resets it. +2 regression tests. `useSync.js`.
+- [x] **#7 ✓ FIXED 2026-05-29 — Link URL attr not escaped** (High, REAL — attribute injection).
+  `[text](url)` and bare-URL auto-linking interpolated the URL into `href="…"`/`data-url="…"`
+  with no quote-escaping → a `"` broke out of the attribute (e.g. `[x]("onmouseover="alert(1))`).
+  Now run `escAttr` on the URL in both steps 9 & 10. +2 regression tests. `inlineFormatting.js:55-64`.
+- [x] **#8 ✓ FIXED 2026-05-29 — Strikethrough/highlight toggle stripped nested formatting** (Med,
+  REAL). `toggleWrappingTag` removed a tag by replacing it with `createTextNode(textContent)`,
+  flattening any nested `**bold**`/`*italic*`. Now unwraps (moves children out, removes the
+  wrapper) and re-selects the range. (Inline-code toggle left as-is — code is inherently flat.)
+  `useInlineFormatting.js:83`.
+- [~] **#9 DEFERRED 2026-05-29 — Type+Enter pushes two undo steps** (Low, arguably-correct). Typing
+  (`commitTextChange`, debounced pushHistory) + a structural Enter (`commitNoteData`, always
+  pushHistory) are two logical operations, so two undo steps is defensible granularity, not a clear
+  bug. Not fixing without a concrete UX complaint. `useHistory.js:35`.
+- [ ] **#10 ? `markdownToBlocks` global ID counter** (Low, DEFERRED — riskier fix). Module-global
+  `_parseBlockId` means every re-parse mints new block IDs → React remounts all block DOM (lost
+  cursor) on re-sync. Real but Low; the fix is content-stable IDs (non-trivial, ripple risk).
+  `markdown.js:34`.
 - [x] **#11 ✓ FIXED 2026-05-29 (pending visual verify) — Empty-block placeholder overlapped
   typed text** (Med, USER-REPORTED — **the QoL auditor missed this**). "Type / for commands…"
   lingered behind the first line until a second line existed, because the `empty-block` class

@@ -98,6 +98,11 @@ export function useSync(
   // Replace boolean isRemoteUpdate with a Map of noteId → timestamp
   const remoteUpdateIds = useRef(new Map());
 
+  // When true, a first-time sync with local notes is awaiting the user's explicit
+  // confirmation. Blocks syncAll's "push everything" branch so a visibilitychange /
+  // online / poll event can't upload all local notes behind the dialog's back.
+  const firstSyncGateRef = useRef(false);
+
   // Cross-tab sync via BroadcastChannel
   const localChannelRef = useRef(null);
 
@@ -246,6 +251,9 @@ export function useSync(
 
   const syncAll = useCallback(async () => {
     if (!user || isSyncing.current) return;
+    // Don't sync while a first-time bulk upload is awaiting the user's decision.
+    // (Auto-triggers — visibilitychange / online / 60s poll — must not slip past the dialog.)
+    if (firstSyncGateRef.current) return;
     isSyncing.current = true;
     if (!navigator.onLine) {
       isSyncing.current = false;
@@ -546,6 +554,7 @@ export function useSync(
     if (user) {
       const noteCount = Object.keys(noteDataRef.current).length;
       if (!lastSyncedRef.current && noteCount > 0) {
+        firstSyncGateRef.current = true;
         setPendingFirstSync({ noteCount });
         return;
       }
@@ -555,6 +564,7 @@ export function useSync(
       setSyncState("idle");
       dirtyNotes.current.clear();
       deletedNotes.current.clear();
+      firstSyncGateRef.current = false;
       setPendingFirstSync(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on user?.id to avoid re-running on object reference changes
@@ -681,11 +691,15 @@ export function useSync(
   }, [conflictToast]);
 
   const confirmFirstSync = useCallback(() => {
+    // User opted in — lower the gate, then run the (now-authorised) first sync.
+    firstSyncGateRef.current = false;
     setPendingFirstSync(null);
     setTimeout(() => syncAllRef.current(), 100);
   }, []);
 
   const cancelFirstSync = useCallback(() => {
+    // User declined — hide the dialog but KEEP the gate up so no auto-trigger
+    // (visibilitychange / online / poll) uploads the local notes they declined to sync.
     setPendingFirstSync(null);
   }, []);
 

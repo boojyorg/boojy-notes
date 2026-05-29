@@ -52,15 +52,17 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${target}</span>`;
   });
 
-  // 9. Markdown links [text](url)
-  s = s.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="external-link" data-url="$2">$1<span class="external-link-icon" contenteditable="false">\u2197</span></a>',
-  );
+  // 9. Markdown links [text](url) \u2014 escape the URL so a stray " can't break out
+  // of the href/data-url attribute (attribute-injection guard; escAttr defined above).
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    const safe = escAttr(url);
+    return `<a href="${safe}" class="external-link" data-url="${safe}">${text}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
+  });
 
   // 10. Auto-link bare URLs (https://... not already inside an <a> tag or href)
   s = s.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"}>])/g, (_, pre, url) => {
-    return `${pre}<a href="${url}" class="external-link bare-url" data-url="${url}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
+    const safe = escAttr(url);
+    return `${pre}<a href="${safe}" class="external-link bare-url" data-url="${safe}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
   });
 
   // 11. Tags (#tag but not # at line start which is heading)

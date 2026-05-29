@@ -102,6 +102,19 @@ describe("inlineMarkdownToHtml", () => {
     expect(result).toContain('data-target="She said &quot;hi&quot;"');
   });
 
+  it("escapes quotes in markdown-link URLs (attribute-injection guard)", () => {
+    const result = inlineMarkdownToHtml('[x](" onmouseover="alert(1))');
+    // The stray " must be escaped so it can't break out of href/data-url
+    expect(result).not.toContain('onmouseover="alert(1)"');
+    expect(result).toContain("&quot;");
+  });
+
+  it("escapes quotes in bare URLs (attribute-injection guard)", () => {
+    const result = inlineMarkdownToHtml('https://example.com/a"onmouseover="x');
+    expect(result).not.toContain('onmouseover="x"');
+    expect(result).toContain("&quot;");
+  });
+
   it("does not match trailing punctuation in bare URLs", () => {
     const result = inlineMarkdownToHtml("See https://example.com.");
     // The period should NOT be part of the href

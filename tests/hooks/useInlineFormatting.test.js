@@ -233,4 +233,39 @@ describe("useInlineFormatting", () => {
 
     document.body.removeChild(editorEl);
   });
+
+  it("toggleStrikethrough off preserves nested bold (#8 — unwrap, don't flatten)", () => {
+    const { deps, editorEl } = setup();
+    document.body.appendChild(editorEl);
+
+    // <del><strong>bold</strong> tail</del>
+    const del = document.createElement("del");
+    const strong = document.createElement("strong");
+    strong.appendChild(document.createTextNode("bold"));
+    del.appendChild(strong);
+    del.appendChild(document.createTextNode(" tail"));
+    editorEl.appendChild(del);
+
+    // Caret inside the bold text so toggleWrappingTag finds the enclosing <del>.
+    // applyFormat reads window.getSelection() itself, so set it on the window.
+    const range = document.createRange();
+    range.selectNodeContents(strong.firstChild);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const { result } = renderHook(() => useInlineFormatting(deps));
+
+    act(() => {
+      result.current.applyFormat("strikethrough");
+    });
+
+    // <del> removed, but the nested <strong> must survive (was being flattened before)
+    expect(editorEl.querySelector("del")).toBe(null);
+    expect(editorEl.querySelector("strong")).not.toBe(null);
+    expect(editorEl.querySelector("strong").textContent).toBe("bold");
+    expect(editorEl.textContent).toBe("bold tail");
+
+    document.body.removeChild(editorEl);
+  });
 });

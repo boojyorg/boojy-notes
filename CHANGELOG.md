@@ -9,6 +9,9 @@
 - **Nested folder rename fixed** — Renaming a folder inside another folder (e.g. `Work/Projects` → `Clients`) no longer orphans an empty entry at the sidebar root; the renamed folder stays nested correctly.
 - **Mobile image insert fixed** — The image button in the mobile toolbar now actually inserts the picked image (it was passing the wrong arguments and silently failing on every attempt).
 - **Sidebar accessibility** — The "New Folder" and "New Note" action buttons inside the notes tree are now exposed as `treeitem`s, fixing a critical `aria-required-children` violation (a `tree` may only own `treeitem`/`group` children). Restores a clean axe pass in E2E — the first green CI since ~March 2026.
+- **Link URLs are now safely escaped** — A quote character inside a link's URL could break out of the link tag and inject HTML attributes. URLs in both `[text](url)` links and auto-detected bare URLs are now escaped, closing the injection gap.
+- **Declining the first cloud sync now sticks** — When you log in with local notes, the "sync these to the cloud?" prompt could be silently bypassed: switching tabs or regaining a connection would upload everything anyway, and "Cancel" only hid the dialog. The first upload is now blocked until you explicitly confirm, and Cancel keeps it blocked.
+- **Removing strikethrough/highlight keeps inner formatting** — Toggling off `~~strikethrough~~` or `==highlight==` over text that also contained bold or italic used to flatten it to plain text. The formatting tag is now unwrapped, so the bold/italic inside survives.
 
 ## 0.3.0 — 2026-05-28
 

@@ -81,10 +81,22 @@ export function useInlineFormatting({
         node = node.parentNode;
       }
       if (existing) {
-        const textNode = document.createTextNode(existing.textContent);
-        existing.parentNode.replaceChild(textNode, existing);
+        // Unwrap (move children out) rather than flattening to textContent, so any
+        // nested formatting (e.g. **bold** inside ~~strike~~) survives toggling off.
+        const parent = existing.parentNode;
         const r = document.createRange();
-        r.selectNodeContents(textNode);
+        if (existing.firstChild) {
+          const first = existing.firstChild;
+          const last = existing.lastChild;
+          while (existing.firstChild) parent.insertBefore(existing.firstChild, existing);
+          parent.removeChild(existing);
+          r.setStartBefore(first);
+          r.setEndAfter(last);
+        } else {
+          const placeholder = document.createTextNode("");
+          parent.replaceChild(placeholder, existing);
+          r.selectNodeContents(placeholder);
+        }
         sel.removeAllRanges();
         sel.addRange(r);
       } else {
