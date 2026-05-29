@@ -17,7 +17,9 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          # Node 22 (LTS): Node 24 hangs `playwright install --with-deps` on the
+          # GitHub runner image. Actions themselves run on Node 24 via @v6.
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
