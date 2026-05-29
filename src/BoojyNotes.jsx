@@ -265,7 +265,7 @@ export default function BoojyNotes() {
     pendingFirstSync,
     confirmFirstSync,
     cancelFirstSync,
-  } = useSync(user, profile, noteData, setNoteData, activeNote, editedNoteHint);
+  } = useSync(user, profile, noteData, setNoteData, activeNote, editedNoteHint, syncGeneration);
   const {
     isElectron: isDesktop,
     notesDir,
@@ -907,17 +907,8 @@ export default function BoojyNotes() {
         focusCursorPos.current = newText.length;
       }
       setWikilinkMenu(null);
-      handleWikilinkClick(title);
     },
-    [
-      commitTextChange,
-      handleWikilinkClick,
-      syncGeneration,
-      noteDataRef,
-      focusBlockId,
-      setWikilinkMenu,
-      wikilinkMenuRef,
-    ],
+    [commitTextChange, syncGeneration, noteDataRef, focusBlockId, setWikilinkMenu, wikilinkMenuRef],
   );
 
   // Tag click handler: sets sidebar search to #tagname
@@ -1376,7 +1367,10 @@ export default function BoojyNotes() {
                     const api = getAPI();
                     if (api?.pickImageFile) {
                       api.pickImageFile().then((file) => {
-                        if (file) saveAndInsertImage(activeNote, note, file);
+                        if (!file) return;
+                        const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+                        const afterIndex = blocks ? blocks.length - 1 : 0;
+                        saveAndInsertImage(activeNote, afterIndex, file);
                       });
                     }
                   }}

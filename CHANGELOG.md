@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Bug Fixes
+- **Open note now updates on sync** — When a note open in the editor was changed on another device or browser tab, the change updated internally but the visible text stayed stale until you switched notes. Remote pulls, realtime updates, and cross-tab broadcasts now refresh the editor immediately (only for the open note, so in-progress edits elsewhere aren't disturbed).
+- **Wikilink autocomplete no longer jumps away** — Picking a note from the `[[ ]]` menu now just inserts the link and keeps your place, instead of navigating to the linked note and losing your cursor mid-sentence.
+- **Nested folder rename fixed** — Renaming a folder inside another folder (e.g. `Work/Projects` → `Clients`) no longer orphans an empty entry at the sidebar root; the renamed folder stays nested correctly.
+- **Mobile image insert fixed** — The image button in the mobile toolbar now actually inserts the picked image (it was passing the wrong arguments and silently failing on every attempt).
 - **Sidebar accessibility** — The "New Folder" and "New Note" action buttons inside the notes tree are now exposed as `treeitem`s, fixing a critical `aria-required-children` violation (a `tree` may only own `treeitem`/`group` children). Restores a clean axe pass in E2E — the first green CI since ~March 2026.
 
 ## 0.3.0 — 2026-05-28

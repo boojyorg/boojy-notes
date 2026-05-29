@@ -60,7 +60,15 @@ function generateConflictId() {
   return "note-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
 }
 
-export function useSync(user, profile, noteData, setNoteData, activeNoteId, editedNoteHint) {
+export function useSync(
+  user,
+  profile,
+  noteData,
+  setNoteData,
+  activeNoteId,
+  editedNoteHint,
+  syncGeneration,
+) {
   const [syncState, setSyncState] = useState("idle");
   const [lastSynced, setLastSynced] = useState(() => localStorage.getItem(LAST_SYNC_KEY) || null);
   const [storageUsed, setStorageUsed] = useState(() => {
@@ -107,6 +115,8 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
       if (type === "note-updated" && noteId && note) {
         remoteUpdateIds.current.set(noteId, Date.now());
         setNoteData((prev) => ({ ...prev, [noteId]: note }));
+        // Re-sync the editor DOM if the remote update replaced the open note.
+        if (syncGeneration && noteId === activeNoteIdRef.current) syncGeneration.current += 1;
       } else if (type === "note-deleted" && deletedId) {
         remoteUpdateIds.current.set(deletedId, Date.now());
         setNoteData((prev) => {
@@ -369,6 +379,16 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
               }
               return next;
             });
+            // Re-sync the editor DOM if the open note was refreshed from remote.
+            if (
+              syncGeneration &&
+              activeNoteIdRef.current &&
+              parsedRemotes.some(
+                (n) => n.id === activeNoteIdRef.current && !dirtyNotes.current.has(n.id),
+              )
+            ) {
+              syncGeneration.current += 1;
+            }
           }
 
           saveVersionMap(versionMap.current);
@@ -593,6 +613,8 @@ export function useSync(user, profile, noteData, setNoteData, activeNoteId, edit
         if (dirtyNotes.current.has(payload.id)) return;
         remoteUpdateIds.current.set(payload.id, Date.now());
         setNoteData((prev) => ({ ...prev, [payload.id]: payload }));
+        // Re-sync the editor DOM if the realtime update replaced the open note.
+        if (syncGeneration && payload.id === activeNoteIdRef.current) syncGeneration.current += 1;
       })
       .on("broadcast", { event: "note_delete" }, ({ payload }) => {
         if (!payload?.id || typeof payload.id !== "string") return;

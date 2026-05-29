@@ -142,7 +142,7 @@ export function useNoteCrud({
       }
       return next;
     });
-    setCustomFolders((prev) => prev.map((f) => (f === oldPath ? newName : f)));
+    setCustomFolders((prev) => prev.map((f) => (f === oldPath ? newPath : f)));
   };
 
   const deleteFolder = (folderPath) => {

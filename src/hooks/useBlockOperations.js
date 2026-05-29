@@ -102,19 +102,30 @@ export function useBlockOperations({
     const api = getAPI();
     if (!api) return;
     try {
-      const dataBase64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      // Accept either a File/Blob (paste, drag-drop) or an already-read
+      // { fileName, dataBase64 } object (the pickImageFile result used by the
+      // mobile toolbar / pickers). Both platforms' pickImageFile return the latter.
+      let dataBase64;
+      let srcName;
+      if (file && typeof file.dataBase64 === "string") {
+        dataBase64 = file.dataBase64;
+        srcName = file.fileName || "";
+      } else {
+        dataBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        srcName = file.name || "";
+      }
       const ext =
-        file.name.lastIndexOf(".") !== -1
-          ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
+        srcName.lastIndexOf(".") !== -1
+          ? srcName.slice(srcName.lastIndexOf(".")).toLowerCase()
           : "";
       // Generate timestamp filename for clipboard pastes (generic names like image.png, blob)
-      const isClipboardPaste = /^(image|blob|clipboard)/i.test(file.name.replace(/\.[^.]+$/, ""));
-      let finalFileName = file.name;
+      const isClipboardPaste = /^(image|blob|clipboard)/i.test(srcName.replace(/\.[^.]+$/, ""));
+      let finalFileName = srcName;
       if (isClipboardPaste && ext) {
         const now = new Date();
         const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
@@ -127,7 +138,7 @@ export function useBlockOperations({
         });
         insertImageBlock(noteId, afterIndex, filename, finalFileName.replace(/\.[^.]+$/, ""));
       } else {
-        const result = await api.saveAttachment({ fileName: file.name, dataBase64 });
+        const result = await api.saveAttachment({ fileName: srcName, dataBase64 });
         insertFileBlock(noteId, afterIndex, result.filename, result.filename, result.size);
       }
     } catch (err) {
