@@ -43,6 +43,9 @@ windows/
 # Private docs
 docs/private/
 
+# Claude Code — track shared config/tooling, but keep personal local settings out
+.claude/settings.local.json
+
 # Electron build artifacts
 out/
 release/

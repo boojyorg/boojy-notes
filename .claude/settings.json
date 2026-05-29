@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "compactPrompt": "When compacting this development session, you MUST copy and preserve all current active tasks and bugs listed inside dreams.md verbatim. Retain the architecture rules and conventions from CLAUDE.md, the explicit file paths modified during this branch, and the precise error signatures currently under evaluation. Discard historical conversational prose, greeting filler, and resolved styling discussions.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -qE 'npm( +run)? +(test|build)' && printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"CRITICAL: Update README.md/CLAUDE.md/FEATURES.md if features or architecture shifted.\"}}' || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/post-edit-validation.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
