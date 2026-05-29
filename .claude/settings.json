@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "compactPrompt": "When compacting this development session, you MUST copy and preserve all current active tasks and bugs listed inside dreams.md verbatim. Retain the architecture rules and conventions from CLAUDE.md, the explicit file paths modified during this branch, and the precise error signatures currently under evaluation. Discard historical conversational prose, greeting filler, and resolved styling discussions.",
+  "compactPrompt": "When compacting this development session, you MUST preserve verbatim: the §1 active-target and backlog tasks in dreams.md, the architecture rules and conventions from CLAUDE.md and .claude/rules/, the explicit file paths modified during this branch, and the precise error signatures currently under evaluation. Discard historical conversational prose, greeting filler, and resolved styling discussions.",
   "hooks": {
     "PostToolUse": [
       {

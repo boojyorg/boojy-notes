@@ -101,27 +101,31 @@ Pushing to `master` deploys web; pushing the tag builds desktop installers.
 
 ## Docs system & working memory
 
-This repo uses the docs-system methodology (see `~/Documents/Vault/Projects/Claude Docs System.md`).
-Five docs, split by audience and time-horizon:
+This repo uses the simplified, auto-memory-era docs-system (see
+`~/Documents/Vault/Projects/Claude Docs System.md`). Learnings and session history live in
+Claude Code's **auto memory** + `git log`; the committed docs hold only must-follow rules and
+live working state:
 
-- **`FEATURES.md`** — plain-language, recruiter/user-facing tour (no file paths or jargon).
+- **`FEATURES.md`** — plain-language, recruiter/user-facing tour (no file paths or jargon). *(optional, not yet created)*
 - **`README.md`** — dev/public-facing: what it is, stack, architecture, scripts.
-- **`CLAUDE.md`** (this file) — the agent's rules: architecture, conventions, workflow.
-- **`dreams.md`** — *live working memory*: active target (§1), incident logs (§2), gotchas (§3).
-- **`.claude/history/session_ledger.md`** — *append-only* per-session history.
+- **`CLAUDE.md`** (this file) — the agent's rules: architecture, conventions, workflow. Always-true rules only.
+- **`.claude/rules/`** — one topic per file. Genuinely global rules stay here in `CLAUDE.md`;
+  per-area gotchas live in `rules/`. (`paths:` frontmatter is aspirational — conditional loading
+  is unreliable in early-2026 Claude Code, so treat `rules/` as organization, not context savings.)
+- **`dreams.md`** — *live working memory*: the Active Engineering Target + milestone/backlog
+  checklist (§1 only). Volatile state, changes every session.
 
-**Memory Synchronization Rule:** Read `dreams.md` at the start of every session to
-establish target context. When you resolve an item, flip its checkbox `- [ ]` → `- [x]`.
-Active targets, unresolved compile failures, and manual UI bugs are centralized there.
+**Memory Synchronization Rule:** Read `dreams.md` at the start of every session to establish
+target context. When you resolve an item, flip its checkbox `- [ ]` → `- [x]`.
 
 **Automated Validation Hook:** `.claude/settings.json` wires a `PostToolUse` hook
 (`.claude/hooks/post-edit-validation.sh`) that runs `biome check --write` → typecheck (`.ts/.tsx`
-only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit, and logs failures into
-`dreams.md` §2. Do not bypass it. During multi-file refactors it may log *transient*
-mid-edit typecheck failures — clear §2 back to "_None open._" once gates are green.
+only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit. On failure it prints the error and
+exits non-zero (it does **not** write to any doc). Do not bypass it.
 
 **Keep docs current:** architecture/roadmap changes update `README.md` + `CLAUDE.md` in the
 same commit; a release bumps `package.json` + `CHANGELOG.md`; feature changes update `FEATURES.md`.
+Skim `/memory` after a big refactor — that's the whole maintenance loop now.
 
 ## Conventions
 

@@ -1,285 +1,57 @@
-# DREAMS.md — Boojy Notes Intent Buffer & Devlog
+# DREAMS.md — Boojy Notes Active Target
 
-> Live working memory. Read this at the start of every session to establish target
-> context. Tick `- [ ]` → `- [x]` as items resolve. Law (slow-changing rules) lives in
-> CLAUDE.md; this file is state (changes every session).
+> Live working memory: the Active Engineering Target + milestone/backlog checklist. Read at the
+> start of every session to establish target context; tick `- [ ]` → `- [x]` as items resolve.
+> Slow-changing rules live in `CLAUDE.md` + `.claude/rules/`; session history lives in `git log`
+> and Claude Code auto memory. This file is volatile state only.
 
 ## 1. 🎯 Active Engineering Target
 
-**Status:** v0.3.0 **pushed + tagged** (web-only pivot + Biome + pnpm + BoojyNotes slice-1).
-v0.3.0 GitHub Release **published** (2026-05-29, marked Latest — macOS DMG + Windows EXE live).
-CI **GREEN** since the sidebar a11y fix. App live at `notes.boojy.org`; landing at `boojy.org/notes`.
-**Latest:** **v0.4.0 cut + tagged** (2026-05-29) — terminal removed (`terminal-snapshot` tag for
-re-add) + top bar simplified, web delete-confirm, bug/a11y batch. Pushed `master` (web auto-deploys);
-`v0.4.0` tag triggers desktop DMG/EXE build. CI actions bumped to `@v6` (Node 24 runtime); project
-build/test stays on Node 22 (Node 24 hangs Playwright install — pinned w/ comment). Dated
-code-quality reviews added under `docs/`.
+**Status:** **v0.4.0 shipped** (2026-05-29) — terminal removed (`terminal-snapshot` tag for re-add)
++ top bar simplified, web delete-confirm, bug/a11y batch. Pushed to `master` (web auto-deploys to
+`notes.boojy.org`); `v0.4.0` tag built the desktop DMG/EXE. CI **green**. No engineering target
+currently in flight — next pick from the backlog below.
 
-**Then:** 4-agent bug audit → shipped 6 bug fixes (sync staleness, wikilink nav+selection,
-folder rename, mobile image, placeholder overlap) — all verified, incl. an interactive Playwright
-pass. Pushed `310228a..8906ad5`. Editor debounce/syncGen gotchas now documented in CLAUDE.md.
-
-**Then (cont.):** cleared the rest of the audit backlog Tier-1 (#6 first-sync gate, #7 link-URL
-escaping, #8 toggle-unwrap fixed; #5 verified-not-a-bug; #9/#10 deferred) and the **Tier-2 QoL
-batch** (themed delete-confirm primitive + ConfirmDialog, FindBar unsupported-browser label,
-keyboard-accessible backlinks, tappable mobile title, auth `aria-busy`). Delete-confirm verified
-live via Playwright. Tier-3 a11y clusters remain in §3.
-
-**Then (cont.):** wrote dated code-quality reviews (`docs/2026-03-24-` archived, `docs/2026-05-29-`
-new, 8.8→8.9). **Removed the terminal** (right panel + toggle + `node-pty`/xterm; 9 files deleted,
-~9 wiring edits) — pre-removal state tagged `terminal-snapshot` for easy re-add. Reworked the
-desktop top bar: no right toggle/column, tabs full-width, word count pinned left of help
-(`RIGHT_CLUSTER_W` fixed cluster, thin dividers both sides). **Shipped as v0.4.0** — committed,
-pushed, tagged; CI green, walkthrough done, desktop DMG/EXE build succeeded (no node-pty rebuild).
-Also bumped CI actions to `@v6` (Node 24 runtime); project build/test pinned to Node 22 (Node 24
-hangs Playwright install — see §3).
-
-### Current milestone (checklist)
+### Milestone checklist (recent)
 
 - [x] Drop Capacitor → web + desktop only (v0.3.0)
-- [x] ESLint + Prettier → Biome (CI lint/format/typecheck verified green)
-- [x] npm → pnpm (full DMG release build verified)
-- [x] Extract `useNoteStats` / `useWebNags` / `useDocumentTitle` from BoojyNotes
-- [x] Push `master` → Cloudflare web deploy triggered
-- [x] Fix CI coverage gate (thresholds → floor at actuals)
-- [x] **Confirm web is live** — `notes.boojy.org` live (user-confirmed 2026-05-29); landing at `boojy.org/notes`
-- [x] **Fix sidebar-tree a11y violation → green E2E/CI** (New Folder/New Note buttons under `role="tree"` given `role="treeitem"`; verified all 5 E2E pass locally, 2026-05-29)
-- [x] **Remove terminal** (tagged `terminal-snapshot`) + simplify top bar — **shipped in v0.4.0** (committed, walkthrough done, installers built)
-- [x] **Release v0.4.0** — package.json + CHANGELOG bumped, tag pushed, DMG/EXE built OK (2026-05-29)
-- [ ] (optional) Phase 3 cont.: `ProfileTab` (915) / `Sidebar` (897)
-- [x] Desktop installers + fix `boojy.org/notes` version text: tag `v0.3.0` (pushed 2026-05-29)
+- [x] ESLint + Prettier → Biome; npm → pnpm
+- [x] Fix CI coverage gate (thresholds → floor at actuals) + sidebar-tree a11y → green E2E/CI
+- [x] Confirm web live (`notes.boojy.org`); desktop installers built (v0.3.0, v0.4.0)
+- [x] Remove terminal (tagged `terminal-snapshot`) + simplify top bar — shipped in v0.4.0
+- [x] Release v0.4.0 (package.json + CHANGELOG bumped, tag pushed, DMG/EXE built)
+
+### Backlog (unscheduled)
+
+**Refactor / docs**
+- [ ] (optional) Phase 3 cont.: extract from `ProfileTab` (915 lines) / `Sidebar` (897 lines)
 - [ ] (optional) Create `FEATURES.md` (docs-system gap)
 
----
+**Bugs / QoL**
+- [ ] Orphaned onboarding hint bubble — the "Type / for commands" tooltip floats detached
+  top-center of the editor, not anchored to anything (interactive-only find; reposition/anchor it).
+- [ ] `markdownToBlocks` global ID counter — module-global `_parseBlockId` mints new block IDs on
+  every re-parse → React remounts all block DOM (lost cursor) on re-sync. Low priority; fix is
+  content-stable IDs (non-trivial, ripple risk). `markdown.js:34`.
+- [ ] `TagMenu` space-dismiss — `preventDefault` swallows the space that legitimately ends a tag
+  (minor). `TagMenu.jsx:48`.
 
-## 2. 🧪 Workspace Feedback Loops & Incident Logs
+**Cross-repo**
+- [ ] `boojy.org/notes` download buttons hardcoded to `v0.1.3` (in the *separate* `Boojy` website
+  repo: `website/src/pages/NotesPage.tsx:16,29,41` — macOS DMG, Windows EXE, hero CTA). Version
+  *text* auto-updates from the latest GitHub tag; the install links don't. Now unblocked — bump the
+  3 URLs to a published release. (User-acknowledged deferred.)
 
-### 🛑 Manual UX & Testing Reports (User Injected)
-
-- [x] Phase-3 slice 1: `pnpm dev:web` verified identical to pre-refactor (user, 2026-05-28).
-- [ ] Add manual observations from `pnpm dev` / `dev:web` walkthroughs here.
-
-### 🚨 Automated Incident Logs (Script Prepended)
-- [ ] **Fix Vitest Related Suite Failure in `/Users/tyrbujac/Documents/Projects/boojy/boojy-notes/src/components/TopBarDesktop.jsx`**
-  ```text
-  
- RUN  v4.0.18 /Users/tyrbujac/Documents/Projects/boojy/boojy-notes
-
- ❯ tests/components/TopBar.test.jsx (8 tests | 8 failed) 23ms
-     × renders tab elements for provided tabs 11ms
-     × undo button has reduced opacity when canUndo=false 2ms
-     × redo button has reduced opacity when canRedo=false 2ms
-     × undo button is at full opacity when canUndo=true 2ms
-  ```
-- [ ] **Fix Vitest Related Suite Failure in `/Users/tyrbujac/Documents/Projects/boojy/boojy-notes/src/components/TopBarDesktop.jsx`**
-  ```text
-  
- RUN  v4.0.18 /Users/tyrbujac/Documents/Projects/boojy/boojy-notes
-
- ❯ tests/components/TopBar.test.jsx (8 tests | 8 failed) 20ms
-     × renders tab elements for provided tabs 10ms
-     × undo button has reduced opacity when canUndo=false 1ms
-     × redo button has reduced opacity when canRedo=false 2ms
-     × undo button is at full opacity when canUndo=true 1ms
-  ```
-- [ ] **Fix Vitest Related Suite Failure in `/Users/tyrbujac/Documents/Projects/boojy/boojy-notes/src/components/TopBarDesktop.jsx`**
-  ```text
-  
- RUN  v4.0.18 /Users/tyrbujac/Documents/Projects/boojy/boojy-notes
-
- ❯ tests/components/TopBar.test.jsx (8 tests | 8 failed) 22ms
-     × renders tab elements for provided tabs 11ms
-     × undo button has reduced opacity when canUndo=false 2ms
-     × redo button has reduced opacity when canRedo=false 2ms
-     × undo button is at full opacity when canUndo=true 1ms
-  ```
-
-_None open._ <!-- 2026-05-29: all gates green post terminal-removal (572 tests pass, coverage above floor, typecheck + format clean, web build OK). -->
-
-<!-- The post-edit-validation hook automatically injects compiler/test errors beneath this line -->
-
-> Note: during a multi-file refactor the hook logs *transient* mid-edit failures
-> (an import added one edit before its use). Those are intermediate states, not real
-> incidents — clear this section back to "_None open._" once gates are green again.
-
----
-
-## 3. 🗺️ Strategic Backlog & Architecture Scratchpad
-
-### 🐛 Audit Backlog — bugs + QoL + a11y (2026-05-29, 4 parallel Sonnet auditors)
-
-> Triaged sweep of the whole codebase. `✓` = Claude verified by reading the code; `?` =
-> agent-reported, NOT yet verified (confirm before fixing). Tackle Tier 1 #2/#3/#4 first
-> (small, low-risk, high-value); #1 is most important but needs runtime testing.
-
-**Tier 1 — correctness bugs**
-- [x] **#1 ✓ FIXED 2026-05-29 — Remote edits didn't appear in the open note** (High). Threaded
-  `syncGeneration` into `useSync`; bump it (only when the applied note === `activeNoteIdRef`) at
-  the 3 remote-apply sites: cross-tab BroadcastChannel, pull-merge, realtime upsert. Open-note-
-  only guard avoids clobbering an in-progress edit elsewhere. `useSync.js`. _Still want a live
-  two-device/two-tab runtime check to confirm._
-- [x] **#2 ✓ FIXED 2026-05-29 — Wikilink autocomplete navigated away.** Dropped the
-  `handleWikilinkClick(title)` call in `handleWikilinkSelect`; link inserts, cursor stays put.
-- [x] **#3 ✓ FIXED 2026-05-29 — Nested folder rename orphaned it.** `useNoteCrud.js:145` now
-  writes `newPath` not `newName`.
-- [x] **#4 ✓ FIXED 2026-05-29 — Mobile image insert broken.** `saveAndInsertImage` now accepts
-  either a File/Blob or the `{fileName,dataBase64}` picker result; mobile toolbar passes a real
-  `afterIndex` (end of note). (Confirmed both platforms' `pickImageFile` return the picker shape.)
-- [x] **#5 ✓ VERIFIED NOT A BUG 2026-05-29 — Paste HTML-nesting corruption.** Read `sanitizeNode`:
-  it always *unwraps* block elements (DIV/P/H*) into `<br>` + content, so a block `<div>` can
-  never end up nested inside an inline tag. Worst case is a `<br>` inside `<strong>`, which is
-  valid. No corruption path. Dropped. `inlineFormatting.js:244-267`.
-- [x] **#6 ✓ FIXED 2026-05-29 — `cancelFirstSync` didn't block later auto-trigger** (High, REAL).
-  While the first-sync dialog was pending, any visibilitychange/online/60s-poll event called
-  `syncAll`, which saw `!lastSyncedRef` and pushed every local note — bypassing the dialog. Cancel
-  only hid it. Added a `firstSyncGateRef`: raised when the dialog opens, `syncAll` early-returns
-  while it's up; confirm lowers it then syncs; **cancel keeps it up** so declining truly prevents
-  the upload; logout resets it. +2 regression tests. `useSync.js`.
-- [x] **#7 ✓ FIXED 2026-05-29 — Link URL attr not escaped** (High, REAL — attribute injection).
-  `[text](url)` and bare-URL auto-linking interpolated the URL into `href="…"`/`data-url="…"`
-  with no quote-escaping → a `"` broke out of the attribute (e.g. `[x]("onmouseover="alert(1))`).
-  Now run `escAttr` on the URL in both steps 9 & 10. +2 regression tests. `inlineFormatting.js:55-64`.
-- [x] **#8 ✓ FIXED 2026-05-29 — Strikethrough/highlight toggle stripped nested formatting** (Med,
-  REAL). `toggleWrappingTag` removed a tag by replacing it with `createTextNode(textContent)`,
-  flattening any nested `**bold**`/`*italic*`. Now unwraps (moves children out, removes the
-  wrapper) and re-selects the range. (Inline-code toggle left as-is — code is inherently flat.)
-  `useInlineFormatting.js:83`.
-- [~] **#9 DEFERRED 2026-05-29 — Type+Enter pushes two undo steps** (Low, arguably-correct). Typing
-  (`commitTextChange`, debounced pushHistory) + a structural Enter (`commitNoteData`, always
-  pushHistory) are two logical operations, so two undo steps is defensible granularity, not a clear
-  bug. Not fixing without a concrete UX complaint. `useHistory.js:35`.
-- [ ] **#10 ? `markdownToBlocks` global ID counter** (Low, DEFERRED — riskier fix). Module-global
-  `_parseBlockId` means every re-parse mints new block IDs → React remounts all block DOM (lost
-  cursor) on re-sync. Real but Low; the fix is content-stable IDs (non-trivial, ripple risk).
-  `markdown.js:34`.
-- [x] **#11 ✓ FIXED 2026-05-29 (pending visual verify) — Empty-block placeholder overlapped
-  typed text** (Med, USER-REPORTED — **the QoL auditor missed this**). "Type / for commands…"
-  lingered behind the first line until a second line existed, because the `empty-block` class
-  was gated on the debounced `block.text===""` rather than live DOM emptiness. Fix: make the
-  class stable (first block) + show via CSS `.empty-block:empty / :has(>br:only-child)::before`
-  (empty blocks hold a `<br>`, so plain `:empty` alone was insufficient). `EditableBlock.jsx:247`,
-  `GlobalStyles.jsx:458`. _Audit-miss lesson: the UX agent reviewed code statically and never
-  ran the app, so a debounce/render-timing visual bug was invisible to it — interactive bugs
-  need a running-app pass, not just code review._
-
-**Tier 2 — high-impact QoL** — _batch FIXED 2026-05-29 (see commit)_
-- [x] **✓ FIXED 2026-05-29 — Destructive delete w/o confirm.** Built a reusable themed confirm
-  primitive: `requestConfirm()` (promise) in `OverlayContext` + `ConfirmDialog.jsx` (role
-  `alertdialog`, Esc/Enter, danger styling, focus Cancel by default). Web note/folder/bulk delete
-  now route through confirm-wrapped handlers in BoojyNotes; **desktop skips it** (trash =
-  recoverable). Verified live via Playwright (right-click→Delete→dialog→Cancel keeps note,
-  Delete removes it; 0 console errors). Empty Trash is native-only and already has its own
-  `window.confirm`. Mobile EditorMoreMenu already had its own confirm — left it, but fixed its
-  message which wrongly said "moved to Trash" on web. +6 ConfirmDialog tests.
-- [~] **✓ MOSTLY FALSE POSITIVE 2026-05-29 — Focus dropped after closing overlays.** Verified by
-  reading the code: Settings, slash menu, AND context menu all already restore focus via
-  `useFocusTrap` (its cleanup re-focuses the pre-open element). No fix needed there. The mobile
-  `EditorMoreMenu` lacks it, but it's touch-driven so focus-return is moot. Dropped.
-- [~] ~~Settings modal: Escape doesn't close~~ **FALSE POSITIVE** (interactive pass 2026-05-29:
-  Escape DOES close Settings on the desktop web build). Audit agent was wrong; dropped.
-- [x] **✓ FIXED 2026-05-29 — FindBar silent "0 of 0" on Firefox/old Safari.** Added a
-  `highlightSupported` check; when the CSS Highlight API is absent the counter shows "n/a" with a
-  tooltip naming the requirement (Chrome/Edge or Safari 17.4+). `FindBar.jsx`.
-- [x] **✓ FIXED 2026-05-29 — Backlinks entries not keyboard-activatable.** Gave each entry
-  `role="button"`, `tabIndex=0`, Enter/Space handler, and a focus-highlight. `BacklinksPanel.jsx`.
-- [x] **✓ FIXED 2026-05-29 — Mobile TopBar title not tappable.** Title is now a `<button>` that
-  focuses + scrolls to the editable H1 title (caret at end). `TopBarMobile.jsx` + `onTitlePress`
-  handler in `BoojyNotes.jsx`.
-- [x] **✓ FIXED 2026-05-29 — Auth button no `aria-busy`.** Added `aria-busy={authLoading}` to the
-  sign-in/create button. (Visible spinner deferred — `aria-busy` covers the a11y gap.)
-  `ProfileTab.jsx`.
-
-**Tier 3 — accessibility clusters** (E2E axe only catches *critical* on initial screen)
-- [ ] Sidebar focus ring invisible — inline `outline:none` overrides global (`Sidebar.jsx:97,
-  225,336,481`); global ring also 25%-opacity, fails contrast (`GlobalStyles.jsx:66`).
-- [ ] Icon-only buttons use `title` not `aria-label` — TopBar undo/redo/toggles/Help/Settings;
-  Help & Settings close (`✕`) buttons. Cluster fix. `TopBarDesktop.jsx:221+`, `HelpDropdown.jsx:102`.
+**Tier-3 accessibility clusters** (E2E axe only catches *critical* on the initial screen)
+- [ ] Sidebar focus ring invisible — inline `outline:none` overrides global; global ring is also
+  25%-opacity (fails contrast). `Sidebar.jsx`, `GlobalStyles.jsx:66`.
+- [ ] Icon-only buttons use `title` not `aria-label` (TopBar undo/redo/toggles/Help/Settings; Help &
+  Settings close buttons). `TopBarDesktop.jsx`, `HelpDropdown.jsx`.
 - [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
-  reachable; missing roles + focus traps. Also SlashMenu `aria-selected` on `menuitem` is invalid.
+  reachable; missing roles + focus traps. SlashMenu `aria-selected` on `menuitem` is also invalid.
 - [ ] Low-contrast theme tokens fail AA: DAY/NIGHT `TEXT.muted`, DAY accent-as-text, DAY wikilink.
-  `themes.js:16,122,124,169`.
-- [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (the
-  "aspirational tree" gap). `Sidebar.jsx:627,78,156`. _Overlaps the planned sidebar-keyboard-nav._
+  `themes.js`.
+- [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
+  aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
 - [ ] PaneTabBar: `<span role=button>` nested inside `<button role=tab>` — invalid. `PaneTabBar.jsx:137`.
 - [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.
-
-**Calibration note:** the agent-flagged "TagMenu space dismisses" was over-rated High — tags are
-single-token so space legitimately ends a tag; the only real issue is `preventDefault` swallows
-that space (minor). `TagMenu.jsx:48`.
-
-### 🖥️ Interactive pass findings (2026-05-29, Playwright drive of `dev:web`)
-
-> Ran the actual app to catch runtime/visual bugs the static audit structurally couldn't.
-- ✅ **Placeholder fix verified live** — `.empty-block::before` content is `none` once text is typed; no overlap.
-- ✅ **Wikilink #2 (no-navigation) verified live** — active note unchanged after selecting from `[[ ]]` menu.
-- ✅ Editor core clean: markdown (`#`, `**bold**`, `*italic*`), slash menu (all block types), undo/redo, new note, Settings modal — all render correctly. **Zero console errors/warnings** across every flow.
-- 🔎 **2 audit false-positives corrected:** TagMenu-space (above) and Settings-Escape (now struck through in Tier 2).
-- [ ] 🐛 **NEW — orphaned onboarding hint bubble** (Med, interactive-only find). The "Type / for
-  commands" onboarding tooltip floats detached top-center of the editor, not anchored to anything
-  (see screenshots). Static audit missed it; only visible when running. Worth repositioning/anchoring.
-- [x] 🐛 **FIXED 2026-05-29 — Wikilink menu selection was fully broken** (user-reported; my
-  removing the nav call exposed TWO latent bugs the earlier Playwright run actually caught but I
-  wrongly explained away — lesson: trust the failing test). Both now fixed + verified live via
-  click AND Enter:
-  1. **Enter inserted a newline instead of selecting.** `WikilinkMenu`'s window keydown listener
-     called `preventDefault()` but not `stopPropagation()`, so Enter bubbled to the editor's
-     keydown handler, which split the block. Fix: `stopPropagation()` on the keys the menu owns.
-     `WikilinkMenu.jsx`.
-  2. **Clicking inserted nothing.** `handleWikilinkSelect` ran from a *native* window listener, so
-     React never re-rendered the (text-optimised) editor → the `syncGen` DOM-resync effect never
-     fired → the inserted `]]` was invisible. `commitTextChange`→`commitNoteData`, reorder, and
-     `flushSync` all FAILED to force the re-render. Fix that worked: write the rendered HTML to the
-     block element **directly** (`inlineMarkdownToHtml` → `el.innerHTML`, the `useInputHandler`
-     pattern) + place caret at end; keep `commitNoteData` for state. `BoojyNotes.jsx`.
-  - **Architecture note for next time:** the syncGen re-sync mechanism does NOT work when invoked
-    from a native event listener (only React synthetic events re-render the optimised editor). The
-    wikilink menu is the only menu using a native window listener; the slash menu uses the React
-    keydown path. Worth unifying eventually.
-
-### ⚠️ Known Gotchas
-
-- **CI Node version is pinned to 22, NOT 24** (2026-05-29). `node-version: 24` in setup-node
-  **deterministically hangs** `playwright install --with-deps chromium` on the GH runner image
-  (the Install Playwright step stalls indefinitely after the Chromium download — hung ~19m on two
-  consecutive runs; instant green on revert to 22). The *actions* run on Node 24 via `@v6` — only
-  the project build/test runtime is held at 22. Don't rebump `node-version` without fixing the
-  Playwright install side first (pin browser deps / split the step). Comment left on the line.
-- **node-pty/xterm removed in v0.4.0** (terminal cut). The two node-pty gotchas below are
-  **obsolete unless the terminal is re-added** (revert tag `terminal-snapshot`).
-- _(obsolete, terminal-only)_ **pnpm blocks native build scripts by default** (pnpm 10). node-pty/esbuild/electron won't
-  build until listed in `pnpm.onlyBuiltDependencies` (package.json). Symptom: missing native
-  binary + an "Ignored build scripts" warning after install. _(esbuild/electron still apply.)_
-- _(obsolete, terminal-only)_ **node-pty 1.1.0 loads from `prebuilds/`** (darwin/win32), NOT `build/Release/`. A missing
-  `build/Release/*.node` is normal — verify with `node -e "require('node-pty')"` instead.
-- **electron-builder works under pnpm** with `.npmrc` `node-linker=hoisted`; verified producing a
-  DMG (v0.4.0 build was clean with no native node-pty rebuild needed post-removal).
-- **Cloudflare Pages build command lives in the dashboard, not the repo.** After npm→pnpm it
-  should be `ELECTRON_DISABLE=1 pnpm build` there. (Likely fine — CF auto-detects pnpm-lock for
-  install and `npm run build` just runs vite — but confirm the deploy is green.)
-- **CI has been red since ~Mar 2026 and fails in layers.** Gates were buried behind each other:
-  coverage failed first (hid everything after), now E2E fails (hadn't run since Mar). Expect to
-  peel more. CI runs **`test:coverage` + E2E (Playwright/axe)**, NOT just `pnpm test` — always
-  run `pnpm test:coverage` (and ideally `pnpm test:e2e`) before claiming CI-green.
-- **[FIXED 2026-05-29] Sidebar notes tree a11y** — the New Folder/New Note `<button>`s directly
-  under `div[role="tree"]` tripped axe `aria-required-children` (a tree may only own
-  `treeitem`/`group`). Gave them `role="treeitem"`. Note: full tree keyboard nav (roving
-  tabindex / arrow keys) is still NOT implemented — the role is somewhat aspirational, but axe
-  is satisfied. (Biome a11y-lint remains off — this was a runtime axe check.)
-- **FEATURES.md** is referenced by the CLAUDE.md docs-system but does not exist (deferred).
-- **`boojy.org/notes` download buttons are hardcoded to `v0.1.3`** (in the *separate* `Boojy`
-  website repo: `website/src/pages/NotesPage.tsx:16,29,41` — macOS DMG, Windows EXE, hero CTA).
-  The *version text* on that page auto-updates from the latest GitHub tag (`useNotesVersion.ts`),
-  but the install links don't. **NOW UNBLOCKED** — v0.3.0 is published with assets
-  (`Boojy-Notes-0.3.0-arm64.dmg`, `Boojy-Notes-Setup-0.3.0.exe`). Bump the 3 hardcoded URLs to
-  v0.3.0. NB: v0.2.0/v0.1.9 releases are still *drafts* — v0.1.3 was the last published before
-  v0.3.0. (Deferred, user-acknowledged 2026-05-29.)
-
-### Cost / telemetry notes
-
-- Sessions here trend **long + subagent-heavy** — the two top cost drivers (per /cost,
-  2026-05-28: 52% of spend at >150k context, 51% subagent-heavy; $28.30 for the web-only +
-  tooling session). Levers for next time:
-  - Run **Explore / audit subagents on Sonnet** (`model` override) — they're read-only search,
-    don't need Opus. (They're still high-ROI: the doc-audit agent caught the stale TESTING.md.)
-  - **`/clear` between independent phases** (this session bundled Phase 1→2→3→docs into one
-    context). Expensive verification like `build:electron` is fine to keep — it earns its cost.

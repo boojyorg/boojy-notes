@@ -1,6 +1,6 @@
 ---
 name: session-metrics
-description: Use when the user requests a detailed summary of session statistics, line velocity, or project progress. Runs in two phases — a read-only metrics Report, then a Persist step that appends a session_ledger.md entry and syncs dreams.md.
+description: Use when the user requests a detailed summary of session statistics, line velocity, or project progress. Runs in two phases — a read-only metrics Report, then a Persist step that syncs dreams.md §1. (Session history lives in git log + Claude Code auto memory, not a ledger.)
 disable-model-invocation: false
 ---
 
@@ -41,60 +41,23 @@ size). Never fabricate dollar amounts.
 
 ---
 
-## Phase 2 — Persist (writes two files)
+## Phase 2 — Persist (syncs `dreams.md` §1)
 
-### 2a. Append a `session_ledger.md` entry
+Session **history** is no longer hand-written — `git log` is the audit trail, and Claude Code
+auto memory captures learnings/gotchas. So Persist is just keeping the live working state honest:
+update `dreams.md` §1 to reflect what's now true.
 
-File: `.claude/history/session_ledger.md`. It is an **append-only flight recorder — never edit
-existing entries.** Insert the new entry **newest-first: directly after the `## YYYY-MM-DD …`
-template block's closing `---`, immediately above the previous dated entry.**
-
-Entry template (match the existing entries' style):
-
-```markdown
-## YYYY-MM-DD · <short session title> · <branch>
-
-### Session Work
-
-| Task | Outcome |
-|---|---|
-| <task> | <what happened + short SHA if committed> |
-
-### Gates
-
-| Gate | Result |
-|---|---|
-| typecheck | |
-| lint / format:check | |
-| test / coverage | |
-| E2E | |
-| build / release | |
-| CI (post-push) | |
-
-### Code velocity
-
-<N commits, M files, ±lines>. Note if operational vs code session.
-
-### Cost / telemetry
-
-Per `/cost` (or "not separately captured"). Qualitative drivers only.
-
-### Notes — next session targets
-
-1. <carry-forward item>
-```
+- **Status line:** update to the current reality (shipped version, what's live, CI state, whether
+  a target is in flight).
+- **Milestone checklist:** tick `- [ ]` → `- [x]` for anything resolved this session.
+- **Backlog (unscheduled):** add genuinely-open follow-ups discovered this session; remove items
+  that got resolved. Keep it to *actionable open work* — resolved gotchas and learnings belong in
+  git log / auto memory, not here.
 
 Use the real current date (see the `currentDate` context). Convert relative dates to absolute.
 
-### 2b. Sync `dreams.md` (live working memory — distinct from the ledger)
-
-- §1 **Active Engineering Target**: update the **Status** line and tick milestone checkboxes
-  `- [ ]` → `- [x]` for anything resolved this session.
-- §2 **Automated Incident Logs**: if gates are green, clear back to `_None open._`
-- §3 **Known Gotchas**: add any new gotcha discovered; mark fixed ones `[FIXED YYYY-MM-DD]`.
-
-Keep `dreams.md` (current state) and `session_ledger.md` (historical audit trail) consistent
-but distinct — the ledger records what happened; dreams.md records what's still true/open.
+A new **durable** gotcha (a rule future sessions must follow, not a one-off) belongs in a committed
+file — `CLAUDE.md` or `.claude/rules/` — not only in auto memory.
 
 ---
 
