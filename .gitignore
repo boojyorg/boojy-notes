@@ -7,6 +7,10 @@ coverage/
 dist-electron/
 build/
 
+# Test artifacts
+test-results/
+playwright-report/
+
 # Vite
 .vite/
 

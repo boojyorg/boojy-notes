@@ -638,6 +638,7 @@ const Sidebar = memo(function Sidebar({
             {!search && (
               <button
                 onClick={createFolder}
+                role="treeitem"
                 style={{
                   width: "100%",
                   border: "none",
@@ -678,6 +679,7 @@ const Sidebar = memo(function Sidebar({
             {!search && (
               <button
                 onClick={() => createNote(null)}
+                role="treeitem"
                 style={{
                   width: "100%",
                   border: "none",

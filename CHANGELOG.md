@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+- **Sidebar accessibility** — The "New Folder" and "New Note" action buttons inside the notes tree are now exposed as `treeitem`s, fixing a critical `aria-required-children` violation (a `tree` may only own `treeitem`/`group` children). Restores a clean axe pass in E2E — the first green CI since ~March 2026.
+
 ## 0.3.0 — 2026-05-28
 
 ### Removed
