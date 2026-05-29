@@ -13,6 +13,15 @@
 - **Declining the first cloud sync now sticks** — When you log in with local notes, the "sync these to the cloud?" prompt could be silently bypassed: switching tabs or regaining a connection would upload everything anyway, and "Cancel" only hid the dialog. The first upload is now blocked until you explicitly confirm, and Cancel keeps it blocked.
 - **Removing strikethrough/highlight keeps inner formatting** — Toggling off `~~strikethrough~~` or `==highlight==` over text that also contained bold or italic used to flatten it to plain text. The formatting tag is now unwrapped, so the bold/italic inside survives.
 
+### Features
+- **Delete confirmation on web** — Deleting a note or folder on the web app is permanent (there's no Trash to recover from), so it now asks for confirmation first via a themed dialog. Desktop still moves deletions to the OS Trash silently, since those are recoverable. The mobile delete prompt also now tells the truth on web ("permanently deleted" rather than "moved to Trash").
+
+### Improvements
+- **Tap the title bar to rename (mobile)** — On mobile, tapping the note title in the top bar now jumps to and focuses the title for editing, instead of doing nothing.
+- **Backlinks are keyboard-accessible** — Entries in the Backlinks panel can now be focused and opened with the keyboard (Tab to them, Enter/Space to open), and show a focus highlight — previously they were mouse-only.
+- **Find shows when it's unsupported** — In browsers without the CSS Highlight API (Firefox, older Safari), the in-note Find counter showed a misleading "0 of 0". It now shows "n/a" with a tooltip explaining the browser requirement.
+- **Auth button signals loading to screen readers** — The sign-in / create-account button now sets `aria-busy` while submitting, so assistive tech announces the in-progress state.
+
 ## 0.3.0 — 2026-05-28
 
 ### Removed

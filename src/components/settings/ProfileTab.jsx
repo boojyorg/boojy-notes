@@ -458,6 +458,7 @@ export default function ProfileTab({
                 {/* Submit button */}
                 <button
                   disabled={authLoading}
+                  aria-busy={authLoading}
                   onClick={() => handleEmailAuth(authMode === "create" ? "signup" : "signin")}
                   style={{
                     ...buttonBase,

@@ -57,7 +57,15 @@ export default function BacklinksPanel({ backlinks, onOpenNote, accentColor }) {
       {backlinks.map((bl, i) => (
         <div
           key={`${bl.sourceNoteId}-${i}`}
+          role="button"
+          tabIndex={0}
           onClick={() => onOpenNote(bl.sourceNoteId)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenNote(bl.sourceNoteId);
+            }
+          }}
           style={{
             padding: "8px 12px",
             borderRadius: 6,
@@ -69,6 +77,12 @@ export default function BacklinksPanel({ backlinks, onOpenNote, accentColor }) {
             e.currentTarget.style.background = BG.hover;
           }}
           onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.background = BG.hover;
+          }}
+          onBlur={(e) => {
             e.currentTarget.style.background = "transparent";
           }}
         >

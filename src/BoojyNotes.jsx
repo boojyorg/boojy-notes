@@ -55,6 +55,7 @@ import TitleBar from "./components/TitleBar";
 import OnboardingToast from "./components/OnboardingToast";
 import PersistenceWarning from "./components/PersistenceWarning";
 import FirstSyncModal from "./components/FirstSyncModal";
+import ConfirmDialog from "./components/ConfirmDialog";
 import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
@@ -161,6 +162,9 @@ export default function BoojyNotes() {
     tagMenu,
     setTagMenu,
     tagMenuRef,
+    confirmState,
+    requestConfirm,
+    resolveConfirm,
   } = useOverlay();
 
   // ── State ──────────────────────────────────────────────────────────
@@ -1015,12 +1019,58 @@ export default function BoojyNotes() {
 
   const selectedCount = selectedNotes.size;
 
+  // On web, deleting is permanent (no Trash to recover from) — confirm first.
+  // On desktop, deleteNote moves to the OS trash, so it's recoverable; skip the prompt.
+  const confirmDeleteNote = useCallback(
+    async (id) => {
+      const note = noteDataRef.current?.[id];
+      if (isWeb) {
+        const ok = await requestConfirm({
+          title: "Delete note?",
+          message: `"${note?.title || "Untitled"}" will be permanently deleted. This can't be undone.`,
+          confirmLabel: "Delete",
+          danger: true,
+        });
+        if (!ok) return false;
+      }
+      deleteNote(id);
+      return true;
+    },
+    [deleteNote, requestConfirm, noteDataRef],
+  );
+
+  const confirmDeleteFolder = useCallback(
+    async (folderPath) => {
+      if (isWeb) {
+        const name = folderPath.split("/").pop();
+        const ok = await requestConfirm({
+          title: "Delete folder?",
+          message: `"${name}" and all notes inside it will be permanently deleted. This can't be undone.`,
+          confirmLabel: "Delete",
+          danger: true,
+        });
+        if (!ok) return;
+      }
+      deleteFolder(folderPath);
+    },
+    [deleteFolder, requestConfirm],
+  );
+
   const bulkDeleteNotes = useCallback(
-    (ids) => {
+    async (ids) => {
+      if (isWeb && ids.length > 0) {
+        const ok = await requestConfirm({
+          title: `Delete ${ids.length} note${ids.length !== 1 ? "s" : ""}?`,
+          message: "These will be permanently deleted. This can't be undone.",
+          confirmLabel: "Delete",
+          danger: true,
+        });
+        if (!ok) return;
+      }
       for (const id of ids) deleteNote(id);
       clearSelection();
     },
-    [deleteNote, clearSelection],
+    [deleteNote, clearSelection, requestConfirm],
   );
 
   const bulkMoveNotes = useCallback(
@@ -1119,6 +1169,18 @@ export default function BoojyNotes() {
         noteTitle={noteTitle}
         createNote={createNote}
         onMorePress={() => setMoreMenuOpen(true)}
+        onTitlePress={() => {
+          const el = titleRef.current;
+          if (!el) return;
+          el.scrollIntoView({ block: "center", behavior: "smooth" });
+          el.focus();
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }}
         wordCount={wordCount}
         charCount={charCount}
         charCountNoSpaces={charCountNoSpaces}
@@ -1483,6 +1545,8 @@ export default function BoojyNotes() {
           charCount={charCount}
           onDuplicate={duplicateNote}
           onDelete={(id) => {
+            // EditorMoreMenu shows its own delete confirmation, so call the raw
+            // delete here (avoids a second ConfirmDialog on web).
             deleteNote(id);
             setActiveNote(null);
           }}
@@ -1498,8 +1562,8 @@ export default function BoojyNotes() {
         setCtxMenu={setCtxMenu}
         openNote={openNote}
         duplicateNote={duplicateNote}
-        deleteNote={deleteNote}
-        deleteFolder={deleteFolder}
+        deleteNote={confirmDeleteNote}
+        deleteFolder={confirmDeleteFolder}
         createNote={createNote}
         setRenamingFolder={setRenamingFolder}
         restoreNote={restoreNote}
@@ -1653,6 +1717,13 @@ export default function BoojyNotes() {
           onCancel={cancelFirstSync}
         />
       )}
+
+      <ConfirmDialog
+        confirm={confirmState}
+        accentColor={accentColor}
+        onConfirm={() => resolveConfirm(true)}
+        onCancel={() => resolveConfirm(false)}
+      />
 
       {conflictToast && (
         <ConflictToast

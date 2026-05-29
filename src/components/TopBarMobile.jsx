@@ -14,6 +14,7 @@ export default function TopBarMobile({
   setActiveNote,
   createNote,
   onMorePress,
+  onTitlePress,
 }) {
   const { chromeBg, accentColor, topBarEdge } = useLayout();
   const { setSettingsOpen, setSettingsTab } = useSettings();
@@ -63,7 +64,10 @@ export default function TopBarMobile({
             <ChevronLeftIcon size={20} />
           </button>
 
-          <div
+          <button
+            type="button"
+            onClick={onTitlePress}
+            aria-label="Edit note title"
             style={{
               flex: 1,
               minWidth: 0,
@@ -74,11 +78,15 @@ export default function TopBarMobile({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              padding: "0 4px",
+              padding: "6px 4px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             {noteTitle || "Untitled"}
-          </div>
+          </button>
 
           <button onClick={onMorePress} style={btnStyle} aria-label="More options">
             <MoreHorizontalIcon size={20} />

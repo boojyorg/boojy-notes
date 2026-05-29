@@ -22,6 +22,10 @@ export default function FindBar({
   const [showReplace, setShowReplace] = useState(!!initialShowReplace);
   const inputRef = useRef(null);
 
+  // The find/highlight feature relies on the CSS Custom Highlight API.
+  // Firefox and Safari < 17.4 lack it — surface that instead of a silent "0 of 0".
+  const highlightSupported = typeof CSS !== "undefined" && !!CSS.highlights;
+
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -288,6 +292,11 @@ export default function FindBar({
           }}
         />
         <span
+          title={
+            !highlightSupported
+              ? "Find isn't supported in this browser (needs Chrome/Edge or Safari 17.4+)"
+              : undefined
+          }
           style={{
             fontSize: 11,
             color: TEXT.muted,
@@ -296,7 +305,11 @@ export default function FindBar({
             textAlign: "center",
           }}
         >
-          {matches.length > 0 ? `${activeMatchIndex + 1} of ${matches.length}` : "0 of 0"}
+          {!highlightSupported
+            ? "n/a"
+            : matches.length > 0
+              ? `${activeMatchIndex + 1} of ${matches.length}`
+              : "0 of 0"}
         </span>
         <button onClick={goPrev} style={btnStyle} title="Previous (Shift+Enter)">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

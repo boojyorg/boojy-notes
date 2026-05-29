@@ -15,7 +15,12 @@ time since ~Mar 2026. `boojy.org/notes` version text now reads the `v0.3.0` tag.
 **Then:** 4-agent bug audit → shipped 6 bug fixes (sync staleness, wikilink nav+selection,
 folder rename, mobile image, placeholder overlap) — all verified, incl. an interactive Playwright
 pass. Pushed `310228a..8906ad5`. Editor debounce/syncGen gotchas now documented in CLAUDE.md.
-Audit backlog (Tier-2 QoL, Tier-3 a11y, unverified Tier-1 #5-10) remains in §3.
+
+**Then (cont.):** cleared the rest of the audit backlog Tier-1 (#6 first-sync gate, #7 link-URL
+escaping, #8 toggle-unwrap fixed; #5 verified-not-a-bug; #9/#10 deferred) and the **Tier-2 QoL
+batch** (themed delete-confirm primitive + ConfirmDialog, FindBar unsupported-browser label,
+keyboard-accessible backlinks, tappable mobile title, auth `aria-busy`). Delete-confirm verified
+live via Playwright. Tier-3 a11y clusters remain in §3.
 
 ### Current milestone (checklist)
 
@@ -110,16 +115,32 @@ _None open._ <!-- 2026-05-29: cleared transient mid-edit hook failures (test was
   ran the app, so a debounce/render-timing visual bug was invisible to it — interactive bugs
   need a running-app pass, not just code review._
 
-**Tier 2 — high-impact QoL**
-- [ ] Destructive actions w/o confirm: right-click→Delete (web has no Trash → gone) +
-  **Empty Trash** (single click, irreversible). `ContextMenu.jsx:163`, `Sidebar.jsx:829`.
-- [ ] Focus dropped after closing overlays (Settings/slash/context menus) — must re-click editor.
+**Tier 2 — high-impact QoL** — _batch FIXED 2026-05-29 (see commit)_
+- [x] **✓ FIXED 2026-05-29 — Destructive delete w/o confirm.** Built a reusable themed confirm
+  primitive: `requestConfirm()` (promise) in `OverlayContext` + `ConfirmDialog.jsx` (role
+  `alertdialog`, Esc/Enter, danger styling, focus Cancel by default). Web note/folder/bulk delete
+  now route through confirm-wrapped handlers in BoojyNotes; **desktop skips it** (trash =
+  recoverable). Verified live via Playwright (right-click→Delete→dialog→Cancel keeps note,
+  Delete removes it; 0 console errors). Empty Trash is native-only and already has its own
+  `window.confirm`. Mobile EditorMoreMenu already had its own confirm — left it, but fixed its
+  message which wrongly said "moved to Trash" on web. +6 ConfirmDialog tests.
+- [~] **✓ MOSTLY FALSE POSITIVE 2026-05-29 — Focus dropped after closing overlays.** Verified by
+  reading the code: Settings, slash menu, AND context menu all already restore focus via
+  `useFocusTrap` (its cleanup re-focuses the pre-open element). No fix needed there. The mobile
+  `EditorMoreMenu` lacks it, but it's touch-driven so focus-return is moot. Dropped.
 - [~] ~~Settings modal: Escape doesn't close~~ **FALSE POSITIVE** (interactive pass 2026-05-29:
   Escape DOES close Settings on the desktop web build). Audit agent was wrong; dropped.
-- [ ] FindBar shows "0 of 0" silently on Firefox/older Safari (no CSS Highlight API).
-- [ ] Backlinks panel entries are `div onClick` — not keyboard-activatable. `BacklinksPanel.jsx:57`.
-- [ ] Mobile TopBar title not tappable to rename. `TopBarMobile.jsx:68`.
-- [ ] Auth submit button shows "..." with no `aria-busy`/spinner. `ProfileTab.jsx:473`.
+- [x] **✓ FIXED 2026-05-29 — FindBar silent "0 of 0" on Firefox/old Safari.** Added a
+  `highlightSupported` check; when the CSS Highlight API is absent the counter shows "n/a" with a
+  tooltip naming the requirement (Chrome/Edge or Safari 17.4+). `FindBar.jsx`.
+- [x] **✓ FIXED 2026-05-29 — Backlinks entries not keyboard-activatable.** Gave each entry
+  `role="button"`, `tabIndex=0`, Enter/Space handler, and a focus-highlight. `BacklinksPanel.jsx`.
+- [x] **✓ FIXED 2026-05-29 — Mobile TopBar title not tappable.** Title is now a `<button>` that
+  focuses + scrolls to the editable H1 title (caret at end). `TopBarMobile.jsx` + `onTitlePress`
+  handler in `BoojyNotes.jsx`.
+- [x] **✓ FIXED 2026-05-29 — Auth button no `aria-busy`.** Added `aria-busy={authLoading}` to the
+  sign-in/create button. (Visible spinner deferred — `aria-busy` covers the a11y gap.)
+  `ProfileTab.jsx`.
 
 **Tier 3 — accessibility clusters** (E2E axe only catches *critical* on initial screen)
 - [ ] Sidebar focus ring invisible — inline `outline:none` overrides global (`Sidebar.jsx:97,

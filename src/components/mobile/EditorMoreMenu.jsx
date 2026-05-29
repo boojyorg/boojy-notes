@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { blocksToMarkdown } from "../../utils/markdown";
+import { isWeb } from "../../utils/platform";
 import BottomSheet from "./BottomSheet";
 
 function MenuItem({ icon, label, onClick, danger }) {
@@ -176,7 +177,9 @@ export default function EditorMoreMenu({
             Delete &ldquo;{noteTitle || "Untitled"}&rdquo;?
           </div>
           <div style={{ fontSize: 13, color: theme.TEXT.muted, marginBottom: 16 }}>
-            This note will be moved to Trash.
+            {isWeb
+              ? "This will be permanently deleted. This can't be undone."
+              : "This note will be moved to Trash."}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
