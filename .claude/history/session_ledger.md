@@ -30,6 +30,56 @@ _Next session target; anything worth remembering._
 
 ---
 
+## 2026-05-29 · Codebase bug audit + 6 fixes (incl. wikilink saga) · master
+
+### Session Work
+
+| Task | Outcome |
+|---|---|
+| Track `.claude/` docs-system tooling | Brought settings.json, hooks, skill, ledger, dreams.md, docs/CODE_QUALITY.md under version control; gitignored settings.local.json. `310228a` |
+| 4-agent parallel bug audit (Sonnet) | Swept editor-core / sync-state / UX-QoL / a11y. Verified top findings by hand before trusting; logged full triage to dreams.md §3. |
+| Fix 4 Tier-1 verified bugs | Sync staleness (open note didn't refresh), wikilink nav (jumped away), nested folder rename (orphaned), mobile image insert (wrong args). `a212232` |
+| Fix placeholder overlap | User-reported; "Type / for commands" lingered behind typed text — gated on debounced block.text. Driven off DOM emptiness (`:empty`/`:has(>br)`). `c23de5c` |
+| Interactive Playwright pass on `dev:web` | Drove the real app; confirmed placeholder + wikilink-no-nav live; caught orphaned onboarding-hint bubble; corrected 2 audit false-positives (TagMenu-space, Settings-Escape). |
+| Fix wikilink menu selection (user-reported) | Two latent bugs exposed by the nav removal: Enter→newline (needed `stopPropagation`) + click inserted nothing (syncGen re-sync doesn't fire from native listeners → write `el.innerHTML` directly). Verified live click+Enter. `8906ad5` |
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| typecheck | ✓ clean |
+| lint / format:check | ✓ Biome, 0 errors |
+| test / coverage | ✓ 574 passed |
+| E2E | ✓ 5 passed (incl. axe a11y) |
+| Interactive (Playwright drive) | ✓ placeholder, wikilink click+Enter verified rendering live |
+| CI (post-push) | pushed `310228a..8906ad5`; CI expected green (was green at 8906ad5's parent) |
+
+### Code velocity
+
+4 commits, ~8 source files touched (`310228a..8906ad5` = +874/−22, but ~660 of that is
+first-time tracking of existing `.claude`/docs files). Actual code changes small/surgical;
+the heavy lift was the 4-agent audit + interactive debugging, neither of which shows in a diff.
+
+### Cost / telemetry
+
+Per `/cost`. Heavy session: 4 audit subagents (Sonnet) + a long wikilink debugging loop with
+many Playwright drive cycles + screenshot reads. The wikilink bug alone took ~3 failed fix
+attempts before instrumenting with logs found the root cause.
+
+### Notes — next session targets
+
+1. **Process lesson (logged to CLAUDE.md + memory):** the editor's React state/`block.text` is
+   debounced (lags the live DOM), and the `syncGen` DOM-resync only fires from React synthetic
+   events — NOT native window listeners. Both the placeholder and wikilink bugs stemmed from
+   this. When a fix "should work" but the DOM doesn't update, **instrument with logs before
+   theorizing** (I burned 3 wrong fixes assuming React render timing).
+2. Remaining audit backlog (dreams.md §3): Tier-2 QoL (destructive-action confirms, focus-return,
+   FindBar Firefox fallback) + Tier-3 a11y clusters (focus ring, aria-labels, menu roles,
+   contrast, sidebar keyboard nav) + unverified Tier-1 (#5 paste nesting, #6 cancelFirstSync, #7-10).
+3. Orphaned onboarding-hint bubble (interactive find) — reposition/anchor it.
+
+---
+
 ## 2026-05-29 · Ship v0.3.0 tag + CI green + PR cleanup · master
 
 ### Session Work

@@ -39,6 +39,12 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 ## Architecture
 
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
+
+> **⚠️ Editor gotchas (these have caused real bugs — read before touching the editor):**
+> The editor is **uncontrolled**: the browser owns the live DOM; `block.text`/React state is updated on a **debounce** (`commitTextChange`) and therefore *lags the visible DOM during typing*. Two rules follow:
+> 1. **Don't drive live-updating UI off `block.text`.** Anything that must respond to the current keystroke (e.g. the empty-block placeholder) must read the **DOM**, not state. Use CSS `:empty` / `:has(> br:only-child)` — note an "empty" block holds a `<br>` for the caret, so it is *never* `:empty` on its own. (This caused the placeholder-overlap bug.)
+> 2. **The `syncGen` DOM-resync only fires from React events, not native listeners.** `EditableBlock`'s `useLayoutEffect` re-syncs `innerHTML` from `block.text` when `syncGen` changes — but only if the editor actually re-renders, which it's optimised *not* to do for text edits. Bumping `syncGeneration.current` works from React synthetic-event handlers (input/keydown/paste). It does **not** work from a **native `window` listener** (e.g. a menu's `addEventListener('keydown')`) — React won't re-render, so the effect never runs. To mutate a block from a native listener, write `el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet)` **directly** (the `useInputHandler` pattern), plus `commitNoteData` for state. (This caused the wikilink-insert bug.)
+> When a render/DOM-sync fix "should work" but the DOM doesn't update, **add a `console.log` in the layout effect + handler and observe** before proposing more fixes — don't theorise about React timing.
 - **State:** React Context API (6 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
 - **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`.
 - **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative` (`isNative === isElectron` — the only file-backed target). Services use `getAPI()` factory to return the Electron or web API.

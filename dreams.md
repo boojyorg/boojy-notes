@@ -12,6 +12,11 @@ Sidebar a11y violation **fixed** → **CI is GREEN** (run `26623799556`) for the
 time since ~Mar 2026. `boojy.org/notes` version text now reads the `v0.3.0` tag. App is live at
 `notes.boojy.org`; landing page at `boojy.org/notes`.
 
+**Then:** 4-agent bug audit → shipped 6 bug fixes (sync staleness, wikilink nav+selection,
+folder rename, mobile image, placeholder overlap) — all verified, incl. an interactive Playwright
+pass. Pushed `310228a..8906ad5`. Editor debounce/syncGen gotchas now documented in CLAUDE.md.
+Audit backlog (Tier-2 QoL, Tier-3 a11y, unverified Tier-1 #5-10) remains in §3.
+
 ### Current milestone (checklist)
 
 - [x] Drop Capacitor → web + desktop only (v0.3.0)
