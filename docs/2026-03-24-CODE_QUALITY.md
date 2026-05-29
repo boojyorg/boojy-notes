@@ -1,4 +1,6 @@
-# Code Quality Review
+# Code Quality Review — March 2026
+
+> Snapshot taken at commit `6fa4cc6` (2026-03-24). A follow-up consolidation review lives in [`2026-05-29-CODE_QUALITY.md`](./2026-05-29-CODE_QUALITY.md).
 
 Comprehensive review of Boojy Notes conducted March 2026. The codebase was assessed across 12 areas, improvements were implemented, and ratings updated.
 
