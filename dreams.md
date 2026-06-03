@@ -26,3 +26,7 @@
 - **Gates:** typecheck clean, 634 unit tests + 5 E2E green, coverage gate passes, format clean.
 - [ ] **Not yet manually walked through on `pnpm dev`** — spot-check the starfield fade (type →
   fade out; empty → fade in; focus-only keeps stars), keyboard block-move, and list-only indent.
+
+**Prior (unreleased):** `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted
+across 2 cycles, root **1,675 → ~1,400 lines**, all unit-tested. Further candidates: split-view
+glue, ghost-note/draft effects, `ProfileTab`/`Sidebar`.
