@@ -24,6 +24,25 @@ the active target. Ordered milestones → `ROADMAP.md`; per-feature status → `
   re-find the current download-link source in boojy-web before bumping. Version *text* auto-updates
   from the latest GitHub tag; the install links don't. (User-acknowledged deferred.)
 
+## Feature ideas
+(Folded in from the old `FUTURE-IDEAS.md`, grouped by effort/impact. **Status unverified** — some
+may already be partly shipped; confirm against the app before picking one up.)
+
+- [ ] **Backlinks panel** (high value / medium effort) — "Notes that link to this note" in a
+  sidebar. Wikilink data is already in block text; needs a reverse index.
+- [ ] **Note version history** (high value / medium) — browse/restore previous versions via the undo
+  system or sync snapshots.
+- [ ] **Keyboard shortcut cheat sheet** (high value / medium) — a `?` overlay listing all shortcuts;
+  helps onboarding.
+- [ ] **Math/LaTeX blocks** (high value / higher effort) — a `math` block rendering LaTeX via KaTeX.
+- [ ] **Mermaid diagram blocks** (high value / higher) — a `diagram` block in the slash menu.
+- [ ] **Export to PDF** (medium / low) — Electron `webContents.printToPDF()`.
+- [ ] **Drag blocks between panes** (medium / low) — in split-pane mode.
+- [ ] **Table improvements** (medium / low) — column resize, row/column sort, tab-to-next-cell.
+- [ ] **Image lightbox** (medium / low) — zoom/pan, keyboard nav between images in a note.
+- [ ] **Indent guides** (medium / low) — lines connecting indented blocks to their parent.
+- [ ] **Auto-save indicator** (nice to have) — visual cue for last-saved / unsaved changes.
+
 ## Tier-3 accessibility clusters
 (E2E axe only catches *critical* on the initial screen — these are the known sub-critical gaps.)
 - [ ] Sidebar focus ring invisible — inline `outline:none` overrides global; global ring is also
