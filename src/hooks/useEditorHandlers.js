@@ -35,6 +35,7 @@ export function useEditorHandlers({
   setToolbarState: _setToolbarState,
   onOpenLinkEditor,
   updateBlockIndent,
+  moveBlock,
   onError,
 }) {
   // Use a ref for activeNote so inner helpers don't need it as a dependency
@@ -84,6 +85,7 @@ export function useEditorHandlers({
     applyFormat,
     onOpenLinkEditor,
     updateBlockIndent,
+    moveBlock,
     executeSlashCommand,
     handleBlockInput,
   });

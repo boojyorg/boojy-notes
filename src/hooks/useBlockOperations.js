@@ -235,6 +235,45 @@ export function useBlockOperations({
     [commitNoteData],
   );
 
+  // Move a block to a new position. Reordering the block array IS the edit —
+  // because blocksToMarkdown walks the array in order, a reorder re-serialises to
+  // clean markdown for free (this is what makes reorder safe under the
+  // markdown-source-of-truth constraint; see docs/SPEC-markdown-source-of-truth.md).
+  // No syncGeneration bump is needed: React's key-based reconciliation moves each
+  // block's DOM node (keyed by id) to its new slot, carrying its live content — the
+  // same mechanism the pointer drag (useBlockDrag) already relies on. Callers should
+  // guard against boundary no-ops (don't call when the target index is out of range)
+  // so we don't push an empty history step.
+  const moveBlock = useCallback(
+    (noteId, fromIndex, toIndex) => {
+      let movedId = null;
+      commitNoteData((prev) => {
+        const n0 = prev[noteId];
+        if (!n0) return prev;
+        const blocks = [...n0.content.blocks];
+        if (
+          fromIndex < 0 ||
+          fromIndex >= blocks.length ||
+          toIndex < 0 ||
+          toIndex >= blocks.length ||
+          fromIndex === toIndex
+        ) {
+          return prev; // no-op safety net (caller should pre-guard boundaries)
+        }
+        const [moved] = blocks.splice(fromIndex, 1);
+        blocks.splice(toIndex, 0, moved);
+        movedId = moved.id;
+        const n = { ...n0, content: { ...n0.content, blocks } };
+        return { ...prev, [noteId]: n };
+      });
+      if (movedId) {
+        focusBlockId.current = movedId;
+        focusCursorPos.current = 0;
+      }
+    },
+    [commitNoteData, focusBlockId, focusCursorPos],
+  );
+
   const updateBlockIndent = (noteId, blockIndex, delta) => {
     let blockId = null;
     commitNoteData((prev) => {
@@ -267,5 +306,6 @@ export function useBlockOperations({
     updateCallout,
     updateTableRows,
     updateBlockIndent,
+    moveBlock,
   };
 }

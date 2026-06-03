@@ -2,7 +2,10 @@ import { memo, useEffect, useRef } from "react";
 import { mulberry32, hashString } from "../utils/random";
 import { Z } from "../constants/zIndex";
 
-const StarField = ({ mode = "empty", seed = "__default__" }) => {
+// `hasContent` fades the stars out once the note has any content (see EditorArea).
+// We drive this purely via CSS opacity so the twinkle animation below is untouched —
+// opacity changes don't re-run the canvas effect (its deps stay [mode, seed]).
+const StarField = ({ mode = "empty", seed = "__default__", hasContent = false }) => {
   const canvasRef = useRef(null);
   const intervalRef = useRef(null);
 
@@ -150,6 +153,8 @@ const StarField = ({ mode = "empty", seed = "__default__" }) => {
         width: "100%",
         pointerEvents: "none",
         zIndex: Z.STARFIELD,
+        opacity: hasContent ? 0 : 1,
+        transition: "opacity 1.75s ease-out",
       }}
     />
   );

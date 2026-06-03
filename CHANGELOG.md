@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Features
+- **Stars fade out as you write** — On the night theme, a blank note shows the starfield behind the editor; the moment you start typing it gently fades out (~1.75s), and fades back in if you empty the note again. It's tied to whether the note has *content*, not whether it's focused — so just clicking into an empty note keeps the stars, and a written note opened from the list shows none.
+- **Move blocks with the keyboard** — `Cmd/Ctrl+Shift+↑` / `↓` now moves the current block up or down. This is the keyboard-accessible counterpart to the existing hold-and-drag reorder, and maps cleanly to reordering lines in the underlying markdown.
+
+### Improvements
+- **Indent is now list-only** — Tab/Shift-Tab indents bullets, numbered items, and checkboxes (markdown nested-list syntax). It no longer indents paragraphs or headings — that used to render an indent that was silently dropped on save, since markdown can't represent it. (See the new round-trip guarantee below.)
+
+### Internal
+- **Markdown is the source of truth (constraint + guardrail)** — Adopted a binding architectural rule (`docs/SPEC-markdown-source-of-truth.md`): a note *is* its markdown; blocks are only an in-memory rendering, and every block must round-trip block→markdown→block losslessly. Enforced by a new test (`tests/utils/markdown.test.js`) that fails CI if any block type can't round-trip — and documents the intrinsic markdown limitations (file byte-size, custom image alt) explicitly. No nesting / columns / JSON-blob blocks.
+- **Refactor: BoojyNotes decomposition (cycle 1)** — Pulled three self-contained logic clusters out of the 1,675-line root component into dedicated, unit-tested hooks: `useSearchNavigation` (clear multi-select on search; scroll + highlight a matched block when a search result opens), `useTagHandlers` (sidebar tag-filter on click; token-replace + caret restore on autocomplete), and `useExportImport` (PDF/DOCX export, folder import, and the Electron File-menu listener). No behaviour change; `BoojyNotes.jsx` drops ~100 lines and each hook gains a test.
+- **Refactor: BoojyNotes decomposition (cycle 2)** — Extracted the two higher-coupling editor clusters into `useWikilinkHandlers` (note-title set for broken-link detection, backlink index + current backlinks, and `[[link]]` click / Cmd-click / autocomplete-insert — preserving the native-listener DOM-write that keeps inserted links visible) and `useEditorFocusUX` (floating-toolbar positioning on selection change + the focus/caret placement and scroll-into-view layout effect). No behaviour change; `BoojyNotes.jsx` is now ~1,400 lines (down from 1,675), and both hooks gain tests.
+
 ## 0.4.0 — 2026-05-29
 
 ### Removed

@@ -3,6 +3,10 @@
 Boojy Notes — a block-based note-taking app for web (responsive PWA) and desktop.
 Read files directly when needed. Do not ask before reading.
 
+**Suite-wide process/conventions live in the root `~/Documents/Projects/boojy/CLAUDE.md`**
+(memory model, changelog/release skeleton, branch discipline, context-hygiene, working prefs);
+this file is the app-specific architecture, stack, and gotchas.
+
 ## Tech Stack
 
 - **Frontend:** React 19, Vite 6 (responsive — mobile-browser layout via `useIsMobile`)
@@ -36,6 +40,11 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 ```
 
 ## Architecture
+
+> **⚠️ BINDING CONSTRAINT — markdown is the source of truth.** A note *is* its markdown;
+> blocks are only an in-memory rendering. Every block MUST round-trip block→markdown→block
+> losslessly, enforced by `tests/utils/markdown.test.js`. No nesting/columns/JSON-blob blocks.
+> Read `docs/SPEC-markdown-source-of-truth.md` before adding or changing any block type.
 
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 
@@ -75,22 +84,12 @@ See `TESTING.md` for full platform testing docs (desktop, web preview).
 - **Before committing:** Always run `pnpm test` and `pnpm format:check` — CI checks both
 - **Pre-commit hooks:** Husky + lint-staged auto-formats and lints staged files. Never skip with `--no-verify`.
 
-## Changelog Workflow
+## Release (repo-specific)
 
-When making bug fixes or feature changes:
-1. Update `CHANGELOG.md` immediately after each fix
-2. Add entries under the "Unreleased" section at the top
-3. Use categories: `### Bug Fixes`, `### Features`, `### Improvements`
-4. When releasing, change "Unreleased" to the version number and date
-
-## Release Process
-
-1. Bump version in `package.json` (Settings reads from here — never hardcode versions elsewhere)
-2. Update CHANGELOG.md heading from "Unreleased" to the version number and date
-3. Run `pnpm test` and `pnpm format:check` before committing
-4. Commit all changes and push to `master`
-5. Review `docs/private/ROADMAP.md` — move completed items, reassess priorities
-6. Tag with version: `git tag v0.x.x && git push origin v0.x.x`
+General changelog + release flow → root `CLAUDE.md`. Local specifics: the version source is
+**`package.json`** (Settings reads it via import — never hardcode a version string elsewhere), and
+on release review **`docs/private/ROADMAP.md`** (move completed items, reassess priorities). The
+`master`→web / `v*` tag→desktop split is in **Deployment** below.
 
 ## Deployment
 
@@ -99,33 +98,17 @@ When making bug fixes or feature changes:
 
 Pushing to `master` deploys web; pushing the tag builds desktop installers.
 
-## Docs system & working memory
+## Memory & gates (repo-specific)
 
-This repo uses the simplified, auto-memory-era docs-system (see
-`~/Documents/Vault/Projects/Claude Docs System.md`). Learnings and session history live in
-Claude Code's **auto memory** + `git log`; the committed docs hold only must-follow rules and
-live working state:
-
-- **`FEATURES.md`** — plain-language, recruiter/user-facing tour (no file paths or jargon). *(optional, not yet created)*
-- **`README.md`** — dev/public-facing: what it is, stack, architecture, scripts.
-- **`CLAUDE.md`** (this file) — the agent's rules: architecture, conventions, workflow. Always-true rules only.
-- **`.claude/rules/`** — one topic per file. Genuinely global rules stay here in `CLAUDE.md`;
-  per-area gotchas live in `rules/`. (`paths:` frontmatter is aspirational — conditional loading
-  is unreliable in early-2026 Claude Code, so treat `rules/` as organization, not context savings.)
-- **`dreams.md`** — *live working memory*: the Active Engineering Target + milestone/backlog
-  checklist (§1 only). Volatile state, changes every session.
-
-**Memory Synchronization Rule:** Read `dreams.md` at the start of every session to establish
-target context. When you resolve an item, flip its checkbox `- [ ]` → `- [x]`.
+Docs/memory model (CLAUDE.md / `.claude/rules/` / `dreams.md` / auto-memory / git log) and the
+keep-docs-current rule → root `CLAUDE.md`. This repo's local layout: `dreams.md` holds the current
+target only; `docs/ROADMAP.md` (ordered) / `docs/BACKLOG.md` (someday) / `docs/FEATURE_TRACKER.md`
+(built-vs-not) split the overflow; per-area gotchas live in `.claude/rules/*.md`.
 
 **Automated Validation Hook:** `.claude/settings.json` wires a `PostToolUse` hook
 (`.claude/hooks/post-edit-validation.sh`) that runs `biome check --write` → typecheck (`.ts/.tsx`
 only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit. On failure it prints the error and
 exits non-zero (it does **not** write to any doc). Do not bypass it.
-
-**Keep docs current:** architecture/roadmap changes update `README.md` + `CLAUDE.md` in the
-same commit; a release bumps `package.json` + `CHANGELOG.md`; feature changes update `FEATURES.md`.
-Skim `/memory` after a big refactor — that's the whole maintenance loop now.
 
 ## Conventions
 

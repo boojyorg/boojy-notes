@@ -92,3 +92,9 @@ electron/               # Electron main process (IPC, file I/O, export/import)
 ## Roadmap
 
 Focus is on the **web platform** (responsive PWA on [boojy.org](https://boojy.org)), with Electron as the desktop shell. Native mobile (iOS/Android via Capacitor) was removed in v0.3.0 to reduce scope.
+
+## License
+
+Boojy Notes is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
+
+Copyright (c) 2025–2026 Tyr Bujac
