@@ -64,6 +64,7 @@ describe("useKeyboardHandlers", () => {
       applyFormat: vi.fn(),
       onOpenLinkEditor: vi.fn(),
       updateBlockIndent: vi.fn(),
+      moveBlock: vi.fn(),
       getBlock: vi.fn(),
       executeSlashCommand: vi.fn(),
       handleBlockInput: vi.fn(),
@@ -94,7 +95,8 @@ describe("useKeyboardHandlers", () => {
     expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1);
   });
 
-  it("handleBlockKeyDown handles Tab for indentation on paragraph blocks", () => {
+  it("handleBlockKeyDown handles Tab for indentation on list blocks", () => {
+    deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "bullet", text: "x" };
     const { result } = renderHook(() => useKeyboardHandlers(deps));
     const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true });
     Object.defineProperty(event, "preventDefault", { value: vi.fn() });
@@ -103,13 +105,66 @@ describe("useKeyboardHandlers", () => {
     expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, 1);
   });
 
-  it("handleBlockKeyDown handles Shift+Tab for outdent", () => {
+  it("handleBlockKeyDown handles Shift+Tab for outdent on list blocks", () => {
+    deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "bullet", text: "x" };
     const { result } = renderHook(() => useKeyboardHandlers(deps));
     const event = new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true });
     Object.defineProperty(event, "preventDefault", { value: vi.fn() });
 
     result.current.handleBlockKeyDown("note-1", 0, event);
     expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, -1);
+  });
+
+  it("handleBlockKeyDown does NOT indent paragraphs (markdown can't express it)", () => {
+    // block[0] is a "p" by default — Tab is swallowed but must not indent.
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event);
+    expect(deps.updateBlockIndent).not.toHaveBeenCalled();
+  });
+
+  it("Cmd+Shift+ArrowUp moves a block up", () => {
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowUp",
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 1, event);
+    expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, 0);
+  });
+
+  it("Ctrl+Shift+ArrowDown moves a block down", () => {
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      ctrlKey: true,
+      shiftKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event);
+    expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 0, 1);
+  });
+
+  it("does not move past the top boundary", () => {
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowUp",
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event); // already first
+    expect(deps.moveBlock).not.toHaveBeenCalled();
   });
 
   it("handleBlockKeyDown skips Tab for code blocks", () => {

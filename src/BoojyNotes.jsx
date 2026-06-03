@@ -27,10 +27,7 @@ import { useSplitView } from "./hooks/useSplitView";
 import { useTabDrag } from "./hooks/useTabDrag";
 import { loadFromStorage } from "./utils/storage";
 import { Z } from "./constants/zIndex";
-import { blocksToHtml } from "./utils/exportUtils";
-import { buildBacklinkIndex, getBacklinksForNote } from "./utils/backlinkIndex";
-import { getBlockFromNode, cleanOrphanNodes, placeCaret } from "./utils/domHelpers";
-import { inlineMarkdownToHtml } from "./utils/inlineFormatting";
+import { getBacklinksForNote } from "./utils/backlinkIndex";
 const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -62,6 +59,11 @@ import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useWebNags } from "./hooks/useWebNags";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { useSearchNavigation } from "./hooks/useSearchNavigation";
+import { useTagHandlers } from "./hooks/useTagHandlers";
+import { useExportImport } from "./hooks/useExportImport";
+import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
+import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -329,6 +331,7 @@ export default function BoojyNotes() {
     updateCallout,
     updateTableRows,
     updateBlockIndent,
+    moveBlock,
   } = useBlockOperations({
     commitNoteData,
     commitTextChange,
@@ -452,43 +455,17 @@ export default function BoojyNotes() {
     setToolbarState,
     onOpenLinkEditor: openLinkEditor,
     updateBlockIndent,
+    moveBlock,
     onError: showToast,
   });
-  // Wire search → clear multi-select
-  useEffect(() => {
-    if (search && clearSelectionRef.current) clearSelectionRef.current();
-  }, [search]);
-
-  const scrollToSearchMatch = useCallback(
-    (noteId, matchBlockId) => {
-      if (!matchBlockId) return;
-      setTimeout(() => {
-        const el = blockRefs.current[matchBlockId];
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.style.background = `${accentColor}18`;
-        el.style.borderRadius = "6px";
-        el.style.transition = "background 0s";
-        setTimeout(() => {
-          el.style.transition = "background 0.5s ease-out";
-          el.style.background = "transparent";
-        }, 1200);
-        setTimeout(() => {
-          el.style.borderRadius = "";
-          el.style.transition = "";
-        }, 1700);
-      }, 150);
-    },
-    [accentColor],
-  );
-
-  const handleSearchResultOpen = useCallback(
-    (noteId, matchBlockId) => {
-      openNote(noteId);
-      if (matchBlockId) scrollToSearchMatch(noteId, matchBlockId);
-    },
-    [openNote, scrollToSearchMatch],
-  );
+  // Search-result navigation (clear multi-select on search; scroll + highlight on open)
+  const { handleSearchResultOpen } = useSearchNavigation({
+    search,
+    clearSelectionRef,
+    blockRefs,
+    accentColor,
+    openNote,
+  });
 
   // ── Effects ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -509,32 +486,13 @@ export default function BoojyNotes() {
     })();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for menu export/import events
-  const handleExportRef = useRef({ pdf: null, docx: null });
-  useEffect(() => {
-    if (!isElectron || !window.electronAPI) return;
-    const cleanups = [];
-    if (window.electronAPI.onMenuExport) {
-      cleanups.push(
-        window.electronAPI.onMenuExport((fmt) => {
-          const id = activeNoteRef.current;
-          if (!id || !noteDataRef.current[id]) return;
-          if (fmt === "pdf") handleExportRef.current.pdf?.(id);
-          else if (fmt === "docx") handleExportRef.current.docx?.(id);
-        }),
-      );
-    }
-    if (window.electronAPI.onMenuImport) {
-      cleanups.push(
-        window.electronAPI.onMenuImport((fmt) => {
-          if (fmt === "markdown") window.electronAPI.importMarkdown();
-          else if (fmt === "html") window.electronAPI.importHtml();
-          else if (fmt === "folder") window.electronAPI.importFolder();
-        }),
-      );
-    }
-    return () => cleanups.forEach((fn) => fn && fn());
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Export (PDF/DOCX) + import handlers, plus the Electron menu-bar listener
+  const { handleExportPdf, handleExportDocx, handleImportIntoFolder } = useExportImport({
+    noteData,
+    activeNoteRef,
+    noteDataRef,
+    isElectron,
+  });
 
   // Editor fade-in + title sync (only in single-pane mode)
   useEffect(() => {
@@ -639,96 +597,18 @@ export default function BoojyNotes() {
     loadMeta();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Selection change → floating toolbar (only in single-pane mode)
-  useEffect(() => {
-    if (splitStateRef.current.splitMode) return;
-    const onSelChange = () => {
-      const sel = window.getSelection();
-      if (!sel.rangeCount || sel.isCollapsed) {
-        setToolbarState(null);
-        return;
-      }
-      if (!editorRef.current) {
-        setToolbarState(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      const startBlock =
-        range.startContainer.nodeType === Node.TEXT_NODE
-          ? range.startContainer.parentElement
-          : range.startContainer;
-      if (!editorRef.current.contains(startBlock)) {
-        setToolbarState(null);
-        return;
-      }
-      const rect = range.getBoundingClientRect();
-      const editorRect = editorRef.current.getBoundingClientRect();
-      let el = startBlock;
-      while (el && el !== editorRef.current) {
-        if (el.dataset && el.dataset.blockId) break;
-        el = el.parentElement;
-      }
-      if (!el || el === editorRef.current) {
-        setToolbarState(null);
-        return;
-      }
-      setToolbarState({
-        top: rect.top - editorRect.top - 44,
-        left: rect.left - editorRect.left + rect.width / 2,
-      });
-    };
-    let rafId = null;
-    const debouncedSelChange = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        onSelChange();
-      });
-    };
-    document.addEventListener("selectionchange", debouncedSelChange);
-    return () => {
-      cancelAnimationFrame(rafId);
-      document.removeEventListener("selectionchange", debouncedSelChange);
-    };
-  }, [activeNote, splitState.splitMode]); // eslint-disable-line react-hooks/exhaustive-deps -- splitStateRef is a stable ref
-
-  // Focus block layout effect (only in single-pane mode)
-  useLayoutEffect(() => {
-    if (splitState.splitMode) return;
-    if (focusBlockId.current) {
-      cleanOrphanNodes(editorRef.current);
-      const targetId = focusBlockId.current;
-      const targetPos = focusCursorPos.current ?? 0;
-      focusBlockId.current = null;
-      focusCursorPos.current = null;
-      const el = blockRefs.current[targetId];
-      placeCaret(el, targetPos);
-      requestAnimationFrame(() => {
-        const sel = window.getSelection();
-        const blocks = noteDataRef.current[activeNote]?.content?.blocks;
-        if (
-          sel.rangeCount &&
-          getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)
-        )
-          return;
-        const freshEl = blockRefs.current[targetId];
-        if (freshEl) placeCaret(freshEl, targetPos);
-      });
-      setTimeout(() => {
-        const scrollEl = editorScrollRef.current;
-        if (!scrollEl) return;
-        const blockEl = blockRefs.current[targetId];
-        if (!blockEl) return;
-        const blockRect = blockEl.getBoundingClientRect();
-        const scrollRect = scrollEl.getBoundingClientRect();
-        if (blockRect.bottom === 0) return;
-        const threshold = scrollRect.top + scrollRect.height * 0.8;
-        if (blockRect.bottom > threshold) {
-          const overshoot = blockRect.bottom - threshold;
-          scrollEl.scrollBy({ top: overshoot + 40, behavior: "smooth" });
-        }
-      }, 50);
-    }
+  // Floating-toolbar positioning + focus/caret placement (single-pane only)
+  useEditorFocusUX({
+    splitState,
+    splitStateRef,
+    activeNote,
+    editorRef,
+    editorScrollRef,
+    blockRefs,
+    focusBlockId,
+    focusCursorPos,
+    noteDataRef,
+    setToolbarState,
   });
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
@@ -784,202 +664,51 @@ export default function BoojyNotes() {
 
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
+  const noteTitle = note?.title;
   const { wordCount, charCount, charCountNoSpaces, readingTime } = useNoteStats(
     note?.content?.blocks,
   );
 
-  // Note title set for broken wikilink detection
-  const lastTitlesKey = useRef("");
-  const noteTitlesKey = useMemo(() => {
-    if (textOnlyEdit.current) {
-      textOnlyEdit.current = false;
-      return lastTitlesKey.current;
-    }
-    const key = Object.values(noteData)
-      .map((n) => (n.title || "").trim().toLowerCase())
-      .filter(Boolean)
-      .sort()
-      .join("\0");
-    lastTitlesKey.current = key;
-    return key;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteData]);
-  const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
+  // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)
+  const {
+    noteTitleSet,
+    backlinkIndex,
+    currentBacklinks,
+    handleWikilinkClick,
+    handleWikilinkCmdClick,
+    handleWikilinkSelect,
+  } = useWikilinkHandlers({
+    noteData,
+    noteDataRef,
+    activeNote,
+    note,
+    textOnlyEdit,
+    openNote,
+    createNote,
+    splitState,
+    getOtherPaneId,
+    openNoteInPane,
+    splitPaneWithNote,
+    wikilinkMenuRef,
+    setWikilinkMenu,
+    syncGeneration,
+    commitNoteData,
+    blockRefs,
+    focusBlockId,
+    focusCursorPos,
+  });
 
-  // Backlink index
-  const backlinkIndex = useMemo(
-    () => buildBacklinkIndex(noteDataRef.current),
-    [noteTitlesKey, activeNote], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-  const noteTitle = note?.title;
-  const currentBacklinks = useMemo(
-    () => (noteTitle ? getBacklinksForNote(backlinkIndex, noteTitle) : []),
-    [backlinkIndex, noteTitle],
-  );
-
-  // Wikilink click handler
-  const handleWikilinkClick = useCallback(
-    (targetTitle) => {
-      const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(
-        ([, n]) => (n.title || "").toLowerCase() === lc,
-      );
-      if (found) {
-        openNote(found[0]);
-      } else {
-        createNote(null, targetTitle);
-      }
-    },
-    [openNote, createNote, noteDataRef],
-  );
-
-  const handleWikilinkCmdClick = useCallback(
-    (targetTitle) => {
-      const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(
-        ([, n]) => (n.title || "").toLowerCase() === lc,
-      );
-      const noteId = found ? found[0] : null;
-      if (!noteId) {
-        createNote(null, targetTitle);
-        return;
-      }
-      if (splitState.splitMode) {
-        const otherPaneId = getOtherPaneId();
-        if (otherPaneId) openNoteInPane(noteId, otherPaneId);
-      } else {
-        splitPaneWithNote("vertical", noteId);
-      }
-    },
-    [
-      splitState.splitMode,
-      getOtherPaneId,
-      openNoteInPane,
-      splitPaneWithNote,
-      createNote,
-      noteDataRef,
-    ],
-  );
-
-  // Wikilink autocomplete select handler
-  const handleWikilinkSelect = useCallback(
-    (title) => {
-      const menu = wikilinkMenuRef.current;
-      if (!menu) return;
-      const { noteId, blockIndex } = menu;
-      const blocks = noteDataRef.current[noteId]?.content?.blocks;
-      if (!blocks || !blocks[blockIndex]) return;
-      const oldText = blocks[blockIndex].text || "";
-      const match = oldText.match(/\[\[([^\]]*)$/);
-      if (match) {
-        const newText = oldText.slice(0, match.index) + `[[${title}]]`;
-        // Update state for persistence/sync.
-        syncGeneration.current++;
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const b = [...n.content.blocks];
-          b[blockIndex] = { ...b[blockIndex], text: newText };
-          n.content = { ...n.content, blocks: b };
-          next[noteId] = n;
-          return next;
-        });
-        // This handler fires from WikilinkMenu's *native* keydown listener, where
-        // React won't re-render the (text-optimised) editor — so the syncGen
-        // DOM-resync effect never runs and the link would stay invisible. Write
-        // the rendered HTML to the block directly (same approach useInputHandler
-        // uses for markdown conversions) and drop the caret at the end.
-        const el = blockRefs.current[blocks[blockIndex].id];
-        if (el) {
-          el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSet);
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-        focusBlockId.current = blocks[blockIndex].id;
-        focusCursorPos.current = newText.length;
-      }
-      setWikilinkMenu(null);
-    },
-    [
-      commitNoteData,
-      syncGeneration,
-      noteDataRef,
-      focusBlockId,
-      setWikilinkMenu,
-      wikilinkMenuRef,
-      blockRefs,
-      noteTitleSet,
-    ],
-  );
-
-  // Tag click handler: sets sidebar search to #tagname
-  const handleTagClick = useCallback(
-    (tagName) => {
-      setSearch(`#${tagName}`);
-    },
-    [setSearch],
-  );
-
-  // Tag autocomplete select handler
-  const handleTagSelect = useCallback(
-    (tag) => {
-      const menu = tagMenuRef.current;
-      if (!menu) return;
-      const { noteId, blockIndex } = menu;
-      const blocks = noteDataRef.current[noteId]?.content?.blocks;
-      if (!blocks || !blocks[blockIndex]) return;
-      const oldText = blocks[blockIndex].text || "";
-      const match = oldText.match(/(^|[\s(])#([a-zA-Z][\w/-]*)$/);
-      if (match) {
-        const newText = oldText.slice(0, match.index + match[1].length) + `#${tag} `;
-        commitTextChange((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const b = [...n.content.blocks];
-          b[blockIndex] = { ...b[blockIndex], text: newText };
-          n.content = { ...n.content, blocks: b };
-          next[noteId] = n;
-          return next;
-        });
-        syncGeneration.current++;
-        focusBlockId.current = blocks[blockIndex].id;
-        focusCursorPos.current = newText.length;
-      }
-      setTagMenu(null);
-    },
-    [commitTextChange, syncGeneration, noteDataRef, focusBlockId, setTagMenu, tagMenuRef],
-  );
-
-  // ── Export handlers ─────────────────────────────────────────────────
-  const handleExportPdf = useCallback(
-    (noteId) => {
-      const n = noteData[noteId];
-      if (!n || !getAPI()?.exportPdf) return;
-      const html = blocksToHtml(n.content.blocks, n.title);
-      getAPI().exportPdf({ html, title: n.title });
-    },
-    [noteData],
-  );
-
-  const handleExportDocx = useCallback(
-    (noteId) => {
-      const n = noteData[noteId];
-      if (!n || !getAPI()?.exportDocx) return;
-      getAPI().exportDocx({ blocks: n.content.blocks, title: n.title });
-    },
-    [noteData],
-  );
-  handleExportRef.current.pdf = handleExportPdf;
-  handleExportRef.current.docx = handleExportDocx;
-
-  const handleImportIntoFolder = useCallback((folderId) => {
-    if (!getAPI()?.importMarkdown) return;
-    getAPI().importMarkdown({ targetFolder: folderId });
-  }, []);
+  // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
+  const { handleTagClick, handleTagSelect } = useTagHandlers({
+    setSearch,
+    tagMenuRef,
+    noteDataRef,
+    commitTextChange,
+    syncGeneration,
+    focusBlockId,
+    focusCursorPos,
+    setTagMenu,
+  });
 
   // ── Multi-select ────────────────────────────────────────────────────
   const { selectedNotes, handleNoteClick, clearSelection } = useMultiSelect({

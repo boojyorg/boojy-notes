@@ -24,6 +24,7 @@ export function useKeyboardHandlers({
   applyFormat,
   onOpenLinkEditor,
   updateBlockIndent,
+  moveBlock,
   getBlock,
   executeSlashCommand,
   handleBlockInput: _handleBlockInput,
@@ -83,9 +84,28 @@ export function useKeyboardHandlers({
     if (e.key === "Tab") {
       if (block.type === "code" || block.type === "table") return;
       e.preventDefault();
-      const INDENTABLE = ["bullet", "numbered", "checkbox", "blockquote", "p", "h1", "h2", "h3"];
+      // Indent is a LIST-ONLY feature: markdown's nested-list syntax can express
+      // indented bullets/numbered/checkboxes, but it has no clean way to indent a
+      // paragraph/heading/blockquote — so indenting those was silently lost on
+      // save (round-trip data loss). Per the markdown-source-of-truth constraint
+      // (docs/SPEC-markdown-source-of-truth.md): if it can't round-trip, we don't
+      // ship it. The round-trip test (tests/utils/markdown.test.js) guards this.
+      const INDENTABLE = ["bullet", "numbered", "checkbox"];
       if (!INDENTABLE.includes(block.type)) return;
       updateBlockIndent(noteId, blockIndex, e.shiftKey ? -1 : 1);
+      return;
+    }
+
+    // Cmd/Ctrl+Shift+ArrowUp/Down — move the current block up/down. This is the
+    // keyboard-accessible equivalent of the pointer hold-drag (useBlockDrag), and
+    // the markdown-native "move a line" operation: reordering the block array
+    // re-serialises to clean markdown losslessly (docs/SPEC-markdown-source-of-truth.md).
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      const target = blockIndex + (e.key === "ArrowUp" ? -1 : 1);
+      // Boundary: nothing to move into — bail without committing a no-op history step.
+      if (target < 0 || target >= blocks.length) return;
+      moveBlock(noteId, blockIndex, target);
       return;
     }
 

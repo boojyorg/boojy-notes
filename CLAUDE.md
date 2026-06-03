@@ -37,6 +37,11 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 
 ## Architecture
 
+> **⚠️ BINDING CONSTRAINT — markdown is the source of truth.** A note *is* its markdown;
+> blocks are only an in-memory rendering. Every block MUST round-trip block→markdown→block
+> losslessly, enforced by `tests/utils/markdown.test.js`. No nesting/columns/JSON-blob blocks.
+> Read `docs/SPEC-markdown-source-of-truth.md` before adding or changing any block type.
+
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 
 > **⚠️ Editor gotchas (these have caused real bugs — read before touching the editor):**

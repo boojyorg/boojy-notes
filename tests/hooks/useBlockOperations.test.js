@@ -125,6 +125,58 @@ describe("useBlockOperations", () => {
     });
   });
 
+  describe("moveBlock", () => {
+    it("moves a block up", () => {
+      const blocks = [paragraph("a"), paragraph("b"), paragraph("c")];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.moveBlock(noteId, 2, 1);
+      });
+
+      const blks = getNoteData()[noteId].content.blocks;
+      expect(blks.map((b) => b.text)).toEqual(["a", "c", "b"]);
+    });
+
+    it("moves a block down", () => {
+      const blocks = [paragraph("a"), paragraph("b"), paragraph("c")];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.moveBlock(noteId, 0, 1);
+      });
+
+      const blks = getNoteData()[noteId].content.blocks;
+      expect(blks.map((b) => b.text)).toEqual(["b", "a", "c"]);
+    });
+
+    it("focuses the moved block (caret follows)", () => {
+      const blocks = [paragraph("a"), paragraph("b"), paragraph("c")];
+      const { result, noteId, getNoteData, focusBlockId } = setup(blocks);
+      const movedId = getNoteData()[noteId].content.blocks[2].id;
+
+      act(() => {
+        result.current.moveBlock(noteId, 2, 0);
+      });
+
+      expect(focusBlockId.current).toBe(movedId);
+      expect(getNoteData()[noteId].content.blocks[0].id).toBe(movedId);
+    });
+
+    it("is a no-op for out-of-range or equal indices", () => {
+      const blocks = [paragraph("a"), paragraph("b")];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.moveBlock(noteId, 0, 0); // same
+        result.current.moveBlock(noteId, 0, 5); // out of range
+        result.current.moveBlock(noteId, -1, 1); // out of range
+      });
+
+      expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual(["a", "b"]);
+    });
+  });
+
   describe("flipCheck", () => {
     it("toggles checkbox state", () => {
       const blocks = [makeCheckbox("task", false)];
