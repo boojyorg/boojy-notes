@@ -1,6 +1,6 @@
 # Code Quality Review — May 2026
 
-> Consolidation checkpoint taken at commit `38d0148` (2026-05-29). The previous sweeping review lives in [`2026-03-24-CODE_QUALITY.md`](./2026-03-24-CODE_QUALITY.md) and supplies the **Before** column below.
+> Consolidation checkpoint taken at commit `38d0148` (2026-05-29). The previous sweeping review lives in [`code_quality_2026_03_24.md`](./code_quality_2026_03_24.md) and supplies the **Before** column below.
 
 Where March was a broad improvement pass (6.5 → 8.8), the two months since have been a **pivot and consolidation** rather than expansion. The headline changes:
 
