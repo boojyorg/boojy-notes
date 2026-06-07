@@ -26,6 +26,12 @@ DMG (the v0.4.0 build was clean). pnpm 10 also blocks native build scripts by de
 electron must stay listed in `pnpm.onlyBuiltDependencies` (package.json) or their native binaries
 won't build (symptom: an "Ignored build scripts" warning after install).
 
+**Electron binary vanishes after lockfile churn.** A `pnpm install` that reshuffles `node_modules`
+(e.g. after a dep-bump wave) can relink `node_modules/electron` without re-running its download
+script — `pnpm dev` then dies with *"Electron failed to install correctly, please delete
+node_modules/electron"*. Fix: **`pnpm rebuild electron`** (re-runs `install.js`, ~30s). Happened
+2026-06-07 after the Dependabot wave.
+
 ## Cloudflare Pages build command lives in the dashboard, not the repo
 
 After the npm→pnpm migration the CF Pages build command must be `ELECTRON_DISABLE=1 pnpm build`,
