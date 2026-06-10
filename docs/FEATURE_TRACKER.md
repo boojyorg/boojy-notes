@@ -40,11 +40,15 @@ feature ideas → `FUTURE-IDEAS.md`.
 ## Platform
 - ✅ Web (PWA, `notes.boojy.org`)
 - ✅ Desktop (Electron, auto-update, DMG/EXE)
-- ⬜ Native mobile (Capacitor dropped v0.3.0 — web responsive instead)
+- ✅ Mobile = responsive web only (no native app — see Removed)
 
 ## Export / import
-- ✅ Export — PDF, DOCX, Markdown
-- ✅ Folder import
+- 🚧 Export — PDF / DOCX, **desktop (Electron) only**; on the web app the menu items
+  render but no-op (`useExportImport` bails when `getAPI()?.exportPdf` is absent). **No
+  Markdown export** — import only.
+- ✅ Markdown / folder import (desktop)
 
 ## Removed (recoverable via git tag)
-- Terminal (`terminal-snapshot` tag), AI chat, Capacitor mobile — see `CHANGELOG.md`
+- **Native mobile** (iOS/Android, Capacitor) — dropped v0.3.0; not planned. Mobile is now
+  responsive web only. Native-mobile release work is **stopped**.
+- Terminal (`terminal-snapshot` tag), AI chat — see `CHANGELOG.md`
