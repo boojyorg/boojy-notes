@@ -93,6 +93,12 @@ electron/               # Electron main process (IPC, file I/O, export/import)
 
 Focus is on the **web platform** (responsive PWA on [boojy.org](https://boojy.org)), with Electron as the desktop shell. Native mobile (iOS/Android via Capacitor) was removed in v0.3.0 to reduce scope.
 
+## Contributing
+
+Boojy Notes is in **Early Access** and isn't accepting pull requests yet — contributions will
+open with the v1.0 release. **Bug reports and feedback are very welcome** — see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 Boojy Notes is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
