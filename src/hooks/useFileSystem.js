@@ -69,6 +69,10 @@ export function useFileSystem(
         if (Object.keys(diskNotes).length > 0) {
           isExternalUpdate.current = true;
           setNoteData(diskNotes);
+          // The restored session renders its active note before this load
+          // finishes; bump syncGeneration (like onFileChanged does) so the
+          // title-sync layout effects re-run once the data is actually here
+          if (syncGeneration) syncGeneration.current++;
 
           // Extract unique folders
           const folders = new Set();
@@ -328,6 +332,7 @@ export function useFileSystem(
       const diskNotes = await window.electronAPI.readAllNotes();
       isExternalUpdate.current = true;
       setNoteData(diskNotes);
+      if (syncGeneration) syncGeneration.current++;
 
       const folders = new Set();
       for (const note of Object.values(diskNotes)) {
