@@ -14,7 +14,9 @@ Web live at `notes.boojy.org`; desktop DMG/EXE built per `v*` tag. Per-feature s
 
 1. **v0.5.0 — "Markdown is the truth"** (in flight). The lossless block↔markdown round-trip
    constraint (`docs/SPEC-markdown-source-of-truth.md`), list-only indent, keyboard block reorder,
-   starfield-fades-on-content. Needs a `pnpm dev` walkthrough before release — see `dreams.md`.
+   starfield-fades-on-content — plus the reliability wave (PRs #37–41: read-only reads, atomic
+   writes, round-trip fixes, quit-flush, opt-in desktop sync). Needs a fresh `pnpm dev`
+   walkthrough before release — see `dreams.md`.
 
 ## Later
 
