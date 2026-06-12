@@ -100,8 +100,9 @@ Markdown's `![[...]]` wikilink syntax genuinely cannot store everything. Where a
 test rather than letting it pass as if lossless:
 
 - **`file` block byte `size`** — no slot in `![[file.pdf]]`; round-trips to `size: null`.
-- **`image` custom `alt`** — `![[photo.png]]` re-derives `alt` from the filename, so a custom
-  caption (`alt ≠ filename`) is lost.
+- **`image` custom `alt` (wikilink syntax only)** — `![[photo.png]]` re-derives `alt` from the
+  filename, so a custom caption (`alt ≠ filename`) is lost. Standard markdown images
+  (`![alt](url)`, `format: "md"` on the block) keep their syntax and alt text losslessly.
 - **First-position `spacer`** — a leading `---` is always frontmatter, so a `spacer` must
   never be the first block.
 

@@ -307,6 +307,21 @@ describe("round-trip", () => {
     const md = "---\ntitle: Test\n---\nContent";
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
   });
+
+  it("preserves numbered-list numbering, including non-1 starts", () => {
+    const md = "3. Third item\n4. Fourth item";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("preserves standard markdown image syntax and alt text", () => {
+    const md = "![A chart](https://example.com/chart.png)";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("preserves a code block containing a lone 4-backtick line", () => {
+    const md = "`````js\n````\ninner\n````\n`````";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
 });
 
 // --- parseTableRow ---
