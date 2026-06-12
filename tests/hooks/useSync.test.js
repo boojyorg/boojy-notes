@@ -116,6 +116,65 @@ describe("useSync", () => {
     expect(result.current.syncState).toBe("idle");
   });
 
+  it("an in-flight syncAll stops when the user is cleared mid-pull (toggle off)", async () => {
+    const user = { id: "u1" };
+    localStorage.setItem("boojy-sync-last", "2026-01-01T00:00:00.000Z");
+
+    let resolvePull;
+    pullNotes.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePull = resolve;
+      }),
+    );
+
+    const setNoteData = vi.fn();
+    const note1 = makeNote("n1");
+    const { result, rerender } = renderSync({ user, noteData: { n1: note1 }, setNoteData });
+
+    // Dirty a note so the push loop would have work to do
+    rerender({
+      user,
+      profile: null,
+      noteData: { n1: { ...note1, title: "Changed" } },
+      setNoteData,
+      activeNoteId: null,
+      editedNoteHint: { current: null },
+    });
+
+    let syncPromise;
+    act(() => {
+      syncPromise = result.current.syncAll();
+    });
+
+    // Sync toggled off (BoojyNotes passes user=null) while the pull is in flight
+    rerender({
+      user: null,
+      profile: null,
+      noteData: { n1: { ...note1, title: "Changed" } },
+      setNoteData,
+      activeNoteId: null,
+      editedNoteHint: { current: null },
+    });
+
+    // The pull resolves with a remote note that would clobber local state
+    await act(async () => {
+      resolvePull({
+        notes: [
+          {
+            note_id: "n2",
+            content: JSON.stringify({ title: "Remote", content: { blocks: [] } }),
+            version: 3,
+          },
+        ],
+        totalStorageBytes: 0,
+      });
+      await syncPromise;
+    });
+
+    expect(pushNote).not.toHaveBeenCalled();
+    expect(result.current.syncState).toBe("idle");
+  });
+
   // ─── 3. syncAll when offline ───
 
   it("sets offline state when navigator.onLine is false", async () => {
