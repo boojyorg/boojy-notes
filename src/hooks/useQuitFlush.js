@@ -12,17 +12,28 @@ import { isElectron } from "../utils/platform";
  *
  * Reads from useHistory's noteDataRef, which is updated synchronously on every
  * keystroke — not from React state, which lags during typing.
+ *
+ * `unflushedNotes` is the Set of every note edited since the last quit/blur
+ * flush. A single-slot hint loses notes when two panes are edited within one
+ * debounce window (the split-pane data-loss bug); the Set keeps them all.
  */
-export function useQuitFlush(flushToDisk, noteDataRef, editedNoteHint, hasPendingFlush) {
+export function useQuitFlush(flushToDisk, noteDataRef, unflushedNotes) {
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onAppWillClose) return;
 
     const flushAll = async () => {
-      // A pending text commit means the edited note was never marked dirty —
-      // pass it explicitly alongside the authoritative data
-      const extra =
-        hasPendingFlush.current && editedNoteHint.current ? [editedNoteHint.current] : [];
-      await flushToDisk(noteDataRef.current, extra);
+      // Notes whose edits may not have reached React state were never marked
+      // dirty — pass them explicitly alongside the authoritative data.
+      // Snapshot-and-clear up front: edits landing mid-flush re-add their note
+      // and survive for the next flush. On failure, restore the snapshot.
+      const extra = [...unflushedNotes.current];
+      unflushedNotes.current.clear();
+      try {
+        await flushToDisk(noteDataRef.current, extra);
+      } catch (err) {
+        for (const id of extra) unflushedNotes.current.add(id);
+        throw err;
+      }
     };
 
     const unsubClose = window.electronAPI.onAppWillClose(async () => {
@@ -45,5 +56,5 @@ export function useQuitFlush(flushToDisk, noteDataRef, editedNoteHint, hasPendin
       unsubClose();
       window.removeEventListener("blur", onBlur);
     };
-  }, [flushToDisk, noteDataRef, editedNoteHint, hasPendingFlush]);
+  }, [flushToDisk, noteDataRef, unflushedNotes]);
 }

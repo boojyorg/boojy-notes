@@ -11,6 +11,11 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const textOnlyEditForSidebar = useRef(false);
   const textOnlyEditForEditor = useRef(false);
   const editedNoteHint = useRef(null);
+  // Notes edited since the last quit/blur disk flush. Unlike editedNoteHint
+  // (a single slot consumed by useSync), this survives multi-note edit bursts —
+  // e.g. typing in both split panes within one debounce window — so the quit
+  // flush can write every note whose edits may not have reached React state.
+  const unflushedNotes = useRef(new Set());
 
   const noteDataRef = useRef(noteData);
   // Only sync ref from state when no pending flush (avoid overwriting batched updates)
@@ -59,6 +64,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
 
   const commitNoteData = (updater) => {
     if (!isUndoRedo.current) pushHistory();
+    if (activeNoteRef.current) unflushedNotes.current.add(activeNoteRef.current);
     textOnlyEdit.current = false;
     textOnlyEditForSidebar.current = false;
     textOnlyEditForEditor.current = false;
@@ -100,6 +106,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     textOnlyEditForSidebar.current = true;
     textOnlyEditForEditor.current = true;
     editedNoteHint.current = activeNoteRef.current;
+    if (activeNoteRef.current) unflushedNotes.current.add(activeNoteRef.current);
 
     // Batch: debounce setNoteData so React only re-renders when typing pauses.
     // The contentEditable DOM is already correct; noteDataRef has the data for handlers.
@@ -172,5 +179,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     textOnlyEditForSidebar,
     textOnlyEditForEditor,
     editedNoteHint,
+    unflushedNotes,
   };
 }

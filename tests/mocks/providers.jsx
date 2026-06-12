@@ -22,6 +22,7 @@ const defaultActions = {
   textOnlyEdit: { current: false },
   textOnlyEditForSidebar: { current: false },
   editedNoteHint: { current: null },
+  unflushedNotes: { current: new Set() },
 };
 
 const defaultSettings = {

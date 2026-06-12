@@ -17,9 +17,12 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { registerNoteFileIPC, loadIndex } = await import("../../electron/noteFileManager.js");
+const { registerNoteFileIPC, loadIndex, setIndexDir, indexPath } = await import(
+  "../../electron/noteFileManager.js"
+);
 
 let notesDir;
+let indexDir;
 const suppressWatcher = vi.fn();
 
 registerNoteFileIPC(
@@ -32,11 +35,14 @@ const writeNote = (note) => handlers["write-note"](null, note);
 
 beforeEach(() => {
   notesDir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-test-"));
+  indexDir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-index-"));
+  setIndexDir(indexDir);
   loadIndex(notesDir);
 });
 
 afterEach(() => {
   fs.rmSync(notesDir, { recursive: true, force: true });
+  fs.rmSync(indexDir, { recursive: true, force: true });
 });
 
 describe("write-note — crash-safe writes", () => {
@@ -85,13 +91,34 @@ describe("write-note — crash-safe writes", () => {
     expect(fs.readFileSync(path.join(notesDir, "Same.md"), "utf-8")).toBe("first");
   });
 
+  it("fsyncs the temp file before renaming it over the target", () => {
+    const fsyncSpy = vi.spyOn(fs, "fsyncSync");
+    const renameSpy = vi.spyOn(fs, "renameSync");
+
+    writeNote({
+      id: "note-1-aaaa",
+      title: "Synced",
+      content: { blocks: [{ type: "p", text: "durable" }] },
+    });
+
+    expect(fsyncSpy).toHaveBeenCalled();
+    expect(renameSpy).toHaveBeenCalled();
+    // Data must reach the platter before the rename commits the new entry
+    expect(fsyncSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      renameSpy.mock.invocationCallOrder[0],
+    );
+
+    fsyncSpy.mockRestore();
+    renameSpy.mockRestore();
+  });
+
   it("keeps the index as valid JSON after writes", () => {
     writeNote({
       id: "note-1-aaaa",
       title: "A",
       content: { blocks: [{ type: "p", text: "a" }] },
     });
-    const index = JSON.parse(fs.readFileSync(path.join(notesDir, ".boojy-index.json"), "utf-8"));
+    const index = JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"));
     expect(index["note-1-aaaa"]).toBe("A.md");
   });
 });

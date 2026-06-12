@@ -103,6 +103,12 @@ export function useSync(
   // online / poll event can't upload all local notes behind the dialog's back.
   const firstSyncGateRef = useRef(false);
 
+  // Bumped whenever the user (or the sync toggle, which nulls the user) changes.
+  // An in-flight syncAll holds the previous user in its closure; it compares its
+  // captured epoch at every await boundary and bails instead of running the
+  // remaining pushes/pulls to completion.
+  const syncEpoch = useRef(0);
+
   // Cross-tab sync via BroadcastChannel
   const localChannelRef = useRef(null);
 
@@ -261,6 +267,9 @@ export function useSync(
       return;
     }
 
+    const epoch = syncEpoch.current;
+    const aborted = () => epoch !== syncEpoch.current;
+
     setSyncState("syncing");
 
     try {
@@ -272,6 +281,7 @@ export function useSync(
         );
         const t0 = performance.now();
         for (let i = 0; i < allNotes.length; i += PUSH_CONCURRENCY) {
+          if (aborted()) break;
           const batch = allNotes.slice(i, i + PUSH_CONCURRENCY);
           await Promise.all(
             batch.map(async (note) => {
@@ -295,6 +305,10 @@ export function useSync(
             }),
           );
         }
+        if (aborted()) {
+          setSyncState("idle");
+          return;
+        }
         console.log(
           `[sync] First sync push complete in ${((performance.now() - t0) / 1000).toFixed(1)}s`,
         );
@@ -304,6 +318,12 @@ export function useSync(
         // --- Pull-before-push: fetch remote changes first so we have latest versions ---
         console.log(`[sync] Pulling changes since ${lastSyncedRef.current || "(full pull)"}`);
         const pullResult = await withTimeout(pullNotes(lastSyncedRef.current));
+        // A pull that resolves after sync was disabled must not touch local
+        // state — bail before applying remote notes or pushing anything
+        if (aborted()) {
+          setSyncState("idle");
+          return;
+        }
         const remoteNotes = pullResult?.notes;
         const totalStorageBytes = pullResult?.totalStorageBytes;
 
@@ -413,6 +433,7 @@ export function useSync(
         // --- Now push dirty notes with up-to-date version numbers ---
         const dirty = [...dirtyNotes.current];
         for (const noteId of dirty) {
+          if (aborted()) break;
           const note = noteDataRef.current[noteId];
           if (note) {
             const expectedVersion = versionMap.current[noteId] || null;
@@ -496,6 +517,7 @@ export function useSync(
       // Push deletes
       const deleted = [...deletedNotes.current];
       for (const noteId of deleted) {
+        if (aborted()) break;
         await withTimeout(deleteNoteRemote(noteId));
         channelRef.current?.send({
           type: "broadcast",
@@ -506,6 +528,11 @@ export function useSync(
         delete versionMap.current[noteId];
       }
       if (deleted.length > 0) saveVersionMap(versionMap.current);
+
+      if (aborted()) {
+        setSyncState("idle");
+        return;
+      }
 
       // Clear persisted dirty data on successful sync
       if (dirtyNotes.current.size === 0) {
@@ -551,6 +578,8 @@ export function useSync(
 
   // Initial sync on login — gate behind confirmation if first sync with local notes
   useEffect(() => {
+    // Invalidate any in-flight syncAll from the previous user/toggle state
+    syncEpoch.current++;
     if (user) {
       const noteCount = Object.keys(noteDataRef.current).length;
       if (!lastSyncedRef.current && noteCount > 0) {
