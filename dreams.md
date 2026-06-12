@@ -8,6 +8,12 @@
 
 ## 1. 🎯 Active Engineering Target
 
+> **⏰ Session-start reminders (w/c 2026-06-15):** (1) finish the **new logo** — carried from last
+> week's list; Tyr wants it completed early this week (weekend if possible). Raise it at the start
+> of the session. (2) After v0.5.0 ships, the next milestone is a **stable desktop build + real
+> dogfooding** — snapshot-tag first, then remove sync (settle the scope in-session: desktop-only
+> or web too), stability pass before new features.
+
 **Status:** **v0.4.0 shipped** (2026-05-29) — pushed to `master` (web auto-deploys to
 `notes.boojy.org`); the `v0.4.0` tag built the desktop DMG/EXE. CI **green**.
 
