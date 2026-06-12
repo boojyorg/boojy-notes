@@ -14,6 +14,7 @@ import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
+import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useNoteNavigation } from "./hooks/useNoteNavigation";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
@@ -98,6 +99,7 @@ export default function BoojyNotes() {
     pushHistory,
     popHistory,
     noteDataRef,
+    hasPendingFlush,
     textOnlyEdit,
     textOnlyEditForEditor,
     editedNoteHint,
@@ -271,6 +273,7 @@ export default function BoojyNotes() {
     notesDir,
     loading: fsLoading,
     changeNotesDir,
+    flushToDisk,
   } = useFileSystem(
     noteData,
     setNoteData,
@@ -280,6 +283,7 @@ export default function BoojyNotes() {
     setSidebarOrder,
     showToast,
   );
+  useQuitFlush(flushToDisk, noteDataRef, editedNoteHint, hasPendingFlush);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({
     activeNote,
     setActiveNote,

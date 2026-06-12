@@ -17,6 +17,8 @@ if (typeof globalThis.window !== "undefined") {
     openExternal: () => {},
     showItemInFolder: () => {},
     onMenuAction: () => () => {},
+    onAppWillClose: () => () => {},
+    flushBeforeCloseDone: () => {},
   };
 
   // Mock matchMedia for theme detection

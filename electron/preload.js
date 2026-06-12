@@ -38,6 +38,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("file-deleted", handler);
   },
 
+  // Quit/close flush handshake: main holds the window close until the renderer
+  // has flushed pending edits to disk (or main's 2s timeout fires)
+  onAppWillClose: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("app-will-close", handler);
+    return () => ipcRenderer.removeListener("app-will-close", handler);
+  },
+  flushBeforeCloseDone: () => ipcRenderer.send("flush-before-close-done"),
+
   // Settings
   getSettings: () => ipcRenderer.invoke("get-settings"),
   setSetting: (key, value) => ipcRenderer.invoke("set-setting", key, value),
