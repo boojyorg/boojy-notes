@@ -20,7 +20,8 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ Tags + tag autocomplete
 
 ## Markdown source-of-truth
-- 🚧 Lossless block↔markdown round-trip (v0.5 constraint, enforced by `markdown.test.js`)
+- ✅ Lossless block↔markdown round-trip (v0.5.0 constraint, enforced by `markdown.test.js`;
+  known import gaps tracked in `BACKLOG.md`: tilde fences, `:---` tables, indented content)
 - ✅ `.md` import/round-trip
 
 ## Organize & find
