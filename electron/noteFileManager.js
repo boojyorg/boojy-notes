@@ -1,6 +1,7 @@
-import { ipcMain, dialog, shell, clipboard, nativeImage } from "electron";
+import { app, ipcMain, dialog, shell, clipboard, nativeImage } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "./markdown.js";
 
 // ─── Filename helpers ───
@@ -43,25 +44,64 @@ function writeFileAtomic(filePath, data) {
   fs.renameSync(tmpPath, filePath);
 }
 
-// ─── Note ID index (.boojy-index.json) ───
+// ─── Note ID index ───
+// Lives in Electron userData (one file per vault, keyed by vault path), NOT in
+// the vault itself: opening a third-party folder must never write into it.
+// Cost of the location: moving a vault to another machine regenerates IDs.
 
 let _idIndex = {}; // noteId → relative path
+let _savedIndexJson = null; // serialized state already on disk — skip no-op saves
+let _indexDirOverride = null; // tests inject a temp dir (no `app` in vitest)
+
+function setIndexDir(dir) {
+  _indexDirOverride = dir;
+  _savedIndexJson = null;
+}
+
+function indexDir() {
+  return _indexDirOverride || path.join(app.getPath("userData"), "note-indexes");
+}
 
 function indexPath(notesDir) {
+  const hash = crypto.createHash("sha1").update(path.resolve(notesDir)).digest("hex");
+  return path.join(indexDir(), `${hash.slice(0, 12)}.json`);
+}
+
+function legacyIndexPath(notesDir) {
   return path.join(notesDir, ".boojy-index.json");
 }
 
 function loadIndex(notesDir) {
+  _savedIndexJson = null;
   try {
-    _idIndex = JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"));
+    const raw = fs.readFileSync(indexPath(notesDir), "utf-8");
+    _idIndex = JSON.parse(raw);
+    _savedIndexJson = raw;
   } catch {
     _idIndex = {};
+    // Migrate a pre-v0.5.0 in-vault index, then remove it — it is Boojy's own
+    // file, and leaving it would keep the vault dirty for git-tracked folders
+    try {
+      _idIndex = JSON.parse(fs.readFileSync(legacyIndexPath(notesDir), "utf-8"));
+      saveIndex(notesDir);
+      try {
+        fs.unlinkSync(legacyIndexPath(notesDir));
+      } catch {
+        /* leave the legacy copy if it can't be removed */
+      }
+    } catch {
+      /* no index anywhere — fresh vault */
+    }
   }
   return _idIndex;
 }
 
 function saveIndex(notesDir) {
-  writeFileAtomic(indexPath(notesDir), JSON.stringify(_idIndex, null, 2));
+  const json = JSON.stringify(_idIndex, null, 2);
+  if (json === _savedIndexJson) return;
+  fs.mkdirSync(indexDir(), { recursive: true });
+  writeFileAtomic(indexPath(notesDir), json);
+  _savedIndexJson = json;
 }
 
 /** Returns the current ID index (mutable reference). */
@@ -464,6 +504,8 @@ export {
   ensureUniqueFilePath,
   noteToFilePath,
   getIdIndex,
+  setIndexDir,
+  indexPath,
   loadIndex,
   saveIndex,
   parseNoteFile,

@@ -17,9 +17,12 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { registerNoteFileIPC, loadIndex } = await import("../../electron/noteFileManager.js");
+const { registerNoteFileIPC, loadIndex, setIndexDir, indexPath } = await import(
+  "../../electron/noteFileManager.js"
+);
 
 let notesDir;
+let indexDir;
 const suppressWatcher = vi.fn();
 
 registerNoteFileIPC(
@@ -32,11 +35,14 @@ const writeNote = (note) => handlers["write-note"](null, note);
 
 beforeEach(() => {
   notesDir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-test-"));
+  indexDir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-index-"));
+  setIndexDir(indexDir);
   loadIndex(notesDir);
 });
 
 afterEach(() => {
   fs.rmSync(notesDir, { recursive: true, force: true });
+  fs.rmSync(indexDir, { recursive: true, force: true });
 });
 
 describe("write-note — crash-safe writes", () => {
@@ -91,7 +97,7 @@ describe("write-note — crash-safe writes", () => {
       title: "A",
       content: { blocks: [{ type: "p", text: "a" }] },
     });
-    const index = JSON.parse(fs.readFileSync(path.join(notesDir, ".boojy-index.json"), "utf-8"));
+    const index = JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"));
     expect(index["note-1-aaaa"]).toBe("A.md");
   });
 });
