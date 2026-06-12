@@ -36,8 +36,20 @@ follow-through on the markdown-is-truth constraint:
   (guardrail fixtures) · **#40** pending edits flush before window close + on blur (2 s cap) ·
   **#41** desktop cloud sync now opt-in per device (off by default; sign-out clears sync
   metadata). FEATURE_TRACKER sync entry updated in #41.
-- [ ] **Pre-release walkthrough on `pnpm dev`** — the 2026-06-07 walkthrough predates this
-  wave; re-verify frontmatter survival, quit-flush, and the sync toggle before tagging v0.5.0.
+- [x] **Adversarial multi-agent review of the wave** (2026-06-12) — 10 skeptics + 3-verifier
+  majority votes; 27 confirmed findings, 2 claims broken. Report:
+  `docs/reviews/2026-06-12-reliability-wave-review.md`. Unfixed findings folded into
+  `docs/BACKLOG.md` ("Data safety / vault-import hazards").
+- [x] **Review must-fix branch** (`fix/reliability-review-p0s`) — index moved out of the vault
+  to userData (P0; vault now stays `git diff`-clean on open), split-pane quit flush loses
+  keystrokes (P0; `unflushedNotes` set), fsync before atomic rename (P1; power-loss zeroing),
+  in-flight sync aborts on toggle-off (P1; sync epoch).
+- [ ] **Pre-release walkthrough on `pnpm dev`** — after the review branch merges: (a) point the
+  app at a *copy* of a Vault folder, `git status` stays clean after opening (now includes no
+  index file); (b) type → instant Cmd+Q → relaunch, text survives — repeat in split-pane across
+  both panes; (c) sync toggle defaults off; (d) does "Empty Trash" confirm on Electron?
+  Then tag v0.5.0. ⚠️ Known import hazards remain on first *edit* (tilde fences, `:---` tables,
+  indented content — see BACKLOG) — don't migrate Vault originals yet, only copies.
 
 **Prior (unreleased):** `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted
 across 2 cycles, root **1,675 → ~1,400 lines**, all unit-tested. Further candidates: split-view

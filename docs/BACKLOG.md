@@ -3,6 +3,56 @@
 Unscheduled / someday: bugs, QoL, chores, refactors. Pull an item into `dreams.md` when it becomes
 the active target. Ordered milestones → `ROADMAP.md`; per-feature status → `FEATURE_TRACKER.md`.
 
+## Data safety / vault-import hazards
+(From the 2026-06-12 readiness audit + adversarial review — full details with file:line in
+`docs/reviews/2026-06-12-reliability-wave-review.md`. The four worst items — vault index
+mutation, split-pane flush loss, missing fsync, in-flight sync after toggle-off — were fixed
+on the review branch and are not listed here.)
+
+**First-edit mutations** (fine on open; the first edit of an affected note silently rewrites
+third-party content — these gate confident Vault migration):
+- [ ] Tilde-fence (`~~~`) code blocks parse as paragraphs — structure destroyed on save (P1).
+  `markdown.js:189` only matches backtick fences.
+- [ ] Table `:---` explicit-left-align separators normalize to `---` on first edit (P2).
+- [ ] Indented non-list content (HTML embeds, continuation paragraphs) loses leading
+  whitespace (P2). Parse loop trims every line; `indent` only attaches to list blocks.
+- [ ] Wikilink image widths `![[img|N]]` with N < 70 clamp up to 70 on first save (P2).
+
+**Reliability follow-ups:**
+- [ ] Failed disk writes drop the note from the dirty set with no retry — error toast, then the
+  note exists only in React state (P2). `useFileSystem.js:172`.
+- [ ] `saveTrashMeta` is non-atomic — power loss can corrupt `.boojy-trash-meta.json`, orphaning
+  every trashed note from the UI (P2). `trashManager.js:34`.
+- [ ] Rename crash-window can re-ID a note (crash between unlink and index save) or leave a
+  visible duplicate (crash before unlink — by design, but cleanup is manual) (P2/P3).
+- [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W + Cmd+Q;
+  no renderer-alive guard before the flush IPC (wastes the 2s cap after a renderer crash) (P3).
+- [ ] Orphaned `.*.tmp` files accumulate after a crash followed by a note rename (P3).
+- [ ] Wikilink rename doesn't update referrers — silent link breakage (audit).
+- [ ] Search index stale on text-only edits + hard 20-result cap (audit).
+- [ ] Same-title notes invisible to backlinks (audit).
+- [ ] Unparseable files silently vanish from the sidebar (audit).
+- [ ] `changeNotesDir` leaks the old vault's folders into the new one (audit).
+- [ ] Undo within 300ms gets overwritten by the text flush (audit).
+
+**Sync (before sync is ever re-enabled on desktop):**
+- [ ] Sync pull has no timestamp merge — stale cloud copy can clobber newer local notes (audit;
+  **hard blocker** for re-enabling sync).
+- [ ] Conflict-resolution UI unreachable on desktop now that the sync panel hides when the
+  toggle is off — pre-existing conflict notes have no resolution path (P2). `ProfileTab.jsx:779`.
+- [ ] Auth session refresh + billing-profile fetch hit Supabase even with sync off — note data
+  never moves, but "local-only" should mean no cloud traffic (P2). `useAuth.js:28`.
+- [ ] BroadcastChannel receive path applies cross-tab note changes without a `syncEnabled`
+  guard (P3). `useSync.js:114`.
+- [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
+
+**Split-pane (beyond the fixed flush bug):**
+- [ ] `PaneContainer` doesn't pass `tagMenuRef`/`setTagMenu` to `useEditorHandlers` — tag
+  autocomplete silently broken in split panes (P2). `PaneContainer.jsx:131`.
+- [ ] `editedNoteHint`/`activeNoteRef` track the mouse-clicked pane only — keyboard-focus into
+  the other pane stamps the wrong note id (P1 finding; impact reduced now that the quit flush
+  uses the `unflushedNotes` set, but sync's hint can still mis-target). `useHistory.js:102`.
+
 ## Refactor / docs
 - [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, root
   **1,675 → ~1,400 lines**. Further candidates: split-view glue, ghost-note/draft effects,
