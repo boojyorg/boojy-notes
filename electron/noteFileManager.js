@@ -82,9 +82,12 @@ function parseNoteFile(filePath, notesDir) {
     let body = raw;
     let migratedId = null;
 
-    // Migration: strip frontmatter from old files, preserve their ID
+    // Legacy Boojy files carry a Boojy-shaped `id:` in frontmatter — strip it and
+    // reuse the ID. Any other frontmatter is not ours and must stay in the body,
+    // where it round-trips as a frontmatter block. Reading never modifies disk;
+    // legacy files migrate only when the user edits them (normal write path).
     const fm = parseFrontmatter(raw);
-    if (fm) {
+    if (fm?.id && /^note-\d+-/.test(fm.id)) {
       migratedId = fm.id;
       body = fm.body;
     }
@@ -113,7 +116,6 @@ function parseNoteFile(filePath, notesDir) {
       content: { title, blocks },
       words,
       _filePath: filePath,
-      _migrated: !!fm,
     };
   } catch {
     return null;
@@ -122,7 +124,7 @@ function parseNoteFile(filePath, notesDir) {
 
 // ─── Read all notes from vault ───
 
-function readAllNotes(notesDir, suppressWatcher) {
+function readAllNotes(notesDir) {
   const notes = {};
   if (!fs.existsSync(notesDir)) return notes;
 
@@ -143,15 +145,6 @@ function readAllNotes(notesDir, suppressWatcher) {
 
   walk(notesDir);
 
-  // Rewrite migrated files (strip frontmatter)
-  for (const note of Object.values(notes)) {
-    if (note._migrated) {
-      const bodyMd = blocksToMarkdown(note.content.blocks);
-      suppressWatcher(note._filePath);
-      fs.writeFileSync(note._filePath, bodyMd, "utf-8");
-    }
-  }
-
   // Clean stale index entries
   for (const [id, relPath] of Object.entries(_idIndex)) {
     if (!fs.existsSync(path.join(notesDir, relPath))) delete _idIndex[id];
@@ -169,7 +162,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
   ipcMain.handle("read-all-notes", () => {
     const notesDir = getNotesDir();
     fs.mkdirSync(notesDir, { recursive: true });
-    return readAllNotes(notesDir, suppressWatcher);
+    return readAllNotes(notesDir);
   });
 
   ipcMain.handle("write-note", (_event, note) => {

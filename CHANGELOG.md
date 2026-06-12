@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Bug Fixes
+- **Opening notes never rewrites them on disk** — Files with YAML frontmatter (e.g. an Obsidian vault's `tags`/`aliases`/`created` properties) used to be silently rewritten the moment the app read them, stripping all frontmatter and re-serializing the body. Reading is now strictly read-only: third-party frontmatter survives untouched and shows as the collapsible frontmatter block; only true legacy Boojy files (Boojy-shaped `id:` in frontmatter) still migrate, and only when you next edit them. Guarded by new regression tests asserting files stay byte-identical after a read.
 - **Saves are now crash-safe** — Notes (and the ID index / folder metadata) are written to a temp file and atomically renamed into place, so a crash or power loss mid-save can no longer truncate a note; you keep the previous version instead. Renaming a note now writes the new file *before* deleting the old one — a crash in between leaves a recoverable duplicate, never a missing note.
 
 ### Features
