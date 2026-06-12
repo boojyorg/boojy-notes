@@ -256,6 +256,20 @@ export default function BoojyNotes() {
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
+  // On desktop, cloud sync is opt-in per device (off by default — local-only).
+  // Passing a null user keeps every sync trigger inert, even when a Supabase
+  // session was silently restored from a previous run.
+  const [syncEnabled, setSyncEnabled] = useState(
+    () => !isElectron || localStorage.getItem("boojy-sync-enabled") === "1",
+  );
+  const toggleSyncEnabled = useCallback((next) => {
+    setSyncEnabled(next);
+    try {
+      localStorage.setItem("boojy-sync-enabled", next ? "1" : "0");
+    } catch {
+      // storage unavailable — the toggle still applies for this session
+    }
+  }, []);
   const {
     syncState,
     lastSynced,
@@ -267,7 +281,15 @@ export default function BoojyNotes() {
     pendingFirstSync,
     confirmFirstSync,
     cancelFirstSync,
-  } = useSync(user, profile, noteData, setNoteData, activeNote, editedNoteHint, syncGeneration);
+  } = useSync(
+    syncEnabled ? user : null,
+    profile,
+    noteData,
+    setNoteData,
+    activeNote,
+    editedNoteHint,
+    syncGeneration,
+  );
   const {
     isElectron: isDesktop,
     notesDir,
@@ -1308,6 +1330,8 @@ export default function BoojyNotes() {
           isDesktop={isDesktop}
           notesDir={notesDir}
           changeNotesDir={changeNotesDir}
+          syncEnabled={syncEnabled}
+          onToggleSyncEnabled={toggleSyncEnabled}
         />
       </React.Suspense>
 

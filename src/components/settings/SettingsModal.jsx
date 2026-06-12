@@ -26,6 +26,8 @@ export default function SettingsModal({
   isDesktop,
   notesDir,
   changeNotesDir,
+  syncEnabled,
+  onToggleSyncEnabled,
 }) {
   const { settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, user } = useSettings();
 
@@ -252,6 +254,9 @@ export default function SettingsModal({
               noteData={noteData}
               setActiveNote={setActiveNote}
               SectionHeader={() => null}
+              isDesktop={isDesktop}
+              syncEnabled={syncEnabled}
+              onToggleSyncEnabled={onToggleSyncEnabled}
             />
           </MobileCard>
 
@@ -501,6 +506,9 @@ export default function SettingsModal({
                 noteData={noteData}
                 setActiveNote={setActiveNote}
                 SectionHeader={SectionHeader}
+                isDesktop={isDesktop}
+                syncEnabled={syncEnabled}
+                onToggleSyncEnabled={onToggleSyncEnabled}
               />
             </div>
             <div ref={(el) => (sectionRefs.current.storage = el)}>

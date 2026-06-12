@@ -17,6 +17,9 @@ export default function ProfileTab({
   noteData,
   setActiveNote,
   SectionHeader,
+  isDesktop,
+  syncEnabled,
+  onToggleSyncEnabled,
 }) {
   const {
     setSettingsOpen,
@@ -731,182 +734,245 @@ export default function ProfileTab({
           return (
             <div>
               <SectionHeader title="Sync" />
-              <p
-                style={{
-                  margin: "0 0 16px",
-                  fontSize: fontSize.md,
-                  color: TEXT.secondary,
-                  lineHeight: 1.5,
-                }}
-              >
-                Your notes, synced across all your devices via Boojy Cloud.
-              </p>
-              {/* Status row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: `${spacing.xs}px 0`,
-                }}
-              >
-                <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Status</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: dotColor,
-                      ...(syncState === "syncing"
-                        ? { animation: "syncDotPulse 1.2s ease-in-out infinite" }
-                        : {}),
-                    }}
-                  />
-                  <span style={{ fontSize: fontSize.lg, color: TEXT.primary }}>{statusLabel}</span>
-                </div>
-              </div>
-              {/* Last synced row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: `${spacing.xs}px 0`,
-                }}
-              >
-                <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Last synced</span>
-                <span style={{ fontSize: fontSize.lg, color: TEXT.primary }}>{timeAgo}</span>
-              </div>
-              {/* Storage */}
-              <div style={{ marginTop: spacing.md, marginBottom: spacing.lg }}>
+              {/* Desktop is local-only by default; sync is opt-in per device */}
+              {isDesktop && (
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginBottom: 6,
+                    padding: "2px 0",
+                    marginBottom: spacing.md,
                   }}
                 >
-                  <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Storage</span>
-                  <span style={{ fontSize: fontSize.md, color: TEXT.secondary }}>
-                    {storageLabel} / {limitLabel}
+                  <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>
+                    Sync on this device
                   </span>
-                </div>
-                <div
-                  style={{
-                    width: "100%",
-                    height: 6,
-                    borderRadius: 3,
-                    background: theme.overlay(0.05),
-                  }}
-                >
                   <div
+                    onClick={() => onToggleSyncEnabled?.(!syncEnabled)}
                     style={{
-                      width: `${storagePct}%`,
-                      height: "100%",
-                      borderRadius: 3,
-                      background: accentColor,
-                      transition: "width 0.3s ease",
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Sync now button */}
-              <button
-                onClick={onSync}
-                disabled={syncState === "syncing"}
-                style={{
-                  width: "100%",
-                  padding: `${spacing.sm}px 0`,
-                  borderRadius: radius.md,
-                  background: theme.overlay(0.05),
-                  border: `1px solid ${theme.overlay(0.08)}`,
-                  color: syncState === "syncing" ? TEXT.muted : TEXT.secondary,
-                  fontSize: fontSize.md,
-                  fontWeight: fontWeight.medium,
-                  cursor: syncState === "syncing" ? "default" : "pointer",
-                  fontFamily: "inherit",
-                  transition: "all 0.15s",
-                  marginBottom: conflictNotes.length > 0 ? 16 : 32,
-                }}
-                onMouseEnter={(e) => {
-                  if (syncState !== "syncing")
-                    e.currentTarget.style.background = theme.overlay(0.08);
-                }}
-                onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
-              >
-                {syncState === "syncing" ? "Syncing\u2026" : "Sync now"}
-              </button>
-
-              {/* Conflict copies */}
-              {conflictNotes.length > 0 && (
-                <div style={{ marginBottom: spacing.xxxl }}>
-                  <div
-                    style={{
-                      fontSize: fontSize.sm,
-                      fontWeight: fontWeight.semibold,
-                      color: "#f59e0b",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.5,
-                      marginBottom: spacing.sm,
+                      width: 36,
+                      height: 20,
+                      borderRadius: 10,
+                      background: syncEnabled ? accentColor : theme.overlay(0.06),
+                      border: syncEnabled ? "none" : `1px solid ${theme.overlay(0.08)}`,
+                      position: "relative",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
                     }}
                   >
-                    {conflictNotes.length} conflict {conflictNotes.length === 1 ? "copy" : "copies"}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {conflictNotes.map((note) => (
-                      <div
-                        key={note.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "6px 10px",
-                          borderRadius: radius.default,
-                          background: theme.overlay(0.04),
-                          border: `1px solid ${theme.overlay(0.06)}`,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: fontSize.md,
-                            color: TEXT.secondary,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            flex: 1,
-                            marginRight: spacing.sm,
-                          }}
-                        >
-                          {note.title}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setActiveNote(note.id);
-                            setSettingsOpen(false);
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: accentColor,
-                            fontSize: fontSize.sm,
-                            fontWeight: fontWeight.medium,
-                            cursor: "pointer",
-                            padding: `2px ${spacing.sm}px`,
-                            borderRadius: radius.sm,
-                            fontFamily: "inherit",
-                            flexShrink: 0,
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-                          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-                        >
-                          Open
-                        </button>
-                      </div>
-                    ))}
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        position: "absolute",
+                        top: 3,
+                        left: syncEnabled ? 19 : 3,
+                        transition: "left 0.15s",
+                      }}
+                    />
                   </div>
                 </div>
+              )}
+              {isDesktop && !syncEnabled ? (
+                <p
+                  style={{
+                    margin: "0 0 32px",
+                    fontSize: fontSize.md,
+                    color: TEXT.secondary,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Notes on this device stay local. Turn sync on to back them up to Boojy Cloud and
+                  share them across devices.
+                </p>
+              ) : (
+                <>
+                  <p
+                    style={{
+                      margin: "0 0 16px",
+                      fontSize: fontSize.md,
+                      color: TEXT.secondary,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Your notes, synced across all your devices via Boojy Cloud.
+                  </p>
+                  {/* Status row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: `${spacing.xs}px 0`,
+                    }}
+                  >
+                    <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Status</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: dotColor,
+                          ...(syncState === "syncing"
+                            ? { animation: "syncDotPulse 1.2s ease-in-out infinite" }
+                            : {}),
+                        }}
+                      />
+                      <span style={{ fontSize: fontSize.lg, color: TEXT.primary }}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Last synced row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: `${spacing.xs}px 0`,
+                    }}
+                  >
+                    <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Last synced</span>
+                    <span style={{ fontSize: fontSize.lg, color: TEXT.primary }}>{timeAgo}</span>
+                  </div>
+                  {/* Storage */}
+                  <div style={{ marginTop: spacing.md, marginBottom: spacing.lg }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Storage</span>
+                      <span style={{ fontSize: fontSize.md, color: TEXT.secondary }}>
+                        {storageLabel} / {limitLabel}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 6,
+                        borderRadius: 3,
+                        background: theme.overlay(0.05),
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${storagePct}%`,
+                          height: "100%",
+                          borderRadius: 3,
+                          background: accentColor,
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Sync now button */}
+                  <button
+                    onClick={onSync}
+                    disabled={syncState === "syncing"}
+                    style={{
+                      width: "100%",
+                      padding: `${spacing.sm}px 0`,
+                      borderRadius: radius.md,
+                      background: theme.overlay(0.05),
+                      border: `1px solid ${theme.overlay(0.08)}`,
+                      color: syncState === "syncing" ? TEXT.muted : TEXT.secondary,
+                      fontSize: fontSize.md,
+                      fontWeight: fontWeight.medium,
+                      cursor: syncState === "syncing" ? "default" : "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s",
+                      marginBottom: conflictNotes.length > 0 ? 16 : 32,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (syncState !== "syncing")
+                        e.currentTarget.style.background = theme.overlay(0.08);
+                    }}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
+                  >
+                    {syncState === "syncing" ? "Syncing\u2026" : "Sync now"}
+                  </button>
+
+                  {/* Conflict copies */}
+                  {conflictNotes.length > 0 && (
+                    <div style={{ marginBottom: spacing.xxxl }}>
+                      <div
+                        style={{
+                          fontSize: fontSize.sm,
+                          fontWeight: fontWeight.semibold,
+                          color: "#f59e0b",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                          marginBottom: spacing.sm,
+                        }}
+                      >
+                        {conflictNotes.length} conflict{" "}
+                        {conflictNotes.length === 1 ? "copy" : "copies"}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {conflictNotes.map((note) => (
+                          <div
+                            key={note.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "6px 10px",
+                              borderRadius: radius.default,
+                              background: theme.overlay(0.04),
+                              border: `1px solid ${theme.overlay(0.06)}`,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: fontSize.md,
+                                color: TEXT.secondary,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                flex: 1,
+                                marginRight: spacing.sm,
+                              }}
+                            >
+                              {note.title}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setActiveNote(note.id);
+                                setSettingsOpen(false);
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: accentColor,
+                                fontSize: fontSize.sm,
+                                fontWeight: fontWeight.medium,
+                                cursor: "pointer",
+                                padding: `2px ${spacing.sm}px`,
+                                borderRadius: radius.sm,
+                                fontFamily: "inherit",
+                                flexShrink: 0,
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.textDecoration = "underline")
+                              }
+                              onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                            >
+                              Open
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );

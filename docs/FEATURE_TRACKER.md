@@ -29,7 +29,8 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ In-note find
 
 ## Sync & storage
-- ✅ Supabase (auth + data) + Cloudflare R2 (attachments) sync
+- ✅ Supabase (auth + data) + Cloudflare R2 (attachments) sync — **opt-in per device on
+  desktop** (off by default; "Sync on this device" toggle in Settings → Profile)
 - ✅ Conflict resolution + offline recovery + cross-tab consistency
 
 ## Views & theming
