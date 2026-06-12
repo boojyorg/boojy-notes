@@ -3,6 +3,17 @@
 Durable operational gotchas for this repo's pipelines. (No `paths:` frontmatter — these are
 project-wide and always relevant.)
 
+## Releases land as DRAFTS — and the matrix creates TWO of them
+
+electron-builder publishes GitHub releases as **drafts**; nobody had clicked publish since v0.3.0,
+so "latest release" lookups (website version text, auto-updater) resolved to v0.3.0 for weeks —
+v0.4.0 shipped its installers into a draft nobody could see. Worse, `release.yml`'s macOS and
+Windows matrix jobs **each create their own draft** on the same tag (v0.5.0: DMG in one, EXE in the
+other) — consolidated manually via the API on 2026-06-12. After every tag push: check
+`gh release list` for split drafts, merge assets into one, **publish it**, and delete the leftover.
+Proper fix (unscheduled): create the release once before the matrix (e.g. a `gh release create`
+job) so both builders upload to it, or auto-publish when both jobs succeed.
+
 ## CI Node version is pinned to 22, NOT 24
 
 `node-version: 24` in `setup-node` **deterministically hangs** `playwright install --with-deps
