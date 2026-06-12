@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Imported markdown survives saving unchanged** — Three round-trip fixes for files written by other tools: code blocks containing a lone ```` line are no longer corrupted on save (the fence now grows past the longest backtick run in the content); numbered lists keep their actual numbers instead of all collapsing to `1.`; and standard `![alt](url)` images keep their syntax and alt text instead of being rewritten to `![[url]]` wikilinks (a custom width uses the Obsidian-style `![alt|350](url)` suffix). All three are locked in by new round-trip guardrail fixtures.
+
 ### Features
 - **Stars fade out as you write** — On the night theme, a blank note shows the starfield behind the editor; the moment you start typing it gently fades out (~1.75s), and fades back in if you empty the note again. It's tied to whether the note has *content*, not whether it's focused — so just clicking into an empty note keeps the stars, and a written note opened from the list shows none.
 - **Move blocks with the keyboard** — `Cmd/Ctrl+Shift+↑` / `↓` now moves the current block up or down. This is the keyboard-accessible counterpart to the existing hold-and-drag reorder, and maps cleanly to reordering lines in the underlying markdown.

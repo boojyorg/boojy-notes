@@ -35,7 +35,11 @@ let _parseBlockId = 0;
 
 export function blocksToMarkdown(blocks) {
   const lines = [];
+  // Numbered items keep their parsed number (block.num); items created in-app
+  // have none and continue sequentially from the previous item in the run.
+  let numCounter = 0;
   for (const block of blocks) {
+    numCounter = block.type === "numbered" ? (block.num ?? numCounter + 1) : 0;
     switch (block.type) {
       case "h1":
         lines.push(`# ${block.text || ""}`);
@@ -50,7 +54,7 @@ export function blocksToMarkdown(blocks) {
         lines.push(`${"  ".repeat(block.indent || 0)}- ${block.text || ""}`);
         break;
       case "numbered":
-        lines.push(`${"  ".repeat(block.indent || 0)}1. ${block.text || ""}`);
+        lines.push(`${"  ".repeat(block.indent || 0)}${numCounter}. ${block.text || ""}`);
         break;
       case "checkbox":
         lines.push(
@@ -62,11 +66,14 @@ export function blocksToMarkdown(blocks) {
         break;
       case "image": {
         const src = block.src || "";
-        if (block.width && block.width < 100) {
-          const px = Math.round(block.width * 7);
-          lines.push(`![[${src}|${px}]]`);
+        const px = block.width && block.width < 100 ? Math.round(block.width * 7) : null;
+        if (block.format === "md") {
+          // Standard markdown image from an external file — keep its syntax and
+          // alt text; a custom width uses the Obsidian alt suffix: ![alt|350](url)
+          const alt = block.alt || "";
+          lines.push(px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`);
         } else {
-          lines.push(`![[${src}]]`);
+          lines.push(px ? `![[${src}|${px}]]` : `![[${src}]]`);
         }
         break;
       }
@@ -81,7 +88,11 @@ export function blocksToMarkdown(blocks) {
       case "code": {
         const lang = block.lang || "";
         const text = block.text || "";
-        const fence = text.includes("```") ? "````" : "```";
+        // The fence must be longer than the longest backtick run in the content,
+        // or a run of equal length would close the block early on re-parse
+        const runs = text.match(/`{3,}/g);
+        const longestRun = runs ? Math.max(...runs.map((r) => r.length)) : 0;
+        const fence = "`".repeat(Math.max(3, longestRun + 1));
         lines.push(fence + lang);
         lines.push(text);
         lines.push(fence);
@@ -330,7 +341,12 @@ export function markdownToBlocks(md) {
       block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: line.slice(6), checked };
       if (indent > 0) block.indent = Math.min(indent, 6);
     } else if (/^\d+\.\s/.test(line)) {
-      block = { id: `md-${++_parseBlockId}`, type: "numbered", text: line.replace(/^\d+\.\s/, "") };
+      block = {
+        id: `md-${++_parseBlockId}`,
+        type: "numbered",
+        text: line.replace(/^\d+\.\s/, ""),
+        num: parseInt(line, 10),
+      };
       if (indent > 0) block.indent = Math.min(indent, 6);
     } else if (line.startsWith("- ")) {
       block = { id: `md-${++_parseBlockId}`, type: "bullet", text: line.slice(2) };
@@ -343,13 +359,22 @@ export function markdownToBlocks(md) {
       block = { id: `md-${++_parseBlockId}`, type: "h1", text: line.slice(2) };
     } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
       const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      // Obsidian-style width suffix in the alt: ![alt|350](url)
+      let alt = m[1];
+      let width = 100;
+      const widthMatch = alt.match(/^(.*)\|(\d+)$/);
+      if (widthMatch) {
+        alt = widthMatch[1];
+        width = Math.min(100, Math.max(5, Math.round(parseInt(widthMatch[2], 10) / 7)));
+      }
       block = {
         id: `md-${++_parseBlockId}`,
         type: "image",
         src: m[2],
-        alt: m[1],
-        width: 100,
+        alt,
+        width,
         text: "",
+        format: "md",
       };
     } else {
       block = { id: `md-${++_parseBlockId}`, type: "p", text: line };
