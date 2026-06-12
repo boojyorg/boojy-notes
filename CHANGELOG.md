@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Quitting no longer loses your last keystrokes** — Typed text sits in two short debounces before reaching disk, and the app used to quit without waiting, silently dropping anything typed in the last ~1 second. The window close (Cmd+W or quit) now waits for a flush of pending edits to disk — capped at 2 seconds so a hung renderer can never trap you in the app — and edits also flush whenever the window loses focus.
+
 ### Features
 - **Stars fade out as you write** — On the night theme, a blank note shows the starfield behind the editor; the moment you start typing it gently fades out (~1.75s), and fades back in if you empty the note again. It's tied to whether the note has *content*, not whether it's focused — so just clicking into an empty note keeps the stars, and a written note opened from the list shows none.
 - **Move blocks with the keyboard** — `Cmd/Ctrl+Shift+↑` / `↓` now moves the current block up or down. This is the keyboard-accessible counterpart to the existing hold-and-drag reorder, and maps cleanly to reordering lines in the underlying markdown.

@@ -143,46 +143,55 @@ export function useFileSystem(
   }, [noteData]);
 
   // ─── Flush writes to disk ───
-  const flush = useCallback(async () => {
-    if (!isNative) return;
-    const api = getAPI();
+  // `latestData` overrides the state-synced ref for quit/blur flushes, where the
+  // text-commit debounce means React state (and this hook's ref) lag the latest
+  // edits held in useHistory's noteDataRef. `extraDirtyIds` covers the note whose
+  // pending text commit hasn't reached state yet, so it was never marked dirty.
+  const flush = useCallback(
+    async (latestData, extraDirtyIds) => {
+      if (!isNative) return;
+      const api = getAPI();
 
-    const dirty = [...dirtyNotes.current];
-    for (const noteId of dirty) {
-      const note = noteDataRef.current[noteId];
-      if (!note || note._draft) {
+      if (extraDirtyIds) for (const id of extraDirtyIds) dirtyNotes.current.add(id);
+      const source = latestData || noteDataRef.current;
+      const dirty = [...dirtyNotes.current];
+      for (const noteId of dirty) {
+        const note = source[noteId];
+        if (!note || note._draft) {
+          dirtyNotes.current.delete(noteId);
+          continue;
+        }
+        if (note) {
+          try {
+            await api.writeNote(note);
+          } catch (err) {
+            console.error("useFileSystem: write failed", noteId, err);
+            onError?.("Failed to save note to disk");
+          }
+        }
         dirtyNotes.current.delete(noteId);
-        continue;
       }
-      if (note) {
-        try {
-          await api.writeNote(note);
-        } catch (err) {
-          console.error("useFileSystem: write failed", noteId, err);
-          onError?.("Failed to save note to disk");
-        }
-      }
-      dirtyNotes.current.delete(noteId);
-    }
 
-    const deleted = [...deletedNotes.current];
-    for (const noteId of deleted) {
-      try {
-        const trashInfo = trashedNotesRef?.current?.get(noteId);
-        if (trashInfo) {
-          await api.trashNote(noteId, trashInfo.title, trashInfo.folder);
-          trashedNotesRef.current.delete(noteId);
-        } else {
-          await api.deleteNoteFile(noteId);
+      const deleted = [...deletedNotes.current];
+      for (const noteId of deleted) {
+        try {
+          const trashInfo = trashedNotesRef?.current?.get(noteId);
+          if (trashInfo) {
+            await api.trashNote(noteId, trashInfo.title, trashInfo.folder);
+            trashedNotesRef.current.delete(noteId);
+          } else {
+            await api.deleteNoteFile(noteId);
+          }
+        } catch (err) {
+          console.error("useFileSystem: delete failed", noteId, err);
+          onError?.("Failed to delete note file");
         }
-      } catch (err) {
-        console.error("useFileSystem: delete failed", noteId, err);
-        onError?.("Failed to delete note file");
+        deletedNotes.current.delete(noteId);
       }
-      deletedNotes.current.delete(noteId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; trashedNotesRef is a ref
-  }, [trashedNotesRef]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; trashedNotesRef is a ref
+    },
+    [trashedNotesRef],
+  );
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
@@ -335,5 +344,5 @@ export function useFileSystem(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
   }, [setNoteData, setCustomFolders]);
 
-  return { isElectron, isNative, notesDir, loading, changeNotesDir };
+  return { isElectron, isNative, notesDir, loading, changeNotesDir, flushToDisk: flush };
 }

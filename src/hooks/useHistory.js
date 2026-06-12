@@ -167,6 +167,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     popHistory,
     isUndoRedo,
     noteDataRef,
+    hasPendingFlush,
     textOnlyEdit,
     textOnlyEditForSidebar,
     textOnlyEditForEditor,
