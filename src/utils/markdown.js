@@ -332,7 +332,7 @@ export function markdownToBlocks(md) {
     // 6. Single-line matchers
     const leadingSpaces = raw.match(/^(\s*)/)[1].length;
     const indent = Math.floor(leadingSpaces / 2);
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; src?: string; alt?: string; width?: number }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; src?: string; alt?: string; width?: number; num?: number; format?: string }} */
     let block;
     if (line === "---") {
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
