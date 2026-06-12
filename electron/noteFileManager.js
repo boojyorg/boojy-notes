@@ -31,6 +31,18 @@ function ensureUniqueFilePath(filePath) {
   return path.join(dir, `${base}-${i}${ext}`);
 }
 
+/**
+ * Crash-safe write: write to a temp file, then rename over the target.
+ * Rename is atomic on the same volume, so a crash mid-write leaves the
+ * previous file intact instead of a truncated one. The dot-prefix keeps
+ * the temp file invisible to the chokidar watcher and the vault walk.
+ */
+function writeFileAtomic(filePath, data) {
+  const tmpPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.tmp`);
+  fs.writeFileSync(tmpPath, data, "utf-8");
+  fs.renameSync(tmpPath, filePath);
+}
+
 // ─── Note ID index (.boojy-index.json) ───
 
 let _idIndex = {}; // noteId → relative path
@@ -49,7 +61,7 @@ function loadIndex(notesDir) {
 }
 
 function saveIndex(notesDir) {
-  fs.writeFileSync(indexPath(notesDir), JSON.stringify(_idIndex, null, 2));
+  writeFileAtomic(indexPath(notesDir), JSON.stringify(_idIndex, null, 2));
 }
 
 /** Returns the current ID index (mutable reference). */
@@ -168,26 +180,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const existingRelPath = _idIndex[note.id];
     const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
 
-    if (existingPath && existingPath !== targetPath) {
-      // Delete old file
-      suppressWatcher(existingPath);
-      try {
-        fs.unlinkSync(existingPath);
-        // Clean empty parent dirs
-        const oldDir = path.dirname(existingPath);
-        if (oldDir !== notesDir) {
-          try {
-            const entries = fs.readdirSync(oldDir);
-            if (entries.length === 0) fs.rmdirSync(oldDir);
-          } catch {
-            // dir not empty or already removed
-          }
-        }
-      } catch {
-        // old file already gone
-      }
-    }
-
     // Determine final path (avoid overwriting a different note's file)
     let finalPath = targetPath;
     if (!existingPath || existingPath !== targetPath) {
@@ -207,7 +199,28 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const bodyMd = blocksToMarkdown(note.content?.blocks || []);
 
     suppressWatcher(finalPath);
-    fs.writeFileSync(finalPath, bodyMd, "utf-8");
+    writeFileAtomic(finalPath, bodyMd);
+
+    // On rename, remove the old file only after the new one is safely on disk —
+    // a crash in between leaves a duplicate (recoverable), never a missing note
+    if (existingPath && existingPath !== finalPath) {
+      suppressWatcher(existingPath);
+      try {
+        fs.unlinkSync(existingPath);
+        // Clean empty parent dirs
+        const oldDir = path.dirname(existingPath);
+        if (oldDir !== notesDir) {
+          try {
+            const entries = fs.readdirSync(oldDir);
+            if (entries.length === 0) fs.rmdirSync(oldDir);
+          } catch {
+            // dir not empty or already removed
+          }
+        }
+      } catch {
+        // old file already gone
+      }
+    }
 
     // Update index
     _idIndex[note.id] = path.relative(notesDir, finalPath);
@@ -363,7 +376,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
   ipcMain.handle("write-meta", (_event, folderRelPath, meta) => {
     const dir = path.join(getNotesDir(), folderRelPath || "");
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, ".boojy-meta.json"), JSON.stringify(meta, null, 2));
+    writeFileAtomic(path.join(dir, ".boojy-meta.json"), JSON.stringify(meta, null, 2));
   });
 
   ipcMain.handle("open-external", async (_event, url) => {
