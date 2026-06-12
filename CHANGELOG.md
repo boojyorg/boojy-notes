@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Opening notes never rewrites them on disk** — Files with YAML frontmatter (e.g. an Obsidian vault's `tags`/`aliases`/`created` properties) used to be silently rewritten the moment the app read them, stripping all frontmatter and re-serializing the body. Reading is now strictly read-only: third-party frontmatter survives untouched and shows as the collapsible frontmatter block; only true legacy Boojy files (Boojy-shaped `id:` in frontmatter) still migrate, and only when you next edit them. Guarded by new regression tests asserting files stay byte-identical after a read.
+
 ### Features
 - **Stars fade out as you write** — On the night theme, a blank note shows the starfield behind the editor; the moment you start typing it gently fades out (~1.75s), and fades back in if you empty the note again. It's tied to whether the note has *content*, not whether it's focused — so just clicking into an empty note keeps the stars, and a written note opened from the list shows none.
 - **Move blocks with the keyboard** — `Cmd/Ctrl+Shift+↑` / `↓` now moves the current block up or down. This is the keyboard-accessible counterpart to the existing hold-and-drag reorder, and maps cleanly to reordering lines in the underlying markdown.
