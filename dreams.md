@@ -28,6 +28,17 @@
   block-move, and list-only indent all confirmed; also covered the day's dep-bump wave
   (vite-plugin-electron 1.x launch, lucide-react 1.x icon scan).
 
+**Reliability wave (unreleased, PRs #37–41, merged 2026-06-11/12)** — data-safety
+follow-through on the markdown-is-truth constraint:
+- [x] **#37** reads never rewrite note files (third-party frontmatter survives; byte-identical
+  regression tests) · **#38** crash-safe atomic writes (temp+rename; rename writes new before
+  deleting old) · **#39** lossless round-trip for fences / list numbers / `![alt](url)` images
+  (guardrail fixtures) · **#40** pending edits flush before window close + on blur (2 s cap) ·
+  **#41** desktop cloud sync now opt-in per device (off by default; sign-out clears sync
+  metadata). FEATURE_TRACKER sync entry updated in #41.
+- [ ] **Pre-release walkthrough on `pnpm dev`** — the 2026-06-07 walkthrough predates this
+  wave; re-verify frontmatter survival, quit-flush, and the sync toggle before tagging v0.5.0.
+
 **Prior (unreleased):** `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted
 across 2 cycles, root **1,675 → ~1,400 lines**, all unit-tested. Further candidates: split-view
 glue, ghost-note/draft effects, `ProfileTab`/`Sidebar`.
