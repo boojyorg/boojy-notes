@@ -14,8 +14,10 @@
 > dogfooding** — snapshot-tag first, then remove sync (settle the scope in-session: desktop-only
 > or web too), stability pass before new features.
 
-**Status:** **v0.4.0 shipped** (2026-05-29) — pushed to `master` (web auto-deploys to
-`notes.boojy.org`); the `v0.4.0` tag built the desktop DMG/EXE. CI **green**.
+**Status:** **v0.5.0 shipped** (2026-06-12) — release PR merged to `master` (web auto-deploys),
+`v0.5.0` tag builds the desktop DMG/EXE. Import gate **passed**: vault copy stayed
+`git status`-clean on open; split-pane body quit-flush, sync-off default, and Empty Trash
+confirmation all verified on `pnpm dev`.
 
 **In flight (unreleased) — v0.5.0 "Markdown is the truth" milestone:**
 - **Constraint adopted:** `docs/SPEC-markdown-source-of-truth.md` (a note *is* its markdown;
@@ -50,12 +52,13 @@ follow-through on the markdown-is-truth constraint:
   to userData (P0; vault now stays `git diff`-clean on open), split-pane quit flush loses
   keystrokes (P0; `unflushedNotes` set), fsync before atomic rename (P1; power-loss zeroing),
   in-flight sync aborts on toggle-off (P1; sync epoch).
-- [ ] **Pre-release walkthrough on `pnpm dev`** — after the review branch merges: (a) point the
-  app at a *copy* of a Vault folder, `git status` stays clean after opening (now includes no
-  index file); (b) type → instant Cmd+Q → relaunch, text survives — repeat in split-pane across
-  both panes; (c) sync toggle defaults off; (d) does "Empty Trash" confirm on Electron?
-  Then tag v0.5.0. ⚠️ Known import hazards remain on first *edit* (tilde fences, `:---` tables,
-  indented content — see BACKLOG) — don't migrate Vault originals yet, only copies.
+- [x] **Pre-release walkthrough on `pnpm dev`** (2026-06-12, Tyr) — (a) vault copy (155 md
+  files incl. COMP390 frontmatter notes) `git status`-clean after open ✓; (b) quit-flush
+  single-note ✓ and split-pane both bodies ✓; (c) sync toggle defaults off ✓; (d) Empty Trash
+  confirms ✓. Found + fixed in-flight: title renders blank after relaunch until note switch
+  (PR #45 — initial disk load now bumps `syncGeneration`). ⚠️ Known import hazards remain on
+  first *edit* (tilde fences, `:---` tables, indented content — see BACKLOG) — migrate Vault
+  *copies* only, not originals.
 
 **Prior (unreleased):** `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted
 across 2 cycles, root **1,675 → ~1,400 lines**, all unit-tested. Further candidates: split-view

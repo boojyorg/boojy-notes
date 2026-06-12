@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.0 — 2026-06-12
+
 ### Bug Fixes
 - **Note titles show immediately after launch** — Reopening the app restored your last note with a blank title until you switched away and back. The restored session rendered before the notes finished loading from disk, and the title field never re-synced when they arrived; the disk load now signals the editor to re-sync, in both single-pane and split view.
 - **Opening a folder of notes no longer leaves any trace in it** — The note ID index (`.boojy-index.json`) used to be written into the notes folder itself on every scan, so pointing the app at an Obsidian vault or any git-tracked folder dirtied it on first launch. The index now lives in the app's own data directory (one file per vault); an existing in-vault index is migrated over once and removed, and the index is only rewritten when it actually changes.
