@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, protocol, net, nativeTheme } from "electron";
+import { app, BrowserWindow, Menu, protocol, net, nativeTheme, ipcMain } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ─── Window ───
 
 let mainWindow = null;
+let isQuitting = false;
 
 function getMainWindow() {
   return mainWindow;
@@ -41,6 +42,32 @@ function createWindow() {
       spellcheck: true,
       preload: path.join(__dirname, "preload.js"),
     },
+  });
+
+  // Hold the close (Cmd+W or quit) until the renderer flushes pending edits to
+  // disk, so quitting right after typing can't lose the last keystrokes. The 2s
+  // cap means a hung renderer can never trap the user in the app.
+  let flushedBeforeClose = false;
+  mainWindow.on("close", (e) => {
+    if (flushedBeforeClose) return;
+    e.preventDefault();
+    const win = mainWindow;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      ipcMain.removeListener("flush-before-close-done", finish);
+      flushedBeforeClose = true;
+      if (isQuitting) {
+        app.quit();
+      } else if (win && !win.isDestroyed()) {
+        win.close();
+      }
+    };
+    const timer = setTimeout(finish, 2000);
+    ipcMain.once("flush-before-close-done", finish);
+    win.webContents.send("app-will-close");
   });
 
   // Dev: load Vite dev server; Prod: load built files
@@ -235,5 +262,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
   closeWatcher();
 });
