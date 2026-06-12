@@ -79,6 +79,21 @@ export function useAuth() {
 
   async function signOut() {
     const { error } = await supabase.auth.signOut();
+    // Stale sync metadata must not outlive the session — a leftover
+    // boojy-sync-last skips the first-sync confirmation on the next sign-in,
+    // and a leftover boojy-sync-dirty re-pushes those notes unprompted
+    for (const key of [
+      "boojy-sync-last",
+      "boojy-sync-versions",
+      "boojy-sync-dirty",
+      "boojy-sync-storage",
+    ]) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // storage unavailable — nothing to clean
+      }
+    }
     return { error };
   }
 

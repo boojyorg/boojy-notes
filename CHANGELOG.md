@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Desktop is local-only unless you opt in to sync** — Cloud sync on desktop is now off by default and controlled by a per-device "Sync on this device" toggle in Settings → Profile. Previously, a Supabase session silently restored from an earlier run would start a full sync 500ms after launch — and a stale cloud copy could overwrite newer local notes. Signing out now also clears leftover sync metadata (last-sync marker, version map, dirty queue), which used to skip the first-sync confirmation and re-push notes unprompted on the next sign-in.
+
 ### Features
 - **Stars fade out as you write** — On the night theme, a blank note shows the starfield behind the editor; the moment you start typing it gently fades out (~1.75s), and fades back in if you empty the note again. It's tied to whether the note has *content*, not whether it's focused — so just clicking into an empty note keeps the stars, and a written note opened from the list shows none.
 - **Move blocks with the keyboard** — `Cmd/Ctrl+Shift+↑` / `↓` now moves the current block up or down. This is the keyboard-accessible counterpart to the existing hold-and-drag reorder, and maps cleanly to reordering lines in the underlying markdown.
