@@ -30,8 +30,15 @@ const LOSSLESS_CASES = [
   ["h3", [{ type: "h3", text: "Heading three" }]],
   ["bullet", [{ type: "bullet", text: "a bullet" }]],
   ["bullet (indented)", [{ type: "bullet", text: "nested bullet", indent: 2 }]],
-  ["numbered", [{ type: "numbered", text: "first item" }]],
-  ["numbered (indented)", [{ type: "numbered", text: "sub item", indent: 1 }]],
+  ["numbered", [{ type: "numbered", text: "first item", num: 1 }]],
+  ["numbered (indented)", [{ type: "numbered", text: "sub item", indent: 1, num: 1 }]],
+  [
+    "numbered (explicit non-1 start survives)",
+    [
+      { type: "numbered", text: "third", num: 3 },
+      { type: "numbered", text: "fourth", num: 4 },
+    ],
+  ],
   ["checkbox unchecked", [{ type: "checkbox", text: "todo", checked: false }]],
   ["checkbox checked", [{ type: "checkbox", text: "done", checked: true }]],
   ["checkbox (indented)", [{ type: "checkbox", text: "sub task", checked: false, indent: 1 }]],
@@ -52,6 +59,32 @@ const LOSSLESS_CASES = [
     "image (scaled width)",
     [{ type: "image", src: "photo.png", alt: "photo", width: 50, text: "" }],
   ],
+  [
+    "image (standard markdown format keeps alt + syntax)",
+    [
+      {
+        type: "image",
+        src: "https://example.com/chart.png",
+        alt: "A chart",
+        width: 100,
+        text: "",
+        format: "md",
+      },
+    ],
+  ],
+  [
+    "image (standard markdown format, scaled)",
+    [
+      {
+        type: "image",
+        src: "https://example.com/chart.png",
+        alt: "A chart",
+        width: 50,
+        text: "",
+        format: "md",
+      },
+    ],
+  ],
   ["file", [{ type: "file", src: "report.pdf", filename: "report.pdf", size: null, text: "" }]],
   [
     "frontmatter (first)",
@@ -65,8 +98,14 @@ const LOSSLESS_CASES = [
   ],
   ["code (no lang)", [{ type: "code", lang: "", text: "plain code\nsecond line" }]],
   ["code (with lang)", [{ type: "code", lang: "js", text: "const x = 1;" }]],
-  // body containing a fence forces the 4-backtick path in blocksToMarkdown
+  // body containing a fence forces a longer outer fence in blocksToMarkdown
   ["code (body contains a fence)", [{ type: "code", lang: "", text: "```\nnested fence\n```" }]],
+  // a lone 4-backtick line used to match the outer 4-backtick fence and close
+  // the block early, exploding the rest into paragraphs (audit P0)
+  [
+    "code (body contains a 4-backtick fence)",
+    [{ type: "code", lang: "", text: "````\ninner code\n````" }],
+  ],
   ["blockquote (single line)", [{ type: "blockquote", text: "a quote" }]],
   ["blockquote (multi line)", [{ type: "blockquote", text: "line one\nline two" }]],
   [
@@ -160,7 +199,7 @@ describe("markdown round-trip — full document", () => {
     { type: "h2", text: "Checklist" },
     { type: "bullet", text: "Pack bags" },
     { type: "bullet", text: "Passport", indent: 1 },
-    { type: "numbered", text: "Book flight" },
+    { type: "numbered", text: "Book flight", num: 1 },
     { type: "checkbox", text: "Confirm hotel", checked: true },
     { type: "checkbox", text: "Print tickets", checked: false },
     { type: "p", text: "A note before the quote." },
