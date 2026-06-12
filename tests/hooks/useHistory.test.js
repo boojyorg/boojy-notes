@@ -223,6 +223,27 @@ describe("useHistory", () => {
       expect(result.current.editedNoteHint.current).toBe(NOTE_ID);
     });
 
+    it("accumulates every edited note in unflushedNotes (split-pane safety)", () => {
+      const { result, activeNoteRef } = setup();
+
+      act(() => result.current.commitTextChange((prev) => prev));
+      // Second pane: another note edited within the same debounce window —
+      // editedNoteHint forgets the first note, unflushedNotes must not
+      activeNoteRef.current = "note-2";
+      act(() => result.current.commitTextChange((prev) => prev));
+
+      expect(result.current.editedNoteHint.current).toBe("note-2");
+      expect([...result.current.unflushedNotes.current]).toEqual([NOTE_ID, "note-2"]);
+    });
+
+    it("records structural edits in unflushedNotes too", () => {
+      const { result } = setup();
+
+      act(() => result.current.commitNoteData((prev) => prev));
+
+      expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(true);
+    });
+
     it("updates noteDataRef immediately", () => {
       const { result } = setup();
 

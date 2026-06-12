@@ -99,10 +99,10 @@ export default function BoojyNotes() {
     pushHistory,
     popHistory,
     noteDataRef,
-    hasPendingFlush,
     textOnlyEdit,
     textOnlyEditForEditor,
     editedNoteHint,
+    unflushedNotes,
   } = useNoteDataActions();
 
   const { settingsOpen, setSettingsOpen, setSettingsTab, uiScale, setUiScale, user, profile } =
@@ -305,7 +305,7 @@ export default function BoojyNotes() {
     setSidebarOrder,
     showToast,
   );
-  useQuitFlush(flushToDisk, noteDataRef, editedNoteHint, hasPendingFlush);
+  useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({
     activeNote,
     setActiveNote,
