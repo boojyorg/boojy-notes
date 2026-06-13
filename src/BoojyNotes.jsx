@@ -817,30 +817,6 @@ export default function BoojyNotes() {
     [setNoteData, clearSelection],
   );
 
-  // ── UI helpers ──────────────────────────────────────────────────────
-  const syncDotStyle = () => {
-    const base = {
-      width: 19,
-      height: 19,
-      borderRadius: "50%",
-      background: accentColor,
-      border: "none",
-      cursor: "pointer",
-      position: "relative",
-      top: 1,
-      transition: "transform 0.15s",
-    };
-    if (syncState === "syncing" || syncState === "retrying")
-      return { ...base, animation: "syncGlow 2s ease-in-out infinite" };
-    if (syncState === "error")
-      return {
-        ...base,
-        boxShadow: `0 0 0 2.5px ${theme.BG.dark}, 0 0 0 4.5px ${theme.SEMANTIC.error}`,
-      };
-    if (syncState === "offline") return { ...base, opacity: 0.4 };
-    return base;
-  };
-
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div
@@ -894,7 +870,6 @@ export default function BoojyNotes() {
         setActiveNote={setActiveNote}
         closeTab={closeTab}
         syncState={syncState}
-        syncDotStyle={syncDotStyle}
         note={note}
         noteTitle={noteTitle}
         createNote={createNote}

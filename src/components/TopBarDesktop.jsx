@@ -7,8 +7,7 @@ import { useSettings } from "../context/SettingsContext";
 import { UndoIcon, RedoIcon, SidebarToggleIcon, HelpIcon } from "./Icons";
 import HelpDropdown from "./HelpDropdown";
 import PaneTabBar from "./PaneTabBar";
-import boojyN from "/assets/boojy-notes-text-N.png";
-import boojyTes from "/assets/boojy-notes.text-tes.png";
+import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -76,7 +75,6 @@ export default function TopBarDesktop({
   setActiveNote,
   closeTab,
   syncState,
-  syncDotStyle,
   note,
   wordCount,
   charCount,
@@ -96,7 +94,6 @@ export default function TopBarDesktop({
 }) {
   const {
     chromeBg,
-    accentColor,
     topBarEdge,
     tabFlip,
     activeTabBg,
@@ -110,7 +107,7 @@ export default function TopBarDesktop({
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const { setSettingsOpen, setSettingsTab } = useSettings();
   const { theme } = useTheme();
-  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const [helpOpen, setHelpOpen] = useState(false);
   const helpBtnRef = useRef(null);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
@@ -144,52 +141,29 @@ export default function TopBarDesktop({
           transition: "width 0.2s ease",
         }}
       >
-        <div
-          style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginRight: 4 }}
+        <button
+          data-testid="settings-button"
+          onClick={() => {
+            setSettingsOpen(true);
+            setSettingsTab("profile");
+          }}
+          aria-label="Notes \u2014 open settings"
+          title="Settings"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+            marginRight: 4,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          <img src={boojyN} alt="" style={{ height: 23.5 }} draggable="false" />
-          <button
-            data-testid="settings-button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setSettingsTab("profile");
-            }}
-            style={syncDotStyle()}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-            title={`Settings \u00b7 Sync: ${syncState}`}
-          >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background:
-                  syncState === "conflict"
-                    ? SEMANTIC.warning
-                    : syncState === "offline"
-                      ? TEXT.muted
-                      : syncState === "error"
-                        ? SEMANTIC.error
-                        : accentColor,
-              }}
-            />
-          </button>
-          <img src={boojyTes} alt="" style={{ height: 21 }} draggable="false" />
-          {(syncState === "syncing" || syncState === "retrying") && (
-            <span
-              style={{
-                fontSize: 10,
-                color: theme.BRAND.orange,
-                marginLeft: 2,
-                opacity: 0.8,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Syncing&hellip;
-            </span>
-          )}
-        </div>
+          <img src={boojyWordmark} alt="" style={{ height: 23.5 }} draggable="false" />
+        </button>
         <span
           role="status"
           aria-live="polite"
