@@ -4,11 +4,9 @@ import { useSettings } from "../context/SettingsContext";
 import { Z } from "../constants/zIndex";
 import { ChevronLeftIcon, MoreHorizontalIcon } from "./Icons";
 import { platform } from "../utils/platform";
-import boojyN from "/assets/boojy-notes-text-N.png";
-import boojyTes from "/assets/boojy-notes.text-tes.png";
+import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 export default function TopBarMobile({
-  syncState,
   noteTitle,
   activeNote,
   setActiveNote,
@@ -16,7 +14,7 @@ export default function TopBarMobile({
   onMorePress,
   onTitlePress,
 }) {
-  const { chromeBg, accentColor, topBarEdge } = useLayout();
+  const { chromeBg, topBarEdge } = useLayout();
   const { setSettingsOpen, setSettingsTab } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
@@ -108,42 +106,12 @@ export default function TopBarMobile({
               padding: "4px 16px",
               display: "flex",
               alignItems: "center",
-              gap: 4,
               flexShrink: 0,
             }}
-            title={`Settings · Sync: ${syncState}`}
+            aria-label="Notes — open settings"
+            title="Settings"
           >
-            <img src={boojyN} alt="" style={{ height: 30 }} draggable="false" />
-            <div
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                background:
-                  syncState === "conflict"
-                    ? theme.SEMANTIC.warning
-                    : syncState === "offline"
-                      ? TEXT.muted
-                      : syncState === "error"
-                        ? theme.SEMANTIC.error
-                        : accentColor,
-                flexShrink: 0,
-              }}
-            />
-            <img src={boojyTes} alt="" style={{ height: 30 }} draggable="false" />
-            {(syncState === "syncing" || syncState === "retrying") && (
-              <span
-                style={{
-                  fontSize: 10,
-                  color: theme.BRAND.orange,
-                  marginLeft: 2,
-                  opacity: 0.8,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Syncing&hellip;
-              </span>
-            )}
+            <img src={boojyWordmark} alt="" style={{ height: 30 }} draggable="false" />
           </button>
 
           <div style={{ flex: 1 }} />

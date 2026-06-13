@@ -221,8 +221,10 @@ describe("TopBar", () => {
     expect(getByTitle("Hide sidebar")).toBeInTheDocument();
   });
 
-  it("renders the sync dot indicator button with syncState in title", () => {
-    const { getByTitle } = renderTopBar({ syncState: "offline" });
-    expect(getByTitle("Settings \u00b7 Sync: offline")).toBeInTheDocument();
+  it("opens settings on the Profile tab when the Notes logo is clicked", () => {
+    const { getByTestId } = renderTopBar();
+    fireEvent.click(getByTestId("settings-button"));
+    expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
+    expect(settingsState.setSettingsTab).toHaveBeenCalledWith("profile");
   });
 });

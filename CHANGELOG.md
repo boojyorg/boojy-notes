@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Improvements
+- **New "Notes" logo, and the logo now opens Settings** — The top-bar wordmark is a single new "Notes" mark, and clicking it (on desktop and in the mobile notes list) opens Settings → Profile. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle, and sync status still lives in Settings → Profile (and in the screen-reader status announcement). The About screen uses the same new wordmark.
+
 ## v0.5.0 — 2026-06-12
 
 ### Bug Fixes
