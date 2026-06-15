@@ -259,9 +259,11 @@ export default function BoojyNotes() {
   // On desktop, cloud sync is opt-in per device (off by default — local-only).
   // Passing a null user keeps every sync trigger inert, even when a Supabase
   // session was silently restored from a previous run.
-  const [syncEnabled, setSyncEnabled] = useState(
-    () => !isElectron || localStorage.getItem("boojy-sync-enabled") === "1",
-  );
+  // Desktop dogfood build (w/c 2026-06-15): sync is disabled & hidden on desktop —
+  // the engine stays dormant (null user below) and the Settings toggle is hidden.
+  // Reversible: restore the localStorage opt-in here + the desktop Sync section in
+  // ProfileTab to bring it back. Web (parked) is unchanged.
+  const [syncEnabled, setSyncEnabled] = useState(() => !isElectron);
   const toggleSyncEnabled = useCallback((next) => {
     setSyncEnabled(next);
     try {

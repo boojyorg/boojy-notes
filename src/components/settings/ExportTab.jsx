@@ -3,7 +3,13 @@ import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
 
-export default function ExportTab({ isDesktop, notesDir, changeNotesDir, SectionHeader }) {
+export default function ExportTab({
+  isDesktop,
+  isMobile,
+  notesDir,
+  changeNotesDir,
+  SectionHeader,
+}) {
   const { theme } = useTheme();
   const { TEXT } = theme;
 
@@ -15,7 +21,7 @@ export default function ExportTab({ isDesktop, notesDir, changeNotesDir, Section
   const truncated = displayPath.length > 32 ? "\u2026" + displayPath.slice(-30) : displayPath;
 
   return (
-    <div style={{ marginBottom: spacing.xxxl }}>
+    <div style={{ marginBottom: isMobile ? spacing.xxxl : 0 }}>
       <SectionHeader title="Storage" />
       <div
         style={{
