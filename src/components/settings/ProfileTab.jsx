@@ -687,7 +687,10 @@ export default function ProfileTab({
       </div>
 
       {/* --- Sync (logged in only) --- */}
+      {/* Desktop dogfood build (w/c 2026-06-15): sync disabled & hidden on desktop.
+          Remove `!isDesktop` to bring the Sync section back. Web (parked) unchanged. */}
       {loggedIn &&
+        !isDesktop &&
         (() => {
           const statusLabel =
             syncState === "syncing"
