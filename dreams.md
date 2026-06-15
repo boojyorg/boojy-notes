@@ -8,11 +8,16 @@
 
 ## 1. 🎯 Active Engineering Target
 
-> **⏰ Session-start reminders (w/c 2026-06-15):** (1) finish the **new logo** — carried from last
-> week's list; Tyr wants it completed early this week (weekend if possible). Raise it at the start
-> of the session. (2) After v0.5.0 ships, the next milestone is a **stable desktop build + real
-> dogfooding** — snapshot-tag first, then remove sync (settle the scope in-session: desktop-only
-> or web too), stability pass before new features.
+> **⏰ This week's target (w/c 2026-06-15): desktop-only stable build, then polish.** Scope is
+> settled — **desktop only this week** (web is parked; don't widen the blast radius). The shape:
+> 1. **Snapshot-tag** current `master` first — a known-good fallback before pulling anything out.
+> 2. **Remove sync** — the riskiest surface, and irrelevant to a single-device dogfooding loop.
+> 3. **Stability pass** — harden what's left so the desktop build is something Tyr can live in daily.
+> 4. **Polish pass** — once stable, make it *feel good and look nice*: spacing, motion, typography,
+>    empty states, the small interaction details. Design-led refinement, **not new features**.
+>
+> Guardrails: no new features this week; the logo already shipped (#48 — done). "Polish" = refining
+> what exists, never scope growth. Verify each step on `pnpm dev` before moving to the next.
 
 **Status:** **v0.5.0 shipped** (2026-06-12) — release PR merged to `master` (web auto-deploys),
 `v0.5.0` tag builds the desktop DMG/EXE. Import gate **passed**: vault copy stayed
