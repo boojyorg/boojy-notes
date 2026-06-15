@@ -149,7 +149,24 @@ export default function ProfileTab({
       {/* --- Profile --- */}
       <div>
         <SectionHeader title="Profile" />
-        {!loggedIn ? (
+        {/* Desktop dogfood build (w/c 2026-06-15): sync is off, so the sign-in form
+            (it sells cross-device sync) is replaced with a local-only note on desktop.
+            Remove the isDesktop gates on these two !loggedIn blocks to restore sign-in.
+            Web is unaffected. */}
+        {!loggedIn && isDesktop && (
+          <p
+            style={{
+              margin: `0 0 ${spacing.xxxl}px`,
+              fontSize: fontSize.md,
+              color: TEXT.secondary,
+              lineHeight: 1.5,
+            }}
+          >
+            Your notes live on this device. Accounts and sync are turned off in this build —
+            everything stays local.
+          </p>
+        )}
+        {!loggedIn && !isDesktop && (
           <>
             <div
               style={{
@@ -599,7 +616,8 @@ export default function ProfileTab({
               </div>
             )}
           </>
-        ) : (
+        )}
+        {loggedIn && (
           <div style={{ marginBottom: spacing.xxxl }}>
             {/* Name row */}
             {(user?.user_metadata?.display_name || user?.user_metadata?.full_name) && (

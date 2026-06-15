@@ -100,7 +100,10 @@ export default function SettingsModal({
   const sidebarItems = [
     { id: "profile", label: "Profile" },
     ...(isDesktop ? [{ id: "storage", label: "Storage" }] : []),
-    ...(loggedIn ? [{ id: "sync", label: "Sync" }] : []),
+    // Desktop dogfood build (w/c 2026-06-15): sync is off — hide the Sync nav item on
+    // desktop. (Storage stays: it's local export / notes-dir, not cloud.) Remove the
+    // `&& !isDesktop` to restore. Web is unaffected.
+    ...(loggedIn && !isDesktop ? [{ id: "sync", label: "Sync" }] : []),
     { id: "appearance", label: "Appearance" },
     ...(isDesktop ? [{ id: "updates", label: "Updates" }] : []),
   ];
