@@ -135,8 +135,20 @@ export default function SettingsModal({
     setSettingsTab(active);
   };
 
-  const SectionHeader = ({ title }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: spacing.lg }}>
+  const SectionHeader = ({ title, first }) => (
+    // Section spacing is centralized here: each desktop section self-spaces from the one
+    // above via marginTop (the first header is flush — the content area pads the top).
+    // This also spaces sections that share a tab (e.g. Editor + Updates in EditorTab).
+    // Mobile passes SectionHeader={() => null}, so this never affects the mobile layout.
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        marginTop: first ? 0 : spacing.xxxl,
+        marginBottom: spacing.lg,
+      }}
+    >
       <span
         style={{
           fontSize: fontSize.xs,
@@ -286,6 +298,7 @@ export default function SettingsModal({
               <MobileCard>
                 <ExportTab
                   isDesktop={isDesktop}
+                  isMobile={isMobile}
                   notesDir={notesDir}
                   changeNotesDir={changeNotesDir}
                   SectionHeader={() => null}
@@ -517,6 +530,7 @@ export default function SettingsModal({
             <div ref={(el) => (sectionRefs.current.storage = el)}>
               <ExportTab
                 isDesktop={isDesktop}
+                isMobile={false}
                 notesDir={notesDir}
                 changeNotesDir={changeNotesDir}
                 SectionHeader={SectionHeader}

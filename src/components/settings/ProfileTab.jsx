@@ -148,7 +148,7 @@ export default function ProfileTab({
     <>
       {/* --- Profile --- */}
       <div>
-        <SectionHeader title="Profile" />
+        <SectionHeader title="Profile" first />
         {/* Desktop dogfood build (w/c 2026-06-15): sync is off, so the sign-in form
             (it sells cross-device sync) is replaced with a local-only note on desktop.
             Remove the isDesktop gates on these two !loggedIn blocks to restore sign-in.
@@ -156,7 +156,9 @@ export default function ProfileTab({
         {!loggedIn && isDesktop && (
           <p
             style={{
-              margin: `0 0 ${spacing.xxxl}px`,
+              // Desktop section spacing now comes from the next header's marginTop;
+              // keep the trailing gap only for the mobile card.
+              margin: isMobile ? `0 0 ${spacing.xxxl}px` : 0,
               fontSize: fontSize.md,
               color: TEXT.secondary,
               lineHeight: 1.5,
@@ -618,7 +620,9 @@ export default function ProfileTab({
           </>
         )}
         {loggedIn && (
-          <div style={{ marginBottom: spacing.xxxl }}>
+          // Trailing gap kept for the mobile card only; desktop spacing is the next
+          // section header's marginTop.
+          <div style={{ marginBottom: isMobile ? spacing.xxxl : 0 }}>
             {/* Name row */}
             {(user?.user_metadata?.display_name || user?.user_metadata?.full_name) && (
               <div
