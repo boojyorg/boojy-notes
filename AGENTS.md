@@ -92,6 +92,12 @@ General changelog + release flow → suite root `AGENTS.md`. Local specifics: th
 on release review **`docs/private/ROADMAP.md`** (move completed items, reassess priorities). The
 `master`→web / `v*` tag→desktop split is in **Deployment** below.
 
+**Suite-root files that also need updating on release** (these live outside this repo):
+- `~/Documents/Projects/boojy/README.md` — apps table Notes row (version)
+- `~/Documents/Projects/boojy/VISION.md` — product table Notes row + "Status as of" date
+
+Run `/suite-sync` after releasing to catch any remaining drift.
+
 ## Deployment
 
 - **Web (boojy.org):** Cloudflare Pages auto-deploys on push to `master`. Build: `ELECTRON_DISABLE=1 pnpm build`, serves from `dist/`. **The CF Pages build command must be set to pnpm in the dashboard** (it does not read from the repo).
