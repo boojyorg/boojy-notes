@@ -67,8 +67,8 @@ importers:
         specifier: ^4.1.8
         version: 4.1.8(vitest@4.1.8)
       electron:
-        specifier: ^42.4.0
-        version: 42.4.0
+        specifier: ^42.4.1
+        version: 42.4.1
       electron-builder:
         specifier: ^26.15.2
         version: 26.15.2(electron-builder-squirrel-windows@26.8.1)
@@ -334,8 +334,8 @@ packages:
     resolution: {integrity: sha512-0cp4PsWQ/9avqTVMCtZ+GirikIA36ikvjtHweU4/j8yLtgObI0+JUPhYFScgwlteveGB1rt3Cm8UhN04XayDig==}
     engines: {node: '>= 8.9.0'}
 
-  '@electron-internal/extract-zip@1.0.2':
-    resolution: {integrity: sha512-VJuNETNPEhrmQEZezeTZO5TZMV+dobBRyJ7zHjGJWIhMS7m7W1UeClt69u4hkUxv9ZZVxuli/E9Yvc4gDNHGsg==}
+  '@electron-internal/extract-zip@1.0.3':
+    resolution: {integrity: sha512-OjKpjB7gohtEjZiq6nDx1egqjZJhGPN1iFOIED+NFhB/MMkXw/XRcHjh1DGXKT5z2W9eW7Jy2UKU3gpjvusFTQ==}
     engines: {node: '>=22.12.0'}
 
   '@electron/asar@3.4.1':
@@ -1289,8 +1289,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@42.4.0:
-    resolution: {integrity: sha512-OXXqh9LD9KxXPv2Fe25EfU9N9AvWTuV6V81sfhQaNvTAXCd9ONA+Q4OWvMe+CmYD6xIwjFxGGtG/ZphDYYC5OQ==}
+  electron@42.4.1:
+    resolution: {integrity: sha512-8CYHJP5O4wFO+ycoJR98yy907MmPeo+vWXrzjxmGGgRNKqv8pOjjm+wphO0CCgQJnBU7+QUPSJS4QXhbKrO50w==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -1396,6 +1396,10 @@ packages:
 
   form-data@4.0.5:
     resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
+    engines: {node: '>= 6'}
+
+  form-data@4.0.6:
+    resolution: {integrity: sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==}
     engines: {node: '>= 6'}
 
   fs-extra@10.1.0:
@@ -2282,12 +2286,16 @@ packages:
   undici-types@7.24.6:
     resolution: {integrity: sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==}
 
-  undici@6.26.0:
-    resolution: {integrity: sha512-4yqz8a3n5HmGTlsbADNtr/dJlhkh/55Rq798G6ibiULcXbDtaLpTl1pvdqcbFfeoj3iSi52lePFM7h9H21cw/A==}
+  undici@6.27.0:
+    resolution: {integrity: sha512-YmfV3YnEDzXRC5lZ2jWtWWHKGUm1zIt8AhesR1tens+HTNv+YZlN/dp6G727LOvMJ8xjP9Be7Y2Sdr96LDm+pg==}
     engines: {node: '>=18.17'}
 
   undici@7.27.2:
     resolution: {integrity: sha512-uZsKNuzQxDMUY6M3pIMvy5tvlGmtq8XJ2oLAkfRKGNu+1VQAIvLy2xIVG5ATZl5wDXl/tddByAWCizRbOme+TA==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.28.0:
+    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
 
   universalify@0.1.2:
@@ -2741,7 +2749,7 @@ snapshots:
       ajv: 6.15.0
       ajv-keywords: 3.5.2(ajv@6.15.0)
 
-  '@electron-internal/extract-zip@1.0.2': {}
+  '@electron-internal/extract-zip@1.0.3': {}
 
   '@electron/asar@3.4.1':
     dependencies:
@@ -2778,7 +2786,7 @@ snapshots:
       semver: 7.8.4
       sumchecker: 3.0.1
     optionalDependencies:
-      undici: 7.27.2
+      undici: 7.28.0
     transitivePeerDependencies:
       - supports-color
 
@@ -3782,7 +3790,7 @@ snapshots:
       builder-util: 26.8.1
       builder-util-runtime: 9.5.1
       chalk: 4.1.2
-      form-data: 4.0.5
+      form-data: 4.0.6
       fs-extra: 10.1.0
       lazy-val: 1.0.5
       mime: 2.6.0
@@ -3816,9 +3824,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@42.4.0:
+  electron@42.4.1:
     dependencies:
-      '@electron-internal/extract-zip': 1.0.2
+      '@electron-internal/extract-zip': 1.0.3
       '@electron/get': 5.0.0
       '@types/node': 24.13.2
     transitivePeerDependencies:
@@ -3927,6 +3935,14 @@ snapshots:
       minimatch: 5.1.9
 
   form-data@4.0.5:
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.4
+      mime-types: 2.1.35
+
+  form-data@4.0.6:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
@@ -4386,7 +4402,7 @@ snapshots:
       semver: 7.8.4
       tar: 7.5.16
       tinyglobby: 0.2.17
-      undici: 6.26.0
+      undici: 6.27.0
       which: 6.0.1
 
   node-int64@0.4.0: {}
@@ -4834,9 +4850,12 @@ snapshots:
 
   undici-types@7.24.6: {}
 
-  undici@6.26.0: {}
+  undici@6.27.0: {}
 
   undici@7.27.2: {}
+
+  undici@7.28.0:
+    optional: true
 
   universalify@0.1.2: {}
 
