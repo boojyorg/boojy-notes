@@ -7,8 +7,8 @@ A minimal, markdown-based note-taking app for web and desktop.
 - Block-based editor with headings, bullets, checkboxes, and dividers
 - Slash commands and markdown shortcuts
 - Notes stored as `.md` files on disk (Electron) or localStorage (web)
-- Cloud sync via Supabase + Cloudflare R2
-- Email, Google, and Apple sign-in
+- Cloud sync via Supabase + Cloudflare R2 (disabled in current desktop dogfood build; re-enables when sync is stable)
+- Email, Google, and Apple sign-in (disabled in current desktop dogfood build; re-enables when sync is stable)
 - Per-note seeded star field backgrounds
 - Sidebar with folder tree, search, and tabs
 

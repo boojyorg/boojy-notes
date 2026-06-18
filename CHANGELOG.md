@@ -36,7 +36,7 @@
 - **Refactor: BoojyNotes decomposition (cycle 1)** — Pulled three self-contained logic clusters out of the 1,675-line root component into dedicated, unit-tested hooks: `useSearchNavigation` (clear multi-select on search; scroll + highlight a matched block when a search result opens), `useTagHandlers` (sidebar tag-filter on click; token-replace + caret restore on autocomplete), and `useExportImport` (PDF/DOCX export, folder import, and the Electron File-menu listener). No behaviour change; `BoojyNotes.jsx` drops ~100 lines and each hook gains a test.
 - **Refactor: BoojyNotes decomposition (cycle 2)** — Extracted the two higher-coupling editor clusters into `useWikilinkHandlers` (note-title set for broken-link detection, backlink index + current backlinks, and `[[link]]` click / Cmd-click / autocomplete-insert — preserving the native-listener DOM-write that keeps inserted links visible) and `useEditorFocusUX` (floating-toolbar positioning on selection change + the focus/caret placement and scroll-into-view layout effect). No behaviour change; `BoojyNotes.jsx` is now ~1,400 lines (down from 1,675), and both hooks gain tests.
 
-## 0.4.0 — 2026-05-29
+## v0.4.0 — 2026-05-29
 
 ### Removed
 - **Terminal panel** — Removed the desktop terminal (the right-hand panel, its toggle, and the `node-pty` + xterm dependencies). It was Electron-only — on the web app the toggle opened an empty panel — and it's the most tangential feature to note-taking, so it's been pulled while the core gets polished. The pre-removal state is tagged `terminal-snapshot` for an easy future re-add. The top bar is simpler as a result: no right-panel toggle, no reserved right column, tabs now extend the full width, and the word count sits just left of the help button — bracketed by a thin divider on each side, matching the sidebar handle (identical layout on web and desktop). `Cmd+\` (which toggled the panel) is now unbound; `Cmd+Shift+\` split view is unchanged.
@@ -61,7 +61,7 @@
 - **Find shows when it's unsupported** — In browsers without the CSS Highlight API (Firefox, older Safari), the in-note Find counter showed a misleading "0 of 0". It now shows "n/a" with a tooltip explaining the browser requirement.
 - **Auth button signals loading to screen readers** — The sign-in / create-account button now sets `aria-busy` while submitting, so assistive tech announces the in-progress state.
 
-## 0.3.0 — 2026-05-28
+## v0.3.0 — 2026-05-28
 
 ### Removed
 - **Native mobile (iOS/Android)** — Removed the Capacitor wrapper, all `@capacitor/*` packages, the native file API (`nativeAPI.js`), and the `ios/`/`android/` projects. The app now targets **web (responsive PWA) + desktop (Electron)** only. Mobile-browser users still get the touch-optimised layout via responsive web.
@@ -214,7 +214,7 @@
 - **Fix textOnlyEdit flags stuck forever** — `textOnlyEdit`, `textOnlyEditForSidebar`, and `textOnlyEditForEditor` flags are now cleared in the text flush callback, preventing sidebar/editor memo comparators from skipping renders indefinitely
 - **Fix offline edits lost on crash** — Dirty notes are now persisted synchronously via `beforeunload` handler, not just via the 1-second debounced timer
 
-## 0.1.6 (2026-03-19)
+## v0.1.6 (2026-03-19)
 
 ### Bug Fixes
 - **Fix editor top gap** — Change StarField from `position: sticky` to `position: absolute` and reduce editor top padding from 28px to 12px to eliminate the blank gap above the first block
@@ -334,7 +334,7 @@
 - **Note context for AI** — Toggle "ctx: on/off" in the AI chat header to include the current note's content as context in AI conversations.
 - **Unified tab bar** — Terminal and AI tabs coexist in the same tab bar with type-specific icons (`>_` for terminal, `✦` for AI). On web/mobile where terminal isn't available, only the AI tab button appears. Default tab auto-created based on platform (terminal on desktop, AI on web).
 
-## 0.1.5 — 2026-03-16
+## v0.1.5 — 2026-03-16
 
 ### Bug Fixes
 - **Fix copy/paste losing paragraph breaks and block types in web browser** — Pasting HTML with block-level elements (`<p>`, `<div>`, `<li>`, headings) no longer merges all text together; `sanitizeNode` now inserts `<br>` separators when unwrapping block elements. Copy handler now encodes block structure (type, text, metadata) via custom clipboard data so pasting within the editor preserves H1/H2/H3, bullets, checkboxes, blockquotes, and numbered list types. External paste and plain-text fallback still work as before
@@ -347,7 +347,7 @@
 ### Improvements
 - **Component test coverage** — Added first component/integration tests (EditableBlock, SlashMenu, useBlockOperations) using @testing-library/react; set up test infrastructure with vitest jsdom environment, global mocks, and block data factories; total tests: 200 (up from 158)
 
-## 0.1.4 — 2026-03-16
+## v0.1.4 — 2026-03-16
 
 ### Bug Fixes
 - **Fix multi-block copy/paste collapsing into one block** — Copying text across multiple blocks and pasting now preserves all blocks and their types (headings, bullets, checkboxes, etc.) instead of merging everything into a single paragraph; also adds custom copy/cut handlers for cross-block selections and splits external multi-line pastes into separate blocks
@@ -364,7 +364,7 @@
 - **"Type / for commands..." placeholder too dim in dark mode** — The empty-block placeholder text is barely visible in dark mode; should be brighter
 - **Placeholder doesn't reappear after idle** — After typing and then pausing for a few seconds, the "Type / for commands..." placeholder should fade back in over ~1s to remind users of the slash command feature
 
-## 0.1.3 — 2026-03-12
+## v0.1.3 — 2026-03-12
 
 ### Features
 - **Cross-platform CI release workflow** — GitHub Actions workflow builds macOS and Windows installers on tag push (`v*`), with macOS code signing and notarization
@@ -373,7 +373,7 @@
 ### Bug Fixes
 - **Service worker caching stale versions** — Switched from cache-first to stale-while-revalidate strategy and bumped cache version; existing users will get fresh assets on next visit instead of being stuck on old versions
 
-## 0.1.2 — 2026-03-11
+## v0.1.2 — 2026-03-11
 
 ### Improvements
 - **Pull-before-push sync** — Sync now pulls remote changes before pushing local edits, ensuring the client has up-to-date version numbers; eliminates ~90% of false conflict copies when switching between devices
@@ -410,7 +410,7 @@
 ### Known Issues
 - **Split view is buggy** — There are visual and state issues with the split view feature; fixes are planned
 
-## 0.1.1 — 2026-03-09
+## v0.1.1 — 2026-03-09
 
 ### Features
 - **Sync conflict resolution** — When simultaneous edits are made on different devices, a conflict copy is created (e.g. "Note Title (conflict 2026-03-09 12:00:04)") so no data is ever lost; clickable toast notification appears for 8s; conflict copies listed in Settings > Sync with quick-open buttons
