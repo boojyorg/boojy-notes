@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { blocksToMarkdown, markdownToBlocks, parseTableRow } from "../../src/utils/markdown.js";
+import {
+  applyEol,
+  blocksToMarkdown,
+  detectEol,
+  markdownToBlocks,
+  parseTableRow,
+} from "../../src/utils/markdown.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUND-TRIP GUARDRAIL
@@ -359,5 +365,28 @@ describe("image width preservation (preservation fix, 2026-08)", () => {
       blocksToMarkdown([{ type: "image", src: "photo.png", alt: "photo", width: 50, text: "" }]),
     );
     expect(out.widthPx).toBeUndefined();
+  });
+});
+
+describe("line-ending preservation (fidelity fix, 2026-08)", () => {
+  // CRLF files were silently converted to LF — except inside code blocks,
+  // which kept their CRs, leaving a mixed-EOL file. Blocks are now always
+  // LF-internal; the file's style is detected on read and re-applied on save.
+
+  it("detectEol picks the dominant style", () => {
+    expect(detectEol("a\r\nb\r\n")).toBe("\r\n");
+    expect(detectEol("a\nb\n")).toBe("\n");
+    expect(detectEol("no newline")).toBe("\n");
+  });
+
+  it("a CRLF file round-trips byte-exact through the desktop path", () => {
+    const md = "# Title\r\n\r\n- item\r\n\r\n```js\r\nconst x = 1;\r\n```\r\n";
+    const out = applyEol(blocksToMarkdown(markdownToBlocks(md)), detectEol(md));
+    expect(out).toBe(md);
+  });
+
+  it("code block text never contains CRs (no more mixed-EOL output)", () => {
+    const blocks = markdownToBlocks("```\r\nline one\r\nline two\r\n```\r\n");
+    expect(blocks[0].text).toBe("line one\nline two");
   });
 });

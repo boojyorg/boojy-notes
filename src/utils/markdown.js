@@ -43,6 +43,23 @@ function listIndent(block) {
   return block.indentStr ?? "  ".repeat(block.indent || 0);
 }
 
+/**
+ * The file's dominant line-ending style. Read before parsing, kept on
+ * note.content.eol (desktop), re-applied by applyEol on write — so a CRLF
+ * file stays CRLF instead of being silently converted (and mixed EOLs
+ * inside code blocks are healed to the dominant style).
+ */
+export function detectEol(md) {
+  const crlf = (md.match(/\r\n/g) || []).length;
+  const lone = (md.match(/(?<!\r)\n/g) || []).length;
+  return crlf > 0 && crlf >= lone ? "\r\n" : "\n";
+}
+
+/** Re-apply a detected EOL style to serialized (LF-only) markdown. */
+export function applyEol(md, eol) {
+  return eol === "\r\n" ? md.replace(/\n/g, "\r\n") : md;
+}
+
 export function blocksToMarkdown(blocks) {
   const lines = [];
   // Numbered items keep their parsed number (block.num); items created in-app
@@ -168,7 +185,10 @@ export function blocksToMarkdown(blocks) {
 }
 
 export function markdownToBlocks(md) {
-  const lines = md.split(/\n/);
+  // Blocks are always LF-internal; the file's EOL style is handled at the
+  // read/write boundary (detectEol/applyEol). Normalising up front also keeps
+  // CRLF fragments out of code-block text (which used to produce mixed EOLs).
+  const lines = md.replace(/\r\n/g, "\n").split(/\n/);
   const blocks = [];
   let i = 0;
 
