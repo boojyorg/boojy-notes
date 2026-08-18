@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 
 const hBg = (el, c) => {
@@ -36,6 +37,16 @@ const ContextMenu = memo(function ContextMenu({
   const itemsRef = useRef([]);
   const menuContainerRef = useRef(null);
   useFocusTrap(menuContainerRef, !!ctxMenu);
+
+  // The click position is a point anchor: the menu opens at it where possible
+  // and flips/clamps into the viewport otherwise (e.g. the note-actions ···
+  // button in the top-right corner). Submenu growth re-measures via reflowKey.
+  const anchor = useMemo(
+    () =>
+      ctxMenu ? { top: ctxMenu.y, bottom: ctxMenu.y, left: ctxMenu.x, right: ctxMenu.x } : null,
+    [ctxMenu],
+  );
+  const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor, { reflowKey: moveSubmenu });
 
   // Keyboard navigation — hooks must be above early return
   const handleKeyDown = useCallback(
@@ -219,8 +230,8 @@ const ContextMenu = memo(function ContextMenu({
         aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}
         style={{
           position: "fixed",
-          top: ctxMenu.y,
-          left: ctxMenu.x,
+          top: pos?.top ?? ctxMenu.y,
+          left: pos?.left ?? ctxMenu.x,
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,

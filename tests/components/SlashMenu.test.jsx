@@ -108,11 +108,11 @@ describe("SlashMenu", () => {
     expect(screen.getByText("No matching commands")).toBeInTheDocument();
   });
 
-  it("renders at the provided position", () => {
-    const menu = { ...defaultMenu, rect: { top: 42, left: 99 } };
+  it("renders 4px below the anchor block", () => {
+    const menu = { ...defaultMenu, rect: { top: 30, bottom: 42, left: 99, right: 300 } };
     render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
-    // The menu container div should have the fixed position
-    const menuEl = document.querySelector("[style*='top: 42px']");
+    // The menu container div should have the fixed position: block bottom + 4
+    const menuEl = document.querySelector("[style*='top: 46px']");
     expect(menuEl).toBeInTheDocument();
     expect(menuEl.style.left).toBe("99px");
   });
