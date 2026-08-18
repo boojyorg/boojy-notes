@@ -1,0 +1,4 @@
+# Preservation fixtures are byte-sensitive (CRLF, trailing spaces, no final
+# newline). Git must never normalise their line endings — the tests assert on
+# exact bytes.
+tests/fixtures/preservation/* -text
