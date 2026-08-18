@@ -1,16 +1,14 @@
 import { createContext, useState, useEffect, useContext, useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { isElectron } from "../utils/platform";
-import { getAPI } from "../services/apiProvider";
 
 const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
   const [settingsFontSize, setSettingsFontSize] = useState(15);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("profile");
 
-  // UI Scale state
+  // UI Scale state — no settings UI; driven by the Cmd+Plus/Minus/0 shortcuts.
   const [uiScale, setUiScale] = useState(() => {
     const saved = localStorage.getItem("boojy-ui-scale");
     return saved ? Number(saved) : 100;
@@ -23,6 +21,8 @@ export function SettingsProvider({ children }) {
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);
 
+  // Auth is kept wired (recoverable sync work) even though the sign-in surface
+  // is unmounted until local-first Boojy Notes is stable.
   const {
     user,
     profile,
@@ -39,27 +39,15 @@ export function SettingsProvider({ children }) {
     const params = new URLSearchParams(window.location.search);
     if (hash.includes("access_token") || params.has("code")) {
       setSettingsOpen(true);
-      setSettingsTab("profile");
     }
   }, []);
 
-  // Spell check state
-  const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
-  const [spellCheckLanguages, setSpellCheckLanguages] = useState(["en-US"]);
+  // Spell check has no settings UI: the Electron main process applies the
+  // stored preference at startup (electron/main.js) and defaults it on.
 
   // Auto-update state (desktop only)
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
   const [updateStatus, setUpdateStatus] = useState({ state: "idle" });
-
-  // Load settings on mount (spell check, etc.)
-  useEffect(() => {
-    const api = getAPI();
-    if (!api?.getSettings) return;
-    api.getSettings().then((s) => {
-      if (s.spellCheckEnabled !== undefined) setSpellCheckEnabled(s.spellCheckEnabled !== false);
-      if (s.spellCheckLanguages) setSpellCheckLanguages(s.spellCheckLanguages);
-    });
-  }, []);
 
   // Load auto-update settings and listen for update status events (desktop only)
   useEffect(() => {
@@ -75,8 +63,6 @@ export function SettingsProvider({ children }) {
       setSettingsFontSize,
       settingsOpen,
       setSettingsOpen,
-      settingsTab,
-      setSettingsTab,
       uiScale,
       setUiScale,
       user,
@@ -86,10 +72,6 @@ export function SettingsProvider({ children }) {
       signInWithOAuth,
       signOut,
       resendVerification,
-      spellCheckEnabled,
-      setSpellCheckEnabled,
-      spellCheckLanguages,
-      setSpellCheckLanguages,
       autoUpdateEnabled,
       setAutoUpdateEnabled,
       updateStatus,
@@ -98,7 +80,6 @@ export function SettingsProvider({ children }) {
     [
       settingsFontSize,
       settingsOpen,
-      settingsTab,
       uiScale,
       user,
       profile,
@@ -107,8 +88,6 @@ export function SettingsProvider({ children }) {
       signInWithOAuth,
       signOut,
       resendVerification,
-      spellCheckEnabled,
-      spellCheckLanguages,
       autoUpdateEnabled,
       updateStatus,
     ],

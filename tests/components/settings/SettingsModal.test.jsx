@@ -37,20 +37,12 @@ vi.mock("../../../src/hooks/useFocusTrap", () => ({
   useFocusTrap: vi.fn(),
 }));
 
-// Mutable settings state so tests can toggle settingsOpen / settingsTab
+// Mutable settings state so tests can toggle settingsOpen
 const settingsState = {
   settingsOpen: true,
   setSettingsOpen: vi.fn(),
-  settingsTab: "profile",
-  setSettingsTab: vi.fn(),
   user: null,
   profile: null,
-  aiSettings: {},
-};
-
-const layoutState = {
-  accentColor: "#A4CACE",
-  chromeBg: "#222",
 };
 
 vi.mock("../../../src/context/SettingsContext", () => ({
@@ -58,23 +50,15 @@ vi.mock("../../../src/context/SettingsContext", () => ({
   SettingsProvider: ({ children }) => children,
 }));
 
-vi.mock("../../../src/context/LayoutContext", () => ({
-  useLayout: () => layoutState,
-  LayoutProvider: ({ children }) => children,
-}));
-
 // Stub child tab components so we only test the modal shell
-vi.mock("../../../src/components/settings/ProfileTab", () => ({
-  default: () => <div data-testid="profile-tab">Profile</div>,
-}));
 vi.mock("../../../src/components/settings/AppearanceTab", () => ({
   default: () => <div data-testid="appearance-tab">Appearance</div>,
 }));
-vi.mock("../../../src/components/settings/EditorTab", () => ({
-  default: () => <div data-testid="editor-tab">Editor</div>,
+vi.mock("../../../src/components/settings/UpdatesTab", () => ({
+  default: ({ isDesktop }) => (isDesktop ? <div data-testid="updates-tab">Updates</div> : null),
 }));
 vi.mock("../../../src/components/settings/ExportTab", () => ({
-  default: () => <div data-testid="export-tab">Export</div>,
+  default: ({ isDesktop }) => (isDesktop ? <div data-testid="export-tab">Export</div> : null),
 }));
 vi.mock("../../../src/components/settings/AboutTab", () => ({
   BrandingFooter: () => <div data-testid="branding-footer" />,
@@ -88,13 +72,6 @@ import SettingsModal from "../../../src/components/settings/SettingsModal.jsx";
 
 const defaultProps = {
   isMobile: false,
-  syncState: "synced",
-  lastSynced: null,
-  storageUsed: 0,
-  storageLimitMB: 100,
-  onSync: vi.fn(),
-  noteData: {},
-  setActiveNote: vi.fn(),
   isDesktop: true,
   notesDir: "/notes",
   changeNotesDir: vi.fn(),
@@ -107,13 +84,8 @@ function renderModal(overrides = {}) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  // jsdom doesn't implement Element.scrollTo — stub it to avoid unhandled errors
-  Element.prototype.scrollTo = vi.fn();
-
   settingsState.settingsOpen = true;
   settingsState.setSettingsOpen = vi.fn();
-  settingsState.settingsTab = "profile";
-  settingsState.setSettingsTab = vi.fn();
   settingsState.user = null;
 });
 
@@ -142,32 +114,36 @@ describe("SettingsModal", () => {
     expect(dialog.getAttribute("aria-label")).toBe("Settings");
   });
 
-  it("renders sidebar navigation buttons on desktop", () => {
+  it("is a single pane: no navigation sidebar and no Profile section", () => {
     renderModal();
-    // Sidebar buttons contain text that may also appear in child stubs,
-    // so query all and check at least two matches (sidebar + stub).
-    const profileMatches = screen.getAllByText("Profile");
-    expect(profileMatches.length).toBeGreaterThanOrEqual(2); // sidebar button + stub
-    // Appearance only appears once in stub and once in sidebar
-    const appearanceMatches = screen.getAllByText("Appearance");
-    expect(appearanceMatches.length).toBeGreaterThanOrEqual(2);
-    // Storage sidebar item is desktop-only and not duplicated in stubs
-    expect(screen.getByText("Storage")).toBeInTheDocument();
-    expect(screen.getByText("Updates")).toBeInTheDocument();
+    expect(screen.queryByText("Profile")).not.toBeInTheDocument();
+    // The nav items used to be buttons named after sections; the section content
+    // stubs are the only match now.
+    expect(screen.getAllByTestId(/appearance-tab/).length).toBe(1);
+    expect(screen.queryByRole("button", { name: "Appearance" })).not.toBeInTheDocument();
   });
 
-  it("clicking a sidebar item calls setSettingsTab", () => {
+  it("renders Appearance, Storage and Updates content plus the About footer on desktop", () => {
     renderModal();
-    // Use Storage button — unique to sidebar (no child stub named "Storage")
-    const storageBtn = screen.getByText("Storage");
-    fireEvent.click(storageBtn);
-    expect(settingsState.setSettingsTab).toHaveBeenCalledWith("storage");
+    expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("export-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("updates-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("content-footer")).toBeInTheDocument();
+    // The big branding block is desktop-gone.
+    expect(screen.queryByTestId("branding-footer")).not.toBeInTheDocument();
+  });
+
+  it("hides the desktop-only sections on web", () => {
+    renderModal({ isDesktop: false });
+    expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
+    expect(screen.queryByTestId("export-tab")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("updates-tab")).not.toBeInTheDocument();
   });
 
   it("renders the close button on desktop and calls setSettingsOpen(false)", () => {
     renderModal();
     // The close button renders the unicode cross character
-    const closeBtn = screen.getByText("\u2715");
+    const closeBtn = screen.getByText("✕");
     fireEvent.click(closeBtn);
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);
   });
@@ -180,10 +156,8 @@ describe("SettingsModal", () => {
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);
   });
 
-  it("renders child tab content sections", () => {
-    renderModal();
-    expect(screen.getByTestId("profile-tab")).toBeInTheDocument();
-    expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
-    expect(screen.getByTestId("editor-tab")).toBeInTheDocument();
+  it("keeps the branding footer on the mobile layout", () => {
+    renderModal({ isMobile: true });
+    expect(screen.getByTestId("branding-footer")).toBeInTheDocument();
   });
 });

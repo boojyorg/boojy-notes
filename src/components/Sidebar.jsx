@@ -155,7 +155,7 @@ const Sidebar = memo(function Sidebar({
   isMobile,
 }) {
   const { sidebarWidth, accentColor, selectionStyle, setCollapsed } = useLayout();
-  const { setSettingsOpen, setSettingsTab } = useSettings();
+  const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
   const { noteData } = useNoteData();
@@ -505,10 +505,7 @@ const Sidebar = memo(function Sidebar({
           <button
             data-testid="settings-button"
             type="button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setSettingsTab("profile");
-            }}
+            onClick={() => setSettingsOpen(true)}
             aria-label="Notes — open settings"
             title="Settings"
             style={{

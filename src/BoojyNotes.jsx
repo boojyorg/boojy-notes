@@ -35,8 +35,6 @@ import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
-import OnboardingToast from "./components/OnboardingToast";
-import PersistenceWarning from "./components/PersistenceWarning";
 import FirstSyncModal from "./components/FirstSyncModal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ConflictToast from "./components/ConflictToast";
@@ -45,7 +43,6 @@ import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
-import { useWebNags } from "./hooks/useWebNags";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import { useTagHandlers } from "./hooks/useTagHandlers";
@@ -92,8 +89,7 @@ export default function BoojyNotes() {
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { settingsOpen, setSettingsOpen, setSettingsTab, uiScale, setUiScale, user, profile } =
-    useSettings();
+  const { settingsOpen, setSettingsOpen, uiScale, setUiScale, user, profile } = useSettings();
 
   const {
     collapsed,
@@ -168,9 +164,9 @@ export default function BoojyNotes() {
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // ── Onboarding & persistence warning toasts (web only) ────────────
-  const { onboardingToast, setOnboardingToast, persistenceWarning, setPersistenceWarning } =
-    useWebNags({ noteData, user });
+  // The web sign-in nags (OnboardingToast / PersistenceWarning) are unmounted
+  // with the rest of the cloud-sync surface — components + useWebNags stay on
+  // disk for when sync comes back.
 
   // ── Refs ────────────────────────────────────────────────────────────
   const blockRefs = useRef({});
@@ -192,21 +188,9 @@ export default function BoojyNotes() {
   // the engine stays dormant (null user below) and the Settings toggle is hidden.
   // Reversible: restore the localStorage opt-in here + the desktop Sync section in
   // ProfileTab to bring it back. Web (parked) is unchanged.
-  const [syncEnabled, setSyncEnabled] = useState(() => !isElectron);
-  const toggleSyncEnabled = useCallback((next) => {
-    setSyncEnabled(next);
-    try {
-      localStorage.setItem("boojy-sync-enabled", next ? "1" : "0");
-    } catch {
-      // storage unavailable — the toggle still applies for this session
-    }
-  }, []);
+  const [syncEnabled] = useState(() => !isElectron);
   const {
     syncState,
-    lastSynced,
-    storageUsed,
-    storageLimitMB,
-    syncAll,
     conflictToast,
     dismissConflictToast,
     pendingFirstSync,
@@ -1047,18 +1031,9 @@ export default function BoojyNotes() {
       <React.Suspense fallback={null}>
         <SettingsModal
           isMobile={isMobile}
-          syncState={syncState}
-          lastSynced={lastSynced}
-          storageUsed={storageUsed}
-          storageLimitMB={storageLimitMB}
-          onSync={syncAll}
-          noteData={noteData}
-          setActiveNote={setActiveNote}
           isDesktop={isDesktop}
           notesDir={notesDir}
           changeNotesDir={changeNotesDir}
-          syncEnabled={syncEnabled}
-          onToggleSyncEnabled={toggleSyncEnabled}
         />
       </React.Suspense>
 
@@ -1069,39 +1044,6 @@ export default function BoojyNotes() {
       )}
 
       <GlobalStyles />
-
-      {onboardingToast && !user && isWeb && (
-        <OnboardingToast
-          accentColor={accentColor}
-          onSignIn={() => {
-            setOnboardingToast(false);
-            localStorage.setItem("boojy-onboarding-dismissed", "true");
-            setSettingsOpen(true);
-            setSettingsTab("profile");
-          }}
-          onDismiss={() => {
-            setOnboardingToast(false);
-            localStorage.setItem("boojy-onboarding-dismissed", "true");
-          }}
-        />
-      )}
-
-      {persistenceWarning && !user && isWeb && !onboardingToast && (
-        <PersistenceWarning
-          noteCount={Object.keys(noteData).filter((id) => !noteData[id]._draft).length}
-          accentColor={accentColor}
-          onSignIn={() => {
-            setPersistenceWarning(false);
-            localStorage.setItem("boojy-persistence-warning-dismissed", "true");
-            setSettingsOpen(true);
-            setSettingsTab("profile");
-          }}
-          onDismiss={() => {
-            setPersistenceWarning(false);
-            localStorage.setItem("boojy-persistence-warning-dismissed", "true");
-          }}
-        />
-      )}
 
       {pendingFirstSync && (
         <FirstSyncModal
