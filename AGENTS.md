@@ -47,6 +47,13 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > losslessly, enforced by `tests/utils/markdown.test.js`. No nesting/columns/JSON-blob blocks.
 > Read `docs/SPEC-markdown-source-of-truth.md` before adding or changing any block type.
 
+> **⚠️ PRODUCT PHILOSOPHY — read `docs/PHILOSOPHY.md` before planning features or UI.**
+> Boojy is a simple editor for Markdown files you own; unsupported Markdown must be
+> *preserved*, not cleaned up (the other round-trip direction: markdown→blocks→markdown,
+> enforced by `tests/utils/preservation.test.js` with known failures explicitly marked).
+> Every syntax sits at one of four support levels: Native / Compatible / Preserved / Out
+> of scope. Features do not earn permanent UI merely because Boojy can support them.
+
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 
 > **⚠️ Editor gotchas (these have caused real bugs — read before touching the editor):**
