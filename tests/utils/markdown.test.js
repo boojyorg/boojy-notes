@@ -292,3 +292,24 @@ describe("table cells with literal pipes (preservation fix, 2026-08)", () => {
     expect(out.rows).toEqual(blocks[0].rows); // read back intact
   });
 });
+
+describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => {
+  // Paragraph text used to be stored trimmed, which flattened 4-space
+  // indented code blocks to prose and stripped markdown hard breaks
+  // (two trailing spaces) on every save.
+
+  it("keeps leading indentation (indented code / HTML stay intact)", () => {
+    const md = "    indented code line\n\ttab-indented line\n   three-space paragraph";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("keeps trailing spaces (markdown hard breaks survive)", () => {
+    const md = "line with a hard break  \ncontinuation line";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("still drops only the CR of a CRLF paragraph line (existing EOL policy)", () => {
+    const [block] = markdownToBlocks("plain line\r\n");
+    expect(block.text).toBe("plain line");
+  });
+});

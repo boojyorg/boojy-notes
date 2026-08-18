@@ -380,7 +380,12 @@ export function markdownToBlocks(md) {
         format: "md",
       };
     } else {
-      block = { id: `md-${++_parseBlockId}`, type: "p", text: line };
+      // Preserve the line's own whitespace: leading indentation (indented code
+      // blocks, HTML, hanging indents) and trailing spaces (markdown hard
+      // breaks) are meaningful bytes that must survive a save. Only a CRLF
+      // ending's CR is dropped — line endings are normalised on save, a known
+      // separate limitation in the preservation corpus.
+      block = { id: `md-${++_parseBlockId}`, type: "p", text: raw.replace(/\r$/, "") };
     }
     blocks.push(block);
     i++;

@@ -1,5 +1,3 @@
-
-
 # Whitespace
 
 EDITME paragraph with two trailing spaces after this line.  

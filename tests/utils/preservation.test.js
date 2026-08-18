@@ -45,11 +45,10 @@ const KNOWN_FAILURES = {
   "backtick-fences.md": { roundtrip: true, edit: true }, // empty fence gains a blank line
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
   "crlf.md": { roundtrip: true, edit: true }, // CRLF → LF, except inside code blocks (mixed EOL)
-  "html-indented.md": { roundtrip: true, edit: true }, // HTML indentation flattened
+  "leading-blanks.md": { roundtrip: true, edit: true }, // blank lines before the first block are dropped
   "list-markers.md": { roundtrip: true, edit: true }, // *,+ and tab-indented children dedented to col 0
   "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7.; 3-space nesting re-quantised
   "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
-  "whitespace.md": { roundtrip: true, edit: true }, // indented code flattened; hard breaks stripped; leading blanks dropped
   "wikilinks-embeds.md": { roundtrip: true, edit: true }, // ![[img|300]] → 301 (width quantised to 1/7ths)
 };
 
