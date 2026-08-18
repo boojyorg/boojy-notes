@@ -1,218 +1,124 @@
-const Icon = ({ children, size = 14, ...props }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 16 16"
-    fill="none"
-    style={{ flexShrink: 0 }}
-    {...props}
-  >
-    {children}
-  </svg>
+/**
+ * UI icons — Lucide, wrapped so call sites keep their existing names and props.
+ *
+ * House rules (Phase 1 UI pass):
+ *   size 16    inline: sidebar rows, menu items, breadcrumbs
+ *   size 20    standalone controls: panel toggle, note actions
+ *   stroke 1.5 everywhere — Lucide's default 2 reads busy at 16px in a writing app
+ *
+ * Everything here inherits `currentColor`, so colour comes from the themed text
+ * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
+ */
+import {
+  ChevronDown as LuChevronDown,
+  ChevronLeft as LuChevronLeft,
+  ChevronRight as LuChevronRight,
+  Code as LuCode,
+  FileText as LuFileText,
+  Folder as LuFolder,
+  FolderOpen as LuFolderOpen,
+  FolderPlus as LuFolderPlus,
+  Heading1 as LuHeading1,
+  Heading2 as LuHeading2,
+  Heading3 as LuHeading3,
+  HelpCircle as LuHelpCircle,
+  Image as LuImage,
+  Info as LuInfo,
+  Link as LuLink,
+  List as LuList,
+  ListOrdered as LuListOrdered,
+  Menu as LuMenu,
+  Minus as LuMinus,
+  MoreHorizontal as LuMoreHorizontal,
+  PanelLeft as LuPanelLeft,
+  Paperclip as LuPaperclip,
+  Plus as LuPlus,
+  Redo2 as LuRedo2,
+  Search as LuSearch,
+  Settings as LuSettings,
+  SquareCheck as LuSquareCheck,
+  SquarePen as LuSquarePen,
+  Table as LuTable,
+  TextQuote as LuTextQuote,
+  Trash2 as LuTrash2,
+  Undo2 as LuUndo2,
+  X as LuX,
+} from "lucide-react";
+
+export const ICON_INLINE = 16;
+export const ICON_CONTROL = 20;
+export const ICON_STROKE = 1.5;
+
+const base = { strokeWidth: ICON_STROKE };
+
+// ── Disclosure ────────────────────────────────────────────────────────────
+export const ChevronRight = ({ color = "currentColor", size = ICON_INLINE }) => (
+  <LuChevronRight {...base} size={size} color={color} />
+);
+export const ChevronDown = ({ color = "currentColor", size = ICON_INLINE }) => (
+  <LuChevronDown {...base} size={size} color={color} />
+);
+export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
+// Breadcrumb separators sit inside 12px text, so they run a step smaller.
+export const BreadcrumbChevron = () => <LuChevronRight {...base} size={14} />;
+
+// ── Tree items ────────────────────────────────────────────────────────────
+export const FolderIcon = ({ open, color, size: sz }) => {
+  const Cmp = open ? LuFolderOpen : LuFolder;
+  return <Cmp {...base} size={sz || ICON_INLINE} color={color || "currentColor"} />;
+};
+export const FileIcon = ({ active, color, size: sz }) => (
+  <LuFileText
+    {...base}
+    size={sz || ICON_INLINE}
+    color={color || "currentColor"}
+    // Preserves the previous active/inactive weighting without a second colour.
+    opacity={color ? 1 : active ? 0.9 : 0.65}
+  />
 );
 
-export const ChevronRight = ({ color = "#646880" }) => (
-  <Icon size={14}>
-    <path
-      d="M5.5 3L10 8L5.5 13"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Icon>
+// ── Actions ───────────────────────────────────────────────────────────────
+export const SearchIcon = ({ size = ICON_INLINE }) => <LuSearch {...base} size={size} />;
+export const CloseIcon = () => <LuX {...base} size={14} />;
+export const UndoIcon = ({ size = ICON_INLINE }) => <LuUndo2 {...base} size={size} />;
+export const RedoIcon = ({ size = ICON_INLINE }) => <LuRedo2 {...base} size={size} />;
+export const NewNoteIcon = ({ size = ICON_INLINE }) => <LuSquarePen {...base} size={size} />;
+export const NewFolderIcon = () => <LuFolderPlus {...base} size={ICON_INLINE} />;
+export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
+export const TrashIcon = () => <LuTrash2 {...base} size={ICON_INLINE} />;
+export const SettingsIcon = ({ size = ICON_INLINE }) => <LuSettings {...base} size={size} />;
+export const HelpIcon = () => <LuHelpCircle {...base} size={ICON_INLINE} />;
+export const HamburgerIcon = ({ size = ICON_INLINE }) => <LuMenu {...base} size={size} />;
+
+// ── Standalone controls (20px) ────────────────────────────────────────────
+export const SidebarToggleIcon = ({ size = ICON_CONTROL }) => <LuPanelLeft {...base} size={size} />;
+export const MoreHorizontalIcon = ({ size = ICON_CONTROL }) => (
+  <LuMoreHorizontal {...base} size={size} />
 );
-export const ChevronDown = ({ color = "#9B9EB0" }) => (
-  <Icon size={14}>
-    <path
-      d="M3 5.5L8 10L13 5.5"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Icon>
-);
-export const FolderIcon = ({ open: _open, color, size: sz }) => (
-  <Icon size={sz || 17}>
-    <path
-      d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      fill={color || "#38BDF8"}
-    />
-  </Icon>
-);
-export const FileIcon = ({ active, color, size: sz }) => (
-  <Icon size={sz || 17}>
-    <path
-      d="M4.5 2C3.95 2 3.5 2.45 3.5 3V13C3.5 13.55 3.95 14 4.5 14H11.5C12.05 14 12.5 13.55 12.5 13V6L9 2H4.5Z"
-      fill={color || (active ? "#E8EAF0" : "#9CA3AF")}
-      opacity={color ? "1" : active ? "0.7" : "0.55"}
-    />
-    <path
-      d="M9 2V5.5H12.5"
-      stroke={color || (active ? "#E8EAF0" : "#9CA3AF")}
-      strokeWidth="0.8"
-      opacity={color ? "1" : active ? "0.7" : "0.55"}
-      strokeLinejoin="round"
-    />
-  </Icon>
-);
-export const SearchIcon = () => (
-  <svg width="15.4" height="15.4" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-    <circle cx="7" cy="7" r="4.5" stroke="#646880" strokeWidth="1.5" />
-    <path d="M10.5 10.5L14 14" stroke="#646880" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-);
-export const CloseIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-    <path
-      d="M2.5 2.5L7.5 7.5M7.5 2.5L2.5 7.5"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-export const UndoIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <path
-      d="M4 6H10C11.66 6 13 7.34 13 9C13 10.66 11.66 12 10 12H8"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M6.5 3.5L4 6L6.5 8.5"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Icon>
-);
-export const RedoIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <path
-      d="M12 6H6C4.34 6 3 7.34 3 9C3 10.66 4.34 12 6 12H8"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M9.5 3.5L12 6L9.5 8.5"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Icon>
-);
-export const NewNoteIcon = () => (
-  <Icon size={18}>
-    <path
-      d="M4 2C3.45 2 3 2.45 3 3V13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13V6L9.5 2H4Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      fill="none"
-    />
-    <path d="M8 7V11M6 9H10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </Icon>
-);
-export const NewFolderIcon = () => (
-  <Icon size={18}>
-    <path
-      d="M2 4.5C2 3.67 2.67 3 3.5 3H6.17C6.44 3 6.69 3.11 6.88 3.29L7.71 4.12C7.89 4.31 8.15 4.41 8.41 4.41H12.5C13.33 4.41 14 5.08 14 5.91V12C14 12.55 13.55 13 13 13H3C2.45 13 2 12.55 2 12V4.5Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      fill="none"
-    />
-    <path d="M8 7.5V10.5M6.5 9H9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </Icon>
-);
-export const SidebarToggleIcon = () => (
-  <svg width="16.5" height="16.5" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-    <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
-    <path d="M6 2.5V13.5" stroke="currentColor" strokeWidth="1.3" />
-  </svg>
-);
-export const BreadcrumbChevron = () => (
-  <svg width="7" height="7" viewBox="0 0 7 7" fill="none" style={{ flexShrink: 0 }}>
-    <path
-      d="M2 1L5 3.5L2 6"
-      stroke="#646880"
-      strokeWidth="1.1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-export const HelpIcon = () => (
-  <Icon size={16.5}>
-    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-    <text
-      x="8"
-      y="11.2"
-      textAnchor="middle"
-      fill="currentColor"
-      fontSize="8.5"
-      fontWeight="600"
-      fontFamily="system-ui, sans-serif"
-    >
-      ?
-    </text>
-  </Icon>
-);
-export const ChevronLeftIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <path
-      d="M10.5 3L5.5 8L10.5 13"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Icon>
-);
-export const MoreHorizontalIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <circle cx="4" cy="8" r="1.2" fill="currentColor" />
-    <circle cx="8" cy="8" r="1.2" fill="currentColor" />
-    <circle cx="12" cy="8" r="1.2" fill="currentColor" />
-  </Icon>
-);
-export const HamburgerIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <path d="M2.5 4.5H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    <path d="M2.5 8H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    <path d="M2.5 11.5H13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-  </Icon>
-);
-export const PlusIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </Icon>
-);
-export const TrashIcon = () => (
-  <svg width="16.2" height="16.2" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-    <path
-      d="M3 4.5H13M6 4.5V3.5C6 3.22 6.22 3 6.5 3H9.5C9.78 3 10 3.22 10 3.5V4.5M4.5 4.5V12.5C4.5 13.05 4.95 13.5 5.5 13.5H10.5C11.05 13.5 11.5 13.05 11.5 12.5V4.5"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-export const SettingsIcon = ({ size = 16.5 }) => (
-  <Icon size={size}>
-    <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2" />
-    <path
-      d="M8 1.5V3M8 13V14.5M1.5 8H3M13 8H14.5M3.05 3.05L4.1 4.1M11.9 11.9L12.95 12.95M12.95 3.05L11.9 4.1M4.1 11.9L3.05 12.95"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-    />
-  </Icon>
-);
+
+// ── Slash menu ────────────────────────────────────────────────────────────
+// One glyph per block type, keyed by the `icon` name in SLASH_COMMANDS. These
+// replaced a column of unicode characters ("H1", "\u2610", "\u25A6", "\u2293") set in
+// bordered 24px chips — the characters rendered differently on every platform and
+// the chips read as a stack of buttons. Bare glyph, inherits the row's colour.
+const SLASH_GLYPHS = {
+  "heading-1": LuHeading1,
+  "heading-2": LuHeading2,
+  "heading-3": LuHeading3,
+  list: LuList,
+  "list-ordered": LuListOrdered,
+  "square-check": LuSquareCheck,
+  table: LuTable,
+  image: LuImage,
+  code: LuCode,
+  "text-quote": LuTextQuote,
+  minus: LuMinus,
+  info: LuInfo,
+  paperclip: LuPaperclip,
+  link: LuLink,
+};
+
+export const SlashCommandIcon = ({ name, size = ICON_INLINE }) => {
+  const Glyph = SLASH_GLYPHS[name];
+  return Glyph ? <Glyph {...base} size={size} /> : null;
+};

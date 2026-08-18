@@ -239,12 +239,12 @@ const ContextMenu = memo(function ContextMenu({
             onClick={item.action}
             onMouseEnter={(e) => {
               setActiveIndex(index);
-              hBg(e.currentTarget, BG.surface);
+              hBg(e.currentTarget, BG.hover);
             }}
             onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
             style={{
               width: "100%",
-              background: index === activeIndex ? BG.surface : "none",
+              background: index === activeIndex ? BG.hover : "none",
               border: "none",
               padding: "7px 14px",
               cursor: "pointer",

@@ -35,9 +35,12 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ Conflict resolution + offline recovery + cross-tab consistency
 
 ## Views & theming
-- ✅ Split view + multi-pane tabs
+- ✅ Split view + multi-pane tabs — ⚠️ tab *strip* is currently unmounted on desktop (minimal-chrome
+  experiment); tab/pane state is intact, split still reachable via editor edge-drop
 - ✅ Mobile-responsive layout (PWA)
-- ✅ Themes (day / night) + starfield background
+- ✅ Themes (day / night) + starfield background — DAY is now a neutral light palette (the blue-sky
+  DAY theme was replaced); starfield remains NIGHT-only (`DAY.starField: false`)
+- ✅ Lucide icon set (16px inline / 20px standalone / stroke 1.5) — replaced hand-rolled SVGs
 
 ## Platform
 - ✅ Web (PWA, `notes.boojy.org`)

@@ -10,6 +10,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
     theme: {
       TEXT: { primary: "#fff", secondary: "#aaa", muted: "#666" },
       BG: { divider: "#444" },
+      ACCENT: { primary: "#A4CACE", onAccent: "#13151C" },
       SEMANTIC: { error: "#ef4444" },
       modalBg: "#1a1a1e",
       modalShadow: "0 4px 12px rgba(0,0,0,0.4)",

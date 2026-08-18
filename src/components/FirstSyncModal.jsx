@@ -91,7 +91,7 @@ export default function FirstSyncModal({ noteCount, accentColor, isSyncing, onCo
                 borderRadius: 8,
                 border: "none",
                 background: accentColor,
-                color: "#fff",
+                color: theme.ACCENT.onAccent,
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",

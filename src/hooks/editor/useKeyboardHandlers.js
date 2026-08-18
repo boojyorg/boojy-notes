@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { findNearestBlock, isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
-import { SLASH_COMMANDS } from "../../constants/data";
+import { filterSlashCommands } from "../../constants/data";
 
 export function useKeyboardHandlers({
   noteDataRef,
@@ -39,9 +39,9 @@ export function useKeyboardHandlers({
     // Slash menu navigation
     if (slashMenuRef.current && slashMenuRef.current.blockIndex === blockIndex) {
       const sm = slashMenuRef.current;
-      const filtered = SLASH_COMMANDS.filter((c) =>
-        c.label.toLowerCase().includes(sm.filter.toLowerCase()),
-      );
+      // Same helper the menu renders from — arrowing must never index a
+      // different list than the one on screen.
+      const filtered = filterSlashCommands(sm.filter);
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSlashMenu((prev) =>

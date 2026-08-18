@@ -297,7 +297,7 @@ function ImageBlock({
                 transition: "background 0.1s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = BG.hover;
+                e.currentTarget.style.background = BG.surface;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "transparent";

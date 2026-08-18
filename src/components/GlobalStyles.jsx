@@ -52,8 +52,8 @@ export default function GlobalStyles() {
         * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: ${theme.BG.divider} transparent; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${theme.BG.hover}; box-shadow: 0 0 4px ${theme.BG.hover}40; }
+        ::-webkit-scrollbar-thumb { background: ${theme.scrollbar.thumb}; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: ${theme.scrollbar.thumbHover}; box-shadow: 0 0 4px ${theme.scrollbar.thumbHover}40; }
         .tab-scroll::-webkit-scrollbar { height: 0px; }
         .tab-scroll::-webkit-scrollbar-track { background: transparent; }
         .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
@@ -65,6 +65,9 @@ export default function GlobalStyles() {
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
         [contenteditable]:focus-visible { outline: none; }
+        /* Sidebar action rows opt out of the global 25%-alpha ring for a solid 2px accent. */
+        .sidebar-action-row:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 12px; }
+        .sidebar-section-action:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 6px; }
         .checkbox-box:active { transform: scale(0.85); }
         .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
         .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }

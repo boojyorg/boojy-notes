@@ -378,7 +378,7 @@ export default memo(function TableBlock({
             top: createBadge.y,
             padding: "2px 8px",
             background: accentColor || theme.ACCENT.primary,
-            color: "#fff",
+            color: theme.ACCENT.onAccent,
             fontSize: 11,
             fontWeight: 600,
             borderRadius: 10,

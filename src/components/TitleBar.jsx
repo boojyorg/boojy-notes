@@ -1,11 +1,14 @@
 import { useTheme } from "../hooks/useTheme";
 
+/** Desktop window drag region height — the only horizontal band left on desktop. */
+export const TITLE_BAR_H = 28;
+
 export default function TitleBar({ activeNote, noteData, chromeBg }) {
   const { theme } = useTheme();
   return (
     <div
       style={{
-        height: 28,
+        height: TITLE_BAR_H,
         background: chromeBg,
         WebkitAppRegion: "drag",
         flexShrink: 0,

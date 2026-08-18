@@ -1,70 +1,14 @@
-import { useState, useCallback, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
-import { useNoteDataActions } from "../context/NoteDataContext";
 import { useSettings } from "../context/SettingsContext";
-import { UndoIcon, RedoIcon, SidebarToggleIcon, HelpIcon } from "./Icons";
-import HelpDropdown from "./HelpDropdown";
+import { SidebarToggleIcon } from "./Icons";
 import PaneTabBar from "./PaneTabBar";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 const hBg = (el, c) => {
   el.style.background = c;
 };
-
-// Fixed width of the top-right cluster (word count + help). Kept fixed (rather
-// than content-width) so the layout doesn't jitter as the word count changes
-// digits, and so the split-mode tab-divider correction stays deterministic.
-const RIGHT_CLUSTER_W = 132;
-
-function WordCountTooltip({ wordCount, charCount, charCountNoSpaces, readingTime }) {
-  const { theme } = useTheme();
-  const { BG, TEXT } = theme;
-  const [show, setShow] = useState(false);
-  return (
-    <div
-      style={{ position: "relative", flexShrink: 0 }}
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-    >
-      <span
-        style={{
-          fontSize: 12,
-          color: TEXT.secondary,
-          padding: "0 4px",
-          whiteSpace: "nowrap",
-          cursor: "default",
-        }}
-      >
-        {wordCount} words
-      </span>
-      {show && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            right: 0,
-            marginTop: 6,
-            background: BG.elevated,
-            border: `1px solid ${BG.divider}`,
-            borderRadius: 8,
-            padding: "8px 12px",
-            fontSize: 11,
-            color: TEXT.secondary,
-            whiteSpace: "nowrap",
-            zIndex: Z.TOOLBAR,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-          }}
-        >
-          <div>{charCount} characters</div>
-          <div>{charCountNoSpaces} characters (no spaces)</div>
-          <div>~{readingTime} min read</div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function TopBarDesktop({
   tabs,
@@ -75,11 +19,6 @@ export default function TopBarDesktop({
   setActiveNote,
   closeTab,
   syncState,
-  note,
-  wordCount,
-  charCount,
-  charCountNoSpaces,
-  readingTime,
   tabScrollRef,
   tabAreaWidth,
   splitMode,
@@ -104,13 +43,9 @@ export default function TopBarDesktop({
     isDragging,
     startDrag,
   } = useLayout();
-  const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const { setSettingsOpen, setSettingsTab } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
-  const [helpOpen, setHelpOpen] = useState(false);
-  const helpBtnRef = useRef(null);
-  const closeHelp = useCallback(() => setHelpOpen(false), []);
 
   // ── Desktop top bar ───────────────────────────────────────────────────
   return (
@@ -128,7 +63,7 @@ export default function TopBarDesktop({
         position: "relative",
       }}
     >
-      {/* Top-left — logo, undo, redo, sidebar toggle */}
+      {/* Top-left — logo, sidebar toggle */}
       <div
         style={{
           width: sidebarWidth,
@@ -190,62 +125,6 @@ export default function TopBarDesktop({
         </span>
         {/* Spacer — inherits drag from parent */}
         <div style={{ flex: 1, minWidth: 0 }} />
-        <button
-          onClick={undo}
-          title="Undo (Ctrl+Z)"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: canUndo ? "pointer" : "default",
-            padding: "5px 4px",
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            color: TEXT.secondary,
-            opacity: canUndo ? 1 : 0.3,
-            transition: "background 0.15s, color 0.15s, opacity 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            if (canUndo) {
-              hBg(e.currentTarget, BG.surface);
-              e.currentTarget.style.color = TEXT.primary;
-            }
-          }}
-          onMouseLeave={(e) => {
-            hBg(e.currentTarget, "transparent");
-            e.currentTarget.style.color = TEXT.secondary;
-          }}
-        >
-          <UndoIcon />
-        </button>
-        <button
-          onClick={redo}
-          title="Redo (Ctrl+Shift+Z)"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: canRedo ? "pointer" : "default",
-            padding: "5px 4px",
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            color: TEXT.secondary,
-            opacity: canRedo ? 1 : 0.3,
-            transition: "background 0.15s, color 0.15s, opacity 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            if (canRedo) {
-              hBg(e.currentTarget, BG.surface);
-              e.currentTarget.style.color = TEXT.primary;
-            }
-          }}
-          onMouseLeave={(e) => {
-            hBg(e.currentTarget, "transparent");
-            e.currentTarget.style.color = TEXT.secondary;
-          }}
-        >
-          <RedoIcon />
-        </button>
         <button
           onClick={() => setCollapsed(!collapsed)}
           style={{
@@ -312,11 +191,10 @@ export default function TopBarDesktop({
           // TopBar sidebar/right-panel sections are wider than main area counterparts
           // due to padding/border differences, so percentage flex-basis needs a px offset.
           const sidebarPad = 22; // padding: 0 8px 0 14px
-          const rightPad = 20; // cluster padding: 0 10px
           const leftExtra = collapsed ? sidebarWidth + sidebarPad : sidebarPad;
-          // Editor area has no right panel now; the tab strip is shortened only
-          // by the fixed word-count/help cluster on the right.
-          const rightExtra = RIGHT_CLUSTER_W + rightPad;
+          // Editor area has no right panel and no top-right cluster, so the tab
+          // strip runs to the right edge — nothing shortens it on that side.
+          const rightExtra = 0;
           const totalExtra = leftExtra + rightExtra;
           const correction = (dividerPosition / 100) * totalExtra - leftExtra;
           return (
@@ -434,62 +312,6 @@ export default function TopBarDesktop({
           paneId="left"
         />
       )}
-
-      {/* Top-right — word count + help (fixed-width cluster, pinned right) */}
-      <div
-        style={{
-          width: RIGHT_CLUSTER_W,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 4,
-          padding: "0 10px",
-          height: "100%",
-          // Thin divider mirroring the sidebar handle's line on the left of the tabs.
-          // border-box keeps the cluster exactly RIGHT_CLUSTER_W wide for the split math.
-          boxSizing: "border-box",
-          borderLeft: `1px solid ${BG.divider}`,
-        }}
-      >
-        {note && (
-          <WordCountTooltip
-            wordCount={wordCount}
-            charCount={charCount}
-            charCountNoSpaces={charCountNoSpaces}
-            readingTime={readingTime}
-          />
-        )}
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <button
-            ref={helpBtnRef}
-            onClick={() => setHelpOpen((v) => !v)}
-            title="Quick reference"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 5,
-              borderRadius: 5,
-              display: "flex",
-              alignItems: "center",
-              color: TEXT.secondary,
-              transition: "background 0.15s, color 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              hBg(e.currentTarget, BG.surface);
-              e.currentTarget.style.color = TEXT.primary;
-            }}
-            onMouseLeave={(e) => {
-              hBg(e.currentTarget, "transparent");
-              e.currentTarget.style.color = TEXT.secondary;
-            }}
-          >
-            <HelpIcon />
-          </button>
-          <HelpDropdown open={helpOpen} onClose={closeHelp} toggleRef={helpBtnRef} />
-        </div>
-      </div>
     </div>
   );
 }

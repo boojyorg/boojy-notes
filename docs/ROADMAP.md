@@ -18,6 +18,16 @@ status in `FEATURE_TRACKER.md`.
    (shipped, PR #48), settings improvements, spacing/motion/typography polish, and empty-state
    details. Sync and sign-in remain intentionally hidden on desktop (PR #49) until sync is stable.
 
+2. **Visual direction reset — light-first + minimal chrome** (uncommitted, awaiting judgement).
+   Picito is the family reference for neutral surfaces/interaction grammar; Boojy keeps its cyan.
+   Landed so far: DAY replaced with a neutral light palette (accent `#2A737D`); Lucide icon set;
+   desktop top bar and visible tab strip removed in favour of two pinned controls (`EditorChrome`).
+   Conventions + live gotchas → `.claude/rules/ui-chrome-and-theme.md`.
+   **Open decisions, in order:** (a) does the reduced chrome feel right at all; (b) neutral vs
+   accent-tinted sidebar selection; (c) whether tabs come back — if not, Quick Open / back-forward /
+   Recents must be built *before* the tab code is deleted, plus a close-note affordance; (d)
+   title-as-filename, gated on `SPEC-markdown-source-of-truth.md`.
+
 ## Later
 
 Refactors (BoojyNotes.jsx decomposition tail, ProfileTab/Sidebar extraction), the Tier-3 a11y

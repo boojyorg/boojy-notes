@@ -116,7 +116,8 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
               borderRadius: 8,
               border: "none",
               background: confirmBg,
-              color: "#fff",
+              // danger uses SEMANTIC.error (dark in both themes); accent needs the themed pair
+              color: danger ? "#fff" : theme.ACCENT.onAccent,
               fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",

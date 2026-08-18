@@ -12,7 +12,7 @@ export default function OnboardingHint({ hint, onDismiss, accentColor }) {
         alignItems: "center",
         gap: 10,
         background: accentColor || theme.ACCENT.primary,
-        color: "#fff",
+        color: theme.ACCENT.onAccent,
         padding: "8px 12px",
         borderRadius: 8,
         fontSize: 13,

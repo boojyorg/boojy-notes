@@ -85,7 +85,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
           padding: "10px 14px",
           borderRadius: 8,
           border: `1px solid ${BG.divider}`,
-          background: hovered ? BG.hover : BG.elevated,
+          background: hovered ? BG.surface : BG.elevated,
           cursor: "pointer",
           transition: "background 0.15s",
           userSelect: "none",
@@ -184,7 +184,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
                 transition: "background 0.1s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = BG.hover;
+                e.currentTarget.style.background = BG.surface;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "transparent";

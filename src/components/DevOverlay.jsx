@@ -416,7 +416,7 @@ export default function DevOverlay({ open, onClose }) {
             setChromeBg(theme.BG.dark);
             setEditorBg(theme.BG.editor);
             setAccentColor(theme.ACCENT.primary);
-            setActiveTabBg("#1C1C20");
+            setActiveTabBg(theme.activeTabBg);
             setTabFlip(false);
           }}
           style={{

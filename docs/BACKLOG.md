@@ -97,13 +97,17 @@ may already be partly shipped; confirm against the app before picking one up.)
 (E2E axe only catches *critical* on the initial screen — these are the known sub-critical gaps.)
 - [ ] Sidebar focus ring invisible — inline `outline:none` overrides global; global ring is also
   25%-opacity (fails contrast). `Sidebar.jsx`, `GlobalStyles.jsx:66`.
-- [ ] Icon-only buttons use `title` not `aria-label` (TopBar undo/redo/toggles/Help/Settings; Help &
-  Settings close buttons). `TopBarDesktop.jsx`, `HelpDropdown.jsx`.
+- [ ] Icon-only buttons use `title` not `aria-label` (Help & Settings close buttons).
+  `HelpDropdown.jsx`. *(Narrowed: TopBar undo/redo/Help were removed in the minimal-chrome pass;
+  the surviving `EditorChrome` buttons set `aria-label`.)*
 - [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
   reachable; missing roles + focus traps. SlashMenu `aria-selected` on `menuitem` is also invalid.
-- [ ] Low-contrast theme tokens fail AA: DAY/NIGHT `TEXT.muted`, DAY accent-as-text, DAY wikilink.
-  `themes.js`.
+- [ ] Low-contrast theme tokens fail AA: **NIGHT** `TEXT.muted`. `themes.js`.
+  *(DAY was fixed in the Phase 1 light-palette pass — `TEXT.muted` 4.6:1, accent 5.3:1, wikilink now
+  uses the accent. NIGHT was deliberately left untouched in that pass.)*
 - [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
   aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
 - [ ] PaneTabBar: `<span role=button>` nested inside `<button role=tab>` — invalid. `PaneTabBar.jsx:137`.
+  *(Currently unmounted on desktop by the minimal-chrome experiment; still reachable if the tab strip
+  is restored, so not resolved.)*
 - [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.

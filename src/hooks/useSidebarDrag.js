@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { useTheme } from "./useTheme";
 import { isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { runAutoScroll } from "../utils/domHelpers";
@@ -29,6 +30,7 @@ export function useSidebarDrag({
   openNoteInPane,
   insertTabInPane,
 }) {
+  const { theme } = useTheme();
   const sidebarDrag = useRef({
     active: false,
     type: null,
@@ -133,7 +135,7 @@ export function useSidebarDrag({
         height: "20px",
         borderRadius: "50%",
         background: accentColor,
-        color: "#fff",
+        color: theme.ACCENT.onAccent,
         fontSize: "11px",
         fontWeight: "600",
         display: "flex",
