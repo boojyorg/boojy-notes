@@ -343,3 +343,21 @@ describe("list marker + raw indent preservation (preservation fix, 2026-08)", ()
     expect(out.indentStr).toBeUndefined();
   });
 });
+
+describe("image width preservation (preservation fix, 2026-08)", () => {
+  // Width was quantised px → % (÷7, rounded) → px, so ![[img|300]] drifted
+  // to |301 on every save, and |700 (=100%) lost its suffix entirely.
+
+  it("round-trips exact pixel widths in both image syntaxes", () => {
+    for (const md of ["![[photo.png|300]]", "![[photo.png|700]]", "![alt|349](url.png)"]) {
+      expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+    }
+  });
+
+  it("app-created images mint no widthPx (7-divisible px reconstructs from %)", () => {
+    const [out] = markdownToBlocks(
+      blocksToMarkdown([{ type: "image", src: "photo.png", alt: "photo", width: 50, text: "" }]),
+    );
+    expect(out.widthPx).toBeUndefined();
+  });
+});

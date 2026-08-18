@@ -48,7 +48,6 @@ const KNOWN_FAILURES = {
   "leading-blanks.md": { roundtrip: true, edit: true }, // blank lines before the first block are dropped
   "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7. (leading zeros lost; indent now preserved)
   "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
-  "wikilinks-embeds.md": { roundtrip: true, edit: true }, // ![[img|300]] → 301 (width quantised to 1/7ths)
 };
 
 const fixtureNames = fs

@@ -84,7 +84,11 @@ const EditableBlock = memo(
             onDelete={() => onDeleteBlock(noteId, blockIndex)}
             onReplace={() => onImageReplace(noteId, blockIndex)}
             onCopyImage={() => onImageCopyImage(block.src)}
-            onUpdateWidth={(w) => onUpdateBlockProperty(noteId, blockIndex, { width: w })}
+            onUpdateWidth={(w) =>
+              // widthPx is the source file's exact pixel width — stale after a
+              // manual resize, so clear it (serialiser falls back to width%)
+              onUpdateBlockProperty(noteId, blockIndex, { width: w, widthPx: undefined })
+            }
           />
         </div>
       );

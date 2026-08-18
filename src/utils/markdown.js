@@ -74,7 +74,10 @@ export function blocksToMarkdown(blocks) {
         break;
       case "image": {
         const src = block.src || "";
-        const px = block.width && block.width < 100 ? Math.round(block.width * 7) : null;
+        // widthPx is the file's own pixel value, kept when the % quantisation
+        // can't reproduce it (e.g. |300 → 43% → 301). In-app resizes clear it.
+        const px =
+          block.widthPx ?? (block.width && block.width < 100 ? Math.round(block.width * 7) : null);
         if (block.format === "md") {
           // Standard markdown image from an external file — keep its syntax and
           // alt text; a custom width uses the Obsidian alt suffix: ![alt|350](url)
@@ -308,15 +311,21 @@ export function markdownToBlocks(md) {
           ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
           : "";
       if (IMAGE_EXTENSIONS.has(ext)) {
-        const width = widthPx ? Math.round(widthPx / 7) : 100;
-        blocks.push({
+        const width = widthPx ? Math.min(Math.max(Math.round(widthPx / 7), 10), 100) : 100;
+        const imgBlock = {
           id: `md-${++_parseBlockId}`,
           type: "image",
           src: filename,
           alt: filename.replace(/\.[^.]+$/, ""),
-          width: Math.min(Math.max(width, 10), 100),
+          width,
           text: "",
-        });
+        };
+        // Keep the file's exact px when serialising from width% would write a
+        // different value (rounding drift) or drop the suffix (width ≥ 100%)
+        if (widthPx != null && !(width < 100 && Math.round(width * 7) === widthPx)) {
+          imgBlock.widthPx = widthPx;
+        }
+        blocks.push(imgBlock);
       } else if (ext) {
         blocks.push({
           id: `md-${++_parseBlockId}`,
@@ -348,7 +357,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; num?: number; format?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; format?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -385,10 +394,12 @@ export function markdownToBlocks(md) {
       // Obsidian-style width suffix in the alt: ![alt|350](url)
       let alt = m[1];
       let width = 100;
+      let mdWidthPx = null;
       const widthMatch = alt.match(/^(.*)\|(\d+)$/);
       if (widthMatch) {
         alt = widthMatch[1];
-        width = Math.min(100, Math.max(5, Math.round(parseInt(widthMatch[2], 10) / 7)));
+        mdWidthPx = parseInt(widthMatch[2], 10);
+        width = Math.min(100, Math.max(5, Math.round(mdWidthPx / 7)));
       }
       block = {
         id: `md-${++_parseBlockId}`,
@@ -399,6 +410,10 @@ export function markdownToBlocks(md) {
         text: "",
         format: "md",
       };
+      // Same rounding-drift guard as the wikilink form above
+      if (mdWidthPx != null && !(width < 100 && Math.round(width * 7) === mdWidthPx)) {
+        block.widthPx = mdWidthPx;
+      }
     } else {
       // Preserve the line's own whitespace: leading indentation (indented code
       // blocks, HTML, hanging indents) and trailing spaces (markdown hard
