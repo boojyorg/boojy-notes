@@ -33,6 +33,33 @@ const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".sv
 
 let _parseBlockId = 0;
 
+/**
+ * List indentation as written: the parsed raw prefix when the file used
+ * something other than 2-space levels (tabs, odd space counts), else the
+ * canonical 2 spaces per level. In-app indent changes clear `indentStr`
+ * (useBlockOperations.updateBlockIndent), so it can never go stale.
+ */
+function listIndent(block) {
+  return block.indentStr ?? "  ".repeat(block.indent || 0);
+}
+
+/**
+ * The file's dominant line-ending style. Read before parsing, kept on
+ * note.content.eol (desktop), re-applied by applyEol on write — so a CRLF
+ * file stays CRLF instead of being silently converted (and mixed EOLs
+ * inside code blocks are healed to the dominant style).
+ */
+export function detectEol(md) {
+  const crlf = (md.match(/\r\n/g) || []).length;
+  const lone = (md.match(/(?<!\r)\n/g) || []).length;
+  return crlf > 0 && crlf >= lone ? "\r\n" : "\n";
+}
+
+/** Re-apply a detected EOL style to serialized (LF-only) markdown. */
+export function applyEol(md, eol) {
+  return eol === "\r\n" ? md.replace(/\n/g, "\r\n") : md;
+}
+
 export function blocksToMarkdown(blocks) {
   const lines = [];
   // Numbered items keep their parsed number (block.num); items created in-app
@@ -51,22 +78,23 @@ export function blocksToMarkdown(blocks) {
         lines.push(`### ${block.text || ""}`);
         break;
       case "bullet":
-        lines.push(`${"  ".repeat(block.indent || 0)}- ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.marker || "-"} ${block.text || ""}`);
         break;
       case "numbered":
-        lines.push(`${"  ".repeat(block.indent || 0)}${numCounter}. ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.numRaw ?? numCounter}. ${block.text || ""}`);
         break;
       case "checkbox":
-        lines.push(
-          `${"  ".repeat(block.indent || 0)}- [${block.checked ? "x" : " "}] ${block.text || ""}`,
-        );
+        lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}] ${block.text || ""}`);
         break;
       case "spacer":
         lines.push("---");
         break;
       case "image": {
         const src = block.src || "";
-        const px = block.width && block.width < 100 ? Math.round(block.width * 7) : null;
+        // widthPx is the file's own pixel value, kept when the % quantisation
+        // can't reproduce it (e.g. |300 → 43% → 301). In-app resizes clear it.
+        const px =
+          block.widthPx ?? (block.width && block.width < 100 ? Math.round(block.width * 7) : null);
         if (block.format === "md") {
           // Standard markdown image from an external file — keep its syntax and
           // alt text; a custom width uses the Obsidian alt suffix: ![alt|350](url)
@@ -119,8 +147,11 @@ export function blocksToMarkdown(blocks) {
       }
       case "table": {
         if (block.rows && block.rows.length > 0) {
+          // A literal pipe inside a cell must be written escaped, or the next
+          // parse splits the cell apart (content-destroying)
+          const esc = (cell) => cell.replace(/\|/g, "\\|");
           const header = block.rows[0];
-          lines.push("| " + header.join(" | ") + " |");
+          lines.push("| " + header.map(esc).join(" | ") + " |");
           const aligns = block.alignments || [];
           const sep = header.map((_, i) => {
             const a = aligns[i];
@@ -133,7 +164,7 @@ export function blocksToMarkdown(blocks) {
             const row = block.rows[r];
             const padded = [];
             for (let c = 0; c < header.length; c++) {
-              padded.push(row[c] !== undefined ? row[c] : "");
+              padded.push(row[c] !== undefined ? esc(row[c]) : "");
             }
             lines.push("| " + padded.join(" | ") + " |");
           }
@@ -154,7 +185,10 @@ export function blocksToMarkdown(blocks) {
 }
 
 export function markdownToBlocks(md) {
-  const lines = md.split(/\n/);
+  // Blocks are always LF-internal; the file's EOL style is handled at the
+  // read/write boundary (detectEol/applyEol). Normalising up front also keeps
+  // CRLF fragments out of code-block text (which used to produce mixed EOLs).
+  const lines = md.replace(/\r\n/g, "\n").split(/\n/);
   const blocks = [];
   let i = 0;
 
@@ -162,10 +196,10 @@ export function markdownToBlocks(md) {
     const raw = lines[i];
     const line = raw.trim();
 
-    if (!line && blocks.length === 0) {
-      i++;
-      continue;
-    }
+    // Leading blank lines become empty paragraph blocks like any other blank
+    // line, so they survive a save. Side effect (deliberate): `---` after
+    // leading blanks is no longer treated as frontmatter — which matches
+    // Obsidian/CommonMark, where frontmatter must start on line 1.
 
     // 1. Frontmatter (--- at position 0 only)
     if (line === "---" && blocks.length === 0) {
@@ -297,15 +331,21 @@ export function markdownToBlocks(md) {
           ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
           : "";
       if (IMAGE_EXTENSIONS.has(ext)) {
-        const width = widthPx ? Math.round(widthPx / 7) : 100;
-        blocks.push({
+        const width = widthPx ? Math.min(Math.max(Math.round(widthPx / 7), 10), 100) : 100;
+        const imgBlock = {
           id: `md-${++_parseBlockId}`,
           type: "image",
           src: filename,
           alt: filename.replace(/\.[^.]+$/, ""),
-          width: Math.min(Math.max(width, 10), 100),
+          width,
           text: "",
-        });
+        };
+        // Keep the file's exact px when serialising from width% would write a
+        // different value (rounding drift) or drop the suffix (width ≥ 100%)
+        if (widthPx != null && !(width < 100 && Math.round(width * 7) === widthPx)) {
+          imgBlock.widthPx = widthPx;
+        }
+        blocks.push(imgBlock);
       } else if (ext) {
         blocks.push({
           id: `md-${++_parseBlockId}`,
@@ -330,16 +370,25 @@ export function markdownToBlocks(md) {
     }
 
     // 6. Single-line matchers
-    const leadingSpaces = raw.match(/^(\s*)/)[1].length;
-    const indent = Math.floor(leadingSpaces / 2);
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; src?: string; alt?: string; width?: number; num?: number; format?: string }} */
+    // Indent levels: 2 spaces = 1 level, a tab = 1 level. The raw prefix is
+    // kept on the block (indentStr) whenever it differs from the canonical
+    // 2-space form, so tab- and odd-space-indented list items round-trip
+    // byte-exact instead of being re-quantised (or dedented) on save.
+    const leadingWs = raw.match(/^[ \t]*/)[0];
+    const tabCount = (leadingWs.match(/\t/g) || []).length;
+    const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string }} */
     let block;
+    const applyListIndent = (b) => {
+      if (indent > 0) b.indent = indent;
+      if (leadingWs && leadingWs !== "  ".repeat(indent)) b.indentStr = leadingWs;
+    };
     if (line === "---") {
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
     } else if (/^- \[([ xX])\] /.test(line)) {
       const checked = line[3] !== " ";
       block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: line.slice(6), checked };
-      if (indent > 0) block.indent = Math.min(indent, 6);
+      applyListIndent(block);
     } else if (/^\d+\.\s/.test(line)) {
       block = {
         id: `md-${++_parseBlockId}`,
@@ -347,10 +396,17 @@ export function markdownToBlocks(md) {
         text: line.replace(/^\d+\.\s/, ""),
         num: parseInt(line, 10),
       };
-      if (indent > 0) block.indent = Math.min(indent, 6);
-    } else if (line.startsWith("- ")) {
+      // Keep the number exactly as written when parseInt would reformat it
+      // (leading zeros: "007." must not become "7." on save)
+      const numStr = line.match(/^(\d+)\./)[1];
+      if (numStr !== String(block.num)) block.numRaw = numStr;
+      applyListIndent(block);
+    } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")) {
+      // All three CommonMark bullet markers; the marker is kept only when it
+      // is not the in-app default "-", so app-created bullets stay unchanged
       block = { id: `md-${++_parseBlockId}`, type: "bullet", text: line.slice(2) };
-      if (indent > 0) block.indent = Math.min(indent, 6);
+      if (line[0] !== "-") block.marker = line[0];
+      applyListIndent(block);
     } else if (line.startsWith("### ")) {
       block = { id: `md-${++_parseBlockId}`, type: "h3", text: line.slice(4) };
     } else if (line.startsWith("## ")) {
@@ -362,10 +418,12 @@ export function markdownToBlocks(md) {
       // Obsidian-style width suffix in the alt: ![alt|350](url)
       let alt = m[1];
       let width = 100;
+      let mdWidthPx = null;
       const widthMatch = alt.match(/^(.*)\|(\d+)$/);
       if (widthMatch) {
         alt = widthMatch[1];
-        width = Math.min(100, Math.max(5, Math.round(parseInt(widthMatch[2], 10) / 7)));
+        mdWidthPx = parseInt(widthMatch[2], 10);
+        width = Math.min(100, Math.max(5, Math.round(mdWidthPx / 7)));
       }
       block = {
         id: `md-${++_parseBlockId}`,
@@ -376,8 +434,17 @@ export function markdownToBlocks(md) {
         text: "",
         format: "md",
       };
+      // Same rounding-drift guard as the wikilink form above
+      if (mdWidthPx != null && !(width < 100 && Math.round(width * 7) === mdWidthPx)) {
+        block.widthPx = mdWidthPx;
+      }
     } else {
-      block = { id: `md-${++_parseBlockId}`, type: "p", text: line };
+      // Preserve the line's own whitespace: leading indentation (indented code
+      // blocks, HTML, hanging indents) and trailing spaces (markdown hard
+      // breaks) are meaningful bytes that must survive a save. Only a CRLF
+      // ending's CR is dropped — line endings are normalised on save, a known
+      // separate limitation in the preservation corpus.
+      block = { id: `md-${++_parseBlockId}`, type: "p", text: raw.replace(/\r$/, "") };
     }
     blocks.push(block);
     i++;
@@ -390,11 +457,31 @@ export function markdownToBlocks(md) {
 }
 
 export function parseTableRow(line) {
-  return line
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+  // Split on unescaped pipes only: `\|` is a literal pipe inside a cell, and
+  // `\\` escapes the backslash itself (so `\\|` is a backslash then a
+  // separator). A naive split("|") deleted cell content on files using `\|`.
+  const s = line.replace(/^\|/, "");
+  const cells = [];
+  let cur = "";
+  let closedByPipe = false;
+  for (let j = 0; j < s.length; j++) {
+    const ch = s[j];
+    if (ch === "\\" && j + 1 < s.length) {
+      cur += ch + s[j + 1];
+      j++;
+      closedByPipe = false;
+    } else if (ch === "|") {
+      cells.push(cur);
+      cur = "";
+      closedByPipe = true;
+    } else {
+      cur += ch;
+      closedByPipe = false;
+    }
+  }
+  if (!(closedByPipe && cur === "")) cells.push(cur);
+  // After the scan a cell can only contain `\|` if it was an escaped pipe
+  return cells.map((cell) => cell.trim().replace(/\\\|/g, "|"));
 }
 
 export function parseFrontmatterYaml(yamlStr) {

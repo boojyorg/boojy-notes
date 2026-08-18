@@ -19,12 +19,17 @@ vi.mock("../../../src/utils/storage", () => ({
   genBlockId: () => "new-block-id",
 }));
 
-vi.mock("../../../src/constants/data", () => ({
-  SLASH_COMMANDS: [
+vi.mock("../../../src/constants/data", () => {
+  const SLASH_COMMANDS = [
     { label: "Heading 1", type: "h1" },
-    { label: "Bullet List", type: "bullet" },
-  ],
-}));
+    { label: "Bullet list", type: "bullet" },
+  ];
+  return {
+    SLASH_COMMANDS,
+    filterSlashCommands: (query) =>
+      SLASH_COMMANDS.filter((c) => c.label.toLowerCase().includes((query || "").toLowerCase())),
+  };
+});
 
 describe("useKeyboardHandlers", () => {
   let deps;

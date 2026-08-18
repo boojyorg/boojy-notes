@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown.js";
+import {
+  applyEol,
+  blocksToMarkdown,
+  detectEol,
+  markdownToBlocks,
+  parseTableRow,
+} from "../../src/utils/markdown.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUND-TRIP GUARDRAIL
@@ -259,5 +265,141 @@ describe("markdown round-trip — intrinsic, documented losses", () => {
     // `---` at position 0 is always frontmatter; a spacer must never be first.
     const out = markdownToBlocks(blocksToMarkdown([{ type: "spacer", text: "" }]));
     expect(out[0].type).toBe("frontmatter");
+  });
+});
+
+describe("table cells with literal pipes (preservation fix, 2026-08)", () => {
+  // A naive split("|") used to delete cell content on files using `\|` —
+  // the worst finding of the preservation damage report.
+
+  it("parseTableRow splits only on unescaped pipes", () => {
+    expect(parseTableRow("| pipe \\| inside | x |")).toEqual(["pipe | inside", "x"]);
+    // `\\|` is an escaped backslash followed by a real separator
+    expect(parseTableRow("| a\\\\ | b |")).toEqual(["a\\\\", "b"]);
+    expect(parseTableRow("| plain | cells |")).toEqual(["plain", "cells"]);
+    expect(parseTableRow("| a |  |")).toEqual(["a", ""]); // empty trailing cell kept
+  });
+
+  it("a cell containing a pipe round-trips block → markdown → block", () => {
+    const blocks = [
+      {
+        type: "table",
+        rows: [
+          ["cmd", "desc"],
+          ["grep a|b", "alternation"],
+        ],
+        alignments: ["left", "left"],
+        text: "",
+      },
+    ];
+    const md = blocksToMarkdown(blocks);
+    expect(md).toContain("grep a\\|b"); // written escaped
+    const [out] = markdownToBlocks(md);
+    expect(out.rows).toEqual(blocks[0].rows); // read back intact
+  });
+});
+
+describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => {
+  // Paragraph text used to be stored trimmed, which flattened 4-space
+  // indented code blocks to prose and stripped markdown hard breaks
+  // (two trailing spaces) on every save.
+
+  it("keeps leading indentation (indented code / HTML stay intact)", () => {
+    const md = "    indented code line\n\ttab-indented line\n   three-space paragraph";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("keeps trailing spaces (markdown hard breaks survive)", () => {
+    const md = "line with a hard break  \ncontinuation line";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("still drops only the CR of a CRLF paragraph line (existing EOL policy)", () => {
+    const [block] = markdownToBlocks("plain line\r\n");
+    expect(block.text).toBe("plain line");
+  });
+});
+
+describe("list marker + raw indent preservation (preservation fix, 2026-08)", () => {
+  // `*` and `+` bullets used to parse as paragraphs — nested ones were
+  // dedented to column 0, destroying the hierarchy. Tab and odd-space
+  // indents were re-quantised to 2-space levels.
+
+  it("recognises *, + bullets and writes the same marker back", () => {
+    const md = "* star item\n+ plus item\n- dash item";
+    const blocks = markdownToBlocks(md);
+    expect(blocks.map((b) => b.type)).toEqual(["bullet", "bullet", "bullet"]);
+    expect(blocks.map((b) => b.marker)).toEqual(["*", "+", undefined]);
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("preserves tab and odd-space list indentation byte-exact", () => {
+    const md = "- parent\n\t- tab child\n   - three-space child\n    - four-space child";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("tab-indented children still nest in-app (indent level, not just bytes)", () => {
+    const blocks = markdownToBlocks("- parent\n\t- tab child");
+    expect(blocks[1].indent).toBe(1);
+  });
+
+  it("app-created bullets are unaffected (no marker/indentStr fields minted)", () => {
+    const [out] = markdownToBlocks(blocksToMarkdown([{ type: "bullet", text: "plain" }]));
+    expect(out.marker).toBeUndefined();
+    expect(out.indentStr).toBeUndefined();
+  });
+});
+
+describe("image width preservation (preservation fix, 2026-08)", () => {
+  // Width was quantised px → % (÷7, rounded) → px, so ![[img|300]] drifted
+  // to |301 on every save, and |700 (=100%) lost its suffix entirely.
+
+  it("round-trips exact pixel widths in both image syntaxes", () => {
+    for (const md of ["![[photo.png|300]]", "![[photo.png|700]]", "![alt|349](url.png)"]) {
+      expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+    }
+  });
+
+  it("app-created images mint no widthPx (7-divisible px reconstructs from %)", () => {
+    const [out] = markdownToBlocks(
+      blocksToMarkdown([{ type: "image", src: "photo.png", alt: "photo", width: 50, text: "" }]),
+    );
+    expect(out.widthPx).toBeUndefined();
+  });
+});
+
+describe("line-ending preservation (fidelity fix, 2026-08)", () => {
+  // CRLF files were silently converted to LF — except inside code blocks,
+  // which kept their CRs, leaving a mixed-EOL file. Blocks are now always
+  // LF-internal; the file's style is detected on read and re-applied on save.
+
+  it("detectEol picks the dominant style", () => {
+    expect(detectEol("a\r\nb\r\n")).toBe("\r\n");
+    expect(detectEol("a\nb\n")).toBe("\n");
+    expect(detectEol("no newline")).toBe("\n");
+  });
+
+  it("a CRLF file round-trips byte-exact through the desktop path", () => {
+    const md = "# Title\r\n\r\n- item\r\n\r\n```js\r\nconst x = 1;\r\n```\r\n";
+    const out = applyEol(blocksToMarkdown(markdownToBlocks(md)), detectEol(md));
+    expect(out).toBe(md);
+  });
+
+  it("code block text never contains CRs (no more mixed-EOL output)", () => {
+    const blocks = markdownToBlocks("```\r\nline one\r\nline two\r\n```\r\n");
+    expect(blocks[0].text).toBe("line one\nline two");
+  });
+});
+
+describe("ordered-list number formatting (fidelity fix, 2026-08)", () => {
+  it("keeps leading zeros exactly as written", () => {
+    const md = "007. bond\n008. next";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("plain numbering mints no numRaw field", () => {
+    const [out] = markdownToBlocks("3. third");
+    expect(out.num).toBe(3);
+    expect(out.numRaw).toBeUndefined();
   });
 });

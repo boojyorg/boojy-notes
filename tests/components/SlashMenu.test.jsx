@@ -17,7 +17,8 @@ vi.mock("../../src/hooks/useTheme", () => ({
         divider: "#555",
       },
       TEXT: { primary: "#eee", secondary: "#bbb", muted: "#888" },
-      ACCENT: "#A4CACE",
+      ACCENT: { primary: "#A4CACE", onAccent: "#13151C" },
+      modalShadow: "0 24px 48px rgba(0,0,0,0.4)",
       overlay: (o) => `rgba(255,255,255,${o})`,
     },
   }),
@@ -25,6 +26,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
 
 import SlashMenu from "../../src/components/SlashMenu.jsx";
 import { SLASH_COMMANDS } from "../../src/constants/data.js";
+
+const PRIMARY = SLASH_COMMANDS.filter((c) => !c.advanced);
+const ADVANCED = SLASH_COMMANDS.filter((c) => c.advanced);
 
 const defaultMenu = {
   noteId: "note-1",
@@ -37,12 +41,34 @@ const defaultMenu = {
 afterEach(cleanup);
 
 describe("SlashMenu", () => {
-  it("renders all slash command options when filter is empty", () => {
+  it("opens showing only the first-tier commands", () => {
     render(
       <SlashMenu slashMenu={defaultMenu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
     );
-    for (const cmd of SLASH_COMMANDS) {
+    for (const cmd of PRIMARY) {
       expect(screen.getByText(cmd.label)).toBeInTheDocument();
+    }
+    for (const cmd of ADVANCED) {
+      expect(screen.queryByText(cmd.label)).not.toBeInTheDocument();
+    }
+  });
+
+  it("surfaces an advanced command once it is typed", () => {
+    const menu = { ...defaultMenu, filter: "call" };
+    render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
+    expect(screen.getByText("Callout")).toBeInTheDocument();
+    expect(screen.queryByText("Heading 1")).not.toBeInTheDocument();
+  });
+
+  it("renders one bare glyph per row, with no chip around it", () => {
+    const { container } = render(
+      <SlashMenu slashMenu={defaultMenu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
+    );
+    const menuDiv = container.querySelectorAll("[style*='z-index: 200']")[0];
+    expect(menuDiv.querySelectorAll("svg").length).toBe(PRIMARY.length);
+    // The old 24px chip carried its own border; the glyph column must not.
+    for (const cell of menuDiv.querySelectorAll("svg")) {
+      expect(cell.parentElement.style.border).toBe("");
     }
   });
 
@@ -52,10 +78,10 @@ describe("SlashMenu", () => {
     expect(screen.getAllByText("Heading 1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Heading 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Heading 3").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Bullet List")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bullet list")).not.toBeInTheDocument();
   });
 
-  it("highlights selected index with surface background", () => {
+  it("highlights selected index with the row-selected background", () => {
     const menu = { ...defaultMenu, selectedIndex: 2 };
     const { container } = render(
       <SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
@@ -63,8 +89,9 @@ describe("SlashMenu", () => {
     // Menu container is the second fixed div (first is backdrop)
     const menuDiv = container.querySelectorAll("[style*='z-index: 200']")[0];
     const items = Array.from(menuDiv.children);
-    // selectedIndex=2: that item gets BG.surface (#2a2a2a), others transparent
-    expect(items[2].style.background).toContain("rgb(42, 42, 42)");
+    // selectedIndex=2: that item gets BG.hover (#444) — rows/menu items hover
+    // AND select to the same fill, so hover previews selection. Others transparent.
+    expect(items[2].style.background).toContain("rgb(68, 68, 68)");
     expect(items[0].style.background).toBe("transparent");
   });
 

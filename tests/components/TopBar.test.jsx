@@ -171,60 +171,30 @@ afterEach(() => {
   cleanup();
 });
 
-describe("TopBar", () => {
-  it("renders tab elements for provided tabs", () => {
+// Minimal-chrome experiment: the desktop top bar renders nothing at all. The
+// controls it used to hold now live elsewhere and are covered there:
+//   sidebar toggle + note actions -> tests/components/EditorChrome.test.jsx
+//   wordmark / settings entry     -> Sidebar
+//   undo/redo                     -> keyboard only (useAppKeyboard)
+// Tab/pane STATE is untouched; only PaneTabBar is unmounted.
+describe("TopBar (desktop, minimal chrome)", () => {
+  it("renders no top strip at all", () => {
+    const { container } = renderTopBar();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders no visible tab elements even when tabs are open", () => {
     const tabs = ["n1", "n2"];
-    const noteData = buildNoteData(tabs);
-    const { container } = renderTopBar({ tabs, noteData });
-
-    const tabButtons = container.querySelectorAll("[data-tab-id]");
-    expect(tabButtons.length).toBe(2);
-    expect(container.querySelector('[data-tab-id="n1"]')).toBeInTheDocument();
-    expect(container.querySelector('[data-tab-id="n2"]')).toBeInTheDocument();
+    const { container } = renderTopBar({ tabs, noteData: buildNoteData(tabs) });
+    expect(container.querySelectorAll("[data-tab-id]").length).toBe(0);
+    expect(container.querySelectorAll("[data-pane-tab-bar]").length).toBe(0);
   });
 
-  it("undo button has reduced opacity when canUndo=false", () => {
-    actionsState.canUndo = false;
-    const { getByTitle } = renderTopBar();
-    expect(getByTitle("Undo (Ctrl+Z)").style.opacity).toBe("0.3");
-  });
-
-  it("redo button has reduced opacity when canRedo=false", () => {
-    actionsState.canRedo = false;
-    const { getByTitle } = renderTopBar();
-    expect(getByTitle("Redo (Ctrl+Shift+Z)").style.opacity).toBe("0.3");
-  });
-
-  it("undo button is at full opacity when canUndo=true", () => {
-    actionsState.canUndo = true;
-    const { getByTitle } = renderTopBar();
-    expect(getByTitle("Undo (Ctrl+Z)").style.opacity).toBe("1");
-  });
-
-  it("calls undo when undo button is clicked", () => {
-    actionsState.canUndo = true;
-    const { getByTitle } = renderTopBar();
-    fireEvent.click(getByTitle("Undo (Ctrl+Z)"));
-    expect(actionsState.undo).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls redo when redo button is clicked", () => {
-    actionsState.canRedo = true;
-    const { getByTitle } = renderTopBar();
-    fireEvent.click(getByTitle("Redo (Ctrl+Shift+Z)"));
-    expect(actionsState.redo).toHaveBeenCalledTimes(1);
-  });
-
-  it("renders the sidebar toggle button", () => {
-    layoutState.collapsed = false;
-    const { getByTitle } = renderTopBar();
-    expect(getByTitle("Hide sidebar")).toBeInTheDocument();
-  });
-
-  it("opens settings on the Profile tab when the Notes logo is clicked", () => {
-    const { getByTestId } = renderTopBar();
-    fireEvent.click(getByTestId("settings-button"));
-    expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
-    expect(settingsState.setSettingsTab).toHaveBeenCalledWith("profile");
+  it("renders none of the removed controls", () => {
+    const { queryByTitle, queryByText } = renderTopBar();
+    expect(queryByTitle("Undo (Ctrl+Z)")).not.toBeInTheDocument();
+    expect(queryByTitle("Redo (Ctrl+Shift+Z)")).not.toBeInTheDocument();
+    expect(queryByTitle("Quick reference")).not.toBeInTheDocument();
+    expect(queryByText(/\d+ words/)).not.toBeInTheDocument();
   });
 });

@@ -67,9 +67,12 @@ export interface SlashCommand {
   id: string;
   label: string;
   desc: string;
+  /** Lucide glyph name, resolved by SlashCommandIcon in Icons.jsx. */
   icon: string;
   type: string;
   calloutType?: string;
+  /** Kept off the menu's opening screen; still found by typing. */
+  advanced?: boolean;
 }
 
 export interface SidebarNode {

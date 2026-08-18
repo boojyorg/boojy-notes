@@ -209,7 +209,7 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
                 gap: 8,
                 padding: "6px 12px",
                 cursor: "pointer",
-                background: isFocused ? BG.hover : "transparent",
+                background: isFocused ? BG.surface : "transparent",
                 transition: "background 0.1s",
               }}
             >

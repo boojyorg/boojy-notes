@@ -5,7 +5,7 @@ import { usePanelResize } from "../hooks/usePanelResize";
 const LayoutContext = createContext(null);
 
 export function LayoutProvider({ children }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -13,7 +13,7 @@ export function LayoutProvider({ children }) {
   const [chromeBg, setChromeBg] = useState(theme.BG.dark);
   const [editorBg, setEditorBg] = useState(theme.BG.editor);
   const [accentColor, setAccentColor] = useState(theme.ACCENT.primary);
-  const [activeTabBg, setActiveTabBg] = useState(isDark ? "#1C1C20" : "#e2e6f2");
+  const [activeTabBg, setActiveTabBg] = useState(theme.activeTabBg);
   const [tabFlip, setTabFlip] = useState(false);
   const [selectionStyle, setSelectionStyle] = useState("B");
   const [topBarEdge, setTopBarEdge] = useState("B");
@@ -24,8 +24,8 @@ export function LayoutProvider({ children }) {
     setChromeBg(theme.BG.dark);
     setEditorBg(theme.BG.editor);
     setAccentColor(theme.ACCENT.primary);
-    setActiveTabBg(isDark ? "#1C1C20" : "#e2e6f2");
-  }, [isDark, theme.BG.dark, theme.BG.editor, theme.ACCENT.primary]);
+    setActiveTabBg(theme.activeTabBg);
+  }, [theme.BG.dark, theme.BG.editor, theme.ACCENT.primary, theme.activeTabBg]);
 
   const sidebarHandles = useRef([]);
 

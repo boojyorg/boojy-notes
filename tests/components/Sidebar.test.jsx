@@ -173,9 +173,28 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-  it("renders the search input area", () => {
+  it("puts the panel toggle in the sidebar header and collapses on click", () => {
+    const { getByTitle } = renderSidebar();
+    fireEvent.click(getByTitle("Hide sidebar"));
+    expect(layoutState.setCollapsed).toHaveBeenCalledWith(true);
+  });
+
+  it("renders the Search action row", () => {
     const { getByText } = renderSidebar();
     expect(getByText("Search")).toBeInTheDocument();
+  });
+
+  it("focuses search when the Search action row is clicked", () => {
+    const setSearchFocused = vi.fn();
+    const { getByText } = renderSidebar({ setSearchFocused });
+    fireEvent.click(getByText("Search"));
+    expect(setSearchFocused).toHaveBeenCalledWith(true);
+  });
+
+  it("swaps the Search row for a field once search is engaged", () => {
+    const { queryByText, getByLabelText } = renderSidebar({ searchFocused: true });
+    expect(getByLabelText("Search notes")).toBeInTheDocument();
+    expect(queryByText("Search")).not.toBeInTheDocument();
   });
 
   it("renders folder names from filteredTree", () => {
@@ -297,11 +316,68 @@ describe("Sidebar", () => {
     expect(trashElements[0]).toBeInTheDocument();
   });
 
-  it("calls createNote when the New Note button is clicked", () => {
+  it("calls createNote from the New note action row", () => {
     const createNote = vi.fn();
     const { getByText } = renderSidebar({ createNote });
-    fireEvent.click(getByText("New Note"));
+    fireEvent.click(getByText("New note"));
     expect(createNote).toHaveBeenCalledWith(null);
+  });
+
+  it("renders the Folders section header with a New folder button", () => {
+    const createFolder = vi.fn();
+    const { getByText, getByLabelText, queryByText } = renderSidebar({ createFolder });
+    expect(getByText("Folders")).toBeInTheDocument();
+    fireEvent.click(getByLabelText("New folder"));
+    expect(createFolder).toHaveBeenCalled();
+    // The old tree-style row is gone on desktop.
+    expect(queryByText("New Folder")).not.toBeInTheDocument();
+  });
+
+  it("hides the Folders header while searching", () => {
+    const { queryByText } = renderSidebar({
+      searchMode: true,
+      search: "xyz",
+      searchResults: { results: [], groups: [], totalCount: 0 },
+    });
+    expect(queryByText("Folders")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Folders header when there are no folders", () => {
+    const { getByText, getByLabelText } = renderSidebar({ filteredTree: [] });
+    expect(getByText("Folders")).toBeInTheDocument();
+    expect(getByLabelText("New folder")).toBeInTheDocument();
+  });
+
+  it("renders the Notes section header when there are loose root notes", () => {
+    const noteData = buildNoteData([{ id: "r1", title: "Loose Note" }]);
+    const { getByText } = renderSidebar({ noteData, fNotes: ["r1"] });
+    expect(getByText("Notes")).toBeInTheDocument();
+    expect(getByText("Loose Note")).toBeInTheDocument();
+  });
+
+  it("hides the Notes section header when there are no loose root notes", () => {
+    const { queryByText, getByText } = renderSidebar({ fNotes: [] });
+    expect(queryByText("Notes")).not.toBeInTheDocument();
+    expect(getByText("Folders")).toBeInTheDocument();
+  });
+
+  it("renders note rows without a file glyph, at any depth", () => {
+    const noteData = buildNoteData([
+      { id: "r1", title: "Loose Note" },
+      { id: "n1", title: "Nested Note" },
+    ]);
+    const filteredTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const { getByText } = renderSidebar({
+      noteData,
+      fNotes: ["r1"],
+      filteredTree,
+      expanded: { "My Folder": true },
+    });
+    for (const title of ["Loose Note", "Nested Note"]) {
+      const row = getByText(title).closest("[data-note-id]");
+      expect(row).not.toBeNull();
+      expect(row.querySelector("svg")).toBeNull();
+    }
   });
 
   it("renders empty search message when searchMode is active but results are empty", () => {

@@ -2,7 +2,13 @@ import { app, ipcMain, dialog, shell, clipboard, nativeImage } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "./markdown.js";
+import {
+  applyEol,
+  blocksToMarkdown,
+  detectEol,
+  markdownToBlocks,
+  parseFrontmatter,
+} from "./markdown.js";
 
 // ─── Filename helpers ───
 
@@ -170,11 +176,17 @@ function parseNoteFile(filePath, notesDir) {
     const text = blocks.map((b) => b.text || "").join(" ");
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
+    // Remember a CRLF file's line-ending style so saves re-apply it
+    // (write-note → applyEol). LF files carry no field.
+    const eol = detectEol(raw);
+    const content = { title, blocks };
+    if (eol === "\r\n") content.eol = eol;
+
     return {
       id,
       title,
       folder,
-      content: { title, blocks },
+      content,
       words,
       _filePath: filePath,
     };
@@ -249,8 +261,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     // Ensure directory exists
     fs.mkdirSync(path.dirname(finalPath), { recursive: true });
 
-    // Serialize — just markdown body, no frontmatter
-    const bodyMd = blocksToMarkdown(note.content?.blocks || []);
+    // Serialize — just markdown body, no frontmatter; restore the file's
+    // original line-ending style (content.eol is set by parseNoteFile)
+    const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
     suppressWatcher(finalPath);
     writeFileAtomic(finalPath, bodyMd);

@@ -263,10 +263,13 @@ describe("markdownToBlocks", () => {
     expect(blocks[0].text).toBe("");
   });
 
-  it("skips leading blank lines", () => {
+  it("preserves leading blank lines as empty paragraphs (preservation fix, 2026-08)", () => {
+    // They used to be skipped, which deleted them from the file on save
     const blocks = markdownToBlocks("\n\n\nHello");
-    expect(blocks).toHaveLength(1);
-    expect(blocks[0].text).toBe("Hello");
+    expect(blocks).toHaveLength(4);
+    expect(blocks.slice(0, 3).every((b) => b.type === "p" && b.text === "")).toBe(true);
+    expect(blocks[3].text).toBe("Hello");
+    expect(blocksToMarkdown(blocks)).toBe("\n\n\nHello");
   });
 });
 

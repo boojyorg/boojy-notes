@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useTheme } from "./useTheme";
 
 export function useTableInteractions({
   block,
@@ -9,6 +10,8 @@ export function useTableInteractions({
   accentColor,
   cellRefs,
 }) {
+  const { theme } = useTheme();
+  const accent = accentColor || theme.ACCENT.primary;
   const defaultRows = useMemo(
     () => [
       ["", ""],
@@ -490,21 +493,21 @@ export function useTableInteractions({
         if (type === "row") {
           Object.assign(line.style, {
             height: "2px",
-            background: accentColor || "#A4CACE",
-            boxShadow: `0 0 6px ${accentColor || "#A4CACE"}50`,
+            background: accent,
+            boxShadow: `0 0 6px ${accent}50`,
           });
         } else {
           Object.assign(line.style, {
             width: "2px",
-            background: accentColor || "#A4CACE",
-            boxShadow: `0 0 6px ${accentColor || "#A4CACE"}50`,
+            background: accent,
+            boxShadow: `0 0 6px ${accent}50`,
           });
         }
         document.body.appendChild(line);
         d.lineEl = line;
       }, 400);
     },
-    [tableRef, accentColor, getRowAtY, getColAtX, cleanupDrag],
+    [tableRef, accent, getRowAtY, getColAtX, cleanupDrag],
   );
 
   const handleLeftZonePointerDown = useCallback(

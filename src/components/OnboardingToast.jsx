@@ -1,6 +1,8 @@
 import { Z } from "../constants/zIndex";
+import { useTheme } from "../hooks/useTheme";
 
 export default function OnboardingToast({ accentColor, onSignIn, onDismiss }) {
+  const { theme } = useTheme();
   return (
     <div
       style={{
@@ -8,7 +10,7 @@ export default function OnboardingToast({ accentColor, onSignIn, onDismiss }) {
         bottom: 24,
         left: 24,
         background: accentColor,
-        color: "#fff",
+        color: theme.ACCENT.onAccent,
         padding: "14px 20px",
         borderRadius: 10,
         fontSize: 13,
@@ -31,7 +33,7 @@ export default function OnboardingToast({ accentColor, onSignIn, onDismiss }) {
           style={{
             background: "none",
             border: "none",
-            color: "#fff",
+            color: theme.ACCENT.onAccent,
             textDecoration: "underline",
             cursor: "pointer",
             padding: 0,

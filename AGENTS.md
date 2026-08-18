@@ -23,7 +23,7 @@ and gotchas.
 src/
 ├── BoojyNotes.jsx          # Root app component
 ├── main.jsx                # Entry point, provider setup
-├── components/             # UI components (EditableBlock, EditorArea, Sidebar, TopBar, etc.)
+├── components/             # UI components (EditableBlock, EditorArea, Sidebar, EditorChrome, etc.)
 │   ├── blocks/             # Block type components (code, table, callout, image, etc.)
 │   └── settings/           # Settings modal panels
 ├── context/                # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay)
@@ -47,6 +47,13 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > losslessly, enforced by `tests/utils/markdown.test.js`. No nesting/columns/JSON-blob blocks.
 > Read `docs/SPEC-markdown-source-of-truth.md` before adding or changing any block type.
 
+> **⚠️ PRODUCT PHILOSOPHY — read `docs/PHILOSOPHY.md` before planning features or UI.**
+> Boojy is a simple editor for Markdown files you own; unsupported Markdown must be
+> *preserved*, not cleaned up (the other round-trip direction: markdown→blocks→markdown,
+> enforced by `tests/utils/preservation.test.js` with known failures explicitly marked).
+> Every syntax sits at one of four support levels: Native / Compatible / Preserved / Out
+> of scope. Features do not earn permanent UI merely because Boojy can support them.
+
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 
 > **⚠️ Editor gotchas (these have caused real bugs — read before touching the editor):**
@@ -55,7 +62,9 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > 2. **The `syncGen` DOM-resync only fires from React events, not native listeners.** `EditableBlock`'s `useLayoutEffect` re-syncs `innerHTML` from `block.text` when `syncGen` changes — but only if the editor actually re-renders, which it's optimised *not* to do for text edits. Bumping `syncGeneration.current` works from React synthetic-event handlers (input/keydown/paste). It does **not** work from a **native `window` listener** (e.g. a menu's `addEventListener('keydown')`) — React won't re-render, so the effect never runs. To mutate a block from a native listener, write `el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet)` **directly** (the `useInputHandler` pattern), plus `commitNoteData` for state. (This caused the wikilink-insert bug.)
 > When a render/DOM-sync fix "should work" but the DOM doesn't update, **add a `console.log` in the layout effect + handler and observe** before proposing more fixes — don't theorise about React timing.
 - **State:** React Context API (6 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
-- **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`.
+- **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`. **`src/constants/themes.js` is the only colour authority** — never hardcode a hex in a component (see `.claude/rules/ui-chrome-and-theme.md` for the surface roles and the remaining known leaks).
+- **Icons:** Lucide (`lucide-react`), wrapped in `src/components/Icons.jsx` so call sites import stable names. **16px** inline / **20px** standalone controls / **stroke 1.5**, all `currentColor`. Don't hand-roll SVG icons.
+- **Desktop/web chrome:** there is no top bar. `TitleBar` (28px, drag region) is desktop-only; the only editor-level controls are the two pinned buttons in `EditorChrome.jsx`. Mobile keeps `TopBarMobile` unchanged.
 - **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative` (`isNative === isElectron` — the only file-backed target). Services use `getAPI()` factory to return the Electron or web API.
 - **Web builds:** Set `ELECTRON_DISABLE=1` to exclude Electron code. The `dev:web` script does this automatically.
 

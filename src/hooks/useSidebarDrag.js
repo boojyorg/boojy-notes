@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { useTheme } from "./useTheme";
 import { isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { runAutoScroll } from "../utils/domHelpers";
@@ -7,6 +8,11 @@ import {
   computeInsertionIndex,
   getInsertionLinePosition,
 } from "../utils/tabBarHitTest";
+
+// Split view is parked (docs/PHILOSOPHY.md): dragging a note to an editor edge
+// must not create a split there's no UI to show or undo. Flip to re-enable —
+// the split machinery itself (useSplitView) is untouched.
+const EDGE_SPLIT_ENABLED = false;
 
 export function useSidebarDrag({
   noteDataRef,
@@ -29,6 +35,7 @@ export function useSidebarDrag({
   openNoteInPane,
   insertTabInPane,
 }) {
+  const { theme } = useTheme();
   const sidebarDrag = useRef({
     active: false,
     type: null,
@@ -133,7 +140,7 @@ export function useSidebarDrag({
         height: "20px",
         borderRadius: "50%",
         background: accentColor,
-        color: "#fff",
+        color: theme.ACCENT.onAccent,
         fontSize: "11px",
         fontWeight: "600",
         display: "flex",
@@ -269,10 +276,12 @@ export function useSidebarDrag({
             const relY = (pointerY - editorRect.top) / editorRect.height;
             const EDGE = 0.2;
             let editorZone = null;
-            if (relX < EDGE) editorZone = { direction: "vertical", side: "left" };
-            else if (relX > 1 - EDGE) editorZone = { direction: "vertical", side: "right" };
-            else if (relY < EDGE) editorZone = { direction: "horizontal", side: "top" };
-            else if (relY > 1 - EDGE) editorZone = { direction: "horizontal", side: "bottom" };
+            if (EDGE_SPLIT_ENABLED) {
+              if (relX < EDGE) editorZone = { direction: "vertical", side: "left" };
+              else if (relX > 1 - EDGE) editorZone = { direction: "vertical", side: "right" };
+              else if (relY < EDGE) editorZone = { direction: "horizontal", side: "top" };
+              else if (relY > 1 - EDGE) editorZone = { direction: "horizontal", side: "bottom" };
+            }
 
             sd.dropTarget = editorZone
               ? { type: "editor-split", zone: editorZone, rect: editorRect }

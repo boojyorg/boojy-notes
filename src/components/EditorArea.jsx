@@ -466,6 +466,7 @@ const EditorArea = memo(
                   gap: 5,
                   marginBottom: 16,
                   fontSize: 12,
+                  color: TEXT.muted,
                 }}
               >
                 {note.path.map((seg, i) => (

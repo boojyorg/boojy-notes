@@ -2,19 +2,25 @@ import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
-import { SLASH_COMMANDS } from "../constants/data";
+import { filterSlashCommands } from "../constants/data";
+import { SlashCommandIcon } from "./Icons";
+
+/** Row height is icon (20) + 7px above and below. */
+const ROW_PAD_Y = 7;
+const ICON_COL = 20;
+const MENU_WIDTH = 300;
 
 export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand }) {
   const { theme } = useTheme();
-  const { BG, TEXT } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef(null);
   useFocusTrap(menuRef, !!slashMenu);
 
   if (!slashMenu) return null;
 
-  const filtered = SLASH_COMMANDS.filter((c) =>
-    c.label.toLowerCase().includes(slashMenu.filter.toLowerCase()),
-  );
+  // Tier rule lives in filterSlashCommands so this list and the arrow-key list
+  // in useKeyboardHandlers can never drift apart.
+  const filtered = filterSlashCommands(slashMenu.filter);
 
   return (
     <>
@@ -35,8 +41,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           border: `1px solid ${BG.divider}`,
           borderRadius: 10,
           padding: "6px 0",
-          minWidth: 220,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          minWidth: MENU_WIDTH,
+          boxShadow: theme.modalShadow,
           animation: "slideUp 0.12s ease",
         }}
       >
@@ -45,63 +51,49 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
             No matching commands
           </div>
         ) : (
-          filtered.map((cmd, i) => (
-            <div
-              key={cmd.id}
-              role="menuitem"
-              aria-selected={i === slashMenu.selectedIndex}
-              onClick={() => {
-                executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
-                setSlashMenu(null);
-              }}
-              onMouseEnter={() =>
-                setSlashMenu((prev) => (prev ? { ...prev, selectedIndex: i } : null))
-              }
-              style={{
-                padding: "6px 12px",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                cursor: "pointer",
-                background: i === slashMenu.selectedIndex ? BG.surface : "transparent",
-                transition: "background 0.12s",
-              }}
-            >
+          filtered.map((cmd, i) => {
+            const selected = i === slashMenu.selectedIndex;
+            return (
               <div
+                key={cmd.id}
+                role="menuitem"
+                aria-selected={selected}
+                onClick={() => {
+                  executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
+                  setSlashMenu(null);
+                }}
+                onMouseEnter={() =>
+                  setSlashMenu((prev) => (prev ? { ...prev, selectedIndex: i } : null))
+                }
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 6,
-                  background: BG.dark,
-                  border: `1px solid ${BG.divider}`,
+                  padding: `${ROW_PAD_Y}px 12px`,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: TEXT.secondary,
-                  flexShrink: 0,
+                  gap: 10,
+                  cursor: "pointer",
+                  background: selected ? BG.hover : "transparent",
+                  transition: "background 0.12s",
                 }}
               >
-                {cmd.icon}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: TEXT.primary, flex: 1 }}>
-                {cmd.label}
-              </div>
-              {cmd.desc && (
                 <div
                   style={{
-                    fontSize: 11,
-                    color: TEXT.muted,
-                    fontFamily: "monospace",
+                    width: ICON_COL,
+                    height: ICON_COL,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     flexShrink: 0,
+                    color: selected ? ACCENT.primary : TEXT.muted,
                   }}
                 >
-                  {cmd.desc}
+                  <SlashCommandIcon name={cmd.icon} />
                 </div>
-              )}
-            </div>
-          ))
+                <div style={{ fontSize: 13, fontWeight: 500, color: TEXT.primary, flex: 1 }}>
+                  {cmd.label}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </>

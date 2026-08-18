@@ -47,7 +47,8 @@ import EditorMoreMenu from "./components/mobile/EditorMoreMenu";
 import { useKeyboard } from "./hooks/useKeyboard";
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
-import TitleBar from "./components/TitleBar";
+import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
+import EditorChrome from "./components/EditorChrome";
 import OnboardingToast from "./components/OnboardingToast";
 import PersistenceWarning from "./components/PersistenceWarning";
 import FirstSyncModal from "./components/FirstSyncModal";
@@ -693,9 +694,9 @@ export default function BoojyNotes() {
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
   const noteTitle = note?.title;
-  const { wordCount, charCount, charCountNoSpaces, readingTime } = useNoteStats(
-    note?.content?.blocks,
-  );
+  // charCountNoSpaces / readingTime are still computed by useNoteStats — they lost
+  // their only consumer when the top-bar word-count cluster was removed.
+  const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
   // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)
   const {
@@ -862,6 +863,14 @@ export default function BoojyNotes() {
       </a>
 
       {isDesktop && <TitleBar activeNote={activeNote} noteData={noteData} chromeBg={chromeBg} />}
+      {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web). */}
+      {!isMobile && (
+        <EditorChrome
+          topOffset={isDesktop ? TITLE_BAR_H : 0}
+          activeNote={activeNote}
+          onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
+        />
+      )}
       <TopBar
         isMobile={isMobile}
         tabs={tabs}
@@ -888,10 +897,6 @@ export default function BoojyNotes() {
           sel.removeAllRanges();
           sel.addRange(range);
         }}
-        wordCount={wordCount}
-        charCount={charCount}
-        charCountNoSpaces={charCountNoSpaces}
-        readingTime={readingTime}
         tabScrollRef={tabScrollRef}
         tabAreaWidth={tabAreaWidth}
         splitMode={splitState.splitMode}
@@ -956,11 +961,16 @@ export default function BoojyNotes() {
           )}
         </div>
 
-        {/* Sidebar drag handle — desktop only */}
-        {!isMobile && (
+        {/* Sidebar drag handle — desktop only, and only while the sidebar is open.
+            When collapsed it has nothing to resize, and its 4px fill + 1px border
+            left a hairline strip down the left edge instead of the sidebar fully
+            disappearing. */}
+        {!isMobile && !collapsed && (
           <div
             ref={(el) => {
-              if (el) sidebarHandles.current[1] = el;
+              // Assign null on unmount too, so the hover handlers don't restyle a
+              // detached node once the sidebar collapses.
+              sidebarHandles.current[1] = el;
             }}
             onMouseDown={startDrag}
             style={{
