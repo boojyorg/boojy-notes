@@ -6,7 +6,6 @@ import { useSidebar } from "../context/SidebarContext";
 import { extractAllTags } from "../utils/tags";
 import { useSettings } from "../context/SettingsContext";
 import {
-  ICON_INLINE,
   ChevronRight,
   ChevronDown,
   FolderIcon,
@@ -244,8 +243,9 @@ const Sidebar = memo(function Sidebar({
             : {}),
           // The removed FileIcon's width + gap is folded into the left padding so
           // titles keep their column: they still line up with the folder names
-          // above them instead of jumping left by a glyph.
-          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19 + (isMobile ? 29 : 21)}px`,
+          // above them instead of jumping left by a glyph. The chevron removal
+          // took its width + gap (21 desktop / 24 mobile) back out of both rows.
+          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19 + (isMobile ? 5 : 0)}px`,
           display: "flex",
           alignItems: "center",
           gap: mobGap,
@@ -280,7 +280,9 @@ const Sidebar = memo(function Sidebar({
   // Render a folder and its children recursively
   const renderFolder = (folder, depth) => {
     const folderPath = folder._path || folder.name;
-    const isOpen = expanded[folderPath];
+    // Coerced so aria-expanded is always announced — with no chevron it is the
+    // only programmatic expansion signal (undefined would omit the attribute).
+    const isOpen = !!expanded[folderPath];
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
     return (
       <div key={folderPath}>
@@ -318,15 +320,10 @@ const Sidebar = memo(function Sidebar({
             e.currentTarget.style.color = TEXT.secondary;
           }}
         >
-          {hasChildren ? (
-            isOpen ? (
-              <ChevronDown />
-            ) : (
-              <ChevronRight />
-            )
-          ) : (
-            <span style={{ width: ICON_INLINE, flexShrink: 0 }} />
-          )}
+          {/* No disclosure chevron — the whole row toggles, the open-folder icon
+              and indented children carry the state. aria-expanded still announces
+              it. (Reversible experiment: restore the chevron + placeholder span
+              here and the chevron allowance in renderNote's left padding.) */}
           <FolderIcon open={isOpen} color={accentColor} size={isMobile ? 20 : undefined} />
           {renamingFolder === folderPath ? (
             <input
@@ -375,7 +372,8 @@ const Sidebar = memo(function Sidebar({
             <div
               style={{
                 position: "absolute",
-                left: 10 + depth * 20 + 7,
+                // Centred under the folder icon (16px glyph at 10px inset).
+                left: 10 + depth * 20 + 8,
                 top: 0,
                 bottom: 0,
                 width: 1,
@@ -916,7 +914,6 @@ const Sidebar = memo(function Sidebar({
                       e.currentTarget.style.opacity = "0.55";
                     }}
                   >
-                    <span style={{ width: 14, flexShrink: 0 }} />
                     <span
                       style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}
                     >

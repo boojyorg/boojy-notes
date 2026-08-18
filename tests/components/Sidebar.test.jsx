@@ -266,6 +266,27 @@ describe("Sidebar", () => {
     expect(toggle).toHaveBeenCalledWith("Toggle Folder");
   });
 
+  it("renders folder rows without a disclosure chevron but keeps aria-expanded", () => {
+    const noteData = buildNoteData([{ id: "n1", title: "Child Note" }]);
+    const filteredTree = [
+      { name: "Open Folder", _path: "Open Folder", children: [], notes: ["n1"] },
+      { name: "Shut Folder", _path: "Shut Folder", children: [], notes: ["n1"] },
+    ];
+    const { getByText } = renderSidebar({
+      filteredTree,
+      noteData,
+      expanded: { "Open Folder": true },
+    });
+    for (const [name, open] of [
+      ["Open Folder", "true"],
+      ["Shut Folder", "false"],
+    ]) {
+      const row = getByText(name).closest('[role="treeitem"]');
+      expect(row.getAttribute("aria-expanded")).toBe(open);
+      expect(row.querySelector(".lucide-chevron-right, .lucide-chevron-down")).toBeNull();
+    }
+  });
+
   it("shows search results when in searchMode with results", () => {
     const searchResults = {
       results: [
