@@ -196,10 +196,10 @@ export function markdownToBlocks(md) {
     const raw = lines[i];
     const line = raw.trim();
 
-    if (!line && blocks.length === 0) {
-      i++;
-      continue;
-    }
+    // Leading blank lines become empty paragraph blocks like any other blank
+    // line, so they survive a save. Side effect (deliberate): `---` after
+    // leading blanks is no longer treated as frontmatter — which matches
+    // Obsidian/CommonMark, where frontmatter must start on line 1.
 
     // 1. Frontmatter (--- at position 0 only)
     if (line === "---" && blocks.length === 0) {
