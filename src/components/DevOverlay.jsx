@@ -13,10 +13,6 @@ export default function DevOverlay({ open, onClose }) {
     setChromeBg,
     editorBg,
     setEditorBg,
-    activeTabBg,
-    setActiveTabBg,
-    tabFlip,
-    setTabFlip,
     selectionStyle,
     setSelectionStyle,
     topBarEdge,
@@ -37,7 +33,6 @@ export default function DevOverlay({ open, onClose }) {
   const aRgb = hexToRgb(accentColor);
   const cRgb = hexToRgb(chromeBg);
   const eRgb = hexToRgb(editorBg);
-  const tRgb = hexToRgb(activeTabBg);
   const sliderCss = `
     .dev-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: ${theme.TEXT.primary}; cursor: pointer; border: 2px solid ${theme.BG.elevated}; }
     .dev-slider::-webkit-slider-runnable-track { height: 4px; background: ${theme.BG.divider}; border-radius: 2px; }
@@ -330,52 +325,6 @@ export default function DevOverlay({ open, onClose }) {
 
         <div style={{ height: 1, background: theme.BG.divider }} />
         <div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 6,
-            }}
-          >
-            <span>Active Tab BG</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <code style={{ color: theme.TEXT.primary }}>{activeTabBg}</code>
-              <button
-                onClick={() => {
-                  setTabFlip(!tabFlip);
-                  showDevToast(`Tab flip: ${!tabFlip ? "ON" : "OFF"}`);
-                }}
-                style={{
-                  background: tabFlip ? theme.TEXT.primary : "transparent",
-                  color: tabFlip ? theme.BG.darkest : theme.TEXT.muted,
-                  border: `1px solid ${theme.BG.divider}`,
-                  borderRadius: 4,
-                  padding: "2px 8px",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "background 0.12s, color 0.12s",
-                }}
-              >
-                FLIP
-              </button>
-            </div>
-          </div>
-          {rgbSliders(tRgb, setActiveTabBg)}
-          <div
-            style={{
-              height: 8,
-              marginTop: 6,
-              borderRadius: 3,
-              background: activeTabBg,
-              border: `1px solid ${theme.BG.divider}`,
-            }}
-          />
-        </div>
-
-        <div style={{ height: 1, background: theme.BG.divider }} />
-        <div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span>Chrome BG</span>
             <code style={{ color: theme.TEXT.primary }}>{chromeBg}</code>
@@ -416,8 +365,6 @@ export default function DevOverlay({ open, onClose }) {
             setChromeBg(theme.BG.dark);
             setEditorBg(theme.BG.editor);
             setAccentColor(theme.ACCENT.primary);
-            setActiveTabBg(theme.activeTabBg);
-            setTabFlip(false);
           }}
           style={{
             background: "none",

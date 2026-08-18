@@ -44,8 +44,6 @@ const layoutState = {
   rightPanel: false,
   setRightPanel: vi.fn(),
   chromeBg: "#222",
-  activeTabBg: "#1C1C20",
-  tabFlip: false,
   rightPanelWidth: 220,
   topBarEdge: "B",
   sidebarHandles: { current: [] },
