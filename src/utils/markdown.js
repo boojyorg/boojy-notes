@@ -81,7 +81,7 @@ export function blocksToMarkdown(blocks) {
         lines.push(`${listIndent(block)}${block.marker || "-"} ${block.text || ""}`);
         break;
       case "numbered":
-        lines.push(`${listIndent(block)}${numCounter}. ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.numRaw ?? numCounter}. ${block.text || ""}`);
         break;
       case "checkbox":
         lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}] ${block.text || ""}`);
@@ -377,7 +377,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; format?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -396,6 +396,10 @@ export function markdownToBlocks(md) {
         text: line.replace(/^\d+\.\s/, ""),
         num: parseInt(line, 10),
       };
+      // Keep the number exactly as written when parseInt would reformat it
+      // (leading zeros: "007." must not become "7." on save)
+      const numStr = line.match(/^(\d+)\./)[1];
+      if (numStr !== String(block.num)) block.numRaw = numStr;
       applyListIndent(block);
     } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")) {
       // All three CommonMark bullet markers; the marker is kept only when it

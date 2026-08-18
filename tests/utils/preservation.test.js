@@ -49,7 +49,6 @@ const FIXTURES_DIR = path.join(
 const KNOWN_FAILURES = {
   "backtick-fences.md": { roundtrip: true, edit: true }, // empty fence gains a blank line
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
-  "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7. (leading zeros lost; indent now preserved)
   "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
 };
 

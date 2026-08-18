@@ -390,3 +390,16 @@ describe("line-ending preservation (fidelity fix, 2026-08)", () => {
     expect(blocks[0].text).toBe("line one\nline two");
   });
 });
+
+describe("ordered-list number formatting (fidelity fix, 2026-08)", () => {
+  it("keeps leading zeros exactly as written", () => {
+    const md = "007. bond\n008. next";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("plain numbering mints no numRaw field", () => {
+    const [out] = markdownToBlocks("3. third");
+    expect(out.num).toBe(3);
+    expect(out.numRaw).toBeUndefined();
+  });
+});
