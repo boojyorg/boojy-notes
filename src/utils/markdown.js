@@ -119,8 +119,11 @@ export function blocksToMarkdown(blocks) {
       }
       case "table": {
         if (block.rows && block.rows.length > 0) {
+          // A literal pipe inside a cell must be written escaped, or the next
+          // parse splits the cell apart (content-destroying)
+          const esc = (cell) => cell.replace(/\|/g, "\\|");
           const header = block.rows[0];
-          lines.push("| " + header.join(" | ") + " |");
+          lines.push("| " + header.map(esc).join(" | ") + " |");
           const aligns = block.alignments || [];
           const sep = header.map((_, i) => {
             const a = aligns[i];
@@ -133,7 +136,7 @@ export function blocksToMarkdown(blocks) {
             const row = block.rows[r];
             const padded = [];
             for (let c = 0; c < header.length; c++) {
-              padded.push(row[c] !== undefined ? row[c] : "");
+              padded.push(row[c] !== undefined ? esc(row[c]) : "");
             }
             lines.push("| " + padded.join(" | ") + " |");
           }
@@ -390,11 +393,31 @@ export function markdownToBlocks(md) {
 }
 
 export function parseTableRow(line) {
-  return line
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+  // Split on unescaped pipes only: `\|` is a literal pipe inside a cell, and
+  // `\\` escapes the backslash itself (so `\\|` is a backslash then a
+  // separator). A naive split("|") deleted cell content on files using `\|`.
+  const s = line.replace(/^\|/, "");
+  const cells = [];
+  let cur = "";
+  let closedByPipe = false;
+  for (let j = 0; j < s.length; j++) {
+    const ch = s[j];
+    if (ch === "\\" && j + 1 < s.length) {
+      cur += ch + s[j + 1];
+      j++;
+      closedByPipe = false;
+    } else if (ch === "|") {
+      cells.push(cur);
+      cur = "";
+      closedByPipe = true;
+    } else {
+      cur += ch;
+      closedByPipe = false;
+    }
+  }
+  if (!(closedByPipe && cur === "")) cells.push(cur);
+  // After the scan a cell can only contain `\|` if it was an escaped pipe
+  return cells.map((cell) => cell.trim().replace(/\\\|/g, "|"));
 }
 
 export function parseFrontmatterYaml(yamlStr) {

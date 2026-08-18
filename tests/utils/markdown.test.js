@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown.js";
+import { blocksToMarkdown, markdownToBlocks, parseTableRow } from "../../src/utils/markdown.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUND-TRIP GUARDRAIL
@@ -259,5 +259,36 @@ describe("markdown round-trip — intrinsic, documented losses", () => {
     // `---` at position 0 is always frontmatter; a spacer must never be first.
     const out = markdownToBlocks(blocksToMarkdown([{ type: "spacer", text: "" }]));
     expect(out[0].type).toBe("frontmatter");
+  });
+});
+
+describe("table cells with literal pipes (preservation fix, 2026-08)", () => {
+  // A naive split("|") used to delete cell content on files using `\|` —
+  // the worst finding of the preservation damage report.
+
+  it("parseTableRow splits only on unescaped pipes", () => {
+    expect(parseTableRow("| pipe \\| inside | x |")).toEqual(["pipe | inside", "x"]);
+    // `\\|` is an escaped backslash followed by a real separator
+    expect(parseTableRow("| a\\\\ | b |")).toEqual(["a\\\\", "b"]);
+    expect(parseTableRow("| plain | cells |")).toEqual(["plain", "cells"]);
+    expect(parseTableRow("| a |  |")).toEqual(["a", ""]); // empty trailing cell kept
+  });
+
+  it("a cell containing a pipe round-trips block → markdown → block", () => {
+    const blocks = [
+      {
+        type: "table",
+        rows: [
+          ["cmd", "desc"],
+          ["grep a|b", "alternation"],
+        ],
+        alignments: ["left", "left"],
+        text: "",
+      },
+    ];
+    const md = blocksToMarkdown(blocks);
+    expect(md).toContain("grep a\\|b"); // written escaped
+    const [out] = markdownToBlocks(md);
+    expect(out.rows).toEqual(blocks[0].rows); // read back intact
   });
 });

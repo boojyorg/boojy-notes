@@ -48,7 +48,7 @@ const KNOWN_FAILURES = {
   "html-indented.md": { roundtrip: true, edit: true }, // HTML indentation flattened
   "list-markers.md": { roundtrip: true, edit: true }, // *,+ and tab-indented children dedented to col 0
   "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7.; 3-space nesting re-quantised
-  "table-alignment.md": { roundtrip: true, edit: true }, // escaped \| splits cells (DATA LOSS); padding/:--- rewritten
+  "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
   "whitespace.md": { roundtrip: true, edit: true }, // indented code flattened; hard breaks stripped; leading blanks dropped
   "wikilinks-embeds.md": { roundtrip: true, edit: true }, // ![[img|300]] → 301 (width quantised to 1/7ths)
 };
