@@ -1,10 +1,11 @@
 # Current target
 
-**Verify the single-active-note model in the running app, then merge `refactor/single-active-note`.**
+**Verify the single-active-note model in the running app, then merge PR #68
+(`refactor/single-active-note`).**
 
-The navigation simplification is implemented on the branch (4 commits: remove split/tab entry
+The navigation simplification is implemented on the branch (5 commits: remove split/tab entry
 points → single-active-note state + persistence migration → dead-component cleanup → migration
-tests). Unit, coverage (floors ratcheted to 47/43/45/45) and E2E gates are green.
+tests → docs). Unit, coverage (floors ratcheted to 47/43/45/45) and E2E gates are green.
 
 ## What to verify on `pnpm dev`
 
