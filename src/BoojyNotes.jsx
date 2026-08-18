@@ -36,6 +36,7 @@ import Toast from "./components/Toast";
 import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
 import FirstSyncModal from "./components/FirstSyncModal";
+import RecentlyDeletedModal from "./components/RecentlyDeletedModal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
@@ -163,6 +164,7 @@ export default function BoojyNotes() {
   const [, forceRender] = useState(0);
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [recentlyDeletedOpen, setRecentlyDeletedOpen] = useState(false);
 
   // The web sign-in nags (OnboardingToast / PersistenceWarning) are unmounted
   // with the rest of the cloud-sync surface — components + useWebNags stay on
@@ -778,6 +780,7 @@ export default function BoojyNotes() {
             createNote={createNote}
             handleSidebarPointerDown={handleSidebarPointerDown}
             emptyAllTrash={emptyAllTrash}
+            onOpenRecentlyDeleted={() => setRecentlyDeletedOpen(true)}
             handleSearchResultOpen={handleSearchResultOpen}
             selectedNotes={selectedNotes}
             handleNoteClick={handleNoteClick}
@@ -934,6 +937,13 @@ export default function BoojyNotes() {
       )}
 
       {/* === Overlays === */}
+      <RecentlyDeletedModal
+        open={recentlyDeletedOpen}
+        onClose={() => setRecentlyDeletedOpen(false)}
+        restoreNote={restoreNote}
+        permanentDeleteNote={permanentDeleteNote}
+        emptyAllTrash={emptyAllTrash}
+      />
       <ContextMenu
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
