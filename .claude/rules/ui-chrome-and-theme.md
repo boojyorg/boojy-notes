@@ -79,9 +79,11 @@ Consequences a future change will trip over:
 - **Drag-to-tab-bar is dead.** `findTabBarUnderCursor` queries `[data-pane-tab-bar]`, which no longer
   exists in the DOM, so `useTabDrag.js` and `useSidebarDrag.js` always take the null branch. Tab
   reorder, drag-into-a-specific-pane, and Option+drag duplicate silently do nothing.
-- **Split view still works** — it's created by dragging to an editor *edge zone*
-  (`getDropZone` → `splitPaneWithNote`), not via the tab bar. But there's no per-pane tab UI, so
-  nothing shows which notes are open where and there's no per-pane close.
+- **Edge-drag split is disabled** (2026-08-18): `EDGE_SPLIT_ENABLED = false` in
+  `useSidebarDrag.js` — dragging a note to an editor edge now just opens it. It used to create a
+  split with no per-pane UI to show or undo it. `useSplitView` and the wikilink "open in split"
+  path are untouched; flip the flag to restore edge-drop. Split view is parked per
+  `docs/PHILOSOPHY.md`.
 - **There is no way to close a note.** The `×` lived on the tab and there is no Cmd+W binding in
   `useAppKeyboard.js`. Tabs accumulate invisibly.
 - **Help is unreachable.** The `?` was its only entry point; `HelpDropdown.jsx` is unmounted, and

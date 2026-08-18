@@ -9,6 +9,11 @@ import {
   getInsertionLinePosition,
 } from "../utils/tabBarHitTest";
 
+// Split view is parked (docs/PHILOSOPHY.md): dragging a note to an editor edge
+// must not create a split there's no UI to show or undo. Flip to re-enable —
+// the split machinery itself (useSplitView) is untouched.
+const EDGE_SPLIT_ENABLED = false;
+
 export function useSidebarDrag({
   noteDataRef,
   setNoteData,
@@ -271,10 +276,12 @@ export function useSidebarDrag({
             const relY = (pointerY - editorRect.top) / editorRect.height;
             const EDGE = 0.2;
             let editorZone = null;
-            if (relX < EDGE) editorZone = { direction: "vertical", side: "left" };
-            else if (relX > 1 - EDGE) editorZone = { direction: "vertical", side: "right" };
-            else if (relY < EDGE) editorZone = { direction: "horizontal", side: "top" };
-            else if (relY > 1 - EDGE) editorZone = { direction: "horizontal", side: "bottom" };
+            if (EDGE_SPLIT_ENABLED) {
+              if (relX < EDGE) editorZone = { direction: "vertical", side: "left" };
+              else if (relX > 1 - EDGE) editorZone = { direction: "vertical", side: "right" };
+              else if (relY < EDGE) editorZone = { direction: "horizontal", side: "top" };
+              else if (relY > 1 - EDGE) editorZone = { direction: "horizontal", side: "bottom" };
+            }
 
             sd.dropTarget = editorZone
               ? { type: "editor-split", zone: editorZone, rect: editorRect }
