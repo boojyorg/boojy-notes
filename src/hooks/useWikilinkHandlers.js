@@ -23,10 +23,6 @@ export function useWikilinkHandlers({
   textOnlyEdit,
   openNote,
   createNote,
-  splitState,
-  getOtherPaneId,
-  openNoteInPane,
-  splitPaneWithNote,
   wikilinkMenuRef,
   setWikilinkMenu,
   syncGeneration,
@@ -80,33 +76,9 @@ export function useWikilinkHandlers({
     [openNote, createNote, noteDataRef],
   );
 
-  const handleWikilinkCmdClick = useCallback(
-    (targetTitle) => {
-      const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(
-        ([, n]) => (n.title || "").toLowerCase() === lc,
-      );
-      const noteId = found ? found[0] : null;
-      if (!noteId) {
-        createNote(null, targetTitle);
-        return;
-      }
-      if (splitState.splitMode) {
-        const otherPaneId = getOtherPaneId();
-        if (otherPaneId) openNoteInPane(noteId, otherPaneId);
-      } else {
-        splitPaneWithNote("vertical", noteId);
-      }
-    },
-    [
-      splitState.splitMode,
-      getOtherPaneId,
-      openNoteInPane,
-      splitPaneWithNote,
-      createNote,
-      noteDataRef,
-    ],
-  );
+  // Cmd-click used to open the target in a split pane; with the single-active-note
+  // model it behaves exactly like a plain click.
+  const handleWikilinkCmdClick = handleWikilinkClick;
 
   // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
