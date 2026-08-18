@@ -46,8 +46,7 @@ const KNOWN_FAILURES = {
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
   "crlf.md": { roundtrip: true, edit: true }, // CRLF → LF, except inside code blocks (mixed EOL)
   "leading-blanks.md": { roundtrip: true, edit: true }, // blank lines before the first block are dropped
-  "list-markers.md": { roundtrip: true, edit: true }, // *,+ and tab-indented children dedented to col 0
-  "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7.; 3-space nesting re-quantised
+  "ordered-numbering.md": { roundtrip: true, edit: true }, // 007. → 7. (leading zeros lost; indent now preserved)
   "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
   "wikilinks-embeds.md": { roundtrip: true, edit: true }, // ![[img|300]] → 301 (width quantised to 1/7ths)
 };

@@ -33,6 +33,16 @@ const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".sv
 
 let _parseBlockId = 0;
 
+/**
+ * List indentation as written: the parsed raw prefix when the file used
+ * something other than 2-space levels (tabs, odd space counts), else the
+ * canonical 2 spaces per level. In-app indent changes clear `indentStr`
+ * (useBlockOperations.updateBlockIndent), so it can never go stale.
+ */
+function listIndent(block) {
+  return block.indentStr ?? "  ".repeat(block.indent || 0);
+}
+
 export function blocksToMarkdown(blocks) {
   const lines = [];
   // Numbered items keep their parsed number (block.num); items created in-app
@@ -51,15 +61,13 @@ export function blocksToMarkdown(blocks) {
         lines.push(`### ${block.text || ""}`);
         break;
       case "bullet":
-        lines.push(`${"  ".repeat(block.indent || 0)}- ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.marker || "-"} ${block.text || ""}`);
         break;
       case "numbered":
-        lines.push(`${"  ".repeat(block.indent || 0)}${numCounter}. ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${numCounter}. ${block.text || ""}`);
         break;
       case "checkbox":
-        lines.push(
-          `${"  ".repeat(block.indent || 0)}- [${block.checked ? "x" : " "}] ${block.text || ""}`,
-        );
+        lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}] ${block.text || ""}`);
         break;
       case "spacer":
         lines.push("---");
@@ -333,16 +341,25 @@ export function markdownToBlocks(md) {
     }
 
     // 6. Single-line matchers
-    const leadingSpaces = raw.match(/^(\s*)/)[1].length;
-    const indent = Math.floor(leadingSpaces / 2);
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; src?: string; alt?: string; width?: number; num?: number; format?: string }} */
+    // Indent levels: 2 spaces = 1 level, a tab = 1 level. The raw prefix is
+    // kept on the block (indentStr) whenever it differs from the canonical
+    // 2-space form, so tab- and odd-space-indented list items round-trip
+    // byte-exact instead of being re-quantised (or dedented) on save.
+    const leadingWs = raw.match(/^[ \t]*/)[0];
+    const tabCount = (leadingWs.match(/\t/g) || []).length;
+    const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; num?: number; format?: string }} */
     let block;
+    const applyListIndent = (b) => {
+      if (indent > 0) b.indent = indent;
+      if (leadingWs && leadingWs !== "  ".repeat(indent)) b.indentStr = leadingWs;
+    };
     if (line === "---") {
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
     } else if (/^- \[([ xX])\] /.test(line)) {
       const checked = line[3] !== " ";
       block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: line.slice(6), checked };
-      if (indent > 0) block.indent = Math.min(indent, 6);
+      applyListIndent(block);
     } else if (/^\d+\.\s/.test(line)) {
       block = {
         id: `md-${++_parseBlockId}`,
@@ -350,10 +367,13 @@ export function markdownToBlocks(md) {
         text: line.replace(/^\d+\.\s/, ""),
         num: parseInt(line, 10),
       };
-      if (indent > 0) block.indent = Math.min(indent, 6);
-    } else if (line.startsWith("- ")) {
+      applyListIndent(block);
+    } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")) {
+      // All three CommonMark bullet markers; the marker is kept only when it
+      // is not the in-app default "-", so app-created bullets stay unchanged
       block = { id: `md-${++_parseBlockId}`, type: "bullet", text: line.slice(2) };
-      if (indent > 0) block.indent = Math.min(indent, 6);
+      if (line[0] !== "-") block.marker = line[0];
+      applyListIndent(block);
     } else if (line.startsWith("### ")) {
       block = { id: `md-${++_parseBlockId}`, type: "h3", text: line.slice(4) };
     } else if (line.startsWith("## ")) {

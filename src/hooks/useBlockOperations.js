@@ -283,7 +283,10 @@ export function useBlockOperations({
       const block = blocks[blockIndex];
       blockId = block.id;
       const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
-      blocks[blockIndex] = { ...block, indent: newIndent };
+      // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
+      // file) — after an in-app indent change it no longer matches, and a
+      // stale one would serialise the OLD indentation (see utils/markdown.js)
+      blocks[blockIndex] = { ...block, indent: newIndent, indentStr: undefined };
       n.content = { ...n.content, blocks };
       next[noteId] = n;
       return next;

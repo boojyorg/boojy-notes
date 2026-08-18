@@ -313,3 +313,33 @@ describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => 
     expect(block.text).toBe("plain line");
   });
 });
+
+describe("list marker + raw indent preservation (preservation fix, 2026-08)", () => {
+  // `*` and `+` bullets used to parse as paragraphs — nested ones were
+  // dedented to column 0, destroying the hierarchy. Tab and odd-space
+  // indents were re-quantised to 2-space levels.
+
+  it("recognises *, + bullets and writes the same marker back", () => {
+    const md = "* star item\n+ plus item\n- dash item";
+    const blocks = markdownToBlocks(md);
+    expect(blocks.map((b) => b.type)).toEqual(["bullet", "bullet", "bullet"]);
+    expect(blocks.map((b) => b.marker)).toEqual(["*", "+", undefined]);
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("preserves tab and odd-space list indentation byte-exact", () => {
+    const md = "- parent\n\t- tab child\n   - three-space child\n    - four-space child";
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("tab-indented children still nest in-app (indent level, not just bytes)", () => {
+    const blocks = markdownToBlocks("- parent\n\t- tab child");
+    expect(blocks[1].indent).toBe(1);
+  });
+
+  it("app-created bullets are unaffected (no marker/indentStr fields minted)", () => {
+    const [out] = markdownToBlocks(blocksToMarkdown([{ type: "bullet", text: "plain" }]));
+    expect(out.marker).toBeUndefined();
+    expect(out.indentStr).toBeUndefined();
+  });
+});
