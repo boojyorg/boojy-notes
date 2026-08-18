@@ -12,12 +12,14 @@ export default defineConfig({
       // Floor set just below current actuals (CI was red since ~Mar 2026 after the
       // mobile UI overhaul added untested component code). These are a regression
       // guard to ratchet UP over time as presentational code gets covered — not a
-      // target. Current: lines ~47, branches ~44, functions ~45, statements ~46.
+      // target. Current: lines ~48.6, branches ~44.5, functions ~46.9,
+      // statements ~47.1 (post single-active-note refactor — deleting the
+      // largely-untested pane/tab UI raised the ratio).
       thresholds: {
-        lines: 45,
-        branches: 42,
-        functions: 43,
-        statements: 43,
+        lines: 47,
+        branches: 43,
+        functions: 45,
+        statements: 45,
       },
     },
   },
