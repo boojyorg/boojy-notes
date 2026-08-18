@@ -1,12 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  Fragment,
-} from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
 import { useLayout } from "./context/LayoutContext";
@@ -15,7 +7,7 @@ import { useOverlay } from "./context/OverlayContext";
 import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
 import { useQuitFlush } from "./hooks/useQuitFlush";
-import { useNoteNavigation } from "./hooks/useNoteNavigation";
+import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
 import { useInlineFormatting } from "./hooks/useInlineFormatting";
@@ -24,11 +16,7 @@ import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTheme } from "./hooks/useTheme";
-import { useSplitView } from "./hooks/useSplitView";
-import { useTabDrag } from "./hooks/useTabDrag";
-import { loadFromStorage } from "./utils/storage";
 import { Z } from "./constants/zIndex";
-import { getBacklinksForNote } from "./utils/backlinkIndex";
 const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
@@ -38,8 +26,6 @@ import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
-import PaneContainer from "./components/PaneContainer";
-import SplitDivider from "./components/SplitDivider";
 import ImageLightbox from "./components/ImageLightbox";
 import FloatingActionButton from "./components/mobile/FloatingActionButton";
 import MobileToolbar from "./components/mobile/MobileToolbar";
@@ -116,8 +102,6 @@ export default function BoojyNotes() {
     chromeBg,
     editorBg,
     accentColor,
-    activeTabBg,
-    tabFlip,
     sidebarHandles,
     isDragging,
     startDrag,
@@ -165,56 +149,8 @@ export default function BoojyNotes() {
   } = useOverlay();
 
   // ── State ──────────────────────────────────────────────────────────
-  // Split view state — manages tabs + activeNote per pane
-  const initialActiveNote = (() => {
-    const ui = (() => {
-      try {
-        return JSON.parse(localStorage.getItem("boojy-ui-state"));
-      } catch {
-        return null;
-      }
-    })();
-    if (ui?.activeNote) return ui.activeNote;
-    const saved = loadFromStorage();
-    return saved?.activeNote && saved.noteData?.[saved.activeNote] ? saved.activeNote : null;
-  })();
-  const initialTabs = (() => {
-    const ui = (() => {
-      try {
-        return JSON.parse(localStorage.getItem("boojy-ui-state"));
-      } catch {
-        return null;
-      }
-    })();
-    if (ui?.tabs?.length > 0) return ui.tabs;
-    const saved = loadFromStorage();
-    if (saved?.tabs) {
-      const valid = saved.tabs.filter((id) => saved.noteData?.[id]);
-      if (valid.length > 0) return valid;
-    }
-    return [];
-  })();
-  const {
-    splitState,
-    splitStateRef,
-    activeNote,
-    tabs,
-    setActiveNote,
-    setTabs,
-    activePaneId,
-    setActivePaneId,
-    setDividerPosition,
-    splitPaneWithNote,
-    closePaneIfEmpty,
-    moveTabToPane,
-    moveTabToPaneAtIndex,
-    duplicateTabToPane,
-    openNoteInPane,
-    removeNoteFromAllPanes,
-    getSplitStateForPersistence,
-    setActiveNoteForPane,
-    setTabsForPane,
-  } = useSplitView({ initialTabs, initialActiveNote });
+  // Navigation state: one active note. Opening a note replaces the current one.
+  const { activeNote, setActiveNote } = useActiveNote();
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
   const [devOverlay, setDevOverlay] = useState(false);
@@ -237,8 +173,6 @@ export default function BoojyNotes() {
     useWebNags({ noteData, user });
 
   // ── Refs ────────────────────────────────────────────────────────────
-  const tabScrollRef = useRef(null);
-  const [tabAreaWidth, setTabAreaWidth] = useState(600);
   const blockRefs = useRef({});
   const editorRef = useRef(null);
   const titleRef = useRef(null);
@@ -246,7 +180,6 @@ export default function BoojyNotes() {
   const focusCursorPos = useRef(null);
   const mouseIsDown = useRef(false);
   const editorScrollRef = useRef(null);
-  const splitContainerRef = useRef(null);
 
   // ── Sync activeNoteRef from context ─────────────────────────────────
   activeNoteRef.current = activeNote;
@@ -304,14 +237,8 @@ export default function BoojyNotes() {
     showToast,
   );
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
-  const { toggle, openNote, closeTab, newTabId, closingTabs } = useNoteNavigation({
-    activeNote,
-    setActiveNote,
-    tabs,
-    setTabs,
-    expanded,
-    setExpanded,
-  });
+  const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
+  const openNote = setActiveNote;
   const {
     createNote,
     deleteNote,
@@ -328,7 +255,6 @@ export default function BoojyNotes() {
   } = useNoteCrud({
     commitNoteData,
     noteDataRef,
-    setTabs,
     setActiveNote,
     activeNote,
     setCustomFolders,
@@ -424,18 +350,6 @@ export default function BoojyNotes() {
     clearSelectionRef: clearSelectionRef,
     openNote,
   });
-  const { handleTabPointerDown } = useTabDrag({
-    splitState,
-    splitPaneWithNote,
-    moveTabToPane,
-    moveTabToPaneAtIndex,
-    duplicateTabToPane,
-    openNoteInPane,
-    setTabsForPane,
-    closePaneIfEmpty,
-    accentColor,
-    chromeBg,
-  });
   const {
     handleEditorKeyDown,
     handleEditorInput,
@@ -515,18 +429,16 @@ export default function BoojyNotes() {
     isElectron,
   });
 
-  // Editor fade-in + title sync (only in single-pane mode)
+  // Editor fade-in + title sync
   useEffect(() => {
-    if (splitState.splitMode) return;
     setEditorFadeIn(false);
     setSelectedImageBlockId(null);
     setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
-  }, [activeNote, splitState.splitMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
-    if (splitState.splitMode) return;
     const title = noteData[activeNote]?.content?.title;
     if (titleRef.current && title !== undefined) {
       if (title === "") {
@@ -536,14 +448,6 @@ export default function BoojyNotes() {
       }
     }
   }, [activeNote, syncGeneration.current]); // eslint-disable-line -- only on note switch + external sync, NOT every keystroke
-
-  useEffect(() => {
-    const el = tabScrollRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setTabAreaWidth(entry.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   useAppKeyboard({
     activeNote,
@@ -566,13 +470,10 @@ export default function BoojyNotes() {
   });
 
   useAppPersistence({
-    tabs,
     activeNote,
     expanded,
-    splitState,
     noteData,
     customFolders,
-    getSplitStateForPersistence,
     showToast,
   });
 
@@ -613,10 +514,8 @@ export default function BoojyNotes() {
     loadMeta();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Floating-toolbar positioning + focus/caret placement (single-pane only)
+  // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({
-    splitState,
-    splitStateRef,
     activeNote,
     editorRef,
     editorScrollRef,
@@ -628,26 +527,10 @@ export default function BoojyNotes() {
   });
 
   // ── Ghost note (draft) effects ────────────────────────────────────────
-  const prevNoteIdsRef = useRef(null);
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote && !noteData[activeNote]) {
       setActiveNote(null);
-    }
-    if (splitState.splitMode) {
-      const currentIds = Object.keys(noteData);
-      const prevIds = prevNoteIdsRef.current;
-      if (prevIds && currentIds.length < prevIds.length) {
-        const currentSet = new Set(currentIds);
-        for (const [, pane] of Object.entries(splitState.panes)) {
-          for (const tabId of pane.tabs) {
-            if (!currentSet.has(tabId)) {
-              removeNoteFromAllPanes(tabId);
-            }
-          }
-        }
-      }
-      prevNoteIdsRef.current = currentIds;
     }
   }, [fsLoading, noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -688,7 +571,6 @@ export default function BoojyNotes() {
   // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)
   const {
     noteTitleSet,
-    backlinkIndex,
     currentBacklinks,
     handleWikilinkClick,
     handleWikilinkCmdClick,
@@ -856,15 +738,8 @@ export default function BoojyNotes() {
       )}
       <TopBar
         isMobile={isMobile}
-        tabs={tabs}
         activeNote={activeNote}
-        noteData={noteData}
-        newTabId={newTabId}
-        closingTabs={closingTabs}
         setActiveNote={setActiveNote}
-        closeTab={closeTab}
-        syncState={syncState}
-        note={note}
         noteTitle={noteTitle}
         createNote={createNote}
         onMorePress={() => setMoreMenuOpen(true)}
@@ -880,17 +755,6 @@ export default function BoojyNotes() {
           sel.removeAllRanges();
           sel.addRange(range);
         }}
-        tabScrollRef={tabScrollRef}
-        tabAreaWidth={tabAreaWidth}
-        splitMode={splitState.splitMode}
-        onTabPointerDown={handleTabPointerDown}
-        panes={splitState.panes}
-        activePaneId={activePaneId}
-        dividerPosition={splitState.dividerPosition}
-        setActiveNoteForPane={setActiveNoteForPane}
-        setActivePaneId={setActivePaneId}
-        setTabsForPane={setTabsForPane}
-        closePaneIfEmpty={closePaneIfEmpty}
       />
 
       {/* === MAIN AREA === */}
@@ -943,7 +807,6 @@ export default function BoojyNotes() {
             />
           )}
         </div>
-
         {/* Sidebar drag handle — desktop only, and only while the sidebar is open.
             When collapsed it has nothing to resize, and its 4px fill + 1px border
             left a hairline strip down the left edge instead of the sidebar fully
@@ -975,198 +838,92 @@ export default function BoojyNotes() {
             }}
           />
         )}
-
-        {/* Editor area — single pane or split */}
-        {splitState.splitMode ? (
-          <div
-            ref={splitContainerRef}
-            data-split-container
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: splitState.splitMode === "vertical" ? "row" : "column",
-              overflow: "hidden",
+        {/* Editor area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <EditorProvider
+            value={{
+              editorRef,
+              editorScrollRef,
+              titleRef,
+              blockRefs,
+              noteDataRef,
+              focusBlockId,
+              focusCursorPos,
+              forceRender,
+              handleEditorKeyDown,
+              handleEditorInput,
+              handleEditorPaste,
+              handleEditorCopy,
+              handleEditorPointerDown,
+              handleEditorMouseDown,
+              handleEditorMouseUp,
+              handleEditorFocus,
+              handleEditorDragOver,
+              handleEditorDragLeave,
+              handleEditorDrop,
+              commitTextChange,
+              syncGeneration,
+              flipCheck,
+              deleteBlock,
+              registerBlockRef,
+              insertBlockAfter,
+              updateCodeText,
+              updateCodeLang,
+              updateCallout,
+              updateTableRows,
+              updateBlockProperty,
+              detectActiveFormats,
+              applyFormat,
+              reReadBlockFromDom,
             }}
           >
-            {(() => {
-              const paneIds =
-                splitState.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
-              return paneIds.map((pId, idx) => {
-                const pane = splitState.panes[pId];
-                if (!pane) return null;
-                const paneActiveNote = pane.activeNote;
-                const paneNote = paneActiveNote ? noteData[paneActiveNote] : null;
-                const paneNoteTitle = paneNote?.title;
-                const paneBacklinks = paneNoteTitle
-                  ? getBacklinksForNote(backlinkIndex, paneNoteTitle)
-                  : [];
-                return (
-                  <Fragment key={pId}>
-                    {idx > 0 && (
-                      <SplitDivider
-                        splitMode={splitState.splitMode}
-                        dividerPosition={splitState.dividerPosition}
-                        setDividerPosition={setDividerPosition}
-                        onSnapClose={() => closeSplit()}
-                        containerRef={splitContainerRef}
-                      />
-                    )}
-                    <div
-                      style={{
-                        flex:
-                          idx === 0
-                            ? `0 0 ${splitState.dividerPosition}%`
-                            : `0 0 ${100 - splitState.dividerPosition}%`,
-                        overflow: "hidden",
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
-                      <PaneContainer
-                        textOnlyEditForEditor={textOnlyEditForEditor}
-                        paneId={pId}
-                        isActive={activePaneId === pId}
-                        tabs={pane.tabs}
-                        activeNote={paneActiveNote}
-                        noteData={noteData}
-                        noteDataRef={noteDataRef}
-                        newTabId={newTabId}
-                        closingTabs={closingTabs}
-                        setActiveNote={(noteId) => setActiveNoteForPane(pId, noteId)}
-                        closeTab={(e, id) => {
-                          e.stopPropagation();
-                          setTabsForPane(pId, (prev) => prev.filter((t) => t !== id));
-                          if (paneActiveNote === id) {
-                            const remaining = pane.tabs.filter((t) => t !== id);
-                            setActiveNoteForPane(pId, remaining[remaining.length - 1] || null);
-                          }
-                          setTimeout(() => closePaneIfEmpty(pId), 200);
-                        }}
-                        tabFlip={tabFlip}
-                        activeTabBg={activeTabBg}
-                        chromeBg={chromeBg}
-                        setNoteData={setNoteData}
-                        commitNoteData={commitNoteData}
-                        commitTextChange={commitTextChange}
-                        syncGeneration={syncGeneration}
-                        slashMenuRef={slashMenuRef}
-                        setSlashMenu={setSlashMenu}
-                        wikilinkMenuRef={wikilinkMenuRef}
-                        setWikilinkMenu={setWikilinkMenu}
-                        tagMenuRef={tagMenuRef}
-                        setTagMenu={setTagMenu}
-                        onWikilinkClick={handleWikilinkClick}
-                        onTagClick={handleTagClick}
-                        onWikilinkCmdClick={handleWikilinkCmdClick}
-                        openNote={(noteId) => openNoteInPane(noteId, pId)}
-                        onOpenBacklink={(noteId) => openNoteInPane(noteId, pId)}
-                        backlinks={paneBacklinks}
-                        noteTitleSet={noteTitleSet}
-                        lightbox={lightbox}
-                        setLightbox={setLightbox}
-                        onPaneClick={setActivePaneId}
-                        showTabBar={splitState.splitMode === "horizontal" && idx === 1}
-                        tabAreaWidth={tabAreaWidth}
-                        onEditorClick={clearSelection}
-                        pushHistory={pushHistory}
-                        popHistory={popHistory}
-                        setDragTooltip={setDragTooltip}
-                        dragTooltipCount={dragTooltipCount}
-                        onTabPointerDown={handleTabPointerDown}
-                      />
-                    </div>
-                  </Fragment>
-                );
-              });
-            })()}
-          </div>
-        ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <EditorProvider
-              value={{
-                editorRef,
-                editorScrollRef,
-                titleRef,
-                blockRefs,
-                noteDataRef,
-                focusBlockId,
-                focusCursorPos,
-                forceRender,
-                handleEditorKeyDown,
-                handleEditorInput,
-                handleEditorPaste,
-                handleEditorCopy,
-                handleEditorPointerDown,
-                handleEditorMouseDown,
-                handleEditorMouseUp,
-                handleEditorFocus,
-                handleEditorDragOver,
-                handleEditorDragLeave,
-                handleEditorDrop,
-                commitTextChange,
-                syncGeneration,
-                flipCheck,
-                deleteBlock,
-                registerBlockRef,
-                insertBlockAfter,
-                updateCodeText,
-                updateCodeLang,
-                updateCallout,
-                updateTableRows,
-                updateBlockProperty,
-                detectActiveFormats,
-                applyFormat,
-                reReadBlockFromDom,
-              }}
-            >
-              <EditorArea
-                isMobile={isMobile}
-                onEditorClick={clearSelection}
-                textOnlyEditForEditor={textOnlyEditForEditor}
-                note={note}
+            <EditorArea
+              isMobile={isMobile}
+              onEditorClick={clearSelection}
+              textOnlyEditForEditor={textOnlyEditForEditor}
+              note={note}
+              activeNote={activeNote}
+              editorFadeIn={editorFadeIn}
+              backlinks={currentBacklinks}
+              onWikilinkClick={handleWikilinkClick}
+              onWikilinkCmdClick={handleWikilinkCmdClick}
+              onOpenBacklink={openNote}
+              toolbarState={isMobile ? null : toolbarState}
+              noteTitleSet={noteTitleSet}
+              linkPopover={linkPopover}
+              setLinkPopover={setLinkPopover}
+              selectedImageBlockId={selectedImageBlockId}
+              setSelectedImageBlockId={setSelectedImageBlockId}
+              lightbox={lightbox}
+              setLightbox={setLightbox}
+              openNote={openNote}
+              activeHint={activeHint}
+              dismissHint={dismissHint}
+            />
+            {isMobile && (
+              <MobileToolbar
+                isVisible={mobileKeyboard.isKeyboardVisible}
                 activeNote={activeNote}
-                editorFadeIn={editorFadeIn}
-                backlinks={currentBacklinks}
-                onWikilinkClick={handleWikilinkClick}
-                onWikilinkCmdClick={handleWikilinkCmdClick}
-                onOpenBacklink={openNote}
-                toolbarState={isMobile ? null : toolbarState}
-                noteTitleSet={noteTitleSet}
-                linkPopover={linkPopover}
-                setLinkPopover={setLinkPopover}
-                selectedImageBlockId={selectedImageBlockId}
-                setSelectedImageBlockId={setSelectedImageBlockId}
-                lightbox={lightbox}
-                setLightbox={setLightbox}
-                openNote={openNote}
-                activeHint={activeHint}
-                dismissHint={dismissHint}
+                note={note}
+                activeFormats={toolbarState ? detectActiveFormats() : EMPTY_FORMATS}
+                onDismiss={() => {
+                  document.activeElement?.blur();
+                }}
+                onImageInsert={() => {
+                  const api = getAPI();
+                  if (api?.pickImageFile) {
+                    api.pickImageFile().then((file) => {
+                      if (!file) return;
+                      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+                      const afterIndex = blocks ? blocks.length - 1 : 0;
+                      saveAndInsertImage(activeNote, afterIndex, file);
+                    });
+                  }
+                }}
               />
-              {isMobile && (
-                <MobileToolbar
-                  isVisible={mobileKeyboard.isKeyboardVisible}
-                  activeNote={activeNote}
-                  note={note}
-                  activeFormats={toolbarState ? detectActiveFormats() : EMPTY_FORMATS}
-                  onDismiss={() => {
-                    document.activeElement?.blur();
-                  }}
-                  onImageInsert={() => {
-                    const api = getAPI();
-                    if (api?.pickImageFile) {
-                      api.pickImageFile().then((file) => {
-                        if (!file) return;
-                        const blocks = noteDataRef.current[activeNote]?.content?.blocks;
-                        const afterIndex = blocks ? blocks.length - 1 : 0;
-                        saveAndInsertImage(activeNote, afterIndex, file);
-                      });
-                    }
-                  }}
-                />
-              )}
-            </EditorProvider>
-          </div>
-        )}
+            )}
+          </EditorProvider>
+        </div>
       </div>
 
       {/* === Mobile More Menu === */}

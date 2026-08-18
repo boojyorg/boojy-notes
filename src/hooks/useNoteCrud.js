@@ -6,7 +6,6 @@ import { getAPI } from "../services/apiProvider";
 export function useNoteCrud({
   commitNoteData,
   noteDataRef,
-  setTabs,
   setActiveNote,
   activeNote,
   setCustomFolders,
@@ -33,7 +32,6 @@ export function useNoteCrud({
       words: 0,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    setTabs((prev) => [...prev, id]);
     setActiveNote(id);
     setTimeout(() => {
       if (titleRef.current) {
@@ -68,11 +66,9 @@ export function useNoteCrud({
       delete next[noteId];
       return next;
     });
-    setTabs((prev) => {
-      const next = prev.filter((t) => t !== noteId);
-      if (activeNote === noteId) setActiveNote(next[next.length - 1] || null);
-      return next;
-    });
+    // Deleting the open note falls back to null — the draft-note flow (desktop)
+    // or the sidebar (mobile) takes over.
+    if (activeNote === noteId) setActiveNote(null);
 
     // Clean note from folder's noteOrder in sidebarOrder
     const folderKey = note.folder || "";
@@ -107,7 +103,6 @@ export function useNoteCrud({
       },
     };
     commitNoteData((prev) => ({ ...prev, [id]: dup }));
-    setTabs((prev) => [...prev, id]);
     setActiveNote(id);
   };
 
@@ -171,11 +166,7 @@ export function useNoteCrud({
       noteIds.forEach((id) => delete next[id]);
       return next;
     });
-    setTabs((prev) => {
-      const next = prev.filter((t) => !noteIds.includes(t));
-      if (noteIds.includes(activeNote)) setActiveNote(next[next.length - 1] || null);
-      return next;
-    });
+    if (noteIds.includes(activeNote)) setActiveNote(null);
     setCustomFolders((prev) =>
       prev.filter((f) => f !== folderPath && !f.startsWith(folderPath + "/")),
     );
@@ -284,7 +275,6 @@ export function useNoteCrud({
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    // No setTabs — draft doesn't get a tab
     setActiveNote(id);
     return id;
   };
@@ -296,7 +286,6 @@ export function useNoteCrud({
       const { _draft, ...clean } = note;
       return { ...prev, [noteId]: clean };
     });
-    setTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
   };
 
   const discardDraft = (noteId) => {
