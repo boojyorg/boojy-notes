@@ -21,12 +21,15 @@ status in `FEATURE_TRACKER.md`.
 2. **Visual direction reset — light-first + minimal chrome** (uncommitted, awaiting judgement).
    Picito is the family reference for neutral surfaces/interaction grammar; Boojy keeps its cyan.
    Landed so far: DAY replaced with a neutral light palette (accent `#2A737D`); Lucide icon set;
-   desktop top bar and visible tab strip removed in favour of two pinned controls (`EditorChrome`).
+   desktop top bar and visible tab strip removed in favour of two pinned controls (`EditorChrome`);
+   **single-active-note model** (2026-08-18) — tabs and split view deleted outright, opening a note
+   replaces the current one, old persisted state migrates deterministically.
    Conventions + live gotchas → `.claude/rules/ui-chrome-and-theme.md`.
    **Open decisions, in order:** (a) does the reduced chrome feel right at all; (b) neutral vs
-   accent-tinted sidebar selection; (c) whether tabs come back — if not, Quick Open / back-forward /
-   Recents must be built *before* the tab code is deleted, plus a close-note affordance; (d)
-   title-as-filename, gated on `SPEC-markdown-source-of-truth.md`.
+   accent-tinted sidebar selection; (c) ~~whether tabs come back~~ — resolved: they don't
+   (matches `PHILOSOPHY.md`); Quick Open / back-forward / Recents are follow-up candidates in
+   `BACKLOG.md`, no longer blockers; (d) title-as-filename, gated on
+   `SPEC-markdown-source-of-truth.md`.
 
 ## Later
 

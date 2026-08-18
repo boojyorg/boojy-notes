@@ -1,30 +1,23 @@
 # Current target
 
-**Judge the minimal-chrome + light-theme direction in the running app before deciding anything else.**
+**Verify the single-active-note model in the running app, then merge `refactor/single-active-note`.**
 
-Everything below is uncommitted on `master`. Run `pnpm dev:web` (or the desktop build) and look at it
-in light mode.
+The navigation simplification is implemented on the branch (4 commits: remove split/tab entry
+points → single-active-note state + persistence migration → dead-component cleanup → migration
+tests). Unit, coverage (floors ratcheted to 47/43/45/45) and E2E gates are green.
 
-## What to judge
+## What to verify on `pnpm dev`
 
-1. **Does the dramatically reduced chrome feel right?** No top bar, no visible tabs, two pinned
-   controls. If it feels wrong, it's cheaper to restore the strip now than after tabs are deleted.
-2. **Light palette** — sidebar `#F9F9F9` against editor `#FFFFFF` with no border between them, and
-   whether `#2A737D` still reads as the same cyan identity as the dark theme's `#A4CACE`.
-3. **Sidebar selection** — still accent-tinted rather than neutral. The one deliberate divergence
-   from Picito's grammar; one-line change either way.
-4. **Collapsed state** — the left edge is now genuinely empty (drag handle gated on `!collapsed`).
-   Only the toggle gets the sidebar back; no hover-peek was built.
+1. Open several notes in a row from the sidebar — each replaces the last; sidebar highlight follows.
+2. Cmd-click a wikilink — opens that note full-width. Cmd+Shift+\ does nothing.
+3. Delete the open note — clean empty draft appears (desktop).
+4. Quit and relaunch — the note you were in comes back. (First launch after upgrade: if a split
+   was persisted, you land on the note from its active pane; hidden tabs are gone by design.)
+5. Drag a note from the sidebar onto the editor — it opens, no split zones.
 
-## Known costs of the current state (all documented in `.claude/rules/ui-chrome-and-theme.md`)
+## Next, once merged
 
-- No way to close a note (the `×` was on the tab; no Cmd+W binding)
-- Drag-to-tab-bar interactions silently do nothing
-- Help is unreachable
-- Split view works but has no per-pane UI
-
-## Next, once judged
-
-If the direction holds: neutral-vs-accent selection, then Quick Open + back/forward + Recents +
-close-note **before** any tab code is deleted. If it doesn't: `TopBar.jsx` back to
-`<TopBarDesktop {...props} />` is the whole revert.
+- Judge remaining visual-direction decisions (neutral vs accent sidebar selection).
+- Candidate follow-ups now that navigation is one string: **Quick Open**, **back/forward
+  history**, **Recents** (`docs/BACKLOG.md`); Help re-entry point (HelpDropdown is parked with
+  zero importers).
