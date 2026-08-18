@@ -90,7 +90,22 @@ Things a future change will trip over:
 - **Sidebar drag onto the editor opens the note** — the tab-bar-insert and edge-split drop
   branches are gone from `useSidebarDrag.js`.
 - **Help is unreachable.** `HelpDropdown.jsx` is kept on disk with zero importers — it holds the
-  parked help content; Settings has an About tab but no Help.
+  parked help content; Settings ends in a one-line About footer, no Help.
+- **The wordmark is a menu, not a settings button** (2026-08-18 subtraction pass): clicking the
+  sidebar wordmark opens `Recently Deleted… / Settings… / About` (testid
+  `wordmark-menu-button`; the old `settings-button` id is now mobile-only in `TopBarMobile`).
+  About opens boojy.org.
+- **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
+  Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
+  reintroduce it in mocks. Removed-but-recoverable, all with zero importers on disk:
+  `ProfileTab.jsx` (sign-in/sync UI), `OnboardingToast`, `PersistenceWarning`, `useWebNags`.
+  `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
+  has no UI but still applies from the stored Electron setting, and UI scale is
+  keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).
+- **Trash is desktop-invisible until summoned**: `RecentlyDeletedModal.jsx` (wordmark menu →
+  modal) wraps the unchanged trash handlers (`restoreNote` / `permanentDeleteNote` /
+  `emptyAllTrash`). The sidebar's inline section is mobile-only now, relabelled
+  "Recently Deleted". Never ship a delete path whose contents can't be reached.
 - **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
   `useNoteStats` still computes `charCountNoSpaces` / `readingTime`, which now have no consumer.
 - The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px
@@ -114,7 +129,8 @@ share one button. `CHROME_LEFT_GUTTER` is now unused, kept only for the revert p
 32px centred icon column, 8px left / 3px right inset, hover to `BG.hover` with `TEXT.primary` ink.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
-(note rows, Trash) still uses the older tree grammar, so the two grammars coexist.
+(note rows) still uses the older tree grammar, so the two grammars coexist. (Trash left the
+desktop sidebar entirely — see the wordmark-menu note above.)
 
 ## Sidebar sections: `Folders` and `Notes`
 
@@ -142,14 +158,16 @@ desktop affordance for creating one. That pair of rules replaced an earlier zero
 ## Only structure and actions get a glyph
 
 Note rows carry **no file icon** at any depth — the repeated document glyph was ~13 of the ~30
-glyphs on screen and communicated nothing the row's position didn't already. Folders keep chevron +
-icon because those mean "this opens" and "this contains"; indentation alone distinguishes a nested
-note. The removed glyph's width is folded into each note row's left padding (+21 desktop / +29
-mobile) so titles keep their column under the folder names — don't "simplify" that padding away.
-`FileIcon` still ships in search results and the trash list, which are not tree rows.
-
-Childless folders' chevron placeholder is `ICON_INLINE` (16px), matching a real chevron; it was
-14px, which left those rows 2px out of column.
+glyphs on screen and communicated nothing the row's position didn't already. Folders now carry
+**only the folder icon**: the permanent disclosure chevron was removed too (2026-08-18) — the
+whole row toggles, the open-folder glyph + indented children carry the state, and
+`aria-expanded` is always set (it's the only programmatic signal left). Deliberate experiment:
+collapsed vs expanded has no other permanent indicator, and no hover chevron yet — judge the
+calm version first; the revert path is commented at the render site. The removed FileIcon's
+width is still folded into each note row's left padding, minus the chevron allowance that came
+back out of both row kinds, so titles keep their column under the folder names — don't
+"simplify" that padding away. `FileIcon` still ships in search results and the mobile
+Recently Deleted list, which are not tree rows.
 
 ## The slash menu is tiered
 
@@ -176,15 +194,22 @@ column, muted at rest and accent when selected, no chip, no border, and no markd
 `theme.modalShadow`; it used to be a hardcoded `0 8px 32px rgba(0,0,0,0.5)`, a NIGHT value that
 bruised the white DAY sheet.
 
-Known gap: `SlashMenu` positions at `slashMenu.rect.top` with **no viewport clamp or flip**, so a
-`/` near the bottom of the window still opens a menu that runs off-screen. Eleven rows (~390px)
-makes it rarer than fourteen (~516px) did; it does not fix it.
+Positioning is viewport-aware (2026-08-18): `positionMenu()` in `src/utils/menuPosition.js` +
+`useMenuPosition` give SlashMenu, ContextMenu (incl. the top-right ··· note-actions menu) and
+any future popover one rule set — honour the anchor, 8px viewport margin, flip past the anchor's
+other side when the preferred side overflows, clamp as the last resort. The slash producer passes
+the block's full rect so a flipped menu sits above the line, not over it. Route new menus through
+this instead of writing a fresh clamp.
 
 ## Testing note
 
 `TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
 in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
-collapsed) and `Sidebar.test.jsx` (header toggle + action rows). Navigation state is covered by
-`useActiveNote.test.js` (migration rule) and `useAppPersistence.test.js` (write shape).
-Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw; the
-`activeTabBg` token no longer exists — don't reintroduce it in mocks.
+collapsed) and `Sidebar.test.jsx` (header toggle + action rows + wordmark menu + no-chevron /
+no-desktop-Trash assertions). Navigation state is covered by `useActiveNote.test.js` (migration
+rule) and `useAppPersistence.test.js` (write shape); `RecentlyDeletedModal.test.jsx` and
+`menuPosition.test.js` cover the trash modal and the shared clamp maths. The e2e settings flow
+goes through the wordmark menu (`wordmark-menu-button` → "Settings…"), not a direct settings
+button. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
+the `activeTabBg` token and `settingsTab` context field no longer exist — don't reintroduce
+either in mocks.
