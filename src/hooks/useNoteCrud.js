@@ -12,11 +12,8 @@ export function useNoteCrud({
   customFolders,
   setExpanded,
   titleRef,
-  trashedNotesRef,
-  setTrashedNotes,
   setRenamingFolder,
   setSidebarOrder,
-  onError,
 }) {
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
@@ -48,19 +45,6 @@ export function useNoteCrud({
   const deleteNote = (noteId) => {
     const note = noteDataRef.current[noteId];
     if (!note) return;
-    if (isNative && getAPI()?.trashNote) {
-      trashedNotesRef.current.set(noteId, { title: note.title, folder: note.folder });
-      setTrashedNotes((prev) => ({
-        ...prev,
-        [noteId]: {
-          id: noteId,
-          title: note.title,
-          folder: note.folder,
-          deletedAt: Date.now(),
-          content: note.content,
-        },
-      }));
-    }
     commitNoteData((prev) => {
       const next = { ...prev };
       delete next[noteId];
@@ -146,21 +130,6 @@ export function useNoteCrud({
     );
     const noteIds = noteEntries.map(([id]) => id);
 
-    if (isNative && getAPI()?.trashNote) {
-      const trashBatch = {};
-      for (const [id, n] of noteEntries) {
-        trashedNotesRef.current.set(id, { title: n.title, folder: n.folder });
-        trashBatch[id] = {
-          id,
-          title: n.title,
-          folder: n.folder,
-          deletedAt: Date.now(),
-          content: n.content,
-        };
-      }
-      setTrashedNotes((prev) => ({ ...prev, ...trashBatch }));
-    }
-
     commitNoteData((prev) => {
       const next = { ...prev };
       noteIds.forEach((id) => delete next[id]);
@@ -196,58 +165,6 @@ export function useNoteCrud({
       }
       return next;
     });
-  };
-
-  const restoreNote = async (noteId) => {
-    if (!isNative || !getAPI()?.restoreNote) return;
-    try {
-      const note = await getAPI().restoreNote(noteId);
-      if (!note) return;
-      const { _filePath, _migrated, ...cleanNote } = note;
-      commitNoteData((prev) => ({ ...prev, [cleanNote.id]: cleanNote }));
-      if (cleanNote.folder) {
-        setCustomFolders((prev) => {
-          if (prev.includes(cleanNote.folder)) return prev;
-          return [...prev, cleanNote.folder];
-        });
-      }
-      setTrashedNotes((prev) => {
-        const next = { ...prev };
-        delete next[noteId];
-        return next;
-      });
-    } catch (err) {
-      console.error("Restore note failed", err);
-      onError?.("Failed to restore note from trash");
-    }
-  };
-
-  const permanentDeleteNote = async (noteId) => {
-    if (!window.confirm("Permanently delete? This cannot be undone.")) return;
-    if (!isNative || !getAPI()?.purgeTrash) return;
-    try {
-      await getAPI().purgeTrash([noteId]);
-      setTrashedNotes((prev) => {
-        const next = { ...prev };
-        delete next[noteId];
-        return next;
-      });
-    } catch (err) {
-      console.error("Permanent delete failed", err);
-      onError?.("Failed to permanently delete note");
-    }
-  };
-
-  const emptyAllTrash = async () => {
-    if (!window.confirm("Permanently delete all items in trash?")) return;
-    if (!isNative || !getAPI()?.emptyTrash) return;
-    try {
-      await getAPI().emptyTrash();
-      setTrashedNotes({});
-    } catch (err) {
-      console.error("Empty trash failed", err);
-      onError?.("Failed to empty trash");
-    }
   };
 
   const createFolder = () => {
@@ -303,9 +220,6 @@ export function useNoteCrud({
     duplicateNote,
     renameFolder,
     deleteFolder,
-    restoreNote,
-    permanentDeleteNote,
-    emptyAllTrash,
     createFolder,
     createDraftNote,
     promoteDraft,

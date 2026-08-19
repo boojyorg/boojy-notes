@@ -22,7 +22,7 @@ function saveThemeSettings(settings) {
 export function ThemeProvider({ children }) {
   const saved = useMemo(loadThemeSettings, []);
 
-  const [themeMode, setThemeModeRaw] = useState(saved.themeMode || "night");
+  const [themeMode, setThemeModeRaw] = useState(saved.themeMode || "day");
   const [autoMethod, setAutoMethodRaw] = useState(saved.autoMethod || "system");
   const [dayStartHour, setDayStartHourRaw] = useState(saved.dayStartHour ?? 7);
   const [dayEndHour, setDayEndHourRaw] = useState(saved.dayEndHour ?? 19);

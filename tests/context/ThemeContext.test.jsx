@@ -21,13 +21,11 @@ beforeEach(() => {
 
 describe("ThemeContext", () => {
   describe("default theme", () => {
-    it("defaults to night (dark) when matchMedia prefers-color-scheme is not dark", () => {
-      // setup.js stubs matchMedia with matches: false, so "auto" + "system" would resolve to "day",
-      // but the default themeMode is "night" (not "auto"), so it should be NIGHT.
+    it("defaults to day (light) when no preference has been saved", () => {
       const { result } = renderTheme();
-      expect(result.current.theme).toBe(NIGHT);
-      expect(result.current.isDark).toBe(true);
-      expect(result.current.themeMode).toBe("night");
+      expect(result.current.theme).toBe(DAY);
+      expect(result.current.isDark).toBe(false);
+      expect(result.current.themeMode).toBe("day");
     });
 
     it("uses saved themeMode from localStorage", () => {
@@ -36,10 +34,25 @@ describe("ThemeContext", () => {
       expect(result.current.theme).toBe(DAY);
       expect(result.current.isDark).toBe(false);
     });
+
+    it("retains a saved night preference", () => {
+      localStorage.setItem(LS_KEY, JSON.stringify({ themeMode: "night" }));
+      const { result } = renderTheme();
+      expect(result.current.theme).toBe(NIGHT);
+      expect(result.current.themeMode).toBe("night");
+    });
+
+    it("retains a saved auto preference", () => {
+      localStorage.setItem(LS_KEY, JSON.stringify({ themeMode: "auto", autoMethod: "system" }));
+      const { result } = renderTheme();
+      expect(result.current.themeMode).toBe("auto");
+      expect(result.current.theme).toBe(DAY);
+    });
   });
 
   describe("toggling theme", () => {
     it("switches from night to day", () => {
+      localStorage.setItem(LS_KEY, JSON.stringify({ themeMode: "night" }));
       const { result } = renderTheme();
       expect(result.current.theme).toBe(NIGHT);
 

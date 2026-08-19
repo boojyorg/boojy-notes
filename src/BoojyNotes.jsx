@@ -36,7 +36,6 @@ import Toast from "./components/Toast";
 import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
 import FirstSyncModal from "./components/FirstSyncModal";
-import RecentlyDeletedModal from "./components/RecentlyDeletedModal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
@@ -113,8 +112,6 @@ export default function BoojyNotes() {
     setExpanded,
     customFolders,
     setCustomFolders,
-    setTrashedNotes,
-    trashedNotesRef,
     sidebarOrder,
     setSidebarOrder,
     setRenamingFolder,
@@ -164,7 +161,6 @@ export default function BoojyNotes() {
   const [, forceRender] = useState(0);
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [recentlyDeletedOpen, setRecentlyDeletedOpen] = useState(false);
 
   // The web sign-in nags (OnboardingToast / PersistenceWarning / useWebNags) were
   // removed with the rest of the cloud-sync surface — git history has them, but a
@@ -217,7 +213,6 @@ export default function BoojyNotes() {
     noteData,
     setNoteData,
     setCustomFolders,
-    trashedNotesRef,
     syncGeneration,
     setSidebarOrder,
     showToast,
@@ -231,9 +226,6 @@ export default function BoojyNotes() {
     duplicateNote,
     renameFolder,
     deleteFolder,
-    restoreNote,
-    permanentDeleteNote,
-    emptyAllTrash,
     createFolder,
     createDraftNote,
     promoteDraft,
@@ -247,11 +239,8 @@ export default function BoojyNotes() {
     customFolders,
     setExpanded,
     titleRef,
-    trashedNotesRef,
-    setTrashedNotes,
     setRenamingFolder,
     setSidebarOrder,
-    onError: showToast,
   });
   const {
     updateBlockText,
@@ -389,24 +378,6 @@ export default function BoojyNotes() {
   });
 
   // ── Effects ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    const api = getAPI();
-    if (!api?.readTrash) return;
-    if (fsLoading) return;
-    (async () => {
-      try {
-        await api.purgeTrash(null);
-        const trashed = await api.readTrash();
-        if (trashed && Object.keys(trashed).length > 0) {
-          setTrashedNotes(trashed);
-        }
-      } catch (err) {
-        console.error("Failed to load trash", err);
-        showToast("Failed to load trash");
-      }
-    })();
-  }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Import handlers, plus the Electron File-menu listener
   const { handleImportIntoFolder } = useImport({
     isElectron,
@@ -599,7 +570,8 @@ export default function BoojyNotes() {
   const selectedCount = selectedNotes.size;
 
   // On web, deleting is permanent (no Trash to recover from) — confirm first.
-  // On desktop, deleteNote moves to the OS trash, so it's recoverable; skip the prompt.
+  // On desktop, deleteNote moves the Markdown file to the OS Trash/Recycle Bin,
+  // so it remains externally recoverable; skip the prompt.
   const confirmDeleteNote = useCallback(
     async (id) => {
       const note = noteDataRef.current?.[id];
@@ -774,8 +746,6 @@ export default function BoojyNotes() {
             createFolder={createFolder}
             createNote={createNote}
             handleSidebarPointerDown={handleSidebarPointerDown}
-            emptyAllTrash={emptyAllTrash}
-            onOpenRecentlyDeleted={() => setRecentlyDeletedOpen(true)}
             handleSearchResultOpen={handleSearchResultOpen}
             selectedNotes={selectedNotes}
             handleNoteClick={handleNoteClick}
@@ -932,13 +902,6 @@ export default function BoojyNotes() {
       )}
 
       {/* === Overlays === */}
-      <RecentlyDeletedModal
-        open={recentlyDeletedOpen}
-        onClose={() => setRecentlyDeletedOpen(false)}
-        restoreNote={restoreNote}
-        permanentDeleteNote={permanentDeleteNote}
-        emptyAllTrash={emptyAllTrash}
-      />
       <ContextMenu
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
@@ -948,8 +911,6 @@ export default function BoojyNotes() {
         deleteFolder={confirmDeleteFolder}
         createNote={createNote}
         setRenamingFolder={setRenamingFolder}
-        restoreNote={restoreNote}
-        permanentDeleteNote={permanentDeleteNote}
         titleRef={titleRef}
         onImport={handleImportIntoFolder}
         selectedNotes={selectedNotes}

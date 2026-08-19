@@ -42,8 +42,6 @@ const baseProps = () => ({
   deleteFolder: vi.fn(),
   createNote: vi.fn(),
   setRenamingFolder: vi.fn(),
-  restoreNote: vi.fn(),
-  permanentDeleteNote: vi.fn(),
   titleRef: { current: null },
   onImport: null,
   selectedNotes: new Set(),
@@ -80,14 +78,6 @@ describe("ContextMenu", () => {
     expect(getByText("New note here")).toBeInTheDocument();
     expect(getByText("Rename")).toBeInTheDocument();
     expect(getByText("Delete folder")).toBeInTheDocument();
-  });
-
-  it("renders trash context menu items", () => {
-    const props = baseProps();
-    props.ctxMenu = { type: "trash", id: "t1", x: 100, y: 100 };
-    const { getByText } = render(<ContextMenu {...props} />);
-    expect(getByText("Restore")).toBeInTheDocument();
-    expect(getByText("Delete permanently")).toBeInTheDocument();
   });
 
   it("calls deleteNote when Delete is clicked", () => {

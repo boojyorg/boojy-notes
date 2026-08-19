@@ -17,8 +17,6 @@ const ContextMenu = memo(function ContextMenu({
   deleteFolder,
   createNote,
   setRenamingFolder,
-  restoreNote,
-  permanentDeleteNote,
   titleRef,
   onImport,
   selectedNotes,
@@ -82,114 +80,96 @@ const ContextMenu = memo(function ContextMenu({
   const isBulk = ctxMenu.type === "note" && selectedCount > 1;
 
   const items =
-    ctxMenu.type === "trash"
+    ctxMenu.type === "note" && isBulk
       ? [
           {
-            label: "Restore",
+            label: `Delete ${selectedCount} notes`,
             action: () => {
-              restoreNote(ctxMenu.id);
-              setCtxMenu(null);
-            },
-          },
-          {
-            label: "Delete permanently",
-            action: () => {
-              permanentDeleteNote(ctxMenu.id);
+              bulkDeleteNotes([...selectedNotes]);
               setCtxMenu(null);
             },
             danger: true,
           },
+          {
+            label: "Move to...",
+            action: () => setMoveSubmenu((v) => !v),
+            submenu: true,
+          },
+          {
+            label: "Move to root",
+            action: () => {
+              bulkMoveNotes([...selectedNotes], null);
+              setCtxMenu(null);
+            },
+          },
         ]
-      : ctxMenu.type === "note" && isBulk
+      : ctxMenu.type === "note"
         ? [
             {
-              label: `Delete ${selectedCount} notes`,
+              label: "Rename",
               action: () => {
-                bulkDeleteNotes([...selectedNotes]);
+                openNote(ctxMenu.id);
+                setCtxMenu(null);
+                setTimeout(() => {
+                  if (titleRef.current) {
+                    titleRef.current.focus();
+                    const sel = window.getSelection();
+                    sel.selectAllChildren(titleRef.current);
+                  }
+                }, 60);
+              },
+            },
+            {
+              label: "Duplicate",
+              action: () => {
+                duplicateNote(ctxMenu.id);
+                setCtxMenu(null);
+              },
+            },
+            {
+              label: "Delete",
+              action: () => {
+                deleteNote(ctxMenu.id);
                 setCtxMenu(null);
               },
               danger: true,
             },
+          ]
+        : [
             {
-              label: "Move to...",
-              action: () => setMoveSubmenu((v) => !v),
-              submenu: true,
-            },
-            {
-              label: "Move to root",
+              label: "New note here",
               action: () => {
-                bulkMoveNotes([...selectedNotes], null);
+                createNote(ctxMenu.id);
                 setCtxMenu(null);
               },
             },
-          ]
-        : ctxMenu.type === "note"
-          ? [
-              {
-                label: "Rename",
-                action: () => {
-                  openNote(ctxMenu.id);
-                  setCtxMenu(null);
-                  setTimeout(() => {
-                    if (titleRef.current) {
-                      titleRef.current.focus();
-                      const sel = window.getSelection();
-                      sel.selectAllChildren(titleRef.current);
-                    }
-                  }, 60);
-                },
-              },
-              {
-                label: "Duplicate",
-                action: () => {
-                  duplicateNote(ctxMenu.id);
-                  setCtxMenu(null);
-                },
-              },
-              {
-                label: "Delete",
-                action: () => {
-                  deleteNote(ctxMenu.id);
-                  setCtxMenu(null);
-                },
-                danger: true,
-              },
-            ]
-          : [
-              {
-                label: "New note here",
-                action: () => {
-                  createNote(ctxMenu.id);
-                  setCtxMenu(null);
-                },
-              },
-              ...(onImport
-                ? [
-                    {
-                      label: "Import files here",
-                      action: () => {
-                        onImport(ctxMenu.id);
-                        setCtxMenu(null);
-                      },
+            ...(onImport
+              ? [
+                  {
+                    label: "Import files here",
+                    action: () => {
+                      onImport(ctxMenu.id);
+                      setCtxMenu(null);
                     },
-                  ]
-                : []),
-              {
-                label: "Rename",
-                action: () => {
-                  setRenamingFolder(ctxMenu.id);
-                  setCtxMenu(null);
-                },
+                  },
+                ]
+              : []),
+            {
+              label: "Rename",
+              action: () => {
+                setRenamingFolder(ctxMenu.id);
+                setCtxMenu(null);
               },
-              {
-                label: "Delete folder",
-                action: () => {
-                  deleteFolder(ctxMenu.id);
-                  setCtxMenu(null);
-                },
-                danger: true,
+            },
+            {
+              label: "Delete folder",
+              action: () => {
+                deleteFolder(ctxMenu.id);
+                setCtxMenu(null);
               },
-            ];
+              danger: true,
+            },
+          ];
 
   itemsRef.current = items;
 

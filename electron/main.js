@@ -1,13 +1,20 @@
-import { app, BrowserWindow, Menu, protocol, net, nativeTheme, ipcMain } from "electron";
+import { app, BrowserWindow, Menu, protocol, net, nativeTheme, ipcMain, dialog } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { registerNoteFileIPC } from "./noteFileManager.js";
-import { registerTrashIPC } from "./trashManager.js";
-import { startWatcher, suppressWatcher, closeWatcher } from "./fileWatcher.js";
+import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
+import {
+  startWatcher,
+  suppressWatcher,
+  suppressNextUnlink,
+  releaseUnlinkSuppression,
+  closeWatcher,
+} from "./fileWatcher.js";
 import {
   getNotesDir,
   loadSettings,
+  saveSettings,
   setupAutoUpdater,
   registerSettingsIPC,
   checkForUpdatesOnStartup,
@@ -85,16 +92,44 @@ function restartWatcher() {
 }
 
 registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher);
-registerTrashIPC(getNotesDir);
+registerOSTrashIPC(getNotesDir, {
+  suppressUnlink: suppressNextUnlink,
+  releaseUnlink: releaseUnlinkSuppression,
+});
 registerSettingsIPC(getMainWindow, restartWatcher);
 registerSecureStorageIPC();
 setupAutoUpdater(getMainWindow);
 
 // ─── App lifecycle ───
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   app.setName("Boojy Notes");
   nativeTheme.themeSource = "dark";
+
+  const notesDir = getNotesDir();
+  let legacyTrashReport;
+  try {
+    legacyTrashReport = await migrateLegacyTrash(notesDir);
+  } catch (error) {
+    // Migration is deliberately best-effort: an unforeseen filesystem error
+    // must never block Boojy from opening or put legacy files at further risk.
+    console.error("Legacy trash migration could not run", error);
+    legacyTrashReport = {
+      legacyTrashDir: path.join(notesDir, ".trash"),
+      migrated: [],
+      untouched: [
+        {
+          path: path.join(notesDir, ".trash"),
+          reason: `Migration could not run safely: ${String(error)}`,
+        },
+      ],
+    };
+  }
+  if (legacyTrashReport.migrated.length > 0) {
+    console.info(
+      `Moved ${legacyTrashReport.migrated.length} legacy deleted note(s) to the OS Trash`,
+    );
+  }
 
   // Custom protocol for resolving attachment paths to actual files
   protocol.handle("boojy-att", (request) => {
@@ -204,6 +239,36 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
   createWindow();
+
+  if (legacyTrashReport.untouched.length > 0) {
+    console.warn("Legacy trash items left untouched", legacyTrashReport.untouched);
+    // The untouched set is recomputed on every launch (the files deliberately
+    // stay in place), so warn once per distinct problem set, not per launch.
+    const warnedSignature = JSON.stringify(
+      legacyTrashReport.untouched.map((item) => `${item.path} — ${item.reason}`).sort(),
+    );
+    const settings = loadSettings();
+    if (settings.legacyTrashWarnedSignature !== warnedSignature) {
+      const examples = legacyTrashReport.untouched
+        .slice(0, 8)
+        .map((item) => `• ${path.basename(item.path)} — ${item.reason}`)
+        .join("\n");
+      const remaining = legacyTrashReport.untouched.length - 8;
+      void dialog.showMessageBox(mainWindow, {
+        type: "warning",
+        title: "Some deleted notes need attention",
+        message: "Some previously deleted notes could not be moved to the system Trash.",
+        detail: `${examples}${remaining > 0 ? `\n• …and ${remaining} more` : ""}\n\nNothing listed above was deleted. It remains in:\n${legacyTrashReport.legacyTrashDir}`,
+      });
+      try {
+        saveSettings({ ...settings, legacyTrashWarnedSignature: warnedSignature });
+      } catch (error) {
+        // Failing to persist the acknowledgement re-shows the warning next
+        // launch — annoying, but it must never block startup.
+        console.error("Could not persist the legacy-trash warning signature", error);
+      }
+    }
+  }
 
   // Initialize spell check from saved settings
   const settings = loadSettings();

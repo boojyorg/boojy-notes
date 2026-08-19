@@ -36,7 +36,6 @@ export function useFileSystem(
   noteData,
   setNoteData,
   setCustomFolders,
-  trashedNotesRef,
   syncGeneration,
   setSidebarOrder,
   onError,
@@ -132,7 +131,7 @@ export function useFileSystem(
     }
 
     for (const id of Object.keys(prev)) {
-      if (!noteData[id]) {
+      if (!noteData[id] && !prev[id]?._draft) {
         deletedNotes.current.add(id);
         dirtyNotes.current.delete(id);
       }
@@ -151,51 +150,46 @@ export function useFileSystem(
   // text-commit debounce means React state (and this hook's ref) lag the latest
   // edits held in useHistory's noteDataRef. `extraDirtyIds` covers the note whose
   // pending text commit hasn't reached state yet, so it was never marked dirty.
-  const flush = useCallback(
-    async (latestData, extraDirtyIds) => {
-      if (!isNative) return;
-      const api = getAPI();
+  const flush = useCallback(async (latestData, extraDirtyIds) => {
+    if (!isNative) return;
+    const api = getAPI();
 
-      if (extraDirtyIds) for (const id of extraDirtyIds) dirtyNotes.current.add(id);
-      const source = latestData || noteDataRef.current;
-      const dirty = [...dirtyNotes.current];
-      for (const noteId of dirty) {
-        const note = source[noteId];
-        if (!note || note._draft) {
-          dirtyNotes.current.delete(noteId);
-          continue;
-        }
-        if (note) {
-          try {
-            await api.writeNote(note);
-          } catch (err) {
-            console.error("useFileSystem: write failed", noteId, err);
-            onError?.("Failed to save note to disk");
-          }
-        }
+    if (extraDirtyIds) for (const id of extraDirtyIds) dirtyNotes.current.add(id);
+    const source = latestData || noteDataRef.current;
+    const dirty = [...dirtyNotes.current];
+    for (const noteId of dirty) {
+      const note = source[noteId];
+      if (!note || note._draft) {
         dirtyNotes.current.delete(noteId);
+        continue;
       }
-
-      const deleted = [...deletedNotes.current];
-      for (const noteId of deleted) {
+      if (note) {
         try {
-          const trashInfo = trashedNotesRef?.current?.get(noteId);
-          if (trashInfo) {
-            await api.trashNote(noteId, trashInfo.title, trashInfo.folder);
-            trashedNotesRef.current.delete(noteId);
-          } else {
-            await api.deleteNoteFile(noteId);
-          }
+          await api.writeNote(note);
         } catch (err) {
-          console.error("useFileSystem: delete failed", noteId, err);
-          onError?.("Failed to delete note file");
+          console.error("useFileSystem: write failed", noteId, err);
+          onError?.("Failed to save note to disk");
         }
-        deletedNotes.current.delete(noteId);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; trashedNotesRef is a ref
-    },
-    [trashedNotesRef],
-  );
+      dirtyNotes.current.delete(noteId);
+    }
+
+    const deleted = [...deletedNotes.current];
+    for (const noteId of deleted) {
+      try {
+        const result = await api.trashNote(noteId);
+        // `missing` = the note never reached disk (deleted inside the write
+        // debounce) or its file is already gone — nothing to trash, not a failure.
+        if (!result?.trashed && !result?.missing)
+          throw new Error("The note file could not be moved to the Trash");
+      } catch (err) {
+        console.error("useFileSystem: OS trash failed", noteId, err);
+        onError?.("Failed to move note to the system Trash — the file was left on disk");
+      }
+      deletedNotes.current.delete(noteId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
+  }, []);
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
@@ -296,11 +290,14 @@ export function useFileSystem(
           const diskNotes = await window.electronAPI.readAllNotes();
           isExternalUpdate.current = true;
           setNoteData((prev) => {
-            const drafts = {};
+            // Disk is the base, but notes that only exist in memory must
+            // survive the rebuild: drafts, and dirty notes whose debounced
+            // write hasn't landed yet (their flush is still scheduled).
+            const unpersisted = {};
             for (const [id, n] of Object.entries(prev)) {
-              if (n._draft) drafts[id] = n;
+              if (n._draft || dirtyNotes.current.has(id)) unpersisted[id] = n;
             }
-            return { ...diskNotes, ...drafts };
+            return { ...diskNotes, ...unpersisted };
           });
           await syncFoldersFromDisk();
         } catch (err) {

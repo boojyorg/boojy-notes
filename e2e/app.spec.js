@@ -23,30 +23,17 @@ test.describe("Boojy Notes", () => {
     await expect(title).toHaveText("E2E Test Note");
   });
 
-  test("settings modal opens from the wordmark menu and closes", async ({ page }) => {
+  test("settings modal opens directly from the wordmark and closes", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("[data-editor]", { timeout: 10000 });
-    // Desktop: the wordmark opens a small app menu; Settings lives inside it
-    const wordmarkBtn = page.locator('[data-testid="wordmark-menu-button"]').first();
+    const wordmarkBtn = page.locator('[data-testid="wordmark-settings-button"]').first();
     await expect(wordmarkBtn).toBeVisible({ timeout: 5000 });
     await wordmarkBtn.click();
-    await page.getByRole("menuitem", { name: "Settings…" }).click();
     // Modal should appear
     await expect(page.locator('[role="dialog"]').first()).toBeVisible({ timeout: 5000 });
     // Close with Escape
     await page.keyboard.press("Escape");
     await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5000 });
-  });
-
-  test("Recently Deleted opens from the wordmark menu", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForSelector("[data-editor]", { timeout: 10000 });
-    await page.locator('[data-testid="wordmark-menu-button"]').first().click();
-    await page.getByRole("menuitem", { name: "Recently Deleted…" }).click();
-    const dialog = page.getByRole("dialog", { name: "Recently Deleted" });
-    await expect(dialog).toBeVisible({ timeout: 5000 });
-    await page.keyboard.press("Escape");
-    await expect(dialog).not.toBeVisible({ timeout: 5000 });
   });
 
   test("keyboard shortcut Cmd+N creates new note", async ({ page }) => {

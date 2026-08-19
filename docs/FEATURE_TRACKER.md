@@ -27,7 +27,8 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 ## Organize & find
 - ✅ Nested folders / note tree (sidebar) — folder rows toggle by whole-row click; no
   disclosure chevrons (2026-08-18 experiment, reversible)
-- ✅ Recently Deleted (trash) — desktop: wordmark menu → modal; mobile: inline sidebar section
+- ✅ Delete — Electron sends Boojy-managed Markdown files to the OS Trash/Recycle Bin; web uses
+  confirmed permanent deletion
 - ✅ Search + tag filter
 - ✅ In-note find
 
@@ -42,8 +43,9 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - ✅ Single-active-note navigation — opening a note replaces the current one; no tabs, no split
   view (removed 2026-08-18, see Removed)
 - ✅ Mobile-responsive layout (PWA)
-- ✅ Themes (day / night) + starfield background — DAY is now a neutral light palette (the blue-sky
-  DAY theme was replaced); starfield remains NIGHT-only (`DAY.starField: false`)
+- ✅ Themes (day / night / auto) + starfield background — Light is the no-preference default;
+  saved choices persist. DAY is a neutral light palette; starfield remains NIGHT-only
+  (`DAY.starField: false`)
 - ✅ Lucide icon set (16px inline / 20px standalone / stroke 1.5) — replaced hand-rolled SVGs
 
 ## Platform
@@ -58,12 +60,16 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - **PDF / DOCX export** — removed 2026-08-19 as non-core to a Markdown editor; the UI,
   Electron implementation and `docx` dependency were deleted together. Recoverable from
   `v0.5.0` / Git history if the product decision changes. No replacement Print command was added.
+- **Recently Deleted / private `.trash`** — removed 2026-08-19. Electron uses the platform
+  Trash/Recycle Bin; web retains confirmed permanent deletion. Existing private-trash notes are
+  migrated conservatively to the OS Trash, while ambiguous or failed items remain untouched and
+  are reported.
+- **Wordmark app menu / separate About destination** — removed 2026-08-19; the Notes wordmark
+  opens Settings directly, whose quiet footer retains version and credit.
 - **Settings: Profile/sign-in, Editor (spell check + language) and UI Scale rows** — removed
   2026-08-18 subtraction pass; Settings is a single pane (Appearance · Storage · Updates ·
   About line). Spell check still applies from the stored Electron setting (default on); UI
   scale lives on as Cmd+Plus/Minus/0.
-- **Trash's permanent sidebar row (desktop)** — replaced by the wordmark menu's
-  "Recently Deleted…" modal over the unchanged trash implementation.
 - **Tabs + split view** — removed 2026-08-18 with the single-active-note refactor (state, input
   paths, and components all deleted; old persisted state migrates to the active pane's note).
   Matches `docs/PHILOSOPHY.md`. Quick Open / Recents / back-forward are candidate follow-ups.

@@ -60,9 +60,8 @@ vi.mock("../../../src/components/settings/UpdatesTab", () => ({
 vi.mock("../../../src/components/settings/ExportTab", () => ({
   default: ({ isDesktop }) => (isDesktop ? <div data-testid="export-tab">Export</div> : null),
 }));
-vi.mock("../../../src/components/settings/AboutTab", () => ({
-  BrandingFooter: () => <div data-testid="branding-footer" />,
-  ContentFooter: () => <div data-testid="content-footer" />,
+vi.mock("../../../src/components/settings/SettingsFooter", () => ({
+  default: () => <div data-testid="settings-footer" />,
 }));
 
 // ── Import component after mocks ──────────────────────────────────────────────
@@ -123,14 +122,12 @@ describe("SettingsModal", () => {
     expect(screen.queryByRole("button", { name: "Appearance" })).not.toBeInTheDocument();
   });
 
-  it("renders Appearance, Storage and Updates content plus the About footer on desktop", () => {
+  it("renders Appearance, Storage and Updates content plus the quiet footer on desktop", () => {
     renderModal();
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
     expect(screen.getByTestId("export-tab")).toBeInTheDocument();
     expect(screen.getByTestId("updates-tab")).toBeInTheDocument();
-    expect(screen.getByTestId("content-footer")).toBeInTheDocument();
-    // The big branding block is desktop-gone.
-    expect(screen.queryByTestId("branding-footer")).not.toBeInTheDocument();
+    expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
   });
 
   it("hides the desktop-only sections on web", () => {
@@ -156,8 +153,9 @@ describe("SettingsModal", () => {
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);
   });
 
-  it("keeps the branding footer on the mobile layout", () => {
+  it("uses the same quiet footer on the mobile layout", () => {
     renderModal({ isMobile: true });
-    expect(screen.getByTestId("branding-footer")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
+    expect(screen.queryByText("About Boojy Notes")).not.toBeInTheDocument();
   });
 });

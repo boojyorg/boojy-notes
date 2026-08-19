@@ -5,7 +5,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   chooseNotesDir: () => ipcRenderer.invoke("choose-notes-dir"),
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
-  deleteNoteFile: (noteId) => ipcRenderer.invoke("delete-note-file", noteId),
   saveImage: (data) => ipcRenderer.invoke("save-image", data),
   saveAttachment: (data) => ipcRenderer.invoke("save-attachment", data),
   pickImageFile: () => ipcRenderer.invoke("pick-image-file"),
@@ -19,12 +18,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readMeta: (folderRelPath) => ipcRenderer.invoke("read-meta", folderRelPath),
   writeMeta: (folderRelPath, meta) => ipcRenderer.invoke("write-meta", folderRelPath, meta),
 
-  // Trash
-  trashNote: (noteId, title, folder) => ipcRenderer.invoke("trash-note", noteId, title, folder),
-  readTrash: () => ipcRenderer.invoke("read-trash"),
-  restoreNote: (noteId) => ipcRenderer.invoke("restore-note", noteId),
-  purgeTrash: (noteIds) => ipcRenderer.invoke("purge-trash", noteIds),
-  emptyTrash: () => ipcRenderer.invoke("empty-trash"),
+  // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
+  trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),
 
   onFileChanged: (callback) => {
     const handler = (_event, note) => callback(note);

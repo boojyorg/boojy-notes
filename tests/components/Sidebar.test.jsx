@@ -101,9 +101,6 @@ vi.mock("../../src/context/SidebarContext", () => ({
     fNotes: _sidebarOverrides.fNotes ?? [],
     renamingFolder: null,
     setRenamingFolder: vi.fn(),
-    trashedNotes: _sidebarOverrides.trashedNotes ?? {},
-    trashExpanded: _sidebarOverrides.trashExpanded ?? false,
-    setTrashExpanded: _sidebarOverrides.setTrashExpanded ?? vi.fn(),
     searchMode: _sidebarOverrides.searchMode ?? false,
     searchResults: _sidebarOverrides.searchResults ?? emptySearchResults,
     activeResultIndex: 0,
@@ -115,7 +112,6 @@ vi.mock("../../src/context/SidebarContext", () => ({
     sidebarOrder: {},
     setSidebarOrder: vi.fn(),
     folderList: [],
-    trashedNotesRef: { current: new Map() },
   }),
   SidebarProvider: ({ children }) => children,
 }));
@@ -143,12 +139,11 @@ function renderSidebar(overrides = {}) {
     createFolder: overrides.createFolder ?? vi.fn(),
     createNote: overrides.createNote ?? vi.fn(),
     handleSidebarPointerDown: noop,
-    emptyAllTrash: noop,
-    onOpenRecentlyDeleted: overrides.onOpenRecentlyDeleted ?? vi.fn(),
     handleSearchResultOpen: overrides.handleSearchResultOpen ?? vi.fn(),
     selectedNotes: new Set(),
     handleNoteClick: null,
     clearSelection: noop,
+    isMobile: overrides.isMobile ?? false,
   };
 
   return render(<Sidebar {...props} />);
@@ -325,28 +320,19 @@ describe("Sidebar", () => {
     expect(container.textContent).toContain("Result Note");
   });
 
-  it("renders no Trash/Recently Deleted section on desktop", () => {
+  it("renders no Trash/Recently Deleted section", () => {
     const { queryByText } = renderSidebar();
     expect(queryByText("Trash")).not.toBeInTheDocument();
     expect(queryByText("Recently Deleted")).not.toBeInTheDocument();
+    const mobile = renderSidebar({ isMobile: true });
+    expect(mobile.queryByText("Recently Deleted")).not.toBeInTheDocument();
   });
 
-  it("opens the wordmark menu with Recently Deleted, Settings and About", () => {
-    const onOpenRecentlyDeleted = vi.fn();
-    const { getByTestId, getByRole } = renderSidebar({ onOpenRecentlyDeleted });
-    fireEvent.click(getByTestId("wordmark-menu-button"));
-    expect(getByRole("menu", { name: "Notes menu" })).toBeInTheDocument();
-    expect(getByRole("menuitem", { name: /Settings/ })).toBeInTheDocument();
-    expect(getByRole("menuitem", { name: /About/ })).toBeInTheDocument();
-    fireEvent.click(getByRole("menuitem", { name: /Recently Deleted/ }));
-    expect(onOpenRecentlyDeleted).toHaveBeenCalled();
-  });
-
-  it("closes the wordmark menu and opens Settings from its menu item", () => {
-    const { getByTestId, getByRole, queryByRole } = renderSidebar();
-    fireEvent.click(getByTestId("wordmark-menu-button"));
-    fireEvent.click(getByRole("menuitem", { name: /Settings/ }));
+  it("opens Settings directly from the wordmark without an app menu", () => {
+    const { getByTestId, queryByRole, queryByText } = renderSidebar();
+    fireEvent.click(getByTestId("wordmark-settings-button"));
     expect(queryByRole("menu")).not.toBeInTheDocument();
+    expect(queryByText("About")).not.toBeInTheDocument();
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
   });
 
