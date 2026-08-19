@@ -46,17 +46,14 @@ third-party content — these gate confident Vault migration):
   guard (P3). `useSync.js:114`.
 - [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
 
-**Split-pane (beyond the fixed flush bug):**
-- [ ] `PaneContainer` doesn't pass `tagMenuRef`/`setTagMenu` to `useEditorHandlers` — tag
-  autocomplete silently broken in split panes (P2). `PaneContainer.jsx:131`.
-- [ ] `editedNoteHint`/`activeNoteRef` track the mouse-clicked pane only — keyboard-focus into
-  the other pane stamps the wrong note id (P1 finding; impact reduced now that the quit flush
-  uses the `unflushedNotes` set, but sync's hint can still mis-target). `useHistory.js:102`.
+**Split-pane:** section retired 2026-08-18 — split view and tabs were removed outright
+(single-active-note refactor), which closes the PaneContainer tag-autocomplete and
+per-pane `editedNoteHint` items with them.
 
 ## Refactor / docs
-- [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, root
-  **1,675 → ~1,400 lines**. Further candidates: split-view glue, ghost-note/draft effects,
-  `ProfileTab` (915 lines), `Sidebar` (897 lines).
+- [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, then
+  the single-active-note refactor removed the split-view glue (root now ~1,150 lines). Remaining
+  candidates: ghost-note/draft effects, `ProfileTab` (915 lines), `Sidebar` (897 lines).
 - [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
 
 ## Bugs / QoL
@@ -78,6 +75,11 @@ third-party content — these gate confident Vault migration):
 (Folded in from the old `FUTURE-IDEAS.md`, grouped by effort/impact. **Status unverified** — some
 may already be partly shipped; confirm against the app before picking one up.)
 
+- [ ] **Quick Open** (high value / medium effort) — Cmd+O/Cmd+P fuzzy note switcher; the natural
+  companion to single-active-note navigation (no tabs to lean on).
+- [ ] **Back/forward history** (high value / low-medium) — a small stack behind Cmd+[ / Cmd+]
+  now that opening a note replaces the current one; would also soften delete-lands-on-draft.
+- [ ] **Recents** (medium / low) — last-N notes in sidebar or Quick Open's empty state.
 - [ ] **Backlinks panel** (high value / medium effort) — "Notes that link to this note" in a
   sidebar. Wikilink data is already in block text; needs a reverse index.
 - [ ] **Note version history** (high value / medium) — browse/restore previous versions via the undo
@@ -87,7 +89,6 @@ may already be partly shipped; confirm against the app before picking one up.)
 - [ ] **Math/LaTeX blocks** (high value / higher effort) — a `math` block rendering LaTeX via KaTeX.
 - [ ] **Mermaid diagram blocks** (high value / higher) — a `diagram` block in the slash menu.
 - [ ] **Export to PDF** (medium / low) — Electron `webContents.printToPDF()`.
-- [ ] **Drag blocks between panes** (medium / low) — in split-pane mode.
 - [ ] **Table improvements** (medium / low) — column resize, row/column sort, tab-to-next-cell.
 - [ ] **Image lightbox** (medium / low) — zoom/pan, keyboard nav between images in a note.
 - [ ] **Indent guides** (medium / low) — lines connecting indented blocks to their parent.
@@ -107,7 +108,4 @@ may already be partly shipped; confirm against the app before picking one up.)
   uses the accent. NIGHT was deliberately left untouched in that pass.)*
 - [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
   aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
-- [ ] PaneTabBar: `<span role=button>` nested inside `<button role=tab>` — invalid. `PaneTabBar.jsx:137`.
-  *(Currently unmounted on desktop by the minimal-chrome experiment; still reachable if the tab strip
-  is restored, so not resolved.)*
 - [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.

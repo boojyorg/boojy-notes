@@ -52,12 +52,7 @@ function setup(initialNoteData = {}, opts = {}) {
     noteData = updater(noteData);
     noteDataRef.current = noteData;
   });
-  const tabs = opts.tabs || Object.keys(initialNoteData);
-  let currentTabs = [...tabs];
-  const setTabs = vi.fn((updater) => {
-    currentTabs = typeof updater === "function" ? updater(currentTabs) : updater;
-  });
-  let currentActive = opts.activeNote || tabs[0] || null;
+  let currentActive = opts.activeNote || Object.keys(initialNoteData)[0] || null;
   const setActiveNote = vi.fn((id) => {
     currentActive = id;
   });
@@ -87,7 +82,6 @@ function setup(initialNoteData = {}, opts = {}) {
     useNoteCrud({
       commitNoteData,
       noteDataRef,
-      setTabs,
       setActiveNote,
       activeNote: currentActive,
       setCustomFolders,
@@ -105,14 +99,12 @@ function setup(initialNoteData = {}, opts = {}) {
   return {
     result,
     getNoteData: () => noteData,
-    getTabs: () => currentTabs,
     getActive: () => currentActive,
     getFolders: () => currentFolders,
     getExpanded: () => currentExpanded,
     getTrashedNotes: () => currentTrashedNotes,
     getSidebarOrder: () => currentSidebarOrder,
     commitNoteData,
-    setTabs,
     setActiveNote,
     setCustomFolders,
     setExpanded,
@@ -126,8 +118,8 @@ function setup(initialNoteData = {}, opts = {}) {
 
 describe("useNoteCrud", () => {
   describe("createNote", () => {
-    it("creates a note with ID, title, first block, adds to tabs, and sets active", () => {
-      const { result, getNoteData, getTabs, setActiveNote } = setup();
+    it("creates a note with ID, title, first block, and sets it active", () => {
+      const { result, getNoteData, setActiveNote } = setup();
 
       act(() => {
         result.current.createNote();
@@ -140,7 +132,6 @@ describe("useNoteCrud", () => {
       expect(data[noteId].content.blocks).toHaveLength(1);
       expect(data[noteId].content.blocks[0].id).toBe("blk-1");
       expect(data[noteId].content.blocks[0].type).toBe("p");
-      expect(getTabs()).toContain(noteId);
       expect(setActiveNote).toHaveBeenCalledWith(noteId);
     });
 
@@ -160,19 +151,29 @@ describe("useNoteCrud", () => {
   });
 
   describe("deleteNote", () => {
-    it("removes note from noteData and tabs", () => {
+    it("removes the note and clears activeNote when it was open", () => {
       const note = makeNote("n1", "Test", null);
-      const { result, getNoteData, getTabs } = setup(
-        { n1: note },
-        { tabs: ["n1"], activeNote: "n1" },
-      );
+      const { result, getNoteData, setActiveNote } = setup({ n1: note }, { activeNote: "n1" });
 
       act(() => {
         result.current.deleteNote("n1");
       });
 
       expect(getNoteData()["n1"]).toBeUndefined();
-      expect(getTabs()).not.toContain("n1");
+      expect(setActiveNote).toHaveBeenCalledWith(null);
+    });
+
+    it("leaves activeNote alone when deleting a different note", () => {
+      const n1 = makeNote("n1", "Open", null);
+      const n2 = makeNote("n2", "Other", null);
+      const { result, getNoteData, setActiveNote } = setup({ n1, n2 }, { activeNote: "n1" });
+
+      act(() => {
+        result.current.deleteNote("n2");
+      });
+
+      expect(getNoteData()["n2"]).toBeUndefined();
+      expect(setActiveNote).not.toHaveBeenCalled();
     });
 
     it("calls trashedNotesRef.set when native and trashNote API exists", async () => {
@@ -182,7 +183,7 @@ describe("useNoteCrud", () => {
       platform.isNative = true;
 
       const note = makeNote("n1", "Trashed Note", "Docs");
-      const { result, trashedNotesRef } = setup({ n1: note }, { tabs: ["n1"], activeNote: "n1" });
+      const { result, trashedNotesRef } = setup({ n1: note }, { activeNote: "n1" });
 
       act(() => {
         result.current.deleteNote("n1");
@@ -197,7 +198,7 @@ describe("useNoteCrud", () => {
   describe("duplicateNote", () => {
     it("creates copy with '(copy)' title and new block IDs", () => {
       const note = makeNote("n1", "Original");
-      const { result, getNoteData, getTabs, setActiveNote } = setup({ n1: note }, { tabs: ["n1"] });
+      const { result, getNoteData, setActiveNote } = setup({ n1: note });
 
       act(() => {
         result.current.duplicateNote("n1");
@@ -212,7 +213,6 @@ describe("useNoteCrud", () => {
       const origBlockIds = note.content.blocks.map((b) => b.id);
       const dupBlockIds = data[dupId].content.blocks.map((b) => b.id);
       expect(dupBlockIds).not.toEqual(origBlockIds);
-      expect(getTabs()).toContain(dupId);
       expect(setActiveNote).toHaveBeenCalledWith(dupId);
     });
   });
@@ -243,13 +243,13 @@ describe("useNoteCrud", () => {
   });
 
   describe("deleteFolder", () => {
-    it("deletes all notes in folder and updates tabs", () => {
+    it("deletes all notes in folder and clears activeNote when it was inside", () => {
       const n1 = makeNote("n1", "Note A", "Archive");
       const n2 = makeNote("n2", "Note B", "Archive");
       const n3 = makeNote("n3", "Note C", null);
-      const { result, getNoteData, getTabs, getFolders } = setup(
+      const { result, getNoteData, getFolders, setActiveNote } = setup(
         { n1, n2, n3 },
-        { tabs: ["n1", "n2", "n3"], activeNote: "n1", customFolders: ["Archive"] },
+        { activeNote: "n1", customFolders: ["Archive"] },
       );
 
       act(() => {
@@ -260,9 +260,7 @@ describe("useNoteCrud", () => {
       expect(data.n1).toBeUndefined();
       expect(data.n2).toBeUndefined();
       expect(data.n3).toBeDefined();
-      expect(getTabs()).not.toContain("n1");
-      expect(getTabs()).not.toContain("n2");
-      expect(getTabs()).toContain("n3");
+      expect(setActiveNote).toHaveBeenCalledWith(null);
       expect(getFolders()).not.toContain("Archive");
     });
   });
@@ -361,8 +359,8 @@ describe("useNoteCrud", () => {
   });
 
   describe("createDraftNote", () => {
-    it("creates a _draft note without adding a tab", () => {
-      const { result, getNoteData, getTabs, setTabs, setActiveNote } = setup();
+    it("creates a _draft note and sets it active", () => {
+      const { result, getNoteData, setActiveNote } = setup();
 
       let draftId;
       act(() => {
@@ -373,15 +371,14 @@ describe("useNoteCrud", () => {
       expect(data[draftId]).toBeDefined();
       expect(data[draftId]._draft).toBe(true);
       expect(data[draftId].title).toBe("");
-      expect(setTabs).not.toHaveBeenCalled();
       expect(setActiveNote).toHaveBeenCalledWith(draftId);
     });
   });
 
   describe("promoteDraft", () => {
-    it("removes _draft flag and adds tab", () => {
+    it("removes the _draft flag", () => {
       const draftNote = { ...makeNote("d1", ""), _draft: true };
-      const { result, getNoteData, getTabs } = setup({ d1: draftNote }, { tabs: [] });
+      const { result, getNoteData } = setup({ d1: draftNote });
 
       act(() => {
         result.current.promoteDraft("d1");
@@ -389,14 +386,13 @@ describe("useNoteCrud", () => {
 
       const data = getNoteData();
       expect(data.d1._draft).toBeUndefined();
-      expect(getTabs()).toContain("d1");
     });
   });
 
   describe("discardDraft", () => {
     it("removes draft note from noteData", () => {
       const draftNote = { ...makeNote("d1", "Draft"), _draft: true };
-      const { result, getNoteData } = setup({ d1: draftNote }, { tabs: [] });
+      const { result, getNoteData } = setup({ d1: draftNote });
 
       act(() => {
         result.current.discardDraft("d1");

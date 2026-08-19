@@ -8,7 +8,6 @@ import { SCALE_OPTIONS } from "../constants/data";
 export function useAppKeyboard({
   activeNote,
   noteData,
-  splitState,
   uiScale,
   settingsOpen,
   blockDrag,
@@ -21,11 +20,7 @@ export function useAppKeyboard({
   createNote,
   setSettingsOpen,
   setCollapsed,
-  setActivePaneId,
   setUiScale,
-  setTabFlip,
-  splitPane,
-  closeSplit,
   cancelBlockDrag,
   cancelSidebarDrag,
   setDevOverlay,
@@ -35,8 +30,6 @@ export function useAppKeyboard({
   activeNoteRef.current = activeNote;
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
-  const splitStateRef = useRef(splitState);
-  splitStateRef.current = splitState;
   const uiScaleRef = useRef(uiScale);
   uiScaleRef.current = uiScale;
 
@@ -89,23 +82,6 @@ export function useAppKeyboard({
         setTimeout(() => searchInputRef.current?.focus(), 250);
         return;
       }
-      if (mod && e.shiftKey && e.key === "\\") {
-        e.preventDefault();
-        const curSplit = splitStateRef.current;
-        if (curSplit.splitMode) {
-          closeSplit();
-        } else {
-          splitPane("vertical");
-        }
-        return;
-      }
-      const curSplit = splitStateRef.current;
-      if (mod && curSplit.splitMode && (e.key === "1" || e.key === "2")) {
-        e.preventDefault();
-        const ids = curSplit.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
-        setActivePaneId(e.key === "1" ? ids[0] : ids[1]);
-        return;
-      }
       // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
       if (mod && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
@@ -129,10 +105,6 @@ export function useAppKeyboard({
       if (import.meta.env.DEV && mod && e.key === ".") {
         e.preventDefault();
         setDevOverlay((v) => !v);
-      }
-      if (import.meta.env.DEV && mod && e.key === ",") {
-        e.preventDefault();
-        setTabFlip((v) => !v);
       }
     };
     window.addEventListener("keydown", handler);

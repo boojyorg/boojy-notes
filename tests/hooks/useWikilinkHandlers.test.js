@@ -15,9 +15,6 @@ function setup(overrides = {}) {
   };
   const openNote = vi.fn();
   const createNote = vi.fn();
-  const getOtherPaneId = vi.fn(() => "pane-2");
-  const openNoteInPane = vi.fn();
-  const splitPaneWithNote = vi.fn();
   const setWikilinkMenu = vi.fn();
   const commitNoteData = vi.fn();
   const deps = {
@@ -28,10 +25,6 @@ function setup(overrides = {}) {
     textOnlyEdit: { current: false },
     openNote,
     createNote,
-    splitState: { splitMode: false },
-    getOtherPaneId,
-    openNoteInPane,
-    splitPaneWithNote,
     wikilinkMenuRef: { current: { noteId: "n1", blockIndex: 0 } },
     setWikilinkMenu,
     syncGeneration: { current: 0 },
@@ -68,16 +61,10 @@ describe("useWikilinkHandlers", () => {
     expect(openNote).not.toHaveBeenCalled();
   });
 
-  it("cmd-click splits with the note when not already split", () => {
-    const { result, splitPaneWithNote } = setup();
+  it("cmd-click behaves exactly like a plain click (split view removed)", () => {
+    const { result, openNote } = setup();
     result.current.handleWikilinkCmdClick("Beta");
-    expect(splitPaneWithNote).toHaveBeenCalledWith("vertical", "n2");
-  });
-
-  it("cmd-click opens in the other pane when already in split mode", () => {
-    const { result, openNoteInPane } = setup({ splitState: { splitMode: true } });
-    result.current.handleWikilinkCmdClick("Beta");
-    expect(openNoteInPane).toHaveBeenCalledWith("n2", "pane-2");
+    expect(openNote).toHaveBeenCalledWith("n2");
   });
 
   it("select inserts the link, writes rendered HTML to the DOM, and queues the caret", () => {

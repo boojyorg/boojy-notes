@@ -13,8 +13,6 @@ export function LayoutProvider({ children }) {
   const [chromeBg, setChromeBg] = useState(theme.BG.dark);
   const [editorBg, setEditorBg] = useState(theme.BG.editor);
   const [accentColor, setAccentColor] = useState(theme.ACCENT.primary);
-  const [activeTabBg, setActiveTabBg] = useState(theme.activeTabBg);
-  const [tabFlip, setTabFlip] = useState(false);
   const [selectionStyle, setSelectionStyle] = useState("B");
   const [topBarEdge, setTopBarEdge] = useState("B");
   const [createBtnStyle, setCreateBtnStyle] = useState("A");
@@ -24,8 +22,7 @@ export function LayoutProvider({ children }) {
     setChromeBg(theme.BG.dark);
     setEditorBg(theme.BG.editor);
     setAccentColor(theme.ACCENT.primary);
-    setActiveTabBg(theme.activeTabBg);
-  }, [theme.BG.dark, theme.BG.editor, theme.ACCENT.primary, theme.activeTabBg]);
+  }, [theme.BG.dark, theme.BG.editor, theme.ACCENT.primary]);
 
   const sidebarHandles = useRef([]);
 
@@ -47,10 +44,6 @@ export function LayoutProvider({ children }) {
       setEditorBg,
       accentColor,
       setAccentColor,
-      activeTabBg,
-      setActiveTabBg,
-      tabFlip,
-      setTabFlip,
       selectionStyle,
       setSelectionStyle,
       topBarEdge,
@@ -67,8 +60,6 @@ export function LayoutProvider({ children }) {
       chromeBg,
       editorBg,
       accentColor,
-      activeTabBg,
-      tabFlip,
       selectionStyle,
       topBarEdge,
       createBtnStyle,

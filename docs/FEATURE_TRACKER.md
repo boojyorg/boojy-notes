@@ -35,8 +35,8 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ Conflict resolution + offline recovery + cross-tab consistency
 
 ## Views & theming
-- ✅ Split view + multi-pane tabs — ⚠️ tab *strip* is currently unmounted on desktop (minimal-chrome
-  experiment); tab/pane state is intact, split still reachable via editor edge-drop
+- ✅ Single-active-note navigation — opening a note replaces the current one; no tabs, no split
+  view (removed 2026-08-18, see Removed)
 - ✅ Mobile-responsive layout (PWA)
 - ✅ Themes (day / night) + starfield background — DAY is now a neutral light palette (the blue-sky
   DAY theme was replaced); starfield remains NIGHT-only (`DAY.starField: false`)
@@ -54,6 +54,9 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ Markdown / folder import (desktop)
 
 ## Removed (recoverable via git tag)
+- **Tabs + split view** — removed 2026-08-18 with the single-active-note refactor (state, input
+  paths, and components all deleted; old persisted state migrates to the active pane's note).
+  Matches `docs/PHILOSOPHY.md`. Quick Open / Recents / back-forward are candidate follow-ups.
 - **Native mobile** (iOS/Android, Capacitor) — dropped v0.3.0; not planned. Mobile is now
   responsive web only. Native-mobile release work is **stopped**.
 - Terminal (`terminal-snapshot` tag), AI chat — see `CHANGELOG.md`

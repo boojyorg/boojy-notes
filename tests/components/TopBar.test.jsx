@@ -33,10 +33,6 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
-vi.mock("../../src/components/HelpDropdown", () => ({
-  default: () => null,
-}));
-
 vi.mock("/assets/boojy-notes-text-N.png", () => ({ default: "boojy-N.png" }));
 vi.mock("/assets/boojy-notes.text-tes.png", () => ({ default: "boojy-tes.png" }));
 
@@ -46,8 +42,6 @@ const layoutState = {
   chromeBg: "#222",
   accentColor: "#A4CACE",
   topBarEdge: "B",
-  tabFlip: false,
-  activeTabBg: "#1C1C20",
   sidebarWidth: 220,
   rightPanelWidth: 220,
   collapsed: false,
@@ -113,43 +107,15 @@ import TopBar from "../../src/components/TopBar.jsx";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const noop = () => {};
 
-function buildNoteData(ids) {
-  return Object.fromEntries(ids.map((id) => [id, { title: `Note ${id}`, blocks: [] }]));
-}
-
 function renderTopBar(overrides = {}) {
-  const tabs = overrides.tabs ?? ["n1", "n2"];
-  const noteData = overrides.noteData ?? buildNoteData(tabs);
-
   const props = {
-    tabs,
-    activeNote: overrides.activeNote ?? "n1",
-    noteData,
-    newTabId: null,
-    closingTabs: new Set(),
-    setActiveNote: overrides.setActiveNote ?? vi.fn(),
-    closeTab: overrides.closeTab ?? vi.fn(),
-    syncState: overrides.syncState ?? "synced",
-    syncDotStyle: overrides.syncDotStyle ?? (() => ({})),
-    note: overrides.note ?? null,
-    wordCount: overrides.wordCount ?? 0,
-    charCount: 0,
-    charCountNoSpaces: 0,
-    readingTime: 0,
-    tabScrollRef: { current: null },
-    tabAreaWidth: 600,
-    splitMode: null,
-    panes: null,
-    activePaneId: null,
-    dividerPosition: 50,
-    setActiveNoteForPane: noop,
-    setActivePaneId: noop,
-    setTabsForPane: noop,
-    closePaneIfEmpty: noop,
     isMobile: false,
+    activeNote: overrides.activeNote ?? "n1",
+    setActiveNote: overrides.setActiveNote ?? vi.fn(),
     createNote: overrides.createNote ?? vi.fn(),
     noteTitle: overrides.noteTitle ?? "",
-    onTabPointerDown: null,
+    onMorePress: noop,
+    onTitlePress: noop,
   };
 
   return render(<TopBar {...props} />);
@@ -171,23 +137,16 @@ afterEach(() => {
   cleanup();
 });
 
-// Minimal-chrome experiment: the desktop top bar renders nothing at all. The
-// controls it used to hold now live elsewhere and are covered there:
+// The desktop top bar renders nothing at all. The controls it used to hold now
+// live elsewhere and are covered there:
 //   sidebar toggle + note actions -> tests/components/EditorChrome.test.jsx
 //   wordmark / settings entry     -> Sidebar
 //   undo/redo                     -> keyboard only (useAppKeyboard)
-// Tab/pane STATE is untouched; only PaneTabBar is unmounted.
+// Tabs and split view were removed outright with the single-active-note model.
 describe("TopBar (desktop, minimal chrome)", () => {
   it("renders no top strip at all", () => {
     const { container } = renderTopBar();
     expect(container).toBeEmptyDOMElement();
-  });
-
-  it("renders no visible tab elements even when tabs are open", () => {
-    const tabs = ["n1", "n2"];
-    const { container } = renderTopBar({ tabs, noteData: buildNoteData(tabs) });
-    expect(container.querySelectorAll("[data-tab-id]").length).toBe(0);
-    expect(container.querySelectorAll("[data-pane-tab-bar]").length).toBe(0);
   });
 
   it("renders none of the removed controls", () => {

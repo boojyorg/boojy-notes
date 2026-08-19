@@ -51,7 +51,6 @@ const settingsState = {
 const layoutState = {
   accentColor: "#A4CACE",
   chromeBg: "#222",
-  activeTabBg: "#1C1C20",
 };
 
 vi.mock("../../../src/context/SettingsContext", () => ({

@@ -68,33 +68,36 @@ Icons inherit colour from the parent's `color`. If you place one in a container 
 set one — `SearchIcon` (sidebar search) and `BreadcrumbChevron` (EditorArea) each needed an explicit
 `color: TEXT.muted` on their wrapper for this reason.
 
-## Minimal-chrome experiment — CURRENTLY LIVE, and it breaks things
+## Minimal chrome + single-active-note — CURRENT STATE
 
-There is **no desktop top bar**. `TopBar.jsx` returns `null` for desktop; `TopBarDesktop.jsx` and
-`PaneTabBar.jsx` are intentionally **left on disk, unmounted** so the strip can be restored in one
-line. Tab/pane *state* is untouched and still live in `BoojyNotes.jsx`.
+There is **no desktop top bar**, and as of the single-active-note refactor (2026-08-18) there are
+**no tabs and no split view at all**. Navigation state is one string: `useActiveNote` in
+`src/hooks/useActiveNote.js`; opening a note replaces the current one. `useSplitView`, `useTabDrag`,
+`PaneContainer`, `PaneTabBar`, `TopBarDesktop`, `SplitDivider` and `tabBarHitTest` are **deleted**
+(git history has them) — restoring tabs means reverting that refactor, not remounting a component.
 
-Consequences a future change will trip over:
+Things a future change will trip over:
 
-- **Drag-to-tab-bar is dead.** `findTabBarUnderCursor` queries `[data-pane-tab-bar]`, which no longer
-  exists in the DOM, so `useTabDrag.js` and `useSidebarDrag.js` always take the null branch. Tab
-  reorder, drag-into-a-specific-pane, and Option+drag duplicate silently do nothing.
-- **Edge-drag split is disabled** (2026-08-18): `EDGE_SPLIT_ENABLED = false` in
-  `useSidebarDrag.js` — dragging a note to an editor edge now just opens it. It used to create a
-  split with no per-pane UI to show or undo it. `useSplitView` and the wikilink "open in split"
-  path are untouched; flip the flag to restore edge-drop. Split view is parked per
-  `docs/PHILOSOPHY.md`.
-- **There is no way to close a note.** The `×` lived on the tab and there is no Cmd+W binding in
-  `useAppKeyboard.js`. Tabs accumulate invisibly.
-- **Help is unreachable.** The `?` was its only entry point; `HelpDropdown.jsx` is unmounted, and
-  Settings has an About tab but no Help.
+- **Persistence migration lives in `resolveInitialActiveNote()`** (`useActiveNote.js`): old
+  `boojy-ui-state` blobs with `splitState`/`tabs` are still read — active pane's note wins,
+  left/top/right/bottom fallback — but only `{ activeNote, expanded }` is written now. Don't
+  "clean up" the read side; it's three lines and keeps old installs safe forever.
+- **Cmd-click on a wikilink = plain click** (it used to open a split). `handleWikilinkCmdClick`
+  is an alias of `handleWikilinkClick` in `useWikilinkHandlers.js`.
+- **Deleting the open note lands on an empty draft** (desktop) or the sidebar (mobile) — there is
+  no tab list to fall back to. A back-history / Recents / Quick Open is a candidate follow-up,
+  not built.
+- **Sidebar drag onto the editor opens the note** — the tab-bar-insert and edge-split drop
+  branches are gone from `useSidebarDrag.js`.
+- **Help is unreachable.** `HelpDropdown.jsx` is kept on disk with zero importers — it holds the
+  parked help content; Settings has an About tab but no Help.
 - **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
   `useNoteStats` still computes `charCountNoSpaces` / `readingTime`, which now have no consumer.
 - The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px
   fill + 1px border left a hairline strip down the left edge instead of the sidebar disappearing.
 
 Undo/redo still work — they're keyboard-only now (`useAppKeyboard.js`, Cmd/Ctrl+Z and
-Cmd/Ctrl+Shift+Z). Only the buttons were removed.
+Cmd/Ctrl+Shift+Z). Cmd+Shift+\ (split) and Cmd+1/2 (pane switch) are gone with the feature.
 
 ## The panel toggle moves between states (deliberate, pending judgement)
 
@@ -181,5 +184,7 @@ makes it rarer than fourteen (~516px) did; it does not fix it.
 
 `TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
 in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
-collapsed) and `Sidebar.test.jsx` (header toggle + action rows). Theme-mocking tests need
-`ACCENT.onAccent` in their mock or components using it throw.
+collapsed) and `Sidebar.test.jsx` (header toggle + action rows). Navigation state is covered by
+`useActiveNote.test.js` (migration rule) and `useAppPersistence.test.js` (write shape).
+Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw; the
+`activeTabBg` token no longer exists — don't reintroduce it in mocks.

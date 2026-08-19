@@ -6,33 +6,18 @@ import { isNative } from "../utils/platform";
  * Debounced localStorage persistence for UI state and note data.
  * Extracted from BoojyNotes.jsx for readability.
  */
-export function useAppPersistence({
-  tabs,
-  activeNote,
-  expanded,
-  splitState,
-  noteData,
-  customFolders,
-  getSplitStateForPersistence,
-  showToast,
-}) {
-  // Persist UI state (tabs, active note, expanded folders)
+export function useAppPersistence({ activeNote, expanded, noteData, customFolders, showToast }) {
+  // Persist UI state (active note, expanded folders). Older builds also stored
+  // `tabs` and `splitState` here — those keys are no longer written; the read
+  // side (useActiveNote) still understands them for migration.
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem(
-          "boojy-ui-state",
-          JSON.stringify({
-            tabs,
-            activeNote,
-            expanded,
-            splitState: getSplitStateForPersistence(),
-          }),
-        );
+        localStorage.setItem("boojy-ui-state", JSON.stringify({ activeNote, expanded }));
       } catch {}
     }, 300);
     return () => clearTimeout(timer);
-  }, [tabs, activeNote, expanded, splitState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote, expanded]);
 
   // Persist full note data to localStorage (web only)
   useEffect(() => {
@@ -42,11 +27,11 @@ export function useAppPersistence({
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ noteData, tabs, activeNote, expanded, customFolders }),
+          JSON.stringify({ noteData, activeNote, expanded, customFolders }),
         );
       } catch (e) {
         console.warn("Failed to save to localStorage, trying IndexedDB:", e);
-        saveToIDB({ noteData, tabs, activeNote, expanded, customFolders }).catch(() => {
+        saveToIDB({ noteData, activeNote, expanded, customFolders }).catch(() => {
           showToast("Failed to save — storage may be full", "warning");
         });
       }
@@ -57,11 +42,11 @@ export function useAppPersistence({
         );
     }, 2000);
     return () => clearTimeout(timer);
-  }, [noteData, tabs, activeNote, expanded, customFolders]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteData, activeNote, expanded, customFolders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safety net: flush noteData to localStorage on page unload (web only)
-  const beforeunloadDataRef = useRef({ noteData, tabs, activeNote, expanded, customFolders });
-  beforeunloadDataRef.current = { noteData, tabs, activeNote, expanded, customFolders };
+  const beforeunloadDataRef = useRef({ noteData, activeNote, expanded, customFolders });
+  beforeunloadDataRef.current = { noteData, activeNote, expanded, customFolders };
 
   useEffect(() => {
     if (isNative) return;

@@ -3,16 +3,6 @@ import { useTheme } from "./useTheme";
 import { isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 import { runAutoScroll } from "../utils/domHelpers";
-import {
-  findTabBarUnderCursor,
-  computeInsertionIndex,
-  getInsertionLinePosition,
-} from "../utils/tabBarHitTest";
-
-// Split view is parked (docs/PHILOSOPHY.md): dragging a note to an editor edge
-// must not create a split there's no UI to show or undo. Flip to re-enable —
-// the split machinery itself (useSplitView) is untouched.
-const EDGE_SPLIT_ENABLED = false;
 
 export function useSidebarDrag({
   noteDataRef,
@@ -29,11 +19,7 @@ export function useSidebarDrag({
   dragTooltipCount,
   selectedNotesRef,
   clearSelectionRef,
-  // Split view support
-  splitStateRef,
-  splitPaneWithNote,
-  openNoteInPane,
-  insertTabInPane,
+  openNote,
 }) {
   const { theme } = useTheme();
   const sidebarDrag = useRef({
@@ -218,52 +204,9 @@ export function useSidebarDrag({
         .querySelectorAll("[data-folder-path]")
         .forEach((el) => (el.style.background = "none"));
 
-      // Check if over a tab bar for insertion
-      if (sd.type === "note" && insertTabInPane) {
-        const tabBarHit = findTabBarUnderCursor(pointerX, pointerY);
-        if (tabBarHit) {
-          const idx = computeInsertionIndex(tabBarHit.tabBarEl, pointerX);
-          const pos = getInsertionLinePosition(tabBarHit.tabBarEl, idx);
-
-          // Show vertical insertion line
-          if (!sd.tabInsertLine) {
-            const line = document.createElement("div");
-            Object.assign(line.style, {
-              position: "fixed",
-              width: "2px",
-              zIndex: "999",
-              pointerEvents: "none",
-              display: "none",
-              borderRadius: "1px",
-              background: accentColor,
-              transition: "left 50ms ease, top 50ms ease",
-            });
-            document.body.appendChild(line);
-            sd.tabInsertLine = line;
-          }
-          Object.assign(sd.tabInsertLine.style, {
-            display: "block",
-            left: pos.x - 1 + "px",
-            top: pos.top + "px",
-            height: pos.height + "px",
-          });
-
-          // Hide sidebar indicator and editor overlay
-          if (sd.dropIndicator) sd.dropIndicator.style.display = "none";
-          if (sd.editorOverlay) sd.editorOverlay.style.display = "none";
-
-          sd.dropTarget = { type: "tab-bar-insert", paneId: tabBarHit.paneId, insertIndex: idx };
-          return;
-        }
-        // Not over tab bar — hide insertion line
-        if (sd.tabInsertLine) sd.tabInsertLine.style.display = "none";
-      }
-
-      // Check if over the editor area for split-drop
-      if (sd.type === "note" && splitPaneWithNote) {
-        const editorArea =
-          document.querySelector("[data-split-container]") ||
-          document.querySelector(".editor-scroll")?.parentElement;
+      // Dropping a note anywhere over the editor opens it
+      if (sd.type === "note" && openNote) {
+        const editorArea = document.querySelector(".editor-scroll")?.parentElement;
         if (editorArea) {
           const editorRect = editorArea.getBoundingClientRect();
           if (
@@ -272,95 +215,15 @@ export function useSidebarDrag({
             pointerY >= editorRect.top &&
             pointerY <= editorRect.bottom
           ) {
-            const relX = (pointerX - editorRect.left) / editorRect.width;
-            const relY = (pointerY - editorRect.top) / editorRect.height;
-            const EDGE = 0.2;
-            let editorZone = null;
-            if (EDGE_SPLIT_ENABLED) {
-              if (relX < EDGE) editorZone = { direction: "vertical", side: "left" };
-              else if (relX > 1 - EDGE) editorZone = { direction: "vertical", side: "right" };
-              else if (relY < EDGE) editorZone = { direction: "horizontal", side: "top" };
-              else if (relY > 1 - EDGE) editorZone = { direction: "horizontal", side: "bottom" };
-            }
-
-            sd.dropTarget = editorZone
-              ? { type: "editor-split", zone: editorZone, rect: editorRect }
-              : { type: "editor-open", rect: editorRect };
-
-            // Show overlay for edge zones
-            if (editorZone && !splitStateRef?.current?.splitMode) {
-              if (!sd.editorOverlay) {
-                const overlay = document.createElement("div");
-                Object.assign(overlay.style, {
-                  position: "fixed",
-                  zIndex: "998",
-                  pointerEvents: "none",
-                  transition: "all 0.15s ease",
-                  borderRadius: "4px",
-                });
-                document.body.appendChild(overlay);
-                sd.editorOverlay = overlay;
-              }
-              const half = { width: editorRect.width / 2, height: editorRect.height / 2 };
-              let s;
-              switch (editorZone.side) {
-                case "left":
-                  s = {
-                    top: editorRect.top,
-                    left: editorRect.left,
-                    width: half.width,
-                    height: editorRect.height,
-                  };
-                  break;
-                case "right":
-                  s = {
-                    top: editorRect.top,
-                    left: editorRect.left + half.width,
-                    width: half.width,
-                    height: editorRect.height,
-                  };
-                  break;
-                case "top":
-                  s = {
-                    top: editorRect.top,
-                    left: editorRect.left,
-                    width: editorRect.width,
-                    height: half.height,
-                  };
-                  break;
-                case "bottom":
-                  s = {
-                    top: editorRect.top + half.height,
-                    left: editorRect.left,
-                    width: editorRect.width,
-                    height: half.height,
-                  };
-                  break;
-              }
-              Object.assign(sd.editorOverlay.style, {
-                display: "block",
-                top: s.top + "px",
-                left: s.left + "px",
-                width: s.width + "px",
-                height: s.height + "px",
-                background: `${accentColor}15`,
-                border: `2px solid ${accentColor}40`,
-              });
-            } else if (sd.editorOverlay) {
-              sd.editorOverlay.style.display = "none";
-            }
+            sd.dropTarget = { type: "editor-open", rect: editorRect };
             return;
           }
         }
       }
 
-      // Hide editor overlay when not over editor
-      if (sd.editorOverlay) sd.editorOverlay.style.display = "none";
       sd.dropTarget = null;
       return;
     }
-    // Hide editor overlay when back in sidebar
-    if (sd.editorOverlay) sd.editorOverlay.style.display = "none";
 
     let target = null;
     const noteEls = scrollEl.querySelectorAll("[data-note-id]");
@@ -445,34 +308,9 @@ export function useSidebarDrag({
     const target = sd.dropTarget;
 
     if (target) {
-      // Handle tab bar insertion drops
-      if (target.type === "tab-bar-insert" && sd.type === "note" && insertTabInPane) {
-        const ids = sd.draggedIds && sd.draggedIds.length > 0 ? sd.draggedIds : [sd.id];
-        for (let i = 0; i < ids.length; i++) {
-          insertTabInPane(target.paneId, ids[i], target.insertIndex + i);
-        }
-        cleanupSidebarDrag();
-        return;
-      }
-      // Handle editor split/open drops
-      if (target.type === "editor-split" && target.zone && sd.type === "note") {
-        const noteId = sd.id;
-        if (!splitStateRef?.current?.splitMode && splitPaneWithNote) {
-          splitPaneWithNote(target.zone.direction, noteId);
-        } else if (splitStateRef?.current?.splitMode && openNoteInPane) {
-          // Already split — determine which pane from cursor position
-          const paneIds =
-            splitStateRef.current.splitMode === "vertical" ? ["left", "right"] : ["top", "bottom"];
-          const targetPaneId =
-            target.zone.side === "right" || target.zone.side === "bottom" ? paneIds[1] : paneIds[0];
-          openNoteInPane(noteId, targetPaneId);
-        }
-        cleanupSidebarDrag();
-        return;
-      }
       if (target.type === "editor-open" && sd.type === "note") {
-        // Dropped in center of editor — open as tab in active pane
-        if (openNoteInPane) openNoteInPane(sd.id);
+        // Dropped over the editor — open the note
+        if (openNote) openNote(sd.id);
         cleanupSidebarDrag();
         return;
       }
@@ -583,12 +421,6 @@ export function useSidebarDrag({
     if (sd.cloneEl && sd.cloneEl.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
     if (sd.dropIndicator && sd.dropIndicator.parentNode)
       sd.dropIndicator.parentNode.removeChild(sd.dropIndicator);
-    if (sd.editorOverlay && sd.editorOverlay.parentNode)
-      sd.editorOverlay.parentNode.removeChild(sd.editorOverlay);
-    sd.editorOverlay = null;
-    if (sd.tabInsertLine && sd.tabInsertLine.parentNode)
-      sd.tabInsertLine.parentNode.removeChild(sd.tabInsertLine);
-    sd.tabInsertLine = null;
     if (sd.escHandler) {
       window.removeEventListener("keydown", sd.escHandler);
       sd.escHandler = null;
