@@ -14,9 +14,12 @@ manual walkthrough.
    into AGENTS.md). The five parked UI files (`ProfileTab`, `HelpDropdown`, `OnboardingToast`,
    `PersistenceWarning`, `useWebNags`) deleted too — git is the parking lot; nothing in them
    was hard to reconstruct (the auth/sync logic lives on in `useAuth`/`useSync`).
-3. **PR 3 — TypeScript step 0**: make `src/types/global.d.ts` truthfully match the preload API;
-   consolidate the two type homes. Then adopt new-files-in-TS + convert-on-touch; no big-bang
-   conversion.
+3. **PR 3 — TypeScript step 0** (this branch): `src/types/global.d.ts` rewritten as a truthful
+   mirror of the preload (all 34 members + secureStorage, argument/return shapes taken from the
+   ipcMain handlers); `src/types.d.ts` folded into `src/types/notes.ts` (one type home, with
+   `Note`/`NoteData` renamed to match app vocabulary); new-files-in-TS + convert-on-touch policy
+   recorded in AGENTS.md. An interim local-only fix also landed (PR #72): desktop never creates
+   the Supabase client.
 
 ## Next, after the cleanup
 

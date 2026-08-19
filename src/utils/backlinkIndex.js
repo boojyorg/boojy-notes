@@ -2,7 +2,7 @@
 // Build a backlink index from all notes.
 // Returns a Map: titleLower → [{ sourceNoteId, sourceTitle, snippet }]
 
-/** @typedef {import("../types.d.ts").BacklinkEntry} BacklinkEntry */
+/** @typedef {import("../types/notes").BacklinkEntry} BacklinkEntry */
 
 const WIKILINK_RE = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 

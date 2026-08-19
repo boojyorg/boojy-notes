@@ -1,66 +1,118 @@
 /// <reference types="vite/client" />
 
-interface Window {
-  electronAPI?: {
-    saveImage: (noteId: string, dataUrl: string) => Promise<string>;
-    saveAttachment: (
-      noteId: string,
-      name: string,
-      data: ArrayBuffer,
-    ) => Promise<{ filename: string; size: number }>;
-    getFileSize: (filename: string) => Promise<number>;
-    openExternal: (url: string) => void;
-    showItemInFolder: (path: string) => void;
-    onMenuAction: (callback: (action: string) => void) => () => void;
-    onMenuExport?: (callback: (format: string) => void) => () => void;
-    onMenuImport?: (callback: (format: string) => void) => () => void;
-    importMarkdown: (opts?: { targetFolder?: string }) => void;
-    importHtml: () => void;
-    importFolder: () => void;
-    exportPdf: (opts: { html: string; title: string }) => void;
-    exportDocx: (opts: { blocks: Block[]; title: string }) => void;
-    readNotes: () => Promise<Record<string, NoteData>>;
-    writeNote: (id: string, note: NoteData) => Promise<void>;
-    deleteNote: (id: string) => Promise<void>;
-    readTrash: () => Promise<Record<string, NoteData>>;
-    purgeTrash: (days: number | null) => Promise<void>;
-    readMeta: (folder: string) => Promise<Record<string, string[]> | null>;
-    writeMeta: (folder: string, data: Record<string, string[]>) => Promise<void>;
-    setWindowTitle: (title: string) => void;
-    setSpellCheck: (enabled: boolean, languages: string[]) => void;
-    getSpellCheckState: () => Promise<{ enabled: boolean; languages: string[] }>;
-    setAutoUpdate: (enabled: boolean) => void;
-    checkForUpdates: () => void;
-    onUpdateStatus: (callback: (status: string) => void) => () => void;
-    secureStore: (key: string, value: string) => Promise<void>;
-    secureRead: (key: string) => Promise<string | null>;
-    secureDelete: (key: string) => Promise<void>;
-    secureStorage?: {
-      store: (key: string, value: string) => Promise<void>;
-      read: (key: string) => Promise<string | null>;
-      delete: (key: string) => Promise<void>;
+// Truthful mirror of electron/preload.js — every member below exists on the
+// bridge, with argument and return shapes taken from the ipcMain handlers.
+// When the preload changes, change this file in the same commit.
+
+import type { Block, Note, TrashedNote } from "./notes";
+
+/** userData/settings.json — known keys plus whatever set-setting has stored. */
+interface DesktopSettings {
+  spellCheckEnabled?: boolean;
+  spellCheckLanguages?: string[];
+  autoUpdateEnabled?: boolean;
+  [key: string]: unknown;
+}
+
+/** Payloads of the update-status event and get-update-status. */
+interface UpdateStatus {
+  state: "idle" | "checking" | "available" | "up-to-date" | "downloading" | "downloaded" | "error";
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
+/** Every subscriber returns an unsubscribe function. */
+type Unsubscribe = () => void;
+
+declare global {
+  interface Window {
+    /** Present on desktop only — the contextBridge API from electron/preload.js. */
+    electronAPI?: {
+      // Files / vault
+      getNotesDir: () => Promise<string>;
+      chooseNotesDir: () => Promise<string | null>;
+      readAllNotes: () => Promise<Record<string, Note>>;
+      writeNote: (note: Note) => Promise<{ filePath: string }>;
+      deleteNoteFile: (noteId: string) => Promise<{ deleted: boolean }>;
+      saveImage: (data: { fileName: string; dataBase64: string }) => Promise<string>;
+      saveAttachment: (data: {
+        fileName: string;
+        dataBase64: string;
+      }) => Promise<{ filename: string; size: number }>;
+      pickImageFile: () => Promise<{ fileName: string; dataBase64: string } | null>;
+      pickFile: () => Promise<{ fileName: string; dataBase64: string; size: number } | null>;
+      openExternal: (url: string) => Promise<void>;
+      openPath: (absolutePath: string) => Promise<void>;
+      showItemInFolder: (absolutePath: string) => Promise<void>;
+      resolveAttachment: (filename: string) => Promise<string | null>;
+      getFileSize: (filename: string) => Promise<number | null>;
+      copyImageToClipboard: (filename: string) => Promise<boolean>;
+      readMeta: (folderRelPath: string) => Promise<Record<string, unknown> | null>;
+      writeMeta: (folderRelPath: string, meta: Record<string, unknown>) => Promise<void>;
+
+      // Trash
+      trashNote: (
+        noteId: string,
+        title: string,
+        folder: string | null,
+      ) => Promise<{ trashed: boolean }>;
+      readTrash: () => Promise<Record<string, TrashedNote>>;
+      restoreNote: (noteId: string) => Promise<Note | null>;
+      /** With ids: purge those. Without: purge entries older than 30 days. */
+      purgeTrash: (noteIds?: string[] | null) => Promise<{ purged: string[] }>;
+      emptyTrash: () => Promise<{ emptied: boolean }>;
+
+      // File watcher events
+      onFileChanged: (callback: (note: Note) => void) => Unsubscribe;
+      onFileDeleted: (callback: (data: { filePath: string }) => void) => Unsubscribe;
+
+      // Quit/close flush handshake
+      onAppWillClose: (callback: () => void) => Unsubscribe;
+      flushBeforeCloseDone: () => void;
+
+      // Settings (each mutation returns the full settings object)
+      getSettings: () => Promise<DesktopSettings>;
+      setSetting: (key: string, value: unknown) => Promise<DesktopSettings>;
+      toggleSpellcheck: (opts: {
+        enabled: boolean;
+        languages?: string[];
+      }) => Promise<DesktopSettings>;
+
+      // Export
+      exportPdf: (data: {
+        html: string;
+        title: string;
+      }) => Promise<{ exported: boolean; filePath?: string }>;
+      exportDocx: (data: {
+        blocks: Block[];
+        title: string;
+      }) => Promise<{ exported: boolean; filePath?: string }>;
+      onMenuExport: (callback: (format: string) => void) => Unsubscribe;
+
+      // Import (returns absolute paths of the files written into the vault)
+      importMarkdown: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
+      importHtml: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
+      importFolder: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
+      onMenuImport: (callback: (format: string) => void) => Unsubscribe;
+
+      // Auto-update
+      checkForUpdate: () => Promise<void>;
+      installUpdate: () => Promise<void>;
+      getUpdateStatus: () => Promise<UpdateStatus>;
+      setAutoUpdate: (enabled: boolean) => Promise<DesktopSettings>;
+      getAutoUpdate: () => Promise<boolean>;
+      onUpdateStatus: (callback: (status: UpdateStatus) => void) => Unsubscribe;
+
+      // Window
+      setWindowTitle: (title: string) => void;
+
+      // Secure storage (safeStorage; read returns "" when unavailable/missing)
+      secureStorage: {
+        store: (key: string, value: string) => Promise<void>;
+        read: (key: string) => Promise<string>;
+        delete: (key: string) => Promise<void>;
+      };
     };
-    getNotesDir?: () => Promise<string>;
-    chooseNotesDir?: () => Promise<string | null>;
-    readAllNotes?: () => Promise<Record<string, unknown>>;
-    writeNote?: (note: unknown) => Promise<void>;
-    deleteNoteFile?: (noteId: string) => Promise<void>;
-    pickImageFile?: () => Promise<{ fileName: string; dataBase64: string } | null>;
-    pickFile?: () => Promise<{ fileName: string; dataBase64: string; size: number } | null>;
-    resolveAttachment?: (filename: string) => Promise<string | null>;
-    copyImageToClipboard?: (filename: string) => Promise<void>;
-    openPath?: (absolutePath: string) => Promise<void>;
-    trashNote?: (noteId: string, title: string, folder: string) => Promise<void>;
-    restoreNote?: (noteId: string) => Promise<unknown>;
-    emptyTrash?: () => Promise<void>;
-    onFileChanged?: (callback: (note: unknown) => void) => () => void;
-    onFileDeleted?: (callback: (data: unknown) => void) => () => void;
-    getSettings?: () => Promise<Record<string, unknown>>;
-    setSetting?: (key: string, value: unknown) => Promise<void>;
-    toggleSpellcheck?: (opts: unknown) => Promise<void>;
-    checkForUpdate?: () => Promise<void>;
-    installUpdate?: () => Promise<void>;
-    getUpdateStatus?: () => Promise<string>;
-    getAutoUpdate?: () => Promise<boolean>;
-  };
+  }
 }
