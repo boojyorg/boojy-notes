@@ -47,7 +47,7 @@ import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import { useTagHandlers } from "./hooks/useTagHandlers";
-import { useExportImport } from "./hooks/useExportImport";
+import { useImport } from "./hooks/useImport";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
@@ -407,11 +407,8 @@ export default function BoojyNotes() {
     })();
   }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Export (PDF/DOCX) + import handlers, plus the Electron menu-bar listener
-  const { handleExportPdf, handleExportDocx, handleImportIntoFolder } = useExportImport({
-    noteData,
-    activeNoteRef,
-    noteDataRef,
+  // Import handlers, plus the Electron File-menu listener
+  const { handleImportIntoFolder } = useImport({
     isElectron,
   });
 
@@ -954,8 +951,6 @@ export default function BoojyNotes() {
         restoreNote={restoreNote}
         permanentDeleteNote={permanentDeleteNote}
         titleRef={titleRef}
-        onExportPdf={handleExportPdf}
-        onExportDocx={handleExportDocx}
         onImport={handleImportIntoFolder}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}

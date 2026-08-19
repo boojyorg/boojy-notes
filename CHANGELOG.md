@@ -4,6 +4,7 @@
 
 ### Removed
 - **Tabs and split view — one note at a time** — Opening a note now replaces the current one; there is no tab strip and no `Cmd+Shift+\` split. The whole pane/tab layer was deleted, not hidden: navigation state is a single active note, which is what makes the calmer chrome elsewhere in this release possible. Your last-open note is remembered across restarts, and old saved layouts migrate cleanly (if you had a split open, you land on the note from its active pane). Cmd-clicking a wikilink now simply opens that note. Quick Open and back/forward history are the planned follow-ups for fast switching.
+- **PDF and DOCX export** — Boojy Notes is a Markdown editor, so the dedicated document exporters, Electron menu commands, broken web menu entries and the `docx` dependency have been removed. Git retains the implementation if this non-core feature is reconsidered later; Markdown and folder import are unchanged.
 
 ### Improvements
 - **The wordmark opens a small app menu** — Clicking the "Notes" wordmark on desktop now opens a compact menu: Recently Deleted…, Settings…, About. (On the mobile notes list it still opens Settings directly.)

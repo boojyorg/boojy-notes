@@ -51,13 +51,13 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - ✅ Desktop (Electron, auto-update, DMG/EXE)
 - ✅ Mobile = responsive web only (no native app — see Removed)
 
-## Export / import
-- 🚧 Export — PDF / DOCX, **desktop (Electron) only**; on the web app the menu items
-  render but no-op (`useExportImport` bails when `getAPI()?.exportPdf` is absent). **No
-  Markdown export** — import only.
+## Import
 - ✅ Markdown / folder import (desktop)
 
 ## Removed (recoverable via git tag)
+- **PDF / DOCX export** — removed 2026-08-19 as non-core to a Markdown editor; the UI,
+  Electron implementation and `docx` dependency were deleted together. Recoverable from
+  `v0.5.0` / Git history if the product decision changes. No replacement Print command was added.
 - **Settings: Profile/sign-in, Editor (spell check + language) and UI Scale rows** — removed
   2026-08-18 subtraction pass; Settings is a single pane (Appearance · Storage · Updates ·
   About line). Spell check still applies from the stored Electron setting (default on); UI
