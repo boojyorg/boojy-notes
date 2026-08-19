@@ -20,6 +20,13 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Installer builds actually take ~1-2m (macOS) and ~2-4m (Windows), so 30
+    # leaves ~10x headroom while still capping a hang. A CI job once burned 6h1m
+    # unnoticed; nothing here should ever be allowed to sit that long. If macOS
+    # signing + Apple notarization is switched on, re-measure before trusting
+    # this number — notarization can add 10-20m on its own.
+    timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v6
 
