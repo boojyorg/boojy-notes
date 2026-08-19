@@ -17,7 +17,7 @@ import { useMultiSelect } from "./hooks/useMultiSelect";
 import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { Z } from "./constants/zIndex";
-const SettingsModal = React.lazy(() => import("./components/SettingsModal"));
+const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
@@ -166,9 +166,9 @@ export default function BoojyNotes() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [recentlyDeletedOpen, setRecentlyDeletedOpen] = useState(false);
 
-  // The web sign-in nags (OnboardingToast / PersistenceWarning) are unmounted
-  // with the rest of the cloud-sync surface — components + useWebNags stay on
-  // disk for when sync comes back.
+  // The web sign-in nags (OnboardingToast / PersistenceWarning / useWebNags) were
+  // removed with the rest of the cloud-sync surface — git history has them, but a
+  // returning sync UI would be rebuilt against the current Settings grammar anyway.
 
   // ── Refs ────────────────────────────────────────────────────────────
   const blockRefs = useRef({});
@@ -188,8 +188,8 @@ export default function BoojyNotes() {
   // session was silently restored from a previous run.
   // Desktop dogfood build (w/c 2026-06-15): sync is disabled & hidden on desktop —
   // the engine stays dormant (null user below) and the Settings toggle is hidden.
-  // Reversible: restore the localStorage opt-in here + the desktop Sync section in
-  // ProfileTab to bring it back. Web (parked) is unchanged.
+  // Reversible: restore the localStorage opt-in here and rebuild the Settings sync
+  // surface (the old ProfileTab lives in git history). Web (parked) is unchanged.
   const [syncEnabled] = useState(() => !isElectron);
   const {
     syncState,
@@ -550,8 +550,6 @@ export default function BoojyNotes() {
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
   const noteTitle = note?.title;
-  // charCountNoSpaces / readingTime are still computed by useNoteStats — they lost
-  // their only consumer when the top-bar word-count cluster was removed.
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
   // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)

@@ -41,16 +41,11 @@ const layoutState = {
   selectionStyle: "B",
   collapsed: false,
   setCollapsed: vi.fn(),
-  rightPanel: false,
-  setRightPanel: vi.fn(),
   chromeBg: "#222",
-  rightPanelWidth: 220,
   topBarEdge: "B",
   sidebarHandles: { current: [] },
-  rightPanelHandles: { current: [] },
   isDragging: { current: false },
   startDrag: vi.fn(),
-  startRightDrag: vi.fn(),
 };
 
 vi.mock("../../src/context/LayoutContext", () => ({

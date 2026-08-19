@@ -89,15 +89,19 @@ implementation detail, trust the rules file (and fix the drift here).
 pnpm dev              # Electron + Vite dev mode
 pnpm dev:web          # Web-only dev (ELECTRON_DISABLE=1)
 pnpm test             # Unit tests (Vitest)
+pnpm test:watch       # Unit tests, watch mode
+pnpm test:coverage    # Unit tests with the CI coverage gate
 pnpm test:e2e         # E2E tests (Playwright, Chromium)
-pnpm lint             # Biome lint
+pnpm lint             # Biome lint (lint:fix / format auto-fix variants exist)
 pnpm format:check     # Biome format check
 pnpm check            # Biome lint + format (combined)
 pnpm typecheck        # TypeScript check
-pnpm build:electron   # Build desktop installer
+pnpm build:electron   # Build desktop installers (.dmg / .exe → dist/, alongside the web build)
 ```
 
-See `TESTING.md` for full platform testing docs (desktop, web preview).
+**Production web preview:** `ELECTRON_DISABLE=1 pnpm build && pnpm preview`. The web build is
+fully responsive — the small-screen layout is driven by viewport width via `useIsMobile`, not a
+native wrapper.
 
 ## Testing
 

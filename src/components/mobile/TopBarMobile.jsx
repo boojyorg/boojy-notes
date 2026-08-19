@@ -1,9 +1,9 @@
-import { useTheme } from "../hooks/useTheme";
-import { useLayout } from "../context/LayoutContext";
-import { useSettings } from "../context/SettingsContext";
-import { Z } from "../constants/zIndex";
-import { ChevronLeftIcon, MoreHorizontalIcon } from "./Icons";
-import { platform } from "../utils/platform";
+import { useTheme } from "../../hooks/useTheme";
+import { useLayout } from "../../context/LayoutContext";
+import { useSettings } from "../../context/SettingsContext";
+import { Z } from "../../constants/zIndex";
+import { ChevronLeftIcon, MoreHorizontalIcon } from "../Icons";
+import { platform } from "../../utils/platform";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 export default function TopBarMobile({

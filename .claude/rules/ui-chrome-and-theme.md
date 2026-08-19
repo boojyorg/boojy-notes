@@ -50,8 +50,8 @@ tints selection with `${accentColor}15/30` — a deliberate, pending-judgement d
 - `Toast.tsx` and the `danger` branch of `ConfirmDialog` keep `color: "#fff"` — text on SEMANTIC
   status colours, deliberately out of the accent scope.
 
-`src/constants/colors.js` is dead (zero importers) and duplicates NIGHT's palette as standalone
-exports. **Don't import from it** — anything that does becomes theme-blind. It should be deleted.
+`src/constants/colors.js` (a dead duplicate of NIGHT's palette) was deleted in the 2026-08-19
+dead-code sweep — `themes.js` is the only colour authority.
 
 ## Icons: Lucide only
 
@@ -89,16 +89,19 @@ Things a future change will trip over:
   not built.
 - **Sidebar drag onto the editor opens the note** — the tab-bar-insert and edge-split drop
   branches are gone from `useSidebarDrag.js`.
-- **Help is unreachable.** `HelpDropdown.jsx` is kept on disk with zero importers — it holds the
-  parked help content; Settings ends in a one-line About footer, no Help.
+- **Help is unreachable.** `HelpDropdown.jsx` was deleted in the 2026-08-19 dead-code sweep;
+  git history has its curated shortcut-reference content (the `SECTIONS` data) if Help returns —
+  re-verify the shortcuts against `useAppKeyboard` before reusing it. Settings ends in a one-line
+  About footer, no Help.
 - **The wordmark is a menu, not a settings button** (2026-08-18 subtraction pass): clicking the
   sidebar wordmark opens `Recently Deleted… / Settings… / About` (testid
   `wordmark-menu-button`; the old `settings-button` id is now mobile-only in `TopBarMobile`).
   About opens boojy.org.
 - **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
   Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
-  reintroduce it in mocks. Removed-but-recoverable, all with zero importers on disk:
-  `ProfileTab.jsx` (sign-in/sync UI), `OnboardingToast`, `PersistenceWarning`, `useWebNags`.
+  reintroduce it in mocks. The parked sign-in/sync surface (`ProfileTab.jsx`, `OnboardingToast`,
+  `PersistenceWarning`, `useWebNags`) was deleted in the 2026-08-19 dead-code sweep — git history
+  is the parking lot; a returning sync UI gets rebuilt against the current Settings grammar.
   `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
   has no UI but still applies from the stored Electron setting, and UI scale is
   keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).

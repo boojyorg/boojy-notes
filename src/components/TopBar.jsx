@@ -1,5 +1,5 @@
 import { memo } from "react";
-import TopBarMobile from "./TopBarMobile";
+import TopBarMobile from "./mobile/TopBarMobile";
 
 /**
  * There is no desktop top bar. Desktop/web chrome is two pinned buttons — see
