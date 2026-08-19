@@ -21,6 +21,9 @@ function startWatcher(getNotesDir, getMainWindow) {
   fs.mkdirSync(notesDir, { recursive: true });
 
   if (watcher) watcher.close();
+  // Pending suppressions belong to the previous watch session; carrying one
+  // across a restart could swallow a real external delete at the same path.
+  for (const filePath of [...ignoredUnlinks.keys()]) releaseUnlinkSuppression(filePath);
 
   watcher = watch(notesDir, {
     ignoreInitial: true,

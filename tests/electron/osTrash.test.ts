@@ -115,14 +115,13 @@ describe("migrateLegacyTrash", () => {
     ]);
   });
 
-  it("ignores OS cruft entirely: not reported, and not allowed to keep .trash alive", async () => {
+  it("ignores exact-name OS cruft: not reported, deleted at finalize so .trash can go", async () => {
     const trashDir = path.join(notesDir, ".trash");
     writeLegacyMetadata({
       "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
     });
     fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
     fs.writeFileSync(path.join(trashDir, ".DS_Store"), "cruft", "utf-8");
-    fs.writeFileSync(path.join(trashDir, "._note-one.md"), "AppleDouble", "utf-8");
 
     const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
     const report = await migrateLegacyTrash(notesDir, trashItem);
@@ -130,6 +129,27 @@ describe("migrateLegacyTrash", () => {
     expect(report.migrated).toHaveLength(1);
     expect(report.untouched).toEqual([]);
     expect(fs.existsSync(trashDir)).toBe(false);
+  });
+
+  it("never deletes AppleDouble-named files: ignored silently but left in place", async () => {
+    // `._foo.md` is almost certainly Finder metadata, but "almost" is not a
+    // licence to destroy a file the migration cannot identify. It is neither
+    // reported (no perpetual warning) nor deleted; the folder just stays.
+    const trashDir = path.join(notesDir, ".trash");
+    writeLegacyMetadata({
+      "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
+    });
+    fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
+    fs.writeFileSync(path.join(trashDir, "._mystery.md"), "Maybe user content", "utf-8");
+
+    const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
+    const report = await migrateLegacyTrash(notesDir, trashItem);
+
+    expect(report.migrated).toHaveLength(1);
+    expect(report.untouched).toEqual([]);
+    expect(fs.readFileSync(path.join(trashDir, "._mystery.md"), "utf-8")).toBe(
+      "Maybe user content",
+    );
   });
 
   it("does not report OS cruft even when the metadata is missing", async () => {

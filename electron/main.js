@@ -260,7 +260,13 @@ app.whenReady().then(async () => {
         message: "Some previously deleted notes could not be moved to the system Trash.",
         detail: `${examples}${remaining > 0 ? `\n• …and ${remaining} more` : ""}\n\nNothing listed above was deleted. It remains in:\n${legacyTrashReport.legacyTrashDir}`,
       });
-      saveSettings({ ...settings, legacyTrashWarnedSignature: warnedSignature });
+      try {
+        saveSettings({ ...settings, legacyTrashWarnedSignature: warnedSignature });
+      } catch (error) {
+        // Failing to persist the acknowledgement re-shows the warning next
+        // launch — annoying, but it must never block startup.
+        console.error("Could not persist the legacy-trash warning signature", error);
+      }
     }
   }
 

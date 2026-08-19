@@ -41,16 +41,17 @@ export interface WatcherGuard {
 
 const LEGACY_META_FILE = ".boojy-trash-meta.json";
 
-// Files the OS drops into any browsed folder. Never user content, so they are
-// neither reported as "needs attention" nor allowed to hold `.trash` open.
+// Files the OS drops into any browsed folder — ignored: neither migrated nor
+// reported as "needs attention". Only the exact-name kinds are ever DELETED;
+// `._*` AppleDouble names could in principle be a real user file, so they are
+// left in place (silently keeping `.trash` around) rather than destroyed.
 function isOsCruft(name: string): boolean {
+  return isDeletableOsCruft(name) || name.startsWith("._");
+}
+
+function isDeletableOsCruft(name: string): boolean {
   const lower = name.toLowerCase();
-  return (
-    lower === ".ds_store" ||
-    lower === "thumbs.db" ||
-    lower === "desktop.ini" ||
-    name.startsWith("._")
-  );
+  return lower === ".ds_store" || lower === "thumbs.db" || lower === "desktop.ini";
 }
 
 function legacyTrashDir(notesDir: string): string {
@@ -236,10 +237,13 @@ export async function migrateLegacyTrash(
         // An absent metadata file is already the desired final state.
       }
       for (const name of remainingNames) {
-        // Only OS cruft can still be here; it must not keep `.trash` alive.
-        fs.rmSync(path.join(directory, name), { force: true });
+        // Deleting is reserved for exact-name OS cruft; anything else that
+        // slipped through stays put and simply keeps the folder around.
+        if (isDeletableOsCruft(name)) fs.rmSync(path.join(directory, name), { force: true });
       }
-      fs.rmdirSync(directory);
+      // Fails (silently, no report) if a non-deletable leftover remains — the
+      // lingering folder is invisible to the user and safer than deleting it.
+      if (fs.readdirSync(directory).length === 0) fs.rmdirSync(directory);
     } else {
       writeLegacyMetadata(notesDir, metadata);
     }
