@@ -1,16 +1,27 @@
 # Boojy Notes
 
-A minimal, markdown-based note-taking app for web and desktop.
+A minimal, markdown-based note-taking app for desktop and web. Local-first: your notes are
+plain `.md` files on disk that you own — Boojy is just a calm way to edit them.
 
 ## Features
 
-- Block-based editor with headings, bullets, checkboxes, and dividers
-- Slash commands and markdown shortcuts
-- Notes stored as `.md` files on disk (Electron) or localStorage (web)
-- Cloud sync via Supabase + Cloudflare R2 (disabled in current desktop dogfood build; re-enables when sync is stable)
-- Email, Google, and Apple sign-in (disabled in current desktop dogfood build; re-enables when sync is stable)
-- Per-note seeded star field backgrounds
-- Sidebar with folder tree, search, and tabs
+- Block-based editor with headings, lists, checkboxes, tables, images, code, and quotes
+- Slash commands and typed markdown shortcuts (`# `, `- `, `> `, ` ``` `, …)
+- Notes stored as `.md` files on disk (desktop) or localStorage (web)
+- Works directly on existing markdown folders — including an Obsidian vault
+- `[[wikilinks]]`, `#tags`, callouts, and frontmatter understood quietly, without extra chrome
+- Sidebar with folder tree and search; one note open at a time, no tabs to manage
+- Per-note seeded star field backgrounds on the night theme
+
+## The preservation promise
+
+**Editing one part of a markdown file must not unexpectedly rewrite the rest of it.**
+Syntax Boojy doesn't understand is preserved, never "cleaned up" — that's what makes it safe
+to point Boojy at a folder of markdown you care about. The promise is a binding product rule,
+enforced by a round-trip test corpus in CI. Read [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
+(what Boojy is and isn't) and
+[docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md)
+(the architectural rule behind it).
 
 ## Getting Started
 
@@ -19,79 +30,53 @@ A minimal, markdown-based note-taking app for web and desktop.
 - Node.js 18+
 - pnpm (`corepack enable pnpm`)
 
-### Setup
-
-```sh
-pnpm install
-cp .env.example .env.local
-```
-
-Fill in your Supabase and R2 keys in `.env.local` (see `.env.example` for the required variables).
-
 ### Run
 
 ```sh
+pnpm install
+
+# Desktop (Electron)
+pnpm dev
+
 # Browser only
 pnpm dev:web
-
-# Electron (desktop + web)
-pnpm dev
 ```
 
-## Scripts
+No accounts, keys, or environment variables are needed — the app is fully local.
+(`.env.example` lists the Supabase/R2 variables used only for developing the parked
+cloud-sync backend; leave them unset otherwise.)
 
-| Script             | Description                          |
-| ------------------ | ------------------------------------ |
-| `dev`              | Start Vite dev server with Electron  |
-| `dev:web`          | Start Vite dev server (browser only) |
-| `build`            | Production build (web)               |
-| `build:electron`   | Production build + Electron packager |
-| `preview`          | Preview the production build locally |
-| `test`             | Run unit tests (Vitest)              |
-| `lint`             | Lint with Biome                      |
-| `format:check`     | Check formatting with Biome          |
-| `check`            | Biome lint + format in one pass      |
-| `typecheck`        | TypeScript type-check (`tsc --noEmit`) |
+## Development
 
-All scripts run via `pnpm <script>`.
+| Script           | Description                            |
+| ---------------- | -------------------------------------- |
+| `dev`            | Vite dev server + Electron             |
+| `dev:web`        | Vite dev server (browser only)         |
+| `build`          | Production build (web)                 |
+| `build:electron` | Production build + desktop installers  |
+| `test`           | Unit tests (Vitest)                    |
+| `test:e2e`       | End-to-end tests (Playwright)          |
+| `check`          | Biome lint + format in one pass        |
+| `typecheck`      | TypeScript check (`tsc --noEmit`)      |
 
-## Project Structure
-
-```text
-src/
-  BoojyNotes.jsx        # App root
-  main.jsx              # Entry point
-  components/           # UI components (EditableBlock, Sidebar, TopBar, StarField, …)
-    blocks/             # Block types (code, table, callout, image, file, embed)
-    mobile/             # Mobile-browser UI (toolbar, bottom sheet, FAB)
-    settings/           # Settings modal panels (SettingsModal, AppearanceTab, …)
-  context/              # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
-  hooks/                # Custom hooks (useSync, useFileSystem, useNoteStats, …)
-    editor/             # Editor hooks (keyboard, paste, drag, slash commands)
-  services/             # Platform services (apiProvider, sync)
-  utils/                # Helpers (storage.ts, search, markdown, inlineFormatting, platform)
-  constants/            # Themes, colors, z-index, data defaults
-  styles/               # Shared style objects
-  tokens/               # Design tokens (spacing, radius, typography, shadows)
-  types/                # TypeScript definitions
-  lib/
-    supabase.js         # Supabase client init
-electron/               # Electron main process (IPC, file I/O, export/import)
-```
+All scripts run via `pnpm <script>`. Architecture, project structure, and contributor
+conventions live in [AGENTS.md](AGENTS.md).
 
 ## Tech Stack
 
-- **React 19** — UI
-- **Vite 6** — Build tooling
-- **Electron 40** — Desktop shell
-- **Supabase** — Auth and database
-- **Chokidar** — File system watching (Electron)
-- **pnpm** — Package manager
-- **Biome** — Linting + formatting
+- **React 19** + **Vite 6** — UI and build tooling
+- **Electron 42** — desktop shell
+- **Vitest** + **Playwright** — unit and E2E tests
+- **Biome** — linting + formatting
+- **pnpm** — package manager
 
-## Roadmap
+## Status
 
-Focus is on the **web platform** (responsive PWA on [boojy.org](https://boojy.org)), with Electron as the desktop shell. Native mobile (iOS/Android via Capacitor) was removed in v0.3.0 to reduce scope.
+Boojy Notes is desktop-first right now: the app is being dogfooded daily as a local-only
+tool, and no cloud features ship until the offline app is trusted. The web build is a
+responsive PWA at [notes.boojy.org](https://notes.boojy.org). Cloud sync and sign-in exist
+as parked backend code, deliberately unmounted from the UI. Native mobile (Capacitor) was
+removed in v0.3.0 to reduce scope.
 
 ## Contributing
 

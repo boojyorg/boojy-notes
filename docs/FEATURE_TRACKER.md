@@ -2,7 +2,7 @@
 
 What's built vs not. **✅ shipped · 🚧 in progress · ⬜ planned.** Tick in the **same commit as
 `CHANGELOG.md`** when a feature ships — never as a separate ritual. Ordering → `ROADMAP.md`;
-feature ideas → `FUTURE-IDEAS.md`.
+feature ideas → `BACKLOG.md` (Feature ideas section).
 
 > _Draft seeded from `CHANGELOG.md` — verify the 🚧/⬜ calls against the running app._
 
