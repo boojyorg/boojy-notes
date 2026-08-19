@@ -4,7 +4,7 @@
 // bridge, with argument and return shapes taken from the ipcMain handlers.
 // When the preload changes, change this file in the same commit.
 
-import type { Block, Note, TrashedNote } from "./notes";
+import type { Note, TrashedNote } from "./notes";
 
 /** userData/settings.json — known keys plus whatever set-setting has stored. */
 interface DesktopSettings {
@@ -78,17 +78,6 @@ declare global {
         enabled: boolean;
         languages?: string[];
       }) => Promise<DesktopSettings>;
-
-      // Export
-      exportPdf: (data: {
-        html: string;
-        title: string;
-      }) => Promise<{ exported: boolean; filePath?: string }>;
-      exportDocx: (data: {
-        blocks: Block[];
-        title: string;
-      }) => Promise<{ exported: boolean; filePath?: string }>;
-      onMenuExport: (callback: (format: string) => void) => Unsubscribe;
 
       // Import (returns absolute paths of the files written into the vault)
       importMarkdown: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;

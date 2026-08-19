@@ -144,19 +144,6 @@ app.whenReady().then(() => {
       label: "File",
       submenu: [
         {
-          label: "Export",
-          submenu: [
-            {
-              label: "PDF...",
-              click: () => mainWindow?.webContents.send("menu:export", "pdf"),
-            },
-            {
-              label: "DOCX...",
-              click: () => mainWindow?.webContents.send("menu:export", "docx"),
-            },
-          ],
-        },
-        {
           label: "Import",
           submenu: [
             {

@@ -465,30 +465,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     return { fileName: path.basename(filePath), dataBase64 };
   });
 
-  // ─── Export IPC handlers ───
-
-  ipcMain.handle("export:pdf", async (_event, { html, title }) => {
-    const result = await dialog.showSaveDialog(getMainWindow(), {
-      defaultPath: sanitizeFilename(title) + ".pdf",
-      filters: [{ name: "PDF", extensions: ["pdf"] }],
-    });
-    if (result.canceled) return { exported: false };
-    const { exportToPDF } = await import("./export.js");
-    await exportToPDF(html, title, result.filePath);
-    return { exported: true, filePath: result.filePath };
-  });
-
-  ipcMain.handle("export:docx", async (_event, { blocks, title }) => {
-    const result = await dialog.showSaveDialog(getMainWindow(), {
-      defaultPath: sanitizeFilename(title) + ".docx",
-      filters: [{ name: "Word Document", extensions: ["docx"] }],
-    });
-    if (result.canceled) return { exported: false };
-    const { exportToDocx } = await import("./export.js");
-    await exportToDocx(blocks, title, result.filePath);
-    return { exported: true, filePath: result.filePath };
-  });
-
   // ─── Import IPC handlers ───
 
   ipcMain.handle("import:markdown", async (_event, opts) => {

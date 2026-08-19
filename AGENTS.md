@@ -39,7 +39,7 @@ src/
 ├── styles/                 # Shared style objects (buttons, inputs)
 ├── tokens/                 # Design tokens (spacing, radius, typography, shadows)
 └── types/                  # TypeScript type definitions
-electron/                   # Electron main process (IPC, file I/O, export/import)
+electron/                   # Electron main process (IPC, file I/O, import)
 tests/                      # Unit + E2E tests
 docs/private/               # Private docs (gitignored): roadmap, strategies, code signing
 ```

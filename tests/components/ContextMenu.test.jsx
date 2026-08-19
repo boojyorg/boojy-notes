@@ -45,8 +45,6 @@ const baseProps = () => ({
   restoreNote: vi.fn(),
   permanentDeleteNote: vi.fn(),
   titleRef: { current: null },
-  onExportPdf: null,
-  onExportDocx: null,
   onImport: null,
   selectedNotes: new Set(),
   selectedCount: 0,

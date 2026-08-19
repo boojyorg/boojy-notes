@@ -20,8 +20,6 @@ const ContextMenu = memo(function ContextMenu({
   restoreNote,
   permanentDeleteNote,
   titleRef,
-  onExportPdf,
-  onExportDocx,
   onImport,
   selectedNotes,
   selectedCount,
@@ -148,28 +146,6 @@ const ContextMenu = memo(function ContextMenu({
                   setCtxMenu(null);
                 },
               },
-              ...(onExportPdf
-                ? [
-                    {
-                      label: "Export as PDF",
-                      action: () => {
-                        onExportPdf(ctxMenu.id);
-                        setCtxMenu(null);
-                      },
-                    },
-                  ]
-                : []),
-              ...(onExportDocx
-                ? [
-                    {
-                      label: "Export as DOCX",
-                      action: () => {
-                        onExportDocx(ctxMenu.id);
-                        setCtxMenu(null);
-                      },
-                    },
-                  ]
-                : []),
               {
                 label: "Delete",
                 action: () => {

@@ -88,7 +88,6 @@ may already be partly shipped; confirm against the app before picking one up.)
   helps onboarding.
 - [ ] **Math/LaTeX blocks** (high value / higher effort) — a `math` block rendering LaTeX via KaTeX.
 - [ ] **Mermaid diagram blocks** (high value / higher) — a `diagram` block in the slash menu.
-- [ ] **Export to PDF** (medium / low) — Electron `webContents.printToPDF()`.
 - [ ] **Table improvements** (medium / low) — column resize, row/column sort, tab-to-next-cell.
 - [ ] **Image lightbox** (medium / low) — zoom/pan, keyboard nav between images in a note.
 - [ ] **Indent guides** (medium / low) — lines connecting indented blocks to their parent.
