@@ -1,12 +1,13 @@
-import { useEffect, useMemo, memo } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
+import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { extractAllTags } from "../utils/tags";
 import { useSettings } from "../context/SettingsContext";
 import {
-  ICON_INLINE,
   ChevronRight,
   ChevronDown,
   FolderIcon,
@@ -148,6 +149,7 @@ const Sidebar = memo(function Sidebar({
   createNote,
   handleSidebarPointerDown,
   emptyAllTrash,
+  onOpenRecentlyDeleted,
   handleSearchResultOpen,
   selectedNotes,
   handleNoteClick,
@@ -155,7 +157,7 @@ const Sidebar = memo(function Sidebar({
   isMobile,
 }) {
   const { sidebarWidth, accentColor, selectionStyle, setCollapsed } = useLayout();
-  const { setSettingsOpen, setSettingsTab } = useSettings();
+  const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
   const { noteData } = useNoteData();
@@ -244,8 +246,9 @@ const Sidebar = memo(function Sidebar({
             : {}),
           // The removed FileIcon's width + gap is folded into the left padding so
           // titles keep their column: they still line up with the folder names
-          // above them instead of jumping left by a glyph.
-          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19 + (isMobile ? 29 : 21)}px`,
+          // above them instead of jumping left by a glyph. The chevron removal
+          // took its width + gap (21 desktop / 24 mobile) back out of both rows.
+          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19 + (isMobile ? 5 : 0)}px`,
           display: "flex",
           alignItems: "center",
           gap: mobGap,
@@ -280,7 +283,9 @@ const Sidebar = memo(function Sidebar({
   // Render a folder and its children recursively
   const renderFolder = (folder, depth) => {
     const folderPath = folder._path || folder.name;
-    const isOpen = expanded[folderPath];
+    // Coerced so aria-expanded is always announced — with no chevron it is the
+    // only programmatic expansion signal (undefined would omit the attribute).
+    const isOpen = !!expanded[folderPath];
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
     return (
       <div key={folderPath}>
@@ -318,15 +323,10 @@ const Sidebar = memo(function Sidebar({
             e.currentTarget.style.color = TEXT.secondary;
           }}
         >
-          {hasChildren ? (
-            isOpen ? (
-              <ChevronDown />
-            ) : (
-              <ChevronRight />
-            )
-          ) : (
-            <span style={{ width: ICON_INLINE, flexShrink: 0 }} />
-          )}
+          {/* No disclosure chevron — the whole row toggles, the open-folder icon
+              and indented children carry the state. aria-expanded still announces
+              it. (Reversible experiment: restore the chevron + placeholder span
+              here and the chevron allowance in renderNote's left padding.) */}
           <FolderIcon open={isOpen} color={accentColor} size={isMobile ? 20 : undefined} />
           {renamingFolder === folderPath ? (
             <input
@@ -375,7 +375,8 @@ const Sidebar = memo(function Sidebar({
             <div
               style={{
                 position: "absolute",
-                left: 10 + depth * 20 + 7,
+                // Centred under the folder icon (16px glyph at 10px inset).
+                left: 10 + depth * 20 + 8,
                 top: 0,
                 bottom: 0,
                 width: 1,
@@ -389,6 +390,37 @@ const Sidebar = memo(function Sidebar({
       </div>
     );
   };
+
+  // Wordmark menu (desktop): the app-level menu behind the N●tes wordmark —
+  // Recently Deleted…, Settings…, About. Low-prominence on purpose; this is
+  // where Trash's entry point moved when it left the permanent sidebar.
+  const [wordmarkMenu, setWordmarkMenu] = useState(null); // { x, y } | null
+  const wordmarkMenuRef = useRef(null);
+  useFocusTrap(wordmarkMenuRef, !!wordmarkMenu);
+
+  useEffect(() => {
+    if (!wordmarkMenu) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setWordmarkMenu(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [wordmarkMenu]);
+
+  const trashedCount = Object.keys(trashedNotes).length;
+
+  const wordmarkMenuItems = [
+    {
+      label: "Recently Deleted…",
+      badge: trashedCount > 0 ? trashedCount : null,
+      action: () => onOpenRecentlyDeleted?.(),
+    },
+    { label: "Settings…", action: () => setSettingsOpen(true) },
+    { label: "About", action: () => window.open("https://boojy.org", "_blank", "noopener") },
+  ];
 
   // On desktop the Search action row swaps into a field once search is engaged;
   // mobile always shows the field.
@@ -503,14 +535,16 @@ const Sidebar = memo(function Sidebar({
           }}
         >
           <button
-            data-testid="settings-button"
+            data-testid="wordmark-menu-button"
             type="button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setSettingsTab("profile");
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setWordmarkMenu((prev) => (prev ? null : { x: r.left, y: r.bottom + 6 }));
             }}
-            aria-label="Notes — open settings"
-            title="Settings"
+            aria-label="Notes — open menu"
+            aria-haspopup="menu"
+            aria-expanded={!!wordmarkMenu}
+            title="Menu"
             style={{
               background: "none",
               border: "none",
@@ -529,6 +563,78 @@ const Sidebar = memo(function Sidebar({
             <SidebarToggleIcon />
           </ChromeButton>
         </div>
+      )}
+
+      {/* Wordmark menu */}
+      {wordmarkMenu && (
+        <>
+          <div
+            onMouseDown={() => setWordmarkMenu(null)}
+            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
+          />
+          <div
+            ref={wordmarkMenuRef}
+            role="menu"
+            aria-label="Notes menu"
+            style={{
+              position: "fixed",
+              top: wordmarkMenu.y,
+              left: wordmarkMenu.x,
+              zIndex: Z.DROPDOWN,
+              background: BG.elevated,
+              border: `1px solid ${BG.divider}`,
+              borderRadius: 8,
+              padding: "4px 0",
+              minWidth: 180,
+              boxShadow: theme.modalShadow,
+              animation: "fadeIn 0.1s ease",
+            }}
+          >
+            {wordmarkMenuItems.map((item) => (
+              <button
+                key={item.label}
+                role="menuitem"
+                onClick={() => {
+                  setWordmarkMenu(null);
+                  item.action();
+                }}
+                style={{
+                  width: "100%",
+                  background: "none",
+                  border: "none",
+                  padding: "7px 14px",
+                  cursor: "pointer",
+                  color: TEXT.primary,
+                  fontSize: 12.5,
+                  fontFamily: "inherit",
+                  textAlign: "left",
+                  transition: "background 0.12s",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+                onMouseEnter={(e) => hBg(e.currentTarget, BG.hover)}
+                onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              >
+                {item.label}
+                {item.badge != null && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      background: BG.surface,
+                      borderRadius: 8,
+                      padding: "1px 6px",
+                      color: TEXT.muted,
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Primary actions \u2014 desktop only. Mobile keeps its search pill below. */}
@@ -919,7 +1025,6 @@ const Sidebar = memo(function Sidebar({
                       e.currentTarget.style.opacity = "0.55";
                     }}
                   >
-                    <span style={{ width: 14, flexShrink: 0 }} />
                     <span
                       style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}
                     >
@@ -1025,8 +1130,10 @@ const Sidebar = memo(function Sidebar({
             )}
           </div>
 
-          {/* Trash Section */}
-          {!search && (
+          {/* Recently Deleted — mobile only. Desktop reaches it through the
+              wordmark menu → RecentlyDeletedModal; the permanent footer row
+              did not earn its place next to New note / Search. */}
+          {isMobile && !search && (
             <div
               style={{
                 borderTop: `1px solid ${BG.divider}`,
@@ -1065,7 +1172,7 @@ const Sidebar = memo(function Sidebar({
               >
                 {trashExpanded ? <ChevronDown /> : <ChevronRight />}
                 <TrashIcon />
-                <span style={{ fontWeight: 500 }}>Trash</span>
+                <span style={{ fontWeight: 500 }}>Recently Deleted</span>
                 {Object.keys(trashedNotes).length > 0 && (
                   <span
                     style={{
@@ -1161,7 +1268,7 @@ const Sidebar = memo(function Sidebar({
                       e.currentTarget.style.opacity = "0.7";
                     }}
                   >
-                    Empty Trash
+                    Delete All
                   </button>
                 </>
               )}

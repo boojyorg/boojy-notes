@@ -2,144 +2,32 @@ import { useRef } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
-import { useLayout } from "../../context/LayoutContext";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
-import ProfileTab from "./ProfileTab";
 import AppearanceTab from "./AppearanceTab";
-import EditorTab from "./EditorTab";
+import UpdatesTab from "./UpdatesTab";
 import ExportTab from "./ExportTab";
 import { BrandingFooter, ContentFooter } from "./AboutTab";
 import { ChevronLeftIcon } from "../Icons";
 
-export default function SettingsModal({
-  isMobile,
-  syncState,
-  lastSynced,
-  storageUsed,
-  storageLimitMB,
-  onSync,
-  noteData,
-  setActiveNote,
-  isDesktop,
-  notesDir,
-  changeNotesDir,
-  syncEnabled,
-  onToggleSyncEnabled,
-}) {
-  const { settingsOpen, setSettingsOpen, settingsTab, setSettingsTab, user } = useSettings();
-
-  const { accentColor } = useLayout();
+export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNotesDir }) {
+  const { settingsOpen, setSettingsOpen } = useSettings();
 
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
 
-  const loggedIn = !!user;
-
   const modalRef = useRef(null);
-  const contentRef = useRef(null);
-  const sectionRefs = useRef({});
-  const scrollingTo = useRef(false);
 
   useFocusTrap(modalRef, settingsOpen);
 
   if (!settingsOpen) return null;
 
-  const SidebarIcon = ({ type, color }) => {
-    const props = {
-      width: 16,
-      height: 16,
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: color,
-      strokeWidth: 2,
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-    };
-    if (type === "profile")
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M5.5 21a6.5 6.5 0 0 1 13 0" />
-        </svg>
-      );
-    if (type === "sync")
-      return (
-        <svg {...props}>
-          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-        </svg>
-      );
-    if (type === "storage")
-      return (
-        <svg {...props}>
-          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7" />
-          <path d="M21 7H3l2-4h14l2 4z" />
-          <line x1="12" y1="11" x2="12" y2="15" />
-        </svg>
-      );
-    if (type === "appearance")
-      return (
-        <svg {...props}>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-      );
-    if (type === "updates")
-      return (
-        <svg {...props}>
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      );
-    return null;
-  };
-
-  const sidebarItems = [
-    { id: "profile", label: "Profile" },
-    ...(isDesktop ? [{ id: "storage", label: "Storage" }] : []),
-    // Desktop dogfood build (w/c 2026-06-15): sync is off — hide the Sync nav item on
-    // desktop. (Storage stays: it's local export / notes-dir, not cloud.) Remove the
-    // `&& !isDesktop` to restore. Web is unaffected.
-    ...(loggedIn && !isDesktop ? [{ id: "sync", label: "Sync" }] : []),
-    { id: "appearance", label: "Appearance" },
-    ...(isDesktop ? [{ id: "updates", label: "Updates" }] : []),
-  ];
-
-  const scrollToSection = (id) => {
-    setSettingsTab(id);
-    const el = sectionRefs.current[id];
-    const container = contentRef.current;
-    if (el && container) {
-      scrollingTo.current = true;
-      container.scrollTo({ top: el.offsetTop - 24, behavior: "smooth" });
-      setTimeout(() => {
-        scrollingTo.current = false;
-      }, 400);
-    }
-  };
-
-  const handleScroll = () => {
-    if (scrollingTo.current) return;
-    const container = contentRef.current;
-    if (!container) return;
-    const scrollTop = container.scrollTop + 40;
-    const ids = sidebarItems.map((item) => item.id);
-    let active = "profile";
-    for (const id of ids) {
-      const el = sectionRefs.current[id];
-      if (el && el.offsetTop <= scrollTop) active = id;
-    }
-    setSettingsTab(active);
-  };
-
   const SectionHeader = ({ title, first }) => (
-    // Section spacing is centralized here: each desktop section self-spaces from the one
-    // above via marginTop (the first header is flush — the content area pads the top).
-    // This also spaces sections that share a tab (e.g. Editor + Updates in EditorTab).
-    // Mobile passes SectionHeader={() => null}, so this never affects the mobile layout.
+    // Each desktop section self-spaces from the one above via marginTop (the
+    // first header is flush — the content area pads the top). Mobile passes
+    // SectionHeader={() => null}, so this never affects the mobile layout.
     <div
       style={{
         display: "flex",
@@ -256,40 +144,11 @@ export default function SettingsModal({
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          {/* Profile & Sync */}
-          <MobileSectionHeader title={loggedIn ? "Profile" : "Account"} />
-          <MobileCard>
-            <ProfileTab
-              isMobile={isMobile}
-              syncState={syncState}
-              lastSynced={lastSynced}
-              storageUsed={storageUsed}
-              storageLimitMB={storageLimitMB}
-              onSync={onSync}
-              noteData={noteData}
-              setActiveNote={setActiveNote}
-              SectionHeader={() => null}
-              isDesktop={isDesktop}
-              syncEnabled={syncEnabled}
-              onToggleSyncEnabled={onToggleSyncEnabled}
-            />
-          </MobileCard>
-
           {/* Appearance */}
           <MobileSectionHeader title="Appearance" />
           <MobileCard>
             <AppearanceTab SectionHeader={() => null} />
           </MobileCard>
-
-          {/* Editor (desktop-only features hidden inside) */}
-          {isDesktop && (
-            <>
-              <MobileSectionHeader title="Editor" />
-              <MobileCard>
-                <EditorTab isDesktop={isDesktop} SectionHeader={() => null} />
-              </MobileCard>
-            </>
-          )}
 
           {/* Storage (desktop only) */}
           {isDesktop && (
@@ -303,6 +162,16 @@ export default function SettingsModal({
                   changeNotesDir={changeNotesDir}
                   SectionHeader={() => null}
                 />
+              </MobileCard>
+            </>
+          )}
+
+          {/* Updates (desktop only) */}
+          {isDesktop && (
+            <>
+              <MobileSectionHeader title="Updates" />
+              <MobileCard>
+                <UpdatesTab isDesktop={isDesktop} SectionHeader={() => null} />
               </MobileCard>
             </>
           )}
@@ -348,6 +217,9 @@ export default function SettingsModal({
   }
 
   // ── Desktop layout ────────────────────────────────────────────────
+  // Single pane: Appearance, then Storage/Updates on desktop, then a quiet
+  // About line. No navigation sidebar and no branding block — there is nothing
+  // to navigate between, and the app already says which app it is.
   return (
     <>
       {/* Backdrop */}
@@ -376,8 +248,8 @@ export default function SettingsModal({
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: Z.SETTINGS_INNER,
-          width: 640,
-          maxHeight: 480,
+          width: 440,
+          maxHeight: "min(560px, calc(100vh - 48px))",
           background: theme.modalBg,
           border: `1px solid ${theme.overlay(0.06)}`,
           borderRadius: radius.xl,
@@ -427,123 +299,29 @@ export default function SettingsModal({
             onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
             onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
           >
-            {"\u2715"}
+            {"✕"}
           </button>
         </div>
 
-        {/* Body: sidebar + content */}
-        <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-          {/* Sidebar */}
-          <div
-            style={{
-              width: 160,
-              flexShrink: 0,
-              padding: `${spacing.lg}px ${spacing.md}px`,
-              borderRight: `1px solid ${theme.overlay(0.06)}`,
-              display: "flex",
-              flexDirection: "column",
-              gap: spacing.xs,
-            }}
-          >
-            {sidebarItems.map((item) => {
-              const active = settingsTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  style={{
-                    height: 36,
-                    borderRadius: radius.md,
-                    paddingLeft: spacing.md,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontSize: fontSize.lg,
-                    fontWeight: fontWeight.medium,
-                    background: active ? `${ACCENT.primary}1A` : "transparent",
-                    border: "none",
-                    color: active ? ACCENT.primary : TEXT.secondary,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    transition: "background 0.15s, color 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = theme.overlay(0.03);
-                      e.currentTarget.style.color = TEXT.primary;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = TEXT.secondary;
-                    }
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <SidebarIcon type={item.id} color={active ? ACCENT.primary : TEXT.muted} />
-                  </span>
-                  {item.label}
-                </button>
-              );
-            })}
-            <div style={{ flex: 1 }} />
-            <BrandingFooter />
-          </div>
-
-          {/* Content area */}
-          <div
-            ref={contentRef}
-            onScroll={handleScroll}
-            style={{
-              flex: 1,
-              padding: spacing.xxl,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div ref={(el) => (sectionRefs.current.profile = el)}>
-              <ProfileTab
-                isMobile={false}
-                syncState={syncState}
-                lastSynced={lastSynced}
-                storageUsed={storageUsed}
-                storageLimitMB={storageLimitMB}
-                onSync={onSync}
-                noteData={noteData}
-                setActiveNote={setActiveNote}
-                SectionHeader={SectionHeader}
-                isDesktop={isDesktop}
-                syncEnabled={syncEnabled}
-                onToggleSyncEnabled={onToggleSyncEnabled}
-              />
-            </div>
-            <div ref={(el) => (sectionRefs.current.storage = el)}>
-              <ExportTab
-                isDesktop={isDesktop}
-                isMobile={false}
-                notesDir={notesDir}
-                changeNotesDir={changeNotesDir}
-                SectionHeader={SectionHeader}
-              />
-            </div>
-            <div ref={(el) => (sectionRefs.current.appearance = el)}>
-              <AppearanceTab SectionHeader={SectionHeader} />
-            </div>
-            <div ref={(el) => (sectionRefs.current.updates = el)}>
-              <EditorTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
-            </div>
-            <ContentFooter isMobile={false} />
-          </div>
+        {/* Content */}
+        <div
+          style={{
+            padding: spacing.xxl,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <AppearanceTab SectionHeader={(props) => <SectionHeader {...props} first />} />
+          <ExportTab
+            isDesktop={isDesktop}
+            isMobile={false}
+            notesDir={notesDir}
+            changeNotesDir={changeNotesDir}
+            SectionHeader={SectionHeader}
+          />
+          <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
+          <ContentFooter />
         </div>
       </div>
     </>

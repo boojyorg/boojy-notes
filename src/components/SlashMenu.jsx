@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { filterSlashCommands } from "../constants/data";
 import { SlashCommandIcon } from "./Icons";
@@ -16,11 +17,26 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
   const menuRef = useRef(null);
   useFocusTrap(menuRef, !!slashMenu);
 
-  if (!slashMenu) return null;
-
   // Tier rule lives in filterSlashCommands so this list and the arrow-key list
   // in useKeyboardHandlers can never drift apart.
-  const filtered = filterSlashCommands(slashMenu.filter);
+  const filtered = slashMenu ? filterSlashCommands(slashMenu.filter) : [];
+
+  // rect is the slash block's rect; the menu opens 4px below it and flips
+  // above it near the bottom of the viewport instead of running off-screen.
+  const anchor = slashMenu
+    ? {
+        top: slashMenu.rect.top,
+        bottom: slashMenu.rect.bottom ?? slashMenu.rect.top,
+        left: slashMenu.rect.left,
+        right: slashMenu.rect.right ?? slashMenu.rect.left,
+      }
+    : null;
+  const pos = useMenuPosition(menuRef, !!slashMenu, anchor, {
+    gapY: 4,
+    reflowKey: filtered.length,
+  });
+
+  if (!slashMenu) return null;
 
   return (
     <>
@@ -34,8 +50,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         aria-label="Slash commands"
         style={{
           position: "fixed",
-          top: slashMenu.rect.top,
-          left: slashMenu.rect.left,
+          top: pos?.top ?? (slashMenu.rect.bottom ?? slashMenu.rect.top) + 4,
+          left: pos?.left ?? slashMenu.rect.left,
           zIndex: Z.DROPDOWN,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,

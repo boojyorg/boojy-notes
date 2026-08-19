@@ -36,27 +36,26 @@ export function BrandingFooter() {
   );
 }
 
-export function ContentFooter({ isMobile }) {
+/** Quiet About line for the single-pane Settings: version + credit, no branding block. */
+export function ContentFooter() {
   const { theme } = useTheme();
   const { TEXT } = theme;
 
   return (
-    <>
-      <div style={{ flex: 1 }} />
-      {isMobile && <BrandingFooter />}
-      <div style={{ textAlign: "center", padding: "23px 0 16px" }}>
-        <span style={{ fontSize: fontSize.lg, color: TEXT.muted }}>Made by Tyr @ </span>
-        <a
-          href="https://boojy.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: fontSize.lg, color: TEXT.muted, textDecoration: "none" }}
-          onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
-          onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
-        >
-          boojy.org
-        </a>
-      </div>
-    </>
+    <div style={{ textAlign: "center", padding: "23px 0 4px" }}>
+      <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>
+        Boojy Notes v{appVersion} · Made by Tyr @{" "}
+      </span>
+      <a
+        href="https://boojy.org"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ fontSize: fontSize.sm, color: TEXT.muted, textDecoration: "none" }}
+        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+      >
+        boojy.org
+      </a>
+    </div>
   );
 }

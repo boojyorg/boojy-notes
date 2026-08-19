@@ -25,13 +25,17 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ `.md` import/round-trip
 
 ## Organize & find
-- ✅ Nested folders / note tree (sidebar)
+- ✅ Nested folders / note tree (sidebar) — folder rows toggle by whole-row click; no
+  disclosure chevrons (2026-08-18 experiment, reversible)
+- ✅ Recently Deleted (trash) — desktop: wordmark menu → modal; mobile: inline sidebar section
 - ✅ Search + tag filter
 - ✅ In-note find
 
 ## Sync & storage
-- ✅ Supabase (auth + data) + Cloudflare R2 (attachments) sync — **opt-in per device on
-  desktop** (off by default; "Sync on this device" toggle in Settings → Profile)
+- ✅ Supabase (auth + data) + Cloudflare R2 (attachments) sync — engine intact but the whole
+  sign-in/Profile surface is unmounted (2026-08-18): no cloud UI ships until local-first is
+  stable. Recoverable: `ProfileTab.jsx`, `OnboardingToast`/`PersistenceWarning`, `useWebNags`
+  stay on disk with zero importers.
 - ✅ Conflict resolution + offline recovery + cross-tab consistency
 
 ## Views & theming
@@ -54,6 +58,12 @@ feature ideas → `FUTURE-IDEAS.md`.
 - ✅ Markdown / folder import (desktop)
 
 ## Removed (recoverable via git tag)
+- **Settings: Profile/sign-in, Editor (spell check + language) and UI Scale rows** — removed
+  2026-08-18 subtraction pass; Settings is a single pane (Appearance · Storage · Updates ·
+  About line). Spell check still applies from the stored Electron setting (default on); UI
+  scale lives on as Cmd+Plus/Minus/0.
+- **Trash's permanent sidebar row (desktop)** — replaced by the wordmark menu's
+  "Recently Deleted…" modal over the unchanged trash implementation.
 - **Tabs + split view** — removed 2026-08-18 with the single-active-note refactor (state, input
   paths, and components all deleted; old persisted state migrates to the active pane's note).
   Matches `docs/PHILOSOPHY.md`. Quick Open / Recents / back-forward are candidate follow-ups.

@@ -3,7 +3,14 @@
 ## Unreleased
 
 ### Improvements
-- **New "Notes" logo, and the logo now opens Settings** — The top-bar wordmark is a single new "Notes" mark, and clicking it (on desktop and in the mobile notes list) opens Settings → Profile. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle, and sync status still lives in Settings → Profile (and in the screen-reader status announcement). The About screen uses the same new wordmark.
+- **The wordmark opens a small app menu** — Clicking the "Notes" wordmark on desktop now opens a compact menu: Recently Deleted…, Settings…, About. (On the mobile notes list it still opens Settings directly.)
+- **Settings is one small pane** — The navigation sidebar, the Profile/sign-in section, the Editor section (spell check and language) and the UI Scale row are gone, along with the large in-settings logo. What remains: Appearance (theme, font size), plus Storage and Updates on desktop, closed by a quiet version line. Spell check stays on by default (the stored desktop preference still applies); UI scale lives on as the Cmd+Plus / Cmd+Minus / Cmd+0 shortcuts. The web sign-in nudges are gone with the rest of the cloud pitch — no cloud UI ships until the local-first app is stable.
+- **Trash is now "Recently Deleted", off the sidebar** — Deletion recovery no longer occupies a permanent sidebar row on desktop; the wordmark menu opens a small Recently Deleted window with restore and permanent-delete, over the unchanged trash implementation. Mobile keeps its inline section under the new name.
+- **Calmer folder rows** — The permanent `>` disclosure chevrons are gone from the sidebar; the whole folder row toggles open/closed and the folder icon carries the state. Screen readers still hear expanded/collapsed.
+- **New "Notes" logo** — The wordmark is a single new "Notes" mark. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle. The About screen uses the same new wordmark.
+
+### Bug Fixes
+- **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
 
 ## v0.5.0 — 2026-06-12
 

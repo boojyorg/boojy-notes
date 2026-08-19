@@ -15,7 +15,7 @@ export default function TopBarMobile({
   onTitlePress,
 }) {
   const { chromeBg, topBarEdge } = useLayout();
-  const { setSettingsOpen, setSettingsTab } = useSettings();
+  const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
 
@@ -95,10 +95,7 @@ export default function TopBarMobile({
         <>
           <button
             data-testid="settings-button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setSettingsTab("profile");
-            }}
+            onClick={() => setSettingsOpen(true)}
             style={{
               background: "none",
               border: "none",
@@ -117,10 +114,7 @@ export default function TopBarMobile({
           <div style={{ flex: 1 }} />
 
           <button
-            onClick={() => {
-              setSettingsOpen(true);
-              setSettingsTab("profile");
-            }}
+            onClick={() => setSettingsOpen(true)}
             style={{
               background: "none",
               border: "none",

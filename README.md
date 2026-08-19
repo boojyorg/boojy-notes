@@ -64,7 +64,7 @@ src/
   components/           # UI components (EditableBlock, Sidebar, TopBar, StarField, …)
     blocks/             # Block types (code, table, callout, image, file, embed)
     mobile/             # Mobile-browser UI (toolbar, bottom sheet, FAB)
-    settings/           # Settings modal panels (SettingsModal, ProfileTab, …)
+    settings/           # Settings modal panels (SettingsModal, AppearanceTab, …)
   context/              # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
   hooks/                # Custom hooks (useSync, useFileSystem, useNoteStats, …)
     editor/             # Editor hooks (keyboard, paste, drag, slash commands)

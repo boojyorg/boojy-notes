@@ -132,7 +132,9 @@ export function useInputHandler({
         blockIndex,
         filter: "",
         selectedIndex: 0,
-        rect: { top: rect.bottom + 4, left: rect.left },
+        // Full block rect: SlashMenu opens below it or flips above it when
+        // the viewport runs out (useMenuPosition), without covering the line.
+        rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right },
       });
     } else if (slashMenuRef.current && slashMenuRef.current.blockIndex === blockIndex) {
       if (trimmed.startsWith("/")) {
