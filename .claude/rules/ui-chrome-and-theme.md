@@ -210,6 +210,10 @@ other side when the preferred side overflows, clamp as the last resort. The slas
 the block's full rect so a flipped menu sits above the line, not over it. Route new menus through
 this instead of writing a fresh clamp.
 
+Slash-menu selection is keyboard-first: opening `/` and changing its filter reset to index `0`.
+Rows update that selection on actual mouse movement, not `mouseenter`; a newly mounted or flipped
+menu can appear beneath a stationary pointer, which must not steal the initial Heading 1 selection.
+
 ## Testing note
 
 `TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
@@ -218,6 +222,7 @@ collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark
 no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (migration rule)
 and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy
 migration and managed-file-only deletion. The e2e settings flow clicks
-`wordmark-settings-button` directly. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
+`wordmark-settings-button` directly. `SlashMenu.test.jsx` guards the keyboard-first selection
+against stationary-pointer hover. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
 the `activeTabBg` token and `settingsTab` context field no longer exist — don't reintroduce
 either in mocks.
