@@ -13,10 +13,6 @@ vi.mock("../../src/utils/platform", () => ({
 
 // Mock getAPI
 const mockAPI = {
-  trashNote: vi.fn(),
-  restoreNote: vi.fn(),
-  purgeTrash: vi.fn(),
-  emptyTrash: vi.fn(),
   writeMeta: vi.fn(),
 };
 vi.mock("../../src/services/apiProvider", () => ({
@@ -41,8 +37,6 @@ beforeEach(() => {
   noteIdCounter = 0;
   blockIdCounter = 0;
   vi.restoreAllMocks();
-  // Re-stub window.confirm for permanentDelete/emptyTrash tests
-  vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 
 function setup(initialNoteData = {}, opts = {}) {
@@ -66,18 +60,11 @@ function setup(initialNoteData = {}, opts = {}) {
     currentExpanded = typeof updater === "function" ? updater(currentExpanded) : updater;
   });
   const titleRef = { current: null };
-  const trashedNotesRef = { current: new Map() };
-  let currentTrashedNotes = {};
-  const setTrashedNotes = vi.fn((updater) => {
-    currentTrashedNotes = typeof updater === "function" ? updater(currentTrashedNotes) : updater;
-  });
   const setRenamingFolder = vi.fn();
   let currentSidebarOrder = opts.sidebarOrder || {};
   const setSidebarOrder = vi.fn((updater) => {
     currentSidebarOrder = typeof updater === "function" ? updater(currentSidebarOrder) : updater;
   });
-  const onError = vi.fn();
-
   const { result } = renderHook(() =>
     useNoteCrud({
       commitNoteData,
@@ -88,11 +75,8 @@ function setup(initialNoteData = {}, opts = {}) {
       customFolders: currentFolders,
       setExpanded,
       titleRef,
-      trashedNotesRef,
-      setTrashedNotes,
       setRenamingFolder,
       setSidebarOrder,
-      onError,
     }),
   );
 
@@ -102,17 +86,13 @@ function setup(initialNoteData = {}, opts = {}) {
     getActive: () => currentActive,
     getFolders: () => currentFolders,
     getExpanded: () => currentExpanded,
-    getTrashedNotes: () => currentTrashedNotes,
     getSidebarOrder: () => currentSidebarOrder,
     commitNoteData,
     setActiveNote,
     setCustomFolders,
     setExpanded,
-    setTrashedNotes,
     setRenamingFolder,
     setSidebarOrder,
-    trashedNotesRef,
-    onError,
   };
 }
 
@@ -174,24 +154,6 @@ describe("useNoteCrud", () => {
 
       expect(getNoteData()["n2"]).toBeUndefined();
       expect(setActiveNote).not.toHaveBeenCalled();
-    });
-
-    it("calls trashedNotesRef.set when native and trashNote API exists", async () => {
-      // Temporarily enable isNative
-      const platform = await import("../../src/utils/platform");
-      const original = platform.isNative;
-      platform.isNative = true;
-
-      const note = makeNote("n1", "Trashed Note", "Docs");
-      const { result, trashedNotesRef } = setup({ n1: note }, { activeNote: "n1" });
-
-      act(() => {
-        result.current.deleteNote("n1");
-      });
-
-      expect(trashedNotesRef.current.get("n1")).toEqual({ title: "Trashed Note", folder: "Docs" });
-
-      platform.isNative = original;
     });
   });
 
@@ -262,83 +224,6 @@ describe("useNoteCrud", () => {
       expect(data.n3).toBeDefined();
       expect(setActiveNote).toHaveBeenCalledWith(null);
       expect(getFolders()).not.toContain("Archive");
-    });
-  });
-
-  describe("restoreNote", () => {
-    it("restores a note from trash via API", async () => {
-      const platform = await import("../../src/utils/platform");
-      const original = platform.isNative;
-      platform.isNative = true;
-
-      const restoredNote = {
-        id: "n1",
-        title: "Restored",
-        folder: "Docs",
-        content: { title: "Restored", blocks: [] },
-        _filePath: "/tmp/n1",
-        _migrated: true,
-      };
-      mockAPI.restoreNote.mockResolvedValue(restoredNote);
-
-      const { result, getNoteData, getTrashedNotes } = setup({}, { customFolders: [] });
-
-      await act(async () => {
-        await result.current.restoreNote("n1");
-      });
-
-      const data = getNoteData();
-      expect(data.n1).toBeDefined();
-      expect(data.n1.title).toBe("Restored");
-      // _filePath and _migrated should be stripped
-      expect(data.n1._filePath).toBeUndefined();
-      expect(data.n1._migrated).toBeUndefined();
-
-      platform.isNative = original;
-    });
-  });
-
-  describe("permanentDeleteNote", () => {
-    it("calls purgeTrash and removes from trashed notes", async () => {
-      const platform = await import("../../src/utils/platform");
-      const original = platform.isNative;
-      platform.isNative = true;
-
-      mockAPI.purgeTrash.mockResolvedValue(undefined);
-
-      const { result, getTrashedNotes, setTrashedNotes } = setup();
-
-      await act(async () => {
-        await result.current.permanentDeleteNote("n1");
-      });
-
-      expect(window.confirm).toHaveBeenCalled();
-      expect(mockAPI.purgeTrash).toHaveBeenCalledWith(["n1"]);
-      expect(setTrashedNotes).toHaveBeenCalled();
-
-      platform.isNative = original;
-    });
-  });
-
-  describe("emptyAllTrash", () => {
-    it("clears all trashed notes via API", async () => {
-      const platform = await import("../../src/utils/platform");
-      const original = platform.isNative;
-      platform.isNative = true;
-
-      mockAPI.emptyTrash.mockResolvedValue(undefined);
-
-      const { result, setTrashedNotes } = setup();
-
-      await act(async () => {
-        await result.current.emptyAllTrash();
-      });
-
-      expect(window.confirm).toHaveBeenCalled();
-      expect(mockAPI.emptyTrash).toHaveBeenCalled();
-      expect(setTrashedNotes).toHaveBeenCalledWith({});
-
-      platform.isNative = original;
     });
   });
 

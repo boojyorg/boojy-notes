@@ -9,7 +9,7 @@ import { fontSize, fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
 import UpdatesTab from "./UpdatesTab";
 import ExportTab from "./ExportTab";
-import { BrandingFooter, ContentFooter } from "./AboutTab";
+import SettingsFooter from "./SettingsFooter";
 import { ChevronLeftIcon } from "../Icons";
 
 export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNotesDir }) {
@@ -176,40 +176,8 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
             </>
           )}
 
-          {/* Footer links */}
-          <div
-            style={{
-              padding: `${spacing.xl}px 0`,
-              borderTop: `1px solid ${theme.overlay(0.06)}`,
-              marginTop: spacing.lg,
-            }}
-          >
-            <a
-              href="https://boojy.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "block",
-                padding: "12px 0",
-                fontSize: 14,
-                color: TEXT.secondary,
-                textDecoration: "none",
-              }}
-            >
-              About Boojy Notes
-            </a>
-          </div>
-
-          {/* N●tes logo + version */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "8px 0 24px",
-            }}
-          >
-            <BrandingFooter />
+          <div style={{ padding: `0 0 ${spacing.xl}px` }}>
+            <SettingsFooter />
           </div>
         </div>
       </div>
@@ -218,7 +186,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
 
   // ── Desktop layout ────────────────────────────────────────────────
   // Single pane: Appearance, then Storage/Updates on desktop, then a quiet
-  // About line. No navigation sidebar and no branding block — there is nothing
+  // version/credit line. No navigation sidebar and no branding block — there is nothing
   // to navigate between, and the app already says which app it is.
   return (
     <>
@@ -321,7 +289,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
             SectionHeader={SectionHeader}
           />
           <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
-          <ContentFooter />
+          <SettingsFooter />
         </div>
       </div>
     </>

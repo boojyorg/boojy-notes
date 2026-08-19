@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/utils/platform", () => ({
   isElectron: true,
@@ -11,10 +11,14 @@ vi.mock("../../src/utils/platform", () => ({
 }));
 
 const readAllNotes = vi.fn();
+const trashNote = vi.fn();
+const writeNote = vi.fn();
 vi.mock("../../src/services/apiProvider", () => ({
   getAPI: () => ({
     getNotesDir: vi.fn(async () => "/notes"),
     readAllNotes,
+    trashNote,
+    writeNote,
   }),
 }));
 
@@ -29,19 +33,13 @@ describe("useFileSystem — initial load", () => {
     };
   });
 
-  function renderFS({ syncGeneration = { current: 0 } } = {}) {
+  function renderFS({ noteData = {}, syncGeneration = { current: 0 } } = {}) {
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
-    const result = renderHook(() =>
-      useFileSystem(
-        {},
-        setNoteData,
-        setCustomFolders,
-        { current: new Map() },
-        syncGeneration,
-        vi.fn(),
-        vi.fn(),
-      ),
+    const result = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), vi.fn()),
+      { initialProps: { data: noteData } },
     );
     return { ...result, setNoteData, setCustomFolders, syncGeneration };
   }
@@ -71,5 +69,39 @@ describe("useFileSystem — initial load", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(syncGeneration.current).toBe(0);
+  });
+
+  it("routes a removed persisted note through the system Trash API", async () => {
+    const note = {
+      id: "n1",
+      title: "A note",
+      content: { title: "A note", blocks: [] },
+    };
+    readAllNotes.mockResolvedValue({});
+    trashNote.mockResolvedValue({ trashed: true });
+    const { result, rerender } = renderFS({ noteData: { n1: note } });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => rerender({ data: {} }));
+    await act(async () => result.current.flushToDisk());
+
+    expect(trashNote).toHaveBeenCalledExactlyOnceWith("n1");
+  });
+
+  it("does not send an unsaved draft to the system Trash", async () => {
+    const draft = {
+      id: "draft-1",
+      title: "",
+      content: { title: "", blocks: [] },
+      _draft: true,
+    };
+    readAllNotes.mockResolvedValue({});
+    const { result, rerender } = renderFS({ noteData: { "draft-1": draft } });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => rerender({ data: {} }));
+    await act(async () => result.current.flushToDisk());
+
+    expect(trashNote).not.toHaveBeenCalled();
   });
 });

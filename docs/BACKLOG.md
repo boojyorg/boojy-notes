@@ -21,8 +21,6 @@ third-party content — these gate confident Vault migration):
 **Reliability follow-ups:**
 - [ ] Failed disk writes drop the note from the dirty set with no retry — error toast, then the
   note exists only in React state (P2). `useFileSystem.js:172`.
-- [ ] `saveTrashMeta` is non-atomic — power loss can corrupt `.boojy-trash-meta.json`, orphaning
-  every trashed note from the UI (P2). `trashManager.js:34`.
 - [ ] Rename crash-window can re-ID a note (crash between unlink and index save) or leave a
   visible duplicate (crash before unlink — by design, but cleanup is manual) (P2/P3).
 - [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W + Cmd+Q;
@@ -53,7 +51,7 @@ per-pane `editedNoteHint` items with them.
 - [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, then
   the single-active-note refactor removed the split-view glue (root now ~1,110 lines). Remaining
   candidates: ghost-note/draft effects, `Sidebar` (1,314 lines — now the largest file: tree +
-  wordmark menu + search results + mobile trash list).
+  search results).
 - [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
 
 ## Bugs / QoL

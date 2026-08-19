@@ -5,6 +5,9 @@ Durable conventions + live gotchas for the visual layer. Read before touching `t
 
 ## The light theme is `DAY`, and it is NOT the old blue-sky theme
 
+`DAY` is the first-run fallback only when `boojy-theme` has no saved `themeMode`. Existing saved
+`day`, `night` and `auto` choices always win.
+
 `DAY` used to be a saturated sky-blue theme with a **gold** accent (`#E8C020`) — a near-collision
 with sibling app Picito's brand gold. It was replaced with a neutral, warm-biased light palette
 using Picito's neutral ramp as the family reference, keeping Boojy's cyan identity.
@@ -92,11 +95,10 @@ Things a future change will trip over:
 - **Help is unreachable.** `HelpDropdown.jsx` was deleted in the 2026-08-19 dead-code sweep;
   git history has its curated shortcut-reference content (the `SECTIONS` data) if Help returns —
   re-verify the shortcuts against `useAppKeyboard` before reusing it. Settings ends in a one-line
-  About footer, no Help.
-- **The wordmark is a menu, not a settings button** (2026-08-18 subtraction pass): clicking the
-  sidebar wordmark opens `Recently Deleted… / Settings… / About` (testid
-  `wordmark-menu-button`; the old `settings-button` id is now mobile-only in `TopBarMobile`).
-  About opens boojy.org.
+  version/credit footer, no Help.
+- **The wordmark opens Settings directly**: clicking the sidebar wordmark calls
+  `setSettingsOpen(true)` (testid `wordmark-settings-button`). There is no app-level dropdown,
+  separate About destination or Recently Deleted surface.
 - **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
   Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
   reintroduce it in mocks. The parked sign-in/sync surface (`ProfileTab.jsx`, `OnboardingToast`,
@@ -105,10 +107,12 @@ Things a future change will trip over:
   `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
   has no UI but still applies from the stored Electron setting, and UI scale is
   keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).
-- **Trash is desktop-invisible until summoned**: `RecentlyDeletedModal.jsx` (wordmark menu →
-  modal) wraps the unchanged trash handlers (`restoreNote` / `permanentDeleteNote` /
-  `emptyAllTrash`). The sidebar's inline section is mobile-only now, relabelled
-  "Recently Deleted". Never ship a delete path whose contents can't be reached.
+- **Delete follows the platform**: Electron sends each indexed Boojy-managed `.md` file to the
+  OS Trash/Recycle Bin; web deletion remains permanent behind confirmation. Folder deletion never
+  removes or trashes the physical folder, so unsupported sibling files stay put. The retired private `.trash`
+  gets one conservative startup migration: recognized notes are copied under readable,
+  collision-safe names before the OS-trash operation, and the legacy source is removed only after
+  that succeeds. Ambiguous/failed contents remain untouched and trigger a native warning.
 - **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
   `useNoteStats` still computes `charCountNoSpaces` / `readingTime`, which now have no consumer.
 - The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px
@@ -132,8 +136,7 @@ share one button. `CHROME_LEFT_GUTTER` is now unused, kept only for the revert p
 32px centred icon column, 8px left / 3px right inset, hover to `BG.hover` with `TEXT.primary` ink.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
-(note rows) still uses the older tree grammar, so the two grammars coexist. (Trash left the
-desktop sidebar entirely — see the wordmark-menu note above.)
+(note rows) still uses the older tree grammar, so the two grammars coexist.
 
 ## Sidebar sections: `Folders` and `Notes`
 
@@ -169,8 +172,7 @@ collapsed vs expanded has no other permanent indicator, and no hover chevron yet
 calm version first; the revert path is commented at the render site. The removed FileIcon's
 width is still folded into each note row's left padding, minus the chevron allowance that came
 back out of both row kinds, so titles keep their column under the folder names — don't
-"simplify" that padding away. `FileIcon` still ships in search results and the mobile
-Recently Deleted list, which are not tree rows.
+"simplify" that padding away. `FileIcon` still ships in search results, which are not tree rows.
 
 ## The slash menu is tiered
 
@@ -208,11 +210,10 @@ this instead of writing a fresh clamp.
 
 `TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
 in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
-collapsed) and `Sidebar.test.jsx` (header toggle + action rows + wordmark menu + no-chevron /
-no-desktop-Trash assertions). Navigation state is covered by `useActiveNote.test.js` (migration
-rule) and `useAppPersistence.test.js` (write shape); `RecentlyDeletedModal.test.jsx` and
-`menuPosition.test.js` cover the trash modal and the shared clamp maths. The e2e settings flow
-goes through the wordmark menu (`wordmark-menu-button` → "Settings…"), not a direct settings
-button. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
+collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark-to-Settings +
+no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (migration rule)
+and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy
+migration and managed-file-only deletion. The e2e settings flow clicks
+`wordmark-settings-button` directly. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
 the `activeTabBg` token and `settingsTab` context field no longer exist — don't reintroduce
 either in mocks.

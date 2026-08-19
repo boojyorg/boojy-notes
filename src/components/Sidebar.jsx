@@ -1,22 +1,17 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useRef, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { extractAllTags } from "../utils/tags";
 import { useSettings } from "../context/SettingsContext";
 import {
-  ChevronRight,
-  ChevronDown,
   FolderIcon,
   FileIcon,
   NewFolderIcon,
   NewNoteIcon,
   SearchIcon,
   SidebarToggleIcon,
-  TrashIcon,
 } from "./Icons";
 import { CHROME_INSET, CHROME_BTN, ChromeButton } from "./EditorChrome";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
@@ -148,8 +143,6 @@ const Sidebar = memo(function Sidebar({
   createFolder,
   createNote,
   handleSidebarPointerDown,
-  emptyAllTrash,
-  onOpenRecentlyDeleted,
   handleSearchResultOpen,
   selectedNotes,
   handleNoteClick,
@@ -159,7 +152,7 @@ const Sidebar = memo(function Sidebar({
   const { sidebarWidth, accentColor, selectionStyle, setCollapsed } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
-  const { BG, TEXT, ACCENT, SEMANTIC } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const { noteData } = useNoteData();
   const {
     search,
@@ -173,9 +166,6 @@ const Sidebar = memo(function Sidebar({
     fNotes,
     renamingFolder,
     setRenamingFolder,
-    trashedNotes,
-    trashExpanded,
-    setTrashExpanded,
     searchMode,
     searchResults,
     activeResultIndex,
@@ -391,37 +381,6 @@ const Sidebar = memo(function Sidebar({
     );
   };
 
-  // Wordmark menu (desktop): the app-level menu behind the N●tes wordmark —
-  // Recently Deleted…, Settings…, About. Low-prominence on purpose; this is
-  // where Trash's entry point moved when it left the permanent sidebar.
-  const [wordmarkMenu, setWordmarkMenu] = useState(null); // { x, y } | null
-  const wordmarkMenuRef = useRef(null);
-  useFocusTrap(wordmarkMenuRef, !!wordmarkMenu);
-
-  useEffect(() => {
-    if (!wordmarkMenu) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setWordmarkMenu(null);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [wordmarkMenu]);
-
-  const trashedCount = Object.keys(trashedNotes).length;
-
-  const wordmarkMenuItems = [
-    {
-      label: "Recently Deleted…",
-      badge: trashedCount > 0 ? trashedCount : null,
-      action: () => onOpenRecentlyDeleted?.(),
-    },
-    { label: "Settings…", action: () => setSettingsOpen(true) },
-    { label: "About", action: () => window.open("https://boojy.org", "_blank", "noopener") },
-  ];
-
   // On desktop the Search action row swaps into a field once search is engaged;
   // mobile always shows the field.
   const searchActive = Boolean(searchFocused || search);
@@ -535,16 +494,11 @@ const Sidebar = memo(function Sidebar({
           }}
         >
           <button
-            data-testid="wordmark-menu-button"
+            data-testid="wordmark-settings-button"
             type="button"
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setWordmarkMenu((prev) => (prev ? null : { x: r.left, y: r.bottom + 6 }));
-            }}
-            aria-label="Notes — open menu"
-            aria-haspopup="menu"
-            aria-expanded={!!wordmarkMenu}
-            title="Menu"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Notes — open Settings"
+            title="Settings"
             style={{
               background: "none",
               border: "none",
@@ -563,78 +517,6 @@ const Sidebar = memo(function Sidebar({
             <SidebarToggleIcon />
           </ChromeButton>
         </div>
-      )}
-
-      {/* Wordmark menu */}
-      {wordmarkMenu && (
-        <>
-          <div
-            onMouseDown={() => setWordmarkMenu(null)}
-            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
-          />
-          <div
-            ref={wordmarkMenuRef}
-            role="menu"
-            aria-label="Notes menu"
-            style={{
-              position: "fixed",
-              top: wordmarkMenu.y,
-              left: wordmarkMenu.x,
-              zIndex: Z.DROPDOWN,
-              background: BG.elevated,
-              border: `1px solid ${BG.divider}`,
-              borderRadius: 8,
-              padding: "4px 0",
-              minWidth: 180,
-              boxShadow: theme.modalShadow,
-              animation: "fadeIn 0.1s ease",
-            }}
-          >
-            {wordmarkMenuItems.map((item) => (
-              <button
-                key={item.label}
-                role="menuitem"
-                onClick={() => {
-                  setWordmarkMenu(null);
-                  item.action();
-                }}
-                style={{
-                  width: "100%",
-                  background: "none",
-                  border: "none",
-                  padding: "7px 14px",
-                  cursor: "pointer",
-                  color: TEXT.primary,
-                  fontSize: 12.5,
-                  fontFamily: "inherit",
-                  textAlign: "left",
-                  transition: "background 0.12s",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-                onMouseEnter={(e) => hBg(e.currentTarget, BG.hover)}
-                onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-              >
-                {item.label}
-                {item.badge != null && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      background: BG.surface,
-                      borderRadius: 8,
-                      padding: "1px 6px",
-                      color: TEXT.muted,
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </>
       )}
 
       {/* Primary actions \u2014 desktop only. Mobile keeps its search pill below. */}
@@ -1129,151 +1011,6 @@ const Sidebar = memo(function Sidebar({
               </>
             )}
           </div>
-
-          {/* Recently Deleted — mobile only. Desktop reaches it through the
-              wordmark menu → RecentlyDeletedModal; the permanent footer row
-              did not earn its place next to New note / Search. */}
-          {isMobile && !search && (
-            <div
-              style={{
-                borderTop: `1px solid ${BG.divider}`,
-                padding: isMobile ? "8px 0 0" : "4px 0",
-                paddingBottom: isMobile
-                  ? "calc(4px + env(safe-area-inset-bottom, 0px))"
-                  : undefined,
-              }}
-            >
-              <button
-                onClick={() => setTrashExpanded((prev) => !prev)}
-                style={{
-                  width: "100%",
-                  border: "none",
-                  cursor: "pointer",
-                  background: "transparent",
-                  padding: isMobile ? "12px 16px" : "4px 10px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: isMobile ? 8 : 5,
-                  color: TEXT.secondary,
-                  fontSize: isMobile ? 17 : 14,
-                  fontWeight: 400,
-                  fontFamily: "inherit",
-                  transition: "background 0.12s, color 0.12s",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  hBg(e.currentTarget, BG.elevated);
-                  e.currentTarget.style.color = TEXT.primary;
-                }}
-                onMouseLeave={(e) => {
-                  hBg(e.currentTarget, "transparent");
-                  e.currentTarget.style.color = TEXT.secondary;
-                }}
-              >
-                {trashExpanded ? <ChevronDown /> : <ChevronRight />}
-                <TrashIcon />
-                <span style={{ fontWeight: 500 }}>Recently Deleted</span>
-                {Object.keys(trashedNotes).length > 0 && (
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: 10,
-                      background: BG.surface,
-                      borderRadius: 8,
-                      padding: "1px 6px",
-                      color: TEXT.muted,
-                    }}
-                  >
-                    {Object.keys(trashedNotes).length}
-                  </span>
-                )}
-              </button>
-              {trashExpanded && Object.keys(trashedNotes).length > 0 && (
-                <>
-                  {Object.values(trashedNotes).map((tn) => {
-                    const daysAgo = Math.floor((Date.now() - tn.deletedAt) / (1000 * 60 * 60 * 24));
-                    const ageLabel = daysAgo === 0 ? "today" : `${daysAgo}d`;
-                    return (
-                      <div
-                        key={tn.id}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setCtxMenu({ x: e.clientX, y: e.clientY, type: "trash", id: tn.id });
-                        }}
-                        style={{
-                          padding: "4px 10px 4px 36px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                          cursor: "default",
-                          opacity: 0.5,
-                          fontSize: 13.5,
-                          fontFamily: "inherit",
-                          color: TEXT.secondary,
-                          transition: "background 0.12s",
-                        }}
-                        onMouseEnter={(e) => {
-                          hBg(e.currentTarget, BG.elevated);
-                          e.currentTarget.style.opacity = "0.75";
-                        }}
-                        onMouseLeave={(e) => {
-                          hBg(e.currentTarget, "transparent");
-                          e.currentTarget.style.opacity = "0.5";
-                        }}
-                      >
-                        <FileIcon />
-                        <span
-                          style={{
-                            flex: 1,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            textDecoration: "line-through",
-                            textDecorationColor: TEXT.muted,
-                          }}
-                        >
-                          {tn.title || "Untitled"}
-                        </span>
-                        <span style={{ fontSize: 10, color: TEXT.muted, flexShrink: 0 }}>
-                          {ageLabel}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <button
-                    onClick={emptyAllTrash}
-                    style={{
-                      width: "100%",
-                      border: "none",
-                      cursor: "pointer",
-                      background: "transparent",
-                      padding: "6px 10px 6px 36px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      color: SEMANTIC.error,
-                      fontSize: 11.5,
-                      fontFamily: "inherit",
-                      fontWeight: 500,
-                      opacity: 0.7,
-                      transition: "background 0.12s, opacity 0.12s",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      hBg(e.currentTarget, BG.elevated);
-                      e.currentTarget.style.opacity = "1";
-                    }}
-                    onMouseLeave={(e) => {
-                      hBg(e.currentTarget, "transparent");
-                      e.currentTarget.style.opacity = "0.7";
-                    }}
-                  >
-                    Delete All
-                  </button>
-                </>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>

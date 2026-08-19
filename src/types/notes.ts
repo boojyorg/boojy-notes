@@ -123,15 +123,6 @@ export interface Note {
 /** The app's note store: note id → note. */
 export type NoteData = Record<string, Note>;
 
-/** A note in Recently Deleted, as returned by the desktop read-trash IPC. */
-export interface TrashedNote {
-  id: string;
-  title: string;
-  folder: string | null;
-  deletedAt: number;
-  content: NoteContent;
-}
-
 // ─── App-level data shapes (referenced from @ts-check'd .js via JSDoc) ─────
 
 export interface SearchIndexEntry {

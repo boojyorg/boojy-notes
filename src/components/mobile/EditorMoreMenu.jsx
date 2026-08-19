@@ -179,7 +179,7 @@ export default function EditorMoreMenu({
           <div style={{ fontSize: 13, color: theme.TEXT.muted, marginBottom: 16 }}>
             {isWeb
               ? "This will be permanently deleted. This can't be undone."
-              : "This note will be moved to Trash."}
+              : "This note will be moved to the system Trash."}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button

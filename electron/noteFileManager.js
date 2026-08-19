@@ -296,32 +296,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     return { filePath: finalPath };
   });
 
-  ipcMain.handle("delete-note-file", (_event, noteId) => {
-    const notesDir = getNotesDir();
-    const relPath = _idIndex[noteId];
-    const filePath = relPath ? path.join(notesDir, relPath) : null;
-    if (!filePath) return { deleted: false };
-
-    suppressWatcher(filePath);
-    try {
-      fs.unlinkSync(filePath);
-      const dir = path.dirname(filePath);
-      if (dir !== notesDir) {
-        try {
-          const entries = fs.readdirSync(dir);
-          if (entries.length === 0) fs.rmdirSync(dir);
-        } catch {
-          // dir not empty
-        }
-      }
-      delete _idIndex[noteId];
-      saveIndex(notesDir);
-      return { deleted: true };
-    } catch {
-      return { deleted: false };
-    }
-  });
-
   ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
     const attDir = path.join(notesDir, "attachments");

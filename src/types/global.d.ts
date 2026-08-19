@@ -4,7 +4,7 @@
 // bridge, with argument and return shapes taken from the ipcMain handlers.
 // When the preload changes, change this file in the same commit.
 
-import type { Note, TrashedNote } from "./notes";
+import type { Note } from "./notes";
 
 /** userData/settings.json — known keys plus whatever set-setting has stored. */
 interface DesktopSettings {
@@ -34,7 +34,6 @@ declare global {
       chooseNotesDir: () => Promise<string | null>;
       readAllNotes: () => Promise<Record<string, Note>>;
       writeNote: (note: Note) => Promise<{ filePath: string }>;
-      deleteNoteFile: (noteId: string) => Promise<{ deleted: boolean }>;
       saveImage: (data: { fileName: string; dataBase64: string }) => Promise<string>;
       saveAttachment: (data: {
         fileName: string;
@@ -51,17 +50,8 @@ declare global {
       readMeta: (folderRelPath: string) => Promise<Record<string, unknown> | null>;
       writeMeta: (folderRelPath: string, meta: Record<string, unknown>) => Promise<void>;
 
-      // Trash
-      trashNote: (
-        noteId: string,
-        title: string,
-        folder: string | null,
-      ) => Promise<{ trashed: boolean }>;
-      readTrash: () => Promise<Record<string, TrashedNote>>;
-      restoreNote: (noteId: string) => Promise<Note | null>;
-      /** With ids: purge those. Without: purge entries older than 30 days. */
-      purgeTrash: (noteIds?: string[] | null) => Promise<{ purged: string[] }>;
-      emptyTrash: () => Promise<{ emptied: boolean }>;
+      // Platform Trash / Recycle Bin
+      trashNote: (noteId: string) => Promise<{ trashed: boolean }>;
 
       // File watcher events
       onFileChanged: (callback: (note: Note) => void) => Unsubscribe;

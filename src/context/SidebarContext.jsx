@@ -44,9 +44,6 @@ export function SidebarProvider({ children }) {
     return saved?.customFolders || [];
   });
 
-  const [trashedNotes, setTrashedNotes] = useState({});
-  const [trashExpanded, setTrashExpanded] = useState(false);
-  const trashedNotesRef = useRef(new Map());
   const [sidebarOrder, setSidebarOrder] = useState({});
   const [renamingFolder, setRenamingFolder] = useState(null);
 
@@ -144,11 +141,6 @@ export function SidebarProvider({ children }) {
       setExpanded,
       customFolders,
       setCustomFolders,
-      trashedNotes,
-      setTrashedNotes,
-      trashedNotesRef,
-      trashExpanded,
-      setTrashExpanded,
       sidebarOrder,
       setSidebarOrder,
       renamingFolder,
@@ -168,8 +160,6 @@ export function SidebarProvider({ children }) {
       searchFocused,
       expanded,
       customFolders,
-      trashedNotes,
-      trashExpanded,
       sidebarOrder,
       renamingFolder,
       searchMode,
