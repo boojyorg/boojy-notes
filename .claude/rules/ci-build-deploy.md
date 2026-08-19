@@ -39,6 +39,15 @@ If a future runner image really does drop a library, Chromium fails to launch *n
 dependency* — seconds, and legible. Don't "restore" `--with-deps` to fix a launch error without
 first checking whether the named library is genuinely absent.
 
+**Cache behaviour, because it changes what a red install means.** The key is
+`${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}` with a `${{ runner.os }}-playwright-`
+restore-key, so an unchanged lockfile restores the browser and skips the download entirely, and a
+dep bump degrades to a partial hit rather than a cliff. A cold miss costs about **10s** off
+Playwright's CDN (4.5s for Chrome for Testing, plus ffmpeg and the headless shell) — measured on the
+2026-08-19 green run, whole job **1m33s**, against the 42m that had to be cancelled by hand. So if
+the install step is ever slow again it is not the download: look at the CDN or the cache action,
+never at apt.
+
 Two traps found on the way, worth not repeating: a `timeout` short enough to feel safe (180s) will
 **kill a download that is merely slow**, converting a slow-but-succeeding step into a guaranteed
 3-attempt failure — size the timeout to the work, not to your patience. And `pkill -9 -f
@@ -47,6 +56,13 @@ the run log); match on `-x` or a pattern that can't self-match.
 
 The job carries `timeout-minutes: 30` — a master run once burned **6h1m** before a human noticed.
 A stall must fail in minutes and retry itself, never sit there waiting to be cancelled by hand.
+
+**Every workflow job now carries a `timeout-minutes`; keep it that way.** `ci.yml` 30,
+`site-rebuild.yml` 5, and `release.yml` 30 (added 2026-08-19 — it was the last one with no cap, and
+it is both the slowest job and the least watched, since nobody sits staring at a tag push). Sizes
+come from measured actuals, not taste: release installers really take ~1-2m on macOS and ~2-4m on
+Windows. Switching on macOS signing + Apple notarization is the one change that needs the release
+number re-measured, since notarization can add 10-20m by itself.
 
 ## CI runs `test:coverage` + E2E, not just `pnpm test`
 
