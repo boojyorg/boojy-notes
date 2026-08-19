@@ -23,6 +23,31 @@ run on Node 24 via `@v6`; only the project build/test runtime is held at 22. Don
 `node-version` without fixing the Playwright install side first (pin browser deps / split the step).
 A comment is left on the line in CI.
 
+**Node 22 is not immunity, and `--with-deps` is gone — CI installs the browser only.**
+On 2026-08-19 PR #76 hung **40 minutes** on Node 22, in the *apt* half of `playwright install
+--with-deps chromium`, never reaching the browser download; every earlier gate had passed in ~90s.
+The retry attempt exposed the real mechanism: apt is not deadlocked, it is **crawling** — the
+runner's Azure mirror served 11.4 MB in 1m52s (**~100 kB/s**), and the install then wants another
+21 MB. Read the package list and the apt half turns out to be pointless: all 25 shared libraries
+Chromium links against report *"is already the newest version"* on the `ubuntu-latest` image, and
+the 9 NEW packages are **fonts only** (CJK, Cyrillic, Thai, unifont). This suite renders none of
+them — no visual snapshots, no non-Latin fixtures.
+
+So CI now caches `~/.cache/ms-playwright` and runs plain **`playwright install chromium`** — no apt
+at all — wrapped in `timeout -k 10 300` inside a 3-attempt loop, with `timeout-minutes` outside it.
+If a future runner image really does drop a library, Chromium fails to launch *naming the missing
+dependency* — seconds, and legible. Don't "restore" `--with-deps` to fix a launch error without
+first checking whether the named library is genuinely absent.
+
+Two traps found on the way, worth not repeating: a `timeout` short enough to feel safe (180s) will
+**kill a download that is merely slow**, converting a slow-but-succeeding step into a guaranteed
+3-attempt failure — size the timeout to the work, not to your patience. And `pkill -9 -f
+"apt-get|dpkg"` **matches its own command line** and kills itself (`Killed  sudo pkill -9 -f …` in
+the run log); match on `-x` or a pattern that can't self-match.
+
+The job carries `timeout-minutes: 30` — a master run once burned **6h1m** before a human noticed.
+A stall must fail in minutes and retry itself, never sit there waiting to be cancelled by hand.
+
 ## CI runs `test:coverage` + E2E, not just `pnpm test`
 
 CI gates in layers (coverage, then Playwright/axe E2E). Coverage thresholds are a floor set just

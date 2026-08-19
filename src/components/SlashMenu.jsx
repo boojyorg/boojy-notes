@@ -78,8 +78,10 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                   executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);
                   setSlashMenu(null);
                 }}
-                onMouseEnter={() =>
-                  setSlashMenu((prev) => (prev ? { ...prev, selectedIndex: i } : null))
+                onMouseMove={() =>
+                  setSlashMenu((prev) =>
+                    prev && prev.selectedIndex !== i ? { ...prev, selectedIndex: i } : prev,
+                  )
                 }
                 style={{
                   padding: `${ROW_PAD_Y}px 12px`,

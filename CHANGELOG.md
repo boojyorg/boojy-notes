@@ -15,6 +15,8 @@
 - **New "Notes" logo** — The wordmark is a single new "Notes" mark. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle.
 
 ### Bug Fixes
+- **Slash commands reliably start at Heading 1** — Opening `/` no longer lets a stationary pointer accidentally select whichever lower menu row appears beneath it. Keyboard selection starts at the first command and changes only after an arrow key or real pointer movement.
+- **Checkboxes update immediately** — Checking or unchecking a task now repaints its tick and strikethrough at once instead of waiting for Enter or another structural editor change.
 - **Local-only now means zero cloud traffic** — The desktop app no longer initialises the Supabase client at all. Previously, a build with backend keys could silently refresh a leftover sign-in session and fetch the account profile on launch, even though sync and sign-in are switched off — no note data ever moved, but a local-only app shouldn't phone home. Desktop now never contacts the backend; the web app is unchanged.
 - **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
 

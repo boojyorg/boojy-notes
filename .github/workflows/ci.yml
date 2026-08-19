@@ -9,6 +9,7 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v6
@@ -43,8 +44,32 @@ jobs:
       - name: Build
         run: ELECTRON_DISABLE=1 pnpm build
 
-      - name: Install Playwright
-        run: pnpm exec playwright install --with-deps chromium
+      # `playwright install --with-deps` has stalled CI twice, both times in its
+      # apt half — and the apt half buys us nothing. Every shared library Chromium
+      # links against is already present on the ubuntu-latest image (all 25 report
+      # "is already the newest version"); the only thing apt actually fetches is
+      # ~21MB of CJK/Cyrillic/Thai fonts, off a mirror that has been serving at
+      # ~100kB/s. This suite renders none of them — no visual snapshots, no
+      # non-Latin fixtures — so install the browser and skip apt entirely. If a
+      # future runner image does drop a library, Chromium fails to launch naming
+      # the missing dependency: seconds, and legible, rather than a silent hang.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browser
+        timeout-minutes: 10
+        run: |
+          for attempt in 1 2 3; do
+            timeout -k 10 300 pnpm exec playwright install chromium && exit 0
+            echo "::warning::playwright install chromium attempt $attempt failed or stalled; retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: E2E tests
+        timeout-minutes: 15
         run: pnpm test:e2e

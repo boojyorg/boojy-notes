@@ -1,9 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -93,6 +92,31 @@ describe("SlashMenu", () => {
     // AND select to the same fill, so hover previews selection. Others transparent.
     expect(items[2].style.background).toContain("rgb(68, 68, 68)");
     expect(items[0].style.background).toBe("transparent");
+  });
+
+  it("keeps Heading 1 selected until the pointer actually moves over another row", () => {
+    const setSlashMenu = vi.fn();
+    render(
+      <SlashMenu
+        slashMenu={defaultMenu}
+        setSlashMenu={setSlashMenu}
+        executeSlashCommand={vi.fn()}
+      />,
+    );
+    const lowerRow = screen.getByRole("menuitem", { name: PRIMARY.at(-1).label });
+
+    // A menu appearing beneath a stationary pointer may produce hover entry,
+    // but must not replace the keyboard-first selection.
+    fireEvent.mouseEnter(lowerRow);
+    expect(setSlashMenu).not.toHaveBeenCalled();
+
+    fireEvent.mouseMove(lowerRow);
+    expect(setSlashMenu).toHaveBeenCalledOnce();
+    const updateSelection = setSlashMenu.mock.calls[0][0];
+    expect(updateSelection(defaultMenu)).toEqual({
+      ...defaultMenu,
+      selectedIndex: PRIMARY.length - 1,
+    });
   });
 
   it("renders nothing when slashMenu is null", () => {
