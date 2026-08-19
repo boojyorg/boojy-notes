@@ -1,6 +1,6 @@
 // Pure tree-building logic for the sidebar folder structure.
 
-/** @typedef {import("../types.d.ts").SidebarNode} SidebarNode */
+/** @typedef {import("../types/notes").SidebarNode} SidebarNode */
 
 /**
  * Locale-aware natural comparison (e.g. "Week 2" < "Week 10").

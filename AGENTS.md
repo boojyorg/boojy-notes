@@ -148,7 +148,15 @@ current target only; `docs/ROADMAP.md` (ordered) / `docs/BACKLOG.md` (someday) /
 - **IDs:** Use `genBlockId()` and `genNoteId()` from `src/utils/storage` — never hand-craft IDs
 - **Performance:** Use `React.memo` for components that re-render often. Prefer refs over state for values that don't need to trigger renders.
 - **Styles:** Always use theme tokens from `useTheme()`. Never hardcode colors.
-- **Mixed JS/TS:** Mostly `.jsx`/`.js`, some `.ts`/`.tsx` for types and utilities
+- **TypeScript policy (adopted 2026-08-19):** new files are written in TS (`.ts`/`.tsx`);
+  existing `.js`/`.jsx` files are converted **on touch** — when you're already making
+  substantive edits to one, not in conversion-only commits. No big-bang rename campaigns.
+  The type homes: `src/types/notes.ts` (note model + app data shapes — the only place
+  `Block`/`Note`/`NoteData` are defined; `NoteData` means the id→note map, matching app
+  vocabulary) and `src/types/global.d.ts` (the `window.electronAPI` surface — a truthful
+  mirror of `electron/preload.js`; **change it in the same commit as any preload change**).
+  `@ts-check` + JSDoc typedefs importing from `types/notes` are the halfway house for
+  hot `.js` files not yet worth converting.
 
 ## Claude Code–specific
 

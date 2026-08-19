@@ -1,5 +1,5 @@
 // @ts-check
-/** @typedef {import("../types.d.ts").SlashCommand} SlashCommand */
+/** @typedef {import("../types/notes").SlashCommand} SlashCommand */
 
 // No demo content — new users start with an empty workspace
 export const FOLDER_TREE = [];
