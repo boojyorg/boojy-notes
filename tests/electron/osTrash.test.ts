@@ -18,6 +18,10 @@ const { getIdIndex, setIndexDir } = await import("../../electron/noteFileManager
 let notesDir: string;
 let indexDir: string;
 
+function makeGuard() {
+  return { suppressUnlink: vi.fn(), releaseUnlink: vi.fn() };
+}
+
 function writeLegacyMetadata(metadata: Record<string, unknown>) {
   const trashDir = path.join(notesDir, ".trash");
   fs.mkdirSync(trashDir, { recursive: true });
@@ -110,6 +114,34 @@ describe("migrateLegacyTrash", () => {
       "unknown.md",
     ]);
   });
+
+  it("ignores OS cruft entirely: not reported, and not allowed to keep .trash alive", async () => {
+    const trashDir = path.join(notesDir, ".trash");
+    writeLegacyMetadata({
+      "note-one": { originalTitle: "Meeting Notes", originalFolder: null, deletedAt: 1 },
+    });
+    fs.writeFileSync(path.join(trashDir, "note-one.md"), "First", "utf-8");
+    fs.writeFileSync(path.join(trashDir, ".DS_Store"), "cruft", "utf-8");
+    fs.writeFileSync(path.join(trashDir, "._note-one.md"), "AppleDouble", "utf-8");
+
+    const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
+    const report = await migrateLegacyTrash(notesDir, trashItem);
+
+    expect(report.migrated).toHaveLength(1);
+    expect(report.untouched).toEqual([]);
+    expect(fs.existsSync(trashDir)).toBe(false);
+  });
+
+  it("does not report OS cruft even when the metadata is missing", async () => {
+    const trashDir = path.join(notesDir, ".trash");
+    fs.mkdirSync(trashDir, { recursive: true });
+    fs.writeFileSync(path.join(trashDir, ".DS_Store"), "cruft", "utf-8");
+    fs.writeFileSync(path.join(trashDir, "unknown.md"), "Unknown", "utf-8");
+
+    const report = await migrateLegacyTrash(notesDir, vi.fn());
+
+    expect(report.untouched.map((item) => path.basename(item.path))).toEqual(["unknown.md"]);
+  });
 });
 
 describe("trashManagedNote", () => {
@@ -122,13 +154,14 @@ describe("trashManagedNote", () => {
     fs.writeFileSync(unsupportedPath, "Unsupported", "utf-8");
     getIdIndex()["note-1"] = path.join("Project", "Note.md");
 
-    const suppressWatcher = vi.fn();
+    const guard = makeGuard();
     const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
-    const result = await trashManagedNote(notesDir, "note-1", suppressWatcher, trashItem);
+    const result = await trashManagedNote(notesDir, "note-1", guard, trashItem);
 
     expect(result).toEqual({ trashed: true });
     expect(trashItem).toHaveBeenCalledWith(notePath);
-    expect(suppressWatcher).toHaveBeenCalledWith(notePath);
+    expect(guard.suppressUnlink).toHaveBeenCalledWith(notePath);
+    expect(guard.releaseUnlink).not.toHaveBeenCalled();
     expect(fs.existsSync(notePath)).toBe(false);
     expect(fs.readFileSync(unsupportedPath, "utf-8")).toBe("Unsupported");
     expect(fs.existsSync(folder)).toBe(true);
@@ -143,26 +176,29 @@ describe("trashManagedNote", () => {
     getIdIndex()["note-1"] = path.join("Empty after deletion", "Note.md");
 
     const trashItem = vi.fn(async (filePath: string) => fs.unlinkSync(filePath));
-    const result = await trashManagedNote(notesDir, "note-1", vi.fn(), trashItem);
+    const result = await trashManagedNote(notesDir, "note-1", makeGuard(), trashItem);
 
     expect(result).toEqual({ trashed: true });
     expect(fs.existsSync(notePath)).toBe(false);
     expect(fs.existsSync(folder)).toBe(true);
   });
 
-  it("leaves the note and index intact when the OS Trash operation fails", async () => {
+  it("leaves the note and index intact — and releases the unlink suppression — when the OS Trash operation fails", async () => {
     const notePath = path.join(notesDir, "Important.md");
     fs.writeFileSync(notePath, "Only copy", "utf-8");
     getIdIndex()["note-1"] = "Important.md";
+    const guard = makeGuard();
 
     await expect(
-      trashManagedNote(notesDir, "note-1", vi.fn(), async () => {
+      trashManagedNote(notesDir, "note-1", guard, async () => {
         throw new Error("Trash unavailable");
       }),
     ).rejects.toThrow("Trash unavailable");
 
     expect(fs.readFileSync(notePath, "utf-8")).toBe("Only copy");
     expect(getIdIndex()["note-1"]).toBe("Important.md");
+    expect(guard.suppressUnlink).toHaveBeenCalledWith(notePath);
+    expect(guard.releaseUnlink).toHaveBeenCalledWith(notePath);
   });
 
   it("refuses to trash an indexed file that is not Markdown", async () => {
@@ -171,11 +207,31 @@ describe("trashManagedNote", () => {
     getIdIndex()["note-1"] = "drawing.canvas";
     const trashItem = vi.fn();
 
-    const result = await trashManagedNote(notesDir, "note-1", vi.fn(), trashItem);
+    const result = await trashManagedNote(notesDir, "note-1", makeGuard(), trashItem);
 
     expect(result).toEqual({ trashed: false });
     expect(trashItem).not.toHaveBeenCalled();
     expect(fs.readFileSync(unsupportedPath, "utf-8")).toBe("Unsupported");
     expect(getIdIndex()["note-1"]).toBe("drawing.canvas");
+  });
+
+  it("reports a never-persisted note as benignly missing, not as a failure", async () => {
+    const trashItem = vi.fn();
+
+    const result = await trashManagedNote(notesDir, "never-written", makeGuard(), trashItem);
+
+    expect(result).toEqual({ trashed: false, missing: true });
+    expect(trashItem).not.toHaveBeenCalled();
+  });
+
+  it("heals a stale index entry whose file is already gone and reports it as missing", async () => {
+    getIdIndex()["note-1"] = "Vanished.md";
+    const trashItem = vi.fn();
+
+    const result = await trashManagedNote(notesDir, "note-1", makeGuard(), trashItem);
+
+    expect(result).toEqual({ trashed: false, missing: true });
+    expect(trashItem).not.toHaveBeenCalled();
+    expect(getIdIndex()["note-1"]).toBeUndefined();
   });
 });

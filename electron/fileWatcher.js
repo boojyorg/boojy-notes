@@ -4,6 +4,13 @@ import { parseNoteFile, saveIndex } from "./noteFileManager.js";
 
 let watcher = null;
 const ignoredPaths = new Set();
+// Unlink suppression is consumed by the event itself, not a fixed timer:
+// shell.trashItem() latency is OS-mediated and unbounded (cloud sync, AV
+// scans), so a timer that expires before the unlink arrives would let our own
+// delete masquerade as an external one. The timeout is only a leak guard for
+// an unlink chokidar never delivers — by then the event is long stale.
+const UNLINK_SUPPRESS_FALLBACK_MS = 60_000;
+const ignoredUnlinks = new Map();
 
 /**
  * Start (or restart) the chokidar file watcher on the notes directory.
@@ -45,6 +52,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   watcher.on("unlink", (filePath) => {
     if (!filePath.endsWith(".md")) return;
+    if (releaseUnlinkSuppression(filePath)) return;
     if (ignoredPaths.has(filePath)) return;
     getMainWindow()?.webContents.send("file-deleted", { filePath });
   });
@@ -59,10 +67,37 @@ function suppressWatcher(filePath) {
 }
 
 /**
+ * Suppress the next `unlink` event for a file we are about to trash ourselves.
+ * Cleared by the event's arrival (or releaseUnlinkSuppression on failure), so
+ * it holds however long the OS trash operation takes.
+ */
+function suppressNextUnlink(filePath) {
+  releaseUnlinkSuppression(filePath);
+  const timer = setTimeout(() => ignoredUnlinks.delete(filePath), UNLINK_SUPPRESS_FALLBACK_MS);
+  if (typeof timer.unref === "function") timer.unref();
+  ignoredUnlinks.set(filePath, timer);
+}
+
+/** Remove a pending unlink suppression. Returns true if one was consumed. */
+function releaseUnlinkSuppression(filePath) {
+  const timer = ignoredUnlinks.get(filePath);
+  if (timer === undefined) return false;
+  clearTimeout(timer);
+  ignoredUnlinks.delete(filePath);
+  return true;
+}
+
+/**
  * Close the file watcher (call on app quit).
  */
 function closeWatcher() {
   if (watcher) watcher.close();
 }
 
-export { startWatcher, suppressWatcher, closeWatcher };
+export {
+  startWatcher,
+  suppressWatcher,
+  suppressNextUnlink,
+  releaseUnlinkSuppression,
+  closeWatcher,
+};

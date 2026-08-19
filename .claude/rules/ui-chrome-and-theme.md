@@ -112,7 +112,11 @@ Things a future change will trip over:
   removes or trashes the physical folder, so unsupported sibling files stay put. The retired private `.trash`
   gets one conservative startup migration: recognized notes are copied under readable,
   collision-safe names before the OS-trash operation, and the legacy source is removed only after
-  that succeeds. Ambiguous/failed contents remain untouched and trigger a native warning.
+  that succeeds. Ambiguous/failed contents remain untouched and trigger a native warning — shown
+  once per distinct problem set (`legacyTrashWarnedSignature` in settings.json), not per launch;
+  OS cruft (`.DS_Store` etc.) is ignored outright. Deleting a note that never reached disk is a
+  benign no-op (`missing: true` from `trash-note`), and the watcher's unlink suppression is
+  event-consumed, not timed, so a slow OS trash move can't fire a spurious `file-deleted`.
 - **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
   `useNoteStats` still computes `charCountNoSpaces` / `readingTime`, which now have no consumer.
 - The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px

@@ -28,7 +28,30 @@ export interface LegacyTrashMigrationReport {
 
 type TrashItem = (filePath: string) => Promise<void>;
 
+/**
+ * Watcher coordination around our own trash moves. `suppressUnlink` must hold
+ * until the resulting unlink event is consumed (not a fixed timer — the OS
+ * trash call's latency is unbounded); `releaseUnlink` undoes it when the trash
+ * operation fails and no unlink is coming.
+ */
+export interface WatcherGuard {
+  suppressUnlink: (filePath: string) => void;
+  releaseUnlink: (filePath: string) => void;
+}
+
 const LEGACY_META_FILE = ".boojy-trash-meta.json";
+
+// Files the OS drops into any browsed folder. Never user content, so they are
+// neither reported as "needs attention" nor allowed to hold `.trash` open.
+function isOsCruft(name: string): boolean {
+  const lower = name.toLowerCase();
+  return (
+    lower === ".ds_store" ||
+    lower === "thumbs.db" ||
+    lower === "desktop.ini" ||
+    name.startsWith("._")
+  );
+}
 
 function legacyTrashDir(notesDir: string): string {
   return path.join(notesDir, ".trash");
@@ -93,6 +116,7 @@ export async function migrateLegacyTrash(
     const hasMetadataFile = entries.some((entry) => entry.name === LEGACY_META_FILE);
     for (const entry of entries) {
       if (entry.name === LEGACY_META_FILE) continue;
+      if (isOsCruft(entry.name)) continue;
       report.untouched.push({
         path: path.join(directory, entry.name),
         reason: "Legacy trash metadata is missing or unreadable",
@@ -115,6 +139,8 @@ export async function migrateLegacyTrash(
 
     for (const entry of entries) {
       if (entry.name === LEGACY_META_FILE) continue;
+
+      if (entry.isFile() && isOsCruft(entry.name)) continue;
 
       const sourcePath = path.join(directory, entry.name);
       if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== ".md") {
@@ -199,14 +225,19 @@ export async function migrateLegacyTrash(
   if (report.migrated.length === 0) return report;
 
   try {
-    const remainingEntries = fs
+    const remainingNames = fs
       .readdirSync(directory)
       .filter((name) => name !== LEGACY_META_FILE && name !== `${LEGACY_META_FILE}.tmp`);
+    const remainingEntries = remainingNames.filter((name) => !isOsCruft(name));
     if (Object.keys(metadata).length === 0 && remainingEntries.length === 0) {
       try {
         fs.unlinkSync(legacyMetaPath(notesDir));
       } catch {
         // An absent metadata file is already the desired final state.
+      }
+      for (const name of remainingNames) {
+        // Only OS cruft can still be here; it must not keep `.trash` alive.
+        fs.rmSync(path.join(directory, name), { force: true });
       }
       fs.rmdirSync(directory);
     } else {
@@ -222,28 +253,50 @@ export async function migrateLegacyTrash(
   return report;
 }
 
-/** Move one indexed Markdown note to the platform Trash/Recycle Bin. */
+/**
+ * Move one indexed Markdown note to the platform Trash/Recycle Bin.
+ *
+ * `missing: true` means there was never a file to trash (the note was deleted
+ * before its first disk write, or the indexed file is already gone) — a benign
+ * no-op the renderer must not report as a failure.
+ */
 export async function trashManagedNote(
   notesDir: string,
   noteId: string,
-  suppressWatcher: (filePath: string) => void,
+  watcherGuard: WatcherGuard,
   trashItem: TrashItem = (filePath) => shell.trashItem(filePath),
-): Promise<{ trashed: boolean }> {
+): Promise<{ trashed: boolean; missing?: boolean }> {
   const idIndex = getIdIndex();
   const relativePath = idIndex[noteId];
-  if (!relativePath) return { trashed: false };
+  if (!relativePath) return { trashed: false, missing: true };
 
   const resolvedNotesDir = path.resolve(notesDir);
   const filePath = path.resolve(notesDir, relativePath);
   if (filePath !== resolvedNotesDir && !filePath.startsWith(`${resolvedNotesDir}${path.sep}`)) {
     return { trashed: false };
   }
-  if (!fs.existsSync(filePath) || path.extname(filePath).toLowerCase() !== ".md") {
+  if (path.extname(filePath).toLowerCase() !== ".md") {
     return { trashed: false };
   }
+  if (!fs.existsSync(filePath)) {
+    // Stale index entry for a file already gone — heal it and report benign.
+    delete idIndex[noteId];
+    try {
+      saveIndex(notesDir);
+    } catch (error) {
+      console.error("Failed to persist the note index after a stale-entry cleanup", error);
+    }
+    return { trashed: false, missing: true };
+  }
 
-  suppressWatcher(filePath);
-  await trashItem(filePath);
+  watcherGuard.suppressUnlink(filePath);
+  try {
+    await trashItem(filePath);
+  } catch (error) {
+    // No unlink event is coming; leave the watcher able to see a real one.
+    watcherGuard.releaseUnlink(filePath);
+    throw error;
+  }
 
   delete idIndex[noteId];
   try {
@@ -257,11 +310,8 @@ export async function trashManagedNote(
   return { trashed: true };
 }
 
-export function registerOSTrashIPC(
-  getNotesDir: () => string,
-  suppressWatcher: (filePath: string) => void,
-) {
+export function registerOSTrashIPC(getNotesDir: () => string, watcherGuard: WatcherGuard) {
   ipcMain.handle("trash-note", (_event, noteId: string) =>
-    trashManagedNote(getNotesDir(), noteId, suppressWatcher),
+    trashManagedNote(getNotesDir(), noteId, watcherGuard),
   );
 }

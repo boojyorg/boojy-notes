@@ -178,7 +178,10 @@ export function useFileSystem(
     for (const noteId of deleted) {
       try {
         const result = await api.trashNote(noteId);
-        if (!result?.trashed) throw new Error("The note file was not found in the Boojy index");
+        // `missing` = the note never reached disk (deleted inside the write
+        // debounce) or its file is already gone — nothing to trash, not a failure.
+        if (!result?.trashed && !result?.missing)
+          throw new Error("The note file could not be moved to the Trash");
       } catch (err) {
         console.error("useFileSystem: OS trash failed", noteId, err);
         onError?.("Failed to move note to the system Trash — the file was left on disk");
@@ -287,11 +290,14 @@ export function useFileSystem(
           const diskNotes = await window.electronAPI.readAllNotes();
           isExternalUpdate.current = true;
           setNoteData((prev) => {
-            const drafts = {};
+            // Disk is the base, but notes that only exist in memory must
+            // survive the rebuild: drafts, and dirty notes whose debounced
+            // write hasn't landed yet (their flush is still scheduled).
+            const unpersisted = {};
             for (const [id, n] of Object.entries(prev)) {
-              if (n._draft) drafts[id] = n;
+              if (n._draft || dirtyNotes.current.has(id)) unpersisted[id] = n;
             }
-            return { ...diskNotes, ...drafts };
+            return { ...diskNotes, ...unpersisted };
           });
           await syncFoldersFromDisk();
         } catch (err) {

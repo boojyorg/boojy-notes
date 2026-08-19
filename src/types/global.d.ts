@@ -51,7 +51,7 @@ declare global {
       writeMeta: (folderRelPath: string, meta: Record<string, unknown>) => Promise<void>;
 
       // Platform Trash / Recycle Bin
-      trashNote: (noteId: string) => Promise<{ trashed: boolean }>;
+      trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;
 
       // File watcher events
       onFileChanged: (callback: (note: Note) => void) => Unsubscribe;

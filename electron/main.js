@@ -4,10 +4,17 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { registerNoteFileIPC } from "./noteFileManager.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
-import { startWatcher, suppressWatcher, closeWatcher } from "./fileWatcher.js";
+import {
+  startWatcher,
+  suppressWatcher,
+  suppressNextUnlink,
+  releaseUnlinkSuppression,
+  closeWatcher,
+} from "./fileWatcher.js";
 import {
   getNotesDir,
   loadSettings,
+  saveSettings,
   setupAutoUpdater,
   registerSettingsIPC,
   checkForUpdatesOnStartup,
@@ -85,7 +92,10 @@ function restartWatcher() {
 }
 
 registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher);
-registerOSTrashIPC(getNotesDir, suppressWatcher);
+registerOSTrashIPC(getNotesDir, {
+  suppressUnlink: suppressNextUnlink,
+  releaseUnlink: releaseUnlinkSuppression,
+});
 registerSettingsIPC(getMainWindow, restartWatcher);
 registerSecureStorageIPC();
 setupAutoUpdater(getMainWindow);
@@ -231,18 +241,27 @@ app.whenReady().then(async () => {
   createWindow();
 
   if (legacyTrashReport.untouched.length > 0) {
-    const examples = legacyTrashReport.untouched
-      .slice(0, 8)
-      .map((item) => `• ${path.basename(item.path)} — ${item.reason}`)
-      .join("\n");
-    const remaining = legacyTrashReport.untouched.length - 8;
     console.warn("Legacy trash items left untouched", legacyTrashReport.untouched);
-    void dialog.showMessageBox(mainWindow, {
-      type: "warning",
-      title: "Some deleted notes need attention",
-      message: "Some previously deleted notes could not be moved to the system Trash.",
-      detail: `${examples}${remaining > 0 ? `\n• …and ${remaining} more` : ""}\n\nNothing listed above was deleted. It remains in:\n${legacyTrashReport.legacyTrashDir}`,
-    });
+    // The untouched set is recomputed on every launch (the files deliberately
+    // stay in place), so warn once per distinct problem set, not per launch.
+    const warnedSignature = JSON.stringify(
+      legacyTrashReport.untouched.map((item) => `${item.path} — ${item.reason}`).sort(),
+    );
+    const settings = loadSettings();
+    if (settings.legacyTrashWarnedSignature !== warnedSignature) {
+      const examples = legacyTrashReport.untouched
+        .slice(0, 8)
+        .map((item) => `• ${path.basename(item.path)} — ${item.reason}`)
+        .join("\n");
+      const remaining = legacyTrashReport.untouched.length - 8;
+      void dialog.showMessageBox(mainWindow, {
+        type: "warning",
+        title: "Some deleted notes need attention",
+        message: "Some previously deleted notes could not be moved to the system Trash.",
+        detail: `${examples}${remaining > 0 ? `\n• …and ${remaining} more` : ""}\n\nNothing listed above was deleted. It remains in:\n${legacyTrashReport.legacyTrashDir}`,
+      });
+      saveSettings({ ...settings, legacyTrashWarnedSignature: warnedSignature });
+    }
   }
 
   // Initialize spell check from saved settings
