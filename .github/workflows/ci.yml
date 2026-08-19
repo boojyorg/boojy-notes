@@ -9,6 +9,7 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v6
@@ -43,8 +44,42 @@ jobs:
       - name: Build
         run: ELECTRON_DISABLE=1 pnpm build
 
-      - name: Install Playwright
-        run: pnpm exec playwright install --with-deps chromium
+      # Playwright install is split in two and each half is retried behind a hard
+      # `timeout`, because `install --with-deps` has twice stalled silently on the
+      # runner (40m on 2026-08-19 in the apt phase, ~19m earlier at the browser
+      # download). A stall must fail fast and retry, never burn the whole job.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Playwright system deps
+        timeout-minutes: 12
+        run: |
+          for attempt in 1 2 3; do
+            timeout -k 10 180 pnpm exec playwright install-deps chromium && exit 0
+            echo "::warning::playwright install-deps attempt $attempt failed or stalled; retrying"
+            # a killed install-deps can leave apt holding its locks, which would
+            # make every retry fail instantly on "could not get lock"
+            sudo pkill -9 -f "apt-get|dpkg" 2>/dev/null || true
+            sudo rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock-frontend 2>/dev/null || true
+            sudo dpkg --configure -a 2>/dev/null || true
+            sleep 10
+          done
+          exit 1
+
+      - name: Install Playwright browser
+        timeout-minutes: 12
+        run: |
+          for attempt in 1 2 3; do
+            timeout -k 10 300 pnpm exec playwright install chromium && exit 0
+            echo "::warning::playwright install chromium attempt $attempt failed or stalled; retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: E2E tests
+        timeout-minutes: 15
         run: pnpm test:e2e

@@ -23,6 +23,18 @@ run on Node 24 via `@v6`; only the project build/test runtime is held at 22. Don
 `node-version` without fixing the Playwright install side first (pin browser deps / split the step).
 A comment is left on the line in CI.
 
+**Node 22 is not immunity — the install stalls anyway, so the step is now split and retried.**
+On 2026-08-19 PR #76 hung **40 minutes** on Node 22, this time in the *apt* half (`Installing
+dependencies…` → four `Ign:` retries against `azure.archive.ubuntu.com` → silence), never reaching
+the browser download; every earlier gate had passed in ~90s. `install --with-deps` is therefore gone:
+CI now caches `~/.cache/ms-playwright`, then runs `playwright install-deps chromium` and `playwright
+install chromium` as two steps, each wrapped in `timeout -k 10` (180s / 300s) inside a 3-attempt
+loop with `timeout-minutes` as an outer backstop. The deps loop also frees apt's locks between
+attempts, since a killed `install-deps` leaves them held and every retry would otherwise die
+instantly on "could not get lock". The job carries `timeout-minutes: 30` — a master run once burned
+**6h1m** before a human noticed. A silent stall must now fail in minutes and retry itself, not sit
+there needing someone to cancel it.
+
 ## CI runs `test:coverage` + E2E, not just `pnpm test`
 
 CI gates in layers (coverage, then Playwright/axe E2E). Coverage thresholds are a floor set just
