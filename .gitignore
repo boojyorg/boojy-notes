@@ -30,16 +30,6 @@ Thumbs.db
 *.swo
 *~
 
-# Flutter / Dart (no source — build artifacts only)
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-*.iml
-ui/
-macos/
-windows/
-
 # Private docs
 docs/private/
 

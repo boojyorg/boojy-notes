@@ -43,16 +43,11 @@ const layoutState = {
   accentColor: "#A4CACE",
   topBarEdge: "B",
   sidebarWidth: 220,
-  rightPanelWidth: 220,
   collapsed: false,
   setCollapsed: vi.fn(),
-  rightPanel: false,
-  setRightPanel: vi.fn(),
   sidebarHandles: { current: [] },
-  rightPanelHandles: { current: [] },
   isDragging: { current: false },
   startDrag: vi.fn(),
-  startRightDrag: vi.fn(),
 };
 
 const actionsState = {
@@ -79,8 +74,6 @@ const settingsState = {
   setSettingsFontSize: vi.fn(),
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
-  settingsTab: "profile",
-  setSettingsTab: vi.fn(),
   user: null,
   profile: null,
 };

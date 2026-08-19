@@ -1,10 +1,10 @@
 import { useDeferredValue, useMemo } from "react";
 import { stripMarkdownFormatting } from "../utils/inlineFormatting";
 
-const EMPTY_STATS = { wordCount: 0, charCount: 0, charCountNoSpaces: 0, readingTime: 1 };
+const EMPTY_STATS = { wordCount: 0, charCount: 0 };
 
 /**
- * Word / character counts and reading-time estimate for a note's blocks.
+ * Word / character counts for a note's blocks.
  * Defers off the latest blocks so heavy typing stays responsive.
  */
 export function useNoteStats(noteBlocks) {
@@ -19,8 +19,6 @@ export function useNoteStats(noteBlocks) {
     return {
       wordCount: wc,
       charCount: plainText.length,
-      charCountNoSpaces: plainText.replace(/\s/g, "").length,
-      readingTime: Math.max(1, Math.ceil(wc / 200)),
     };
   }, [deferredBlocks]);
 }

@@ -102,8 +102,8 @@ may already be partly shipped; confirm against the app before picking one up.)
   25%-opacity (fails contrast). `Sidebar.jsx`, `GlobalStyles.jsx:66`.
 - [ ] Icon-only buttons use `title` not `aria-label` (Help & Settings close buttons).
   `HelpDropdown.jsx`. *(Narrowed: TopBar undo/redo/Help were removed in the minimal-chrome pass;
-  the surviving `EditorChrome` buttons set `aria-label`. `HelpDropdown` itself is parked with
-  zero importers — this item only applies if Help returns.)*
+  the surviving `EditorChrome` buttons set `aria-label`. `HelpDropdown` was deleted 2026-08-19
+  (git history has it) — this item only applies if Help returns, rebuilt.)*
 - [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
   reachable; missing roles + focus traps. SlashMenu `aria-selected` on `menuitem` is also invalid.
 - [ ] Low-contrast theme tokens fail AA: **NIGHT** `TEXT.muted`. `themes.js`.
@@ -112,4 +112,4 @@ may already be partly shipped; confirm against the app before picking one up.)
 - [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
   aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
 - [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.
-  *(ProfileTab is parked with zero importers — only relevant if the sign-in surface returns.)*
+  *(ProfileTab was deleted 2026-08-19 — a rebuilt sign-in surface must not repeat this.)*
