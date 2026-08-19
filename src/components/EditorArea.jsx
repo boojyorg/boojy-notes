@@ -16,6 +16,7 @@ import LinkEditPopover from "./LinkEditPopover";
 import OnboardingHint from "./OnboardingHint";
 import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
+import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import FindBar from "./FindBar";
 
 const EMPTY_FORMATS = {
@@ -902,33 +903,11 @@ const EditorArea = memo(
       return true;
     }
 
-    // Custom comparator: avoid re-render on pure text edits
-    // Compare note by block structure (ids + types), not by reference
+    // Custom comparator: avoid re-render on pure text edits while still
+    // repainting React-owned state such as checkbox checked/unchecked styling.
     const pBlocks = prev.note?.content?.blocks;
     const nBlocks = next.note?.content?.blocks;
-    if (pBlocks !== nBlocks) {
-      if (!pBlocks || !nBlocks || pBlocks.length !== nBlocks.length) return false;
-      for (let i = 0; i < pBlocks.length; i++) {
-        if (
-          pBlocks[i].id !== nBlocks[i].id ||
-          pBlocks[i].type !== nBlocks[i].type ||
-          pBlocks[i].indent !== nBlocks[i].indent
-        )
-          return false;
-        // Code blocks manage their own textarea — must re-render on text/lang changes
-        if (
-          pBlocks[i].type === "code" &&
-          (pBlocks[i].text !== nBlocks[i].text || pBlocks[i].lang !== nBlocks[i].lang)
-        )
-          return false;
-        // Table blocks — must re-render when rows or alignments change
-        if (
-          pBlocks[i].type === "table" &&
-          (pBlocks[i].rows !== nBlocks[i].rows || pBlocks[i].alignments !== nBlocks[i].alignments)
-        )
-          return false;
-      }
-    }
+    if (haveEditorBlockRenderChanges(pBlocks, nBlocks)) return false;
     // Check path changed (folder move / breadcrumb)
     if (prev.note?.path !== next.note?.path) return false;
     const result =
