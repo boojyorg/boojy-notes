@@ -41,8 +41,6 @@ third-party content — these gate confident Vault migration):
 - [ ] Conflict-resolution UI unreachable on desktop — the whole Profile/sync surface is
   unmounted (2026-08-18), so pre-existing conflict notes have no resolution path (P2).
   Resolve as part of whatever sync UI is (re)built when sync returns.
-- [ ] Auth session refresh + billing-profile fetch hit Supabase even with sync off — note data
-  never moves, but "local-only" should mean no cloud traffic (P2). `useAuth.js:28`.
 - [ ] BroadcastChannel receive path applies cross-tab note changes without a `syncEnabled`
   guard (P3). `useSync.js:114`.
 - [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
