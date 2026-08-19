@@ -5,7 +5,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { BreadcrumbChevron } from "./Icons";
+import { CHROME_INSET, CHROME_BTN } from "./EditorChrome";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -18,6 +18,33 @@ import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import FindBar from "./FindBar";
+
+/*
+ * The note name is a FILE LABEL, not the document's heading.
+ *
+ * It reads at label rank — small, muted, medium weight — so it can never
+ * compete with a real Markdown H1 in the body. A note whose file is
+ * `boojy-notes-design-demo-v1.2.md` and whose first block is `# Notes Demo
+ * v1.2` shows both, and they read as file-then-document rather than as two
+ * titles. The filename and the H1 stay independent: editing the heading never
+ * renames the file.
+ *
+ * Vertically it joins the one optical row the app already has. The sidebar
+ * header centres its children at 24px (height CHROME_INSET + CHROME_BTN, 8px
+ * of top padding); EditorChrome pins ··· at CHROME_INSET with a CHROME_BTN-tall
+ * button, centring it at 25px. Putting the label's line-box centre at 25px
+ * lines it up with the wordmark, the toggle and the ···.
+ */
+const LABEL_FONT_SIZE = 13.5;
+const LABEL_LINE_HEIGHT = 1.4;
+const LABEL_ROW_CENTER = CHROME_INSET + CHROME_BTN / 2;
+const LABEL_TOP = Math.round(LABEL_ROW_CENTER - (LABEL_FONT_SIZE * LABEL_LINE_HEIGHT) / 2);
+/** Air between the label row and the first Markdown block. */
+const LABEL_GAP = 26;
+/** Kept clear on the label's right so a long name truncates before the ···. */
+const LABEL_RIGHT_RESERVE = 48;
+/** Negative inset so the hover tint can have padding without moving the text. */
+const LABEL_PAD_X = 5;
 
 const EMPTY_FORMATS = {
   bold: false,
@@ -101,7 +128,7 @@ const EditorArea = memo(
       reReadBlockFromDom,
     } = useEditorContext();
     const { theme } = useTheme();
-    const { TEXT, ACCENT } = theme;
+    const { TEXT, BG } = theme;
     const { accentColor, editorBg, collapsed } = useLayout();
     const { settingsFontSize } = useSettings();
 
@@ -443,7 +470,7 @@ const EditorArea = memo(
           <div
             key={activeNote}
             style={{
-              padding: isMobile ? "12px 20px 80px 20px" : "12px 56px 80px 56px",
+              padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px 56px 80px 56px`,
               maxWidth: isMobile ? "100%" : collapsed ? 840 : 720,
               marginLeft: isMobile ? 0 : 40,
               marginRight: "auto",
@@ -458,43 +485,13 @@ const EditorArea = memo(
             {activeHint && (
               <OnboardingHint hint={activeHint} onDismiss={dismissHint} accentColor={accentColor} />
             )}
-            {/* Breadcrumb */}
-            {note.path && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  marginBottom: 16,
-                  fontSize: 12,
-                  color: TEXT.muted,
-                }}
-              >
-                {note.path.map((seg, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    {i > 0 && <BreadcrumbChevron />}
-                    <span
-                      style={{
-                        color: i < note.path.length - 1 ? TEXT.secondary : TEXT.muted,
-                        cursor: i < note.path.length - 1 ? "pointer" : "default",
-                        transition: "color 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (i < note.path.length - 1) e.target.style.color = ACCENT.primary;
-                      }}
-                      onMouseLeave={(e) => {
-                        if (i < note.path.length - 1) e.target.style.color = TEXT.secondary;
-                      }}
-                    >
-                      {seg}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Title */}
-            <h1
+            {/* File label — see the LABEL_* constants for why it looks like this.
+                The breadcrumb that used to sit above it is gone: it only ever
+                populated for notes created in-session inside a folder (files read
+                from disk carry `folder`, not `path`), so it appeared
+                inconsistently, and a second muted line directly above this one
+                reads as a stack of two labels. Location is the sidebar's job. */}
+            <div
               ref={titleRef}
               contentEditable
               suppressContentEditableWarning
@@ -551,24 +548,44 @@ const EditorArea = memo(
                 e.preventDefault();
                 document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
               }}
+              onFocus={(e) => {
+                // Truncation is a display concern — editing reveals the whole name.
+                e.currentTarget.style.background = BG.surface;
+                e.currentTarget.style.color = TEXT.primary;
+                e.currentTarget.style.textOverflow = "clip";
+                e.currentTarget.style.overflowX = "auto";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = TEXT.muted;
+                e.currentTarget.style.textOverflow = "ellipsis";
+                e.currentTarget.style.overflowX = "hidden";
+              }}
+              onMouseEnter={(e) => {
+                if (document.activeElement === e.currentTarget) return;
+                e.currentTarget.style.background = BG.surface;
+                e.currentTarget.style.color = TEXT.secondary;
+              }}
+              onMouseLeave={(e) => {
+                if (document.activeElement === e.currentTarget) return;
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = TEXT.muted;
+              }}
               style={{
-                fontSize: 28,
-                fontWeight: 700,
-                color: TEXT.primary,
-                margin: "0 0 16px",
-                lineHeight: 1.3,
-                letterSpacing: "-0.4px",
+                fontSize: LABEL_FONT_SIZE,
+                fontWeight: 500,
+                color: TEXT.muted,
+                lineHeight: LABEL_LINE_HEIGHT,
+                margin: `0 ${LABEL_RIGHT_RESERVE}px ${LABEL_GAP}px ${-LABEL_PAD_X}px`,
+                padding: `0 ${LABEL_PAD_X}px`,
+                borderRadius: 4,
                 outline: "none",
                 position: "relative",
-              }}
-            />
-
-            {/* Title separator */}
-            <div
-              style={{
-                height: 1,
-                marginBottom: 20,
-                background: `linear-gradient(90deg, ${accentColor}33, ${accentColor}0D, transparent)`,
+                cursor: "text",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                transition: "background 0.12s, color 0.12s",
               }}
             />
 
