@@ -11,8 +11,15 @@ on the review branch and are not listed here.)
 
 **First-edit mutations** (fine on open; the first edit of an affected note silently rewrites
 third-party content — these gate confident Vault migration):
-- [ ] Tilde-fence (`~~~`) code blocks parse as paragraphs — structure destroyed on save (P1).
-  `markdown.js:189` only matches backtick fences.
+- [ ] Tilde-fence (`~~~`) code blocks parse as paragraphs — **rendering defect, not save damage**
+  (downgraded P1 → P2, verified 2026-08-19). The fence lines and typical content round-trip
+  byte-exact (`tilde-fences.md` passes both preservation-corpus experiments), so saving an
+  unrelated edit does NOT destroy the fence. Real remaining hazards: (a) fence content renders
+  as live rich blocks (headings/lists/checkboxes), so *interacting* with them rewrites code
+  text; (b) fence content matching a normalising construct is rewritten on any save — tables
+  reflow padding/`:---`, `- [X]` lowercases, `[!NOTE]` lowercases, bare `>` gains a space
+  (the same normalisations tracked for those constructs outside fences). Fence matcher:
+  `markdown.js:223` (backtick-only).
 - [ ] Table `:---` explicit-left-align separators normalize to `---` on first edit (P2).
 - [ ] Indented non-list content (HTML embeds, continuation paragraphs) loses leading
   whitespace (P2). Parse loop trims every line; `indent` only attaches to list blocks.
