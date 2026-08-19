@@ -1,5 +1,11 @@
 # Adversarial review — v0.5.0 reliability wave (PRs #37–41)
 
+> ⚠️ **HISTORICAL SNAPSHOT (2026-06-12).** Several findings below concern split-pane/tab code
+> (`PaneContainer`, `useSplitView`, per-pane state) that was **deleted outright** in the
+> 2026-08-18 single-active-note refactor — those findings are closed by removal, not by fixes.
+> The still-open remainder is tracked in `docs/BACKLOG.md`; treat this file as the review
+> record, not a live issue list.
+
 **Date:** 2026-06-12 · **Scope:** merged range `8648d6c..2abc60e` on master
 **Method:** multi-agent adversarial workflow — 10 skeptic reviewers (two attack angles per
 data-safety claim, plus a round-trip counter-example hunter and a full-diff regression sweep),

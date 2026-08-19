@@ -52,7 +52,8 @@ minutes get better or busier?*
 - A feature that demands a permanent sidebar, header control, or panel starts from
   "probably no".
 - Opening a note replaces the current note. Tabs, split view, and workspace machinery
-  are parked — their code may exist, but they earn UI only if simplicity survives.
+  were removed outright (2026-08-18, single-active-note refactor) — the code lives only
+  in git history, and they earn UI again only if simplicity survives the argument.
 
 *Related: `docs/SPEC-markdown-source-of-truth.md` (blocks must round-trip to markdown —
 the other direction of the same contract).*

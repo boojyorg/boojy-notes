@@ -11,8 +11,10 @@ and gotchas.
 ## Tech Stack
 
 - **Frontend:** React 19, Vite 6 (responsive — mobile-browser layout via `useIsMobile`)
-- **Desktop:** Electron 40
-- **Backend:** Supabase (auth + database), Cloudflare R2 (attachments)
+- **Desktop:** Electron 42
+- **Backend (parked):** Supabase (auth + database), Cloudflare R2 (attachments) — desktop is
+  local-only; the sync engine is dormant and the sign-in/Profile UI is unmounted (zero importers)
+  until sync is stable
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
 - **Linting/Formatting:** Biome 2 (single tool for lint + format, `biome.json`), enforced by Husky pre-commit hooks
 - **Package manager:** pnpm (`.npmrc` `node-linker=hoisted` for electron-builder)
@@ -24,14 +26,16 @@ src/
 ├── BoojyNotes.jsx          # Root app component
 ├── main.jsx                # Entry point, provider setup
 ├── components/             # UI components (EditableBlock, EditorArea, Sidebar, EditorChrome, etc.)
-│   ├── blocks/             # Block type components (code, table, callout, image, etc.)
-│   └── settings/           # Settings modal panels
-├── context/                # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay)
-├── hooks/                  # Custom hooks (useSync, useHistory, useFileSystem, etc.)
+│   ├── blocks/             # Media block components (image, file, embed, spacer)
+│   ├── mobile/             # Mobile-browser UI (toolbar, bottom sheet, FAB, more-menu)
+│   └── settings/           # Settings modal sections
+├── context/                # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
+├── hooks/                  # Custom hooks (useActiveNote, useHistory, useFileSystem, etc.)
 │   └── editor/             # Editor-specific hooks (keyboard, paste, drag, slash commands)
-├── services/               # Platform services (nativeAPI, sync, AI)
+├── services/               # Platform services (apiProvider, sync)
+├── lib/                    # Supabase client init
 ├── utils/                  # Utilities (storage, search, domHelpers, inlineFormatting, platform)
-├── constants/              # Themes, colors, z-index, slash commands, data defaults
+├── constants/              # Themes, z-index, slash commands, data defaults
 ├── styles/                 # Shared style objects (buttons, inputs)
 ├── tokens/                 # Design tokens (spacing, radius, typography, shadows)
 └── types/                  # TypeScript type definitions
@@ -54,6 +58,10 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > Every syntax sits at one of four support levels: Native / Compatible / Preserved / Out
 > of scope. Features do not earn permanent UI merely because Boojy can support them.
 
+**For current UI/chrome state, `.claude/rules/*.md` is the authority** — those files are kept
+accurate in the same commits that change the code. When this file and a rules file disagree on
+implementation detail, trust the rules file (and fix the drift here).
+
 - **Editor:** Custom `contentEditable` implementation — not ProseMirror, TipTap, or any editor library. Text is stored as markdown tokens in `block.text` and rendered via `inlineMarkdownToHtml()` → `innerHTML`. Be careful with DOM operations.
 
 > **⚠️ Editor gotchas (these have caused real bugs — read before touching the editor):**
@@ -61,7 +69,13 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > 1. **Don't drive live-updating UI off `block.text`.** Anything that must respond to the current keystroke (e.g. the empty-block placeholder) must read the **DOM**, not state. Use CSS `:empty` / `:has(> br:only-child)` — note an "empty" block holds a `<br>` for the caret, so it is *never* `:empty` on its own. (This caused the placeholder-overlap bug.)
 > 2. **The `syncGen` DOM-resync only fires from React events, not native listeners.** `EditableBlock`'s `useLayoutEffect` re-syncs `innerHTML` from `block.text` when `syncGen` changes — but only if the editor actually re-renders, which it's optimised *not* to do for text edits. Bumping `syncGeneration.current` works from React synthetic-event handlers (input/keydown/paste). It does **not** work from a **native `window` listener** (e.g. a menu's `addEventListener('keydown')`) — React won't re-render, so the effect never runs. To mutate a block from a native listener, write `el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet)` **directly** (the `useInputHandler` pattern), plus `commitNoteData` for state. (This caused the wikilink-insert bug.)
 > When a render/DOM-sync fix "should work" but the DOM doesn't update, **add a `console.log` in the layout effect + handler and observe** before proposing more fixes — don't theorise about React timing.
-- **State:** React Context API (6 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
+- **Navigation — single-active-note (2026-08-18):** there are **no tabs and no split view**;
+  navigation state is one string (`useActiveNote` in `src/hooks/useActiveNote.js`) and opening a
+  note replaces the current one. The old pane/tab components and hooks are *deleted* (git history
+  has them); old persisted `boojy-ui-state` blobs still migrate deterministically in
+  `resolveInitialActiveNote()` — don't "clean up" that read path. Details + revert paths in
+  `.claude/rules/ui-chrome-and-theme.md`.
+- **State:** React Context API (7 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
 - **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`. **`src/constants/themes.js` is the only colour authority** — never hardcode a hex in a component (see `.claude/rules/ui-chrome-and-theme.md` for the surface roles and the remaining known leaks).
 - **Icons:** Lucide (`lucide-react`), wrapped in `src/components/Icons.jsx` so call sites import stable names. **16px** inline / **20px** standalone controls / **stroke 1.5**, all `currentColor`. Don't hand-roll SVG icons.
 - **Desktop/web chrome:** there is no top bar. `TitleBar` (28px, drag region) is desktop-only; the only editor-level controls are the two pinned buttons in `EditorChrome.jsx`. Mobile keeps `TopBarMobile` unchanged.
@@ -89,7 +103,7 @@ See `TESTING.md` for full platform testing docs (desktop, web preview).
 
 - **Unit tests:** `tests/` directory, Vitest + jsdom + @testing-library/react
 - **E2E tests:** Playwright (Chromium only), configured in `playwright.config.js`
-- **Coverage thresholds:** 45% lines, 42% branches, 43% functions, 43% statements — a floor set just below current actuals (CI was red since the v0.2.0 mobile UI overhaul added untested component code). Ratchet UP as presentational code gets covered; never lower to pass.
+- **Coverage thresholds:** set in `vitest.config.js` (currently 47% lines, 43% branches, 45% functions, 45% statements) — a floor set just below current actuals (CI was red since the v0.2.0 mobile UI overhaul added untested component code). Ratchet UP as presentational code gets covered; never lower to pass.
 - **CI runs `test:coverage`, not `test`** — run `pnpm test:coverage` before pushing, or the coverage gate can fail even when `pnpm test` is green.
 - **Before committing:** Always run `pnpm test` and `pnpm format:check` — CI checks both
 - **Pre-commit hooks:** Husky + lint-staged auto-formats and lints staged files. Never skip with `--no-verify`.
@@ -109,7 +123,8 @@ Run `/suite-sync` after releasing to catch any remaining drift.
 
 ## Deployment
 
-- **Web (boojy.org):** Cloudflare Pages auto-deploys on push to `master`. Build: `ELECTRON_DISABLE=1 pnpm build`, serves from `dist/`. **The CF Pages build command must be set to pnpm in the dashboard** (it does not read from the repo).
+- **Web (notes.boojy.org):** Cloudflare Pages auto-deploys on push to `master`. (`boojy.org` is
+  the separate marketing site, `boojy-web` repo.) Build: `ELECTRON_DISABLE=1 pnpm build`, serves from `dist/`. **The CF Pages build command must be set to pnpm in the dashboard** (it does not read from the repo).
 - **macOS + Windows:** GitHub Actions (`release.yml`) triggers on `v*` tag push. Builds Electron installers, uploads to GitHub Release.
 
 Pushing to `master` deploys web; pushing the tag builds desktop installers.
@@ -140,4 +155,5 @@ runs on Claude Code's edits regardless of who wrote the guidance).
   (`.claude/hooks/post-edit-validation.sh`) that runs `biome check --write` → typecheck (`.ts/.tsx`
   only) → `vitest related` after every `.js/.jsx/.ts/.tsx` edit. On failure it prints the error and
   exits non-zero (it does **not** write to any doc). Do not bypass it.
-- `CLAUDE.md` in this repo is a symlink to this file.
+- `CLAUDE.md` in this repo is a one-line pointer telling agents to read this file (a regular
+  file, not a symlink).

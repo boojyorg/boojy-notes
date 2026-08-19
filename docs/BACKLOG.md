@@ -38,8 +38,9 @@ third-party content — these gate confident Vault migration):
 **Sync (before sync is ever re-enabled on desktop):**
 - [ ] Sync pull has no timestamp merge — stale cloud copy can clobber newer local notes (audit;
   **hard blocker** for re-enabling sync).
-- [ ] Conflict-resolution UI unreachable on desktop now that the sync panel hides when the
-  toggle is off — pre-existing conflict notes have no resolution path (P2). `ProfileTab.jsx:779`.
+- [ ] Conflict-resolution UI unreachable on desktop — the whole Profile/sync surface is
+  unmounted (2026-08-18), so pre-existing conflict notes have no resolution path (P2).
+  Resolve as part of whatever sync UI is (re)built when sync returns.
 - [ ] Auth session refresh + billing-profile fetch hit Supabase even with sync off — note data
   never moves, but "local-only" should mean no cloud traffic (P2). `useAuth.js:28`.
 - [ ] BroadcastChannel receive path applies cross-tab note changes without a `syncEnabled`
@@ -52,8 +53,9 @@ per-pane `editedNoteHint` items with them.
 
 ## Refactor / docs
 - [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, then
-  the single-active-note refactor removed the split-view glue (root now ~1,150 lines). Remaining
-  candidates: ghost-note/draft effects, `ProfileTab` (915 lines), `Sidebar` (897 lines).
+  the single-active-note refactor removed the split-view glue (root now ~1,110 lines). Remaining
+  candidates: ghost-note/draft effects, `Sidebar` (1,314 lines — now the largest file: tree +
+  wordmark menu + search results + mobile trash list).
 - [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
 
 ## Bugs / QoL
@@ -100,7 +102,8 @@ may already be partly shipped; confirm against the app before picking one up.)
   25%-opacity (fails contrast). `Sidebar.jsx`, `GlobalStyles.jsx:66`.
 - [ ] Icon-only buttons use `title` not `aria-label` (Help & Settings close buttons).
   `HelpDropdown.jsx`. *(Narrowed: TopBar undo/redo/Help were removed in the minimal-chrome pass;
-  the surviving `EditorChrome` buttons set `aria-label`.)*
+  the surviving `EditorChrome` buttons set `aria-label`. `HelpDropdown` itself is parked with
+  zero importers — this item only applies if Help returns.)*
 - [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
   reachable; missing roles + focus traps. SlashMenu `aria-selected` on `menuitem` is also invalid.
 - [ ] Low-contrast theme tokens fail AA: **NIGHT** `TEXT.muted`. `themes.js`.
@@ -109,3 +112,4 @@ may already be partly shipped; confirm against the app before picking one up.)
 - [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
   aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
 - [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.
+  *(ProfileTab is parked with zero importers — only relevant if the sign-in surface returns.)*

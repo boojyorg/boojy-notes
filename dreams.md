@@ -1,41 +1,24 @@
 # Current target
 
-**Verify and merge two stacked branches: PR #68 (`refactor/single-active-note`), then the
-subtraction pass (`refactor/subtraction-pass`, branched on top of it — local only, no PR yet).**
+**Truthful-repo cleanup, as three small PRs (from the 2026-08-19 read-only audit), then back to
+product work.** The single-active-note stack merged 2026-08-19 (PR #68, PR #69) after a passed
+manual walkthrough.
 
-The navigation simplification is implemented on the PR #68 branch (5 commits: remove split/tab
-entry points → single-active-note state + persistence migration → dead-component cleanup →
-migration tests → docs). The subtraction pass adds 4 code commits + this docs commit: single-pane
-Settings (Profile/Editor/UI-Scale-row gone, sign-in surfaces unmounted), folder chevrons removed,
-Trash → wordmark menu → Recently Deleted modal, shared viewport clamp for the ···/slash menus.
-Unit, coverage and E2E gates are green on both.
+1. **PR 1 — documentation accuracy** (this branch): README rewritten local-first, AGENTS.md
+   drift fixed + single-active-note documented, missing CHANGELOG entry added, PHILOSOPHY's
+   stale "code may exist" line fixed, ROADMAP/BACKLOG factual cleanup, historical banner on the
+   2026-06-12 review.
+2. **PR 2 — verified dead-code sweep**: delete the zero-importer files the audit confirmed
+   (split/pane leftovers, `colors.js`, barrels, orphaned type modules, dead test mocks, stale
+   mock fields, unused icon exports, unused `useNoteStats` fields, Flutter artefacts). Decision
+   pending on the five deliberately parked UI files (leaning: git is the parking lot).
+3. **PR 3 — TypeScript step 0**: make `src/types/global.d.ts` truthfully match the preload API;
+   consolidate the two type homes. Then adopt new-files-in-TS + convert-on-touch; no big-bang
+   conversion.
 
-## What to verify on `pnpm dev`
+## Next, after the cleanup
 
-Single-active-note (PR #68):
-
-1. Open several notes in a row from the sidebar — each replaces the last; sidebar highlight follows.
-2. Cmd-click a wikilink — opens that note full-width. Cmd+Shift+\ does nothing.
-3. Delete the open note — clean empty draft appears (desktop).
-4. Quit and relaunch — the note you were in comes back. (First launch after upgrade: if a split
-   was persisted, you land on the note from its active pane; hidden tabs are gone by design.)
-5. Drag a note from the sidebar onto the editor — it opens, no split zones.
-
-Subtraction pass (`refactor/subtraction-pass`):
-
-6. Click the wordmark — small menu (Recently Deleted… / Settings… / About), not Settings directly.
-7. Settings: one small pane — Appearance, Storage, Updates, quiet version line. No Profile, no
-   sign-in, no spell-check/language, no UI Scale row (Cmd+Plus/Minus/0 still zoom).
-8. Folders: no chevrons; whole row toggles; note titles still line up under folder names.
-9. Delete a note, then wordmark → Recently Deleted — restore it; Delete All still confirms.
-10. Open the ··· menu top-right — it stays fully on-screen; type `/` on the last line of a tall
-    note — the slash menu flips above the line instead of running off the bottom.
-
-## Next, once merged
-
-- Judge the two live experiments: chevron-less folders (hover-chevron is the fallback if
-  expansion proves undiscoverable) and the wordmark menu's prominence.
-- Judge remaining visual-direction decisions (neutral vs accent sidebar selection).
-- Candidate follow-ups now that navigation is one string: **Quick Open**, **back/forward
-  history**, **Recents** (`docs/BACKLOG.md`); Help re-entry point (HelpDropdown is parked with
-  zero importers).
+- Judge the live experiments in daily use: chevron-less folders (hover-chevron is the fallback),
+  wordmark-menu prominence, neutral vs accent sidebar selection.
+- Product follow-ups: **Quick Open**, **back/forward history**, and the **vault-import P1**
+  (tilde-fence blocks destroyed on first edit) — all in `docs/BACKLOG.md`.

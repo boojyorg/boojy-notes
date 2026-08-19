@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Removed
+- **Tabs and split view — one note at a time** — Opening a note now replaces the current one; there is no tab strip and no `Cmd+Shift+\` split. The whole pane/tab layer was deleted, not hidden: navigation state is a single active note, which is what makes the calmer chrome elsewhere in this release possible. Your last-open note is remembered across restarts, and old saved layouts migrate cleanly (if you had a split open, you land on the note from its active pane). Cmd-clicking a wikilink now simply opens that note. Quick Open and back/forward history are the planned follow-ups for fast switching.
+
 ### Improvements
 - **The wordmark opens a small app menu** — Clicking the "Notes" wordmark on desktop now opens a compact menu: Recently Deleted…, Settings…, About. (On the mobile notes list it still opens Settings directly.)
 - **Settings is one small pane** — The navigation sidebar, the Profile/sign-in section, the Editor section (spell check and language) and the UI Scale row are gone, along with the large in-settings logo. What remains: Appearance (theme, font size), plus Storage and Updates on desktop, closed by a quiet version line. Spell check stays on by default (the stored desktop preference still applies); UI scale lives on as the Cmd+Plus / Cmd+Minus / Cmd+0 shortcuts. The web sign-in nudges are gone with the rest of the cloud pitch — no cloud UI ships until the local-first app is stable.
