@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext, useMemo, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
+import { useSidebarFits } from "../hooks/useSidebarFits";
 
 const LayoutContext = createContext(null);
 
@@ -24,6 +25,13 @@ export function LayoutProvider({ children }) {
     setAccentColor(theme.ACCENT.primary);
   }, [theme.BG.dark, theme.BG.editor, theme.ACCENT.primary]);
 
+  /**
+   * Geometry only: is there room for the sidebar beside a usable editor?
+   * Kept strictly separate from `collapsed`, which is what the user asked for
+   * and must never be rewritten by a window resize.
+   */
+  const sidebarFits = useSidebarFits(sidebarWidth);
+
   const sidebarHandles = useRef([]);
 
   const { isDragging, startDrag } = usePanelResize({
@@ -38,6 +46,7 @@ export function LayoutProvider({ children }) {
       setCollapsed,
       sidebarWidth,
       setSidebarWidth,
+      sidebarFits,
       chromeBg,
       setChromeBg,
       editorBg,
@@ -57,6 +66,7 @@ export function LayoutProvider({ children }) {
     [
       collapsed,
       sidebarWidth,
+      sidebarFits,
       chromeBg,
       editorBg,
       accentColor,
