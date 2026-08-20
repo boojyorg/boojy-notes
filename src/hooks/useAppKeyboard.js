@@ -10,6 +10,7 @@ export function useAppKeyboard({
   noteData,
   uiScale,
   settingsOpen,
+  overlayOpen,
   blockDrag,
   sidebarDrag,
   titleRef,
@@ -19,7 +20,8 @@ export function useAppKeyboard({
   redo,
   createNote,
   setSettingsOpen,
-  setCollapsed,
+  revealSidebar,
+  closeOverlay,
   setUiScale,
   cancelBlockDrag,
   cancelSidebarDrag,
@@ -32,6 +34,8 @@ export function useAppKeyboard({
   noteDataRef.current = noteData;
   const uiScaleRef = useRef(uiScale);
   uiScaleRef.current = uiScale;
+  const overlayOpenRef = useRef(overlayOpen);
+  overlayOpenRef.current = overlayOpen;
 
   useEffect(() => {
     const handler = (e) => {
@@ -48,6 +52,15 @@ export function useAppKeyboard({
       if (e.key === "Escape" && settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
+        return;
+      }
+      // Esc dismisses an open overlay sidebar. Ordered after the drags and
+      // Settings, which are more modal than it is, and it is a no-op when the
+      // sidebar is in flow — Esc must never hide a sidebar the user can see
+      // sitting in the layout.
+      if (e.key === "Escape" && overlayOpenRef.current) {
+        e.preventDefault();
+        closeOverlay();
         return;
       }
       const mod = e.ctrlKey || e.metaKey;
@@ -78,7 +91,9 @@ export function useAppKeyboard({
       }
       if (mod && e.key === "p") {
         e.preventDefault();
-        setCollapsed(false);
+        // Reveal, however the sidebar is currently painted — at narrow widths
+        // un-collapsing would leave the search field off-screen.
+        revealSidebar();
         setTimeout(() => searchInputRef.current?.focus(), 250);
         return;
       }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
-import { useLayout } from "./context/LayoutContext";
+import { useLayout, OVERLAY_SCRIMS } from "./context/LayoutContext";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useSync } from "./hooks/useSync";
@@ -92,9 +92,15 @@ export default function BoojyNotes() {
   const { settingsOpen, setSettingsOpen, uiScale, setUiScale, user, profile } = useSettings();
 
   const {
-    collapsed,
-    setCollapsed,
     sidebarWidth,
+    sidebarOverlay,
+    sidebarInFlow,
+    sidebarVisible,
+    overlayOpen,
+    overlayWidth,
+    overlayScrim,
+    closeOverlay,
+    revealSidebar,
     chromeBg,
     editorBg,
     accentColor,
@@ -219,7 +225,19 @@ export default function BoojyNotes() {
   );
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
-  const openNote = setActiveNote;
+  /**
+   * Opening a note dismisses an overlay sidebar — by click or by drag. The
+   * overlay is transient navigation; leaving it up over the note you just asked
+   * for would mean dismissing it by hand every single time. (Revert: drop the
+   * closeOverlay call and openNote goes back to being setActiveNote.)
+   */
+  const openNote = useCallback(
+    (id) => {
+      closeOverlay();
+      setActiveNote(id);
+    },
+    [closeOverlay, setActiveNote],
+  );
   const {
     createNote,
     deleteNote,
@@ -408,6 +426,7 @@ export default function BoojyNotes() {
     noteData,
     uiScale,
     settingsOpen,
+    overlayOpen,
     blockDrag,
     sidebarDrag,
     titleRef,
@@ -416,7 +435,8 @@ export default function BoojyNotes() {
     redo,
     createNote,
     setSettingsOpen,
-    setCollapsed,
+    revealSidebar,
+    closeOverlay,
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
@@ -711,7 +731,10 @@ export default function BoojyNotes() {
       />
 
       {/* === MAIN AREA === */}
-      <div id="main-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div
+        id="main-content"
+        style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}
+      >
         {/* Sidebar wrapper */}
         <div
           style={
@@ -725,16 +748,36 @@ export default function BoojyNotes() {
                   overflow: "hidden",
                   position: "relative",
                 }
-              : {
-                  width: collapsed ? 0 : sidebarWidth,
-                  minWidth: collapsed ? 0 : sidebarWidth,
-                  background: chromeBg,
-                  display: "flex",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                  position: "relative",
-                  transition: "width 0.2s ease, min-width 0.2s ease",
-                }
+              : sidebarOverlay
+                ? {
+                    // Too narrow for both: the same sidebar, painted over the
+                    // editor instead of beside it. Kept mounted while closed so
+                    // drag queries and scroll position survive.
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: overlayWidth,
+                    background: chromeBg,
+                    borderRight: `1px solid ${theme.BG.divider}`,
+                    boxShadow: sidebarVisible ? theme.modalShadow : "none",
+                    display: "flex",
+                    overflow: "hidden",
+                    zIndex: Z.SIDEBAR_OVERLAY,
+                    transform: sidebarVisible ? "translateX(0)" : "translateX(-100%)",
+                    visibility: sidebarVisible ? "visible" : "hidden",
+                    transition: "transform 0.2s ease, visibility 0.2s ease, box-shadow 0.2s ease",
+                  }
+                : {
+                    width: sidebarVisible ? sidebarWidth : 0,
+                    minWidth: sidebarVisible ? sidebarWidth : 0,
+                    background: chromeBg,
+                    display: "flex",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    position: "relative",
+                    transition: "width 0.2s ease, min-width 0.2s ease",
+                  }
           }
         >
           <Sidebar
@@ -759,11 +802,32 @@ export default function BoojyNotes() {
             />
           )}
         </div>
-        {/* Sidebar drag handle — desktop only, and only while the sidebar is open.
-            When collapsed it has nothing to resize, and its 4px fill + 1px border
-            left a hairline strip down the left edge instead of the sidebar fully
-            disappearing. */}
-        {!isMobile && !collapsed && (
+        {/* Scrim behind an open overlay. Starts very subtle on purpose — the
+            sidebar is navigation, not a modal — and is tunable live from the
+            dev tools (Cmd+.). Click-away closes on mousedown so the dismissing
+            press can't also land in the editor. */}
+        {!isMobile && sidebarOverlay && (
+          <div
+            data-testid="sidebar-overlay-scrim"
+            aria-hidden="true"
+            onMouseDown={closeOverlay}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: Z.SIDEBAR_SCRIM,
+              background: OVERLAY_SCRIMS[overlayScrim] ?? OVERLAY_SCRIMS.subtle,
+              opacity: sidebarVisible ? 1 : 0,
+              pointerEvents: sidebarVisible ? "auto" : "none",
+              transition: "opacity 0.2s ease",
+            }}
+          />
+        )}
+        {/* Sidebar drag handle — desktop only, and only while the sidebar is
+            actually in the layout. Hidden when collapsed (its 4px fill + 1px
+            border left a hairline strip down the left edge instead of the
+            sidebar fully disappearing) and hidden in overlay mode, where it
+            would sit over the editor resizing a panel that isn't in flow. */}
+        {!isMobile && sidebarInFlow && (
           <div
             ref={(el) => {
               // Assign null on unmount too, so the hover handlers don't restyle a

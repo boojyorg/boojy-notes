@@ -169,7 +169,7 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, collapsed, sidebarWidth } = useLayout();
+    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth } = useLayout();
     const { settingsFontSize } = useSettings();
 
     // Find bar state
@@ -488,13 +488,15 @@ const EditorArea = memo(
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
     // Width the editor actually has: the viewport less whatever the sidebar and
-    // its handle are occupying. Mobile keeps its own fixed geometry.
-    const editorW = `(100vw - ${collapsed ? 0 : sidebarWidth + SIDEBAR_HANDLE_W}px)`;
+    // its handle are occupying. An overlay sidebar occupies nothing — it's
+    // painted on top — so the editor measures the full viewport underneath it.
+    // Mobile keeps its own fixed geometry.
+    const editorW = `(100vw - ${sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
-    // The toggle is only pinned to the corner while the sidebar is hidden; that
-    // is the only time the label has to step around it.
-    const labelIndent = collapsed
+    // The toggle is only pinned to the corner while the sidebar isn't showing;
+    // that is the only time the label has to step around it.
+    const labelIndent = !sidebarVisible
       ? `max(0px, calc(${LABEL_LEFT_RESERVE}px - ${colPad} - ${colOffset}))`
       : "0px";
 
@@ -522,13 +524,18 @@ const EditorArea = memo(
             key={activeNote}
             style={{
               padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : collapsed ? 840 : 720,
+              maxWidth: isMobile ? "100%" : sidebarInFlow ? 720 : 840,
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
-              transition: "max-width 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
+              // Padding and margin ease too, so crossing the width at which the
+              // sidebar leaves the layout reads as the column breathing out
+              // rather than the page re-laying-out under you. `.sidebar-dragging`
+              // kills all transitions, so dragging the divider stays 1:1.
+              transition:
+                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
               position: "relative",
               zIndex: Z.BASE,
             }}

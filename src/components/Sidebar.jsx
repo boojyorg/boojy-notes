@@ -177,7 +177,7 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   isMobile,
 }) {
-  const { sidebarWidth, accentColor, selectionStyle, setCollapsed } = useLayout();
+  const { sidebarWidth, accentColor, selectionStyle, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -574,7 +574,7 @@ const Sidebar = memo(function Sidebar({
           >
             <img src={boojyWordmark} alt="" style={{ height: 20 }} draggable="false" />
           </button>
-          <ChromeButton onClick={() => setCollapsed(true)} title="Hide sidebar">
+          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
             <SidebarToggleIcon />
           </ChromeButton>
         </div>
