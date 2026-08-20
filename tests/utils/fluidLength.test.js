@@ -1,6 +1,5 @@
-/** @vitest-environment jsdom */
 import { describe, it, expect } from "vitest";
-import { ramp } from "../../src/components/EditorArea";
+import { ramp } from "../../src/utils/fluidLength";
 
 /**
  * The writing column's geometry. These anchors are a judged visual decision,

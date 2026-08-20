@@ -18,6 +18,7 @@ import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import FindBar from "./FindBar";
+import { ramp } from "../utils/fluidLength";
 
 /*
  * The note name is a FILE LABEL, not the document's heading.
@@ -84,18 +85,6 @@ const COL_OFFSET_FROM = 560;
 const COL_OFFSET_TO = 880;
 /** The drag handle between sidebar and editor also eats width. */
 const SIDEBAR_HANDLE_W = 4;
-
-/**
- * A CSS length that ramps linearly between two (editor width, value) anchors
- * and clamps outside them. `editorW` is a parenthesised CSS expression.
- */
-export function ramp(editorW, [w0, v0], [w1, v1]) {
-  const slope = (v1 - v0) / (w1 - w0);
-  const intercept = v0 - slope * w0;
-  const sign = intercept < 0 ? "-" : "+";
-  const [lo, hi] = v0 < v1 ? [v0, v1] : [v1, v0];
-  return `clamp(${lo}px, calc(${editorW} * ${slope} ${sign} ${Math.abs(intercept)}px), ${hi}px)`;
-}
 
 const EMPTY_FORMATS = {
   bold: false,
