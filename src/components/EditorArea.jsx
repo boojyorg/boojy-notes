@@ -43,8 +43,59 @@ const LABEL_TOP = Math.round(LABEL_ROW_CENTER - (LABEL_FONT_SIZE * LABEL_LINE_HE
 const LABEL_GAP = 26;
 /** Kept clear on the label's right so a long name truncates before the ···. */
 const LABEL_RIGHT_RESERVE = 48;
-/** Negative inset so the hover tint can have padding without moving the text. */
+/**
+ * Negative inset so the hover tint can have padding without moving the text.
+ */
 const LABEL_PAD_X = 5;
+/**
+ * Kept clear on the label's LEFT, but only while the panel toggle is pinned to
+ * the viewport corner. At full padding the label starts well clear of it; once
+ * the gutters tighten (see below) the two would collide. Measured to the hover
+ * pill rather than the text, so what you see keeps 8px of air from the toggle.
+ */
+const LABEL_LEFT_RESERVE = CHROME_INSET + CHROME_BTN + 8 + LABEL_PAD_X;
+
+/*
+ * The writing column is fluid, because the window is.
+ *
+ * Width should change how much room the prose has, never what the app is. So
+ * as the window narrows the column gives up its decorative left offset first
+ * and its gutters second — losing them in that order keeps text comfortable
+ * for roughly 200px longer than shrinking both at once would.
+ *
+ * Both ramps are linear between two anchors and clamped at each end. The
+ * offset is fully spent at 560px of editor width, which is exactly the floor
+ * at which the sidebar stops fitting (MIN_EDITOR_WIDTH) — by the time the
+ * sidebar leaves the layout there is no offset left to lose.
+ *
+ * Driven by viewport math rather than container queries on purpose:
+ * `container-type` applies layout containment, which would make the editor
+ * scroller a containing block for its `position: fixed` descendants (the slash
+ * menu, the floating toolbar, the link popovers) and quietly re-anchor them.
+ */
+/** Side gutters: COL_PAD_MIN at COL_PAD_FROM of editor width, MAX at _TO. */
+const COL_PAD_MIN = 24;
+const COL_PAD_MAX = 56;
+const COL_PAD_FROM = 400;
+const COL_PAD_TO = 800;
+/** Decorative left offset: 0 at the editor floor, COL_OFFSET_MAX at _TO. */
+const COL_OFFSET_MAX = 40;
+const COL_OFFSET_FROM = 560;
+const COL_OFFSET_TO = 880;
+/** The drag handle between sidebar and editor also eats width. */
+const SIDEBAR_HANDLE_W = 4;
+
+/**
+ * A CSS length that ramps linearly between two (editor width, value) anchors
+ * and clamps outside them. `editorW` is a parenthesised CSS expression.
+ */
+export function ramp(editorW, [w0, v0], [w1, v1]) {
+  const slope = (v1 - v0) / (w1 - w0);
+  const intercept = v0 - slope * w0;
+  const sign = intercept < 0 ? "-" : "+";
+  const [lo, hi] = v0 < v1 ? [v0, v1] : [v1, v0];
+  return `clamp(${lo}px, calc(${editorW} * ${slope} ${sign} ${Math.abs(intercept)}px), ${hi}px)`;
+}
 
 const EMPTY_FORMATS = {
   bold: false,
@@ -129,7 +180,7 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, collapsed } = useLayout();
+    const { accentColor, editorBg, collapsed, sidebarWidth } = useLayout();
     const { settingsFontSize } = useSettings();
 
     // Find bar state
@@ -447,6 +498,17 @@ const EditorArea = memo(
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
+    // Width the editor actually has: the viewport less whatever the sidebar and
+    // its handle are occupying. Mobile keeps its own fixed geometry.
+    const editorW = `(100vw - ${collapsed ? 0 : sidebarWidth + SIDEBAR_HANDLE_W}px)`;
+    const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
+    const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
+    // The toggle is only pinned to the corner while the sidebar is hidden; that
+    // is the only time the label has to step around it.
+    const labelIndent = collapsed
+      ? `max(0px, calc(${LABEL_LEFT_RESERVE}px - ${colPad} - ${colOffset}))`
+      : "0px";
+
     return (
       <div
         ref={editorScrollRef}
@@ -470,9 +532,9 @@ const EditorArea = memo(
           <div
             key={activeNote}
             style={{
-              padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px 56px 80px 56px`,
+              padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
               maxWidth: isMobile ? "100%" : collapsed ? 840 : 720,
-              marginLeft: isMobile ? 0 : 40,
+              marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
               opacity: editorFadeIn ? 1 : 0,
@@ -576,7 +638,7 @@ const EditorArea = memo(
                 fontWeight: 500,
                 color: TEXT.muted,
                 lineHeight: LABEL_LINE_HEIGHT,
-                margin: `0 ${LABEL_RIGHT_RESERVE}px ${LABEL_GAP}px ${-LABEL_PAD_X}px`,
+                margin: `0 ${LABEL_RIGHT_RESERVE}px ${LABEL_GAP}px calc(${-LABEL_PAD_X}px + ${labelIndent})`,
                 padding: `0 ${LABEL_PAD_X}px`,
                 borderRadius: 4,
                 outline: "none",
