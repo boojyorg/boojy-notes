@@ -59,9 +59,17 @@ dead-code sweep — `themes.js` is the only colour authority.
 ## Icons: Lucide only
 
 `src/components/Icons.jsx` wraps `lucide-react` behind the historic export names, so call sites keep
-`<SearchIcon />`, `<FolderIcon open …/>`, `<FileIcon active …/>` etc. Rules: **16px** inline
-(sidebar rows, menu items), **20px** standalone controls, **stroke 1.5** (Lucide's default 2 reads
-busy at 16px in a writing app), always `currentColor`.
+`<SearchIcon />`, `<FolderIcon open …/>`, `<FileIcon active …/>` etc. Sizes are two-tier (judged
+live 2026-08-19, "icon system C"): **16px** repeated list glyphs (folder rows, search results, menu
+items) and **18px** navigation tier — the New note / Search action glyphs AND the standalone
+controls (panel toggle, editor ···, `ICON_CONTROL`); mobile top-bar controls stay 20px explicitly.
+Stroke is also two-tier: **1.5** for editor/content icons (Lucide's default 2 reads busy at 16px
+among prose) and **2** (`navBase` / `ICON_STROKE_NAV`) for navigation chrome — Search, NewNote,
+NewFolder, Folder, SidebarToggle and MoreHorizontal (···) — the heavier stroke balances nav icons
+against their 14px labels. Control hit boxes are **32px** (`CHROME_BTN`; toggle + ···) and the New
+Folder header button is 28px filling its 28px header. Always `currentColor`. Don't flatten the
+tiers in either direction: rendered line weight is `stroke × size/24`, so equal strokes at equal
+sizes is what keeps the ink uniform.
 
 This replaced 19 hand-rolled SVGs drawn at **seven sizes and six stroke weights** — that
 inconsistency, not the glyph shapes, is what made the UI read as assembled. Don't reintroduce a
@@ -136,8 +144,18 @@ share one button. `CHROME_LEFT_GUTTER` is now unused, kept only for the revert p
 
 ## Sidebar primary actions (Picito row treatment)
 
-`New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, fixed
-32px centred icon column, 8px left / 3px right inset, hover to `BG.hover` with `TEXT.primary` ink.
+`New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, hover
+to `BG.hover` with `TEXT.primary` ink. The whole desktop sidebar sits on a two-column alignment
+system (2026-08-19, "option C"): `SPINE = 12` carries the wordmark, action icons, section header
+labels and folder icons; `TEXT_COL = 34` carries every label — action labels, folder names AND
+root note titles. Action glyphs run 18px in an 18px box with a 4px gap (folder glyphs 16px, 6px gap) — both anchor
+their left edge on the spine so labels stay on TEXT_COL. Root note rows are text-only, so a 22px
+empty gutter sits left of their titles;
+that gutter is deliberate TEXT_COL alignment, not a missing icon — don't "fix" it. Tree rows are
+30px pills (12px radius, 4px side insets, 2px rhythm gap) with neutral `BG.hover` for hover,
+selection and multi-select alike; the active note is weight + `TEXT.primary` ink, never accent. On
+desktop this supersedes the `selectionStyle` A/B accent tints (mobile still uses them). Section
+headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row ink.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
 (note rows) still uses the older tree grammar, so the two grammars coexist.

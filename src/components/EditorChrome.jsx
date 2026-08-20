@@ -20,7 +20,7 @@ import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
  */
 
 export const CHROME_INSET = 10;
-export const CHROME_BTN = 30;
+export const CHROME_BTN = 32;
 /**
  * Left gutter the sidebar header used to reserve for the pinned toggle.
  * Unused while the toggle lives in the sidebar header; kept for the revert path.

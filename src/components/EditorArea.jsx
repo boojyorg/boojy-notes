@@ -30,9 +30,9 @@ import FindBar from "./FindBar";
  * renames the file.
  *
  * Vertically it joins the one optical row the app already has. The sidebar
- * header centres its children at 24px (height CHROME_INSET + CHROME_BTN, 8px
+ * header centres its children at 25px (height CHROME_INSET + CHROME_BTN, 8px
  * of top padding); EditorChrome pins ··· at CHROME_INSET with a CHROME_BTN-tall
- * button, centring it at 25px. Putting the label's line-box centre at 25px
+ * button, centring it at 26px. Putting the label's line-box centre at 26px
  * lines it up with the wordmark, the toggle and the ···.
  */
 const LABEL_FONT_SIZE = 13.5;
