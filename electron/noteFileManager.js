@@ -188,6 +188,12 @@ function parseNoteFile(filePath, notesDir) {
       folder,
       content,
       words,
+      // File mtime, which is what makes "Most recent" mean anything on a vault
+      // whose notes all predate Boojy's own last-opened timestamps — and what
+      // lets an edit made in another app count as recent activity. Declared in
+      // types/notes.ts and read by search.js as a tiebreak since long before
+      // anything populated it. One extra stat on a file already being read.
+      lastModified: Math.round(fs.statSync(filePath).mtimeMs),
       _filePath: filePath,
     };
   } catch {

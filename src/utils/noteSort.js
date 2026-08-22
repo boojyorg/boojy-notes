@@ -7,10 +7,13 @@
  * *location*, sort decides *display order* — the manual `noteOrder`/`folderOrder`
  * metadata that used to compete with it is gone.
  *
- * "Most recent" means last opened *in Boojy*, not last modified on disk: nothing
- * currently populates a file mtime (`Note.lastModified` is declared but never
- * written), and stamping the file on open would corrupt the very timestamp a
- * future modified-based sort would want.
+ * "Most recent" means **last touched**: the later of when you last opened the
+ * note in Boojy and when its file was last modified. Neither half is sufficient
+ * on its own. Opening never writes to disk, so mtime alone would ignore reading;
+ * and last-opened alone starts empty on an existing vault, which made the two
+ * sort modes produce identical lists until you had clicked around — the control
+ * looked broken on day one. mtime is what gives a vault meaningful order
+ * immediately, and it is the only half that can see an edit made in another app.
  */
 
 import { naturalCompare } from "./sidebarTree";
@@ -44,12 +47,26 @@ export function sortModeLabel(mode) {
 }
 
 /**
+ * The moment a note was last touched: opened here, or written to on disk,
+ * whichever is later. Both are epoch ms, so they compare directly. 0 means the
+ * app knows nothing about it — a web note (no filesystem, so no mtime) or one
+ * whose file has since vanished — and those sort alphabetically at the back
+ * rather than pretending to be ancient.
+ *
+ * @param {string} id
+ * @param {NoteData} noteData
+ * @param {Record<string, number>} lastOpened
+ * @returns {number}
+ */
+export function recencyOf(id, noteData, lastOpened) {
+  return Math.max(lastOpened[id] || 0, noteData[id]?.lastModified || 0);
+}
+
+/**
  * Build the comparator for a note-id list.
  *
- * Recency runs newest-opened first, then every never-opened note alphabetically
- * behind them. That tail is what makes the first launch after this change look
- * like a clean A→Z list rather than raw membership order — no migration, no
- * invented timestamps.
+ * Recency runs most-recently-touched first, then anything with no timestamp at
+ * all alphabetically behind them.
  *
  * @param {SortMode} mode
  * @param {NoteData} noteData
@@ -66,8 +83,8 @@ export function compareNotes(mode, noteData, lastOpened) {
   if (mode === SORT_ALPHA) return byTitle;
 
   return (a, b) => {
-    const ta = lastOpened[a] || 0;
-    const tb = lastOpened[b] || 0;
+    const ta = recencyOf(a, noteData, lastOpened);
+    const tb = recencyOf(b, noteData, lastOpened);
     if (ta && tb) return tb - ta || byTitle(a, b);
     if (ta) return -1;
     if (tb) return 1;

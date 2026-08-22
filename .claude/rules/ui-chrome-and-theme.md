@@ -195,17 +195,30 @@ alike. `Most recent` (Clock3) / `Alphabetical` (ArrowDownAZ), global, persisted 
 active mode, and the menu (`SortMenu.jsx`, positioned via `useMenuPosition` like every other
 popover) ticks it.
 
-**"Most recent" is last *opened*, not last modified, and that is not a preference — it is the only
-recency signal the app has.** `Note.lastModified` is declared in `types/notes.ts` and read by
-`search.js` as a tiebreak, but **nothing populates it**: `parseNoteFile` never stats the file, so
-that tiebreak has always compared 0 to 0. Adding mtime is a genuine (small) feature, not a
-one-liner, and stamping a file on open would corrupt the very timestamp it would want.
+**"Most recent" is last *touched*: `max(last opened here, file mtime)`** — `recencyOf()` in
+`utils/noteSort.js`. Neither half works alone, and the reason is worth keeping. Opening a note never
+writes to disk, so mtime alone can't see reading. And last-opened alone starts *empty* on any
+existing vault, which meant "Most recent" and "Alphabetical" produced identical lists until you had
+clicked around — judged live 2026-08-22, and it reads as a broken control, not as a quiet default.
+mtime is what gives a vault meaningful order on first launch, and it is the only half that can see
+an edit made in another app.
 
-Timestamps live in `boojy-note-opened` (localStorage), never in the user's files. Consequences worth
-knowing: recency is per-machine, and a vault opened elsewhere regenerates note IDs, so it starts
-over. Notes with no timestamp sort **alphabetically behind** the ones that have one, which is why
-the first launch after this shipped reads as a clean A→Z list instead of raw membership order — no
-migration was needed or written.
+`parseNoteFile` populates `lastModified` (one `statSync` on a file it is already reading). Until
+2026-08-22 that field was a **phantom**: declared in `types/notes.ts` and read by `search.js` as a
+score tiebreak, but never written by anything, so that comparison was always 0 against 0. Populating
+it fixed search's tiebreak as a side effect. **Web has no filesystem and therefore no mtime**, so
+web notes still rely on last-opened alone.
+
+Last-opened lives in `boojy-note-opened` (localStorage), never in the user's files — stamping a file
+on open would corrupt the very mtime the sort depends on. Consequences worth knowing: that half is
+per-machine, and a vault opened elsewhere regenerates note IDs, so it starts over — but mtime
+carries the order in the meantime, so a moved vault no longer looks unsorted. Notes with **neither**
+timestamp sort alphabetically at the back.
+
+A pure `touch` with no content change does *not* refresh the order: `onFileChanged` in
+`useFileSystem.js` bails early when blocks, title and folder all match, which is deliberate
+anti-churn. Boojy's own writes don't refresh it either, and don't need to — the note you are editing
+was stamped by `openNote` when you opened it, and disk mtime catches up on the next load.
 
 `useNoteSort` prunes the map against the live note store when it writes, rather than hooking the
 delete paths: one rule covers deletions, files removed outside Boojy, and regenerated IDs. **The

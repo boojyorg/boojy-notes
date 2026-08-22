@@ -28,6 +28,50 @@ afterEach(() => {
   fs.rmSync(indexDir, { recursive: true, force: true });
 });
 
+describe("readAllNotes — file mtime", () => {
+  // Without this, `Note.lastModified` stays the phantom it was for months:
+  // declared in the types, read by search.js as a tiebreak, never written. It
+  // is what gives "Most recent" meaningful order on a vault Boojy has never
+  // opened before, and what lets an edit made in another app count as recent.
+  it("stamps each note with its file's modified time", () => {
+    const filePath = path.join(notesDir, "Note.md");
+    fs.writeFileSync(filePath, "# Hi", "utf-8");
+    const mtime = Math.round(fs.statSync(filePath).mtimeMs);
+
+    const note = Object.values(readAllNotes(notesDir))[0];
+
+    expect(note.lastModified).toBe(mtime);
+  });
+
+  it("orders older and newer files apart", () => {
+    const older = path.join(notesDir, "Older.md");
+    const newer = path.join(notesDir, "Newer.md");
+    fs.writeFileSync(older, "old", "utf-8");
+    fs.writeFileSync(newer, "new", "utf-8");
+    // Set explicit mtimes so the assertion can't depend on filesystem timing.
+    fs.utimesSync(older, new Date(1_600_000_000_000), new Date(1_600_000_000_000));
+    fs.utimesSync(newer, new Date(1_700_000_000_000), new Date(1_700_000_000_000));
+
+    const byTitle = Object.fromEntries(
+      Object.values(readAllNotes(notesDir)).map((n) => [n.title, n.lastModified]),
+    );
+
+    expect(byTitle.Newer).toBeGreaterThan(byTitle.Older);
+    expect(byTitle.Older).toBe(1_600_000_000_000);
+  });
+
+  it("still reports a time for a file it only read, never wrote", () => {
+    const filePath = path.join(notesDir, "Untouched.md");
+    fs.writeFileSync(filePath, "---\ntags: [x]\n---\nbody", "utf-8");
+    const before = fs.statSync(filePath).mtimeMs;
+
+    const note = Object.values(readAllNotes(notesDir))[0];
+
+    expect(note.lastModified).toBeGreaterThan(0);
+    expect(fs.statSync(filePath).mtimeMs).toBe(before);
+  });
+});
+
 describe("readAllNotes — reading never modifies files on disk", () => {
   it("leaves a file with third-party (Obsidian-style) frontmatter byte-identical", () => {
     const md =
