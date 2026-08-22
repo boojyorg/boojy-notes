@@ -13,7 +13,6 @@ export function useNoteCrud({
   setExpanded,
   titleRef,
   setRenamingFolder,
-  setSidebarOrder,
 }) {
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
@@ -53,24 +52,6 @@ export function useNoteCrud({
     // Deleting the open note falls back to null — the draft-note flow (desktop)
     // or the sidebar (mobile) takes over.
     if (activeNote === noteId) setActiveNote(null);
-
-    // Clean note from folder's noteOrder in sidebarOrder
-    const folderKey = note.folder || "";
-    setSidebarOrder((prev) => {
-      const entry = prev[folderKey];
-      if (!entry?.noteOrder?.includes(noteId)) return prev;
-      const updated = {
-        ...prev,
-        [folderKey]: {
-          ...entry,
-          noteOrder: entry.noteOrder.filter((id) => id !== noteId),
-        },
-      };
-      if (isNative && getAPI()?.writeMeta) {
-        getAPI().writeMeta(folderKey, updated[folderKey]);
-      }
-      return updated;
-    });
   };
 
   const duplicateNote = (noteId) => {
@@ -139,32 +120,6 @@ export function useNoteCrud({
     setCustomFolders((prev) =>
       prev.filter((f) => f !== folderPath && !f.startsWith(folderPath + "/")),
     );
-
-    // Clean sidebarOrder: remove folder's own entry, all subfolder entries,
-    // and remove it from parent's folderOrder
-    setSidebarOrder((prev) => {
-      const next = { ...prev };
-      // Remove the folder itself and all subfolders
-      for (const key of Object.keys(next)) {
-        if (key === folderPath || key.startsWith(folderPath + "/")) {
-          delete next[key];
-        }
-      }
-      // Remove from parent's folderOrder
-      const parts = folderPath.split("/");
-      const folderName = parts.pop();
-      const parentPath = parts.join("/") || "";
-      if (next[parentPath]?.folderOrder) {
-        next[parentPath] = {
-          ...next[parentPath],
-          folderOrder: next[parentPath].folderOrder.filter((f) => f !== folderName),
-        };
-        if (isNative && getAPI()?.writeMeta) {
-          getAPI().writeMeta(parentPath, next[parentPath]);
-        }
-      }
-      return next;
-    });
   };
 
   const createFolder = () => {

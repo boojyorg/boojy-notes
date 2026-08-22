@@ -32,14 +32,7 @@ function blocksEqual(a, b) {
   return true;
 }
 
-export function useFileSystem(
-  noteData,
-  setNoteData,
-  setCustomFolders,
-  syncGeneration,
-  setSidebarOrder,
-  onError,
-) {
+export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, onError) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
 
@@ -248,35 +241,6 @@ export function useFileSystem(
             return prev;
           return filtered;
         });
-
-        // Clean sidebarOrder: remove entries for folders that no longer exist
-        if (setSidebarOrder) {
-          setSidebarOrder((prev) => {
-            const next = { ...prev };
-            let changed = false;
-            for (const key of Object.keys(next)) {
-              if (key === "") continue; // root always valid
-              if (!diskFolders.has(key)) {
-                delete next[key];
-                changed = true;
-              }
-            }
-            // Clean folderOrder arrays in remaining entries
-            for (const [key, meta] of Object.entries(next)) {
-              if (meta.folderOrder) {
-                const validChildren = meta.folderOrder.filter((name) => {
-                  const childPath = key ? key + "/" + name : name;
-                  return diskFolders.has(childPath);
-                });
-                if (validChildren.length !== meta.folderOrder.length) {
-                  next[key] = { ...meta, folderOrder: validChildren };
-                  changed = true;
-                }
-              }
-            }
-            return changed ? next : prev;
-          });
-        }
       } catch (err) {
         console.error("useFileSystem: folder sync failed", err);
         onError?.("Failed to sync folders from disk");
@@ -310,8 +274,8 @@ export function useFileSystem(
       unsubChange();
       unsubDelete();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/setSidebarOrder/syncGeneration are stable refs/setters
-  }, [setNoteData, setCustomFolders, setSidebarOrder, syncGeneration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
+  }, [setNoteData, setCustomFolders, syncGeneration]);
 
   // Cleanup timer
   useEffect(() => {

@@ -85,10 +85,14 @@ const SECTION_CONTENT_GAP = 4;
  * `role="presentation"` keeps it out of the surrounding tree's item list — the
  * text still reads, it just isn't announced as a row.
  */
-function SectionHeader({ label, TEXT, first, children }) {
+function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
     <div
       role="presentation"
+      // `Notes` doubles as the visible root drop target during a note drag:
+      // drop on a folder → into that folder, drop on Notes → back to root.
+      // useSidebarDrag finds it by this attribute and paints it neutrally.
+      {...(dropRoot ? { "data-drop-root": "true" } : {})}
       style={{
         display: "flex",
         alignItems: "center",
@@ -377,7 +381,10 @@ const Sidebar = memo(function Sidebar({
               and indented children carry the state. aria-expanded still announces
               it. (Reversible experiment: restore the chevron + placeholder span
               here and the chevron allowance in renderNote's left padding.) */}
-          <FolderIcon open={isOpen} color={accentColor} size={isMobile ? 20 : undefined} />
+          {/* LIVE EXPERIMENT (uncommitted): no color prop, so the glyph inherits the
+              row's currentColor like every other nav icon, instead of the accent.
+              Revert = restore color={accentColor}. */}
+          <FolderIcon open={isOpen} size={isMobile ? 20 : undefined} />
           {renamingFolder === folderPath ? (
             <input
               autoFocus
@@ -1067,7 +1074,7 @@ const Sidebar = memo(function Sidebar({
                 )}
                 {fNotes.length > 0 && (
                   <>
-                    <SectionHeader label="Notes" TEXT={TEXT} />
+                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot />
                     <div role="tree" aria-label="Notes">
                       {fNotes.map((nId) => renderNote(nId, 0))}
                     </div>

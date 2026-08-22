@@ -109,7 +109,6 @@ vi.mock("../../src/context/SidebarContext", () => ({
     getActiveResult: () => null,
     customFolders: [],
     setCustomFolders: vi.fn(),
-    sidebarOrder: {},
     setSidebarOrder: vi.fn(),
     folderList: [],
   }),

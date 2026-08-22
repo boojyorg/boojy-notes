@@ -1,35 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortByOrder, buildTree, collectPaths, filterTree } from "../../src/utils/sidebarTree.js";
-
-// --- sortByOrder ---
-
-describe("sortByOrder", () => {
-  it("returns items unchanged when no order", () => {
-    const items = [{ n: "b" }, { n: "a" }];
-    expect(sortByOrder(items, null, (x) => x.n)).toEqual(items);
-    expect(sortByOrder(items, [], (x) => x.n)).toEqual(items);
-  });
-
-  it("sorts by given order", () => {
-    const items = [{ n: "c" }, { n: "a" }, { n: "b" }];
-    const result = sortByOrder(items, ["a", "b", "c"], (x) => x.n);
-    expect(result.map((x) => x.n)).toEqual(["a", "b", "c"]);
-  });
-
-  it("puts unordered items after ordered ones", () => {
-    const items = [{ n: "z" }, { n: "a" }];
-    const result = sortByOrder(items, ["a"], (x) => x.n);
-    expect(result[0].n).toBe("a");
-    expect(result[1].n).toBe("z");
-  });
-
-  it("does not mutate original array", () => {
-    const items = [{ n: "b" }, { n: "a" }];
-    const original = [...items];
-    sortByOrder(items, ["a", "b"], (x) => x.n);
-    expect(items).toEqual(original);
-  });
-});
+import { buildTree, collectPaths, filterTree } from "../../src/utils/sidebarTree.js";
 
 // --- buildTree ---
 
@@ -37,7 +7,7 @@ describe("buildTree", () => {
   it("builds flat tree", () => {
     const nodes = [{ name: "Work" }, { name: "Personal" }];
     const folderNoteMap = { Work: ["n1", "n2"], Personal: ["n3"] };
-    const tree = buildTree(nodes, folderNoteMap, {});
+    const tree = buildTree(nodes, folderNoteMap);
     expect(tree).toHaveLength(2);
     expect(tree[0].name).toBe("Work");
     expect(tree[0].notes).toEqual(["n1", "n2"]);
@@ -47,23 +17,29 @@ describe("buildTree", () => {
   it("builds nested tree", () => {
     const nodes = [{ name: "Work", children: [{ name: "Projects" }] }];
     const folderNoteMap = { Work: ["n1"], "Work/Projects": ["n2"] };
-    const tree = buildTree(nodes, folderNoteMap, {});
+    const tree = buildTree(nodes, folderNoteMap);
     expect(tree[0].children).toHaveLength(1);
     expect(tree[0].children[0].name).toBe("Projects");
     expect(tree[0].children[0].notes).toEqual(["n2"]);
   });
 
   it("returns empty notes for missing folder", () => {
-    const tree = buildTree([{ name: "Empty" }], {}, {});
+    const tree = buildTree([{ name: "Empty" }], {});
     expect(tree[0].notes).toEqual([]);
   });
 
-  it("applies sidebar order to notes", () => {
+  it("leaves note order to the caller — there is no manual ordering", () => {
     const nodes = [{ name: "Work" }];
-    const folderNoteMap = { Work: ["n2", "n1", "n3"] };
-    const sidebarOrder = { Work: { noteOrder: ["n1", "n2", "n3"] } };
-    const tree = buildTree(nodes, folderNoteMap, sidebarOrder);
-    expect(tree[0].notes).toEqual(["n1", "n2", "n3"]);
+    const tree = buildTree(nodes, { Work: ["n2", "n1", "n3"] });
+    expect(tree[0].notes).toEqual(["n2", "n1", "n3"]);
+  });
+
+  it("sorts child folders natural-alphabetically, always", () => {
+    const nodes = [
+      { name: "Work", children: [{ name: "Week 10" }, { name: "Week 2" }, { name: "alpha" }] },
+    ];
+    const tree = buildTree(nodes, {});
+    expect(tree[0].children.map((c) => c.name)).toEqual(["alpha", "Week 2", "Week 10"]);
   });
 });
 

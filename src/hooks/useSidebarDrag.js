@@ -7,10 +7,6 @@ import { runAutoScroll } from "../utils/domHelpers";
 export function useSidebarDrag({
   noteDataRef,
   setNoteData,
-  expanded,
-  setExpanded,
-  sidebarOrder,
-  setSidebarOrder,
   customFolders: _customFolders,
   sidebarScrollRef,
   accentColor,
@@ -32,24 +28,9 @@ export function useSidebarDrag({
     startX: 0,
     startY: 0,
     dropTarget: null,
-    dropIndicator: null,
-    autoExpandTimer: null,
     scrollRAF: null,
     originalFolder: null,
   });
-
-  const persistSidebarOrder = (folderPath, noteIds, folderIds) => {
-    const meta = {};
-    if (noteIds) meta.noteOrder = noteIds;
-    if (folderIds) meta.folderOrder = folderIds;
-    setSidebarOrder((prev) => ({
-      ...prev,
-      [folderPath]: { ...(prev[folderPath] || {}), ...meta },
-    }));
-    if (isNative && getAPI()?.writeMeta) {
-      getAPI().writeMeta(folderPath, { ...(sidebarOrder[folderPath] || {}), ...meta });
-    }
-  };
 
   const activateSidebarDrag = (type, id, el, pointerY) => {
     const sd = sidebarDrag.current;
@@ -148,20 +129,6 @@ export function useSidebarDrag({
       sd.originalFolder = noteDataRef.current[id]?.folder || null;
     }
 
-    const indicator = document.createElement("div");
-    Object.assign(indicator.style, {
-      position: "fixed",
-      height: "2px",
-      background: accentColor,
-      borderRadius: "1px",
-      zIndex: "999",
-      pointerEvents: "none",
-      display: "none",
-      transition: "top 50ms ease, left 50ms ease",
-    });
-    document.body.appendChild(indicator);
-    sd.dropIndicator = indicator;
-
     // Escape handler to cancel drag
     const escHandler = (e) => {
       if (e.key === "Escape") {
@@ -186,6 +153,22 @@ export function useSidebarDrag({
     };
   };
 
+  // Drop feedback is neutral by rule — the accent is identity, not a surface.
+  // A row/header fills to BG.hover (the same tone selection uses) with a 1px
+  // muted ring so the target reads as chosen rather than merely hovered.
+  const paintDropTarget = (el) => {
+    el.style.background = theme.BG.hover;
+    el.style.boxShadow = `inset 0 0 0 1px ${theme.TEXT.muted}`;
+  };
+
+  const clearDropHighlights = (scrollEl) => {
+    if (!scrollEl) return;
+    scrollEl.querySelectorAll("[data-folder-path], [data-drop-root]").forEach((el) => {
+      el.style.background = "";
+      el.style.boxShadow = "";
+    });
+  };
+
   const updateSidebarDropTarget = (pointerX, pointerY) => {
     const sd = sidebarDrag.current;
     if (!sd.active) return;
@@ -199,10 +182,7 @@ export function useSidebarDrag({
       pointerY < scrollRect.top ||
       pointerY > scrollRect.bottom
     ) {
-      if (sd.dropIndicator) sd.dropIndicator.style.display = "none";
-      scrollEl
-        .querySelectorAll("[data-folder-path]")
-        .forEach((el) => (el.style.background = "none"));
+      clearDropHighlights(scrollEl);
 
       // Dropping a note anywhere over the editor opens it
       if (sd.type === "note" && openNote) {
@@ -225,81 +205,44 @@ export function useSidebarDrag({
       return;
     }
 
+    // Containers only. A folder row means "move into this folder" across its whole
+    // height, and the Notes section (plus the empty space under the trees) means
+    // "move to root". There are no above/below insertion zones any more: drag
+    // changes a note's location, the sort preference decides display order.
     let target = null;
-    const noteEls = scrollEl.querySelectorAll("[data-note-id]");
     const folderEls = scrollEl.querySelectorAll("[data-folder-path]");
 
-    folderEls.forEach((el) => (el.style.background = "none"));
+    clearDropHighlights(scrollEl);
 
     for (const el of folderEls) {
       const rect = el.getBoundingClientRect();
       if (pointerY >= rect.top && pointerY <= rect.bottom) {
-        const folderPath = el.dataset.folderPath;
-        if (sd.type === "folder" && (folderPath === sd.id || folderPath.startsWith(sd.id + "/")))
-          continue;
-        const third = rect.height / 3;
-        if (pointerY < rect.top + third) {
-          target = { type: "folder", id: folderPath, zone: "above", rect };
-        } else if (pointerY > rect.bottom - third) {
-          target = { type: "folder", id: folderPath, zone: "below", rect };
-        } else {
-          target = { type: "folder", id: folderPath, zone: "into", rect };
-        }
+        target = { type: "folder", id: el.dataset.folderPath, el };
         break;
       }
     }
+
     if (!target) {
-      for (const el of noteEls) {
-        const rect = el.getBoundingClientRect();
+      // Explicit root target: the `Notes` section header.
+      const rootEl = scrollEl.querySelector("[data-drop-root]");
+      if (rootEl) {
+        const rect = rootEl.getBoundingClientRect();
         if (pointerY >= rect.top && pointerY <= rect.bottom) {
-          const noteId = el.dataset.noteId;
-          if (noteId === sd.id) continue;
-          const half = rect.height / 2;
-          target = {
-            type: "note",
-            id: noteId,
-            zone: pointerY < rect.top + half ? "above" : "below",
-            rect,
-          };
-          break;
+          target = { type: "root", el: rootEl };
         }
       }
+    }
+
+    if (!target) {
+      // Implicit root target: anywhere in the scroller that isn't a folder row —
+      // a root note row, or the empty space below every tree. Highlighting the
+      // `Notes` header (when there is one) is what makes this legible.
+      const rootEl = scrollEl.querySelector("[data-drop-root]");
+      target = { type: "root", el: rootEl || null };
     }
 
     sd.dropTarget = target;
-
-    if (!target) {
-      if (sd.dropIndicator) sd.dropIndicator.style.display = "none";
-      return;
-    }
-
-    if (target.zone === "into") {
-      const folderEl = scrollEl.querySelector(`[data-folder-path="${target.id}"]`);
-      if (folderEl) folderEl.style.background = `${accentColor}25`;
-      if (sd.dropIndicator) sd.dropIndicator.style.display = "none";
-      if (!expanded[target.id]) {
-        if (!sd.autoExpandTimer) {
-          sd.autoExpandTimer = setTimeout(() => {
-            setExpanded((prev) => ({ ...prev, [target.id]: true }));
-            sd.autoExpandTimer = null;
-          }, 500);
-        }
-      }
-    } else {
-      if (sd.autoExpandTimer) {
-        clearTimeout(sd.autoExpandTimer);
-        sd.autoExpandTimer = null;
-      }
-      const lineY = target.zone === "above" ? target.rect.top : target.rect.bottom;
-      if (sd.dropIndicator) {
-        Object.assign(sd.dropIndicator.style, {
-          display: "block",
-          top: lineY - 1 + "px",
-          left: target.rect.left + 4 + "px",
-          width: target.rect.width - 8 + "px",
-        });
-      }
-    }
+    if (target.el) paintDropTarget(target.el);
   };
 
   const finalizeSidebarDrag = () => {
@@ -307,110 +250,30 @@ export function useSidebarDrag({
     if (!sd.active) return;
     const target = sd.dropTarget;
 
-    if (target) {
-      if (target.type === "editor-open" && sd.type === "note") {
+    if (target && sd.type === "note") {
+      if (target.type === "editor-open") {
         // Dropped over the editor — open the note
         if (openNote) openNote(sd.id);
         cleanupSidebarDrag();
         return;
       }
 
+      // The only remaining outcome: move the note's real file. `folder: null`
+      // is root; anything else is that folder. write-note relocates the .md on
+      // disk (new file written before the old one is unlinked).
+      const targetFolder = target.type === "folder" ? target.id : null;
       const ids = sd.draggedIds && sd.draggedIds.length > 0 ? sd.draggedIds : [sd.id];
-      if (sd.type === "note" && target.zone === "into" && target.type === "folder") {
-        const targetFolder = target.id;
-        setNoteData((prev) => {
-          const next = { ...prev };
-          for (const noteId of ids) {
-            if (next[noteId]) next[noteId] = { ...next[noteId], folder: targetFolder };
-          }
-          return next;
-        });
-      } else if (sd.type === "note") {
-        const draggedNote = noteDataRef.current[sd.id];
-        const draggedFolder = draggedNote?.folder || "";
-        let targetFolder = "";
-        if (target.type === "note") {
-          targetFolder = noteDataRef.current[target.id]?.folder || "";
-        } else if (target.type === "folder") {
-          const parts = target.id.split("/");
-          targetFolder = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+      setNoteData((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const noteId of ids) {
+          if (!next[noteId]) continue;
+          if ((next[noteId].folder || null) === targetFolder) continue;
+          next[noteId] = { ...next[noteId], folder: targetFolder };
+          changed = true;
         }
-
-        if (draggedFolder === targetFolder) {
-          const folderKey = draggedFolder;
-          const noteIds = Object.entries(noteDataRef.current)
-            .filter(([, n]) => (n.folder || "") === folderKey)
-            .map(([id]) => id);
-          const currentOrder = sidebarOrder[folderKey]?.noteOrder || noteIds;
-          const ordered = [...currentOrder];
-          for (const id of noteIds) {
-            if (!ordered.includes(id)) ordered.push(id);
-          }
-          const filtered = ordered.filter((id) => noteIds.includes(id));
-          // Remove all dragged IDs from order
-          const dragSet = new Set(ids);
-          const withoutDragged = filtered.filter((id) => !dragSet.has(id));
-          let toIdx = withoutDragged.length;
-          if (target.type === "note") {
-            const tIdx = withoutDragged.indexOf(target.id);
-            toIdx = target.zone === "above" ? tIdx : tIdx + 1;
-          }
-          // Insert all dragged IDs as a group at drop position
-          withoutDragged.splice(Math.max(0, toIdx), 0, ...ids);
-          persistSidebarOrder(folderKey, withoutDragged, null);
-        } else {
-          setNoteData((prev) => {
-            const next = { ...prev };
-            for (const noteId of ids) {
-              if (next[noteId]) next[noteId] = { ...next[noteId], folder: targetFolder || null };
-            }
-            return next;
-          });
-        }
-      } else if (sd.type === "folder") {
-        const parts = sd.id.split("/");
-        const parentPath = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
-        const targetParts = target.id.split("/");
-        const targetParent = targetParts.length > 1 ? targetParts.slice(0, -1).join("/") : "";
-
-        if (parentPath === targetParent && target.zone !== "into") {
-          const parentKey = parentPath;
-
-          // Discover sibling folder names from the rendered DOM
-          const scrollEl = sidebarScrollRef.current;
-          const allFolderEls = scrollEl ? scrollEl.querySelectorAll("[data-folder-path]") : [];
-          const folderNames = [];
-          for (const el of allFolderEls) {
-            const p = el.dataset.folderPath;
-            const isDirectChild =
-              parentPath === ""
-                ? !p.includes("/")
-                : p.startsWith(parentPath + "/") && !p.slice(parentPath.length + 1).includes("/");
-            if (isDirectChild) {
-              const name = parentPath === "" ? p : p.slice(parentPath.length + 1);
-              if (!folderNames.includes(name)) folderNames.push(name);
-            }
-          }
-
-          const currentOrder = sidebarOrder[parentKey]?.folderOrder || folderNames;
-          const ordered = [...currentOrder];
-          for (const n of folderNames) {
-            if (!ordered.includes(n)) ordered.push(n);
-          }
-          const filtered = ordered.filter((n) => folderNames.includes(n));
-          const dragName = parts[parts.length - 1];
-          const fromIdx = filtered.indexOf(dragName);
-          if (fromIdx !== -1) filtered.splice(fromIdx, 1);
-          let toIdx = filtered.length;
-          if (target.type === "folder") {
-            const tName = targetParts[targetParts.length - 1];
-            const tIdx = filtered.indexOf(tName);
-            toIdx = target.zone === "above" ? tIdx : tIdx + 1;
-          }
-          filtered.splice(Math.max(0, toIdx), 0, dragName);
-          persistSidebarOrder(parentKey, null, filtered);
-        }
-      }
+        return changed ? next : prev;
+      });
     }
 
     cleanupSidebarDrag();
@@ -419,8 +282,6 @@ export function useSidebarDrag({
   const cleanupSidebarDrag = () => {
     const sd = sidebarDrag.current;
     if (sd.cloneEl && sd.cloneEl.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
-    if (sd.dropIndicator && sd.dropIndicator.parentNode)
-      sd.dropIndicator.parentNode.removeChild(sd.dropIndicator);
     if (sd.escHandler) {
       window.removeEventListener("keydown", sd.escHandler);
       sd.escHandler = null;
@@ -429,15 +290,7 @@ export function useSidebarDrag({
       cancelAnimationFrame(sd.scrollRAF);
       sd.scrollRAF = null;
     }
-    if (sd.autoExpandTimer) {
-      clearTimeout(sd.autoExpandTimer);
-      sd.autoExpandTimer = null;
-    }
-    if (sidebarScrollRef.current) {
-      sidebarScrollRef.current
-        .querySelectorAll("[data-folder-path]")
-        .forEach((el) => (el.style.background = "none"));
-    }
+    clearDropHighlights(sidebarScrollRef.current);
     if (sd._scrollEl) {
       sd._scrollEl.style.touchAction = "";
       sd._scrollEl = null;
@@ -450,7 +303,6 @@ export function useSidebarDrag({
     sd.cloneEl = null;
     sd.holdTimer = null;
     sd.dropTarget = null;
-    sd.dropIndicator = null;
     sd.originalFolder = null;
     sd._updatePointerY = null;
     if (sd.moveHandler) window.removeEventListener("pointermove", sd.moveHandler);
@@ -488,9 +340,12 @@ export function useSidebarDrag({
     if (e.button !== 0) return;
     if (e.target.closest(".delete-btn, input")) return;
 
+    // Notes only. Folder dragging is gone: its sibling-reorder half is retired
+    // with the rest of manual ordering, and its nest/reparent half never existed
+    // — dropping a folder on a folder highlighted the target, then silently did
+    // nothing. Removing the affordance beats keeping a promise the app can't keep.
     const noteEl = e.target.closest("[data-note-id]");
-    const folderEl = e.target.closest("[data-folder-path]");
-    if (!noteEl && !folderEl) return;
+    if (!noteEl) return;
 
     // Prevent browser scroll takeover on touch devices
     if (e.pointerType === "touch") e.preventDefault();
@@ -499,14 +354,18 @@ export function useSidebarDrag({
       dragTooltipCount.current.sidebar++;
       if (dragTooltipCount.current.sidebar === 3) {
         localStorage.setItem("boojy-drag-tooltip-sidebar", "1");
-        setDragTooltip({ x: e.clientX, y: e.clientY - 40, text: "Hold and drag to reorder" });
+        setDragTooltip({
+          x: e.clientX,
+          y: e.clientY - 40,
+          text: "Hold and drag to move into a folder",
+        });
         setTimeout(() => setDragTooltip(null), 3000);
       }
     }
 
-    const type = noteEl ? "note" : "folder";
-    const id = noteEl ? noteEl.dataset.noteId : folderEl.dataset.folderPath;
-    const targetEl = noteEl || folderEl;
+    const type = "note";
+    const id = noteEl.dataset.noteId;
+    const targetEl = noteEl;
 
     const sd = sidebarDrag.current;
     sd.startX = e.clientX;
@@ -556,5 +415,5 @@ export function useSidebarDrag({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupSidebarDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupSidebarDrag(), []);
 
-  return { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag, persistSidebarOrder };
+  return { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag };
 }

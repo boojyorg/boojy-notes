@@ -5,7 +5,6 @@ import { FOLDER_TREE } from "../constants/data";
 import { loadFromStorage } from "../utils/storage";
 import { isNative } from "../utils/platform";
 import {
-  sortByOrder,
   buildTree,
   collectPaths,
   filterTree,
@@ -44,7 +43,6 @@ export function SidebarProvider({ children }) {
     return saved?.customFolders || [];
   });
 
-  const [sidebarOrder, setSidebarOrder] = useState({});
   const [renamingFolder, setRenamingFolder] = useState(null);
 
   // ── Search ────────────────────────────────────────────────────────────
@@ -96,14 +94,13 @@ export function SidebarProvider({ children }) {
   }, [customFolders, folderNoteMap]);
 
   const { folderTree, sortedRootNotes } = useMemo(() => {
-    const rawFolderTree = buildTree(allFolders, folderNoteMap, sidebarOrder);
-    const hasRootOrder = sidebarOrder[""]?.folderOrder?.length > 0;
-    const tree = hasRootOrder
-      ? sortByOrder(rawFolderTree, sidebarOrder[""].folderOrder, (f) => f.name)
-      : [...rawFolderTree].sort((a, b) => naturalCompare(a.name, b.name));
-    const sorted = sortByOrder(derivedRootNotes, sidebarOrder[""]?.noteOrder, (id) => id);
-    return { folderTree: tree, sortedRootNotes: sorted };
-  }, [allFolders, folderNoteMap, sidebarOrder, derivedRootNotes]);
+    const tree = [...buildTree(allFolders, folderNoteMap)].sort((a, b) =>
+      naturalCompare(a.name, b.name),
+    );
+    // Root notes stay in raw membership order here; the note sort preference is
+    // what decides display order (next pass). No manual ordering exists.
+    return { folderTree: tree, sortedRootNotes: derivedRootNotes };
+  }, [allFolders, folderNoteMap, derivedRootNotes]);
 
   const prevFilteredResult = useRef(null);
   const { filteredTree, fNotes } = useMemo(() => {
@@ -141,8 +138,6 @@ export function SidebarProvider({ children }) {
       setExpanded,
       customFolders,
       setCustomFolders,
-      sidebarOrder,
-      setSidebarOrder,
       renamingFolder,
       setRenamingFolder,
       searchMode,
@@ -160,7 +155,6 @@ export function SidebarProvider({ children }) {
       searchFocused,
       expanded,
       customFolders,
-      sidebarOrder,
       renamingFolder,
       searchMode,
       searchResults,

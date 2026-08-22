@@ -118,8 +118,6 @@ export default function BoojyNotes() {
     setExpanded,
     customFolders,
     setCustomFolders,
-    sidebarOrder,
-    setSidebarOrder,
     setRenamingFolder,
     filteredTree,
     fNotes,
@@ -215,14 +213,7 @@ export default function BoojyNotes() {
     loading: fsLoading,
     changeNotesDir,
     flushToDisk,
-  } = useFileSystem(
-    noteData,
-    setNoteData,
-    setCustomFolders,
-    syncGeneration,
-    setSidebarOrder,
-    showToast,
-  );
+  } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast);
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
   /**
@@ -258,7 +249,6 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
-    setSidebarOrder,
   });
   const {
     updateBlockText,
@@ -331,8 +321,6 @@ export default function BoojyNotes() {
     setNoteData,
     expanded,
     setExpanded,
-    sidebarOrder,
-    setSidebarOrder,
     customFolders,
     sidebarScrollRef,
     accentColor,
@@ -467,26 +455,10 @@ export default function BoojyNotes() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const api = getAPI();
-    if (!api?.readMeta) return;
-    if (fsLoading) return;
-    const loadMeta = async () => {
-      const order = {};
-      const rootMeta = await api.readMeta("");
-      if (rootMeta) order[""] = rootMeta;
-      const allPaths = new Set();
-      for (const n of Object.values(noteData)) {
-        if (n.folder) allPaths.add(n.folder);
-      }
-      for (const fp of allPaths) {
-        const meta = await api.readMeta(fp);
-        if (meta) order[fp] = meta;
-      }
-      setSidebarOrder(order);
-    };
-    loadMeta();
-  }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: `.boojy-meta.json` files are deliberately left alone. Boojy no longer
+  // reads or writes noteOrder/folderOrder — folders are always alphabetical and
+  // notes follow the sort preference — but the files stay on disk untouched, so
+  // any foreign keys in them are safe and an old manual arrangement is recoverable.
 
   // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({

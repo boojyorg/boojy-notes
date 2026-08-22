@@ -38,8 +38,7 @@ describe("useFileSystem — initial load", () => {
     const setCustomFolders = vi.fn();
     const onError = vi.fn();
     const result = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), onError),
+      ({ data }) => useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError),
       { initialProps: { data: noteData } },
     );
     return { ...result, setNoteData, setCustomFolders, syncGeneration, onError };

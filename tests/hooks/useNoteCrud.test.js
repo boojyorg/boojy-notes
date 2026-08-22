@@ -61,10 +61,6 @@ function setup(initialNoteData = {}, opts = {}) {
   });
   const titleRef = { current: null };
   const setRenamingFolder = vi.fn();
-  let currentSidebarOrder = opts.sidebarOrder || {};
-  const setSidebarOrder = vi.fn((updater) => {
-    currentSidebarOrder = typeof updater === "function" ? updater(currentSidebarOrder) : updater;
-  });
   const { result } = renderHook(() =>
     useNoteCrud({
       commitNoteData,
@@ -76,7 +72,6 @@ function setup(initialNoteData = {}, opts = {}) {
       setExpanded,
       titleRef,
       setRenamingFolder,
-      setSidebarOrder,
     }),
   );
 
@@ -92,7 +87,6 @@ function setup(initialNoteData = {}, opts = {}) {
     setCustomFolders,
     setExpanded,
     setRenamingFolder,
-    setSidebarOrder,
   };
 }
 
