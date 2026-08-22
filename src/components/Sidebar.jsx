@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, memo } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -12,7 +12,11 @@ import {
   NewNoteIcon,
   SearchIcon,
   SidebarToggleIcon,
+  SortAlphaIcon,
+  SortRecentIcon,
 } from "./Icons";
+import SortMenu from "./SortMenu";
+import { SORT_RECENT, sortModeLabel } from "../utils/noteSort";
 import { CHROME_INSET, CHROME_BTN, ChromeButton } from "./EditorChrome";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -79,6 +83,18 @@ const SECTION_HEADER_RIGHT = 6;
 const SECTION_BTN = 28;
 const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 4;
+/**
+ * Header controls sit quiet until you go looking for them, but never disappear:
+ * hover-only reveal costs a keyboard user the control entirely, and this panel
+ * is meant to be obvious without a tutorial.
+ *
+ * The requested 0.4 is not used, because the opacity maths doesn't reach a
+ * legible icon from any of our ink tokens — 0.4 of `TEXT.secondary` composites
+ * to roughly 2:1 on the DAY ground, under the 3:1 that an icon-only control
+ * needs to be identifiable. 0.55 is the faintest value that still clears it.
+ * One constant if that reads too loud live.
+ */
+const SECTION_ACTION_REST = 0.55;
 
 /**
  * A section lid: bold label left, optional single action right.
@@ -109,6 +125,54 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
       <span style={{ fontSize: 13, fontWeight: 700, color: TEXT.secondary }}>{label}</span>
       {children}
     </div>
+  );
+}
+
+/**
+ * The single trailing control a section header may carry (New folder, Sort).
+ * One component so both wear the same geometry and the same rest/hover ink.
+ */
+function SectionAction({ onClick, title, ariaLabel, TEXT, BG, children, ...rest }) {
+  const rest0 = (e) => {
+    hBg(e.currentTarget, "transparent");
+    e.currentTarget.style.color = TEXT.secondary;
+    e.currentTarget.style.opacity = String(SECTION_ACTION_REST);
+  };
+  const lift = (e) => {
+    hBg(e.currentTarget, BG.surface);
+    e.currentTarget.style.color = TEXT.primary;
+    e.currentTarget.style.opacity = "1";
+  };
+  return (
+    <button
+      type="button"
+      className="sidebar-section-action"
+      onClick={onClick}
+      title={title}
+      aria-label={ariaLabel || title}
+      style={{
+        width: SECTION_BTN,
+        height: SECTION_BTN,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        borderRadius: 6,
+        cursor: "pointer",
+        color: TEXT.secondary,
+        opacity: SECTION_ACTION_REST,
+        transition: "background 120ms, color 120ms, opacity 120ms",
+      }}
+      onMouseEnter={lift}
+      onMouseLeave={rest0}
+      onFocus={lift}
+      onBlur={rest0}
+      {...rest}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -204,7 +268,12 @@ const Sidebar = memo(function Sidebar({
     navigateResults,
     clearSearch,
     getActiveResult,
+    sortMode,
+    setSortMode,
   } = useSidebar();
+
+  // Anchor rect of the sort trigger, or null when the menu is closed.
+  const [sortAnchor, setSortAnchor] = useState(null);
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -1035,55 +1104,60 @@ const Sidebar = memo(function Sidebar({
             ) : (
               <>
                 <SectionHeader label="Folders" TEXT={TEXT} first>
-                  <button
-                    type="button"
-                    className="sidebar-section-action"
-                    onClick={createFolder}
-                    title="New folder"
-                    aria-label="New folder"
-                    style={{
-                      width: SECTION_BTN,
-                      height: SECTION_BTN,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      color: TEXT.muted,
-                      transition: "background 120ms, color 120ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      hBg(e.currentTarget, BG.surface);
-                      e.currentTarget.style.color = TEXT.primary;
-                    }}
-                    onMouseLeave={(e) => {
-                      hBg(e.currentTarget, "transparent");
-                      e.currentTarget.style.color = TEXT.muted;
-                    }}
-                  >
+                  <SectionAction onClick={createFolder} title="New folder" TEXT={TEXT} BG={BG}>
                     <NewFolderIcon />
-                  </button>
+                  </SectionAction>
                 </SectionHeader>
                 {filteredTree.length > 0 && (
                   <div role="tree" aria-label="Folders">
                     {filteredTree.map((f) => renderFolder(f, 0))}
                   </div>
                 )}
-                {fNotes.length > 0 && (
+                {/* The header stays put when the section is empty: it is both the
+                    visible root drop target and the home of the sort control, and
+                    those are needed exactly when there are no root notes to show.
+                    A search that matches no root note is the one case it hides. */}
+                {(!search || fNotes.length > 0) && (
                   <>
-                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot />
-                    <div role="tree" aria-label="Notes">
-                      {fNotes.map((nId) => renderNote(nId, 0))}
-                    </div>
+                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
+                      <SectionAction
+                        onClick={(e) => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setSortAnchor((prev) =>
+                            prev
+                              ? null
+                              : { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
+                          );
+                        }}
+                        title="Sort notes"
+                        ariaLabel={`Sort notes: ${sortModeLabel(sortMode)}`}
+                        aria-haspopup="menu"
+                        aria-expanded={!!sortAnchor}
+                        TEXT={TEXT}
+                        BG={BG}
+                      >
+                        {sortMode === SORT_RECENT ? <SortRecentIcon /> : <SortAlphaIcon />}
+                      </SectionAction>
+                    </SectionHeader>
+                    {fNotes.length > 0 && (
+                      <div role="tree" aria-label="Notes">
+                        {fNotes.map((nId) => renderNote(nId, 0))}
+                      </div>
+                    )}
                   </>
                 )}
               </>
             )}
           </div>
         </>
+      )}
+      {sortAnchor && (
+        <SortMenu
+          anchorRect={sortAnchor}
+          mode={sortMode}
+          onSelect={setSortMode}
+          onClose={() => setSortAnchor(null)}
+        />
       )}
     </div>
   );

@@ -17,9 +17,12 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
+  ArrowDownAZ as LuArrowDownAZ,
+  Check as LuCheck,
   ChevronDown as LuChevronDown,
   ChevronLeft as LuChevronLeft,
   ChevronRight as LuChevronRight,
+  Clock3 as LuClock3,
   Code as LuCode,
   FileText as LuFileText,
   Folder as LuFolder,
@@ -89,6 +92,11 @@ export const NewNoteIcon = ({ size = ICON_INLINE }) => (
   <LuSquarePen {...base} {...navBase} size={size} />
 );
 export const NewFolderIcon = () => <LuFolderPlus {...base} {...navBase} size={ICON_INLINE} />;
+/** Sort trigger — glyph reflects the active mode. Section-header tier: 16px, nav stroke. */
+export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
+export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;
+/** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
+export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} size={size} />;
 export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
 export const TrashIcon = () => <LuTrash2 {...base} size={ICON_INLINE} />;
 

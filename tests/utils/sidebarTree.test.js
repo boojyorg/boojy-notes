@@ -34,6 +34,14 @@ describe("buildTree", () => {
     expect(tree[0].notes).toEqual(["n2", "n1", "n3"]);
   });
 
+  it("applies the caller's sort to every folder's notes, at any depth", () => {
+    const nodes = [{ name: "Work", children: [{ name: "Projects" }] }];
+    const map = { Work: ["n2", "n1"], "Work/Projects": ["n4", "n3"] };
+    const tree = buildTree(nodes, map, (ids) => [...ids].sort());
+    expect(tree[0].notes).toEqual(["n1", "n2"]);
+    expect(tree[0].children[0].notes).toEqual(["n3", "n4"]);
+  });
+
   it("sorts child folders natural-alphabetically, always", () => {
     const nodes = [
       { name: "Work", children: [{ name: "Week 10" }, { name: "Week 2" }, { name: "alpha" }] },

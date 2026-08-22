@@ -179,9 +179,59 @@ the Playwright a11y gate in `e2e/app.spec.js` catches. Mobile has no headers, so
 wrapping its own inline `New Folder` / `New Note` rows. `sidebarScrollRef` and the pointer-down
 handler stay on the outer scroller, so `useSidebarDrag`'s `[data-note-id]` queries are unaffected.
 
-`Notes` hides when there are no loose root notes; `Folders` always shows, since it carries the only
-desktop affordance for creating one. That pair of rules replaced an earlier zero-folder gap hack
-(16 → 24px) — a labelled section does that job properly.
+**Both headers always show** — `Folders` because it carries the only desktop affordance for creating
+one, `Notes` because it is both the visible root drop target and the home of the sort control, and
+both are wanted precisely when every note has been filed into a folder. The one case `Notes` hides
+is a search that matches no root note. (`Notes` used to hide whenever there were no loose root
+notes; that reversed when the sort control moved onto it.) The `role="tree"` under it stays
+conditional — an empty tree fails axe's `aria-required-children`. This replaced an earlier
+zero-folder gap hack (16 → 24px); a labelled section does that job properly.
+
+## Note order is a preference, not a stored arrangement
+
+One control decides how every note list in the panel is ordered — root notes and folder contents
+alike. `Most recent` (Clock3) / `Alphabetical` (ArrowDownAZ), global, persisted in
+`boojy-note-sort`, defaulting to recency. It sits on the `Notes` header; the trigger glyph is the
+active mode, and the menu (`SortMenu.jsx`, positioned via `useMenuPosition` like every other
+popover) ticks it.
+
+**"Most recent" is last *opened*, not last modified, and that is not a preference — it is the only
+recency signal the app has.** `Note.lastModified` is declared in `types/notes.ts` and read by
+`search.js` as a tiebreak, but **nothing populates it**: `parseNoteFile` never stats the file, so
+that tiebreak has always compared 0 to 0. Adding mtime is a genuine (small) feature, not a
+one-liner, and stamping a file on open would corrupt the very timestamp it would want.
+
+Timestamps live in `boojy-note-opened` (localStorage), never in the user's files. Consequences worth
+knowing: recency is per-machine, and a vault opened elsewhere regenerates note IDs, so it starts
+over. Notes with no timestamp sort **alphabetically behind** the ones that have one, which is why
+the first launch after this shipped reads as a clean A→Z list instead of raw membership order — no
+migration was needed or written.
+
+`useNoteSort` prunes the map against the live note store when it writes, rather than hooking the
+delete paths: one rule covers deletions, files removed outside Boojy, and regenerated IDs. **The
+empty-store guard in that effect is load-bearing** — `noteData` is `{}` until notes finish loading,
+and writing then would erase every timestamp on launch.
+
+Recency is stamped in `openNote` (BoojyNotes) **and** in `useNoteCrud`'s `createNote` /
+`duplicateNote` / `createDraftNote`. Miss the creation sites and a note you just made sorts into
+the never-opened tail — a new "Zebra" lands at the bottom of "Most recent". Any future site that
+makes a note active needs the same stamp.
+
+`buildTree` takes an optional `sortNotes`; `sortNoteIds` returns the **same array reference** when
+the order is already correct, because the sidebar's memo chain compares identities to decide
+whether to rebuild the tree. In `SidebarContext` the comparator reads titles from `noteDataRef`,
+not from `noteData` in the dep list — depending on the store directly would rebuild the tree on
+every keystroke and undo the text-only bail-out. Alphabetical mode deliberately does not subscribe
+to the timestamps, so opening a note doesn't re-sort a list that can't change.
+
+## Section-header controls: quiet, never hidden
+
+`SectionAction` in `Sidebar.jsx` is the one component for a header's trailing control (New folder,
+Sort): 28px box, 16px nav-tier glyph, `TEXT.secondary` at `SECTION_ACTION_REST` = **0.55**, full
+opacity on hover *and* focus. Hover-only reveal is rejected outright — it costs a keyboard user the
+control. The judged-live request was 0.4, which is not what shipped: 0.4 of any of our ink tokens
+composites to roughly 2:1 on the DAY ground, under the 3:1 an icon-only control needs to be
+identifiable. 0.55 is the faintest value that clears it. One constant if it reads too loud.
 
 ## Only structure and actions get a glyph
 

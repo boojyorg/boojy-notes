@@ -122,6 +122,7 @@ export default function BoojyNotes() {
     filteredTree,
     fNotes,
     folderList,
+    markOpened,
   } = useSidebar();
 
   const {
@@ -225,9 +226,14 @@ export default function BoojyNotes() {
   const openNote = useCallback(
     (id) => {
       closeOverlay();
+      // Recency is stamped here, the one place a note becomes the open one.
+      // The promotion is immediate and deliberate: in "Most recent" the row
+      // jumps to the top of its list as you click it. (Revert: drop this line
+      // and recency stops updating.)
+      markOpened(id);
       setActiveNote(id);
     },
-    [closeOverlay, setActiveNote],
+    [closeOverlay, markOpened, setActiveNote],
   );
   const {
     createNote,
@@ -249,6 +255,7 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
+    markOpened,
   });
   const {
     updateBlockText,

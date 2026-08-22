@@ -13,7 +13,17 @@ export function useNoteCrud({
   setExpanded,
   titleRef,
   setRenamingFolder,
+  markOpened,
 }) {
+  // Recency is stamped wherever a note becomes the one in front of you. That is
+  // `openNote` for an existing note, and these three for a new one — without
+  // them a note you just made sorts into the never-opened alphabetical tail,
+  // i.e. a new "Zebra" appears at the bottom of "Most recent". Any future site
+  // that makes a note active needs this line too.
+  const open = (id) => {
+    markOpened?.(id);
+    setActiveNote(id);
+  };
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
@@ -28,7 +38,7 @@ export function useNoteCrud({
       words: 0,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    setActiveNote(id);
+    open(id);
     setTimeout(() => {
       if (titleRef.current) {
         titleRef.current.focus();
@@ -68,7 +78,7 @@ export function useNoteCrud({
       },
     };
     commitNoteData((prev) => ({ ...prev, [id]: dup }));
-    setActiveNote(id);
+    open(id);
   };
 
   const renameFolder = (oldPath, newName) => {
@@ -147,7 +157,7 @@ export function useNoteCrud({
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    setActiveNote(id);
+    open(id);
     return id;
   };
 

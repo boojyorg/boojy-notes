@@ -17,23 +17,27 @@ export function naturalCompare(a, b) {
  *
  * Folders are always natural-alphabetical. There is no manual ordering: drag
  * changes a note's *location*, the sort preference decides *display order*.
- * `notes` comes out in raw membership order — the caller applies the note sort.
+ * `sortNotes` applies that preference to every folder's note list; omit it and
+ * notes come out in raw membership order.
  *
  * @param {Array<{name: string, children?: any[], _path?: string}>} nodes
  * @param {Record<string, string[]>} folderNoteMap
+ * @param {(ids: string[]) => string[]} [sortNotes]
  * @returns {SidebarNode[]}
  */
-export function buildTree(nodes, folderNoteMap) {
+export function buildTree(nodes, folderNoteMap, sortNotes) {
   return nodes.map((node) => {
     const nodePath = node._path || node.name;
     const children = buildTree(
       (node.children || []).map((c) => ({ ...c, _path: nodePath + "/" + c.name })),
       folderNoteMap,
+      sortNotes,
     );
+    const notes = folderNoteMap[nodePath] || [];
     return {
       name: node.name,
       _path: nodePath,
-      notes: folderNoteMap[nodePath] || [],
+      notes: sortNotes ? sortNotes(notes) : notes,
       children: [...children].sort((a, b) => naturalCompare(a.name, b.name)),
     };
   });
