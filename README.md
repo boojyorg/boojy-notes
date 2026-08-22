@@ -10,7 +10,7 @@ plain `.md` files on disk that you own — Boojy is just a calm way to edit them
 - Notes stored as `.md` files on disk (desktop) or localStorage (web)
 - Works directly on existing markdown folders — including an Obsidian vault
 - `[[wikilinks]]`, `#tags`, callouts, and frontmatter understood quietly, without extra chrome
-- Sidebar with folder tree and search; one note open at a time, no tabs to manage
+- Sidebar with folder tree and search, sorted by recency or name; one note open at a time, no tabs to manage
 - Per-note seeded star field backgrounds on the night theme
 
 ## The preservation promise
