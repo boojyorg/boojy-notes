@@ -3,6 +3,7 @@ import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 
 const WRITE_DEBOUNCE_MS = 500;
+const WRITE_RETRY_MS = 5000;
 
 // Compare blocks structurally (type, text, checked) ignoring IDs
 function blocksEqual(a, b) {
@@ -40,6 +41,8 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
   const dirtyNotes = useRef(new Set());
   const deletedNotes = useRef(new Set());
   const writeTimer = useRef(null);
+  const retryTimer = useRef(null);
+  const reportedWriteFailures = useRef(new Set());
   const isExternalUpdate = useRef(false);
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
@@ -159,12 +162,27 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
       if (note) {
         try {
           await api.writeNote(note);
+          reportedWriteFailures.current.delete(noteId);
         } catch (err) {
           console.error("useFileSystem: write failed", noteId, err);
-          onError?.("Failed to save note to disk");
+          if (!reportedWriteFailures.current.has(noteId)) {
+            reportedWriteFailures.current.add(noteId);
+            onError?.("Failed to save note to disk — Boojy will keep retrying");
+          }
+          continue;
         }
       }
       dirtyNotes.current.delete(noteId);
+    }
+
+    if (dirtyNotes.current.size > 0 && retryTimer.current === null) {
+      retryTimer.current = setTimeout(() => {
+        retryTimer.current = null;
+        flushRef.current();
+      }, WRITE_RETRY_MS);
+    } else if (dirtyNotes.current.size === 0 && retryTimer.current !== null) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
     }
 
     const deleted = [...deletedNotes.current];
@@ -279,7 +297,10 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
 
   // Cleanup timer
   useEffect(() => {
-    return () => clearTimeout(writeTimer.current);
+    return () => {
+      clearTimeout(writeTimer.current);
+      clearTimeout(retryTimer.current);
+    };
   }, []);
 
   // ─── Change notes directory (Electron only) ───

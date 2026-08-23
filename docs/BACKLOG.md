@@ -26,8 +26,6 @@ third-party content — these gate confident Vault migration):
 - [ ] Wikilink image widths `![[img|N]]` with N < 70 clamp up to 70 on first save (P2).
 
 **Reliability follow-ups:**
-- [ ] Failed disk writes drop the note from the dirty set with no retry — error toast, then the
-  note exists only in React state (P2). `useFileSystem.js:172`.
 - [ ] Rename crash-window can re-ID a note (crash between unlink and index save) or leave a
   visible duplicate (crash before unlink — by design, but cleanup is manual) (P2/P3).
 - [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W + Cmd+Q;

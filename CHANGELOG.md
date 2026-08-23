@@ -17,6 +17,10 @@
 - **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Bug Fixes
+- **Failed disk saves keep retrying** — If Electron cannot write a note, Boojy now keeps that note
+  in its dirty set and retries every five seconds until the write succeeds. The first failure is
+  reported without repeating the same notification on every retry; closing the app still uses the
+  existing final flush path.
 - **Slash commands reliably start at Heading 1** — Opening `/` no longer lets a stationary pointer accidentally select whichever lower menu row appears beneath it. Keyboard selection starts at the first command and changes only after an arrow key or real pointer movement.
 - **Checkboxes update immediately** — Checking or unchecking a task now repaints its tick and strikethrough at once instead of waiting for Enter or another structural editor change.
 - **Local-only now means zero cloud traffic** — The desktop app no longer initialises the Supabase client at all. Previously, a build with backend keys could silently refresh a leftover sign-in session and fetch the account profile on launch, even though sync and sign-in are switched off — no note data ever moved, but a local-only app shouldn't phone home. Desktop now never contacts the backend; the web app is unchanged.
