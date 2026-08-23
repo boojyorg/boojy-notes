@@ -96,7 +96,9 @@ vi.mock("../../src/context/SidebarContext", () => ({
     filteredTree: _sidebarOverrides.filteredTree ?? [],
     fNotes: _sidebarOverrides.fNotes ?? [],
     renamingFolder: null,
-    setRenamingFolder: vi.fn(),
+    setRenamingFolder: _sidebarOverrides.setRenamingFolder ?? vi.fn(),
+    renamingNote: _sidebarOverrides.renamingNote ?? null,
+    setRenamingNote: _sidebarOverrides.setRenamingNote ?? vi.fn(),
     searchMode: _sidebarOverrides.searchMode ?? false,
     searchResults: _sidebarOverrides.searchResults ?? emptySearchResults,
     activeResultIndex: 0,
@@ -130,6 +132,7 @@ function renderSidebar(overrides = {}) {
     activeNote: overrides.activeNote ?? null,
     toggle: overrides.toggle ?? vi.fn(),
     openNote: overrides.openNote ?? vi.fn(),
+    renameNote: overrides.renameNote ?? vi.fn(),
     setCtxMenu: overrides.setCtxMenu ?? vi.fn(),
     renameFolder: noop,
     createFolder: overrides.createFolder ?? vi.fn(),
@@ -255,6 +258,51 @@ describe("Sidebar", () => {
     const { getByText } = renderSidebar({ filteredTree, toggle });
     fireEvent.click(getByText("Toggle Folder"));
     expect(toggle).toHaveBeenCalledWith("Toggle Folder");
+  });
+
+  it("double-click renames a folder and suppresses the second toggle", () => {
+    const toggle = vi.fn();
+    const setRenamingFolder = vi.fn();
+    const filteredTree = [{ name: "Dbl Folder", _path: "Dbl Folder", children: [], notes: [] }];
+    const { getByText } = renderSidebar({ filteredTree, toggle, setRenamingFolder });
+    const row = getByText("Dbl Folder");
+    // A real double-click is click(detail:1), click(detail:2), dblclick.
+    fireEvent.click(row, { detail: 1 });
+    fireEvent.click(row, { detail: 2 });
+    fireEvent.dblClick(row, { detail: 2 });
+    expect(setRenamingFolder).toHaveBeenCalledWith("Dbl Folder");
+    expect(toggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("double-click on a note starts the inline rename", () => {
+    const setRenamingNote = vi.fn();
+    const noteData = buildNoteData([{ id: "n1", title: "Dbl Note" }]);
+    const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+    const expanded = { F: true };
+    const { getByText } = renderSidebar({ filteredTree, noteData, expanded, setRenamingNote });
+    fireEvent.dblClick(getByText("Dbl Note"));
+    expect(setRenamingNote).toHaveBeenCalledWith("n1");
+  });
+
+  it("renders an inline input for the renaming note and commits on Enter", () => {
+    const renameNote = vi.fn();
+    const setRenamingNote = vi.fn();
+    const noteData = buildNoteData([{ id: "n1", title: "Old Name" }]);
+    const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+    const expanded = { F: true };
+    const { getByLabelText, queryByText } = renderSidebar({
+      filteredTree,
+      noteData,
+      expanded,
+      renameNote,
+      setRenamingNote,
+      renamingNote: "n1",
+    });
+    expect(queryByText("Old Name")).not.toBeInTheDocument();
+    const input = getByLabelText("Rename note");
+    fireEvent.keyDown(input, { key: "Enter", target: { value: "New Name" } });
+    expect(renameNote).toHaveBeenCalledWith("n1", "New Name");
+    expect(setRenamingNote).toHaveBeenCalledWith(null);
   });
 
   it("renders folder rows without a disclosure chevron but keeps aria-expanded", () => {

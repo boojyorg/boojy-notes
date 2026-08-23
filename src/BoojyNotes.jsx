@@ -32,7 +32,6 @@ import EditorMoreMenu from "./components/mobile/EditorMoreMenu";
 import { useKeyboard } from "./hooks/useKeyboard";
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
-import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
@@ -112,6 +111,7 @@ export default function BoojyNotes() {
     customFolders,
     setCustomFolders,
     setRenamingFolder,
+    setRenamingNote,
     filteredTree,
     fNotes,
     folderList,
@@ -199,10 +199,38 @@ export default function BoojyNotes() {
     },
     [closeOverlay, markOpened, setActiveNote],
   );
+
+  // Start renaming a note where the user can see it: the sidebar row swaps to
+  // an inline input (same grammar as folder rename). Only when the sidebar is
+  // hidden — e.g. Rename from the editor's ··· with the panel collapsed — does
+  // it fall back to focusing the editor title, caret at the end (no select-all
+  // wash; judged live 2026-08-23).
+  const startNoteRename = useCallback(
+    (id) => {
+      if (sidebarVisible) {
+        setRenamingNote(id);
+        return;
+      }
+      openNote(id);
+      setTimeout(() => {
+        const el = titleRef.current;
+        if (!el) return;
+        el.focus();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }, 60);
+    },
+    [sidebarVisible, setRenamingNote, openNote],
+  );
   const {
     createNote,
     deleteNote,
     duplicateNote,
+    renameNote,
     renameFolder,
     deleteFolder,
     createFolder,
@@ -642,11 +670,11 @@ export default function BoojyNotes() {
         Skip to content
       </a>
 
-      {isDesktop && <TitleBar activeNote={activeNote} noteData={noteData} chromeBg={chromeBg} />}
-      {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web). */}
+      {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web).
+          The old desktop TitleBar (28px faux title strip) is gone — the window
+          uses hiddenInset traffic lights over the sidebar header instead. */}
       {!isMobile && (
         <EditorChrome
-          topOffset={isDesktop ? TITLE_BAR_H : 0}
           activeNote={activeNote}
           onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
         />
@@ -726,6 +754,7 @@ export default function BoojyNotes() {
             activeNote={activeNote}
             toggle={toggle}
             openNote={openNote}
+            renameNote={renameNote}
             setCtxMenu={setCtxMenu}
             ctxMenuNoteId={ctxMenu?.type === "note" ? ctxMenu.id : null}
             renameFolder={renameFolder}
@@ -926,7 +955,7 @@ export default function BoojyNotes() {
         deleteFolder={confirmDeleteFolder}
         createNote={createNote}
         setRenamingFolder={setRenamingFolder}
-        titleRef={titleRef}
+        onRenameNote={startNoteRename}
         onImport={handleImportIntoFolder}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}

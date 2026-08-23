@@ -42,7 +42,6 @@ afterEach(cleanup);
 const renderChrome = (props = {}) =>
   render(
     <EditorChrome
-      topOffset={28}
       activeNote={props.activeNote === undefined ? "n1" : props.activeNote}
       onNoteActions={props.onNoteActions ?? vi.fn()}
     />,

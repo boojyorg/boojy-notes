@@ -42,7 +42,7 @@ const baseProps = () => ({
   deleteFolder: vi.fn(),
   createNote: vi.fn(),
   setRenamingFolder: vi.fn(),
-  titleRef: { current: null },
+  onRenameNote: vi.fn(),
   onImport: null,
   selectedNotes: new Set(),
   selectedCount: 0,

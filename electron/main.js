@@ -39,8 +39,16 @@ function createWindow() {
     minHeight: 400,
     title: "Boojy Notes",
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 14, y: 8 },
-    backgroundColor: "#2C2C32",
+    // The lights share the sidebar header row. Its children centre at ~25px,
+    // but the wordmark's optical mass sits below its geometric centre, so the
+    // lights ride a few px lower than pure maths says (judged live
+    // 2026-08-23). x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move
+    // one, re-judge the other.
+    trafficLightPosition: { x: 14, y: 26 },
+    // First-paint ground before React takes over. DAY's BG.darkest — light is
+    // the default theme; a NIGHT user gets one brief light flash at launch
+    // until the renderer can report its saved theme back (not wired up).
+    backgroundColor: "#FCFCFC",
     icon: path.join(__dirname, "../assets/icon.png"),
     webPreferences: {
       contextIsolation: true,
@@ -102,7 +110,9 @@ setupAutoUpdater(getMainWindow);
 
 app.whenReady().then(async () => {
   app.setName("Boojy Notes");
-  nativeTheme.themeSource = "dark";
+  // Native chrome (menus, dialogs) follows the OS. Forcing "dark" here made
+  // native surfaces dark even for the (default) light app theme.
+  nativeTheme.themeSource = "system";
 
   const notesDir = getNotesDir();
   let legacyTrashReport;

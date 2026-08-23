@@ -65,18 +65,26 @@ export default function GlobalStyles() {
           border-left-width: 4px;
           border-right-width: 1px;
         }
-        /* Note-row ··· reveal (judged live 2026-08-23). Hidden at rest and on
-           a merely-selected row; row hover or keyboard focus shows muted dots;
-           hovering the control itself lifts them to primary ink. Slot space is
-           always reserved in the row, so only opacity moves. */
+        /* Note-row ··· reveal (judged live 2026-08-23; slot collapses at rest
+           since 2026-08-23 v2). Hidden at rest and on a merely-selected row;
+           row hover or keyboard focus shows muted dots; hovering the control
+           itself lifts them to primary ink. The slot takes NO width at rest so
+           a long title truncates against the full row, and re-truncates only
+           20px + the row gap shorter while the dots are revealed. Width snaps
+           (judged live: a sliding re-truncation reads worse than an instant
+           one) — only the ink transitions. An open menu holds the slot via
+           inline styles in Sidebar.jsx. */
         .sidebar-note-more {
           opacity: 0;
+          width: 0;
+          overflow: hidden;
           color: ${theme.TEXT.muted};
           transition: opacity 120ms, color 120ms;
         }
         .sidebar-note:hover .sidebar-note-more,
         .sidebar-note:focus-visible .sidebar-note-more {
           opacity: 1;
+          width: 20px;
         }
         .sidebar-note-more:hover {
           opacity: 1;

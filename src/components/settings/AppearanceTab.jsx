@@ -118,7 +118,14 @@ export default function AppearanceTab({ SectionHeader }) {
             border: `1px solid ${BG.divider}`,
           }}
         >
-          {["night", "day", "auto"].map((mode) => (
+          {/* Stored keys stay "day"/"night" so every saved preference keeps
+              working; only the labels say Light/Dark. Light leads — it is
+              the default theme. */}
+          {[
+            ["day", "Light"],
+            ["night", "Dark"],
+            ["auto", "Auto"],
+          ].map(([mode, label]) => (
             <button
               key={mode}
               onClick={() => setThemeMode(mode)}
@@ -131,11 +138,10 @@ export default function AppearanceTab({ SectionHeader }) {
                 fontWeight: fontWeight.medium,
                 cursor: "pointer",
                 transition: "background 0.15s, color 0.15s",
-                textTransform: "capitalize",
                 fontFamily: "inherit",
               }}
             >
-              {mode}
+              {label}
             </button>
           ))}
         </div>
@@ -205,7 +211,7 @@ export default function AppearanceTab({ SectionHeader }) {
               fontSize: fontSize.sm,
             }}
           >
-            <span style={{ color: TEXT.muted }}>Day</span>
+            <span style={{ color: TEXT.muted }}>Light</span>
             <select
               value={dayStartHour}
               onChange={(e) => setDayStartHour(+e.target.value)}
