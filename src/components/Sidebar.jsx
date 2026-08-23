@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo } from "react";
+import { useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -16,8 +16,7 @@ import {
   SortAlphaIcon,
   SortRecentIcon,
 } from "./Icons";
-import SortMenu from "./SortMenu";
-import { SORT_RECENT, sortModeLabel } from "../utils/noteSort";
+import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
 import { CHROME_INSET, CHROME_BTN, ChromeButton } from "./EditorChrome";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -92,18 +91,11 @@ const SECTION_HEADER_RIGHT = 6;
 const SECTION_BTN = 28;
 const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 4;
-/**
- * Header controls sit quiet until you go looking for them, but never disappear:
- * hover-only reveal costs a keyboard user the control entirely, and this panel
- * is meant to be obvious without a tutorial.
- *
- * The requested 0.4 is not used, because the opacity maths doesn't reach a
- * legible icon from any of our ink tokens — 0.4 of `TEXT.secondary` composites
- * to roughly 2:1 on the DAY ground, under the 3:1 that an icon-only control
- * needs to be identifiable. 0.55 is the faintest value that still clears it.
- * One constant if that reads too loud live.
- */
-const SECTION_ACTION_REST = 0.55;
+// Header controls hide at rest and reveal on header hover / keyboard focus,
+// mirroring the note-row ··· grammar (judged live 2026-08-23 — this reversed
+// the earlier always-visible-at-0.55 rule). All rest/reveal/emphasis states
+// are CSS (.sidebar-section-action in GlobalStyles); keyboard users are never
+// locked out (focus reveals), and touch devices keep the controls visible.
 
 /**
  * A section lid: bold label left, optional single action right.
@@ -114,6 +106,7 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
     <div
       role="presentation"
+      className="sidebar-section-header"
       // `Notes` doubles as the visible root drop target during a note drag:
       // drop on a folder → into that folder, drop on Notes → back to root.
       // useSidebarDrag finds it by this attribute and paints it neutrally.
@@ -141,17 +134,7 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
  * The single trailing control a section header may carry (New folder, Sort).
  * One component so both wear the same geometry and the same rest/hover ink.
  */
-function SectionAction({ onClick, title, ariaLabel, TEXT, BG, children, ...rest }) {
-  const rest0 = (e) => {
-    hBg(e.currentTarget, "transparent");
-    e.currentTarget.style.color = TEXT.secondary;
-    e.currentTarget.style.opacity = String(SECTION_ACTION_REST);
-  };
-  const lift = (e) => {
-    hBg(e.currentTarget, BG.surface);
-    e.currentTarget.style.color = TEXT.primary;
-    e.currentTarget.style.opacity = "1";
-  };
+function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
   return (
     <button
       type="button"
@@ -160,6 +143,9 @@ function SectionAction({ onClick, title, ariaLabel, TEXT, BG, children, ...rest 
       title={title}
       aria-label={ariaLabel || title}
       style={{
+        // Rest/reveal/emphasis ink lives in CSS; inline opacity holds the
+        // control visible while its menu is open (inline wins over the class).
+        opacity: active ? 1 : undefined,
         width: SECTION_BTN,
         height: SECTION_BTN,
         display: "flex",
@@ -167,17 +153,9 @@ function SectionAction({ onClick, title, ariaLabel, TEXT, BG, children, ...rest 
         justifyContent: "center",
         padding: 0,
         border: "none",
-        background: "transparent",
         borderRadius: 6,
         cursor: "pointer",
-        color: TEXT.secondary,
-        opacity: SECTION_ACTION_REST,
-        transition: "background 120ms, color 120ms, opacity 120ms",
       }}
-      onMouseEnter={lift}
-      onMouseLeave={rest0}
-      onFocus={lift}
-      onBlur={rest0}
       {...rest}
     >
       {children}
@@ -255,7 +233,7 @@ const Sidebar = memo(function Sidebar({
   ctxMenuNoteId,
   isMobile,
 }) {
-  const { accentColor, toggleSidebar } = useLayout();
+  const { accentColor, chromeBg, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -283,7 +261,6 @@ const Sidebar = memo(function Sidebar({
   } = useSidebar();
 
   // Anchor rect of the sort trigger, or null when the menu is closed.
-  const [sortAnchor, setSortAnchor] = useState(null);
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -636,6 +613,14 @@ const Sidebar = memo(function Sidebar({
     </button>
   ) : null;
 
+  // One shared scroller serves every sidebar state: reset its offset when
+  // search mode flips, matching the implicit reset the per-branch scrollers
+  // used to get by remounting.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: searchMode is the trigger (the flip resets), not a body input.
+  useEffect(() => {
+    if (sidebarScrollRef.current) sidebarScrollRef.current.scrollTop = 0;
+  }, [searchMode, sidebarScrollRef]);
+
   // Auto-scroll active search result into view
   useEffect(() => {
     if (!searchMode) return;
@@ -697,78 +682,6 @@ const Sidebar = memo(function Sidebar({
         </div>
       )}
 
-      {/* Primary actions \u2014 desktop only. Mobile keeps its search pill below. */}
-      {!isMobile && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            padding: `4px ${ROW_INSET}px 12px ${ROW_INSET}px`,
-            flexShrink: 0,
-          }}
-        >
-          <ActionRow
-            icon={<NewNoteIcon size={ACTION_ICON} />}
-            label="New note"
-            title="New note"
-            onClick={() => createNote(null)}
-            TEXT={TEXT}
-            BG={BG}
-          />
-          {searchActive ? (
-            // Same row geometry as the action rows, so opening search doesn't
-            // shift the group \u2014 the row just gains a field and a surface.
-            <div
-              onClick={() => searchInputRef.current?.focus()}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                height: ACTION_ROW_H,
-                borderRadius: ACTION_RADIUS,
-                boxSizing: "border-box",
-                background: theme.searchInputBg,
-                border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
-                paddingRight: 8,
-                cursor: "text",
-                overflow: "hidden",
-              }}
-            >
-              <span
-                style={{
-                  // −1 compensates the field's 1px border so the glyph stays
-                  // on the spine and the input text on TEXT_COL.
-                  width: ACTION_ICON,
-                  marginLeft: SPINE - ROW_INSET - 1,
-                  marginRight: ACTION_ICON_GAP,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: TEXT.muted,
-                }}
-              >
-                <SearchIcon size={ACTION_ICON} />
-              </span>
-              {searchInput}
-              {clearSearchButton}
-            </div>
-          ) : (
-            <ActionRow
-              icon={<SearchIcon size={ACTION_ICON} />}
-              label="Search"
-              title="Search notes"
-              onClick={() => {
-                setSearchFocused(true);
-                setTimeout(() => searchInputRef.current?.focus(), 0);
-              }}
-              TEXT={TEXT}
-              BG={BG}
-            />
-          )}
-        </div>
-      )}
-
       {/* Search (mobile) */}
       {isMobile && (
         <div style={{ padding: "8px 16px" }}>
@@ -795,194 +708,278 @@ const Sidebar = memo(function Sidebar({
         </div>
       )}
 
-      {/* Search results or File tree */}
-      {searchMode && searchResults.results.length > 0 ? (
-        <div
-          ref={sidebarScrollRef}
-          className="sidebar-scroll"
-          style={{ flex: 1, overflow: "auto", padding: "2px 0" }}
-        >
-          {tagSuggestions && tagSuggestions.length > 0 && (
-            <div style={{ padding: "4px 14px 8px" }}>
+      {/* One scroller for every sidebar state (judged live 2026-08-23): the
+          desktop action group lives INSIDE it as a sticky block, so the
+          scrollbar track spans from New note down while the actions stay
+          pinned and the search field keeps its DOM position (no remount
+          mid-typing) across search-mode flips. It also puts every pill on
+          the same right boundary beside the gutter. */}
+      <div
+        ref={sidebarScrollRef}
+        className="sidebar-scroll"
+        onPointerDown={handleSidebarPointerDown}
+        style={{
+          flex: 1,
+          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
+          padding: isMobile ? "2px 0" : "0 0 2px",
+        }}
+      >
+        {!isMobile && (
+          <div
+            style={{
+              // Sticky, not fixed: pinned while the tree scrolls beneath.
+              // chromeBg keeps rows from ghosting through; matches the panel.
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              background: chromeBg,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              padding: `4px ${ROW_INSET}px 12px ${ROW_INSET}px`,
+              flexShrink: 0,
+            }}
+          >
+            <ActionRow
+              icon={<NewNoteIcon size={ACTION_ICON} />}
+              label="New note"
+              title="New note"
+              onClick={() => createNote(null)}
+              TEXT={TEXT}
+              BG={BG}
+            />
+            {searchActive ? (
+              // Same row geometry as the action rows, so opening search doesn't
+              // shift the group \u2014 the row just gains a field and a surface.
               <div
+                onClick={() => searchInputRef.current?.focus()}
                 style={{
-                  fontSize: 11,
-                  color: TEXT.muted,
-                  fontWeight: 500,
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
+                  display: "flex",
+                  alignItems: "center",
+                  height: ACTION_ROW_H,
+                  borderRadius: ACTION_RADIUS,
+                  boxSizing: "border-box",
+                  background: theme.searchInputBg,
+                  border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
+                  paddingRight: 8,
+                  cursor: "text",
+                  overflow: "hidden",
                 }}
               >
-                Tags
+                <span
+                  style={{
+                    // −1 compensates the field's 1px border so the glyph stays
+                    // on the spine and the input text on TEXT_COL.
+                    width: ACTION_ICON,
+                    marginLeft: SPINE - ROW_INSET - 1,
+                    marginRight: ACTION_ICON_GAP,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: TEXT.muted,
+                  }}
+                >
+                  <SearchIcon size={ACTION_ICON} />
+                </span>
+                {searchInput}
+                {clearSearchButton}
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {tagSuggestions.slice(0, 20).map((t) => (
-                  <button
-                    key={t.tag}
-                    onClick={() => setSearch(`#${t.tag}`)}
-                    style={{
-                      background: `${ACCENT.primary}15`,
-                      color: ACCENT.primary,
-                      border: "none",
-                      borderRadius: 10,
-                      padding: "2px 8px",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = `${ACCENT.primary}30`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = `${ACCENT.primary}15`;
-                    }}
-                  >
-                    <span>#{t.tag}</span>
-                    <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
-                  </button>
-                ))}
-              </div>
-              {searchResults.results.length > 0 && (
+            ) : (
+              <ActionRow
+                icon={<SearchIcon size={ACTION_ICON} />}
+                label="Search"
+                title="Search notes"
+                onClick={() => {
+                  setSearchFocused(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 0);
+                }}
+                TEXT={TEXT}
+                BG={BG}
+              />
+            )}
+          </div>
+        )}
+        {searchMode && searchResults.results.length > 0 ? (
+          <>
+            {tagSuggestions && tagSuggestions.length > 0 && (
+              <div style={{ padding: "4px 14px 8px" }}>
                 <div
                   style={{
                     fontSize: 11,
                     color: TEXT.muted,
                     fontWeight: 500,
-                    marginTop: 10,
-                    marginBottom: 2,
+                    marginBottom: 6,
                     textTransform: "uppercase",
                     letterSpacing: "0.5px",
                   }}
                 >
-                  Notes
+                  Tags
                 </div>
-              )}
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
-            {searchResults.totalCount <= 20
-              ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
-              : `Showing 20 of ${searchResults.totalCount}`}
-          </div>
-          {searchResults.groups.map((group) => (
-            <div key={group.folderId || "_root"}>
-              {group.folderName && (
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: TEXT.muted,
-                    padding: "8px 14px 2px",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ flexShrink: 0 }}>{group.folderName}</span>
-                  <div style={{ flex: 1, height: 1, background: BG.divider }} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {tagSuggestions.slice(0, 20).map((t) => (
+                    <button
+                      key={t.tag}
+                      onClick={() => setSearch(`#${t.tag}`)}
+                      style={{
+                        background: `${ACCENT.primary}15`,
+                        color: ACCENT.primary,
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        transition: "background 0.12s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = `${ACCENT.primary}30`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = `${ACCENT.primary}15`;
+                      }}
+                    >
+                      <span>#{t.tag}</span>
+                      <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
-              {group.results.map((result) => {
-                const isActive = result._globalIndex === activeResultIndex;
-                return (
-                  <button
-                    key={result.noteId}
-                    data-search-index={result._globalIndex}
-                    onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
+                {searchResults.results.length > 0 && (
+                  <div
                     style={{
-                      width: "calc(100% - 8px)",
-                      marginLeft: 5,
-                      marginRight: 3,
-                      border: "none",
-                      outline: "none",
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      cursor: "pointer",
-                      background: isActive ? `${accentColor}15` : "transparent",
-                      borderRadius: 6,
-                      padding: "5px 10px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 1,
-                      textAlign: "left",
-                      fontFamily: "inherit",
-                      transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) hBg(e.currentTarget, BG.hover);
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) hBg(e.currentTarget, "transparent");
+                      fontSize: 11,
+                      color: TEXT.muted,
+                      fontWeight: 500,
+                      marginTop: 10,
+                      marginBottom: 2,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      <FileIcon active={isActive} />
-                      <span
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                          fontSize: 14,
-                          fontWeight: isActive ? 600 : 400,
-                          color: isActive ? TEXT.primary : TEXT.secondary,
-                        }}
-                      >
-                        {result.matchIn === "title"
-                          ? renderHighlightedTitle(
-                              result.title,
-                              result.matchStart,
-                              result.matchEnd,
-                              accentColor,
-                            )
-                          : result.title}
-                      </span>
-                    </div>
-                    {result.snippet ? (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: TEXT.muted,
-                          paddingLeft: 19,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          lineHeight: "16px",
-                        }}
-                      >
-                        {renderSnippet(result.snippet, accentColor)}
-                      </div>
-                    ) : result.matchIn === "title" ? (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: TEXT.muted,
-                          paddingLeft: 19,
-                          fontStyle: "italic",
-                          lineHeight: "16px",
-                        }}
-                      >
-                        title match
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
+                    Notes
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
+              {searchResults.totalCount <= 20
+                ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
+                : `Showing 20 of ${searchResults.totalCount}`}
             </div>
-          ))}
-        </div>
-      ) : searchMode && searchResults.results.length === 0 ? (
-        tagSuggestions && tagSuggestions.length > 0 ? (
-          <div
-            ref={sidebarScrollRef}
-            className="sidebar-scroll"
-            style={{ flex: 1, overflow: "auto", padding: "2px 0" }}
-          >
+            {searchResults.groups.map((group) => (
+              <div key={group.folderId || "_root"}>
+                {group.folderName && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: TEXT.muted,
+                      padding: "8px 14px 2px",
+                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ flexShrink: 0 }}>{group.folderName}</span>
+                    <div style={{ flex: 1, height: 1, background: BG.divider }} />
+                  </div>
+                )}
+                {group.results.map((result) => {
+                  const isActive = result._globalIndex === activeResultIndex;
+                  return (
+                    <button
+                      key={result.noteId}
+                      data-search-index={result._globalIndex}
+                      onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
+                      style={{
+                        width: "calc(100% - 8px)",
+                        marginLeft: 5,
+                        marginRight: 3,
+                        border: "none",
+                        outline: "none",
+                        appearance: "none",
+                        WebkitAppearance: "none",
+                        cursor: "pointer",
+                        background: isActive ? `${accentColor}15` : "transparent",
+                        borderRadius: 6,
+                        padding: "5px 10px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        textAlign: "left",
+                        fontFamily: "inherit",
+                        transition: "background 0.12s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) hBg(e.currentTarget, BG.hover);
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) hBg(e.currentTarget, "transparent");
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <FileIcon active={isActive} />
+                        <span
+                          style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            flex: 1,
+                            fontSize: 14,
+                            fontWeight: isActive ? 600 : 400,
+                            color: isActive ? TEXT.primary : TEXT.secondary,
+                          }}
+                        >
+                          {result.matchIn === "title"
+                            ? renderHighlightedTitle(
+                                result.title,
+                                result.matchStart,
+                                result.matchEnd,
+                                accentColor,
+                              )
+                            : result.title}
+                        </span>
+                      </div>
+                      {result.snippet ? (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: TEXT.muted,
+                            paddingLeft: 19,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            lineHeight: "16px",
+                          }}
+                        >
+                          {renderSnippet(result.snippet, accentColor)}
+                        </div>
+                      ) : result.matchIn === "title" ? (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: TEXT.muted,
+                            paddingLeft: 19,
+                            fontStyle: "italic",
+                            lineHeight: "16px",
+                          }}
+                        >
+                          title match
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </>
+        ) : searchMode && searchResults.results.length === 0 ? (
+          tagSuggestions && tagSuggestions.length > 0 ? (
             <div style={{ padding: "4px 14px 8px" }}>
               <div
                 style={{
@@ -1028,35 +1025,24 @@ const Sidebar = memo(function Sidebar({
                 ))}
               </div>
             </div>
-          </div>
+          ) : (
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                color: TEXT.muted,
+              }}
+            >
+              <div style={{ fontSize: 14 }}>No results for &ldquo;{search}&rdquo;</div>
+              <div style={{ fontSize: 12 }}>Try searching with #tags</div>
+            </div>
+          )
         ) : (
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 4,
-              color: TEXT.muted,
-            }}
-          >
-            <div style={{ fontSize: 14 }}>No results for &ldquo;{search}&rdquo;</div>
-            <div style={{ fontSize: 12 }}>Try searching with #tags</div>
-          </div>
-        )
-      ) : (
-        <>
-          <div
-            ref={sidebarScrollRef}
-            className="sidebar-scroll"
-            onPointerDown={handleSidebarPointerDown}
-            style={{
-              flex: 1,
-              overflow: "auto",
-              padding: isMobile ? "2px 0" : "0 0 2px",
-            }}
-          >
+          <>
             {/* Two labelled trees, not one: a section header — and the New folder
                 button inside it — is not a legal child of role="tree" (axe
                 aria-required-children, caught by the e2e a11y gate). Mobile has no
@@ -1154,7 +1140,7 @@ const Sidebar = memo(function Sidebar({
             ) : (
               <>
                 <SectionHeader label="Folders" TEXT={TEXT} first>
-                  <SectionAction onClick={createFolder} title="New folder" TEXT={TEXT} BG={BG}>
+                  <SectionAction onClick={createFolder} title="New folder">
                     <NewFolderIcon />
                   </SectionAction>
                 </SectionHeader>
@@ -1170,21 +1156,20 @@ const Sidebar = memo(function Sidebar({
                 {(!search || fNotes.length > 0) && (
                   <>
                     <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
+                      {/* Two modes only, so sort is a click-to-flip toggle, not
+                          a menu (judged live 2026-08-23; SortMenu was deleted —
+                          git history has it). The glyph shows the CURRENT mode;
+                          the label's tail says what a click does — that
+                          convention choice is deliberate, keep them consistent. */}
                       <SectionAction
-                        onClick={(e) => {
-                          const r = e.currentTarget.getBoundingClientRect();
-                          setSortAnchor((prev) =>
-                            prev
-                              ? null
-                              : { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
-                          );
-                        }}
-                        title="Sort notes"
-                        ariaLabel={`Sort notes: ${sortModeLabel(sortMode)}`}
-                        aria-haspopup="menu"
-                        aria-expanded={!!sortAnchor}
-                        TEXT={TEXT}
-                        BG={BG}
+                        onClick={() =>
+                          setSortMode(sortMode === SORT_RECENT ? SORT_ALPHA : SORT_RECENT)
+                        }
+                        title={
+                          sortMode === SORT_RECENT
+                            ? "Sorted by most recent — switch to alphabetical"
+                            : "Sorted alphabetically — switch to most recent"
+                        }
                       >
                         {sortMode === SORT_RECENT ? <SortRecentIcon /> : <SortAlphaIcon />}
                       </SectionAction>
@@ -1198,17 +1183,9 @@ const Sidebar = memo(function Sidebar({
                 )}
               </>
             )}
-          </div>
-        </>
-      )}
-      {sortAnchor && (
-        <SortMenu
-          anchorRect={sortAnchor}
-          mode={sortMode}
-          onSelect={setSortMode}
-          onClose={() => setSortAnchor(null)}
-        />
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 });

@@ -64,12 +64,14 @@ rules use `background-color`, never the `background` shorthand — the shorthand
 
 **The sidebar bar is the same 7px pill, but hugging the divider** (judged live 2026-08-23):
 `.sidebar-scroll::-webkit-scrollbar-thumb` re-splits the border 4px content-side / 1px edge-side,
-so the ink's outer edge sits 1px off the divider instead of centred. The class lives on the three
-sidebar scrollers in `Sidebar.jsx`. It pairs with `ROW_INSET_RIGHT = 2`: tree pills keep the 4px
-left inset but stop only 2px short of the scrollbar gutter. Known quirk, accepted: with no
-overflow there is no gutter, so tree pills then end 2px from the sidebar edge while the action
-rows above (outside the scroller) end at 4px — fix candidate is `scrollbar-gutter: stable`, not
-re-widening the inset.
+so the ink's outer edge sits 1px off the divider instead of centred. The class lives on the one
+sidebar scroller in `Sidebar.jsx` (see the sticky-actions note below — since 2026-08-23 a single
+scroll container serves every sidebar state). It pairs with `ROW_INSET_RIGHT = 2`: tree pills keep
+the 4px left inset but stop only 2px short of the scrollbar gutter. The action rows live inside
+the same scroller now, so every pill shares one right boundary beside the gutter; the action
+group's own right inset stays 4px against the tree pills' 2px — a 2px difference judged fine
+live. With no overflow there is no gutter (accepted; `scrollbar-gutter: stable` is the fix
+candidate if it ever grates).
 
 Ramp is three steps, rest → hover → `:active` (drag): DAY `#E9E9E9` → `#C9C7C5` → `#A8A5A2`,
 NIGHT `#3A3D4A` → `#4A4D5A` → `#5A5D6A`. DAY's `thumb` deliberately equals `BG.divider` — that is
@@ -190,7 +192,14 @@ button.
 ## Sidebar primary actions (Picito row treatment)
 
 `New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, hover
-to `BG.hover` with `TEXT.primary` ink. The whole desktop sidebar sits on a two-column alignment
+to `BG.hover` with `TEXT.primary` ink. **Since 2026-08-23 the action group lives INSIDE the
+sidebar's single scroll container as a `position: sticky` block** (opaque `chromeBg` ground,
+zIndex 1): the scrollbar track spans from New note down, the actions never scroll away, and the
+search field keeps one DOM position across search-mode flips so it cannot remount (and drop
+focus) mid-typing — that no-remount guarantee is WHY every sidebar state shares one scroller;
+don't split the branches back into per-state scrollers. Entering/leaving search resets scrollTop
+(the old per-branch scrollers got that by remounting). Rows slide under the sticky block with no
+separator — judged fine; a scrolled-only hairline is the fix if it ever reads smudgy. The whole desktop sidebar sits on a two-column alignment
 system (2026-08-19, "option C"): `SPINE = 12` carries the wordmark, action icons, section header
 labels and folder icons; `TEXT_COL = 34` carries every label — action labels, folder names AND
 root note titles. Action glyphs run 18px in an 18px box with a 4px gap (folder glyphs 16px, 6px gap) — both anchor
@@ -213,7 +222,11 @@ themselves are hovered. The row that opened the menu holds its pill and dots unt
 It is a `span role="button"` with `tabIndex={-1}` — a real button nested in the treeitem button
 is invalid HTML and fails axe `nested-interactive`; the row stays the keyboard path. The single-
 note menu items carry 16px nav-stroke glyphs (Pencil/Copy/Trash2, inheriting item ink so Delete's
-goes red); folder and bulk menus stay text-only.
+goes red); folder and bulk menus stay text-only. A pointer-opened menu shows no focus ring on its
+first item: `useFocusTrap` takes `initialFocus: "container"` and ContextMenu parks initial focus
+on the menu container (`tabIndex={-1}`, `outline: none`) — Chromium treats script focus as
+`:focus-visible`, which used to ring "Rename" on every ···-click. Keyboard Tab/arrows still move
+real focus and indicate normally.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
 (note rows) still uses the older tree grammar, so the two grammars coexist.
@@ -249,9 +262,12 @@ zero-folder gap hack (16 → 24px); a labelled section does that job properly.
 
 One control decides how every note list in the panel is ordered — root notes and folder contents
 alike. `Most recent` (Clock3) / `Alphabetical` (ArrowDownAZ), global, persisted in
-`boojy-note-sort`, defaulting to recency. It sits on the `Notes` header; the trigger glyph is the
-active mode, and the menu (`SortMenu.jsx`, positioned via `useMenuPosition` like every other
-popover) ticks it.
+`boojy-note-sort`, defaulting to recency. It sits on the `Notes` header as a **click-to-flip
+toggle** (judged live 2026-08-23 — two modes made the old `SortMenu` popover pure ceremony;
+SortMenu is deleted, git history has it). Convention, deliberate: the glyph shows the CURRENT
+mode, the tooltip/aria-label's tail says what a click does ("Sorted by most recent — switch to
+alphabetical"). If a third sort mode ever lands, the toggle breaks and a menu returns — that is
+the accepted bet, not an oversight.
 
 **"Most recent" is last *touched*: `max(last opened here, file mtime)`** — `recencyOf()` in
 `utils/noteSort.js`. Neither half works alone, and the reason is worth keeping. Opening a note never
@@ -311,14 +327,21 @@ Existing `.boojy-meta.json` files are **left untouched on disk**. Nothing reads 
 `noteOrder`/`folderOrder` keys any more, so an old arrangement stays recoverable — don't "tidy
 them up", and don't reintroduce a reader for them.
 
-## Section-header controls: quiet, never hidden
+## Section-header controls: hidden at rest, revealed by the header
 
 `SectionAction` in `Sidebar.jsx` is the one component for a header's trailing control (New folder,
-Sort): 28px box, 16px nav-tier glyph, `TEXT.secondary` at `SECTION_ACTION_REST` = **0.55**, full
-opacity on hover *and* focus. Hover-only reveal is rejected outright — it costs a keyboard user the
-control. The judged-live request was 0.4, which is not what shipped: 0.4 of any of our ink tokens
-composites to roughly 2:1 on the DAY ground, under the 3:1 an icon-only control needs to be
-identifiable. 0.55 is the faintest value that clears it. One constant if it reads too loud.
+Sort): 28px box, 16px nav-tier glyph. Since 2026-08-23 it follows the note-row ··· grammar —
+**invisible at rest**, revealed at 0.55 by hovering the header (`.sidebar-section-header`) or by
+keyboard focus (`:focus-within`), lifted to full `TEXT.primary` ink + `BG.surface` when the
+control itself is hovered/focused. All states are CSS (`.sidebar-section-action` in GlobalStyles)
+— don't reintroduce JS opacity handlers, they permanently override the class rules after first
+hover. Touch devices keep the controls always visible (`@media (hover: hover)` guards the hiding).
+An open menu holds its control at full ink via the `active` prop (inline opacity beats the class).
+This reversed the earlier "quiet, never hidden" rule; what that rule actually protected — keyboard
+reachability — is preserved, because focus always reveals. The 0.55 revealed ink keeps its old
+rationale: the faintest composite clearing ~3:1 on the DAY ground (0.4 does not). Known tradeoff,
+accepted single-user: a mouse user gets no standing hint that New folder exists until they hover a
+header.
 
 ## Only structure and actions get a glyph
 
@@ -391,6 +414,9 @@ no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (
 and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy
 migration and managed-file-only deletion. The e2e settings flow clicks
 `wordmark-settings-button` directly. `SlashMenu.test.jsx` guards the keyboard-first selection
-against stationary-pointer hover. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
+against stationary-pointer hover. `Sidebar.test.jsx`'s sort tests assert the toggle (flip both
+ways, no menu role) and its header-control test asserts the CSS reveal hooks (class names +
+tabIndex 0), not computed opacity — jsdom can't evaluate the GlobalStyles stylesheet. Its
+note-row test allows the row's ··· svg and forbids only `lucide-file-text`. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
 the `activeTabBg` token and `settingsTab` context field no longer exist — don't reintroduce
 either in mocks.

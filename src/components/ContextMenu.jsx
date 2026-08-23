@@ -33,7 +33,10 @@ const ContextMenu = memo(function ContextMenu({
   const [activeIndex, setActiveIndex] = useState(-1);
   const itemsRef = useRef([]);
   const menuContainerRef = useRef(null);
-  useFocusTrap(menuContainerRef, !!ctxMenu);
+  // "container" so a pointer-opened menu doesn't paint a :focus-visible ring
+  // on its first item (Chromium treats script focus as focus-visible).
+  // Keyboard Tab/arrows still move real focus and indicate normally.
+  useFocusTrap(menuContainerRef, !!ctxMenu, "container");
 
   // The click position is a point anchor: the menu opens at it where possible
   // and flips/clamps into the viewport otherwise (e.g. the note-actions ···
@@ -188,7 +191,9 @@ const ContextMenu = memo(function ContextMenu({
         role="menu"
         aria-label="Context menu"
         aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}
+        tabIndex={-1}
         style={{
+          outline: "none",
           position: "fixed",
           top: pos?.top ?? ctxMenu.y,
           left: pos?.left ?? ctxMenu.x,

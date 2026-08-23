@@ -82,6 +82,33 @@ export default function GlobalStyles() {
           opacity: 1;
           color: ${theme.TEXT.primary};
         }
+        /* Section-header actions, judged live 2026-08-23 (New
+           folder, Sort) hide at rest and reveal on header hover or keyboard
+           focus, mirroring the note-row ··· grammar. 0.55 is the quiet revealed
+           ink — the faintest composite that clears ~3:1 on the DAY ground (0.4
+           does not). :where() keeps the reveal at class specificity so the
+           emphasis rules below can win. Touch devices (no hover) keep the
+           controls always visible; an open menu holds its control via inline
+           opacity (SectionAction \`active\`). */
+        .sidebar-section-action {
+          background: transparent;
+          color: ${theme.TEXT.secondary};
+          opacity: 0.55;
+          transition: background 120ms, color 120ms, opacity 120ms;
+        }
+        @media (hover: hover) {
+          .sidebar-section-action { opacity: 0; }
+          :where(.sidebar-section-header:hover, .sidebar-section-header:focus-within)
+            .sidebar-section-action {
+            opacity: 0.55;
+          }
+        }
+        .sidebar-section-action:hover,
+        .sidebar-section-action:focus-visible {
+          background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
+          opacity: 1;
+        }
         input::placeholder { color: ${theme.TEXT.muted}; }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
