@@ -53,7 +53,7 @@
     "jsdom": "^29.1.1",
     "lint-staged": "^17.0.8",
     "typescript": "^6.0.3",
-    "vite": "^6.4.1",
+    "vite": "^8.2.2",
     "vite-plugin-electron": "^1.0.4",
     "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^4.1.8"
