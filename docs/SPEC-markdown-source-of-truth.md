@@ -46,7 +46,7 @@ states that plainly rather than pretending otherwise.
 | Platform | What is on disk / in storage | Is markdown the literal source of truth? |
 |----------|------------------------------|------------------------------------------|
 | **Desktop (Electron)** | Real `.md` files in the vault (`electron/noteFileManager.js` writes via `blocksToMarkdown`, reads via `markdownToBlocks`). An index maps note IDs → paths. | **Yes — already true today.** |
-| **Web** | Block JSON in `localStorage` (`boojy-notes-v1`); becomes markdown only at the sync boundary (R2 stores markdown + frontmatter). | **No — temporary divergence.** |
+| **Web** | Block JSON in `localStorage` (`boojy-notes-v1`). | **No — temporary divergence.** |
 
 So on web we claim only that blocks are **provably round-trippable** (the round-trip test
 guarantees it), *not* that web "stores markdown." Do not write or imply otherwise in UI,

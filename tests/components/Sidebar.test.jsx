@@ -69,8 +69,6 @@ const settingsState = {
   settingsFontSize: 15,
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
-  user: null,
-  profile: null,
 };
 
 vi.mock("../../src/context/SettingsContext", () => ({

@@ -1,5 +1,4 @@
 import { createContext, useState, useEffect, useContext, useMemo } from "react";
-import { useAuth } from "../hooks/useAuth";
 import { isElectron } from "../utils/platform";
 
 const SettingsContext = createContext(null);
@@ -20,27 +19,6 @@ export function SettingsProvider({ children }) {
     document.documentElement.style.minHeight = uiScale !== 100 ? `${10000 / uiScale}vh` : "";
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);
-
-  // Auth is kept wired (recoverable sync work) even though the sign-in surface
-  // is unmounted until local-first Boojy Notes is stable.
-  const {
-    user,
-    profile,
-    signInWithEmail,
-    signUpWithEmail,
-    signInWithOAuth,
-    signOut,
-    resendVerification,
-  } = useAuth();
-
-  // OAuth hash detection
-  useEffect(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(window.location.search);
-    if (hash.includes("access_token") || params.has("code")) {
-      setSettingsOpen(true);
-    }
-  }, []);
 
   // Spell check has no settings UI: the Electron main process applies the
   // stored preference at startup (electron/main.js) and defaults it on.
@@ -65,32 +43,12 @@ export function SettingsProvider({ children }) {
       setSettingsOpen,
       uiScale,
       setUiScale,
-      user,
-      profile,
-      signInWithEmail,
-      signUpWithEmail,
-      signInWithOAuth,
-      signOut,
-      resendVerification,
       autoUpdateEnabled,
       setAutoUpdateEnabled,
       updateStatus,
       setUpdateStatus,
     }),
-    [
-      settingsFontSize,
-      settingsOpen,
-      uiScale,
-      user,
-      profile,
-      signInWithEmail,
-      signUpWithEmail,
-      signInWithOAuth,
-      signOut,
-      resendVerification,
-      autoUpdateEnabled,
-      updateStatus,
-    ],
+    [settingsFontSize, settingsOpen, uiScale, autoUpdateEnabled, updateStatus],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

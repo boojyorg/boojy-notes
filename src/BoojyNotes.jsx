@@ -4,7 +4,6 @@ import { useSettings } from "./context/SettingsContext";
 import { useLayout, OVERLAY_SCRIMS } from "./context/LayoutContext";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
-import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
 import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
@@ -35,9 +34,7 @@ import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
-import FirstSyncModal from "./components/FirstSyncModal";
 import ConfirmDialog from "./components/ConfirmDialog";
-import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
@@ -85,11 +82,10 @@ export default function BoojyNotes() {
     noteDataRef,
     textOnlyEdit,
     textOnlyEditForEditor,
-    editedNoteHint,
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { settingsOpen, setSettingsOpen, uiScale, setUiScale, user, profile } = useSettings();
+  const { settingsOpen, setSettingsOpen, uiScale, setUiScale } = useSettings();
 
   const {
     sidebarWidth,
@@ -167,10 +163,6 @@ export default function BoojyNotes() {
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // The web sign-in nags (OnboardingToast / PersistenceWarning / useWebNags) were
-  // removed with the rest of the cloud-sync surface — git history has them, but a
-  // returning sync UI would be rebuilt against the current Settings grammar anyway.
-
   // ── Refs ────────────────────────────────────────────────────────────
   const blockRefs = useRef({});
   const editorRef = useRef(null);
@@ -184,30 +176,6 @@ export default function BoojyNotes() {
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
-  // On desktop, cloud sync is opt-in per device (off by default — local-only).
-  // Passing a null user keeps every sync trigger inert, even when a Supabase
-  // session was silently restored from a previous run.
-  // Desktop dogfood build (w/c 2026-06-15): sync is disabled & hidden on desktop —
-  // the engine stays dormant (null user below) and the Settings toggle is hidden.
-  // Reversible: restore the localStorage opt-in here and rebuild the Settings sync
-  // surface (the old ProfileTab lives in git history). Web (parked) is unchanged.
-  const [syncEnabled] = useState(() => !isElectron);
-  const {
-    syncState,
-    conflictToast,
-    dismissConflictToast,
-    pendingFirstSync,
-    confirmFirstSync,
-    cancelFirstSync,
-  } = useSync(
-    syncEnabled ? user : null,
-    profile,
-    noteData,
-    setNoteData,
-    activeNote,
-    editedNoteHint,
-    syncGeneration,
-  );
   const {
     isElectron: isDesktop,
     notesDir,
@@ -1052,32 +1020,12 @@ export default function BoojyNotes() {
 
       <GlobalStyles />
 
-      {pendingFirstSync && (
-        <FirstSyncModal
-          noteCount={pendingFirstSync.noteCount}
-          accentColor={accentColor}
-          isSyncing={syncState === "syncing"}
-          onConfirm={confirmFirstSync}
-          onCancel={cancelFirstSync}
-        />
-      )}
-
       <ConfirmDialog
         confirm={confirmState}
         accentColor={accentColor}
         onConfirm={() => resolveConfirm(true)}
         onCancel={() => resolveConfirm(false)}
       />
-
-      {conflictToast && (
-        <ConflictToast
-          noteTitle={conflictToast.noteTitle}
-          onClick={() => {
-            setActiveNote(conflictToast.conflictId);
-            dismissConflictToast();
-          }}
-        />
-      )}
 
       {toasts.length > 0 && (
         <div

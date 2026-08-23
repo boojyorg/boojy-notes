@@ -18,7 +18,6 @@ vi.mock("../../src/hooks/useHistory", () => ({
     textOnlyEdit: { current: false },
     textOnlyEditForSidebar: { current: false },
     textOnlyEditForEditor: { current: false },
-    editedNoteHint: { current: null },
   }),
 }));
 

@@ -43,8 +43,6 @@ pnpm dev:web
 ```
 
 No accounts, keys, or environment variables are needed — the app is fully local.
-(`.env.example` lists the Supabase/R2 variables used only for developing the parked
-cloud-sync backend; leave them unset otherwise.)
 
 ## Development
 
@@ -73,10 +71,10 @@ conventions live in [AGENTS.md](AGENTS.md).
 ## Status
 
 Boojy Notes is desktop-first right now: the app is being dogfooded daily as a local-only
-tool, and no cloud features ship until the offline app is trusted. The web build is a
-responsive PWA at [notes.boojy.org](https://notes.boojy.org). Cloud sync and sign-in exist
-as parked backend code, deliberately unmounted from the UI. Native mobile (Capacitor) was
-removed in v0.3.0 to reduce scope.
+tool. The web build is a responsive PWA at [notes.boojy.org](https://notes.boojy.org).
+Cloud sync and sign-in have been removed from the product repository; Git history is the
+recovery path if that direction is reconsidered. Native mobile (Capacitor) was removed in
+v0.3.0 to reduce scope.
 
 ## Contributing
 

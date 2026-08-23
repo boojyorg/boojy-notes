@@ -10,11 +10,9 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const textOnlyEdit = useRef(false);
   const textOnlyEditForSidebar = useRef(false);
   const textOnlyEditForEditor = useRef(false);
-  const editedNoteHint = useRef(null);
-  // Notes edited since the last quit/blur disk flush. Unlike editedNoteHint
-  // (a single slot consumed by useSync), this survives multi-note edit bursts —
-  // e.g. typing in both split panes within one debounce window — so the quit
-  // flush can write every note whose edits may not have reached React state.
+  // Notes edited since the last quit/blur disk flush. This survives multi-note
+  // edit bursts so the quit flush can write every note whose edits may not have
+  // reached React state.
   const unflushedNotes = useRef(new Set());
 
   const noteDataRef = useRef(noteData);
@@ -105,7 +103,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     textOnlyEdit.current = true;
     textOnlyEditForSidebar.current = true;
     textOnlyEditForEditor.current = true;
-    editedNoteHint.current = activeNoteRef.current;
     if (activeNoteRef.current) unflushedNotes.current.add(activeNoteRef.current);
 
     // Batch: debounce setNoteData so React only re-renders when typing pauses.
@@ -178,7 +175,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     textOnlyEdit,
     textOnlyEditForSidebar,
     textOnlyEditForEditor,
-    editedNoteHint,
     unflushedNotes,
   };
 }

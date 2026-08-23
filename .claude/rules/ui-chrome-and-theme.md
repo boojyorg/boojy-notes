@@ -109,9 +109,9 @@ Things a future change will trip over:
   separate About destination or Recently Deleted surface.
 - **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
   Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
-  reintroduce it in mocks. The parked sign-in/sync surface (`ProfileTab.jsx`, `OnboardingToast`,
-  `PersistenceWarning`, `useWebNags`) was deleted in the 2026-08-19 dead-code sweep — git history
-  is the parking lot; a returning sync UI gets rebuilt against the current Settings grammar.
+  reintroduce it in mocks. Sign-in, cloud sync, their backend and related UI were deleted — Git
+  history is the parking lot; a returning sync feature gets rebuilt against the current Settings
+  grammar rather than keeping dormant code in the product.
   `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
   has no UI but still applies from the stored Electron setting, and UI scale is
   keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).

@@ -215,24 +215,15 @@ describe("useHistory", () => {
       expect(result.current.textOnlyEditForSidebar.current).toBe(true);
     });
 
-    it("sets editedNoteHint to the active note", () => {
-      const { result } = setup();
-
-      act(() => result.current.commitTextChange((prev) => prev));
-
-      expect(result.current.editedNoteHint.current).toBe(NOTE_ID);
-    });
-
-    it("accumulates every edited note in unflushedNotes (split-pane safety)", () => {
+    it("accumulates every edited note in unflushedNotes", () => {
       const { result, activeNoteRef } = setup();
 
       act(() => result.current.commitTextChange((prev) => prev));
-      // Second pane: another note edited within the same debounce window —
-      // editedNoteHint forgets the first note, unflushedNotes must not
+      // Another note edited within the same debounce window must not replace
+      // the first note in the pending quit/blur flush.
       activeNoteRef.current = "note-2";
       act(() => result.current.commitTextChange((prev) => prev));
 
-      expect(result.current.editedNoteHint.current).toBe("note-2");
       expect([...result.current.unflushedNotes.current]).toEqual([NOTE_ID, "note-2"]);
     });
 

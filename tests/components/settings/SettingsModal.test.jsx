@@ -41,8 +41,6 @@ vi.mock("../../../src/hooks/useFocusTrap", () => ({
 const settingsState = {
   settingsOpen: true,
   setSettingsOpen: vi.fn(),
-  user: null,
-  profile: null,
 };
 
 vi.mock("../../../src/context/SettingsContext", () => ({
@@ -85,7 +83,6 @@ function renderModal(overrides = {}) {
 beforeEach(() => {
   settingsState.settingsOpen = true;
   settingsState.setSettingsOpen = vi.fn();
-  settingsState.user = null;
 });
 
 afterEach(() => {

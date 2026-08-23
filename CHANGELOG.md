@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Removed
+- **Cloud sync and sign-in** — Boojy is fully local for now. The dormant Supabase auth/client,
+  R2-backed Edge Functions, realtime and cross-tab sync engine, conflict/first-sync UI, backend
+  migrations, tests, environment template and `@supabase/supabase-js` dependency have been
+  deleted rather than carried as inactive product weight. Git retains the implementation if the
+  product direction changes later; desktop Markdown files and web browser storage are unchanged.
 - **Tabs and split view — one note at a time** — Opening a note now replaces the current one; there is no tab strip and no `Cmd+Shift+\` split. The whole pane/tab layer was deleted, not hidden: navigation state is a single active note, which is what makes the calmer chrome elsewhere in this release possible. Your last-open note is remembered across restarts, and old saved layouts migrate cleanly (if you had a split open, you land on the note from its active pane). Cmd-clicking a wikilink now simply opens that note. Quick Open and back/forward history are the planned follow-ups for fast switching.
 - **PDF and DOCX export** — Boojy Notes is a Markdown editor, so the dedicated document exporters, Electron menu commands, broken web menu entries and the `docx` dependency have been removed. Git retains the implementation if this non-core feature is reconsidered later; Markdown and folder import are unchanged.
 - **Recently Deleted and the app-level wordmark menu** — The private in-vault `.trash`, restore/purge UI and `Recently Deleted` surfaces are gone. Clicking the Notes wordmark now opens Settings directly; the separate About destination is gone because version and credit already live quietly inside Settings.
@@ -23,7 +28,6 @@
   existing final flush path.
 - **Slash commands reliably start at Heading 1** — Opening `/` no longer lets a stationary pointer accidentally select whichever lower menu row appears beneath it. Keyboard selection starts at the first command and changes only after an arrow key or real pointer movement.
 - **Checkboxes update immediately** — Checking or unchecking a task now repaints its tick and strikethrough at once instead of waiting for Enter or another structural editor change.
-- **Local-only now means zero cloud traffic** — The desktop app no longer initialises the Supabase client at all. Previously, a build with backend keys could silently refresh a leftover sign-in session and fetch the account profile on launch, even though sync and sign-in are switched off — no note data ever moved, but a local-only app shouldn't phone home. Desktop now never contacts the backend; the web app is unchanged.
 - **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
 - **Equally relevant search results now fall back to the most recent** — Search has always intended to break ties by which note changed most recently, but the modified time it compared was never actually recorded, so every note looked equally old and ties fell back to whatever order the notes happened to load in. Boojy now reads each file's modified time, so tied results come out newest first.
 

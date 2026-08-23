@@ -1,8 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 
-// Supabase mock — prevents real network calls from sync code
-vi.mock("../src/lib/supabase", () => ({ supabase: null }));
-
 // structuredClone polyfill (some test envs lack it)
 if (typeof globalThis.structuredClone === "undefined") {
   globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
