@@ -22,6 +22,8 @@
 - **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Bug Fixes
+- **Settings close button has a meaningful accessible name** — The existing `×` control is
+  unchanged visually, but screen readers and voice control can now identify it as “Close settings.”
 - **Sort-menu focus no longer gets lost** — Escape now closes the note-order menu and returns
   focus to its trigger. Tab closes it without cancelling the browser's normal focus movement,
   instead of leaving keyboard focus stranded on the document body.

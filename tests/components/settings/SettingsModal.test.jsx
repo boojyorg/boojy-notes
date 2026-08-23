@@ -110,6 +110,11 @@ describe("SettingsModal", () => {
     expect(dialog.getAttribute("aria-label")).toBe("Settings");
   });
 
+  it("gives the desktop close button an accessible name", () => {
+    renderModal();
+    expect(screen.getByRole("button", { name: "Close settings" })).toBeInTheDocument();
+  });
+
   it("is a single pane: no navigation sidebar and no Profile section", () => {
     renderModal();
     expect(screen.queryByText("Profile")).not.toBeInTheDocument();
