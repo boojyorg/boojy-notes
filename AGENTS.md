@@ -12,9 +12,6 @@ and gotchas.
 
 - **Frontend:** React 19, Vite 6 (responsive — mobile-browser layout via `useIsMobile`)
 - **Desktop:** Electron 42
-- **Backend (parked):** Supabase (auth + database), Cloudflare R2 (attachments) — desktop is
-  local-only; the sync engine is dormant and the sign-in/Profile UI is unmounted (zero importers)
-  until sync is stable
 - **Testing:** Vitest + @testing-library/react (unit), Playwright (E2E)
 - **Linting/Formatting:** Biome 2 (single tool for lint + format, `biome.json`), enforced by Husky pre-commit hooks
 - **Package manager:** pnpm (`.npmrc` `node-linker=hoisted` for electron-builder)
@@ -32,8 +29,7 @@ src/
 ├── context/                # React Context providers (Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor)
 ├── hooks/                  # Custom hooks (useActiveNote, useHistory, useFileSystem, etc.)
 │   └── editor/             # Editor-specific hooks (keyboard, paste, drag, slash commands)
-├── services/               # Platform services (apiProvider, sync)
-├── lib/                    # Supabase client init
+├── services/               # Platform services (apiProvider)
 ├── utils/                  # Utilities (storage, search, domHelpers, inlineFormatting, platform)
 ├── constants/              # Themes, z-index, slash commands, data defaults
 ├── styles/                 # Shared style objects (buttons, inputs)

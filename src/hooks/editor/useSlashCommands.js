@@ -229,9 +229,11 @@ export function useSlashCommands({
         ...block,
         text: "",
         type: "table",
+        // Smallest useful table, no placeholder text: header cells you must first
+        // clear are friction, and the edge zones make growing it cheap.
         rows: [
-          ["Column 1", "Column 2", "Column 3"],
-          ["", "", ""],
+          ["", ""],
+          ["", ""],
         ],
       };
       const paraBlock = { id: genBlockId(), type: "p", text: "" };

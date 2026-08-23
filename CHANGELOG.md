@@ -3,22 +3,46 @@
 ## Unreleased
 
 ### Removed
+- **Cloud sync and sign-in** — Boojy is fully local for now. The dormant Supabase auth/client,
+  R2-backed Edge Functions, realtime and cross-tab sync engine, conflict/first-sync UI, backend
+  migrations, tests, environment template and `@supabase/supabase-js` dependency have been
+  deleted rather than carried as inactive product weight. Git retains the implementation if the
+  product direction changes later; desktop Markdown files and web browser storage are unchanged.
 - **Tabs and split view — one note at a time** — Opening a note now replaces the current one; there is no tab strip and no `Cmd+Shift+\` split. The whole pane/tab layer was deleted, not hidden: navigation state is a single active note, which is what makes the calmer chrome elsewhere in this release possible. Your last-open note is remembered across restarts, and old saved layouts migrate cleanly (if you had a split open, you land on the note from its active pane). Cmd-clicking a wikilink now simply opens that note. Quick Open and back/forward history are the planned follow-ups for fast switching.
 - **PDF and DOCX export** — Boojy Notes is a Markdown editor, so the dedicated document exporters, Electron menu commands, broken web menu entries and the `docx` dependency have been removed. Git retains the implementation if this non-core feature is reconsidered later; Markdown and folder import are unchanged.
 - **Recently Deleted and the app-level wordmark menu** — The private in-vault `.trash`, restore/purge UI and `Recently Deleted` surfaces are gone. Clicking the Notes wordmark now opens Settings directly; the separate About destination is gone because version and credit already live quietly inside Settings.
+- **Manual ordering, and folder dragging** — Notes and folders can no longer be dragged into a hand-arranged order. There were two competing ideas of "order" — a manual one saved to disk, and the new sort preference — and one had to go. Dragging a note still moves its file into a folder, because that is a real change to where the note lives. Folder rows are no longer draggable at all: dropping a folder onto another folder used to highlight the target, expand it, and then silently do nothing, so the affordance was promising something the app could not do. Genuine folder nesting can be built later as its own feature. Your existing `.boojy-meta.json` files are left untouched on disk — nothing reads or writes the ordering keys any more, so an old arrangement stays recoverable.
 
 ### Improvements
+- **Quieter, easier-to-grab editor chrome** — Scrollbars now keep a generous pointer target while
+  drawing a slim neutral thumb with reliable hover and held states in Chromium and Firefox. The
+  sidebar resize edge uses the same neutral interaction language instead of a permanent divider,
+  and its first-run width is slightly more comfortable without reducing the editor's responsive
+  floor.
+- **Tables start as a blank canvas** — The `/table` command now inserts the smallest useful blank
+  2×2 table instead of a labelled 3×2 template, and header cells use weight rather than a permanent
+  background fill. Rows and columns remain easy to add from the table edges.
 - **Desktop deletion uses the system Trash** — Deleting a Boojy-managed Markdown note now sends that file to the macOS Trash or Windows Recycle Bin. Folder deletion still acts only on Boojy-managed Markdown files and never trashes the containing folder or unsupported sibling files. Existing private `.trash` notes are copied to readable, collision-safe names in the OS Trash before their legacy source is removed; ambiguous or failed items remain untouched and are reported.
 - **Light is the first-run theme** — Light is now the default only when no theme preference exists. Saved Light, Dark and Auto choices continue unchanged.
 - **Settings is one small pane** — The navigation sidebar, the Profile/sign-in section, the Editor section (spell check and language) and the UI Scale row are gone, along with the large in-settings logo. What remains: Appearance (theme, font size), plus Storage and Updates on desktop, closed by a quiet version line. Spell check stays on by default (the stored desktop preference still applies); UI scale lives on as the Cmd+Plus / Cmd+Minus / Cmd+0 shortcuts. The web sign-in nudges are gone with the rest of the cloud pitch — no cloud UI ships until the local-first app is stable.
 - **Calmer folder rows** — The permanent `>` disclosure chevrons are gone from the sidebar; the whole folder row toggles open/closed and the folder icon carries the state. Screen readers still hear expanded/collapsed.
 - **New "Notes" logo** — The wordmark is a single new "Notes" mark. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle.
+- **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Bug Fixes
+- **Settings close button has a meaningful accessible name** — The existing `×` control is
+  unchanged visually, but screen readers and voice control can now identify it as “Close settings.”
+- **Sort-menu focus no longer gets lost** — Escape now closes the note-order menu and returns
+  focus to its trigger. Tab closes it without cancelling the browser's normal focus movement,
+  instead of leaving keyboard focus stranded on the document body.
+- **Failed disk saves keep retrying** — If Electron cannot write a note, Boojy now keeps that note
+  in its dirty set and retries every five seconds until the write succeeds. The first failure is
+  reported without repeating the same notification on every retry; closing the app still uses the
+  existing final flush path.
 - **Slash commands reliably start at Heading 1** — Opening `/` no longer lets a stationary pointer accidentally select whichever lower menu row appears beneath it. Keyboard selection starts at the first command and changes only after an arrow key or real pointer movement.
 - **Checkboxes update immediately** — Checking or unchecking a task now repaints its tick and strikethrough at once instead of waiting for Enter or another structural editor change.
-- **Local-only now means zero cloud traffic** — The desktop app no longer initialises the Supabase client at all. Previously, a build with backend keys could silently refresh a leftover sign-in session and fetch the account profile on launch, even though sync and sign-in are switched off — no note data ever moved, but a local-only app shouldn't phone home. Desktop now never contacts the backend; the web app is unchanged.
 - **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
+- **Equally relevant search results now fall back to the most recent** — Search has always intended to break ties by which note changed most recently, but the modified time it compared was never actually recorded, so every note looked equally old and ties fell back to whatever order the notes happened to load in. Boojy now reads each file's modified time, so tied results come out newest first.
 
 ## v0.5.0 — 2026-06-12
 

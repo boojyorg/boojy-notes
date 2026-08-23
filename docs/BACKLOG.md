@@ -26,8 +26,6 @@ third-party content — these gate confident Vault migration):
 - [ ] Wikilink image widths `![[img|N]]` with N < 70 clamp up to 70 on first save (P2).
 
 **Reliability follow-ups:**
-- [ ] Failed disk writes drop the note from the dirty set with no retry — error toast, then the
-  note exists only in React state (P2). `useFileSystem.js:172`.
 - [ ] Rename crash-window can re-ID a note (crash between unlink and index save) or leave a
   visible duplicate (crash before unlink — by design, but cleanup is manual) (P2/P3).
 - [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W + Cmd+Q;
@@ -39,20 +37,11 @@ third-party content — these gate confident Vault migration):
 - [ ] Unparseable files silently vanish from the sidebar (audit).
 - [ ] `changeNotesDir` leaks the old vault's folders into the new one (audit).
 - [ ] Undo within 300ms gets overwritten by the text flush (audit).
-
-**Sync (before sync is ever re-enabled on desktop):**
-- [ ] Sync pull has no timestamp merge — stale cloud copy can clobber newer local notes (audit;
-  **hard blocker** for re-enabling sync).
-- [ ] Conflict-resolution UI unreachable on desktop — the whole Profile/sync surface is
-  unmounted (2026-08-18), so pre-existing conflict notes have no resolution path (P2).
-  Resolve as part of whatever sync UI is (re)built when sync returns.
-- [ ] BroadcastChannel receive path applies cross-tab note changes without a `syncEnabled`
-  guard (P3). `useSync.js:114`.
 - [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
 
 **Split-pane:** section retired 2026-08-18 — split view and tabs were removed outright
 (single-active-note refactor), which closes the PaneContainer tag-autocomplete and
-per-pane `editedNoteHint` items with them.
+related per-pane state items with them.
 
 ## Refactor / docs
 - [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, then
@@ -113,5 +102,3 @@ may already be partly shipped; confirm against the app before picking one up.)
   uses the accent. NIGHT was deliberately left untouched in that pass.)*
 - [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
   aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
-- [ ] ProfileTab inputs: placeholder-only, no `<label>`/`aria-label`; password toggle unlabeled.
-  *(ProfileTab was deleted 2026-08-19 — a rebuilt sign-in surface must not repeat this.)*

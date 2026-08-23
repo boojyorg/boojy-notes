@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
-import { useLayout } from "./context/LayoutContext";
+import { useLayout, OVERLAY_SCRIMS } from "./context/LayoutContext";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
-import { useSync } from "./hooks/useSync";
 import { useFileSystem } from "./hooks/useFileSystem";
 import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
@@ -35,9 +34,7 @@ import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import TitleBar, { TITLE_BAR_H } from "./components/TitleBar";
 import EditorChrome from "./components/EditorChrome";
-import FirstSyncModal from "./components/FirstSyncModal";
 import ConfirmDialog from "./components/ConfirmDialog";
-import ConflictToast from "./components/ConflictToast";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
@@ -85,16 +82,21 @@ export default function BoojyNotes() {
     noteDataRef,
     textOnlyEdit,
     textOnlyEditForEditor,
-    editedNoteHint,
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { settingsOpen, setSettingsOpen, uiScale, setUiScale, user, profile } = useSettings();
+  const { settingsOpen, setSettingsOpen, uiScale, setUiScale } = useSettings();
 
   const {
-    collapsed,
-    setCollapsed,
     sidebarWidth,
+    sidebarOverlay,
+    sidebarInFlow,
+    sidebarVisible,
+    overlayOpen,
+    overlayWidth,
+    overlayScrim,
+    closeOverlay,
+    revealSidebar,
     chromeBg,
     editorBg,
     accentColor,
@@ -112,12 +114,11 @@ export default function BoojyNotes() {
     setExpanded,
     customFolders,
     setCustomFolders,
-    sidebarOrder,
-    setSidebarOrder,
     setRenamingFolder,
     filteredTree,
     fNotes,
     folderList,
+    markOpened,
   } = useSidebar();
 
   const {
@@ -162,10 +163,6 @@ export default function BoojyNotes() {
   const [toolbarState, setToolbarState] = useState(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // The web sign-in nags (OnboardingToast / PersistenceWarning / useWebNags) were
-  // removed with the rest of the cloud-sync surface — git history has them, but a
-  // returning sync UI would be rebuilt against the current Settings grammar anyway.
-
   // ── Refs ────────────────────────────────────────────────────────────
   const blockRefs = useRef({});
   const editorRef = useRef(null);
@@ -179,47 +176,33 @@ export default function BoojyNotes() {
   activeNoteRef.current = activeNote;
 
   // ── External hooks ──────────────────────────────────────────────────
-  // On desktop, cloud sync is opt-in per device (off by default — local-only).
-  // Passing a null user keeps every sync trigger inert, even when a Supabase
-  // session was silently restored from a previous run.
-  // Desktop dogfood build (w/c 2026-06-15): sync is disabled & hidden on desktop —
-  // the engine stays dormant (null user below) and the Settings toggle is hidden.
-  // Reversible: restore the localStorage opt-in here and rebuild the Settings sync
-  // surface (the old ProfileTab lives in git history). Web (parked) is unchanged.
-  const [syncEnabled] = useState(() => !isElectron);
-  const {
-    syncState,
-    conflictToast,
-    dismissConflictToast,
-    pendingFirstSync,
-    confirmFirstSync,
-    cancelFirstSync,
-  } = useSync(
-    syncEnabled ? user : null,
-    profile,
-    noteData,
-    setNoteData,
-    activeNote,
-    editedNoteHint,
-    syncGeneration,
-  );
   const {
     isElectron: isDesktop,
     notesDir,
     loading: fsLoading,
     changeNotesDir,
     flushToDisk,
-  } = useFileSystem(
-    noteData,
-    setNoteData,
-    setCustomFolders,
-    syncGeneration,
-    setSidebarOrder,
-    showToast,
-  );
+  } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast);
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
-  const openNote = setActiveNote;
+  /**
+   * Opening a note dismisses an overlay sidebar — by click or by drag. The
+   * overlay is transient navigation; leaving it up over the note you just asked
+   * for would mean dismissing it by hand every single time. (Revert: drop the
+   * closeOverlay call and openNote goes back to being setActiveNote.)
+   */
+  const openNote = useCallback(
+    (id) => {
+      closeOverlay();
+      // Recency is stamped here, the one place a note becomes the open one.
+      // The promotion is immediate and deliberate: in "Most recent" the row
+      // jumps to the top of its list as you click it. (Revert: drop this line
+      // and recency stops updating.)
+      markOpened(id);
+      setActiveNote(id);
+    },
+    [closeOverlay, markOpened, setActiveNote],
+  );
   const {
     createNote,
     deleteNote,
@@ -240,7 +223,7 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
-    setSidebarOrder,
+    markOpened,
   });
   const {
     updateBlockText,
@@ -313,8 +296,6 @@ export default function BoojyNotes() {
     setNoteData,
     expanded,
     setExpanded,
-    sidebarOrder,
-    setSidebarOrder,
     customFolders,
     sidebarScrollRef,
     accentColor,
@@ -408,6 +389,7 @@ export default function BoojyNotes() {
     noteData,
     uiScale,
     settingsOpen,
+    overlayOpen,
     blockDrag,
     sidebarDrag,
     titleRef,
@@ -416,7 +398,8 @@ export default function BoojyNotes() {
     redo,
     createNote,
     setSettingsOpen,
-    setCollapsed,
+    revealSidebar,
+    closeOverlay,
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
@@ -447,26 +430,10 @@ export default function BoojyNotes() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const api = getAPI();
-    if (!api?.readMeta) return;
-    if (fsLoading) return;
-    const loadMeta = async () => {
-      const order = {};
-      const rootMeta = await api.readMeta("");
-      if (rootMeta) order[""] = rootMeta;
-      const allPaths = new Set();
-      for (const n of Object.values(noteData)) {
-        if (n.folder) allPaths.add(n.folder);
-      }
-      for (const fp of allPaths) {
-        const meta = await api.readMeta(fp);
-        if (meta) order[fp] = meta;
-      }
-      setSidebarOrder(order);
-    };
-    loadMeta();
-  }, [fsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: `.boojy-meta.json` files are deliberately left alone. Boojy no longer
+  // reads or writes noteOrder/folderOrder — folders are always alphabetical and
+  // notes follow the sort preference — but the files stay on disk untouched, so
+  // any foreign keys in them are safe and an old manual arrangement is recoverable.
 
   // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({
@@ -711,7 +678,10 @@ export default function BoojyNotes() {
       />
 
       {/* === MAIN AREA === */}
-      <div id="main-content" style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div
+        id="main-content"
+        style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}
+      >
         {/* Sidebar wrapper */}
         <div
           style={
@@ -725,16 +695,36 @@ export default function BoojyNotes() {
                   overflow: "hidden",
                   position: "relative",
                 }
-              : {
-                  width: collapsed ? 0 : sidebarWidth,
-                  minWidth: collapsed ? 0 : sidebarWidth,
-                  background: chromeBg,
-                  display: "flex",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                  position: "relative",
-                  transition: "width 0.2s ease, min-width 0.2s ease",
-                }
+              : sidebarOverlay
+                ? {
+                    // Too narrow for both: the same sidebar, painted over the
+                    // editor instead of beside it. Kept mounted while closed so
+                    // drag queries and scroll position survive.
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: overlayWidth,
+                    background: chromeBg,
+                    borderRight: `1px solid ${theme.BG.divider}`,
+                    boxShadow: sidebarVisible ? theme.modalShadow : "none",
+                    display: "flex",
+                    overflow: "hidden",
+                    zIndex: Z.SIDEBAR_OVERLAY,
+                    transform: sidebarVisible ? "translateX(0)" : "translateX(-100%)",
+                    visibility: sidebarVisible ? "visible" : "hidden",
+                    transition: "transform 0.2s ease, visibility 0.2s ease, box-shadow 0.2s ease",
+                  }
+                : {
+                    width: sidebarVisible ? sidebarWidth : 0,
+                    minWidth: sidebarVisible ? sidebarWidth : 0,
+                    background: chromeBg,
+                    display: "flex",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    position: "relative",
+                    transition: "width 0.2s ease, min-width 0.2s ease",
+                  }
           }
         >
           <Sidebar
@@ -759,11 +749,32 @@ export default function BoojyNotes() {
             />
           )}
         </div>
-        {/* Sidebar drag handle — desktop only, and only while the sidebar is open.
-            When collapsed it has nothing to resize, and its 4px fill + 1px border
-            left a hairline strip down the left edge instead of the sidebar fully
-            disappearing. */}
-        {!isMobile && !collapsed && (
+        {/* Scrim behind an open overlay. Starts very subtle on purpose — the
+            sidebar is navigation, not a modal — and is tunable live from the
+            dev tools (Cmd+.). Click-away closes on mousedown so the dismissing
+            press can't also land in the editor. */}
+        {!isMobile && sidebarOverlay && (
+          <div
+            data-testid="sidebar-overlay-scrim"
+            aria-hidden="true"
+            onMouseDown={closeOverlay}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: Z.SIDEBAR_SCRIM,
+              background: OVERLAY_SCRIMS[overlayScrim] ?? OVERLAY_SCRIMS.subtle,
+              opacity: sidebarVisible ? 1 : 0,
+              pointerEvents: sidebarVisible ? "auto" : "none",
+              transition: "opacity 0.2s ease",
+            }}
+          />
+        )}
+        {/* Sidebar drag handle — desktop only, and only while the sidebar is
+            actually in the layout. Hidden when collapsed (its 4px fill + 1px
+            border left a hairline strip down the left edge instead of the
+            sidebar fully disappearing) and hidden in overlay mode, where it
+            would sit over the editor resizing a panel that isn't in flow. */}
+        {!isMobile && sidebarInFlow && (
           <div
             ref={(el) => {
               // Assign null on unmount too, so the hover handlers don't restyle a
@@ -775,18 +786,27 @@ export default function BoojyNotes() {
               width: 4,
               cursor: "col-resize",
               background: chromeBg,
-              borderRight: `1px solid ${theme.BG.divider}`,
+              // The sidebar and editor already use different surface tones, so a
+              // permanent border would repeat the same separation signal.
               flexShrink: 0,
               transition: "background 0.15s",
             }}
-            onMouseEnter={() =>
-              sidebarHandles.current.forEach(
-                (h) => h && (h.style.background = theme.ACCENT.primary),
-              )
-            }
+            onMouseEnter={() => {
+              // Neutral, never accent: the handle is chrome, and the accent is
+              // reserved for identity/focus/markers. Hover is a whisper; the
+              // col-resize cursor is what actually announces the affordance.
+              if (!isDragging.current) {
+                for (const handle of sidebarHandles.current) {
+                  if (handle) handle.style.background = theme.sidebarHandle.hover;
+                }
+              }
+            }}
             onMouseLeave={() => {
-              if (!isDragging.current)
-                sidebarHandles.current.forEach((h) => h && (h.style.background = chromeBg));
+              if (!isDragging.current) {
+                for (const handle of sidebarHandles.current) {
+                  if (handle) handle.style.background = chromeBg;
+                }
+              }
             }}
           />
         )}
@@ -1009,32 +1029,12 @@ export default function BoojyNotes() {
 
       <GlobalStyles />
 
-      {pendingFirstSync && (
-        <FirstSyncModal
-          noteCount={pendingFirstSync.noteCount}
-          accentColor={accentColor}
-          isSyncing={syncState === "syncing"}
-          onConfirm={confirmFirstSync}
-          onCancel={cancelFirstSync}
-        />
-      )}
-
       <ConfirmDialog
         confirm={confirmState}
         accentColor={accentColor}
         onConfirm={() => resolveConfirm(true)}
         onCancel={() => resolveConfirm(false)}
       />
-
-      {conflictToast && (
-        <ConflictToast
-          noteTitle={conflictToast.noteTitle}
-          onClick={() => {
-            setActiveNote(conflictToast.conflictId);
-            dismissConflictToast();
-          }}
-        />
-      )}
 
       {toasts.length > 0 && (
         <div

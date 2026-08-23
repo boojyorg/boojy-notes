@@ -13,8 +13,17 @@ export function useNoteCrud({
   setExpanded,
   titleRef,
   setRenamingFolder,
-  setSidebarOrder,
+  markOpened,
 }) {
+  // Recency is stamped wherever a note becomes the one in front of you. That is
+  // `openNote` for an existing note, and these three for a new one — without
+  // them a note you just made sorts into the never-opened alphabetical tail,
+  // i.e. a new "Zebra" appears at the bottom of "Most recent". Any future site
+  // that makes a note active needs this line too.
+  const open = (id) => {
+    markOpened?.(id);
+    setActiveNote(id);
+  };
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
@@ -29,7 +38,7 @@ export function useNoteCrud({
       words: 0,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    setActiveNote(id);
+    open(id);
     setTimeout(() => {
       if (titleRef.current) {
         titleRef.current.focus();
@@ -53,24 +62,6 @@ export function useNoteCrud({
     // Deleting the open note falls back to null — the draft-note flow (desktop)
     // or the sidebar (mobile) takes over.
     if (activeNote === noteId) setActiveNote(null);
-
-    // Clean note from folder's noteOrder in sidebarOrder
-    const folderKey = note.folder || "";
-    setSidebarOrder((prev) => {
-      const entry = prev[folderKey];
-      if (!entry?.noteOrder?.includes(noteId)) return prev;
-      const updated = {
-        ...prev,
-        [folderKey]: {
-          ...entry,
-          noteOrder: entry.noteOrder.filter((id) => id !== noteId),
-        },
-      };
-      if (isNative && getAPI()?.writeMeta) {
-        getAPI().writeMeta(folderKey, updated[folderKey]);
-      }
-      return updated;
-    });
   };
 
   const duplicateNote = (noteId) => {
@@ -87,7 +78,7 @@ export function useNoteCrud({
       },
     };
     commitNoteData((prev) => ({ ...prev, [id]: dup }));
-    setActiveNote(id);
+    open(id);
   };
 
   const renameFolder = (oldPath, newName) => {
@@ -139,32 +130,6 @@ export function useNoteCrud({
     setCustomFolders((prev) =>
       prev.filter((f) => f !== folderPath && !f.startsWith(folderPath + "/")),
     );
-
-    // Clean sidebarOrder: remove folder's own entry, all subfolder entries,
-    // and remove it from parent's folderOrder
-    setSidebarOrder((prev) => {
-      const next = { ...prev };
-      // Remove the folder itself and all subfolders
-      for (const key of Object.keys(next)) {
-        if (key === folderPath || key.startsWith(folderPath + "/")) {
-          delete next[key];
-        }
-      }
-      // Remove from parent's folderOrder
-      const parts = folderPath.split("/");
-      const folderName = parts.pop();
-      const parentPath = parts.join("/") || "";
-      if (next[parentPath]?.folderOrder) {
-        next[parentPath] = {
-          ...next[parentPath],
-          folderOrder: next[parentPath].folderOrder.filter((f) => f !== folderName),
-        };
-        if (isNative && getAPI()?.writeMeta) {
-          getAPI().writeMeta(parentPath, next[parentPath]);
-        }
-      }
-      return next;
-    });
   };
 
   const createFolder = () => {
@@ -192,7 +157,7 @@ export function useNoteCrud({
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    setActiveNote(id);
+    open(id);
     return id;
   };
 

@@ -16,9 +16,14 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
+/**
+ * The chrome no longer knows *why* the sidebar isn't showing — hidden by the
+ * user or a closed overlay at a narrow width are the same thing to it. It asks
+ * whether the sidebar is visible, and toggles through one action.
+ */
 const layoutState = {
-  collapsed: false,
-  setCollapsed: vi.fn(),
+  sidebarVisible: true,
+  toggleSidebar: vi.fn(),
 };
 
 vi.mock("../../src/context/LayoutContext", () => ({
@@ -29,8 +34,8 @@ vi.mock("../../src/context/LayoutContext", () => ({
 import EditorChrome from "../../src/components/EditorChrome.jsx";
 
 beforeEach(() => {
-  layoutState.collapsed = false;
-  layoutState.setCollapsed = vi.fn();
+  layoutState.sidebarVisible = true;
+  layoutState.toggleSidebar = vi.fn();
 });
 afterEach(cleanup);
 
@@ -45,23 +50,23 @@ const renderChrome = (props = {}) =>
 
 describe("EditorChrome", () => {
   it("renders only note actions while the sidebar is open — the toggle lives in the sidebar header", () => {
-    layoutState.collapsed = false;
+    layoutState.sidebarVisible = true;
     const { container, queryByTitle } = renderChrome();
     expect(container.querySelectorAll("button").length).toBe(1);
     expect(queryByTitle("Hide sidebar")).not.toBeInTheDocument();
   });
 
-  it("shows the expand affordance when the sidebar is collapsed", () => {
-    layoutState.collapsed = true;
+  it("shows the expand affordance when the sidebar is not showing", () => {
+    layoutState.sidebarVisible = false;
     const { getByTitle } = renderChrome();
     expect(getByTitle("Show sidebar")).toBeInTheDocument();
   });
 
-  it("expands the sidebar when the pinned toggle is clicked", () => {
-    layoutState.collapsed = true;
+  it("goes through the one toggle action, whatever the sidebar's presentation", () => {
+    layoutState.sidebarVisible = false;
     const { getByTitle } = renderChrome();
     fireEvent.click(getByTitle("Show sidebar"));
-    expect(layoutState.setCollapsed).toHaveBeenCalledWith(false);
+    expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
   it("opens note actions with viewport coordinates anchored to the button", () => {
@@ -74,19 +79,29 @@ describe("EditorChrome", () => {
     expect(arg).toHaveProperty("y");
   });
 
-  it("hides note actions when no note is open, keeping the collapsed-state toggle", () => {
-    layoutState.collapsed = true;
+  it("hides note actions when no note is open, keeping the toggle", () => {
+    layoutState.sidebarVisible = false;
     const { queryByTitle, getByTitle } = renderChrome({ activeNote: null });
     expect(queryByTitle("Note actions")).not.toBeInTheDocument();
     expect(getByTitle("Show sidebar")).toBeInTheDocument();
   });
 
-  // Collapsed, the toggle is pinned to the top-left of the viewport so it sits
-  // over the editor rather than over the (zero-width) sidebar column.
-  it("pins the collapsed-state toggle to the top-left of the viewport", () => {
-    layoutState.collapsed = true;
+  // With the sidebar away, the toggle is pinned to the top-left of the viewport
+  // so it sits over the editor rather than over the (zero-width) sidebar column.
+  // The same pinned button serves a closed overlay at narrow widths.
+  it("pins the toggle to the top-left of the viewport", () => {
+    layoutState.sidebarVisible = false;
     const { container } = renderChrome();
     expect(container.firstChild.style.position).toBe("fixed");
     expect(container.firstChild.style.left).toBe("10px");
+  });
+
+  it("stands down whenever the sidebar is showing, overlay included", () => {
+    // An open overlay is `sidebarVisible`, so the pinned button is not rendered
+    // and the sidebar header's own toggle is the one on screen.
+    layoutState.sidebarVisible = true;
+    const { queryByTitle } = renderChrome();
+    expect(queryByTitle("Show sidebar")).not.toBeInTheDocument();
+    expect(queryByTitle("Hide sidebar")).not.toBeInTheDocument();
   });
 });

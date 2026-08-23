@@ -32,12 +32,9 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - ✅ Search + tag filter
 - ✅ In-note find
 
-## Sync & storage
-- ✅ Supabase (auth + data) + Cloudflare R2 (attachments) sync — engine intact but the whole
-  sign-in/Profile surface is unmounted (2026-08-18): no cloud UI ships until local-first is
-  stable. Recoverable: `ProfileTab.jsx`, `OnboardingToast`/`PersistenceWarning`, `useWebNags`
-  stay on disk with zero importers.
-- ✅ Conflict resolution + offline recovery + cross-tab consistency
+## Storage
+- ✅ Desktop notes are Markdown files in a user-chosen folder
+- ✅ Web notes persist locally in browser storage
 
 ## Views & theming
 - ✅ Single-active-note navigation — opening a note replaces the current one; no tabs, no split
@@ -57,6 +54,10 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - ✅ Markdown / folder import (desktop)
 
 ## Removed (recoverable via git tag)
+- **Cloud sync and sign-in** — the Supabase auth/client, R2-backed Edge Functions, realtime and
+  cross-tab sync engine, conflict UI, tests, environment template and dependency were removed
+  together. Boojy is fully local; Git history retains the former implementation if the product
+  direction changes.
 - **PDF / DOCX export** — removed 2026-08-19 as non-core to a Markdown editor; the UI,
   Electron implementation and `docx` dependency were deleted together. Recoverable from
   `v0.5.0` / Git history if the product decision changes. No replacement Print command was added.

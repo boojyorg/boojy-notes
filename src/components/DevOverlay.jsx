@@ -19,6 +19,9 @@ export default function DevOverlay({ open, onClose }) {
     setTopBarEdge,
     createBtnStyle,
     setCreateBtnStyle,
+    overlayScrim,
+    setOverlayScrim,
+    sidebarOverlay,
   } = useLayout();
 
   const [devToast, setDevToast] = useState(null);
@@ -260,6 +263,22 @@ export default function DevOverlay({ open, onClose }) {
           (key, lbl) => {
             setCreateBtnStyle(key);
             showDevToast(`Create btns: ${lbl}`);
+          },
+        )}
+
+        {/* Only meaningful while the sidebar is actually overlaying, so the row
+            says so rather than offering a control with no visible effect. */}
+        {segmentRow(
+          sidebarOverlay ? "Overlay scrim" : "Overlay scrim (wide)",
+          [
+            { key: "none", label: "None" },
+            { key: "subtle", label: "Subtle" },
+            { key: "dim", label: "Dim" },
+          ],
+          overlayScrim,
+          (key, lbl) => {
+            setOverlayScrim(key);
+            showDevToast(`Overlay scrim: ${lbl}`);
           },
         )}
 

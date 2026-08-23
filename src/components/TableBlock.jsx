@@ -245,9 +245,11 @@ export default memo(function TableBlock({
                   }}
                   style={{
                     fontWeight: 600,
+                    // Header cells carry no fill at rest — bold weight plus the border
+                    // grid is the whole signal. Only an active column selection tints.
                     background: isColSelected(colIdx)
                       ? `${accentColor || theme.ACCENT.primary}20`
-                      : `${accentColor || theme.ACCENT.primary}10`,
+                      : "transparent",
                     textAlign: alignments[colIdx] || "left",
                   }}
                 />

@@ -9,18 +9,21 @@ import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
  * There is deliberately no horizontal strip: these are two quiet buttons pinned
  * to the top corners of the viewport, sitting over the sidebar/editor beneath.
  *
- *   left   panel toggle — rendered here ONLY while the sidebar is collapsed.
- *          When the sidebar is open it lives in the sidebar's own header, at the
- *          top-right next to the divider (see Sidebar.jsx). To revert to the
- *          always-pinned-left toggle, drop the `collapsed &&` guard below and
- *          restore the header block in Sidebar.jsx.
+ *   left   panel toggle — rendered here ONLY while the sidebar is not showing,
+ *          whether that's because the user hid it or because it's a closed
+ *          overlay at a narrow width. When the sidebar IS showing, the toggle
+ *          lives in its own header, at the top-right next to the divider (see
+ *          Sidebar.jsx), so exactly one toggle exists at any moment and it
+ *          always means the same thing. To revert to the always-pinned-left
+ *          toggle, drop the `sidebarVisible` guard below and restore the header
+ *          block in Sidebar.jsx.
  *   right  note actions — opens the existing note context menu.
  *
  * `topOffset` clears the desktop TitleBar (window drag region); on web it is 0.
  */
 
 export const CHROME_INSET = 10;
-export const CHROME_BTN = 30;
+export const CHROME_BTN = 32;
 /**
  * Left gutter the sidebar header used to reserve for the pinned toggle.
  * Unused while the toggle lives in the sidebar header; kept for the revert path.
@@ -66,11 +69,11 @@ export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
 }
 
 export default function EditorChrome({ topOffset = 0, activeNote, onNoteActions }) {
-  const { collapsed, setCollapsed } = useLayout();
+  const { sidebarVisible, toggleSidebar } = useLayout();
 
   return (
     <>
-      {collapsed && (
+      {!sidebarVisible && (
         <div
           style={{
             position: "fixed",
@@ -79,7 +82,7 @@ export default function EditorChrome({ topOffset = 0, activeNote, onNoteActions 
             zIndex: Z.TOOLBAR,
           }}
         >
-          <ChromeButton onClick={() => setCollapsed(false)} title="Show sidebar">
+          <ChromeButton onClick={toggleSidebar} title="Show sidebar">
             <SidebarToggleIcon />
           </ChromeButton>
         </div>

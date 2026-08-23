@@ -42,10 +42,40 @@ ground — it is a dark-mode-only value. Never use one accent constant across bo
 rows are neutral. The one live exception is the sidebar's `selectionStyle` A/B setting, which still
 tints selection with `${accentColor}15/30` — a deliberate, pending-judgement divergence.
 
+## Scrollbars: never set `scrollbar-width`/`scrollbar-color` globally
+
+Chromium 121+ **ignores every `::-webkit-scrollbar-*` rule on any element that sets
+`scrollbar-width` or `scrollbar-color`.** A `* { scrollbar-width: thin; scrollbar-color: ... }`
+therefore silently killed the whole webkit block in Electron and Chrome for months — no hover
+state anywhere, `.editor-scroll`'s hide-at-rest behaviour dead, `scrollbar.thumb`/`thumbHover`
+dead tokens, and the intended 5px bar rendering as Chromium's ~11px `thin`. Nothing errored;
+the CSS just stopped existing.
+
+So the standard properties now live **only** inside `@supports not selector(::-webkit-scrollbar)`
+— Chromium supports that selector and skips the block, Firefox doesn't and takes it. Don't hoist
+them back out to a bare `*`.
+
+The thumb is `12px` of track carrying a `6px` visible pill: a `3px solid transparent` border plus
+`background-clip: padding-box` pads the *grab target* without thickening the ink. State rules use
+`background-color`, never the `background` shorthand — the shorthand resets `background-clip`, and
+the thumb jumps to full track width on hover.
+
+Ramp is three steps, rest → hover → `:active` (drag): DAY `#E9E9E9` → `#C9C7C5` → `#A8A5A2`,
+NIGHT `#3A3D4A` → `#4A4D5A` → `#5A5D6A`. DAY's `thumb` deliberately equals `BG.divider` — that is
+the resting grey the app was *actually* rendering while the token was dead, and it was kept on
+purpose; don't "restore" the old `#DCDBDB`. Sidebar and editor share one grammar (both visible at
+rest); the old `.editor-scroll` hide-at-rest and the `.tab-scroll` rules (tabs are deleted) are
+gone. `.editor-scroll` stays as a **class** — `CalloutBlock`, `TableContextMenu` and
+`useSidebarDrag` query it as a DOM hook.
+
+Styling `::-webkit-scrollbar` makes macOS bars non-overlay, so they take layout width: measured
+12px, against 11px for the `thin` they replaced. Near-identical, but it is a real cost — check it
+before widening the track.
+
 ### Known remaining leaks (not yet fixed)
 
 - `theme.overlay(a)` returns `rgba(0,0,0,a)`, not ink-tinted; ~40 leaf tokens (`inlineCode`,
-  `tableTh`, `frontmatter`, `codeCopy`, `codeLang`, `codeSelection`, `wikilinkBroken`,
+  `frontmatter`, `codeCopy`, `codeLang`, `codeSelection`, `wikilinkBroken`,
   `calloutIconHover`) still use their own `rgba(0,0,0,…)` literals instead of routing through it.
 - Callout (11 × 3 values) and syntax (8) colours are still hand-picked per theme, not derived.
 - `StarField.jsx` hardcodes `#FFFFFF` ×8, so the starfield can't work on a light ground
@@ -59,9 +89,17 @@ dead-code sweep — `themes.js` is the only colour authority.
 ## Icons: Lucide only
 
 `src/components/Icons.jsx` wraps `lucide-react` behind the historic export names, so call sites keep
-`<SearchIcon />`, `<FolderIcon open …/>`, `<FileIcon active …/>` etc. Rules: **16px** inline
-(sidebar rows, menu items), **20px** standalone controls, **stroke 1.5** (Lucide's default 2 reads
-busy at 16px in a writing app), always `currentColor`.
+`<SearchIcon />`, `<FolderIcon open …/>`, `<FileIcon active …/>` etc. Sizes are two-tier (judged
+live 2026-08-19, "icon system C"): **16px** repeated list glyphs (folder rows, search results, menu
+items) and **18px** navigation tier — the New note / Search action glyphs AND the standalone
+controls (panel toggle, editor ···, `ICON_CONTROL`); mobile top-bar controls stay 20px explicitly.
+Stroke is also two-tier: **1.5** for editor/content icons (Lucide's default 2 reads busy at 16px
+among prose) and **2** (`navBase` / `ICON_STROKE_NAV`) for navigation chrome — Search, NewNote,
+NewFolder, Folder, SidebarToggle and MoreHorizontal (···) — the heavier stroke balances nav icons
+against their 14px labels. Control hit boxes are **32px** (`CHROME_BTN`; toggle + ···) and the New
+Folder header button is 28px filling its 28px header. Always `currentColor`. Don't flatten the
+tiers in either direction: rendered line weight is `stroke × size/24`, so equal strokes at equal
+sizes is what keeps the ink uniform.
 
 This replaced 19 hand-rolled SVGs drawn at **seven sizes and six stroke weights** — that
 inconsistency, not the glyph shapes, is what made the UI read as assembled. Don't reintroduce a
@@ -101,9 +139,9 @@ Things a future change will trip over:
   separate About destination or Recently Deleted surface.
 - **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
   Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
-  reintroduce it in mocks. The parked sign-in/sync surface (`ProfileTab.jsx`, `OnboardingToast`,
-  `PersistenceWarning`, `useWebNags`) was deleted in the 2026-08-19 dead-code sweep — git history
-  is the parking lot; a returning sync UI gets rebuilt against the current Settings grammar.
+  reintroduce it in mocks. Sign-in, cloud sync, their backend and related UI were deleted — Git
+  history is the parking lot; a returning sync feature gets rebuilt against the current Settings
+  grammar rather than keeping dormant code in the product.
   `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
   has no UI but still applies from the stored Electron setting, and UI scale is
   keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).
@@ -136,8 +174,18 @@ share one button. `CHROME_LEFT_GUTTER` is now unused, kept only for the revert p
 
 ## Sidebar primary actions (Picito row treatment)
 
-`New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, fixed
-32px centred icon column, 8px left / 3px right inset, hover to `BG.hover` with `TEXT.primary` ink.
+`New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, hover
+to `BG.hover` with `TEXT.primary` ink. The whole desktop sidebar sits on a two-column alignment
+system (2026-08-19, "option C"): `SPINE = 12` carries the wordmark, action icons, section header
+labels and folder icons; `TEXT_COL = 34` carries every label — action labels, folder names AND
+root note titles. Action glyphs run 18px in an 18px box with a 4px gap (folder glyphs 16px, 6px gap) — both anchor
+their left edge on the spine so labels stay on TEXT_COL. Root note rows are text-only, so a 22px
+empty gutter sits left of their titles;
+that gutter is deliberate TEXT_COL alignment, not a missing icon — don't "fix" it. Tree rows are
+30px pills (12px radius, 4px side insets, 2px rhythm gap) with neutral `BG.hover` for hover,
+selection and multi-select alike; the active note is weight + `TEXT.primary` ink, never accent. On
+desktop this supersedes the `selectionStyle` A/B accent tints (mobile still uses them). Section
+headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row ink.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
 (note rows) still uses the older tree grammar, so the two grammars coexist.
@@ -161,9 +209,72 @@ the Playwright a11y gate in `e2e/app.spec.js` catches. Mobile has no headers, so
 wrapping its own inline `New Folder` / `New Note` rows. `sidebarScrollRef` and the pointer-down
 handler stay on the outer scroller, so `useSidebarDrag`'s `[data-note-id]` queries are unaffected.
 
-`Notes` hides when there are no loose root notes; `Folders` always shows, since it carries the only
-desktop affordance for creating one. That pair of rules replaced an earlier zero-folder gap hack
-(16 → 24px) — a labelled section does that job properly.
+**Both headers always show** — `Folders` because it carries the only desktop affordance for creating
+one, `Notes` because it is both the visible root drop target and the home of the sort control, and
+both are wanted precisely when every note has been filed into a folder. The one case `Notes` hides
+is a search that matches no root note. (`Notes` used to hide whenever there were no loose root
+notes; that reversed when the sort control moved onto it.) The `role="tree"` under it stays
+conditional — an empty tree fails axe's `aria-required-children`. This replaced an earlier
+zero-folder gap hack (16 → 24px); a labelled section does that job properly.
+
+## Note order is a preference, not a stored arrangement
+
+One control decides how every note list in the panel is ordered — root notes and folder contents
+alike. `Most recent` (Clock3) / `Alphabetical` (ArrowDownAZ), global, persisted in
+`boojy-note-sort`, defaulting to recency. It sits on the `Notes` header; the trigger glyph is the
+active mode, and the menu (`SortMenu.jsx`, positioned via `useMenuPosition` like every other
+popover) ticks it.
+
+**"Most recent" is last *touched*: `max(last opened here, file mtime)`** — `recencyOf()` in
+`utils/noteSort.js`. Neither half works alone, and the reason is worth keeping. Opening a note never
+writes to disk, so mtime alone can't see reading. And last-opened alone starts *empty* on any
+existing vault, which meant "Most recent" and "Alphabetical" produced identical lists until you had
+clicked around — judged live 2026-08-22, and it reads as a broken control, not as a quiet default.
+mtime is what gives a vault meaningful order on first launch, and it is the only half that can see
+an edit made in another app.
+
+`parseNoteFile` populates `lastModified` (one `statSync` on a file it is already reading). Until
+2026-08-22 that field was a **phantom**: declared in `types/notes.ts` and read by `search.js` as a
+score tiebreak, but never written by anything, so that comparison was always 0 against 0. Populating
+it fixed search's tiebreak as a side effect. **Web has no filesystem and therefore no mtime**, so
+web notes still rely on last-opened alone.
+
+Last-opened lives in `boojy-note-opened` (localStorage), never in the user's files — stamping a file
+on open would corrupt the very mtime the sort depends on. Consequences worth knowing: that half is
+per-machine, and a vault opened elsewhere regenerates note IDs, so it starts over — but mtime
+carries the order in the meantime, so a moved vault no longer looks unsorted. Notes with **neither**
+timestamp sort alphabetically at the back.
+
+A pure `touch` with no content change does *not* refresh the order: `onFileChanged` in
+`useFileSystem.js` bails early when blocks, title and folder all match, which is deliberate
+anti-churn. Boojy's own writes don't refresh it either, and don't need to — the note you are editing
+was stamped by `openNote` when you opened it, and disk mtime catches up on the next load.
+
+`useNoteSort` prunes the map against the live note store when it writes, rather than hooking the
+delete paths: one rule covers deletions, files removed outside Boojy, and regenerated IDs. **The
+empty-store guard in that effect is load-bearing** — `noteData` is `{}` until notes finish loading,
+and writing then would erase every timestamp on launch.
+
+Recency is stamped in `openNote` (BoojyNotes) **and** in `useNoteCrud`'s `createNote` /
+`duplicateNote` / `createDraftNote`. Miss the creation sites and a note you just made sorts into
+the never-opened tail — a new "Zebra" lands at the bottom of "Most recent". Any future site that
+makes a note active needs the same stamp.
+
+`buildTree` takes an optional `sortNotes`; `sortNoteIds` returns the **same array reference** when
+the order is already correct, because the sidebar's memo chain compares identities to decide
+whether to rebuild the tree. In `SidebarContext` the comparator reads titles from `noteDataRef`,
+not from `noteData` in the dep list — depending on the store directly would rebuild the tree on
+every keystroke and undo the text-only bail-out. Alphabetical mode deliberately does not subscribe
+to the timestamps, so opening a note doesn't re-sort a list that can't change.
+
+## Section-header controls: quiet, never hidden
+
+`SectionAction` in `Sidebar.jsx` is the one component for a header's trailing control (New folder,
+Sort): 28px box, 16px nav-tier glyph, `TEXT.secondary` at `SECTION_ACTION_REST` = **0.55**, full
+opacity on hover *and* focus. Hover-only reveal is rejected outright — it costs a keyboard user the
+control. The judged-live request was 0.4, which is not what shipped: 0.4 of any of our ink tokens
+composites to roughly 2:1 on the DAY ground, under the 3:1 an icon-only control needs to be
+identifiable. 0.55 is the faintest value that clears it. One constant if it reads too loud.
 
 ## Only structure and actions get a glyph
 

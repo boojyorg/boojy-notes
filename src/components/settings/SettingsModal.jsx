@@ -246,6 +246,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
           </span>
           <button
             onClick={() => setSettingsOpen(false)}
+            aria-label="Close settings"
             style={{
               position: "absolute",
               right: spacing.md,

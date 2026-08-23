@@ -3,6 +3,7 @@ import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 
 const WRITE_DEBOUNCE_MS = 500;
+const WRITE_RETRY_MS = 5000;
 
 // Compare blocks structurally (type, text, checked) ignoring IDs
 function blocksEqual(a, b) {
@@ -32,14 +33,7 @@ function blocksEqual(a, b) {
   return true;
 }
 
-export function useFileSystem(
-  noteData,
-  setNoteData,
-  setCustomFolders,
-  syncGeneration,
-  setSidebarOrder,
-  onError,
-) {
+export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, onError) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
 
@@ -47,6 +41,8 @@ export function useFileSystem(
   const dirtyNotes = useRef(new Set());
   const deletedNotes = useRef(new Set());
   const writeTimer = useRef(null);
+  const retryTimer = useRef(null);
+  const reportedWriteFailures = useRef(new Set());
   const isExternalUpdate = useRef(false);
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
@@ -166,12 +162,27 @@ export function useFileSystem(
       if (note) {
         try {
           await api.writeNote(note);
+          reportedWriteFailures.current.delete(noteId);
         } catch (err) {
           console.error("useFileSystem: write failed", noteId, err);
-          onError?.("Failed to save note to disk");
+          if (!reportedWriteFailures.current.has(noteId)) {
+            reportedWriteFailures.current.add(noteId);
+            onError?.("Failed to save note to disk — Boojy will keep retrying");
+          }
+          continue;
         }
       }
       dirtyNotes.current.delete(noteId);
+    }
+
+    if (dirtyNotes.current.size > 0 && retryTimer.current === null) {
+      retryTimer.current = setTimeout(() => {
+        retryTimer.current = null;
+        flushRef.current();
+      }, WRITE_RETRY_MS);
+    } else if (dirtyNotes.current.size === 0 && retryTimer.current !== null) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
     }
 
     const deleted = [...deletedNotes.current];
@@ -248,35 +259,6 @@ export function useFileSystem(
             return prev;
           return filtered;
         });
-
-        // Clean sidebarOrder: remove entries for folders that no longer exist
-        if (setSidebarOrder) {
-          setSidebarOrder((prev) => {
-            const next = { ...prev };
-            let changed = false;
-            for (const key of Object.keys(next)) {
-              if (key === "") continue; // root always valid
-              if (!diskFolders.has(key)) {
-                delete next[key];
-                changed = true;
-              }
-            }
-            // Clean folderOrder arrays in remaining entries
-            for (const [key, meta] of Object.entries(next)) {
-              if (meta.folderOrder) {
-                const validChildren = meta.folderOrder.filter((name) => {
-                  const childPath = key ? key + "/" + name : name;
-                  return diskFolders.has(childPath);
-                });
-                if (validChildren.length !== meta.folderOrder.length) {
-                  next[key] = { ...meta, folderOrder: validChildren };
-                  changed = true;
-                }
-              }
-            }
-            return changed ? next : prev;
-          });
-        }
       } catch (err) {
         console.error("useFileSystem: folder sync failed", err);
         onError?.("Failed to sync folders from disk");
@@ -310,12 +292,15 @@ export function useFileSystem(
       unsubChange();
       unsubDelete();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/setSidebarOrder/syncGeneration are stable refs/setters
-  }, [setNoteData, setCustomFolders, setSidebarOrder, syncGeneration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
+  }, [setNoteData, setCustomFolders, syncGeneration]);
 
   // Cleanup timer
   useEffect(() => {
-    return () => clearTimeout(writeTimer.current);
+    return () => {
+      clearTimeout(writeTimer.current);
+      clearTimeout(retryTimer.current);
+    };
   }, []);
 
   // ─── Change notes directory (Electron only) ───

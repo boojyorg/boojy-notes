@@ -38,7 +38,16 @@ export const NIGHT = {
   scrollbar: {
     thumb: "#3A3D4A",
     thumbHover: "#4A4D5A",
+    thumbActive: "#5A5D6A",
     track: "transparent",
+  },
+  // Sidebar resize handle. Neutral by rule — the accent is identity, not a
+  // surface, and a full-height accent bar was the loudest violation in the app.
+  // Mirrors the scrollbar's rest/hover steps on purpose: both are draggable
+  // chrome, so they should speak one neutral language.
+  sidebarHandle: {
+    hover: "#3A3D4A",
+    active: "#4A4D5A",
   },
   starField: true,
   codeBlockBg: "#03030D",
@@ -72,7 +81,6 @@ export const NIGHT = {
   },
   mark: { bg: "rgba(164, 202, 206, 0.35)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
-  tableTh: "rgba(255,255,255,0.04)",
   tableToolbar: "rgba(255,255,255,0.03)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
@@ -147,9 +155,19 @@ export const DAY = {
     docIcon: "#7A736C",
   },
   scrollbar: {
-    thumb: "#DCDBDB",
+    // thumb matches BG.divider on purpose — that is the resting grey the app has
+    // actually been rendering, and it is the one being kept.
+    thumb: "#E9E9E9",
     thumbHover: "#C9C7C5",
+    thumbActive: "#A8A5A2",
     track: "transparent",
+  },
+  // See NIGHT.sidebarHandle. Note DAY's BG.hover (#ECECEC) is *lighter* than
+  // BG.divider (#E9E9E9), so the two-step ramp is spelled out rather than
+  // borrowed from the BG roles.
+  sidebarHandle: {
+    hover: "#E9E9E9",
+    active: "#C9C7C5",
   },
   starField: false,
   codeBlockBg: "#F4F4F5",
@@ -182,7 +200,6 @@ export const DAY = {
   },
   mark: { bg: "rgba(42, 115, 125, 0.18)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
-  tableTh: "rgba(0,0,0,0.04)",
   tableToolbar: "rgba(0,0,0,0.03)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {

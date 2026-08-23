@@ -5,13 +5,14 @@ import { FOLDER_TREE } from "../constants/data";
 import { loadFromStorage } from "../utils/storage";
 import { isNative } from "../utils/platform";
 import {
-  sortByOrder,
   buildTree,
   collectPaths,
   filterTree,
   pathsToTree,
   naturalCompare,
 } from "../utils/sidebarTree";
+import { compareNotes, sortNoteIds, SORT_RECENT } from "../utils/noteSort";
+import { useNoteSort } from "../hooks/useNoteSort";
 
 const SidebarContext = createContext(null);
 
@@ -44,8 +45,10 @@ export function SidebarProvider({ children }) {
     return saved?.customFolders || [];
   });
 
-  const [sidebarOrder, setSidebarOrder] = useState({});
   const [renamingFolder, setRenamingFolder] = useState(null);
+
+  // The one ordering source for every note list in the panel.
+  const { sortMode, setSortMode, lastOpened, markOpened } = useNoteSort(noteData);
 
   // ── Search ────────────────────────────────────────────────────────────
   const {
@@ -95,15 +98,23 @@ export function SidebarProvider({ children }) {
     return { allFolders: folders, knownPaths: paths };
   }, [customFolders, folderNoteMap]);
 
+  // Alphabetical mode can't care when a note was opened, so it must not rebuild
+  // the tree every time one is. Only recency subscribes to the timestamps.
+  const sortSignal = sortMode === SORT_RECENT ? lastOpened : null;
+
   const { folderTree, sortedRootNotes } = useMemo(() => {
-    const rawFolderTree = buildTree(allFolders, folderNoteMap, sidebarOrder);
-    const hasRootOrder = sidebarOrder[""]?.folderOrder?.length > 0;
-    const tree = hasRootOrder
-      ? sortByOrder(rawFolderTree, sidebarOrder[""].folderOrder, (f) => f.name)
-      : [...rawFolderTree].sort((a, b) => naturalCompare(a.name, b.name));
-    const sorted = sortByOrder(derivedRootNotes, sidebarOrder[""]?.noteOrder, (id) => id);
-    return { folderTree: tree, sortedRootNotes: sorted };
-  }, [allFolders, folderNoteMap, sidebarOrder, derivedRootNotes]);
+    // Titles come from the ref, not from `noteData` in the dep list: depending
+    // on the store directly would rebuild the whole tree on every keystroke and
+    // undo the text-only bail-out above. Anything that can change a *title*
+    // also changes folderNoteMap/derivedRootNotes identity, so this stays fresh.
+    const compare = compareNotes(sortMode, noteDataRef.current, sortSignal || {});
+    const sortNotes = (ids) => sortNoteIds(ids, compare);
+    const tree = [...buildTree(allFolders, folderNoteMap, sortNotes)].sort((a, b) =>
+      naturalCompare(a.name, b.name),
+    );
+    return { folderTree: tree, sortedRootNotes: sortNotes(derivedRootNotes) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFolders, folderNoteMap, derivedRootNotes, sortMode, sortSignal, noteDataRef]);
 
   const prevFilteredResult = useRef(null);
   const { filteredTree, fNotes } = useMemo(() => {
@@ -141,8 +152,6 @@ export function SidebarProvider({ children }) {
       setExpanded,
       customFolders,
       setCustomFolders,
-      sidebarOrder,
-      setSidebarOrder,
       renamingFolder,
       setRenamingFolder,
       searchMode,
@@ -154,13 +163,15 @@ export function SidebarProvider({ children }) {
       filteredTree,
       fNotes,
       folderList,
+      sortMode,
+      setSortMode,
+      markOpened,
     }),
     [
       search,
       searchFocused,
       expanded,
       customFolders,
-      sidebarOrder,
       renamingFolder,
       searchMode,
       searchResults,
@@ -171,6 +182,9 @@ export function SidebarProvider({ children }) {
       filteredTree,
       fNotes,
       folderList,
+      sortMode,
+      setSortMode,
+      markOpened,
     ],
   );
 

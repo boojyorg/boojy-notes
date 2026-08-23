@@ -13,56 +13,32 @@ export function naturalCompare(a, b) {
 }
 
 /**
- * Sort items by a preference order array.
- * @template T
- * @param {T[]} items
- * @param {string[] | null | undefined} orderArr
- * @param {(item: T) => string} keyFn
- * @returns {T[]}
- */
-export function sortByOrder(items, orderArr, keyFn) {
-  if (!orderArr || orderArr.length === 0) return items;
-  const orderMap = {};
-  orderArr.forEach((k, i) => {
-    orderMap[k] = i;
-  });
-  return [...items].sort((a, b) => {
-    const aKey = keyFn(a),
-      bKey = keyFn(b);
-    const aIdx = aKey in orderMap ? orderMap[aKey] : 99999;
-    const bIdx = bKey in orderMap ? orderMap[bKey] : 99999;
-    return aIdx - bIdx;
-  });
-}
-
-/**
  * Build a nested folder tree from a list of folder nodes.
+ *
+ * Folders are always natural-alphabetical. There is no manual ordering: drag
+ * changes a note's *location*, the sort preference decides *display order*.
+ * `sortNotes` applies that preference to every folder's note list; omit it and
+ * notes come out in raw membership order.
+ *
  * @param {Array<{name: string, children?: any[], _path?: string}>} nodes
  * @param {Record<string, string[]>} folderNoteMap
- * @param {Record<string, {noteOrder?: string[], folderOrder?: string[]}>} sidebarOrder
- * @param {string} [parentPath]
+ * @param {(ids: string[]) => string[]} [sortNotes]
  * @returns {SidebarNode[]}
  */
-export function buildTree(nodes, folderNoteMap, sidebarOrder, parentPath = "") {
+export function buildTree(nodes, folderNoteMap, sortNotes) {
   return nodes.map((node) => {
     const nodePath = node._path || node.name;
-    const notes = folderNoteMap[nodePath] || [];
-    const sortedNotes = sortByOrder(notes, sidebarOrder[nodePath]?.noteOrder, (id) => id);
     const children = buildTree(
       (node.children || []).map((c) => ({ ...c, _path: nodePath + "/" + c.name })),
       folderNoteMap,
-      sidebarOrder,
-      nodePath,
+      sortNotes,
     );
-    const hasCustomOrder = sidebarOrder[parentPath]?.folderOrder?.length > 0;
-    const sortedChildren = hasCustomOrder
-      ? sortByOrder(children, sidebarOrder[parentPath].folderOrder, (c) => c.name)
-      : [...children].sort((a, b) => naturalCompare(a.name, b.name));
+    const notes = folderNoteMap[nodePath] || [];
     return {
       name: node.name,
       _path: nodePath,
-      notes: sortedNotes,
-      children: sortedChildren,
+      notes: sortNotes ? sortNotes(notes) : notes,
+      children: [...children].sort((a, b) => naturalCompare(a.name, b.name)),
     };
   });
 }

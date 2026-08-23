@@ -63,7 +63,6 @@ const actionsState = {
   noteDataRef: { current: {} },
   textOnlyEdit: { current: false },
   textOnlyEditForSidebar: { current: false },
-  editedNoteHint: { current: null },
   setNoteData: vi.fn(),
   syncGeneration: { current: 0 },
   activeNoteRef: { current: null },
@@ -74,8 +73,6 @@ const settingsState = {
   setSettingsFontSize: vi.fn(),
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
-  user: null,
-  profile: null,
 };
 
 vi.mock("../../src/context/LayoutContext", () => ({

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, memo } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -12,7 +12,11 @@ import {
   NewNoteIcon,
   SearchIcon,
   SidebarToggleIcon,
+  SortAlphaIcon,
+  SortRecentIcon,
 } from "./Icons";
+import SortMenu from "./SortMenu";
+import { SORT_RECENT, sortModeLabel } from "../utils/noteSort";
 import { CHROME_INSET, CHROME_BTN, ChromeButton } from "./EditorChrome";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -29,41 +33,82 @@ const HEADER_RIGHT_INSET = 12;
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
-// ── Primary action rows (desktop) ───────────────────────────────────────────
-// Geometry ported from Picito's New chat / Search rows: a 32px row with a fixed
-// 32px centred icon column, so both labels start on the same optical line and
-// the icons stay put whatever their glyph size. These are actions, not nav rows,
-// so there is no selected state — hover only.
+// ── Desktop alignment system: one spine, one text column ────────────────────
+// Live experiment (2026-08-19). Two columns replace the previous six left
+// edges: everything structural (wordmark, action icons, section headers,
+// folder icons) sits on SPINE; every label (action labels, folder names, root
+// note titles) sits on TEXT_COL. Root notes carry no glyph, so a 22px empty
+// gutter sits left of their titles — that air is the deliberate bet: it says
+// "same tier as folders, just no children". If it reads as accidental
+// indentation live, the fallback is a shallower Picito-style note column
+// (root note text at ~SPINE + 12) — one constant, not a rebuild.
+/** Structural spine: left edge of icons/headers, matches HEADER_LEFT_INSET. */
+const SPINE = 12;
+/** Label column: where every text label in the panel starts. */
+const TEXT_COL = 34;
+/** Rows are inset this much from both sidebar edges so hover pills breathe. */
+const ROW_INSET = 4;
+/** Folder-row glyph box on the spine (16px list tier). */
+const SPINE_ICON = 16;
+/** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
+const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
+/** Action glyphs (New note / Search) run on the 18px navigation tier
+ *  (judged 2026-08-19, "icon system C"). The box widens with the glyph and
+ *  the gap shrinks, so the left edge stays on SPINE and labels on TEXT_COL. */
+const ACTION_ICON = 18;
+const ACTION_ICON_GAP = TEXT_COL - SPINE - ACTION_ICON;
+
+// ── Row grammar (desktop) ────────────────────────────────────────────────────
+// Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
+// neutral BG.hover for hover AND selected, no boxes at rest. Actions are 32px,
+// tree rows 30px with a 2px rhythm gap.
 const ACTION_ROW_H = 32;
-const ACTION_ICON_COL = 32;
 const ACTION_RADIUS = 12;
+const TREE_ROW_H = 30;
+const TREE_ROW_GAP = 2;
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
-// Picito's Projects header, re-aligned to Boojy's sidebar grid: the label sits
-// on the folder rows' 10px left inset and any trailing button's 16px glyph lands
-// on their 10px right inset, so headers read as lids on the tree rather than a
-// third left edge. No chevrons — the sections do not collapse.
+// Header labels sit on the SPINE with the icons, one step quieter in colour
+// (TEXT.secondary) so they read as structure without out-shouting the selected
+// row. The trailing button's 16px glyph lands 12px from the right edge,
+// mirroring the spine. No chevrons — the sections do not collapse.
 //
 // One spacing rule for every section: SECTION_GAP above the header, then
 // SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
 // action group's own bottom padding, which is set to the same 12.
 const SECTION_HEADER_H = 28;
-const SECTION_HEADER_LEFT = 10;
-/** 6px + the button's own 4px glyph inset = the folder rows' 10px right inset. */
+const SECTION_HEADER_LEFT = SPINE;
+/** 6px + the 28px button's own 6px glyph inset = the spine's 12px, mirrored right. */
 const SECTION_HEADER_RIGHT = 6;
-const SECTION_BTN = 24;
+const SECTION_BTN = 28;
 const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 4;
+/**
+ * Header controls sit quiet until you go looking for them, but never disappear:
+ * hover-only reveal costs a keyboard user the control entirely, and this panel
+ * is meant to be obvious without a tutorial.
+ *
+ * The requested 0.4 is not used, because the opacity maths doesn't reach a
+ * legible icon from any of our ink tokens — 0.4 of `TEXT.secondary` composites
+ * to roughly 2:1 on the DAY ground, under the 3:1 that an icon-only control
+ * needs to be identifiable. 0.55 is the faintest value that still clears it.
+ * One constant if that reads too loud live.
+ */
+const SECTION_ACTION_REST = 0.55;
 
 /**
  * A section lid: bold label left, optional single action right.
  * `role="presentation"` keeps it out of the surrounding tree's item list — the
  * text still reads, it just isn't announced as a row.
  */
-function SectionHeader({ label, TEXT, first, children }) {
+function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
     <div
       role="presentation"
+      // `Notes` doubles as the visible root drop target during a note drag:
+      // drop on a folder → into that folder, drop on Notes → back to root.
+      // useSidebarDrag finds it by this attribute and paints it neutrally.
+      {...(dropRoot ? { "data-drop-root": "true" } : {})}
       style={{
         display: "flex",
         alignItems: "center",
@@ -77,9 +122,57 @@ function SectionHeader({ label, TEXT, first, children }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT.primary }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT.secondary }}>{label}</span>
       {children}
     </div>
+  );
+}
+
+/**
+ * The single trailing control a section header may carry (New folder, Sort).
+ * One component so both wear the same geometry and the same rest/hover ink.
+ */
+function SectionAction({ onClick, title, ariaLabel, TEXT, BG, children, ...rest }) {
+  const rest0 = (e) => {
+    hBg(e.currentTarget, "transparent");
+    e.currentTarget.style.color = TEXT.secondary;
+    e.currentTarget.style.opacity = String(SECTION_ACTION_REST);
+  };
+  const lift = (e) => {
+    hBg(e.currentTarget, BG.surface);
+    e.currentTarget.style.color = TEXT.primary;
+    e.currentTarget.style.opacity = "1";
+  };
+  return (
+    <button
+      type="button"
+      className="sidebar-section-action"
+      onClick={onClick}
+      title={title}
+      aria-label={ariaLabel || title}
+      style={{
+        width: SECTION_BTN,
+        height: SECTION_BTN,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        border: "none",
+        background: "transparent",
+        borderRadius: 6,
+        cursor: "pointer",
+        color: TEXT.secondary,
+        opacity: SECTION_ACTION_REST,
+        transition: "background 120ms, color 120ms, opacity 120ms",
+      }}
+      onMouseEnter={lift}
+      onMouseLeave={rest0}
+      onFocus={lift}
+      onBlur={rest0}
+      {...rest}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -95,7 +188,9 @@ function ActionRow({ icon, label, onClick, title, TEXT, BG }) {
         height: ACTION_ROW_H,
         display: "flex",
         alignItems: "center",
-        padding: `0 8px 0 0`,
+        // Container is inset ROW_INSET, so this lands the glyph box on SPINE
+        // and (with ICON_GAP) the label on TEXT_COL.
+        padding: `0 8px 0 ${SPINE - ROW_INSET}px`,
         border: "none",
         background: "transparent",
         borderRadius: ACTION_RADIUS,
@@ -118,7 +213,8 @@ function ActionRow({ icon, label, onClick, title, TEXT, BG }) {
     >
       <span
         style={{
-          width: ACTION_ICON_COL,
+          width: ACTION_ICON,
+          marginRight: ACTION_ICON_GAP,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -149,7 +245,7 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   isMobile,
 }) {
-  const { sidebarWidth, accentColor, selectionStyle, setCollapsed } = useLayout();
+  const { sidebarWidth, accentColor, selectionStyle, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -172,7 +268,12 @@ const Sidebar = memo(function Sidebar({
     navigateResults,
     clearSearch,
     getActiveResult,
+    sortMode,
+    setSortMode,
   } = useSidebar();
+
+  // Anchor rect of the sort trigger, or null when the menu is closed.
+  const [sortAnchor, setSortAnchor] = useState(null);
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -192,33 +293,19 @@ const Sidebar = memo(function Sidebar({
     if (!n || n._draft) return null;
     const act = activeNote === nId;
     const sel = selectedNotes?.has(nId);
-    const mobVPad = isMobile ? 12 : 4;
     const mobFont = isMobile ? 17 : 14;
     const mobGap = isMobile ? 9 : 5;
-    return (
-      <button
-        key={nId}
-        data-note-id={nId}
-        role="treeitem"
-        aria-selected={act}
-        onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
-        className="sidebar-note"
-        onContextMenu={(e) => {
-          e.preventDefault();
-          if (!sel && clearSelection) clearSelection();
-          setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId });
-        }}
-        style={{
+    // Desktop: quiet row grammar — a full-width pill whose title sits on
+    // TEXT_COL, level with the folder names; hover, selection and multi-select
+    // all use neutral BG.hover, and the active note is distinguished by ink
+    // (weight + TEXT.primary), never by accent. The empty gutter left of the
+    // title is the TEXT_COL alignment, not a missing icon. Mobile keeps the
+    // previous accent-tinted selectionStyle grammar untouched.
+    const rowStyle = isMobile
+      ? {
           width: selectionStyle === "B" ? "calc(100% - 8px)" : "calc(100% + 2px)",
-          marginTop: 0,
-          marginBottom: 0,
           marginLeft: selectionStyle === "B" ? 5 : -1,
           marginRight: selectionStyle === "B" ? 3 : 0,
-          border: "none",
-          outline: "none",
-          appearance: "none",
-          WebkitAppearance: "none",
-          cursor: "pointer",
           background: act
             ? `${accentColor}${selectionStyle === "B" ? "30" : "15"}`
             : sel
@@ -234,11 +321,45 @@ const Sidebar = memo(function Sidebar({
                     : "3px solid transparent",
               }
             : {}),
-          // The removed FileIcon's width + gap is folded into the left padding so
-          // titles keep their column: they still line up with the folder names
-          // above them instead of jumping left by a glyph. The chevron removal
-          // took its width + gap (21 desktop / 24 mobile) back out of both rows.
-          padding: `${mobVPad}px ${isMobile ? 16 : 10}px ${mobVPad}px ${7 + depth * 20 + 19 + (isMobile ? 5 : 0)}px`,
+          // The removed FileIcon's width + gap is folded into the left padding
+          // so titles keep their column under the folder names; the chevron
+          // removal took its allowance back out of both row kinds.
+          padding: `12px 16px 12px ${7 + depth * 20 + 19 + 5}px`,
+          boxShadow:
+            selectionStyle === "A" && act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
+        }
+      : {
+          width: `calc(100% - ${ROW_INSET * 2}px)`,
+          marginLeft: ROW_INSET,
+          marginRight: ROW_INSET,
+          marginBottom: TREE_ROW_GAP,
+          height: TREE_ROW_H,
+          boxSizing: "border-box",
+          background: act || sel ? BG.hover : "transparent",
+          borderRadius: ACTION_RADIUS,
+          padding: `0 8px 0 ${TEXT_COL - ROW_INSET + depth * 20}px`,
+        };
+    return (
+      <button
+        key={nId}
+        data-note-id={nId}
+        role="treeitem"
+        aria-selected={act}
+        onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
+        className="sidebar-note"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!sel && clearSelection) clearSelection();
+          setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId });
+        }}
+        style={{
+          ...rowStyle,
+          marginTop: 0,
+          border: "none",
+          outline: "none",
+          appearance: "none",
+          WebkitAppearance: "none",
+          cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: mobGap,
@@ -248,16 +369,14 @@ const Sidebar = memo(function Sidebar({
           fontWeight: act ? 600 : 400,
           transition: "background 0.12s",
           textAlign: "left",
-          boxShadow:
-            selectionStyle === "A" && act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
         }}
         onMouseEnter={(e) => {
           if (!act && !sel) hBg(e.currentTarget, BG.hover);
-          else if (sel && !act) hBg(e.currentTarget, `${accentColor}22`);
+          else if (isMobile && sel && !act) hBg(e.currentTarget, `${accentColor}22`);
         }}
         onMouseLeave={(e) => {
           if (!act && !sel) hBg(e.currentTarget, "transparent");
-          else if (sel && !act)
+          else if (isMobile && sel && !act)
             hBg(e.currentTarget, `${accentColor}${selectionStyle === "B" ? "18" : "0A"}`);
         }}
       >
@@ -289,14 +408,28 @@ const Sidebar = memo(function Sidebar({
             setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folderPath });
           }}
           style={{
-            width: "100%",
+            // Desktop: folder glyph on the SPINE, name on TEXT_COL, same quiet
+            // pill grammar as note rows. Mobile keeps its previous geometry.
+            ...(isMobile
+              ? {
+                  width: "100%",
+                  padding: `12px 16px 12px ${10 + depth * 20}px`,
+                }
+              : {
+                  width: `calc(100% - ${ROW_INSET * 2}px)`,
+                  marginLeft: ROW_INSET,
+                  marginBottom: TREE_ROW_GAP,
+                  height: TREE_ROW_H,
+                  boxSizing: "border-box",
+                  padding: `0 8px 0 ${SPINE - ROW_INSET + depth * 20}px`,
+                  borderRadius: ACTION_RADIUS,
+                }),
             background: "none",
             border: "none",
             cursor: "pointer",
-            padding: `${isMobile ? 12 : 4}px ${isMobile ? 16 : 10}px ${isMobile ? 12 : 4}px ${10 + depth * 20}px`,
             display: "flex",
             alignItems: "center",
-            gap: isMobile ? 8 : 5,
+            gap: isMobile ? 8 : ICON_GAP,
             color: TEXT.secondary,
             fontSize: isMobile ? 17 : 14,
             fontWeight: 500,
@@ -305,7 +438,7 @@ const Sidebar = memo(function Sidebar({
             textAlign: "left",
           }}
           onMouseEnter={(e) => {
-            hBg(e.currentTarget, BG.elevated);
+            hBg(e.currentTarget, isMobile ? BG.elevated : BG.hover);
             e.currentTarget.style.color = TEXT.primary;
           }}
           onMouseLeave={(e) => {
@@ -315,9 +448,8 @@ const Sidebar = memo(function Sidebar({
         >
           {/* No disclosure chevron — the whole row toggles, the open-folder icon
               and indented children carry the state. aria-expanded still announces
-              it. (Reversible experiment: restore the chevron + placeholder span
-              here and the chevron allowance in renderNote's left padding.) */}
-          <FolderIcon open={isOpen} color={accentColor} size={isMobile ? 20 : undefined} />
+              it. The glyph inherits the row's currentColor like the other nav icons. */}
+          <FolderIcon open={isOpen} size={isMobile ? 20 : undefined} />
           {renamingFolder === folderPath ? (
             <input
               autoFocus
@@ -365,8 +497,9 @@ const Sidebar = memo(function Sidebar({
             <div
               style={{
                 position: "absolute",
-                // Centred under the folder icon (16px glyph at 10px inset).
-                left: 10 + depth * 20 + 8,
+                // Centred under the folder icon (16px glyph on the SPINE on
+                // desktop; 10px inset on mobile).
+                left: (isMobile ? 10 : SPINE) + depth * 20 + 8,
                 top: 0,
                 bottom: 0,
                 width: 1,
@@ -513,7 +646,7 @@ const Sidebar = memo(function Sidebar({
           >
             <img src={boojyWordmark} alt="" style={{ height: 20 }} draggable="false" />
           </button>
-          <ChromeButton onClick={() => setCollapsed(true)} title="Hide sidebar">
+          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
             <SidebarToggleIcon />
           </ChromeButton>
         </div>
@@ -526,12 +659,12 @@ const Sidebar = memo(function Sidebar({
             display: "flex",
             flexDirection: "column",
             gap: 4,
-            padding: "4px 3px 12px 8px",
+            padding: `4px ${ROW_INSET}px 12px ${ROW_INSET}px`,
             flexShrink: 0,
           }}
         >
           <ActionRow
-            icon={<NewNoteIcon size={18} />}
+            icon={<NewNoteIcon size={ACTION_ICON} />}
             label="New note"
             title="New note"
             onClick={() => createNote(null)}
@@ -558,7 +691,11 @@ const Sidebar = memo(function Sidebar({
             >
               <span
                 style={{
-                  width: ACTION_ICON_COL - 1,
+                  // −1 compensates the field's 1px border so the glyph stays
+                  // on the spine and the input text on TEXT_COL.
+                  width: ACTION_ICON,
+                  marginLeft: SPINE - ROW_INSET - 1,
+                  marginRight: ACTION_ICON_GAP,
                   flexShrink: 0,
                   display: "flex",
                   alignItems: "center",
@@ -566,14 +703,14 @@ const Sidebar = memo(function Sidebar({
                   color: TEXT.muted,
                 }}
               >
-                <SearchIcon />
+                <SearchIcon size={ACTION_ICON} />
               </span>
               {searchInput}
               {clearSearchButton}
             </div>
           ) : (
             <ActionRow
-              icon={<SearchIcon />}
+              icon={<SearchIcon size={ACTION_ICON} />}
               label="Search"
               title="Search notes"
               onClick={() => {
@@ -963,55 +1100,60 @@ const Sidebar = memo(function Sidebar({
             ) : (
               <>
                 <SectionHeader label="Folders" TEXT={TEXT} first>
-                  <button
-                    type="button"
-                    className="sidebar-section-action"
-                    onClick={createFolder}
-                    title="New folder"
-                    aria-label="New folder"
-                    style={{
-                      width: SECTION_BTN,
-                      height: SECTION_BTN,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      color: TEXT.muted,
-                      transition: "background 120ms, color 120ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      hBg(e.currentTarget, BG.surface);
-                      e.currentTarget.style.color = TEXT.primary;
-                    }}
-                    onMouseLeave={(e) => {
-                      hBg(e.currentTarget, "transparent");
-                      e.currentTarget.style.color = TEXT.muted;
-                    }}
-                  >
+                  <SectionAction onClick={createFolder} title="New folder" TEXT={TEXT} BG={BG}>
                     <NewFolderIcon />
-                  </button>
+                  </SectionAction>
                 </SectionHeader>
                 {filteredTree.length > 0 && (
                   <div role="tree" aria-label="Folders">
                     {filteredTree.map((f) => renderFolder(f, 0))}
                   </div>
                 )}
-                {fNotes.length > 0 && (
+                {/* The header stays put when the section is empty: it is both the
+                    visible root drop target and the home of the sort control, and
+                    those are needed exactly when there are no root notes to show.
+                    A search that matches no root note is the one case it hides. */}
+                {(!search || fNotes.length > 0) && (
                   <>
-                    <SectionHeader label="Notes" TEXT={TEXT} />
-                    <div role="tree" aria-label="Notes">
-                      {fNotes.map((nId) => renderNote(nId, 0))}
-                    </div>
+                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
+                      <SectionAction
+                        onClick={(e) => {
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setSortAnchor((prev) =>
+                            prev
+                              ? null
+                              : { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
+                          );
+                        }}
+                        title="Sort notes"
+                        ariaLabel={`Sort notes: ${sortModeLabel(sortMode)}`}
+                        aria-haspopup="menu"
+                        aria-expanded={!!sortAnchor}
+                        TEXT={TEXT}
+                        BG={BG}
+                      >
+                        {sortMode === SORT_RECENT ? <SortRecentIcon /> : <SortAlphaIcon />}
+                      </SectionAction>
+                    </SectionHeader>
+                    {fNotes.length > 0 && (
+                      <div role="tree" aria-label="Notes">
+                        {fNotes.map((nId) => renderNote(nId, 0))}
+                      </div>
+                    )}
                   </>
                 )}
               </>
             )}
           </div>
         </>
+      )}
+      {sortAnchor && (
+        <SortMenu
+          anchorRect={sortAnchor}
+          mode={sortMode}
+          onSelect={setSortMode}
+          onClose={() => setSortAnchor(null)}
+        />
       )}
     </div>
   );

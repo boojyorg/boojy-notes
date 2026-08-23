@@ -60,7 +60,6 @@ export function NoteDataProvider({ children }) {
     textOnlyEdit,
     textOnlyEditForSidebar,
     textOnlyEditForEditor,
-    editedNoteHint,
     unflushedNotes,
   } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
 
@@ -85,7 +84,6 @@ export function NoteDataProvider({ children }) {
       textOnlyEdit,
       textOnlyEditForSidebar,
       textOnlyEditForEditor,
-      editedNoteHint,
       unflushedNotes,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs (isUndoRedo, noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded

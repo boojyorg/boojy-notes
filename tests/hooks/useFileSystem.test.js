@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/utils/platform", () => ({
   isElectron: true,
@@ -33,13 +33,16 @@ describe("useFileSystem — initial load", () => {
     };
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function renderFS({ noteData = {}, syncGeneration = { current: 0 } } = {}) {
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
     const onError = vi.fn();
     const result = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), onError),
+      ({ data }) => useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError),
       { initialProps: { data: noteData } },
     );
     return { ...result, setNoteData, setCustomFolders, syncGeneration, onError };
@@ -151,6 +154,41 @@ describe("useFileSystem — initial load", () => {
     const rebuilt = updater({ n1: saved, n2: edited });
     expect(rebuilt.n2).toBe(edited);
     expect(rebuilt.n1).toBe(saved);
+  });
+
+  it("keeps a failed write dirty and retries it automatically", async () => {
+    const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+    const edited = { id: "n1", title: "Edited", content: { title: "Edited", blocks: [] } };
+    readAllNotes.mockResolvedValue({ n1: saved });
+    writeNote.mockRejectedValueOnce(new Error("disk unavailable")).mockResolvedValueOnce({});
+    const { result, rerender, onError } = renderFS({ noteData: { n1: saved } });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => rerender({ data: { n1: saved } }));
+
+    vi.useFakeTimers();
+    await act(async () => rerender({ data: { n1: edited } }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(edited);
+    expect(onError).toHaveBeenCalledExactlyOnceWith(
+      "Failed to save note to disk — Boojy will keep retrying",
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(writeNote).toHaveBeenCalledTimes(2);
+    expect(writeNote).toHaveBeenLastCalledWith(edited);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(writeNote).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenCalledTimes(1);
   });
 
   it("does not send an unsaved draft to the system Trash", async () => {

@@ -24,6 +24,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
         darkest: "#111",
       },
       ACCENT: { primary: "#A4CACE" },
+      modalShadow: "0 8px 24px rgba(0,0,0,0.4)",
       BRAND: { orange: "#f90" },
       SEMANTIC: { error: "#ef4444" },
       link: { color: "#7AA2F7", underline: "#7AA2F744", hoverBg: "#7AA2F710" },
@@ -40,7 +41,7 @@ const layoutState = {
   accentColor: "#A4CACE",
   selectionStyle: "B",
   collapsed: false,
-  setCollapsed: vi.fn(),
+  toggleSidebar: vi.fn(),
   chromeBg: "#222",
   topBarEdge: "B",
   sidebarHandles: { current: [] },
@@ -68,8 +69,6 @@ const settingsState = {
   settingsFontSize: 15,
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
-  user: null,
-  profile: null,
 };
 
 vi.mock("../../src/context/SettingsContext", () => ({
@@ -109,9 +108,9 @@ vi.mock("../../src/context/SidebarContext", () => ({
     getActiveResult: () => null,
     customFolders: [],
     setCustomFolders: vi.fn(),
-    sidebarOrder: {},
-    setSidebarOrder: vi.fn(),
     folderList: [],
+    sortMode: _sidebarOverrides.sortMode ?? "recent",
+    setSortMode: _sidebarOverrides.setSortMode ?? vi.fn(),
   }),
   SidebarProvider: ({ children }) => children,
 }));
@@ -163,10 +162,13 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-  it("puts the panel toggle in the sidebar header and collapses on click", () => {
+  // The header's toggle is the same action as the pinned one in EditorChrome:
+  // it hides an in-flow sidebar and closes an overlaying one, and the sidebar
+  // itself doesn't need to know which of those it currently is.
+  it("puts the panel toggle in the sidebar header and toggles on click", () => {
     const { getByTitle } = renderSidebar();
     fireEvent.click(getByTitle("Hide sidebar"));
-    expect(layoutState.setCollapsed).toHaveBeenCalledWith(true);
+    expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
   it("renders the Search action row", () => {
@@ -375,10 +377,96 @@ describe("Sidebar", () => {
     expect(getByText("Loose Note")).toBeInTheDocument();
   });
 
-  it("hides the Notes section header when there are no loose root notes", () => {
-    const { queryByText, getByText } = renderSidebar({ fNotes: [] });
-    expect(queryByText("Notes")).not.toBeInTheDocument();
+  // Reversed on purpose when the sort control moved onto this header: it is
+  // both the visible root drop target and the only place to change ordering,
+  // and both are wanted precisely when every note is inside a folder.
+  it("keeps the Notes section header when there are no loose root notes", () => {
+    const { getByText, queryByRole } = renderSidebar({ fNotes: [] });
+    expect(getByText("Notes")).toBeInTheDocument();
     expect(getByText("Folders")).toBeInTheDocument();
+    // ...but no empty tree, which would fail axe's aria-required-children.
+    expect(queryByRole("tree", { name: "Notes" })).not.toBeInTheDocument();
+  });
+
+  it("hides the Notes section header when a search matches no root note", () => {
+    const { queryByText } = renderSidebar({ search: "zzz", fNotes: [] });
+    expect(queryByText("Notes")).not.toBeInTheDocument();
+  });
+
+  it("marks the Notes header as the root drop target", () => {
+    const { getByText } = renderSidebar({ fNotes: [] });
+    const header = getByText("Notes").closest("[data-drop-root]");
+    expect(header).not.toBeNull();
+  });
+
+  // ── Sort control ──────────────────────────────────────────────────────────
+
+  it("shows the active sort mode in the trigger's accessible name", () => {
+    const { getByLabelText } = renderSidebar({ sortMode: "alpha" });
+    expect(getByLabelText("Sort notes: Alphabetical")).toBeInTheDocument();
+  });
+
+  it("opens a menu with the active mode checked", () => {
+    const { getByLabelText, getByRole } = renderSidebar({ sortMode: "recent" });
+    fireEvent.click(getByLabelText("Sort notes: Most recent"));
+    expect(getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
+    expect(getByRole("menuitemradio", { name: "Most recent" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(getByRole("menuitemradio", { name: "Alphabetical" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
+  it("sets the chosen mode and closes", () => {
+    const setSortMode = vi.fn();
+    const { getByLabelText, getByRole, queryByRole } = renderSidebar({ setSortMode });
+    fireEvent.click(getByLabelText("Sort notes: Most recent"));
+    fireEvent.click(getByRole("menuitemradio", { name: "Alphabetical" }));
+    expect(setSortMode).toHaveBeenCalledWith("alpha");
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+  });
+
+  it("closes the menu on Escape without changing the mode", () => {
+    const setSortMode = vi.fn();
+    const { getByLabelText, getByRole, queryByRole } = renderSidebar({ setSortMode });
+    const trigger = getByLabelText("Sort notes: Most recent");
+    trigger.focus();
+    fireEvent.click(trigger);
+    fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), { key: "Escape" });
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+    expect(setSortMode).not.toHaveBeenCalled();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes on Tab without blocking normal focus movement", () => {
+    const { getByLabelText, getByRole, queryByRole } = renderSidebar();
+    const trigger = getByLabelText("Sort notes: Most recent");
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const defaultAllowed = fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), {
+      key: "Tab",
+    });
+
+    expect(defaultAllowed).toBe(true);
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+    // jsdom does not perform the browser's default Tab move; the handler's
+    // starting point is therefore observable here.
+    expect(trigger).toHaveFocus();
+  });
+
+  // Hover-only reveal would cost a keyboard user the control outright.
+  it("keeps both header controls reachable and visible when focused", () => {
+    const { getByLabelText } = renderSidebar();
+    for (const name of ["New folder", "Sort notes: Most recent"]) {
+      const btn = getByLabelText(name);
+      expect(Number(btn.style.opacity)).toBeGreaterThan(0);
+      fireEvent.focus(btn);
+      expect(btn.style.opacity).toBe("1");
+    }
   });
 
   it("renders note rows without a file glyph, at any depth", () => {

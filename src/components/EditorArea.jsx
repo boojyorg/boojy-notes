@@ -5,7 +5,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { BreadcrumbChevron } from "./Icons";
+import { CHROME_INSET, CHROME_BTN } from "./EditorChrome";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -18,6 +18,73 @@ import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import FindBar from "./FindBar";
+import { ramp } from "../utils/fluidLength";
+
+/*
+ * The note name is a FILE LABEL, not the document's heading.
+ *
+ * It reads at label rank — small, muted, medium weight — so it can never
+ * compete with a real Markdown H1 in the body. A note whose file is
+ * `boojy-notes-design-demo-v1.2.md` and whose first block is `# Notes Demo
+ * v1.2` shows both, and they read as file-then-document rather than as two
+ * titles. The filename and the H1 stay independent: editing the heading never
+ * renames the file.
+ *
+ * Vertically it joins the one optical row the app already has. The sidebar
+ * header centres its children at 25px (height CHROME_INSET + CHROME_BTN, 8px
+ * of top padding); EditorChrome pins ··· at CHROME_INSET with a CHROME_BTN-tall
+ * button, centring it at 26px. Putting the label's line-box centre at 26px
+ * lines it up with the wordmark, the toggle and the ···.
+ */
+const LABEL_FONT_SIZE = 13.5;
+const LABEL_LINE_HEIGHT = 1.4;
+const LABEL_ROW_CENTER = CHROME_INSET + CHROME_BTN / 2;
+const LABEL_TOP = Math.round(LABEL_ROW_CENTER - (LABEL_FONT_SIZE * LABEL_LINE_HEIGHT) / 2);
+/** Air between the label row and the first Markdown block. */
+const LABEL_GAP = 26;
+/** Kept clear on the label's right so a long name truncates before the ···. */
+const LABEL_RIGHT_RESERVE = 48;
+/**
+ * Negative inset so the hover tint can have padding without moving the text.
+ */
+const LABEL_PAD_X = 5;
+/**
+ * Kept clear on the label's LEFT, but only while the panel toggle is pinned to
+ * the viewport corner. At full padding the label starts well clear of it; once
+ * the gutters tighten (see below) the two would collide. Measured to the hover
+ * pill rather than the text, so what you see keeps 8px of air from the toggle.
+ */
+const LABEL_LEFT_RESERVE = CHROME_INSET + CHROME_BTN + 8 + LABEL_PAD_X;
+
+/*
+ * The writing column is fluid, because the window is.
+ *
+ * Width should change how much room the prose has, never what the app is. So
+ * as the window narrows the column gives up its decorative left offset first
+ * and its gutters second — losing them in that order keeps text comfortable
+ * for roughly 200px longer than shrinking both at once would.
+ *
+ * Both ramps are linear between two anchors and clamped at each end. The
+ * offset is fully spent at 560px of editor width, which is exactly the floor
+ * at which the sidebar stops fitting (MIN_EDITOR_WIDTH) — by the time the
+ * sidebar leaves the layout there is no offset left to lose.
+ *
+ * Driven by viewport math rather than container queries on purpose:
+ * `container-type` applies layout containment, which would make the editor
+ * scroller a containing block for its `position: fixed` descendants (the slash
+ * menu, the floating toolbar, the link popovers) and quietly re-anchor them.
+ */
+/** Side gutters: COL_PAD_MIN at COL_PAD_FROM of editor width, MAX at _TO. */
+const COL_PAD_MIN = 24;
+const COL_PAD_MAX = 56;
+const COL_PAD_FROM = 400;
+const COL_PAD_TO = 800;
+/** Decorative left offset: 0 at the editor floor, COL_OFFSET_MAX at _TO. */
+const COL_OFFSET_MAX = 40;
+const COL_OFFSET_FROM = 560;
+const COL_OFFSET_TO = 880;
+/** The drag handle between sidebar and editor also eats width. */
+const SIDEBAR_HANDLE_W = 4;
 
 const EMPTY_FORMATS = {
   bold: false,
@@ -101,8 +168,8 @@ const EditorArea = memo(
       reReadBlockFromDom,
     } = useEditorContext();
     const { theme } = useTheme();
-    const { TEXT, ACCENT } = theme;
-    const { accentColor, editorBg, collapsed } = useLayout();
+    const { TEXT, BG } = theme;
+    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth } = useLayout();
     const { settingsFontSize } = useSettings();
 
     // Find bar state
@@ -420,6 +487,19 @@ const EditorArea = memo(
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
+    // Width the editor actually has: the viewport less whatever the sidebar and
+    // its handle are occupying. An overlay sidebar occupies nothing — it's
+    // painted on top — so the editor measures the full viewport underneath it.
+    // Mobile keeps its own fixed geometry.
+    const editorW = `(100vw - ${sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
+    const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
+    const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
+    // The toggle is only pinned to the corner while the sidebar isn't showing;
+    // that is the only time the label has to step around it.
+    const labelIndent = !sidebarVisible
+      ? `max(0px, calc(${LABEL_LEFT_RESERVE}px - ${colPad} - ${colOffset}))`
+      : "0px";
+
     return (
       <div
         ref={editorScrollRef}
@@ -443,14 +523,19 @@ const EditorArea = memo(
           <div
             key={activeNote}
             style={{
-              padding: isMobile ? "12px 20px 80px 20px" : "12px 56px 80px 56px",
-              maxWidth: isMobile ? "100%" : collapsed ? 840 : 720,
-              marginLeft: isMobile ? 0 : 40,
+              padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
+              maxWidth: isMobile ? "100%" : sidebarInFlow ? 720 : 840,
+              marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
               opacity: editorFadeIn ? 1 : 0,
               transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
-              transition: "max-width 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
+              // Padding and margin ease too, so crossing the width at which the
+              // sidebar leaves the layout reads as the column breathing out
+              // rather than the page re-laying-out under you. `.sidebar-dragging`
+              // kills all transitions, so dragging the divider stays 1:1.
+              transition:
+                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
               position: "relative",
               zIndex: Z.BASE,
             }}
@@ -458,43 +543,13 @@ const EditorArea = memo(
             {activeHint && (
               <OnboardingHint hint={activeHint} onDismiss={dismissHint} accentColor={accentColor} />
             )}
-            {/* Breadcrumb */}
-            {note.path && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  marginBottom: 16,
-                  fontSize: 12,
-                  color: TEXT.muted,
-                }}
-              >
-                {note.path.map((seg, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    {i > 0 && <BreadcrumbChevron />}
-                    <span
-                      style={{
-                        color: i < note.path.length - 1 ? TEXT.secondary : TEXT.muted,
-                        cursor: i < note.path.length - 1 ? "pointer" : "default",
-                        transition: "color 0.15s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (i < note.path.length - 1) e.target.style.color = ACCENT.primary;
-                      }}
-                      onMouseLeave={(e) => {
-                        if (i < note.path.length - 1) e.target.style.color = TEXT.secondary;
-                      }}
-                    >
-                      {seg}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Title */}
-            <h1
+            {/* File label — see the LABEL_* constants for why it looks like this.
+                The breadcrumb that used to sit above it is gone: it only ever
+                populated for notes created in-session inside a folder (files read
+                from disk carry `folder`, not `path`), so it appeared
+                inconsistently, and a second muted line directly above this one
+                reads as a stack of two labels. Location is the sidebar's job. */}
+            <div
               ref={titleRef}
               contentEditable
               suppressContentEditableWarning
@@ -551,24 +606,44 @@ const EditorArea = memo(
                 e.preventDefault();
                 document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
               }}
+              onFocus={(e) => {
+                // Truncation is a display concern — editing reveals the whole name.
+                e.currentTarget.style.background = BG.surface;
+                e.currentTarget.style.color = TEXT.primary;
+                e.currentTarget.style.textOverflow = "clip";
+                e.currentTarget.style.overflowX = "auto";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = TEXT.muted;
+                e.currentTarget.style.textOverflow = "ellipsis";
+                e.currentTarget.style.overflowX = "hidden";
+              }}
+              onMouseEnter={(e) => {
+                if (document.activeElement === e.currentTarget) return;
+                e.currentTarget.style.background = BG.surface;
+                e.currentTarget.style.color = TEXT.secondary;
+              }}
+              onMouseLeave={(e) => {
+                if (document.activeElement === e.currentTarget) return;
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = TEXT.muted;
+              }}
               style={{
-                fontSize: 28,
-                fontWeight: 700,
-                color: TEXT.primary,
-                margin: "0 0 16px",
-                lineHeight: 1.3,
-                letterSpacing: "-0.4px",
+                fontSize: LABEL_FONT_SIZE,
+                fontWeight: 500,
+                color: TEXT.muted,
+                lineHeight: LABEL_LINE_HEIGHT,
+                margin: `0 ${LABEL_RIGHT_RESERVE}px ${LABEL_GAP}px calc(${-LABEL_PAD_X}px + ${labelIndent})`,
+                padding: `0 ${LABEL_PAD_X}px`,
+                borderRadius: 4,
                 outline: "none",
                 position: "relative",
-              }}
-            />
-
-            {/* Title separator */}
-            <div
-              style={{
-                height: 1,
-                marginBottom: 20,
-                background: `linear-gradient(90deg, ${accentColor}33, ${accentColor}0D, transparent)`,
+                cursor: "text",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                transition: "background 0.12s, color 0.12s",
               }}
             />
 
