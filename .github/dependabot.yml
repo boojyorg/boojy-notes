@@ -5,3 +5,14 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    # Minor and patch updates arrive as two grouped PRs (one lockfile change each)
+    # instead of one PR per package, which is how ten mutually-conflicting
+    # lockfile PRs accumulated. Majors are deliberately left ungrouped so each
+    # one still gets its own reviewable PR.
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      development-dependencies:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
