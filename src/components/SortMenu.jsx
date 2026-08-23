@@ -27,6 +27,7 @@ export default function SortMenu({ anchorRect, mode, onSelect, onClose }) {
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef(null);
   const itemRefs = useRef([]);
+  const triggerRef = useRef(document.activeElement);
   const activeIndex = Math.max(
     0,
     SORT_MODES.findIndex((m) => m.id === mode),
@@ -46,8 +47,15 @@ export default function SortMenu({ anchorRect, mode, onSelect, onClose }) {
       e.preventDefault();
       const delta = e.key === "ArrowDown" ? 1 : -1;
       setFocusIndex((i) => (i + delta + SORT_MODES.length) % SORT_MODES.length);
-    } else if (e.key === "Escape" || e.key === "Tab") {
+    } else if (e.key === "Escape") {
       e.preventDefault();
+      triggerRef.current?.focus();
+      onClose();
+    } else if (e.key === "Tab") {
+      // Put focus back on the trigger before the browser performs its normal
+      // Tab move. Preventing the default here stranded focus on <body> after
+      // the focused menu item unmounted.
+      triggerRef.current?.focus();
       onClose();
     }
   };

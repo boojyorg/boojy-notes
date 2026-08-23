@@ -432,10 +432,30 @@ describe("Sidebar", () => {
   it("closes the menu on Escape without changing the mode", () => {
     const setSortMode = vi.fn();
     const { getByLabelText, getByRole, queryByRole } = renderSidebar({ setSortMode });
-    fireEvent.click(getByLabelText("Sort notes: Most recent"));
+    const trigger = getByLabelText("Sort notes: Most recent");
+    trigger.focus();
+    fireEvent.click(trigger);
     fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), { key: "Escape" });
     expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
     expect(setSortMode).not.toHaveBeenCalled();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes on Tab without blocking normal focus movement", () => {
+    const { getByLabelText, getByRole, queryByRole } = renderSidebar();
+    const trigger = getByLabelText("Sort notes: Most recent");
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const defaultAllowed = fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), {
+      key: "Tab",
+    });
+
+    expect(defaultAllowed).toBe(true);
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+    // jsdom does not perform the browser's default Tab move; the handler's
+    // starting point is therefore observable here.
+    expect(trigger).toHaveFocus();
   });
 
   // Hover-only reveal would cost a keyboard user the control outright.
