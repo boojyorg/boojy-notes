@@ -25,7 +25,6 @@ export function useAppKeyboard({
   setUiScale,
   cancelBlockDrag,
   cancelSidebarDrag,
-  setDevOverlay,
 }) {
   // Refs for values read inside handler — avoids stale closures
   const activeNoteRef = useRef(activeNote);
@@ -116,10 +115,6 @@ export function useAppKeyboard({
         e.preventDefault();
         setUiScale(100);
         return;
-      }
-      if (import.meta.env.DEV && mod && e.key === ".") {
-        e.preventDefault();
-        setDevOverlay((v) => !v);
       }
     };
     window.addEventListener("keydown", handler);

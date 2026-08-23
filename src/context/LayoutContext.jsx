@@ -21,37 +21,17 @@ const LayoutContext = createContext(null);
  */
 const OVERLAY_MIN_PEEK = 120;
 
-/**
- * Scrim behind an open overlay sidebar. Deliberately tunable: "subtle" is the
- * starting judgement (the sidebar should not feel like a heavy modal), and the
- * dev tools (Cmd+.) can flip between these live.
- */
-export const OVERLAY_SCRIMS = {
-  none: "transparent",
-  subtle: "rgba(0,0,0,0.10)",
-  dim: "rgba(0,0,0,0.28)",
-};
+/** The sidebar is navigation rather than a modal, so its scrim stays deliberately subtle. */
+export const SIDEBAR_SCRIM = "rgba(0,0,0,0.10)";
 
 export function LayoutProvider({ children }) {
   const { theme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
-
-  const [chromeBg, setChromeBg] = useState(theme.BG.dark);
-  const [editorBg, setEditorBg] = useState(theme.BG.editor);
-  const [accentColor, setAccentColor] = useState(theme.ACCENT.primary);
-  const [selectionStyle, setSelectionStyle] = useState("B");
-  const [overlayScrim, setOverlayScrim] = useState("subtle");
-  const [topBarEdge, setTopBarEdge] = useState("B");
-  const [createBtnStyle, setCreateBtnStyle] = useState("A");
-
-  // Theme-driven color reset
-  useEffect(() => {
-    setChromeBg(theme.BG.dark);
-    setEditorBg(theme.BG.editor);
-    setAccentColor(theme.ACCENT.primary);
-  }, [theme.BG.dark, theme.BG.editor, theme.ACCENT.primary]);
+  const chromeBg = theme.BG.dark;
+  const editorBg = theme.BG.editor;
+  const accentColor = theme.ACCENT.primary;
 
   /**
    * Geometry only: is there room for the sidebar beside a usable editor?
@@ -126,20 +106,9 @@ export function LayoutProvider({ children }) {
       toggleSidebar,
       revealSidebar,
       closeOverlay,
-      overlayScrim,
-      setOverlayScrim,
       chromeBg,
-      setChromeBg,
       editorBg,
-      setEditorBg,
       accentColor,
-      setAccentColor,
-      selectionStyle,
-      setSelectionStyle,
-      topBarEdge,
-      setTopBarEdge,
-      createBtnStyle,
-      setCreateBtnStyle,
       sidebarHandles,
       isDragging,
       startDrag,
@@ -156,14 +125,9 @@ export function LayoutProvider({ children }) {
       toggleSidebar,
       revealSidebar,
       closeOverlay,
-      overlayScrim,
-      setOverlayScrim,
       chromeBg,
       editorBg,
       accentColor,
-      selectionStyle,
-      topBarEdge,
-      createBtnStyle,
       isDragging,
       startDrag,
     ],

@@ -38,9 +38,10 @@ the two it is.
 **The accent is theme-scoped, and must stay that way.** `#A4CACE` (NIGHT) is ~1.7:1 on a light
 ground — it is a dark-mode-only value. Never use one accent constant across both themes.
 
-**Accent is never a surface.** It's identity, focus rings, 2px markers, wikilinks, caret. Selected
-rows are neutral. The one live exception is the sidebar's `selectionStyle` A/B setting, which still
-tints selection with `${accentColor}15/30` — a deliberate, pending-judgement divergence.
+**Accent is never a desktop surface.** It's identity, focus rings, 2px markers, wikilinks, caret.
+Desktop selected rows are neutral. Mobile note rows intentionally retain a compact accent-tinted
+pill (`${accentColor}18` selected, `${accentColor}30` active) to make the current note clear in the
+denser layout; this is fixed product styling, not a runtime option.
 
 ## Scrollbars: never set `scrollbar-width`/`scrollbar-color` globally
 
@@ -142,7 +143,7 @@ Things a future change will trip over:
   reintroduce it in mocks. Sign-in, cloud sync, their backend and related UI were deleted — Git
   history is the parking lot; a returning sync feature gets rebuilt against the current Settings
   grammar rather than keeping dormant code in the product.
-  `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.jsx`; spell check
+  `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.tsx`; spell check
   has no UI but still applies from the stored Electron setting, and UI scale is
   keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).
 - **Delete follows the platform**: Electron sends each indexed Boojy-managed `.md` file to the
@@ -163,14 +164,14 @@ Things a future change will trip over:
 Undo/redo still work — they're keyboard-only now (`useAppKeyboard.js`, Cmd/Ctrl+Z and
 Cmd/Ctrl+Shift+Z). Cmd+Shift+\ (split) and Cmd+1/2 (pane switch) are gone with the feature.
 
-## The panel toggle moves between states (deliberate, pending judgement)
+## The panel toggle moves between states
 
 The toggle is no longer pinned. **Expanded**: it lives in the sidebar's own header, top-right, 12px
 in from the divider, opposite the wordmark. **Collapsed**: `EditorChrome` renders it fixed at the
 viewport's top-left as before, guarded on `collapsed`. So it *does* jump position between states —
-the earlier "must not move" rule was reversed on purpose to test whether the expanded header reads
-cleaner as `wordmark … toggle`. `ChromeButton` is exported from `EditorChrome.jsx` so both sites
-share one button. `CHROME_LEFT_GUTTER` is now unused, kept only for the revert path.
+the earlier "must not move" rule was reversed because the expanded header reads more cleanly as
+`wordmark … toggle`. `ChromeButton` is exported from `EditorChrome.jsx` so both sites share one
+button.
 
 ## Sidebar primary actions (Picito row treatment)
 
@@ -183,9 +184,9 @@ their left edge on the spine so labels stay on TEXT_COL. Root note rows are text
 empty gutter sits left of their titles;
 that gutter is deliberate TEXT_COL alignment, not a missing icon — don't "fix" it. Tree rows are
 30px pills (12px radius, 4px side insets, 2px rhythm gap) with neutral `BG.hover` for hover,
-selection and multi-select alike; the active note is weight + `TEXT.primary` ink, never accent. On
-desktop this supersedes the `selectionStyle` A/B accent tints (mobile still uses them). Section
-headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row ink.
+selection and multi-select alike; the active note is weight + `TEXT.primary` ink, never accent.
+Mobile intentionally retains its accent-tinted selected-note pill. Section headers stay 13px/700
+but in `TEXT.secondary`, one step quieter than row ink.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
 (note rows) still uses the older tree grammar, so the two grammars coexist.
@@ -282,9 +283,8 @@ Note rows carry **no file icon** at any depth — the repeated document glyph wa
 glyphs on screen and communicated nothing the row's position didn't already. Folders now carry
 **only the folder icon**: the permanent disclosure chevron was removed too (2026-08-18) — the
 whole row toggles, the open-folder glyph + indented children carry the state, and
-`aria-expanded` is always set (it's the only programmatic signal left). Deliberate experiment:
-collapsed vs expanded has no other permanent indicator, and no hover chevron yet — judge the
-calm version first; the revert path is commented at the render site. The removed FileIcon's
+`aria-expanded` is always set (it's the only programmatic signal left). Collapsed vs expanded has
+no other permanent indicator and no hover chevron; the calm row is the settled treatment. The removed FileIcon's
 width is still folded into each note row's left padding, minus the chevron allowance that came
 back out of both row kinds, so titles keep their column under the folder names — don't
 "simplify" that padding away. `FileIcon` still ships in search results, which are not tree rows.

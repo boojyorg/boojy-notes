@@ -39,11 +39,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
 const layoutState = {
   sidebarWidth: 220,
   accentColor: "#A4CACE",
-  selectionStyle: "B",
   collapsed: false,
   toggleSidebar: vi.fn(),
   chromeBg: "#222",
-  topBarEdge: "B",
   sidebarHandles: { current: [] },
   isDragging: { current: false },
   startDrag: vi.fn(),

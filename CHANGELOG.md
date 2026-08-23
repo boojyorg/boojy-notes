@@ -50,6 +50,12 @@
 - **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
 - **Equally relevant search results now fall back to the most recent** — Search has always intended to break ties by which note changed most recently, but the modified time it compared was never actually recorded, so every note looked equally old and ties fell back to whatever order the notes happened to load in. Boojy now reads each file's modified time, so tied results come out newest first.
 
+### Internal
+- **Settled design experiments are now ordinary product styling** — The development-only visual
+  control panel, its keyboard shortcut, colour helpers and mutable layout-style context have been
+  removed. Theme colours now come directly from the active theme, while the approved sidebar
+  scrim, mobile selection and mobile top-bar treatments are fixed at their chosen values.
+
 ## v0.5.0 — 2026-06-12
 
 ### Bug Fixes

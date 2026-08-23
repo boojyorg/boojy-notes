@@ -58,6 +58,15 @@ afterEach(() => {
 });
 
 describe("LayoutContext sidebar presentation", () => {
+  it("derives its palette directly from the active theme", () => {
+    renderLayout();
+    expect(layout.chromeBg).toBe("#111");
+    expect(layout.editorBg).toBe("#000");
+    expect(layout.accentColor).toBe("#A4CACE");
+    expect(layout).not.toHaveProperty("setChromeBg");
+    expect(layout).not.toHaveProperty("selectionStyle");
+  });
+
   it("keeps the sidebar in flow when there is room", () => {
     renderLayout(1200);
     expect(layout.sidebarOverlay).toBe(false);

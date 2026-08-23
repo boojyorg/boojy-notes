@@ -41,7 +41,6 @@ vi.mock("/assets/boojy-notes.text-tes.png", () => ({ default: "boojy-tes.png" })
 const layoutState = {
   chromeBg: "#222",
   accentColor: "#A4CACE",
-  topBarEdge: "B",
   sidebarWidth: 220,
   collapsed: false,
   setCollapsed: vi.fn(),

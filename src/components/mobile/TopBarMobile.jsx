@@ -2,8 +2,9 @@ import { useTheme } from "../../hooks/useTheme";
 import { useLayout } from "../../context/LayoutContext";
 import { useSettings } from "../../context/SettingsContext";
 import { Z } from "../../constants/zIndex";
-import { ChevronLeftIcon, MoreHorizontalIcon } from "../Icons";
+import { shadow } from "../../tokens/shadows";
 import { platform } from "../../utils/platform";
+import { ChevronLeftIcon, MoreHorizontalIcon } from "../Icons";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 export default function TopBarMobile({
@@ -14,10 +15,10 @@ export default function TopBarMobile({
   onMorePress,
   onTitlePress,
 }) {
-  const { chromeBg, topBarEdge } = useLayout();
+  const { chromeBg } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
-  const { BG, TEXT } = theme;
+  const { TEXT } = theme;
 
   const isEditing = !!activeNote;
 
@@ -38,14 +39,8 @@ export default function TopBarMobile({
       style={{
         minHeight: 48,
         background: chromeBg,
-        boxShadow:
-          isEditing && (topBarEdge === "A" || topBarEdge === "B")
-            ? "0 2px 8px rgba(0,0,0,0.3)"
-            : "none",
-        borderBottom:
-          isEditing && (topBarEdge === "A" || topBarEdge === "C")
-            ? `1px solid ${BG.divider}25`
-            : "none",
+        boxShadow: isEditing ? shadow.mobileTopBar : "none",
+        borderBottom: "none",
         display: "flex",
         alignItems: "center",
         flexShrink: 0,
