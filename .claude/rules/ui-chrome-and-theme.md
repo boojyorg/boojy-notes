@@ -272,6 +272,22 @@ not from `noteData` in the dep list — depending on the store directly would re
 every keystroke and undo the text-only bail-out. Alphabetical mode deliberately does not subscribe
 to the timestamps, so opening a note doesn't re-sort a list that can't change.
 
+### Drag means location, not order
+
+Dragging a note moves the **real `.md` file**: onto a folder row files it there, onto the
+`Notes`/root area moves it back out. It never sets a hand-arranged position — sort decides
+display order, drag decides where the note lives. Folders are always alphabetical, with no
+control to change that.
+
+**Folder rows are not draggable at all.** The sibling-reorder half retired with manual ordering,
+and the nest/reparent half never existed — dropping a folder onto a folder highlighted the
+target and then silently did nothing. Genuine folder nesting is a future feature, not a
+regression to restore.
+
+Existing `.boojy-meta.json` files are **left untouched on disk**. Nothing reads or writes their
+`noteOrder`/`folderOrder` keys any more, so an old arrangement stays recoverable — don't "tidy
+them up", and don't reintroduce a reader for them.
+
 ## Section-header controls: quiet, never hidden
 
 `SectionAction` in `Sidebar.jsx` is the one component for a header's trailing control (New folder,
@@ -328,6 +344,20 @@ this instead of writing a fresh clamp.
 Slash-menu selection is keyboard-first: opening `/` and changing its filter reset to index `0`.
 Rows update that selection on actual mouse movement, not `mouseenter`; a newly mounted or flipped
 menu can appear beneath a stationary pointer, which must not steal the initial Heading 1 selection.
+
+## Narrow desktop is still desktop
+
+**Width changes how much room Boojy has, not what Boojy is.** A narrow desktop window must never
+become the phone layout: the mobile navigation model is a *touch-device* thing, not a width
+thing. One overloaded boolean was split into three separate questions — is this a touch device,
+does the sidebar fit, is the sidebar open. Below ~780px the sidebar floats *over* the editor as
+an overlay; that is the app making room, not switching identity.
+
+Consequence for dev work: **narrowing a desktop browser no longer previews the mobile layout.**
+Use DevTools device emulation, which emulates pointer type.
+
+`useIsMobile.ts` is misnamed for what it now answers ("is this a touch device"); `useSidebarFits.ts`
+carries the fit question. The rename to `useIsTouch` is outstanding — see `docs/BACKLOG.md`.
 
 ## Testing note
 

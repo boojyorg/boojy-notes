@@ -49,6 +49,10 @@ related per-pane state items with them.
   candidates: ghost-note/draft effects, `Sidebar` (1,314 lines — now the largest file: tree +
   search results).
 - [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
+- [ ] Rename `useIsMobile` → `useIsTouch` across its call sites — it answers "is this a touch
+  device", not "is the window narrow", and the misnomer is exactly the confusion the responsive
+  three-way split exists to prevent. `useSidebarFits.ts` already carries the fit question. Last
+  outstanding step of the responsive pass.
 - [ ] E2E `webServer` rebuilds the app a second time — `playwright.config.js:15` runs
   `npm run build && npm run preview`, but CI already built one step earlier, and shelling out to
   `npm` in a pnpm repo is the source of the `Unknown project config "node-linker"` warning. Noticed

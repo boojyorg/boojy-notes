@@ -101,3 +101,20 @@ Dependency maintenance is now a deliberate batched pass, run by hand when chosen
 Deleting that file does **not** touch security: Dependabot alerts and Dependabot security updates
 are repo settings, not config-file settings, and the `pnpm audit --audit-level critical` step in
 `ci.yml` gates every PR regardless. That audit gate is the live safety net — don't remove it.
+
+**Three independent controls, and their state as of 2026-08-23:**
+
+| Control | Where it lives | State |
+|---|---|---|
+| Routine version-update PRs | `.github/dependabot.yml` | **off** (file deleted) |
+| Dependabot vulnerability alerts | repo security setting | **on** |
+| Automatic security-fix PRs | repo security setting | **off** |
+
+Alerts were **already off before** the config was removed — turning them on was a separate,
+deliberate change, not a side effect of it. The config file has no authority over either security
+setting, so removing it could not and did not disable them.
+
+**Dependency maintenance is a deliberate pass, not a queue.** Occasionally: `pnpm outdated`, batch
+the patch/minor bumps into one commit, run the whole gate sequence, one PR. Majors go **one at a
+time** on their own branch. Anything touching Electron needs a **real desktop build** — green web
+CI does not exercise it. A vulnerability alert is the trigger for an unscheduled pass.
