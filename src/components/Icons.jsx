@@ -24,6 +24,7 @@ import {
   ChevronRight as LuChevronRight,
   Clock3 as LuClock3,
   Code as LuCode,
+  Copy as LuCopy,
   FileText as LuFileText,
   Folder as LuFolder,
   FolderOpen as LuFolderOpen,
@@ -40,6 +41,7 @@ import {
   MoreHorizontal as LuMoreHorizontal,
   PanelLeft as LuPanelLeft,
   Paperclip as LuPaperclip,
+  Pencil as LuPencil,
   Plus as LuPlus,
   Search as LuSearch,
   SquareCheck as LuSquareCheck,
@@ -98,7 +100,13 @@ export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={I
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
 export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} size={size} />;
 export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
-export const TrashIcon = () => <LuTrash2 {...base} size={ICON_INLINE} />;
+/** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
+ *  12.5px menu labels (judged live 2026-08-23). */
+export const TrashIcon = () => <LuTrash2 {...base} {...navBase} size={ICON_INLINE} />;
+export const PencilIcon = ({ size = ICON_INLINE }) => (
+  <LuPencil {...base} {...navBase} size={size} />
+);
+export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
 
 // ── Standalone controls (20px) ────────────────────────────────────────────
 export const SidebarToggleIcon = ({ size = ICON_CONTROL }) => (

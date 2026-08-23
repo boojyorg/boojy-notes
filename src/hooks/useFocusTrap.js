@@ -9,8 +9,13 @@ const FOCUSABLE_SELECTOR =
  *
  * @param {React.RefObject<HTMLElement>} containerRef - ref to the trap container
  * @param {boolean} isOpen - whether the trap is active
+ * @param {"first" | "container"} [initialFocus] - "container" parks initial
+ *   focus on the container itself (give it tabIndex={-1}) instead of the first
+ *   item. Menus opened by pointer use it so Chromium's script-focus heuristic
+ *   can't paint a :focus-visible ring on the first item; real Tab/arrow use
+ *   still moves focus into items and earns the ring legitimately.
  */
-export function useFocusTrap(containerRef, isOpen) {
+export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
   const previousFocusRef = useRef(null);
 
   useEffect(() => {
@@ -24,6 +29,10 @@ export function useFocusTrap(containerRef, isOpen) {
 
     // Focus the first focusable element inside the container
     const focusFirst = () => {
+      if (initialFocus === "container") {
+        container.focus();
+        return;
+      }
       const focusable = container.querySelectorAll(FOCUSABLE_SELECTOR);
       if (focusable.length > 0) {
         focusable[0].focus();
@@ -78,5 +87,5 @@ export function useFocusTrap(containerRef, isOpen) {
         previousFocusRef.current.focus();
       }
     };
-  }, [isOpen, containerRef]);
+  }, [isOpen, containerRef, initialFocus]);
 }

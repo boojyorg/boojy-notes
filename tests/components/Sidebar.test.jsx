@@ -396,73 +396,43 @@ describe("Sidebar", () => {
     expect(header).not.toBeNull();
   });
 
-  // ── Sort control ──────────────────────────────────────────────────────────
+  // ── Sort control (toggle, 2026-08-23) ────────────────────────────────────
+  // Two modes only, so the menu became a click-to-flip toggle. The glyph and
+  // accessible name announce the CURRENT state; the label's tail announces
+  // what a click does.
 
-  it("shows the active sort mode in the trigger's accessible name", () => {
+  it("announces the current mode and the flip action", () => {
     const { getByLabelText } = renderSidebar({ sortMode: "alpha" });
-    expect(getByLabelText("Sort notes: Alphabetical")).toBeInTheDocument();
+    expect(getByLabelText("Sorted alphabetically — switch to most recent")).toBeInTheDocument();
   });
 
-  it("opens a menu with the active mode checked", () => {
-    const { getByLabelText, getByRole } = renderSidebar({ sortMode: "recent" });
-    fireEvent.click(getByLabelText("Sort notes: Most recent"));
-    expect(getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
-    expect(getByRole("menuitemradio", { name: "Most recent" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    expect(getByRole("menuitemradio", { name: "Alphabetical" })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
-  });
-
-  it("sets the chosen mode and closes", () => {
+  it("flips recent to alphabetical on click, with no menu", () => {
     const setSortMode = vi.fn();
-    const { getByLabelText, getByRole, queryByRole } = renderSidebar({ setSortMode });
-    fireEvent.click(getByLabelText("Sort notes: Most recent"));
-    fireEvent.click(getByRole("menuitemradio", { name: "Alphabetical" }));
+    const { getByLabelText, queryByRole } = renderSidebar({ setSortMode, sortMode: "recent" });
+    fireEvent.click(getByLabelText("Sorted by most recent — switch to alphabetical"));
     expect(setSortMode).toHaveBeenCalledWith("alpha");
     expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
   });
 
-  it("closes the menu on Escape without changing the mode", () => {
+  it("flips alphabetical to most recent on click", () => {
     const setSortMode = vi.fn();
-    const { getByLabelText, getByRole, queryByRole } = renderSidebar({ setSortMode });
-    const trigger = getByLabelText("Sort notes: Most recent");
-    trigger.focus();
-    fireEvent.click(trigger);
-    fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), { key: "Escape" });
-    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
-    expect(setSortMode).not.toHaveBeenCalled();
-    expect(trigger).toHaveFocus();
+    const { getByLabelText } = renderSidebar({ setSortMode, sortMode: "alpha" });
+    fireEvent.click(getByLabelText("Sorted alphabetically — switch to most recent"));
+    expect(setSortMode).toHaveBeenCalledWith("recent");
   });
 
-  it("closes on Tab without blocking normal focus movement", () => {
-    const { getByLabelText, getByRole, queryByRole } = renderSidebar();
-    const trigger = getByLabelText("Sort notes: Most recent");
-    trigger.focus();
-    fireEvent.click(trigger);
-
-    const defaultAllowed = fireEvent.keyDown(getByRole("menu", { name: "Sort notes" }), {
-      key: "Tab",
-    });
-
-    expect(defaultAllowed).toBe(true);
-    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
-    // jsdom does not perform the browser's default Tab move; the handler's
-    // starting point is therefore observable here.
-    expect(trigger).toHaveFocus();
-  });
-
-  // Hover-only reveal would cost a keyboard user the control outright.
-  it("keeps both header controls reachable and visible when focused", () => {
+  // Reveal is CSS-driven (.sidebar-section-action in GlobalStyles): hidden at
+  // rest on hover-capable devices, revealed by header hover/focus-within,
+  // lifted by :focus-visible. jsdom can't compute that stylesheet, so assert
+  // the contract's DOM hooks: keyboard-reachable buttons wearing the class,
+  // inside a header wearing the class the reveal selectors scope to.
+  it("keeps both header controls keyboard-reachable with the CSS reveal hooks", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["New folder", "Sort notes: Most recent"]) {
+    for (const name of ["New folder", "Sorted by most recent — switch to alphabetical"]) {
       const btn = getByLabelText(name);
-      expect(Number(btn.style.opacity)).toBeGreaterThan(0);
-      fireEvent.focus(btn);
-      expect(btn.style.opacity).toBe("1");
+      expect(btn.tabIndex).toBe(0);
+      expect(btn.className).toContain("sidebar-section-action");
+      expect(btn.closest(".sidebar-section-header")).not.toBeNull();
     }
   });
 
@@ -481,7 +451,8 @@ describe("Sidebar", () => {
     for (const title of ["Loose Note", "Nested Note"]) {
       const row = getByText(title).closest("[data-note-id]");
       expect(row).not.toBeNull();
-      expect(row.querySelector("svg")).toBeNull();
+      // No document glyph — the row's only svg is the trailing ··· action.
+      expect(row.querySelector("svg.lucide-file-text")).toBeNull();
     }
   });
 
