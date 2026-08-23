@@ -89,3 +89,15 @@ node_modules/electron"*. Fix: **`pnpm rebuild electron`** (re-runs `install.js`,
 After the npm→pnpm migration the CF Pages build command must be `ELECTRON_DISABLE=1 pnpm build`,
 set **in the Cloudflare dashboard** — it is not read from the repo. CF auto-detects `pnpm-lock` for
 install, but the build command is dashboard-configured; confirm the deploy is green after changes.
+
+## There is deliberately no `.github/dependabot.yml`
+
+Routine Dependabot version updates are **off on purpose** (2026-08-23). Don't re-add the config
+because the repo "looks like it's missing one". Automatic bumps produced ten mutually-conflicting
+`pnpm-lock.yaml` PRs that sat for seven weeks and pinned Dependabot at its
+`open-pull-requests-limit`; grouping helped but still queued five majors nobody asked for.
+Dependency maintenance is now a deliberate batched pass, run by hand when chosen.
+
+Deleting that file does **not** touch security: Dependabot alerts and Dependabot security updates
+are repo settings, not config-file settings, and the `pnpm audit --audit-level critical` step in
+`ci.yml` gates every PR regardless. That audit gate is the live safety net — don't remove it.
