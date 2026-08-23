@@ -1,10 +1,12 @@
 # Current target
 
-**Finish the current simplification and reliability pass without expanding the product.**
+**Consolidate the current simplification pass without expanding the product.**
 
-- [x] Keep failed Electron note writes dirty and retry until they succeed.
-- [x] Remove dormant cloud sync, sign-in, backend code and dependencies; Git is the recovery path.
-- [x] Judge and land the responsive/sidebar visual experiments already in the working tree.
+- [x] Fix stale onboarding, error-theme tokens and the Settings update switch.
+- [x] Remove the settled design overlay and runtime experiment plumbing.
+- [x] Prune dead sync, split-view, theme and style residue.
+- [ ] Introduce a narrow shared grammar for recurring menus and buttons.
+- [ ] Decompose large components only where a stable seam is already clear.
 
 ## Next
 

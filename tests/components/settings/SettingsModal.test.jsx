@@ -21,7 +21,6 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         darkest: "#111",
       },
       ACCENT: { primary: "#A4CACE" },
-      BRAND: { orange: "#f90" },
       SEMANTIC: {},
       modalBg: "#1a1a1e",
       modalShadow: "0 0 20px rgba(0,0,0,0.5)",

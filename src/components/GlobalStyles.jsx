@@ -6,28 +6,16 @@ export default function GlobalStyles() {
   return (
     <style>{`
         :root {
-          --boojy-error-bg: ${theme.BG.primary};
+          --boojy-error-bg: ${theme.BG.darkest};
           --boojy-error-surface: ${theme.BG.surface};
           --boojy-error-text: ${theme.TEXT.primary};
           --boojy-error-muted: ${theme.TEXT.muted};
           --boojy-error-accent: ${theme.ACCENT.primary};
-          --boojy-error-danger: ${theme.SEMANTIC?.danger || "#ff6b6b"};
-        }
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes syncGlow {
-          0%, 100% { box-shadow: 0 0 4px ${theme.BRAND.orange}40; }
-          50% { box-shadow: 0 0 14px ${theme.BRAND.orange}80, 0 0 24px ${theme.BRAND.orange}30; }
-        }
-        @keyframes syncDotPulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
+          --boojy-error-danger: ${theme.SEMANTIC.error};
         }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
         }
         @keyframes fadeInToolbar {
           from { opacity: 0; transform: translateX(-50%) translateY(4px); }
@@ -36,14 +24,6 @@ export default function GlobalStyles() {
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes tabSlideIn {
-          from { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
-          to { max-width: 200px; opacity: 1; }
-        }
-        @keyframes tabSlideOut {
-          from { max-width: 200px; opacity: 1; }
-          to { max-width: 0; opacity: 0; padding-left: 0; padding-right: 0; overflow: hidden; }
         }
         .sidebar-dragging * { transition: none !important; }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -81,9 +61,6 @@ export default function GlobalStyles() {
         .sidebar-action-row:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 12px; }
         .sidebar-section-action:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 6px; }
         .checkbox-box:active { transform: scale(0.85); }
-        .tab-btn > .tab-close { opacity: 0; width: 0; overflow: hidden; margin-left: 0; transition: opacity 0.15s, width 0.1s, margin-left 0.1s; }
-        .tab-btn:hover > .tab-close, .tab-btn.tab-active > .tab-close { opacity: 0.6; width: 16px; margin-left: 5px; }
-        .tab-btn > .tab-close:hover { opacity: 1 !important; }
         [data-block-id] code {
           background: ${theme.inlineCode.bg};
           border: 1px solid ${theme.inlineCode.border};

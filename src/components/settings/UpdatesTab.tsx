@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, type ComponentType } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
@@ -7,16 +7,39 @@ import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
 import { buttonBase } from "../../styles/buttons";
 
-export default function UpdatesTab({ isDesktop, SectionHeader }) {
-  const { autoUpdateEnabled, setAutoUpdateEnabled, updateStatus } = useSettings();
+interface UpdatesTabProps {
+  isDesktop: boolean;
+  SectionHeader: ComponentType<{ title: string }>;
+}
 
-  const { accentColor } = useLayout();
+interface UpdateStatus {
+  state: "idle" | "checking" | "available" | "up-to-date" | "downloading" | "downloaded" | "error";
+  version?: string;
+  percent?: number;
+  message?: string;
+}
 
-  const { theme } = useTheme();
+interface UpdatesTheme {
+  TEXT: { primary: string; secondary: string; muted: string };
+  ACCENT: { primary: string };
+  SEMANTIC: { error: string };
+  overlay: (alpha: number) => string;
+}
+
+export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps) {
+  const { autoUpdateEnabled, setAutoUpdateEnabled, updateStatus } = useSettings() as {
+    autoUpdateEnabled: boolean;
+    setAutoUpdateEnabled: (enabled: boolean) => void;
+    updateStatus: UpdateStatus | null;
+  };
+
+  const { accentColor } = useLayout() as { accentColor: string };
+
+  const { theme } = useTheme() as { theme: UpdatesTheme };
   const { TEXT, ACCENT, SEMANTIC } = theme;
 
   const handleToggleAutoUpdate = useCallback(
-    (enabled) => {
+    (enabled: boolean) => {
       setAutoUpdateEnabled(enabled);
       window.electronAPI?.setAutoUpdate?.(enabled);
     },
@@ -47,20 +70,28 @@ export default function UpdatesTab({ isDesktop, SectionHeader }) {
         }}
       >
         <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Auto-update</span>
-        <div
+        <button
+          type="button"
+          role="switch"
+          aria-checked={autoUpdateEnabled}
+          aria-label="Auto-update"
           onClick={() => handleToggleAutoUpdate(!autoUpdateEnabled)}
           style={{
             width: 36,
             height: 20,
+            boxSizing: "border-box",
             borderRadius: 10,
             background: autoUpdateEnabled ? accentColor : theme.overlay(0.06),
-            border: autoUpdateEnabled ? "none" : `1px solid ${theme.overlay(0.08)}`,
+            border: `1px solid ${autoUpdateEnabled ? accentColor : theme.overlay(0.08)}`,
             position: "relative",
             cursor: "pointer",
             transition: "background 0.15s",
+            padding: 0,
+            flexShrink: 0,
           }}
         >
-          <div
+          <span
+            aria-hidden="true"
             style={{
               width: 14,
               height: 14,
@@ -72,7 +103,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }) {
               transition: "left 0.15s",
             }}
           />
-        </div>
+        </button>
       </div>
 
       {/* Update status */}

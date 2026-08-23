@@ -35,7 +35,7 @@ describe("useQuitFlush", () => {
     expect(flushBeforeCloseDone).toHaveBeenCalledTimes(1);
   });
 
-  it("passes every unflushed note as an extra dirty id (split-pane edits survive)", async () => {
+  it("passes every unflushed note as an extra dirty id", async () => {
     // Two notes edited within one debounce window — a single-slot hint would
     // remember only the second and silently drop the first's keystrokes
     unflushedNotes.current.add("note-1");

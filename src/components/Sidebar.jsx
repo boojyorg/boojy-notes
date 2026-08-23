@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -34,14 +34,11 @@ const HEADER_RIGHT_INSET = 12;
 const HEADER_NUDGE = 4;
 
 // ── Desktop alignment system: one spine, one text column ────────────────────
-// Live experiment (2026-08-19). Two columns replace the previous six left
-// edges: everything structural (wordmark, action icons, section headers,
-// folder icons) sits on SPINE; every label (action labels, folder names, root
-// note titles) sits on TEXT_COL. Root notes carry no glyph, so a 22px empty
-// gutter sits left of their titles — that air is the deliberate bet: it says
-// "same tier as folders, just no children". If it reads as accidental
-// indentation live, the fallback is a shallower Picito-style note column
-// (root note text at ~SPINE + 12) — one constant, not a rebuild.
+// Two columns replace the previous six left edges: everything structural
+// (wordmark, action icons, section headers, folder icons) sits on SPINE; every
+// label (action labels, folder names, root note titles) sits on TEXT_COL. Root
+// notes carry no glyph, so a 22px empty gutter keeps their titles aligned with
+// folder names at the same navigation tier.
 /** Structural spine: left edge of icons/headers, matches HEADER_LEFT_INSET. */
 const SPINE = 12;
 /** Label column: where every text label in the panel starts. */
@@ -245,7 +242,7 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   isMobile,
 }) {
-  const { sidebarWidth, accentColor, selectionStyle, toggleSidebar } = useLayout();
+  const { accentColor, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -300,33 +297,19 @@ const Sidebar = memo(function Sidebar({
     // all use neutral BG.hover, and the active note is distinguished by ink
     // (weight + TEXT.primary), never by accent. The empty gutter left of the
     // title is the TEXT_COL alignment, not a missing icon. Mobile keeps the
-    // previous accent-tinted selectionStyle grammar untouched.
+    // existing accent-tinted pill grammar untouched.
     const rowStyle = isMobile
       ? {
-          width: selectionStyle === "B" ? "calc(100% - 8px)" : "calc(100% + 2px)",
-          marginLeft: selectionStyle === "B" ? 5 : -1,
-          marginRight: selectionStyle === "B" ? 3 : 0,
-          background: act
-            ? `${accentColor}${selectionStyle === "B" ? "30" : "15"}`
-            : sel
-              ? `${accentColor}${selectionStyle === "B" ? "18" : "0A"}`
-              : "transparent",
-          borderRadius: selectionStyle === "B" ? 6 : 0,
-          ...(selectionStyle === "A"
-            ? {
-                borderLeft: act
-                  ? `3px solid ${accentColor}`
-                  : sel
-                    ? `2px solid ${accentColor}60`
-                    : "3px solid transparent",
-              }
-            : {}),
+          width: "calc(100% - 8px)",
+          marginLeft: 5,
+          marginRight: 3,
+          background: act ? `${accentColor}30` : sel ? `${accentColor}18` : "transparent",
+          borderRadius: 6,
           // The removed FileIcon's width + gap is folded into the left padding
           // so titles keep their column under the folder names; the chevron
           // removal took its allowance back out of both row kinds.
           padding: `12px 16px 12px ${7 + depth * 20 + 19 + 5}px`,
-          boxShadow:
-            selectionStyle === "A" && act ? `inset 4px 0 12px -4px ${ACCENT.primary}30` : "none",
+          boxShadow: "none",
         }
       : {
           width: `calc(100% - ${ROW_INSET * 2}px)`,
@@ -376,8 +359,7 @@ const Sidebar = memo(function Sidebar({
         }}
         onMouseLeave={(e) => {
           if (!act && !sel) hBg(e.currentTarget, "transparent");
-          else if (isMobile && sel && !act)
-            hBg(e.currentTarget, `${accentColor}${selectionStyle === "B" ? "18" : "0A"}`);
+          else if (isMobile && sel && !act) hBg(e.currentTarget, `${accentColor}18`);
         }}
       >
         <span
@@ -607,9 +589,7 @@ const Sidebar = memo(function Sidebar({
         overflow: "hidden",
       }}
     >
-      {/* Sidebar header: wordmark left, panel toggle right (near the divider).
-          Revert path — restore `paddingLeft: CHROME_LEFT_GUTTER`, drop the
-          ChromeButton below, and un-guard the fixed toggle in EditorChrome. */}
+      {/* Sidebar header: wordmark left, panel toggle right near the divider. */}
       {!isMobile && (
         <div
           style={{

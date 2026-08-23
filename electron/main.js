@@ -19,7 +19,6 @@ import {
   registerSettingsIPC,
   checkForUpdatesOnStartup,
 } from "./settingsManager.js";
-import { registerSecureStorageIPC } from "./secureStorage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -97,7 +96,6 @@ registerOSTrashIPC(getNotesDir, {
   releaseUnlink: releaseUnlinkSuppression,
 });
 registerSettingsIPC(getMainWindow, restartWatcher);
-registerSecureStorageIPC();
 setupAutoUpdater(getMainWindow);
 
 // ─── App lifecycle ───

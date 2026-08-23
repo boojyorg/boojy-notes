@@ -7,7 +7,6 @@ const HINTS = [
   { id: "wikilinks", text: "Try [[ to link notes", minNotes: 2 },
   { id: "tags", text: "Use #tags to organise", minNotes: 3 },
   { id: "swipe-nav", text: "Swipe right for notes", mobileOnly: true },
-  { id: "split-view", text: "\u2318\u21e7\\ to split view", minNotes: 5, desktopOnly: true },
 ];
 
 function loadSeen() {

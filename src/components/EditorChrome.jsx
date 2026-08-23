@@ -14,9 +14,7 @@ import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
  *          overlay at a narrow width. When the sidebar IS showing, the toggle
  *          lives in its own header, at the top-right next to the divider (see
  *          Sidebar.jsx), so exactly one toggle exists at any moment and it
- *          always means the same thing. To revert to the always-pinned-left
- *          toggle, drop the `sidebarVisible` guard below and restore the header
- *          block in Sidebar.jsx.
+ *          always means the same thing.
  *   right  note actions — opens the existing note context menu.
  *
  * `topOffset` clears the desktop TitleBar (window drag region); on web it is 0.
@@ -24,11 +22,6 @@ import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
 
 export const CHROME_INSET = 10;
 export const CHROME_BTN = 32;
-/**
- * Left gutter the sidebar header used to reserve for the pinned toggle.
- * Unused while the toggle lives in the sidebar header; kept for the revert path.
- */
-export const CHROME_LEFT_GUTTER = CHROME_INSET + CHROME_BTN + 4;
 
 export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
   const { theme } = useTheme();

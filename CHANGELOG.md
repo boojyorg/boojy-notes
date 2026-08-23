@@ -30,6 +30,12 @@
 - **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Bug Fixes
+- **Onboarding no longer advertises the removed split view** — The progressive hint sequence no
+  longer tells established desktop users to press the retired split-view shortcut.
+- **Crash fallbacks use the active theme correctly** — Error boundaries now receive valid
+  background and error-colour tokens instead of references to theme roles that do not exist.
+- **Auto-update can be toggled from the keyboard** — The desktop Settings control is now a real
+  accessible switch with a stable hit box and announced checked state.
 - **Settings close button has a meaningful accessible name** — The existing `×` control is
   unchanged visually, but screen readers and voice control can now identify it as “Close settings.”
 - **Sort-menu focus no longer gets lost** — Escape now closes the note-order menu and returns
@@ -43,6 +49,16 @@
 - **Checkboxes update immediately** — Checking or unchecking a task now repaints its tick and strikethrough at once instead of waiting for Enter or another structural editor change.
 - **Menus can no longer run off-screen** — The note-actions ··· menu used to open past the right edge of the window, and a slash menu near the bottom ran below it. All context/slash menus now share one placement rule: follow the anchor, keep an 8px margin from every edge, flip to the other side of the anchor when needed, and clamp as a last resort.
 - **Equally relevant search results now fall back to the most recent** — Search has always intended to break ties by which note changed most recently, but the modified time it compared was never actually recorded, so every note looked equally old and ties fell back to whatever order the notes happened to load in. Boojy now reads each file's modified time, so tied results come out newest first.
+
+### Internal
+- **Settled design experiments are now ordinary product styling** — The development-only visual
+  control panel, its keyboard shortcut, colour helpers and mutable layout-style context have been
+  removed. Theme colours now come directly from the active theme, while the approved sidebar
+  scrim, mobile selection and mobile top-bar treatments are fixed at their chosen values.
+- **Retired-feature residue has been pruned** — The unused secure credential IPC left by sign-in,
+  cloud-era metadata/frontmatter helpers, sync and tab animation CSS, split/Finder theme roles,
+  obsolete z-index layers and an unreferenced input-style module are gone. The legacy split-state
+  read migration remains intentionally intact for existing installs.
 
 ## v0.5.0 — 2026-06-12
 

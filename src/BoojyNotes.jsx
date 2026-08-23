@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
-import { useLayout, OVERLAY_SCRIMS } from "./context/LayoutContext";
+import { useLayout, SIDEBAR_SCRIM } from "./context/LayoutContext";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -50,8 +50,6 @@ import { isElectron, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
-const DevOverlay = import.meta.env.DEV ? React.lazy(() => import("./components/DevOverlay")) : null;
-
 const EMPTY_FORMATS = {
   bold: false,
   italic: false,
@@ -94,7 +92,6 @@ export default function BoojyNotes() {
     sidebarVisible,
     overlayOpen,
     overlayWidth,
-    overlayScrim,
     closeOverlay,
     revealSidebar,
     chromeBg,
@@ -148,7 +145,6 @@ export default function BoojyNotes() {
   const { activeNote, setActiveNote } = useActiveNote();
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
-  const [devOverlay, setDevOverlay] = useState(false);
 
   const { activeHint, dismissHint } = useOnboardingHints({
     noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
@@ -403,7 +399,6 @@ export default function BoojyNotes() {
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
-    setDevOverlay,
   });
 
   useAppPersistence({
@@ -749,10 +744,9 @@ export default function BoojyNotes() {
             />
           )}
         </div>
-        {/* Scrim behind an open overlay. Starts very subtle on purpose — the
-            sidebar is navigation, not a modal — and is tunable live from the
-            dev tools (Cmd+.). Click-away closes on mousedown so the dismissing
-            press can't also land in the editor. */}
+        {/* Scrim behind an open overlay. It stays subtle because the sidebar is
+            navigation, not a modal. Click-away closes on mousedown so the
+            dismissing press can't also land in the editor. */}
         {!isMobile && sidebarOverlay && (
           <div
             data-testid="sidebar-overlay-scrim"
@@ -762,7 +756,7 @@ export default function BoojyNotes() {
               position: "absolute",
               inset: 0,
               zIndex: Z.SIDEBAR_SCRIM,
-              background: OVERLAY_SCRIMS[overlayScrim] ?? OVERLAY_SCRIMS.subtle,
+              background: SIDEBAR_SCRIM,
               opacity: sidebarVisible ? 1 : 0,
               pointerEvents: sidebarVisible ? "auto" : "none",
               transition: "opacity 0.2s ease",
@@ -1020,12 +1014,6 @@ export default function BoojyNotes() {
           changeNotesDir={changeNotesDir}
         />
       </React.Suspense>
-
-      {import.meta.env.DEV && DevOverlay && (
-        <React.Suspense fallback={null}>
-          <DevOverlay open={devOverlay} onClose={() => setDevOverlay(false)} />
-        </React.Suspense>
-      )}
 
       <GlobalStyles />
 
