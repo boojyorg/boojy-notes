@@ -18,7 +18,7 @@ const ContextMenu = memo(function ContextMenu({
   deleteFolder,
   createNote,
   setRenamingFolder,
-  titleRef,
+  onRenameNote,
   onImport,
   selectedNotes,
   selectedCount,
@@ -113,15 +113,10 @@ const ContextMenu = memo(function ContextMenu({
               label: "Rename",
               icon: <PencilIcon />,
               action: () => {
-                openNote(ctxMenu.id);
+                // Inline in the sidebar row (BoojyNotes.startNoteRename);
+                // falls back to the editor title if the sidebar is hidden.
+                onRenameNote(ctxMenu.id);
                 setCtxMenu(null);
-                setTimeout(() => {
-                  if (titleRef.current) {
-                    titleRef.current.focus();
-                    const sel = window.getSelection();
-                    sel.selectAllChildren(titleRef.current);
-                  }
-                }, 60);
               },
             },
             {
@@ -201,7 +196,9 @@ const ContextMenu = memo(function ContextMenu({
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
           borderRadius: 8,
-          padding: "4px 0",
+          // All-round padding insets the item pills from the menu edge so
+          // their rounded hover reads as a pill, not an edge-to-edge bar.
+          padding: 4,
           minWidth: 160,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           animation: "fadeIn 0.1s ease",
@@ -222,7 +219,9 @@ const ContextMenu = memo(function ContextMenu({
               width: "100%",
               background: index === activeIndex ? BG.hover : "none",
               border: "none",
-              padding: "7px 14px",
+              borderRadius: 6,
+              // 10px + the menu's 4px inset keeps the text 14px off the edge.
+              padding: "7px 10px",
               cursor: "pointer",
               color: item.danger ? SEMANTIC.error : TEXT.primary,
               fontSize: 12.5,
@@ -262,7 +261,8 @@ const ContextMenu = memo(function ContextMenu({
                   width: "100%",
                   background: "none",
                   border: "none",
-                  padding: "6px 14px 6px 22px",
+                  borderRadius: 6,
+                  padding: "6px 10px 6px 18px",
                   cursor: "pointer",
                   color: TEXT.primary,
                   fontSize: 12,

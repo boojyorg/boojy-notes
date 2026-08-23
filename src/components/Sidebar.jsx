@@ -1,4 +1,4 @@
-import { useEffect, useMemo, memo } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -17,12 +17,61 @@ import {
   SortRecentIcon,
 } from "./Icons";
 import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
-import { CHROME_INSET, CHROME_BTN, ChromeButton } from "./EditorChrome";
+import { CHROME_INSET, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
+import { isElectronMac } from "../utils/platform";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 const hBg = (el, c) => {
   el.style.background = c;
 };
+
+/** Duration of the folder expand/collapse slide. */
+const FOLDER_ANIM_MS = 160;
+
+// Animated disclosure for folder children. The grid 0fr→1fr trick animates to
+// auto height with no measuring. Children MUST unmount once the collapse
+// finishes (not merely clip): useSidebarDrag hit-tests every [data-folder-path]
+// row by rect, and clipped-but-mounted rows would swallow drops meant for the
+// visible rows they overlap. Expand mounts at 0fr and flips to 1fr on the next
+// frames so the first open animates too. Reduced-motion users skip the
+// animation entirely (mount/unmount is instant, as before the animation).
+function Collapsible({ open, children }) {
+  const reduceMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const [mounted, setMounted] = useState(open);
+  const [grown, setGrown] = useState(open);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = requestAnimationFrame(() => setGrown(true));
+      });
+    } else {
+      setGrown(false);
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [open]);
+  if (reduceMotion) return open ? children : null;
+  if (!mounted && !open) return null;
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: grown ? "1fr" : "0fr",
+        transition: `grid-template-rows ${FOLDER_ANIM_MS}ms ease`,
+      }}
+      onTransitionEnd={(e) => {
+        // Guard on target: a child row's own background/color transition
+        // bubbling up must not unmount the subtree mid-collapse.
+        if (!open && e.target === e.currentTarget) setMounted(false);
+      }}
+    >
+      <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
+    </div>
+  );
+}
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -221,6 +270,7 @@ const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
   openNote,
+  renameNote,
   setCtxMenu,
   renameFolder,
   createFolder,
@@ -250,6 +300,8 @@ const Sidebar = memo(function Sidebar({
     fNotes,
     renamingFolder,
     setRenamingFolder,
+    renamingNote,
+    setRenamingNote,
     searchMode,
     searchResults,
     activeResultIndex,
@@ -322,6 +374,10 @@ const Sidebar = memo(function Sidebar({
         role="treeitem"
         aria-selected={act}
         onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
+        // Double-click = rename in place: the row swaps its title for the same
+        // inline input folders use. The two single-clicks it also fires just
+        // open the note, harmlessly.
+        onDoubleClick={!isMobile && renamingNote !== nId ? () => setRenamingNote(nId) : undefined}
         className="sidebar-note"
         onContextMenu={(e) => {
           e.preventDefault();
@@ -357,18 +413,60 @@ const Sidebar = memo(function Sidebar({
           else if (isMobile && sel && !act) hBg(e.currentTarget, `${accentColor}18`);
         }}
       >
-        <span
-          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
-        >
-          {n.title}
-        </span>
-        {/* Trailing ··· opens the same note menu as right-click. The slot
-            always renders so revealing the dots never shifts the title or its
-            truncation — only the ink fades (see .sidebar-note-more in
-            GlobalStyles). span+role, tabIndex -1: a real button nested in the
-            treeitem button is invalid HTML and fails axe nested-interactive;
-            the row itself stays the keyboard path (focus reveals the dots,
-            right-click opens the menu). */}
+        {renamingNote === nId ? (
+          <input
+            autoFocus
+            defaultValue={n.title}
+            aria-label="Rename note"
+            // Finder-style: arrive with the whole name selected, ready to
+            // overwrite; a click puts the caret where you aim.
+            onFocus={(e) => e.currentTarget.select()}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            // Note rows are draggable — typing/selecting in the input must
+            // never start a drag.
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={(e) => {
+              renameNote(nId, e.target.value);
+              setRenamingNote(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                renameNote(nId, e.target.value);
+                setRenamingNote(null);
+              }
+              if (e.key === "Escape") setRenamingNote(null);
+            }}
+            style={{
+              background: BG.darkest,
+              border: `1px solid ${accentColor}`,
+              borderRadius: 4,
+              color: TEXT.primary,
+              fontSize: mobFont,
+              fontFamily: "inherit",
+              fontWeight: 400,
+              padding: "1px 4px",
+              outline: "none",
+              flex: 1,
+              minWidth: 0,
+            }}
+          />
+        ) : (
+          <span
+            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
+          >
+            {n.title}
+          </span>
+        )}
+        {/* Trailing ··· opens the same note menu as right-click. The slot is
+            zero-width at rest so a long title truncates against the full row;
+            hovering the row (or keyboard focus) expands it and the title
+            re-truncates shorter — sizing lives in .sidebar-note-more in
+            GlobalStyles, so no inline width/margin here except while the menu
+            holds the slot open. span+role, tabIndex -1: a real button nested
+            in the treeitem button is invalid HTML and fails axe
+            nested-interactive; the row itself stays the keyboard path (focus
+            reveals the dots, right-click opens the menu). */}
         {!isMobile && (
           <span
             role="button"
@@ -393,11 +491,11 @@ const Sidebar = memo(function Sidebar({
               });
             }}
             style={{
-              // Inline opacity out-specifies the class's hidden rest state.
+              // Inline styles out-specify the class's collapsed rest state,
+              // holding the slot open (and inked) while this row's menu is up.
               opacity: menuOpen ? 1 : undefined,
-              width: 24,
+              width: menuOpen ? 20 : undefined,
               height: 24,
-              marginLeft: 4,
               flexShrink: 0,
               display: "flex",
               alignItems: "center",
@@ -426,7 +524,15 @@ const Sidebar = memo(function Sidebar({
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
-          onClick={() => toggle(folderPath)}
+          onClick={(e) => {
+            // Desktop double-click renames: the second click is the rename
+            // gesture, so it must not toggle again — the first click's toggle
+            // stands (an open folder behind a rename input is fine; a laggy
+            // single-click from a disambiguation delay would not be).
+            if (!isMobile && e.detail >= 2) return;
+            toggle(folderPath);
+          }}
+          onDoubleClick={!isMobile ? () => setRenamingFolder(folderPath) : undefined}
           onContextMenu={(e) => {
             e.preventDefault();
             setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folderPath });
@@ -456,7 +562,9 @@ const Sidebar = memo(function Sidebar({
             gap: isMobile ? 8 : ICON_GAP,
             color: TEXT.secondary,
             fontSize: isMobile ? 17 : 14,
-            fontWeight: 500,
+            // 400 matches note and action rows — the folder glyph alone
+            // distinguishes the row kind; headers carry the hierarchy.
+            fontWeight: 400,
             fontFamily: "inherit",
             transition: "background 0.12s, color 0.12s",
             textAlign: "left",
@@ -506,7 +614,6 @@ const Sidebar = memo(function Sidebar({
           ) : (
             <span
               style={{
-                fontWeight: 500,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -516,23 +623,14 @@ const Sidebar = memo(function Sidebar({
             </span>
           )}
         </button>
-        {isOpen && (
-          <div style={{ position: "relative" }}>
-            <div
-              style={{
-                position: "absolute",
-                // Centred under the folder icon (16px glyph on the SPINE on
-                // desktop; 10px inset on mobile).
-                left: (isMobile ? 10 : SPINE) + depth * 20 + 8,
-                top: 0,
-                bottom: 0,
-                width: 1,
-                background: BG.divider,
-              }}
-            />
-            {folder.children.map((child) => renderFolder(child, depth + 1))}
-            {folder.notes.map((nId) => renderNote(nId, depth + 1))}
-          </div>
+        {hasChildren && (
+          <Collapsible open={isOpen}>
+            {/* No guide line — indentation alone carries the nesting. */}
+            <div>
+              {folder.children.map((child) => renderFolder(child, depth + 1))}
+              {folder.notes.map((nId) => renderNote(nId, depth + 1))}
+            </div>
+          </Collapsible>
         )}
       </div>
     );
@@ -639,7 +737,11 @@ const Sidebar = memo(function Sidebar({
         overflow: "hidden",
       }}
     >
-      {/* Sidebar header: wordmark left, panel toggle right near the divider. */}
+      {/* Sidebar header: wordmark left, panel toggle right near the divider.
+          On macOS Electron the native traffic lights sit in this row too
+          (hiddenInset, no title bar): the wordmark shifts right to clear them
+          and the whole header doubles as the window drag region — the wordmark
+          and toggle opt back out so they stay clickable. */}
       {!isMobile && (
         <div
           style={{
@@ -651,9 +753,10 @@ const Sidebar = memo(function Sidebar({
             // Children are centred, so top padding shifts them by half of it.
             // Height is unchanged, so nothing below the header moves.
             paddingTop: HEADER_NUDGE * 2,
-            paddingLeft: HEADER_LEFT_INSET,
+            paddingLeft: isElectronMac ? MAC_TRAFFIC_INSET : HEADER_LEFT_INSET,
             paddingRight: HEADER_RIGHT_INSET,
             flexShrink: 0,
+            WebkitAppRegion: isElectronMac ? "drag" : undefined,
           }}
         >
           <button
@@ -670,6 +773,7 @@ const Sidebar = memo(function Sidebar({
               display: "flex",
               alignItems: "center",
               flexShrink: 0,
+              WebkitAppRegion: "no-drag",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}

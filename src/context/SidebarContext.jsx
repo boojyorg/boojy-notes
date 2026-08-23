@@ -46,6 +46,9 @@ export function SidebarProvider({ children }) {
   });
 
   const [renamingFolder, setRenamingFolder] = useState(null);
+  // Note id whose sidebar row is showing the inline rename input (the note
+  // counterpart of renamingFolder — same grammar, same input treatment).
+  const [renamingNote, setRenamingNote] = useState(null);
 
   // The one ordering source for every note list in the panel.
   const { sortMode, setSortMode, lastOpened, markOpened } = useNoteSort(noteData);
@@ -154,6 +157,8 @@ export function SidebarProvider({ children }) {
       setCustomFolders,
       renamingFolder,
       setRenamingFolder,
+      renamingNote,
+      setRenamingNote,
       searchMode,
       searchResults,
       activeResultIndex,
@@ -173,6 +178,7 @@ export function SidebarProvider({ children }) {
       expanded,
       customFolders,
       renamingFolder,
+      renamingNote,
       searchMode,
       searchResults,
       activeResultIndex,

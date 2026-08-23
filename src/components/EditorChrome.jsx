@@ -2,6 +2,7 @@ import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
+import { isElectronMac } from "../utils/platform";
 
 /**
  * The only two editor-level controls that survive the minimal-chrome pass.
@@ -17,11 +18,24 @@ import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
  *          always means the same thing.
  *   right  note actions — opens the existing note context menu.
  *
- * `topOffset` clears the desktop TitleBar (window drag region); on web it is 0.
+ * On macOS Electron the native traffic lights render over our chrome
+ * (hiddenInset, no title bar): expanded, they share the sidebar header, which
+ * doubles as the window drag region; collapsed, they sit alone at the top-left
+ * and the toggle shifts right of them (MAC_TRAFFIC_INSET), with a slim
+ * invisible strip along the very top keeping the window draggable.
  */
 
 export const CHROME_INSET = 10;
 export const CHROME_BTN = 32;
+/**
+ * Left inset that clears the macOS traffic lights (x:14, ~52px of buttons,
+ * then breathing room). Shared by the sidebar header's wordmark and the
+ * collapsed toggle. Pairs with trafficLightPosition in electron/main.js.
+ */
+export const MAC_TRAFFIC_INSET = 70;
+/** Height of the collapsed-state drag strip — stops above the note label's
+    line box (top ≈16px) so the strip never steals its clicks. */
+const DRAG_STRIP_H = 14;
 
 export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
   const { theme } = useTheme();
@@ -45,6 +59,9 @@ export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
         padding: 0,
         color: TEXT.muted,
         transition: "background 0.12s, color 0.12s",
+        // Chrome buttons can sit inside window drag regions (sidebar header,
+        // collapsed strip) — keep them clickable there. Harmless on web.
+        WebkitAppRegion: "no-drag",
         ...style,
       }}
       onMouseEnter={(e) => {
@@ -61,17 +78,36 @@ export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
   );
 }
 
-export default function EditorChrome({ topOffset = 0, activeNote, onNoteActions }) {
+export default function EditorChrome({ activeNote, onNoteActions }) {
   const { sidebarVisible, toggleSidebar } = useLayout();
 
   return (
     <>
+      {!sidebarVisible && isElectronMac && (
+        // With the sidebar hidden there is no header to drag the window by, so
+        // a slim invisible strip along the very top takes that job. It sits
+        // under the chrome buttons in stacking order; they opt out via
+        // no-drag. 14px tall: real enough to grab, short of the note label.
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: DRAG_STRIP_H,
+            zIndex: Z.TOOLBAR,
+            WebkitAppRegion: "drag",
+          }}
+        />
+      )}
       {!sidebarVisible && (
         <div
           style={{
             position: "fixed",
-            top: topOffset + CHROME_INSET,
-            left: CHROME_INSET,
+            top: CHROME_INSET,
+            // Clear the traffic lights, which hold the viewport's top-left
+            // corner on macOS once the sidebar (and its header) is hidden.
+            left: isElectronMac ? MAC_TRAFFIC_INSET : CHROME_INSET,
             zIndex: Z.TOOLBAR,
           }}
         >
@@ -85,7 +121,7 @@ export default function EditorChrome({ topOffset = 0, activeNote, onNoteActions 
         <div
           style={{
             position: "fixed",
-            top: topOffset + CHROME_INSET,
+            top: CHROME_INSET,
             right: CHROME_INSET,
             zIndex: Z.TOOLBAR,
           }}

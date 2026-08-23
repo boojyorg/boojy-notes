@@ -81,6 +81,23 @@ export function useNoteCrud({
     open(id);
   };
 
+  // Commit a new title from the sidebar's inline rename input. Mirrors the
+  // editor title's onInput commit (title + content.title updated together);
+  // persistence downstream treats it exactly like an editor-title edit.
+  const renameNote = (noteId, newTitle) => {
+    const title = (newTitle ?? "").trim();
+    const note = noteDataRef.current[noteId];
+    if (!note || !title || title === note.title) return;
+    commitNoteData((prev) => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      n.title = title;
+      n.content = { ...n.content, title };
+      next[noteId] = n;
+      return next;
+    });
+  };
+
   const renameFolder = (oldPath, newName) => {
     if (!newName) return;
     newName = newName.replace(/[/\\]/g, "-");
@@ -183,6 +200,7 @@ export function useNoteCrud({
     createNote,
     deleteNote,
     duplicateNote,
+    renameNote,
     renameFolder,
     deleteFolder,
     createFolder,

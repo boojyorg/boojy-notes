@@ -6,7 +6,12 @@ Durable conventions + live gotchas for the visual layer. Read before touching `t
 ## The light theme is `DAY`, and it is NOT the old blue-sky theme
 
 `DAY` is the first-run fallback only when `boojy-theme` has no saved `themeMode`. Existing saved
-`day`, `night` and `auto` choices always win.
+`day`, `night` and `auto` choices always win. **User-facing copy says Light/Dark** (2026-08-23):
+the Settings picker renders `day` as "Light" and `night` as "Dark" (Light listed first), but the
+STORED keys stay `day`/`night` — renaming them would orphan every saved preference. Matching
+Electron-side state: `nativeTheme.themeSource` is `"system"` (was forced `"dark"`), and the
+window's first-paint `backgroundColor` is DAY's `#FCFCFC` (was `#2C2C32`) — a NIGHT user gets one
+brief light flash at launch; wiring the saved theme back to main is the fix if that ever grates.
 
 `DAY` used to be a saturated sky-blue theme with a **gold** accent (`#E8C020`) — a near-collision
 with sibling app Picito's brand gold. It was replaced with a neutral, warm-biased light palette
@@ -124,7 +129,20 @@ set one — `SearchIcon` (sidebar search) and `BreadcrumbChevron` (EditorArea) e
 
 ## Minimal chrome + single-active-note — CURRENT STATE
 
-There is **no desktop top bar**, and as of the single-active-note refactor (2026-08-18) there are
+There is **no desktop top bar**, and as of 2026-08-23 **no faux title bar either**:
+`TitleBar.jsx` (the 28px strip painting "Note - Boojy Notes", which read as a native title bar
+and was mistaken for one) is deleted — git history has it. The window is `hiddenInset`; on macOS
+Electron the traffic lights sit INLINE in the sidebar header (`trafficLightPosition x:14 y:19`
+centres them on the header's 25px optical row; the wordmark shifts to `MAC_TRAFFIC_INSET` = 78,
+exported from `EditorChrome.jsx` — move one, re-judge the other). The header is the window drag
+region (`WebkitAppRegion: drag`; wordmark + ChromeButtons opt out via no-drag). Collapsed: the
+toggle shifts right of the lights (same inset) and a 14px invisible strip along the viewport top
+keeps the window draggable — 14px deliberately stops above the note label's line box (top ≈16px)
+so it never steals label clicks; don't thicken it without moving the label. Web and non-mac
+Electron render none of this (`isElectronMac` in `utils/platform.js`). `EditorChrome`'s
+`topOffset` prop is gone — desktop and web now share identical chrome geometry.
+
+As of the single-active-note refactor (2026-08-18) there are
 **no tabs and no split view at all**. Navigation state is one string: `useActiveNote` in
 `src/hooks/useActiveNote.js`; opening a note replaces the current one. `useSplitView`, `useTabDrag`,
 `PaneContainer`, `PaneTabBar`, `TopBarDesktop`, `SplitDivider` and `tabBarHitTest` are **deleted**
@@ -215,10 +233,25 @@ Section headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row
 **Desktop note rows carry a trailing ··· action** (2026-08-23) opening the same note menu as
 right-click, anchored `NOTE_MENU_GAP` (4px) below the row with its left edge `NOTE_MENU_SHIFT`
 (8px) left of the button, growing rightward into the editor — both tunables sit with the row
-constants in `Sidebar.jsx`; right-click keeps cursor placement. The 24px slot always renders so
-the reveal never shifts the title; visibility is CSS (`.sidebar-note-more` in GlobalStyles):
-hidden at rest and on a merely-selected row, muted on row hover/focus, primary ink when the dots
-themselves are hovered. The row that opened the menu holds its pill and dots until it closes.
+constants in `Sidebar.jsx`; right-click keeps cursor placement. **Desktop double-click renames,
+inline** (2026-08-23): notes and folders both swap the row for the same inline input, in place —
+the first cut sent note renames to the editor title with select-all, judged live as a jarring
+blue wash and reversed same day. `renamingNote` lives beside `renamingFolder` in SidebarContext;
+the commit is `renameNote(id, title)` in `useNoteCrud` (mirrors the editor-title commit, so
+persistence treats both identically); the note input arrives with the name selected Finder-style
+and stops pointerdown so it can't start a row drag. The ··· menu's Rename routes through
+`startNoteRename` (BoojyNotes), which falls back to focusing the editor title (caret at end, no
+select-all) only when the sidebar is hidden. On folder rows the click handler skips the toggle
+when `e.detail >= 2` — the first click's toggle deliberately stands rather than delaying
+single-click to disambiguate. The slot is **zero-width at
+rest** so a long title truncates against the full row width, and re-truncates only 20px + the
+5px row gap shorter while the dots are revealed (row hover/focus, or its menu open) — width and
+visibility are all CSS (`.sidebar-note-more` in GlobalStyles). The width change is **instant**;
+only the ink fades 120ms (judged live 2026-08-23: a sliding re-truncation reads worse than a
+snap). This reversed the original always-reserved 24px slot (title width was judged worth more
+than truncation stability, 2026-08-23). Muted ink on row hover/focus, primary when the dots
+themselves are hovered. The row that opened the menu holds its pill, dots and slot width until it
+closes (inline styles in `Sidebar.jsx` out-specify the collapsed class).
 It is a `span role="button"` with `tabIndex={-1}` — a real button nested in the treeitem button
 is invalid HTML and fails axe `nested-interactive`; the row stays the keyboard path. The single-
 note menu items carry 16px nav-stroke glyphs (Pencil/Copy/Trash2, inheriting item ink so Delete's
