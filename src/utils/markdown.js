@@ -522,14 +522,3 @@ export function parseFrontmatter(content) {
     body: match[2],
   };
 }
-
-// Sync-specific: serialize note metadata as YAML frontmatter
-export function serializeFrontmatter(note) {
-  let fm = "---\n";
-  fm += `title: ${(note.title || "Untitled").replace(/\n/g, " ")}\n`;
-  if (note.folder) fm += `folder: ${note.folder}\n`;
-  if (note.path && note.path.length > 0) fm += `path: ${note.path.join("/")}\n`;
-  fm += `words: ${note.words || 0}\n`;
-  fm += "---";
-  return fm;
-}

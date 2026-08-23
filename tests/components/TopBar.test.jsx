@@ -22,7 +22,6 @@ vi.mock("../../src/hooks/useTheme", () => ({
         darkest: "#111",
       },
       ACCENT: { primary: "#A4CACE" },
-      BRAND: { orange: "#f90" },
       SEMANTIC: {},
       link: { color: "#7AA2F7", underline: "#7AA2F744", hoverBg: "#7AA2F710" },
       searchInputBg: "#222",

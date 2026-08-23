@@ -92,7 +92,7 @@ export function useWikilinkHandlers({
       const match = oldText.match(/\[\[([^\]]*)$/);
       if (match) {
         const newText = oldText.slice(0, match.index) + `[[${title}]]`;
-        // Update state for persistence/sync.
+        // Update state for persistence.
         syncGeneration.current++;
         commitNoteData((prev) => {
           const next = { ...prev };

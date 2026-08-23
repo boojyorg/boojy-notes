@@ -14,8 +14,8 @@ import { isElectron } from "../utils/platform";
  * keystroke — not from React state, which lags during typing.
  *
  * `unflushedNotes` is the Set of every note edited since the last quit/blur
- * flush. A single-slot hint loses notes when two panes are edited within one
- * debounce window (the split-pane data-loss bug); the Set keeps them all.
+ * flush. More than one note can be edited inside a debounce window (for
+ * example, edit then switch notes), so a single-slot hint is not sufficient.
  */
 export function useQuitFlush(flushToDisk, noteDataRef, unflushedNotes) {
   useEffect(() => {

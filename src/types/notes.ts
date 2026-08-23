@@ -114,10 +114,7 @@ export interface Note {
   /** Word count computed by the desktop loader. */
   words?: number;
   lastModified?: number;
-  created?: string;
-  updated?: string;
   _draft?: boolean;
-  _syncVersion?: number;
 }
 
 /** The app's note store: note id → note. */

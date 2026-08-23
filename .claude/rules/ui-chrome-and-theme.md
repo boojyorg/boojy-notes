@@ -24,14 +24,14 @@ separate boxed panel:
 | `BG.dark` | `#F9F9F9` | chrome: mobile toolbar, slash-menu chips |
 | `BG.standard` | `#F9F9F9` | sidebar |
 | `BG.surface` | `#F4F4F5` | **content** hover |
-| `BG.hover` | `#ECECEC` | **row/tab** hover AND selected |
+| `BG.hover` | `#ECECEC` | **row/menu** hover AND selected |
 | `BG.divider` | `#E9E9E9` | border (ink @ 8%) |
 
 Text: `TEXT.primary` `#14110F` (18.3:1) / `TEXT.secondary` `#47403A` (9.9:1) / `TEXT.muted`
 `#7A736C` (4.6:1). Accent `#2A737D` (5.3:1 on ground, 4.6:1 on a selected row) with
 `ACCENT.onAccent` for text/icons sitting *on* an accent fill.
 
-**Interaction grammar is two-tier:** content hovers to `BG.surface`; rows, tabs and menu items hover
+**Interaction grammar is two-tier:** content hovers to `BG.surface`; rows and menu items hover
 *and* select to `BG.hover`, so hover previews selection. When adding a hover state, decide which of
 the two it is.
 
@@ -157,7 +157,11 @@ Things a future change will trip over:
   benign no-op (`missing: true` from `trash-note`), and the watcher's unlink suppression is
   event-consumed, not timed, so a slow OS trash move can't fire a spurious `file-deleted`.
 - **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
-  `useNoteStats` still computes `charCountNoSpaces` / `readingTime`, which now have no consumer.
+  `useNoteStats` computes only the word and character counts that surface consumes.
+- **`syncGeneration` is editor plumbing, not cloud sync**: it tells uncontrolled
+  `contentEditable` blocks when to repaint from React state after structural or external-file
+  changes. The cloud sync engine, secure credential IPC, sync animation CSS and `_syncVersion`
+  metadata are deleted; don't remove the DOM repaint mechanism based on its name.
 - The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px
   fill + 1px border left a hairline strip down the left edge instead of the sidebar disappearing.
 

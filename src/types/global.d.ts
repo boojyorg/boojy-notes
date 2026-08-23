@@ -85,13 +85,6 @@ declare global {
 
       // Window
       setWindowTitle: (title: string) => void;
-
-      // Secure storage (safeStorage; read returns "" when unavailable/missing)
-      secureStorage: {
-        store: (key: string, value: string) => Promise<void>;
-        read: (key: string) => Promise<string>;
-        delete: (key: string) => Promise<void>;
-      };
     };
   }
 }

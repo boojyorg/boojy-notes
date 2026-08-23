@@ -18,5 +18,6 @@ describe("GlobalStyles", () => {
     expect(css).toContain("--boojy-error-bg: #FCFCFC");
     expect(css).toContain("--boojy-error-danger: #D43030");
     expect(css).not.toContain("undefined");
+    expect(css).not.toMatch(/syncGlow|syncDotPulse|tabSlide|\.tab-btn/);
   });
 });

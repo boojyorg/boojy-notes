@@ -17,29 +17,16 @@ export const NIGHT = {
   },
   ACCENT: {
     primary: "#A4CACE",
-    hover: "#B8D8DB",
     onAccent: "#13151C", // text/icon on an accent fill — dark, since the accent is pale here
   },
   SEMANTIC: {
-    success: "#4CAF50",
     warning: "#FFC107",
     error: "#FF5722",
-  },
-  BRAND: {
-    orange: "#D4820A",
-  },
-  FINDER: {
-    folderBlue: "#38BDF8",
-    folderDark: "#2DA8E0",
-    selectBg: "#1E3A5F",
-    selectBgHover: "#254A73",
-    docIcon: "#9CA3AF",
   },
   scrollbar: {
     thumb: "#3A3D4A",
     thumbHover: "#4A4D5A",
     thumbActive: "#5A5D6A",
-    track: "transparent",
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
@@ -68,7 +55,6 @@ export const NIGHT = {
     abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
   },
   overlay: (a) => `rgba(255,255,255,${a})`,
-  resizeHandle: { bg: "#fff", border: "#A4CACE" },
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
   link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
@@ -81,7 +67,6 @@ export const NIGHT = {
   },
   mark: { bg: "rgba(164, 202, 206, 0.35)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
-  tableToolbar: "rgba(255,255,255,0.03)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
     bg: "rgba(0,0,0,0.5)",
@@ -97,9 +82,6 @@ export const NIGHT = {
   searchInputBg: "#18191E",
   modalBg: "rgba(20,22,35,0.95)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
-  splitDivider: "#3A3D4A",
-  splitActiveBorder: "#A4CACE",
-  splitDropZone: "rgba(164, 202, 206, 0.10)",
   syntax: {
     comment: "#636980",
     punctuation: "#9B9EB0",
@@ -117,7 +99,7 @@ export const DAY = {
   // Phase 1 light palette: neutral, warm-biased ramp. Surfaces are ordered
   // ground -> chrome -> sheet, with two interaction tiers:
   //   surface (#F4F4F5) = content hover
-  //   hover   (#ECECEC) = row/tab hover AND selected (hover previews selection)
+  //   hover   (#ECECEC) = row/menu hover AND selected (hover previews selection)
   // `elevated` and `editor` share #FFFFFF in light; they stay split for dark.
   BG: {
     darkest: "#FCFCFC", // app ground
@@ -136,23 +118,11 @@ export const DAY = {
   },
   ACCENT: {
     primary: "#2A737D", // 5.3:1 on ground, 4.6:1 on selected row
-    hover: "#1F6B75",
     onAccent: "#FFFFFF", // text/icon on an accent fill (5.5:1)
   },
   SEMANTIC: {
-    success: "#2E8B3C",
     warning: "#D4920A",
     error: "#D43030",
-  },
-  BRAND: {
-    orange: "#D4820A",
-  },
-  FINDER: {
-    folderBlue: "#2A737D",
-    folderDark: "#1F6B75",
-    selectBg: "#ECECEC",
-    selectBgHover: "#E4E4E4",
-    docIcon: "#7A736C",
   },
   scrollbar: {
     // thumb matches BG.divider on purpose — that is the resting grey the app has
@@ -160,7 +130,6 @@ export const DAY = {
     thumb: "#E9E9E9",
     thumbHover: "#C9C7C5",
     thumbActive: "#A8A5A2",
-    track: "transparent",
   },
   // See NIGHT.sidebarHandle. Note DAY's BG.hover (#ECECEC) is *lighter* than
   // BG.divider (#E9E9E9), so the two-step ramp is spelled out rather than
@@ -188,7 +157,6 @@ export const DAY = {
     abstract: { colour: "#2896C8", bg: "#D4E8F4", border: "rgba(137,221,255,0.25)" },
   },
   overlay: (a) => `rgba(0,0,0,${a})`,
-  resizeHandle: { bg: "#14110F", border: "#2A737D" },
   inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
   link: { color: "#2266AA", underline: "rgba(34,102,170,0.3)", hoverBg: "rgba(34,102,170,0.06)" },
   wikilink: { color: "#2A737D", underline: "rgba(42,115,125,0.3)" },
@@ -200,7 +168,6 @@ export const DAY = {
   },
   mark: { bg: "rgba(42, 115, 125, 0.18)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
-  tableToolbar: "rgba(0,0,0,0.03)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {
     bg: "rgba(255,255,255,0.7)",
@@ -216,9 +183,6 @@ export const DAY = {
   searchInputBg: "#FFFFFF",
   modalBg: "rgba(255,255,255,0.97)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08)",
-  splitDivider: "#E9E9E9",
-  splitActiveBorder: "#2A737D",
-  splitDropZone: "rgba(42, 115, 125, 0.10)",
   syntax: {
     comment: "#8090A0",
     punctuation: "#4A5468",

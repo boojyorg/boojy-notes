@@ -55,6 +55,10 @@
   control panel, its keyboard shortcut, colour helpers and mutable layout-style context have been
   removed. Theme colours now come directly from the active theme, while the approved sidebar
   scrim, mobile selection and mobile top-bar treatments are fixed at their chosen values.
+- **Retired-feature residue has been pruned** — The unused secure credential IPC left by sign-in,
+  cloud-era metadata/frontmatter helpers, sync and tab animation CSS, split/Finder theme roles,
+  obsolete z-index layers and an unreferenced input-style module are gone. The legacy split-state
+  read migration remains intentionally intact for existing installs.
 
 ## v0.5.0 — 2026-06-12
 
