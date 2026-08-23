@@ -41,18 +41,47 @@ export default function GlobalStyles() {
         ::-webkit-scrollbar { width: 12px; height: 12px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-corner { background: transparent; }
-        /* 12px of hit area, 6px of visible thumb: the transparent border is padding
+        /* 12px of hit area, 7px of visible thumb: the transparent border is padding
            the grab target, not the ink. Use background-color (not the background
            shorthand) in the state rules — the shorthand resets background-clip and
-           the thumb would jump to full width on hover. */
+           the thumb would jump to full width on hover. The 2.5px border is what
+           standardises the visible weight at 7px with the sidebar bar (judged
+           live 2026-08-23); fractional borders are exact on retina, and may
+           round a device pixel unevenly on 1× displays. */
         ::-webkit-scrollbar-thumb {
           background-color: ${theme.scrollbar.thumb};
           background-clip: padding-box;
-          border: 3px solid transparent;
+          border: 2.5px solid transparent;
           border-radius: 999px;
         }
         ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
         ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
+        /* Sidebar-only scrollbar geometry (judged live 2026-08-23). Same 7px
+           visible pill as the global bar, but hugging the divider: 4px border
+           on the content side, 1px on the edge side, so the ink's outer edge
+           sits 1px off the divider instead of centred. Same colours as the
+           global bar. Pairs with ROW_INSET_RIGHT in Sidebar.jsx. */
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+          border-left-width: 4px;
+          border-right-width: 1px;
+        }
+        /* Note-row ··· reveal (judged live 2026-08-23). Hidden at rest and on
+           a merely-selected row; row hover or keyboard focus shows muted dots;
+           hovering the control itself lifts them to primary ink. Slot space is
+           always reserved in the row, so only opacity moves. */
+        .sidebar-note-more {
+          opacity: 0;
+          color: ${theme.TEXT.muted};
+          transition: opacity 120ms, color 120ms;
+        }
+        .sidebar-note:hover .sidebar-note-more,
+        .sidebar-note:focus-visible .sidebar-note-more {
+          opacity: 1;
+        }
+        .sidebar-note-more:hover {
+          opacity: 1;
+          color: ${theme.TEXT.primary};
+        }
         input::placeholder { color: ${theme.TEXT.muted}; }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }

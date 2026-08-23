@@ -727,6 +727,7 @@ export default function BoojyNotes() {
             toggle={toggle}
             openNote={openNote}
             setCtxMenu={setCtxMenu}
+            ctxMenuNoteId={ctxMenu?.type === "note" ? ctxMenu.id : null}
             renameFolder={renameFolder}
             createFolder={createFolder}
             createNote={createNote}

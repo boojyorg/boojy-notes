@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
@@ -107,6 +108,7 @@ const ContextMenu = memo(function ContextMenu({
         ? [
             {
               label: "Rename",
+              icon: <PencilIcon />,
               action: () => {
                 openNote(ctxMenu.id);
                 setCtxMenu(null);
@@ -121,6 +123,7 @@ const ContextMenu = memo(function ContextMenu({
             },
             {
               label: "Duplicate",
+              icon: <CopyIcon />,
               action: () => {
                 duplicateNote(ctxMenu.id);
                 setCtxMenu(null);
@@ -128,6 +131,7 @@ const ContextMenu = memo(function ContextMenu({
             },
             {
               label: "Delete",
+              icon: <TrashIcon />,
               action: () => {
                 deleteNote(ctxMenu.id);
                 setCtxMenu(null);
@@ -225,7 +229,11 @@ const ContextMenu = memo(function ContextMenu({
               alignItems: "center",
             }}
           >
-            {item.label}
+            {/* Icons inherit the item colour, so Delete's glyph goes red with it. */}
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {item.icon}
+              {item.label}
+            </span>
             {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}
           </button>
         ))}

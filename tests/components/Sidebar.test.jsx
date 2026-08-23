@@ -481,7 +481,8 @@ describe("Sidebar", () => {
     for (const title of ["Loose Note", "Nested Note"]) {
       const row = getByText(title).closest("[data-note-id]");
       expect(row).not.toBeNull();
-      expect(row.querySelector("svg")).toBeNull();
+      // No document glyph — the row's only svg is the trailing ··· action.
+      expect(row.querySelector("svg.lucide-file-text")).toBeNull();
     }
   });
 

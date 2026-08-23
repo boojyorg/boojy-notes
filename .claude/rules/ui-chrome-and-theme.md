@@ -56,10 +56,20 @@ So the standard properties now live **only** inside `@supports not selector(::-w
 — Chromium supports that selector and skips the block, Firefox doesn't and takes it. Don't hoist
 them back out to a bare `*`.
 
-The thumb is `12px` of track carrying a `6px` visible pill: a `3px solid transparent` border plus
-`background-clip: padding-box` pads the *grab target* without thickening the ink. State rules use
-`background-color`, never the `background` shorthand — the shorthand resets `background-clip`, and
-the thumb jumps to full track width on hover.
+The thumb is `12px` of track carrying a `7px` visible pill: a `2.5px solid transparent` border
+plus `background-clip: padding-box` pads the *grab target* without thickening the ink (fractional
+borders are exact on retina; a 1× display may round the two sides a device pixel unevenly). State
+rules use `background-color`, never the `background` shorthand — the shorthand resets
+`background-clip`, and the thumb jumps to full track width on hover.
+
+**The sidebar bar is the same 7px pill, but hugging the divider** (judged live 2026-08-23):
+`.sidebar-scroll::-webkit-scrollbar-thumb` re-splits the border 4px content-side / 1px edge-side,
+so the ink's outer edge sits 1px off the divider instead of centred. The class lives on the three
+sidebar scrollers in `Sidebar.jsx`. It pairs with `ROW_INSET_RIGHT = 2`: tree pills keep the 4px
+left inset but stop only 2px short of the scrollbar gutter. Known quirk, accepted: with no
+overflow there is no gutter, so tree pills then end 2px from the sidebar edge while the action
+rows above (outside the scroller) end at 4px — fix candidate is `scrollbar-gutter: stable`, not
+re-widening the inset.
 
 Ramp is three steps, rest → hover → `:active` (drag): DAY `#E9E9E9` → `#C9C7C5` → `#A8A5A2`,
 NIGHT `#3A3D4A` → `#4A4D5A` → `#5A5D6A`. DAY's `thumb` deliberately equals `BG.divider` — that is
@@ -187,10 +197,23 @@ root note titles. Action glyphs run 18px in an 18px box with a 4px gap (folder g
 their left edge on the spine so labels stay on TEXT_COL. Root note rows are text-only, so a 22px
 empty gutter sits left of their titles;
 that gutter is deliberate TEXT_COL alignment, not a missing icon — don't "fix" it. Tree rows are
-30px pills (12px radius, 4px side insets, 2px rhythm gap) with neutral `BG.hover` for hover,
-selection and multi-select alike; the active note is weight + `TEXT.primary` ink, never accent.
-Mobile intentionally retains its accent-tinted selected-note pill. Section headers stay 13px/700
-but in `TEXT.secondary`, one step quieter than row ink.
+30px pills (12px radius, 4px left inset / 2px right, 2px rhythm gap) with neutral `BG.hover` for
+hover, selection and multi-select alike; the active note is `TEXT.primary` ink at **normal
+weight** — the pill alone carries "active" (bold dropped, judged live 2026-08-23), never accent.
+Mobile intentionally retains its accent-tinted selected-note pill AND its bold active title.
+Section headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row ink.
+
+**Desktop note rows carry a trailing ··· action** (2026-08-23) opening the same note menu as
+right-click, anchored `NOTE_MENU_GAP` (4px) below the row with its left edge `NOTE_MENU_SHIFT`
+(8px) left of the button, growing rightward into the editor — both tunables sit with the row
+constants in `Sidebar.jsx`; right-click keeps cursor placement. The 24px slot always renders so
+the reveal never shifts the title; visibility is CSS (`.sidebar-note-more` in GlobalStyles):
+hidden at rest and on a merely-selected row, muted on row hover/focus, primary ink when the dots
+themselves are hovered. The row that opened the menu holds its pill and dots until it closes.
+It is a `span role="button"` with `tabIndex={-1}` — a real button nested in the treeitem button
+is invalid HTML and fails axe `nested-interactive`; the row stays the keyboard path. The single-
+note menu items carry 16px nav-stroke glyphs (Pencil/Copy/Trash2, inheriting item ink so Delete's
+goes red); folder and bulk menus stay text-only.
 The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
 same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
 (note rows) still uses the older tree grammar, so the two grammars coexist.

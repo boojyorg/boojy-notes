@@ -11,6 +11,7 @@ import {
   NewFolderIcon,
   NewNoteIcon,
   SearchIcon,
+  MoreHorizontalIcon,
   SidebarToggleIcon,
   SortAlphaIcon,
   SortRecentIcon,
@@ -45,6 +46,10 @@ const SPINE = 12;
 const TEXT_COL = 34;
 /** Rows are inset this much from both sidebar edges so hover pills breathe. */
 const ROW_INSET = 4;
+/** Tree pills keep the 4px left inset but run only this far short of the
+ *  scrollbar gutter on the right (judged live 2026-08-23). Pairs with the
+ *  .sidebar-scroll thumb override in GlobalStyles.jsx. */
+const ROW_INSET_RIGHT = 2;
 /** Folder-row glyph box on the spine (16px list tier). */
 const SPINE_ICON = 16;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
@@ -63,6 +68,13 @@ const ACTION_ROW_H = 32;
 const ACTION_RADIUS = 12;
 const TREE_ROW_H = 30;
 const TREE_ROW_GAP = 2;
+// ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
+// just below the note row and grows rightward into the editor, its left edge
+// slightly left of the ··· button.
+/** Gap between the row's bottom edge and the menu. */
+const NOTE_MENU_GAP = 4;
+/** How far left of the ··· button's left edge the menu's left edge sits. */
+const NOTE_MENU_SHIFT = 8;
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
@@ -240,6 +252,7 @@ const Sidebar = memo(function Sidebar({
   selectedNotes,
   handleNoteClick,
   clearSelection,
+  ctxMenuNoteId,
   isMobile,
 }) {
   const { accentColor, toggleSidebar } = useLayout();
@@ -290,6 +303,9 @@ const Sidebar = memo(function Sidebar({
     if (!n || n._draft) return null;
     const act = activeNote === nId;
     const sel = selectedNotes?.has(nId);
+    // The row that opened the note menu (··· or right-click) holds its hover
+    // pill and keeps its dots visible until the menu closes.
+    const menuOpen = ctxMenuNoteId === nId;
     const mobFont = isMobile ? 17 : 14;
     const mobGap = isMobile ? 9 : 5;
     // Desktop: quiet row grammar — a full-width pill whose title sits on
@@ -312,13 +328,13 @@ const Sidebar = memo(function Sidebar({
           boxShadow: "none",
         }
       : {
-          width: `calc(100% - ${ROW_INSET * 2}px)`,
+          width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
           marginLeft: ROW_INSET,
-          marginRight: ROW_INSET,
+          marginRight: ROW_INSET_RIGHT,
           marginBottom: TREE_ROW_GAP,
           height: TREE_ROW_H,
           boxSizing: "border-box",
-          background: act || sel ? BG.hover : "transparent",
+          background: act || sel || menuOpen ? BG.hover : "transparent",
           borderRadius: ACTION_RADIUS,
           padding: `0 8px 0 ${TEXT_COL - ROW_INSET + depth * 20}px`,
         };
@@ -349,7 +365,9 @@ const Sidebar = memo(function Sidebar({
           color: act || sel ? TEXT.primary : TEXT.secondary,
           fontSize: mobFont,
           fontFamily: "inherit",
-          fontWeight: act ? 600 : 400,
+          // Desktop active note relies on the pill alone — no bold (judged live
+          // 2026-08-23). Mobile keeps its weight cue.
+          fontWeight: isMobile && act ? 600 : 400,
           transition: "background 0.12s",
           textAlign: "left",
         }}
@@ -358,7 +376,7 @@ const Sidebar = memo(function Sidebar({
           else if (isMobile && sel && !act) hBg(e.currentTarget, `${accentColor}22`);
         }}
         onMouseLeave={(e) => {
-          if (!act && !sel) hBg(e.currentTarget, "transparent");
+          if (!act && !sel && !menuOpen) hBg(e.currentTarget, "transparent");
           else if (isMobile && sel && !act) hBg(e.currentTarget, `${accentColor}18`);
         }}
       >
@@ -367,6 +385,53 @@ const Sidebar = memo(function Sidebar({
         >
           {n.title}
         </span>
+        {/* Trailing ··· opens the same note menu as right-click. The slot
+            always renders so revealing the dots never shifts the title or its
+            truncation — only the ink fades (see .sidebar-note-more in
+            GlobalStyles). span+role, tabIndex -1: a real button nested in the
+            treeitem button is invalid HTML and fails axe nested-interactive;
+            the row itself stays the keyboard path (focus reveals the dots,
+            right-click opens the menu). */}
+        {!isMobile && (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label="Note actions"
+            title="Note actions"
+            className="sidebar-note-more"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!sel && clearSelection) clearSelection();
+              const btn = e.currentTarget.getBoundingClientRect();
+              const row = e.currentTarget.closest("[data-note-id]").getBoundingClientRect();
+              // Drop below the row, left edge shifted left of the dots, growing
+              // rightward into the editor. useMenuPosition still clamps/flips
+              // near the viewport edges. Right-click keeps cursor placement.
+              setCtxMenu({
+                x: btn.left - NOTE_MENU_SHIFT,
+                y: row.bottom + NOTE_MENU_GAP,
+                type: "note",
+                id: nId,
+              });
+            }}
+            style={{
+              // Inline opacity out-specifies the class's hidden rest state.
+              opacity: menuOpen ? 1 : undefined,
+              width: 24,
+              height: 24,
+              marginLeft: 4,
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            <MoreHorizontalIcon size={16} />
+          </span>
+        )}
       </button>
     );
   };
@@ -398,7 +463,7 @@ const Sidebar = memo(function Sidebar({
                   padding: `12px 16px 12px ${10 + depth * 20}px`,
                 }
               : {
-                  width: `calc(100% - ${ROW_INSET * 2}px)`,
+                  width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
                   marginLeft: ROW_INSET,
                   marginBottom: TREE_ROW_GAP,
                   height: TREE_ROW_H,
@@ -732,7 +797,11 @@ const Sidebar = memo(function Sidebar({
 
       {/* Search results or File tree */}
       {searchMode && searchResults.results.length > 0 ? (
-        <div ref={sidebarScrollRef} style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
+        <div
+          ref={sidebarScrollRef}
+          className="sidebar-scroll"
+          style={{ flex: 1, overflow: "auto", padding: "2px 0" }}
+        >
           {tagSuggestions && tagSuggestions.length > 0 && (
             <div style={{ padding: "4px 14px 8px" }}>
               <div
@@ -909,7 +978,11 @@ const Sidebar = memo(function Sidebar({
         </div>
       ) : searchMode && searchResults.results.length === 0 ? (
         tagSuggestions && tagSuggestions.length > 0 ? (
-          <div ref={sidebarScrollRef} style={{ flex: 1, overflow: "auto", padding: "2px 0" }}>
+          <div
+            ref={sidebarScrollRef}
+            className="sidebar-scroll"
+            style={{ flex: 1, overflow: "auto", padding: "2px 0" }}
+          >
             <div style={{ padding: "4px 14px 8px" }}>
               <div
                 style={{
@@ -976,6 +1049,7 @@ const Sidebar = memo(function Sidebar({
         <>
           <div
             ref={sidebarScrollRef}
+            className="sidebar-scroll"
             onPointerDown={handleSidebarPointerDown}
             style={{
               flex: 1,
