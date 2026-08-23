@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, act, cleanup } from "@testing-library/react";
 
@@ -10,16 +9,20 @@ vi.mock("../../src/hooks/useTheme", () => ({
     theme: {
       BG: { dark: "#111", editor: "#000", divider: "#333" },
       ACCENT: { primary: "#A4CACE" },
+      // LayoutContext reads this to hand usePanelResize the drag colour.
+      sidebarHandle: { hover: "#3A3D4A", active: "#4A4D5A" },
     },
   }),
 }));
 
 import { LayoutProvider, useLayout } from "../../src/context/LayoutContext";
 import { MIN_EDITOR_WIDTH, FIT_HYSTERESIS } from "../../src/hooks/useSidebarFits";
+import { SIDEBAR_DEFAULT_W } from "../../src/constants/layout";
 
 const ORIGINAL_WIDTH = window.innerWidth;
 /** Default sidebar width; the fit threshold is this plus the editor floor. */
-const DEFAULT_W = 220;
+// Imported, not duplicated: the fit threshold moves with the real default.
+const DEFAULT_W = SIDEBAR_DEFAULT_W;
 const THRESHOLD = DEFAULT_W + MIN_EDITOR_WIDTH;
 
 let layout;

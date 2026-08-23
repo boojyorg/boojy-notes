@@ -448,11 +448,7 @@ const Sidebar = memo(function Sidebar({
         >
           {/* No disclosure chevron — the whole row toggles, the open-folder icon
               and indented children carry the state. aria-expanded still announces
-              it. (Reversible experiment: restore the chevron + placeholder span
-              here and the chevron allowance in renderNote's left padding.) */}
-          {/* LIVE EXPERIMENT (uncommitted): no color prop, so the glyph inherits the
-              row's currentColor like every other nav icon, instead of the accent.
-              Revert = restore color={accentColor}. */}
+              it. The glyph inherits the row's currentColor like the other nav icons. */}
           <FolderIcon open={isOpen} size={isMobile ? 20 : undefined} />
           {renamingFolder === folderPath ? (
             <input

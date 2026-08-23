@@ -14,6 +14,14 @@
 - **Manual ordering, and folder dragging** — Notes and folders can no longer be dragged into a hand-arranged order. There were two competing ideas of "order" — a manual one saved to disk, and the new sort preference — and one had to go. Dragging a note still moves its file into a folder, because that is a real change to where the note lives. Folder rows are no longer draggable at all: dropping a folder onto another folder used to highlight the target, expand it, and then silently do nothing, so the affordance was promising something the app could not do. Genuine folder nesting can be built later as its own feature. Your existing `.boojy-meta.json` files are left untouched on disk — nothing reads or writes the ordering keys any more, so an old arrangement stays recoverable.
 
 ### Improvements
+- **Quieter, easier-to-grab editor chrome** — Scrollbars now keep a generous pointer target while
+  drawing a slim neutral thumb with reliable hover and held states in Chromium and Firefox. The
+  sidebar resize edge uses the same neutral interaction language instead of a permanent divider,
+  and its first-run width is slightly more comfortable without reducing the editor's responsive
+  floor.
+- **Tables start as a blank canvas** — The `/table` command now inserts the smallest useful blank
+  2×2 table instead of a labelled 3×2 template, and header cells use weight rather than a permanent
+  background fill. Rows and columns remain easy to add from the table edges.
 - **Desktop deletion uses the system Trash** — Deleting a Boojy-managed Markdown note now sends that file to the macOS Trash or Windows Recycle Bin. Folder deletion still acts only on Boojy-managed Markdown files and never trashes the containing folder or unsupported sibling files. Existing private `.trash` notes are copied to readable, collision-safe names in the OS Trash before their legacy source is removed; ambiguous or failed items remain untouched and are reported.
 - **Light is the first-run theme** — Light is now the default only when no theme preference exists. Saved Light, Dark and Auto choices continue unchanged.
 - **Settings is one small pane** — The navigation sidebar, the Profile/sign-in section, the Editor section (spell check and language) and the UI Scale row are gone, along with the large in-settings logo. What remains: Appearance (theme, font size), plus Storage and Updates on desktop, closed by a quiet version line. Spell check stays on by default (the stored desktop preference still applies); UI scale lives on as the Cmd+Plus / Cmd+Minus / Cmd+0 shortcuts. The web sign-in nudges are gone with the rest of the cloud pitch — no cloud UI ships until the local-first app is stable.

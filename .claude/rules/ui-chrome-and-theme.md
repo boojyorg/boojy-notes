@@ -42,10 +42,40 @@ ground — it is a dark-mode-only value. Never use one accent constant across bo
 rows are neutral. The one live exception is the sidebar's `selectionStyle` A/B setting, which still
 tints selection with `${accentColor}15/30` — a deliberate, pending-judgement divergence.
 
+## Scrollbars: never set `scrollbar-width`/`scrollbar-color` globally
+
+Chromium 121+ **ignores every `::-webkit-scrollbar-*` rule on any element that sets
+`scrollbar-width` or `scrollbar-color`.** A `* { scrollbar-width: thin; scrollbar-color: ... }`
+therefore silently killed the whole webkit block in Electron and Chrome for months — no hover
+state anywhere, `.editor-scroll`'s hide-at-rest behaviour dead, `scrollbar.thumb`/`thumbHover`
+dead tokens, and the intended 5px bar rendering as Chromium's ~11px `thin`. Nothing errored;
+the CSS just stopped existing.
+
+So the standard properties now live **only** inside `@supports not selector(::-webkit-scrollbar)`
+— Chromium supports that selector and skips the block, Firefox doesn't and takes it. Don't hoist
+them back out to a bare `*`.
+
+The thumb is `12px` of track carrying a `6px` visible pill: a `3px solid transparent` border plus
+`background-clip: padding-box` pads the *grab target* without thickening the ink. State rules use
+`background-color`, never the `background` shorthand — the shorthand resets `background-clip`, and
+the thumb jumps to full track width on hover.
+
+Ramp is three steps, rest → hover → `:active` (drag): DAY `#E9E9E9` → `#C9C7C5` → `#A8A5A2`,
+NIGHT `#3A3D4A` → `#4A4D5A` → `#5A5D6A`. DAY's `thumb` deliberately equals `BG.divider` — that is
+the resting grey the app was *actually* rendering while the token was dead, and it was kept on
+purpose; don't "restore" the old `#DCDBDB`. Sidebar and editor share one grammar (both visible at
+rest); the old `.editor-scroll` hide-at-rest and the `.tab-scroll` rules (tabs are deleted) are
+gone. `.editor-scroll` stays as a **class** — `CalloutBlock`, `TableContextMenu` and
+`useSidebarDrag` query it as a DOM hook.
+
+Styling `::-webkit-scrollbar` makes macOS bars non-overlay, so they take layout width: measured
+12px, against 11px for the `thin` they replaced. Near-identical, but it is a real cost — check it
+before widening the track.
+
 ### Known remaining leaks (not yet fixed)
 
 - `theme.overlay(a)` returns `rgba(0,0,0,a)`, not ink-tinted; ~40 leaf tokens (`inlineCode`,
-  `tableTh`, `frontmatter`, `codeCopy`, `codeLang`, `codeSelection`, `wikilinkBroken`,
+  `frontmatter`, `codeCopy`, `codeLang`, `codeSelection`, `wikilinkBroken`,
   `calloutIconHover`) still use their own `rgba(0,0,0,…)` literals instead of routing through it.
 - Callout (11 × 3 values) and syntax (8) colours are still hand-picked per theme, not derived.
 - `StarField.jsx` hardcodes `#FFFFFF` ×8, so the starfield can't work on a light ground

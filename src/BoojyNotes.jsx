@@ -786,18 +786,27 @@ export default function BoojyNotes() {
               width: 4,
               cursor: "col-resize",
               background: chromeBg,
-              borderRight: `1px solid ${theme.BG.divider}`,
+              // The sidebar and editor already use different surface tones, so a
+              // permanent border would repeat the same separation signal.
               flexShrink: 0,
               transition: "background 0.15s",
             }}
-            onMouseEnter={() =>
-              sidebarHandles.current.forEach(
-                (h) => h && (h.style.background = theme.ACCENT.primary),
-              )
-            }
+            onMouseEnter={() => {
+              // Neutral, never accent: the handle is chrome, and the accent is
+              // reserved for identity/focus/markers. Hover is a whisper; the
+              // col-resize cursor is what actually announces the affordance.
+              if (!isDragging.current) {
+                for (const handle of sidebarHandles.current) {
+                  if (handle) handle.style.background = theme.sidebarHandle.hover;
+                }
+              }
+            }}
             onMouseLeave={() => {
-              if (!isDragging.current)
-                sidebarHandles.current.forEach((h) => h && (h.style.background = chromeBg));
+              if (!isDragging.current) {
+                for (const handle of sidebarHandles.current) {
+                  if (handle) handle.style.background = chromeBg;
+                }
+              }
             }}
           />
         )}

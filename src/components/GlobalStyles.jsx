@@ -49,18 +49,30 @@ export default function GlobalStyles() {
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         [data-drag-slot] { transition: opacity 150ms ease; }
-        * { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: ${theme.BG.divider} transparent; }
-        ::-webkit-scrollbar { width: 5px; }
+        * { box-sizing: border-box; }
+        /* Firefox only. Chromium 121+ IGNORES every ::-webkit-scrollbar rule on any
+           element that sets scrollbar-width or scrollbar-color, so declaring these
+           globally silently killed the thumb hover state in Electron and Chrome.
+           Chromium supports this selector and skips the block; Firefox doesn't and
+           takes it, so it still gets a thin themed bar. Don't hoist these out. */
+        @supports not selector(::-webkit-scrollbar) {
+          * { scrollbar-width: thin; scrollbar-color: ${theme.scrollbar.thumb} transparent; }
+        }
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${theme.scrollbar.thumb}; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: ${theme.scrollbar.thumbHover}; box-shadow: 0 0 4px ${theme.scrollbar.thumbHover}40; }
-        .tab-scroll::-webkit-scrollbar { height: 0px; }
-        .tab-scroll::-webkit-scrollbar-track { background: transparent; }
-        .tab-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
-        .tab-scroll:hover::-webkit-scrollbar { height: 5px; }
-        .tab-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
-        .editor-scroll::-webkit-scrollbar-thumb { background: transparent; }
-        .editor-scroll:hover::-webkit-scrollbar-thumb { background: ${theme.BG.divider}; }
+        ::-webkit-scrollbar-corner { background: transparent; }
+        /* 12px of hit area, 6px of visible thumb: the transparent border is padding
+           the grab target, not the ink. Use background-color (not the background
+           shorthand) in the state rules — the shorthand resets background-clip and
+           the thumb would jump to full width on hover. */
+        ::-webkit-scrollbar-thumb {
+          background-color: ${theme.scrollbar.thumb};
+          background-clip: padding-box;
+          border: 3px solid transparent;
+          border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
+        ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
         input::placeholder { color: ${theme.TEXT.muted}; }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
@@ -402,7 +414,7 @@ export default function GlobalStyles() {
           min-width: 80px;
         }
         .table-block th {
-          background: ${theme.tableTh};
+          background: transparent;
           font-weight: 600;
           color: ${theme.TEXT.primary};
         }

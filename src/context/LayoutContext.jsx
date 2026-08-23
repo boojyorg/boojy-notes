@@ -10,13 +10,10 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
 import { useSidebarFits } from "../hooks/useSidebarFits";
+import { SIDEBAR_MIN_W, SIDEBAR_DEFAULT_W } from "../constants/layout";
 
 const LayoutContext = createContext(null);
 
-/**
- * Sidebar's own minimum, mirroring the floor `usePanelResize` drags to.
- */
-const SIDEBAR_MIN_W = 200;
 /**
  * Editor left visible beside an open overlay, so it can never read as a
  * full-screen takeover — the point of the overlay is that the app hasn't
@@ -39,7 +36,7 @@ export function LayoutProvider({ children }) {
   const { theme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
 
   const [chromeBg, setChromeBg] = useState(theme.BG.dark);
   const [editorBg, setEditorBg] = useState(theme.BG.editor);
@@ -111,7 +108,7 @@ export function LayoutProvider({ children }) {
   const { isDragging, startDrag } = usePanelResize({
     sidebarHandles,
     setSidebarWidth,
-    chromeBg,
+    handleActiveBg: theme.sidebarHandle.active,
   });
 
   const value = useMemo(

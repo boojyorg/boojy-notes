@@ -20,17 +20,15 @@ status in `FEATURE_TRACKER.md`.
    details. Cloud sync, sign-in and their backend were removed entirely; Git history is the
    recovery path if the product direction changes.
 
-2. **Visual direction reset — light-first + minimal chrome** (uncommitted, awaiting judgement).
+2. **Visual direction reset — light-first + minimal chrome** (landed, continuing to refine).
    Picito is the family reference for neutral surfaces/interaction grammar; Boojy keeps its cyan.
    Landed so far: DAY replaced with a neutral light palette (accent `#2A737D`); Lucide icon set;
    desktop top bar removed in favour of two pinned controls (`EditorChrome`);
    **single-active-note model** (2026-08-18) — tabs and split view deleted outright, opening a note
    replaces the current one, old persisted state migrates deterministically.
-   Conventions + live gotchas → `.claude/rules/ui-chrome-and-theme.md`.
-   **Open decisions, in order:** (a) does the reduced chrome feel right at all; (b) neutral vs
-   accent-tinted sidebar selection; (c) ~~whether tabs come back~~ — resolved: they don't
-   (matches `PHILOSOPHY.md`); Quick Open / back-forward / Recents are follow-up candidates in
-   `BACKLOG.md`, no longer blockers; (d) title-as-filename, gated on
+   Conventions + live gotchas → `.claude/rules/ui-chrome-and-theme.md`. The reduced chrome and
+   neutral interaction language have been accepted; Quick Open / back-forward / Recents remain
+   follow-up candidates in `BACKLOG.md`, not blockers. Title-as-filename remains gated on
    `SPEC-markdown-source-of-truth.md`.
 
 ## Later
