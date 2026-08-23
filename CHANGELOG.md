@@ -30,6 +30,12 @@
 - **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Bug Fixes
+- **Onboarding no longer advertises the removed split view** — The progressive hint sequence no
+  longer tells established desktop users to press the retired split-view shortcut.
+- **Crash fallbacks use the active theme correctly** — Error boundaries now receive valid
+  background and error-colour tokens instead of references to theme roles that do not exist.
+- **Auto-update can be toggled from the keyboard** — The desktop Settings control is now a real
+  accessible switch with a stable hit box and announced checked state.
 - **Settings close button has a meaningful accessible name** — The existing `×` control is
   unchanged visually, but screen readers and voice control can now identify it as “Close settings.”
 - **Sort-menu focus no longer gets lost** — Escape now closes the note-order menu and returns

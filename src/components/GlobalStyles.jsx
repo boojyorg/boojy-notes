@@ -6,12 +6,12 @@ export default function GlobalStyles() {
   return (
     <style>{`
         :root {
-          --boojy-error-bg: ${theme.BG.primary};
+          --boojy-error-bg: ${theme.BG.darkest};
           --boojy-error-surface: ${theme.BG.surface};
           --boojy-error-text: ${theme.TEXT.primary};
           --boojy-error-muted: ${theme.TEXT.muted};
           --boojy-error-accent: ${theme.ACCENT.primary};
-          --boojy-error-danger: ${theme.SEMANTIC?.danger || "#ff6b6b"};
+          --boojy-error-danger: ${theme.SEMANTIC.error};
         }
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes syncGlow {
