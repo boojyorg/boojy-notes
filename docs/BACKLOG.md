@@ -49,6 +49,10 @@ related per-pane state items with them.
   candidates: ghost-note/draft effects, `Sidebar` (1,314 lines — now the largest file: tree +
   search results).
 - [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
+- [ ] E2E `webServer` rebuilds the app a second time — `playwright.config.js:15` runs
+  `npm run build && npm run preview`, but CI already built one step earlier, and shelling out to
+  `npm` in a pnpm repo is the source of the `Unknown project config "node-linker"` warning. Noticed
+  2026-08-19 while auditing the E2E suite; not urgent now that the whole job runs in 1m33s.
 
 ## Bugs / QoL
 - [ ] Orphaned onboarding hint bubble — the "Type / for commands" tooltip floats detached
