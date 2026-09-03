@@ -8,7 +8,7 @@ import {
   detectEol,
   markdownToBlocks,
   parseFrontmatter,
-} from "./markdown.js";
+} from "../src/utils/markdown.js";
 
 // ─── Filename helpers ───
 

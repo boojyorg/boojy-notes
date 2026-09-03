@@ -983,7 +983,7 @@ const EditorArea = memo(
     const pBlocks = prev.note?.content?.blocks;
     const nBlocks = next.note?.content?.blocks;
     if (haveEditorBlockRenderChanges(pBlocks, nBlocks)) return false;
-    // Check path changed (folder move / breadcrumb)
+    // Check path changed (folder move)
     if (prev.note?.path !== next.note?.path) return false;
     const result =
       prev.activeNote === next.activeNote &&

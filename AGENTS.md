@@ -82,7 +82,7 @@ implementation detail, trust the rules file (and fix the drift here).
 - **State:** React Context API (7 providers, no Redux/Zustand). NoteData separates data from actions for render optimization. Heavy use of refs to avoid unnecessary re-renders.
 - **Styling:** Inline styles driven by theme objects (`useTheme()` → `{ BG, TEXT, ACCENT, SEMANTIC }`). No CSS modules, Tailwind, or styled-components. Design tokens live in `src/tokens/`. **`src/constants/themes.js` is the only colour authority** — never hardcode a hex in a component (see `.claude/rules/ui-chrome-and-theme.md` for the surface roles and the remaining known leaks).
 - **Icons:** Lucide (`lucide-react`), wrapped in `src/components/Icons.jsx` so call sites import stable names. **16px** inline / **20px** standalone controls / **stroke 1.5**, all `currentColor`. Don't hand-roll SVG icons.
-- **Desktop/web chrome:** there is no top bar. `TitleBar` (28px, drag region) is desktop-only; the only editor-level controls are the two pinned buttons in `EditorChrome.jsx`. Mobile keeps `TopBarMobile` unchanged.
+- **Desktop/web chrome:** there is no top bar and no title bar; the only editor-level controls are the two pinned buttons in `EditorChrome.jsx`. Mobile mounts `TopBarMobile` directly (there is no `TopBar` wrapper).
 - **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative` (`isNative === isElectron` — the only file-backed target). Services use `getAPI()` factory to return the Electron or web API.
 - **Web builds:** Set `ELECTRON_DISABLE=1` to exclude Electron code. The `dev:web` script does this automatically.
 

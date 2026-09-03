@@ -1,9 +1,6 @@
 // @ts-check
 /** @typedef {import("../types/notes").SlashCommand} SlashCommand */
 
-// No demo content — new users start with an empty workspace
-export const FOLDER_TREE = [];
-
 export const SCALE_OPTIONS = [50, 67, 80, 90, 100, 110, 120, 133, 150, 170, 200];
 
 /**

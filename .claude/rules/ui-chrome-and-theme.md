@@ -440,8 +440,8 @@ carries the fit question. The rename to `useIsTouch` is outstanding — see `doc
 
 ## Testing note
 
-`TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
-in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
+`TopBar.jsx` and its test are deleted (2026-09-03) — BoojyNotes mounts `TopBarMobile` directly under
+`isMobile`. The controls the desktop bar used to hold are covered in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
 collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark-to-Settings +
 no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (migration rule)
 and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy

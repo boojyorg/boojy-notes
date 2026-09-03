@@ -19,11 +19,6 @@ vi.mock("../../src/utils/storage", () => ({
   genBlockId: () => `blk-${++blockIdCounter}`,
 }));
 
-// Mock FOLDER_TREE as empty
-vi.mock("../../src/constants/data", () => ({
-  FOLDER_TREE: [],
-}));
-
 beforeEach(() => {
   resetBlockCounter();
   noteIdCounter = 0;

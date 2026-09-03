@@ -1,5 +1,4 @@
 import { genNoteId, genBlockId } from "../utils/storage";
-import { FOLDER_TREE } from "../constants/data";
 import { isNative } from "../utils/platform";
 
 export function useNoteCrud({
@@ -150,7 +149,7 @@ export function useNoteCrud({
 
   const createFolder = () => {
     let name = "Untitled Folder";
-    const existingNames = new Set([...FOLDER_TREE.map((f) => f.name), ...customFolders]);
+    const existingNames = new Set(customFolders);
     if (existingNames.has(name)) {
       let i = 2;
       while (existingNames.has(`${name} ${i}`)) i++;

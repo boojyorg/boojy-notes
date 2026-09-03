@@ -21,7 +21,7 @@ import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
 import TagMenu from "./components/TagMenu";
-import TopBar from "./components/TopBar";
+import TopBarMobile from "./components/mobile/TopBarMobile";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
@@ -383,9 +383,7 @@ export default function BoojyNotes() {
 
   // ── Effects ─────────────────────────────────────────────────────────
   // Import handlers, plus the Electron File-menu listener
-  const { handleImportIntoFolder } = useImport({
-    isElectron,
-  });
+  const { handleImportIntoFolder } = useImport();
 
   // Editor fade-in + title sync
   useEffect(() => {
@@ -676,26 +674,27 @@ export default function BoojyNotes() {
           onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
         />
       )}
-      <TopBar
-        isMobile={isMobile}
-        activeNote={activeNote}
-        setActiveNote={setActiveNote}
-        noteTitle={noteTitle}
-        createNote={createNote}
-        onMorePress={() => setMoreMenuOpen(true)}
-        onTitlePress={() => {
-          const el = titleRef.current;
-          if (!el) return;
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-          el.focus();
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }}
-      />
+      {isMobile && (
+        <TopBarMobile
+          activeNote={activeNote}
+          setActiveNote={setActiveNote}
+          noteTitle={noteTitle}
+          createNote={createNote}
+          onMorePress={() => setMoreMenuOpen(true)}
+          onTitlePress={() => {
+            const el = titleRef.current;
+            if (!el) return;
+            el.scrollIntoView({ block: "center", behavior: "smooth" });
+            el.focus();
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }}
+        />
+      )}
 
       {/* === MAIN AREA === */}
       <div

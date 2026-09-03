@@ -37,7 +37,7 @@ beforeEach(() => {
 
 describe("useImport", () => {
   it("imports Markdown into the selected folder", () => {
-    const { result } = renderHook(() => useImport({ isElectron: false }));
+    const { result } = renderHook(() => useImport());
 
     act(() => result.current.handleImportIntoFolder("folder-x"));
 
@@ -45,7 +45,7 @@ describe("useImport", () => {
   });
 
   it("routes Electron File-menu imports and cleans up its listener", () => {
-    const { unmount } = renderHook(() => useImport({ isElectron: true }));
+    const { unmount } = renderHook(() => useImport());
 
     act(() => menuImportCallback?.("markdown"));
     act(() => menuImportCallback?.("html"));

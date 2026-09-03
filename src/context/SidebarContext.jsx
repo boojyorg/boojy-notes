@@ -1,7 +1,6 @@
 import { createContext, useState, useRef, useContext, useMemo, useEffect } from "react";
 import { useNoteData, useNoteDataActions } from "./NoteDataContext";
 import { useSearch } from "../hooks/useSearch";
-import { FOLDER_TREE } from "../constants/data";
 import { loadFromStorage } from "../utils/storage";
 import { isNative } from "../utils/platform";
 import {
@@ -36,7 +35,7 @@ export function SidebarProvider({ children }) {
     })();
     if (ui?.expanded) return ui.expanded;
     const saved = loadFromStorage();
-    return saved?.expanded || { Boojy: true };
+    return saved?.expanded || {};
   });
 
   const [customFolders, setCustomFolders] = useState(() => {
@@ -96,7 +95,7 @@ export function SidebarProvider({ children }) {
 
   const { allFolders, knownPaths } = useMemo(() => {
     const allPaths = new Set([...customFolders, ...Object.keys(folderNoteMap)]);
-    const folders = [...FOLDER_TREE, ...pathsToTree([...allPaths])];
+    const folders = pathsToTree([...allPaths]);
     const paths = new Set(collectPaths(folders));
     return { allFolders: folders, knownPaths: paths };
   }, [customFolders, folderNoteMap]);

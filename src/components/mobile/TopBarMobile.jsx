@@ -3,7 +3,6 @@ import { useLayout } from "../../context/LayoutContext";
 import { useSettings } from "../../context/SettingsContext";
 import { Z } from "../../constants/zIndex";
 import { shadow } from "../../tokens/shadows";
-import { platform } from "../../utils/platform";
 import { ChevronLeftIcon, MoreHorizontalIcon } from "../Icons";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -122,9 +121,7 @@ export default function TopBarMobile({
             }}
             aria-label="Settings"
           >
-            <span style={{ fontSize: 22, fontWeight: 700 }}>
-              {platform === "android" ? "\u22EE" : "\u22EF"}
-            </span>
+            <span style={{ fontSize: 22, fontWeight: 700 }}>{"\u22EF"}</span>
           </button>
         </>
       )}
