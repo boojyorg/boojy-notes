@@ -13,7 +13,6 @@ vi.mock("../../src/hooks/useHistory", () => ({
     commitTextChange: vi.fn(),
     pushHistory: vi.fn(),
     popHistory: vi.fn(),
-    isUndoRedo: { current: false },
     noteDataRef: { current: {} },
     textOnlyEdit: { current: false },
     textOnlyEditForSidebar: { current: false },

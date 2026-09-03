@@ -3,7 +3,6 @@ import {
   compareNotes,
   recencyOf,
   sortNoteIds,
-  sortModeLabel,
   isSortMode,
   DEFAULT_SORT_MODE,
   SORT_ALPHA,
@@ -32,11 +31,6 @@ describe("sort modes", () => {
     expect(isSortMode(SORT_ALPHA)).toBe(true);
     expect(isSortMode("manual")).toBe(false);
     expect(isSortMode(null)).toBe(false);
-  });
-
-  it("labels each mode", () => {
-    expect(sortModeLabel(SORT_RECENT)).toBe("Most recent");
-    expect(sortModeLabel(SORT_ALPHA)).toBe("Alphabetical");
   });
 });
 

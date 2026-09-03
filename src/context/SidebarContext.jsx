@@ -61,7 +61,7 @@ export function SidebarProvider({ children }) {
     clearSearch,
     navigateResults,
     getActiveResult,
-  } = useSearch(noteData, noteDataRef);
+  } = useSearch(noteData);
 
   // Wire search input to fuzzy search
   useEffect(() => {

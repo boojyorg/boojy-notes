@@ -49,5 +49,5 @@ export function useSearchNavigation({
     [openNote, scrollToSearchMatch],
   );
 
-  return { scrollToSearchMatch, handleSearchResultOpen };
+  return { handleSearchResultOpen };
 }

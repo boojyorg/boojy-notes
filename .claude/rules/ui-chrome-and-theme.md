@@ -124,8 +124,8 @@ inconsistency, not the glyph shapes, is what made the UI read as assembled. Don'
 hand-drawn icon unless Lucide genuinely lacks it.
 
 Icons inherit colour from the parent's `color`. If you place one in a container that sets no `color`,
-set one — `SearchIcon` (sidebar search) and `BreadcrumbChevron` (EditorArea) each needed an explicit
-`color: TEXT.muted` on their wrapper for this reason.
+set one — `SearchIcon` (sidebar search) needed an explicit `color: TEXT.muted` on its wrapper for
+this reason.
 
 ## Minimal chrome + single-active-note — CURRENT STATE
 

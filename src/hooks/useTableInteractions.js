@@ -117,14 +117,6 @@ export function useTableInteractions({
     setSelectedRow(null);
   }, []);
 
-  const addRowAtEnd = useCallback(() => {
-    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const emptyRow = new Array(cc).fill("");
-    const newRows = [...r.map((row) => [...row]), emptyRow];
-    updateRef.current(n, b, newRows, a);
-    return r.length; // index of new row
-  }, []);
-
   const insertColumn = useCallback((index, position) => {
     const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
     const insertAt = position === "left" ? index : index + 1;
@@ -145,14 +137,6 @@ export function useTableInteractions({
     const newAligns = a.filter((_, i) => i !== index);
     updateRef.current(n, b, newRows, newAligns);
     setSelectedCol(null);
-  }, []);
-
-  const addColumnAtEnd = useCallback(() => {
-    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const newRows = r.map((row, i) => [...row, i === 0 ? `Col ${cc + 1}` : ""]);
-    const newAligns = [...a, "left"];
-    updateRef.current(n, b, newRows, newAligns);
-    return cc; // index of new column
   }, []);
 
   /* ── Keyboard ─────────────────────────────────────────── */
@@ -211,8 +195,6 @@ export function useTableInteractions({
     upHandler: null,
   });
 
-  const [dragInsert, setDragInsert] = useState(null);
-
   const cleanupDrag = useCallback(() => {
     const d = dragRef.current;
     if (d.holdTimer) clearTimeout(d.holdTimer);
@@ -234,7 +216,6 @@ export function useTableInteractions({
     d.holdTimer = null;
     d.moveHandler = null;
     d.upHandler = null;
-    setDragInsert(null);
   }, []);
 
   const startEdgeDrag = useCallback(
@@ -308,7 +289,6 @@ export function useTableInteractions({
             }
           }
           d.insertAt = bestIdx;
-          setDragInsert({ type: "row", index: bestIdx });
 
           if (d.lineEl) {
             const lineY =
@@ -338,7 +318,6 @@ export function useTableInteractions({
             }
           }
           d.insertAt = bestIdx;
-          setDragInsert({ type: "col", index: bestIdx });
 
           if (d.lineEl) {
             const lineX =
@@ -738,8 +717,6 @@ export function useTableInteractions({
   return {
     selectedRow,
     selectedCol,
-    setSelectedRow,
-    setSelectedCol,
     clearSelection,
 
     leftZoneHovered,
@@ -755,7 +732,6 @@ export function useTableInteractions({
 
     handleLeftZonePointerDown,
     handleTopZonePointerDown,
-    dragInsert,
 
     handleBottomZonePointerDown,
     handleBottomZoneClick,
@@ -768,14 +744,9 @@ export function useTableInteractions({
     deleteRowAt,
     insertColumn,
     deleteColumnAt,
-    addRowAtEnd,
-    addColumnAtEnd,
 
     contextMenu,
     handleCellContextMenu,
     closeContextMenu,
-
-    getRowAtY,
-    getColAtX,
   };
 }

@@ -7,7 +7,7 @@ import {
   groupByFolder,
 } from "../utils/search";
 
-export function useSearch(noteData, _noteDataRef) {
+export function useSearch(noteData) {
   const searchIndexRef = useRef(new Map());
   const debounceRef = useRef(null);
   const prevNoteIdsRef = useRef(new Set());
@@ -112,6 +112,5 @@ export function useSearch(noteData, _noteDataRef) {
     clearSearch,
     navigateResults,
     getActiveResult,
-    searchIndexRef,
   };
 }
