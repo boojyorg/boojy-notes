@@ -47,9 +47,9 @@ docs/private/               # Private docs (gitignored): roadmap, strategies, co
 > losslessly, enforced by `tests/utils/markdown.test.js`. No nesting/columns/JSON-blob blocks.
 > Read `docs/SPEC-markdown-source-of-truth.md` before adding or changing any block type.
 
-> **⚠️ PRODUCT PHILOSOPHY — read `docs/PHILOSOPHY.md` before planning features or UI.**
-> Boojy is a simple editor for Markdown files you own; unsupported Markdown must be
-> *preserved*, not cleaned up (the other round-trip direction: markdown→blocks→markdown,
+> **⚠️ PRODUCT PHILOSOPHY — read the support levels in that same spec before planning
+> features or UI.** Boojy is a simple editor for Markdown files you own; unsupported Markdown
+> must be *preserved*, not cleaned up (the other round-trip direction: markdown→blocks→markdown,
 > enforced by `tests/utils/preservation.test.js` with known failures explicitly marked).
 > Every syntax sits at one of four support levels: Native / Compatible / Preserved / Out
 > of scope. Features do not earn permanent UI merely because Boojy can support them.
@@ -139,11 +139,11 @@ Pushing to `master` deploys web; pushing the tag builds desktop installers.
 
 ## Memory & docs (repo-specific)
 
-Docs/memory model (AGENTS.md / `.claude/rules/` / `dreams.md` / agent memory / git log) and the
-keep-docs-current rule → suite root `AGENTS.md`. This repo's local layout: `dreams.md` holds the
-current target only; `docs/ROADMAP.md` (ordered) / `docs/BACKLOG.md` (someday) /
-`docs/FEATURE_TRACKER.md` (built-vs-not) split the overflow; per-area gotchas live in
-`.claude/rules/*.md` (plain markdown — readable by any agent).
+Docs/memory model and the keep-docs-current rule → suite root `AGENTS.md`. This repo's local
+layout deliberately has no `dreams.md`, `ROADMAP.md` or `FEATURE_TRACKER.md`: `docs/BACKLOG.md`
+(Now / Next / Later / debt) is the one planning file, `CHANGELOG.md` is the record of what
+shipped, and per-area gotchas live in `.claude/rules/*.md` (plain markdown — readable by any
+agent).
 
 ## Conventions
 

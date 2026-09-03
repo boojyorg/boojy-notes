@@ -13,15 +13,18 @@ plain `.md` files on disk that you own — Boojy is just a calm way to edit them
 - Sidebar with folder tree and search, sorted by recency or name; one note open at a time, no tabs to manage
 - Per-note seeded star field backgrounds on the night theme
 
-## The preservation promise
+## What Boojy is
 
-**Editing one part of a markdown file must not unexpectedly rewrite the rest of it.**
-Syntax Boojy doesn't understand is preserved, never "cleaned up" — that's what makes it safe
-to point Boojy at a folder of markdown you care about. The promise is a binding product rule,
-enforced by a round-trip test corpus in CI. Read [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
-(what Boojy is and isn't) and
-[docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md)
-(the architectural rule behind it).
+**Boojy Notes is a simple editor for Markdown files you own.** Common note-taking should be
+obvious. Advanced syntax may be supported quietly. Unsupported Markdown must be preserved.
+Features do not earn permanent UI merely because Boojy can support them.
+
+One promise follows from that: **editing one part of a Markdown file must not unexpectedly
+rewrite the rest of it.** Syntax Boojy doesn't understand is preserved, never "cleaned up",
+which is what makes it safe to point Boojy at a folder of Markdown you care about, including
+an Obsidian vault. This is a binding product rule, enforced by a round-trip test corpus in CI.
+The full contract, including which syntax Boojy renders, keeps quiet, or merely preserves,
+is [docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
 
 ## Getting Started
 

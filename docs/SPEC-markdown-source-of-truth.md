@@ -110,6 +110,50 @@ These are the *only* sanctioned losses. Anything else that fails the round-trip 
 
 ---
 
+## The other direction: preservation
+
+The round-trip rule protects Boojy's own blocks. The **preservation promise** protects
+everyone else's Markdown: **editing one part of a file must not unexpectedly rewrite the rest
+of it.** Syntax Boojy doesn't understand is preserved, never "cleaned up". This is a product
+requirement, not an implementation detail; it is what makes it safe to point Boojy at a folder
+of Markdown you care about.
+
+Enforcement: `tests/utils/preservation.test.js` runs a corpus of deliberately awkward files
+(`tests/fixtures/preservation/`) through the real load→save path. Known failures are marked in
+the suite, never omitted; the suite is the honest record of how far the promise currently holds.
+
+On Obsidian: Boojy does **not** promise vault feature parity. The promise is narrower and
+stronger: Boojy can work directly with the Markdown files in an Obsidian vault without damaging
+syntax it doesn't understand. Plugins, Canvas, `.obsidian` config and the rest of the workspace
+are out of scope.
+
+## Support levels
+
+Every piece of Markdown syntax Boojy encounters sits at exactly one level. An Obsidian feature
+does not need to be a Boojy feature just because Boojy can parse its syntax.
+
+| Level | Meaning | Examples |
+|---|---|---|
+| **Native** | Boojy creates, edits, and renders it as a first-class feature | headings, lists, checkboxes, tables, images, code, quotes |
+| **Compatible** | Boojy understands and renders it, but keeps the UI quiet: no permanent chrome, no promotion in menus | `[[wikilinks]]`, `#tags`, callouts, frontmatter |
+| **Preserved** | Boojy may not render it meaningfully, but must never destroy or rewrite it | plugin syntax, block refs `^id`, `%%comments%%`, unknown YAML |
+| **Out of scope** | No dedicated Boojy feature or UI, until argued otherwise | graph view, canvas, databases, plugins, AI |
+
+Moving something *up* a level (promoting a Compatible feature to Native UI) is a product
+decision, and the question it must answer is: *does a first-time user's five minutes get
+better or busier?*
+
+### Consequences for UI
+
+- The default surface stays small: folders, search, notes, one editor. Power lives behind
+  typing (`/`, `[[`, `#`) and search, not behind permanent panels.
+- A feature that demands a permanent sidebar, header control, or panel starts from
+  "probably no".
+- Opening a note replaces the current note. Tabs, split view, and workspace machinery earn UI
+  again only if simplicity survives the argument.
+
+---
+
 ## How to use this spec
 
 - **Reviewing a new block idea?** Ask: "Does it round-trip to clean markdown?" If no → reject

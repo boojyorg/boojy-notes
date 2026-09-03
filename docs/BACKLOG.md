@@ -1,13 +1,28 @@
 # Boojy Notes — Backlog
 
-Unscheduled / someday: bugs, QoL, chores, refactors. Pull an item into `dreams.md` when it becomes
-the active target. Ordered milestones → `ROADMAP.md`; per-feature status → `FEATURE_TRACKER.md`.
+What we are doing, what we might do, and what is known to be broken. Shipped work is in
+`CHANGELOG.md`, never here.
+
+## Now — Beta finishing pass (desktop-only)
+
+Worked one item at a time, each judged live in daily use. Standing instruction: nothing is
+picked up until friction is observed. The product triangle to judge against: Apple Notes
+simplicity, Obsidian ownership, Notion editing fluidity.
+
+- [ ] Tables: finished-feeling basic interaction (visible cells, caret in first cell, Tab,
+  whole-table delete). Not started; Tyr gives the go.
+- [ ] Real empty folders (eager mkdir) + Move to folder… Needs a filesystem/data-safety plan
+  first, presented before any code.
+- [ ] Hints/onboarding removal; copy pass (Quote/Checklist); font-size preference removal.
+- [ ] Preservation blockers: indented fences, tilde-fence interaction, image width clamp,
+  indented-content whitespace, trailing-space trim on list lines.
+- [ ] Visual polish, Windows smoke test, release. The desktop daily-driver build does not track
+  master: rebuild or cut a `v*` tag. `CHANGELOG.md` Unreleased already holds the notes.
 
 ## Data safety / vault-import hazards
-(From the 2026-06-12 readiness audit + adversarial review — full details with file:line in
-`docs/reviews/2026-06-12-reliability-wave-review.md`. The four worst items — vault index
-mutation, split-pane flush loss, missing fsync, in-flight sync after toggle-off — were fixed
-on the review branch and are not listed here.)
+(From the 2026-06-12 readiness audit and adversarial review. Its P0/P1 findings and three of
+its P2s — vault index in the vault root, non-Boojy frontmatter destroyed on write, failed
+writes never retried — are fixed and not listed here.)
 
 **First-edit mutations** (fine on open; the first edit of an affected note silently rewrites
 third-party content — these gate confident Vault migration):
@@ -38,6 +53,14 @@ third-party content — these gate confident Vault migration):
 - [ ] `changeNotesDir` leaks the old vault's folders into the new one (audit).
 - [ ] Undo within 300ms gets overwritten by the text flush (audit).
 - [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
+- [ ] Concurrent flushes are not serialised: blur, quit and the write-debounce timer can each
+  run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`), and flush never clears the pending
+  timer. Today that means a redundant write, plus a theoretical mid-write kill if the quit
+  handshake completes while a blur write is still in flight (the atomic rename keeps the last
+  complete file) (P3).
+- [ ] Numbered items keep their parsed `num` after an in-app reorder, so dragging item 3 above
+  item 1 saves `3. 1. 2.` — lossless on round-trip, out of sequence in any other renderer
+  (`markdown.js` `numCounter`) (P3).
 
 **Split-pane:** section retired 2026-08-18 — split view and tabs were removed outright
 (single-active-note refactor), which closes the PaneContainer tag-autocomplete and
