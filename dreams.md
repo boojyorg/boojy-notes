@@ -9,7 +9,7 @@ once.
   live against a polished hold-to-drag prototype; handle won on zone separation (text =
   write/select, gutter = move). Hold model + tooltip deleted; sidebar drop-over-editor removed.
   Behavioural baseline accepted; exact styling refines from daily use, not further theory.
-  - [x] **Drag feel refinement** (branch `feat/block-drag-feel`, 2026-09-03) — four-way live
+  - [x] **Drag feel refinement** — MERGED as PR #94 on 2026-09-03 (branch deleted) — four-way live
     comparison against Notion's handle grammar; "boojy-quiet" won: filled grip dots, no hover
     surface, 35% translucent ghost, commit-on-drop with a 3px accent-40% insertion marker that
     always sits above the grabbed block for the no-op position. Live reorder deleted.
