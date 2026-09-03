@@ -960,7 +960,9 @@ export default function BoojyNotes() {
         createNote={createNote}
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
-        onImport={handleImportIntoFolder}
+        // Import is a desktop file-picker flow; the item would be a dead
+        // click on web, so it isn't offered there.
+        onImport={isElectron ? handleImportIntoFolder : undefined}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}

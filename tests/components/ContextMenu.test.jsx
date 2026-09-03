@@ -80,6 +80,18 @@ describe("ContextMenu", () => {
     expect(getByText("Delete folder")).toBeInTheDocument();
   });
 
+  it("offers Import only when an import handler is provided (desktop)", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
+    const { queryByText, rerender } = render(<ContextMenu {...props} />);
+    expect(queryByText("Import files here")).not.toBeInTheDocument();
+
+    const onImport = vi.fn();
+    rerender(<ContextMenu {...props} onImport={onImport} />);
+    fireEvent.click(queryByText("Import files here"));
+    expect(onImport).toHaveBeenCalledWith("f1");
+  });
+
   it("calls deleteNote when Delete is clicked", () => {
     const props = baseProps();
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
