@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./context/ThemeContext";
-import { NoteDataProvider } from "./context/NoteDataContext";
+import { NoteDataProvider, useNoteDataActions } from "./context/NoteDataContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import { LayoutProvider } from "./context/LayoutContext";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -9,6 +9,14 @@ import { OverlayProvider } from "./context/OverlayContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { isWeb } from "./utils/platform";
+
+// The crash screen promises "your notes have been backed up to local
+// storage"; that only happens if the boundary can reach the live note store.
+// It sits inside NoteDataProvider, so a one-line wrapper hands it the ref.
+function AppErrorBoundary({ children }) {
+  const { noteDataRef } = useNoteDataActions();
+  return <ErrorBoundary noteDataRef={noteDataRef}>{children}</ErrorBoundary>;
+}
 
 // Apply saved UI scale immediately to prevent flash
 const savedScale = localStorage.getItem("boojy-ui-scale");
@@ -37,9 +45,9 @@ createRoot(document.getElementById("root")).render(
           <LayoutProvider>
             <SidebarProvider>
               <OverlayProvider>
-                <ErrorBoundary>
+                <AppErrorBoundary>
                   <BoojyNotes />
-                </ErrorBoundary>
+                </AppErrorBoundary>
               </OverlayProvider>
             </SidebarProvider>
           </LayoutProvider>
