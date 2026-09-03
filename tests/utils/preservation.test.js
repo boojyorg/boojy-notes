@@ -14,7 +14,7 @@ import {
 //
 // The other direction from tests/utils/markdown.test.js. That file guards
 // block → markdown → block (what Boojy creates survives). THIS file guards the
-// preservation promise (docs/PHILOSOPHY.md): a markdown file Boojy did NOT
+// preservation promise (docs/SPEC-markdown-source-of-truth.md): a markdown file Boojy did NOT
 // create must survive Boojy's load → save cycle byte-for-byte — including
 // syntax Boojy doesn't understand — and an edit to one paragraph must change
 // only that paragraph's line.
@@ -45,7 +45,7 @@ const FIXTURES_DIR = path.join(
 );
 
 // Fixture → which experiments currently fail byte-exactness.
-// (See the damage report / docs/PHILOSOPHY.md for per-fixture failure detail.)
+// (The inline comments on each entry carry the per-fixture failure detail.)
 const KNOWN_FAILURES = {
   "backtick-fences.md": { roundtrip: true, edit: true }, // empty fence gains a blank line
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased

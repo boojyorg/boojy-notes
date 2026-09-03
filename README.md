@@ -1,89 +1,83 @@
 # Boojy Notes
 
-A minimal, markdown-based note-taking app for desktop and web. Local-first: your notes are
-plain `.md` files on disk that you own — Boojy is just a calm way to edit them.
+A simple desktop notes app for Markdown files you own.
+
+## What Boojy Notes is
+
+Write normally, organise notes into folders, and everything stays as ordinary `.md` files on
+your computer. There's no account to make, no proprietary note format, and no workspace to
+set up. Point it at a folder of Markdown and start writing.
+
+The idea is to combine the simplicity of a traditional notes app with the ownership of local
+Markdown. Common note-taking should be obvious. The more advanced Markdown you might already
+have in those files (wikilinks, tags, callouts, frontmatter) is understood quietly, and only
+shows up when you reach for it.
+
+One promise sits under all of it: editing part of a file must not rewrite the rest of it.
+Syntax the app doesn't understand is preserved, never "cleaned up", which is what makes it safe
+to use on a folder you care about. The full contract is in
+[docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
 
 ## Features
 
-- Block-based editor with headings, lists, checkboxes, tables, images, code, and quotes
-- Slash commands and typed markdown shortcuts (`# `, `- `, `> `, ` ``` `, …)
-- Notes stored as `.md` files on disk (desktop) or localStorage (web)
-- Works directly on existing markdown folders — including an Obsidian vault
-- `[[wikilinks]]`, `#tags`, callouts, and frontmatter understood quietly, without extra chrome
-- Sidebar with folder tree and search, sorted by recency or name; one note open at a time, no tabs to manage
-- Per-note seeded star field backgrounds on the night theme
+- Block editor with headings, lists, checkboxes, tables, images, code and quotes
+- Slash commands and typed Markdown shortcuts (`#`, `-`, `>` and a space, or a code fence)
+- Notes are `.md` files in a folder you choose, including an existing Obsidian vault
+- Wikilinks, tags, callouts and frontmatter understood without extra chrome
+- Folder tree and search, sorted by most recent or by name
+- One note open at a time
+- Light, Dark and System appearance
 
-## The preservation promise
+## Getting started
 
-**Editing one part of a markdown file must not unexpectedly rewrite the rest of it.**
-Syntax Boojy doesn't understand is preserved, never "cleaned up" — that's what makes it safe
-to point Boojy at a folder of markdown you care about. The promise is a binding product rule,
-enforced by a round-trip test corpus in CI. Read [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
-(what Boojy is and isn't) and
-[docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md)
-(the architectural rule behind it).
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (`corepack enable pnpm`)
-
-### Run
+You need Node.js 22 and pnpm (`corepack enable pnpm`).
 
 ```sh
 pnpm install
-
-# Desktop (Electron)
-pnpm dev
-
-# Browser only
-pnpm dev:web
+pnpm dev        # the desktop app (Electron)
+pnpm dev:web    # browser-only dev server, for fast UI iteration
 ```
 
-No accounts, keys, or environment variables are needed — the app is fully local.
+The desktop app is the product. The browser build is a development target: quick to reload,
+handy for tests, and its notes live in browser storage rather than on disk.
 
 ## Development
 
-| Script           | Description                            |
-| ---------------- | -------------------------------------- |
-| `dev`            | Vite dev server + Electron             |
-| `dev:web`        | Vite dev server (browser only)         |
-| `build`          | Production build (web)                 |
-| `build:electron` | Production build + desktop installers  |
-| `test`           | Unit tests (Vitest)                    |
-| `test:e2e`       | End-to-end tests (Playwright)          |
-| `check`          | Biome lint + format in one pass        |
-| `typecheck`      | TypeScript check (`tsc --noEmit`)      |
+| Script           | Description                           |
+| ---------------- | ------------------------------------- |
+| `dev`            | Vite dev server + Electron            |
+| `dev:web`        | Vite dev server (browser only)        |
+| `build`          | Production build (web)                |
+| `build:electron` | Production build + desktop installers |
+| `test`           | Unit tests (Vitest)                   |
+| `test:e2e`       | End-to-end tests (Playwright)         |
+| `check`          | Biome lint + format in one pass       |
+| `typecheck`      | TypeScript check (`tsc --noEmit`)     |
 
-All scripts run via `pnpm <script>`. Architecture, project structure, and contributor
-conventions live in [AGENTS.md](AGENTS.md).
+All scripts run via `pnpm <script>`. Architecture, conventions and the things that will bite
+you are in [AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
 
-## Tech Stack
-
-- **React 19** + **Vite 6** — UI and build tooling
-- **Electron 42** — desktop shell
-- **Vitest** + **Playwright** — unit and E2E tests
-- **Biome** — linting + formatting
-- **pnpm** — package manager
+Built with React 19 and Vite 6, Electron 42 for the desktop shell, Vitest and Playwright for
+tests, Biome for lint and format, pnpm for packages.
 
 ## Status
 
-Boojy Notes is desktop-first right now: the app is being dogfooded daily as a local-only
-tool. The web build is a responsive PWA at [notes.boojy.org](https://notes.boojy.org).
-Cloud sync and sign-in have been removed from the product repository; Git history is the
-recovery path if that direction is reconsidered. Native mobile (Capacitor) was removed in
-v0.3.0 to reduce scope.
+Boojy Notes is preparing for its first desktop Beta. Beta starts when the local desktop app
+feels complete enough for ordinary daily use that I no longer feel limited by missing core
+features. It isn't there yet. I use it every day, and what I bump into decides what gets
+finished next.
+
+Several things were built and then removed to keep the product small: cloud sync and sign-in,
+PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in
+[CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
 
 ## Contributing
 
-Boojy Notes is in **Early Access** and isn't accepting pull requests yet — contributions will
-open with the v1.0 release. **Bug reports and feedback are very welcome** — see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Boojy Notes isn't currently accepting code contributions. Bug reports and feedback are
+welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-Boojy Notes is licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
+GNU General Public License v3.0. See [LICENSE](LICENSE).
 
 Copyright (c) 2025–2026 Tyr Bujac

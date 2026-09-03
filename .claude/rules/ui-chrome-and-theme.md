@@ -1,554 +1,293 @@
-# UI chrome, theme tokens and icons
+# UI chrome, theme and icons
 
-Durable conventions + live gotchas for the visual layer. Read before touching `themes.js`,
-`Icons.jsx`, the top bar, or anything that paints a surface.
+Design intent and the non-obvious constraints of the visual layer. The code owns the exact
+implementation; this file owns the rules a change must not break, and, where a rule looks like
+a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`.
 
-## The light theme is `DAY`, and it is NOT the old blue-sky theme
+## Theme and colour
 
-`DAY` is the first-run fallback only when `boojy-theme` has no saved `themeMode`. Existing saved
-`day`, `night` and `auto` choices always win. **User-facing copy says Light/Dark** (2026-08-23):
-the Settings picker renders `day` as "Light" and `night` as "Dark" (Light listed first), but the
-STORED keys stay `day`/`night` — renaming them would orphan every saved preference. Matching
-Electron-side state: `nativeTheme.themeSource` is `"system"` (was forced `"dark"`), and the
-window's first-paint `backgroundColor` is DAY's `#FCFCFC` (was `#2C2C32`) — a NIGHT user gets one
-brief light flash at launch; wiring the saved theme back to main is the fix if that ever grates.
+`src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-`DAY` used to be a saturated sky-blue theme with a **gold** accent (`#E8C020`) — a near-collision
-with sibling app Picito's brand gold. It was replaced with a neutral, warm-biased light palette
-using Picito's neutral ramp as the family reference, keeping Boojy's cyan identity.
+- **Product terminology is Light / Dark / System.** The stored preference keys stay
+  `day` / `night` / `auto`, and the theme objects stay `DAY` / `NIGHT`; renaming either would
+  orphan saved preferences for no user benefit. Copy changes, keys don't.
+- Light is the first-run default when nothing is saved; a saved choice always wins.
+- Electron's first-paint `backgroundColor` is Light's ground, so a Dark user sees one brief
+  light flash at launch. Wiring the saved theme back to the main process is the fix if it ever
+  grates.
+- The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
+  Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
+- The star field (`StarField.jsx`, `starField` on each theme) is leaving the product in its
+  own branch; don't extend it.
 
-Surface roles (`DAY`), in the order light → dark. **Use them by role, not by "which grey looks
-right"** — the previous eight-greys-named-by-darkness scheme is what made every region read as a
-separate boxed panel:
+**Surface roles, Light, in order light → dark.** Use them by role, not by which grey looks
+right; naming greys by darkness is what makes every region read as a separate boxed panel.
 
-| Token | Light | Role |
-|---|---|---|
-| `BG.editor` | `#FFFFFF` | the writing sheet |
-| `BG.elevated` | `#FFFFFF` | raised: menus, popovers, modals |
-| `BG.darkest` | `#FCFCFC` | app ground |
-| `BG.dark` | `#F9F9F9` | chrome: mobile toolbar, slash-menu chips |
-| `BG.standard` | `#F9F9F9` | sidebar |
-| `BG.surface` | `#F4F4F5` | **content** hover |
-| `BG.hover` | `#ECECEC` | **row/menu** hover AND selected |
-| `BG.divider` | `#E9E9E9` | border (ink @ 8%) |
+| Token | Role |
+| --- | --- |
+| `BG.editor` | the writing sheet |
+| `BG.elevated` | raised: menus, popovers, modals |
+| `BG.darkest` | app ground |
+| `BG.dark` | chrome: mobile toolbar, slash-menu chips |
+| `BG.standard` | sidebar |
+| `BG.surface` | **content** hover |
+| `BG.hover` | **row/menu** hover AND selected |
+| `BG.divider` | border, ink at 8% |
 
-Text: `TEXT.primary` `#14110F` (18.3:1) / `TEXT.secondary` `#47403A` (9.9:1) / `TEXT.muted`
-`#7A736C` (4.6:1). Accent `#2A737D` (5.3:1 on ground, 4.6:1 on a selected row) with
-`ACCENT.onAccent` for text/icons sitting *on* an accent fill.
+Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground;
+`ACCENT.onAccent` is for anything sitting on an accent fill.
 
-**Interaction grammar is two-tier:** content hovers to `BG.surface`; rows and menu items hover
-*and* select to `BG.hover`, so hover previews selection. When adding a hover state, decide which of
-the two it is.
+- **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
+  hover *and* select to `BG.hover`, so hover previews selection. Every new hover state is one
+  or the other.
+- **Accent is theme-scoped.** Dark's accent is illegible on a light ground. Never share one
+  accent constant across themes.
+- **Accent is never a desktop surface.** It is identity, focus rings, 2-3px markers, wikilinks
+  and the caret. Desktop selected rows are neutral. Mobile note rows keep a compact
+  accent-tinted pill because the denser layout needs it; that is fixed styling, not an option.
 
-**The accent is theme-scoped, and must stay that way.** `#A4CACE` (NIGHT) is ~1.7:1 on a light
-ground — it is a dark-mode-only value. Never use one accent constant across both themes.
+Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use plain black
+alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme;
+`Toast` and the danger `ConfirmDialog` keep `#fff` on semantic status colours, deliberately
+outside the accent scope.
 
-**Accent is never a desktop surface.** It's identity, focus rings, 2px markers, wikilinks, caret.
-Desktop selected rows are neutral. Mobile note rows intentionally retain a compact accent-tinted
-pill (`${accentColor}18` selected, `${accentColor}30` active) to make the current note clear in the
-denser layout; this is fixed product styling, not a runtime option.
+## Scrollbars
 
-## Scrollbars: never set `scrollbar-width`/`scrollbar-color` globally
-
-Chromium 121+ **ignores every `::-webkit-scrollbar-*` rule on any element that sets
-`scrollbar-width` or `scrollbar-color`.** A `* { scrollbar-width: thin; scrollbar-color: ... }`
-therefore silently killed the whole webkit block in Electron and Chrome for months — no hover
-state anywhere, `.editor-scroll`'s hide-at-rest behaviour dead, `scrollbar.thumb`/`thumbHover`
-dead tokens, and the intended 5px bar rendering as Chromium's ~11px `thin`. Nothing errored;
-the CSS just stopped existing.
-
-So the standard properties now live **only** inside `@supports not selector(::-webkit-scrollbar)`
-— Chromium supports that selector and skips the block, Firefox doesn't and takes it. Don't hoist
-them back out to a bare `*`.
-
-The thumb is `12px` of track carrying a `7px` visible pill: a `2.5px solid transparent` border
-plus `background-clip: padding-box` pads the *grab target* without thickening the ink (fractional
-borders are exact on retina; a 1× display may round the two sides a device pixel unevenly). State
-rules use `background-color`, never the `background` shorthand — the shorthand resets
-`background-clip`, and the thumb jumps to full track width on hover.
-
-**The sidebar bar is the same 7px pill, but hugging the divider** (judged live 2026-08-23):
-`.sidebar-scroll::-webkit-scrollbar-thumb` re-splits the border 4px content-side / 1px edge-side,
-so the ink's outer edge sits 1px off the divider instead of centred. The class lives on the one
-sidebar scroller in `Sidebar.jsx` (see the sticky-actions note below — since 2026-08-23 a single
-scroll container serves every sidebar state). It pairs with `ROW_INSET_RIGHT = 2`: tree pills keep
-the 4px left inset but stop only 2px short of the scrollbar gutter. The action rows live inside
-the same scroller now, so every pill shares one right boundary beside the gutter; the action
-group's own right inset stays 4px against the tree pills' 2px — a 2px difference judged fine
-live. With no overflow there is no gutter (accepted; `scrollbar-gutter: stable` is the fix
-candidate if it ever grates).
-
-Ramp is three steps, rest → hover → `:active` (drag): DAY `#E9E9E9` → `#C9C7C5` → `#A8A5A2`,
-NIGHT `#3A3D4A` → `#4A4D5A` → `#5A5D6A`. DAY's `thumb` deliberately equals `BG.divider` — that is
-the resting grey the app was *actually* rendering while the token was dead, and it was kept on
-purpose; don't "restore" the old `#DCDBDB`. Sidebar and editor share one grammar (both visible at
-rest); the old `.editor-scroll` hide-at-rest and the `.tab-scroll` rules (tabs are deleted) are
-gone. `.editor-scroll` stays as a **class** — `CalloutBlock`, `TableContextMenu` and
-`useSidebarDrag` query it as a DOM hook.
-
-Styling `::-webkit-scrollbar` makes macOS bars non-overlay, so they take layout width: measured
-12px, against 11px for the `thin` they replaced. Near-identical, but it is a real cost — check it
-before widening the track.
-
-### Known remaining leaks (not yet fixed)
-
-- `theme.overlay(a)` returns `rgba(0,0,0,a)`, not ink-tinted; ~40 leaf tokens (`inlineCode`,
-  `frontmatter`, `codeCopy`, `codeLang`, `codeSelection`, `wikilinkBroken`,
-  `calloutIconHover`) still use their own `rgba(0,0,0,…)` literals instead of routing through it.
-- Callout (11 × 3 values) and syntax (8) colours are still hand-picked per theme, not derived.
-- `StarField.jsx` hardcodes `#FFFFFF` ×8, so the starfield can't work on a light ground
-  (`DAY.starField: false` keeps it dormant).
-- `Toast.tsx` and the `danger` branch of `ConfirmDialog` keep `color: "#fff"` — text on SEMANTIC
-  status colours, deliberately out of the accent scope.
-
-`src/constants/colors.js` (a dead duplicate of NIGHT's palette) was deleted in the 2026-08-19
-dead-code sweep — `themes.js` is the only colour authority.
+- **Never set `scrollbar-width` or `scrollbar-color` on a bare selector.** Chromium ignores
+  every `::-webkit-scrollbar-*` rule on an element that sets either, silently. The standard
+  properties live only inside `@supports not selector(::-webkit-scrollbar)`, which Chromium
+  skips and Firefox takes.
+- The thumb is a slim pill inside a wider transparent-bordered track (`background-clip:
+  padding-box`), so the grab target is generous without thickening the ink. State rules set
+  `background-color`, never the `background` shorthand, which resets the clip and makes the
+  thumb jump to full width.
+- Sidebar and editor share one grammar, visible at rest with a three-step rest → hover →
+  drag ramp per theme. The sidebar thumb hugs the divider (asymmetric border split), pairing
+  with tree pills that stop 2px short of the gutter. No overflow means no gutter; accepted,
+  `scrollbar-gutter: stable` is the fix if it grates.
+- `.editor-scroll` stays as a class: `CalloutBlock`, `TableContextMenu` and `useSidebarDrag`
+  query it as a DOM hook.
+- Styled webkit bars are non-overlay on macOS and take layout width. Check that before widening
+  the track.
 
 ## Icons: Lucide only
 
-`src/components/Icons.jsx` wraps `lucide-react` behind the historic export names, so call sites keep
-`<SearchIcon />`, `<FolderIcon open …/>`, `<FileIcon active …/>` etc. Sizes are two-tier (judged
-live 2026-08-19, "icon system C"): **16px** repeated list glyphs (folder rows, search results, menu
-items) and **18px** navigation tier — the New note / Search action glyphs AND the standalone
-controls (panel toggle, editor ···, `ICON_CONTROL`); mobile top-bar controls stay 20px explicitly.
-Stroke is also two-tier: **1.5** for editor/content icons (Lucide's default 2 reads busy at 16px
-among prose) and **2** (`navBase` / `ICON_STROKE_NAV`) for navigation chrome — Search, NewNote,
-NewFolder, Folder, SidebarToggle and MoreHorizontal (···) — the heavier stroke balances nav icons
-against their 14px labels. Control hit boxes are **32px** (`CHROME_BTN`; toggle + ···) and the New
-Folder header button is 28px filling its 28px header. Always `currentColor`. Don't flatten the
-tiers in either direction: rendered line weight is `stroke × size/24`, so equal strokes at equal
-sizes is what keeps the ink uniform.
+`src/components/Icons.jsx` wraps `lucide-react` behind the historic export names. Always
+`currentColor`. Don't hand-roll an SVG unless Lucide genuinely lacks it; a hand-drawn set at
+mixed sizes and strokes is what made the UI read as assembled.
 
-This replaced 19 hand-rolled SVGs drawn at **seven sizes and six stroke weights** — that
-inconsistency, not the glyph shapes, is what made the UI read as assembled. Don't reintroduce a
-hand-drawn icon unless Lucide genuinely lacks it.
+- **Two size tiers:** 16px for repeated list glyphs (folder rows, search results, menu items),
+  18px for navigation (the New note / Search glyphs and standalone controls). Mobile top-bar
+  controls are 20px.
+- **Two stroke tiers:** 1.5 for content (Lucide's default 2 reads busy at 16px among prose),
+  2 for navigation chrome (`ICON_STROKE_NAV`), which balances against 14px labels.
+- Control hit boxes are 32px (`CHROME_BTN`). Don't flatten the tiers in either direction:
+  rendered weight is `stroke × size / 24`, so equal strokes at equal sizes keeps the ink even.
+- Icons inherit `color`; a wrapper that sets none needs one.
 
-Icons inherit colour from the parent's `color`. If you place one in a container that sets no `color`,
-set one — `SearchIcon` (sidebar search) needed an explicit `color: TEXT.muted` on its wrapper for
-this reason.
+## Window chrome and navigation
 
-## Minimal chrome + single-active-note — CURRENT STATE
+- **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS Electron the
+  traffic lights sit inline in the sidebar header, and the wordmark shifts by
+  `MAC_TRAFFIC_INSET` to clear them (move one, re-judge the other). The header is the window
+  drag region; the wordmark and chrome buttons opt out. Collapsed, a thin invisible strip along
+  the viewport top keeps the window draggable and deliberately stops above the note label's
+  line box so it never steals label clicks. Web and non-mac Electron render none of this.
+- **One active note.** Opening a note replaces it; no tabs, no split view. Restoring tabs means
+  reverting the refactor, not remounting a component. Old persisted `boojy-ui-state` blobs
+  with pane state still migrate in `resolveInitialActiveNote()`; leave that read path alone.
+- Cmd-click on a wikilink is a plain click. Deleting the open note lands on an empty draft
+  (desktop) or the sidebar (mobile).
+- **The wordmark opens Settings directly** (testid `wordmark-settings-button`). There is no app
+  dropdown, About page, Help entry or Recently Deleted surface.
+- **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
+  footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
+  but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+- **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
+  web deletion is permanent behind confirmation. Folder deletion never touches the physical
+  folder, so unsupported sibling files stay put. The retired private `.trash` gets one
+  conservative startup migration into the OS Trash: recognised notes are copied under
+  collision-safe names before the source is removed, ambiguous items are left untouched and
+  reported once per distinct problem set, OS cruft is ignored. Deleting a note that never
+  reached disk is a benign no-op, and the watcher's unlink suppression is event-consumed rather
+  than timed so a slow trash move can't fire a spurious `file-deleted`.
+- **`syncGeneration` is editor plumbing, not cloud sync.** It tells uncontrolled blocks when to
+  repaint from state. Don't remove it on the strength of its name.
+- Word count is mobile-only. Undo/redo are keyboard-only.
+- The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
+  the left edge.
 
-There is **no desktop top bar**, and as of 2026-08-23 **no faux title bar either**:
-`TitleBar.jsx` (the 28px strip painting "Note - Boojy Notes", which read as a native title bar
-and was mistaken for one) is deleted — git history has it. The window is `hiddenInset`; on macOS
-Electron the traffic lights sit INLINE in the sidebar header (`trafficLightPosition x:14 y:19`
-centres them on the header's 25px optical row; the wordmark shifts to `MAC_TRAFFIC_INSET` = 78,
-exported from `EditorChrome.jsx` — move one, re-judge the other). The header is the window drag
-region (`WebkitAppRegion: drag`; wordmark + ChromeButtons opt out via no-drag). Collapsed: the
-toggle shifts right of the lights (same inset) and a 14px invisible strip along the viewport top
-keeps the window draggable — 14px deliberately stops above the note label's line box (top ≈16px)
-so it never steals label clicks; don't thicken it without moving the label. Web and non-mac
-Electron render none of this (`isElectronMac` in `utils/platform.js`). `EditorChrome`'s
-`topOffset` prop is gone — desktop and web now share identical chrome geometry.
+**The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
+opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
+renders it fixed at the viewport's top-left. Both use the exported `ChromeButton`.
 
-As of the single-active-note refactor (2026-08-18) there are
-**no tabs and no split view at all**. Navigation state is one string: `useActiveNote` in
-`src/hooks/useActiveNote.js`; opening a note replaces the current one. `useSplitView`, `useTabDrag`,
-`PaneContainer`, `PaneTabBar`, `TopBarDesktop`, `SplitDivider` and `tabBarHitTest` are **deleted**
-(git history has them) — restoring tabs means reverting that refactor, not remounting a component.
+## Sidebar
 
-Things a future change will trip over:
+### Alignment and rows
 
-- **Persistence migration lives in `resolveInitialActiveNote()`** (`useActiveNote.js`): old
-  `boojy-ui-state` blobs with `splitState`/`tabs` are still read — active pane's note wins,
-  left/top/right/bottom fallback — but only `{ activeNote, expanded }` is written now. Don't
-  "clean up" the read side; it's three lines and keeps old installs safe forever.
-- **Cmd-click on a wikilink = plain click** (it used to open a split). `handleWikilinkCmdClick`
-  is an alias of `handleWikilinkClick` in `useWikilinkHandlers.js`.
-- **Deleting the open note lands on an empty draft** (desktop) or the sidebar (mobile) — there is
-  no tab list to fall back to. A back-history / Recents / Quick Open is a candidate follow-up,
-  not built.
-- **Sidebar drag onto the editor opens the note** — the tab-bar-insert and edge-split drop
-  branches are gone from `useSidebarDrag.js`.
-- **Help is unreachable.** `HelpDropdown.jsx` was deleted in the 2026-08-19 dead-code sweep;
-  git history has its curated shortcut-reference content (the `SECTIONS` data) if Help returns —
-  re-verify the shortcuts against `useAppKeyboard` before reusing it. Settings ends in a one-line
-  version/credit footer, no Help.
-- **The wordmark opens Settings directly**: clicking the sidebar wordmark calls
-  `setSettingsOpen(true)` (testid `wordmark-settings-button`). There is no app-level dropdown,
-  separate About destination or Recently Deleted surface.
-- **Settings is a single pane** (`settings/SettingsModal.jsx`): Appearance + (desktop) Storage +
-  Updates + quiet version footer. `settingsTab` no longer exists in `SettingsContext` — don't
-  reintroduce it in mocks. Sign-in, cloud sync, their backend and related UI were deleted — Git
-  history is the parking lot; a returning sync feature gets rebuilt against the current Settings
-  grammar rather than keeping dormant code in the product.
-  `EditorTab` was deleted (git history) — its Updates half became `UpdatesTab.tsx`; spell check
-  has no UI but still applies from the stored Electron setting, and UI scale is
-  keyboard-only (`Cmd+Plus/Minus/0` in `useAppKeyboard`).
-- **Delete follows the platform**: Electron sends each indexed Boojy-managed `.md` file to the
-  OS Trash/Recycle Bin; web deletion remains permanent behind confirmation. Folder deletion never
-  removes or trashes the physical folder, so unsupported sibling files stay put. The retired private `.trash`
-  gets one conservative startup migration: recognized notes are copied under readable,
-  collision-safe names before the OS-trash operation, and the legacy source is removed only after
-  that succeeds. Ambiguous/failed contents remain untouched and trigger a native warning — shown
-  once per distinct problem set (`legacyTrashWarnedSignature` in settings.json), not per launch;
-  OS cruft (`.DS_Store` etc.) is ignored outright. Deleting a note that never reached disk is a
-  benign no-op (`missing: true` from `trash-note`), and the watcher's unlink suppression is
-  event-consumed, not timed, so a slow OS trash move can't fire a spurious `file-deleted`.
-- **Word count is desktop-gone**, still present on mobile via `EditorMoreMenu`.
-  `useNoteStats` computes only the word and character counts that surface consumes.
-- **`syncGeneration` is editor plumbing, not cloud sync**: it tells uncontrolled
-  `contentEditable` blocks when to repaint from React state after structural or external-file
-  changes. The cloud sync engine, secure credential IPC, sync animation CSS and `_syncVersion`
-  metadata are deleted; don't remove the DOM repaint mechanism based on its name.
-- The sidebar **drag handle is gated on `!collapsed`** — when it rendered unconditionally its 4px
-  fill + 1px border left a hairline strip down the left edge instead of the sidebar disappearing.
+- `New note` / `Search` sit under the wordmark as plain rows that hover to `BG.hover`. Clicking
+  Search swaps the row in place for the field at the same geometry. The `New Note` and
+  `New Folder` tree rows are mobile-only.
+- **The action group is a sticky block inside the sidebar's single scroll container.** Every
+  sidebar state shares that one scroller so the search field never remounts (and drops focus)
+  mid-typing; don't split states back into separate scrollers. Rows slide under the sticky
+  block with no separator; a scrolled-only hairline is the fix if that reads smudgy.
+- **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
+  folder icons; `TEXT_COL` carries every label. Root note rows are text-only, so an empty
+  gutter sits left of their titles. **That gutter is alignment, not a missing icon. Don't fix
+  it.**
+- Tree rows are pills with neutral `BG.hover` for hover, selection and multi-select alike. The
+  active note is primary ink at normal weight; the pill alone carries "active", never bold,
+  never accent. Mobile keeps its accent pill and bold title.
+- **Only structure and actions get a glyph.** Note rows carry no file icon. Folders carry only
+  the folder icon: no chevron, the whole row toggles, the open-folder glyph plus indented
+  children carry the state, `aria-expanded` is the programmatic signal. Note-row padding still
+  reserves the removed icon's width so titles keep their column under folder names; don't
+  simplify it away. `FileIcon` still ships in search results, which are not tree rows.
 
-Undo/redo still work — they're keyboard-only now (`useAppKeyboard.js`, Cmd/Ctrl+Z and
-Cmd/Ctrl+Shift+Z). Cmd+Shift+\ (split) and Cmd+1/2 (pane switch) are gone with the feature.
+### Note rows: trailing ··· and inline rename
 
-## The panel toggle moves between states
+- Desktop note rows carry a trailing ··· that opens the same menu as right-click, growing
+  rightward into the editor. Right-click keeps cursor placement.
+- **The ··· slot is zero-width at rest** so a long title truncates against the full row width;
+  it re-truncates only while the dots are revealed (row hover/focus, or its menu open). The
+  width change is instant and only the ink fades; a sliding re-truncation reads worse than a
+  snap. Muted on row hover, primary when the dots themselves are hovered. All CSS
+  (`.sidebar-note-more`); the row that opened the menu holds its state until it closes.
+- The dots are a `span role="button"` with `tabIndex={-1}`: a real button nested in the treeitem
+  button fails axe `nested-interactive`. The row stays the keyboard path.
+- A pointer-opened menu shows no focus ring on its first item (initial focus parks on the menu
+  container) because Chromium treats script focus as `:focus-visible`. Keyboard navigation
+  still indicates normally. Single-note menu items carry glyphs; folder and bulk menus are
+  text-only.
+- **Double-click renames inline**, notes and folders alike, with the same in-place input and
+  the name selected Finder-style. The ··· Rename falls back to the editor title only when the
+  sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
+  second toggle rather than delaying single-click to disambiguate.
 
-The toggle is no longer pinned. **Expanded**: it lives in the sidebar's own header, top-right, 12px
-in from the divider, opposite the wordmark. **Collapsed**: `EditorChrome` renders it fixed at the
-viewport's top-left as before, guarded on `collapsed`. So it *does* jump position between states —
-the earlier "must not move" rule was reversed because the expanded header reads more cleanly as
-`wordmark … toggle`. `ChromeButton` is exported from `EditorChrome.jsx` so both sites share one
-button.
+### Sections: `Folders` and `Notes`
 
-## Sidebar primary actions (Picito row treatment)
-
-`New note` / `Search` sit directly under the wordmark as plain rows: 32px tall, 12px radius, hover
-to `BG.hover` with `TEXT.primary` ink. **Since 2026-08-23 the action group lives INSIDE the
-sidebar's single scroll container as a `position: sticky` block** (opaque `chromeBg` ground,
-zIndex 1): the scrollbar track spans from New note down, the actions never scroll away, and the
-search field keeps one DOM position across search-mode flips so it cannot remount (and drop
-focus) mid-typing — that no-remount guarantee is WHY every sidebar state shares one scroller;
-don't split the branches back into per-state scrollers. Entering/leaving search resets scrollTop
-(the old per-branch scrollers got that by remounting). Rows slide under the sticky block with no
-separator — judged fine; a scrolled-only hairline is the fix if it ever reads smudgy. The whole desktop sidebar sits on a two-column alignment
-system (2026-08-19, "option C"): `SPINE = 12` carries the wordmark, action icons, section header
-labels and folder icons; `TEXT_COL = 34` carries every label — action labels, folder names AND
-root note titles. Action glyphs run 18px in an 18px box with a 4px gap (folder glyphs 16px, 6px gap) — both anchor
-their left edge on the spine so labels stay on TEXT_COL. Root note rows are text-only, so a 22px
-empty gutter sits left of their titles;
-that gutter is deliberate TEXT_COL alignment, not a missing icon — don't "fix" it. Tree rows are
-30px pills (12px radius, 4px left inset / 2px right, 2px rhythm gap) with neutral `BG.hover` for
-hover, selection and multi-select alike; the active note is `TEXT.primary` ink at **normal
-weight** — the pill alone carries "active" (bold dropped, judged live 2026-08-23), never accent.
-Mobile intentionally retains its accent-tinted selected-note pill AND its bold active title.
-Section headers stay 13px/700 but in `TEXT.secondary`, one step quieter than row ink.
-
-**Desktop note rows carry a trailing ··· action** (2026-08-23) opening the same note menu as
-right-click, anchored `NOTE_MENU_GAP` (4px) below the row with its left edge `NOTE_MENU_SHIFT`
-(8px) left of the button, growing rightward into the editor — both tunables sit with the row
-constants in `Sidebar.jsx`; right-click keeps cursor placement. **Desktop double-click renames,
-inline** (2026-08-23): notes and folders both swap the row for the same inline input, in place —
-the first cut sent note renames to the editor title with select-all, judged live as a jarring
-blue wash and reversed same day. `renamingNote` lives beside `renamingFolder` in SidebarContext;
-the commit is `renameNote(id, title)` in `useNoteCrud` (mirrors the editor-title commit, so
-persistence treats both identically); the note input arrives with the name selected Finder-style
-and stops pointerdown so it can't start a row drag. The ··· menu's Rename routes through
-`startNoteRename` (BoojyNotes), which falls back to focusing the editor title (caret at end, no
-select-all) only when the sidebar is hidden. On folder rows the click handler skips the toggle
-when `e.detail >= 2` — the first click's toggle deliberately stands rather than delaying
-single-click to disambiguate. The slot is **zero-width at
-rest** so a long title truncates against the full row width, and re-truncates only 20px + the
-5px row gap shorter while the dots are revealed (row hover/focus, or its menu open) — width and
-visibility are all CSS (`.sidebar-note-more` in GlobalStyles). The width change is **instant**;
-only the ink fades 120ms (judged live 2026-08-23: a sliding re-truncation reads worse than a
-snap). This reversed the original always-reserved 24px slot (title width was judged worth more
-than truncation stability, 2026-08-23). Muted ink on row hover/focus, primary when the dots
-themselves are hovered. The row that opened the menu holds its pill, dots and slot width until it
-closes (inline styles in `Sidebar.jsx` out-specify the collapsed class).
-It is a `span role="button"` with `tabIndex={-1}` — a real button nested in the treeitem button
-is invalid HTML and fails axe `nested-interactive`; the row stays the keyboard path. The single-
-note menu items carry 16px nav-stroke glyphs (Pencil/Copy/Trash2, inheriting item ink so Delete's
-goes red); folder and bulk menus stay text-only. A pointer-opened menu shows no focus ring on its
-first item: `useFocusTrap` takes `initialFocus: "container"` and ContextMenu parks initial focus
-on the menu container (`tabIndex={-1}`, `outline: none`) — Chromium treats script focus as
-`:focus-visible`, which used to ring "Rename" on every ···-click. Keyboard Tab/arrows still move
-real focus and indicate normally.
-The desktop search *pill* is gone — clicking the Search row swaps it in place for the field at the
-same geometry. `New Note` at the foot of the tree is now mobile-only. The rest of the sidebar
-(note rows) still uses the older tree grammar, so the two grammars coexist.
-
-## Sidebar sections: `Folders` and `Notes`
-
-The desktop tree is split by two section headers sharing one `SectionHeader` component in
-`Sidebar.jsx`: **`Folders`** (with a trailing `FolderPlus` — this is where New Folder lives now,
-the old `+ New Folder` tree row is mobile-only) and **`Notes`** over the loose root notes, with no
-trailing action because New note is already a primary row. Neither collapses, so neither has a
-chevron. One spacing rule for both: **12px above the header, 28px header, 4px down to its first
-row** — `Folders` takes its 12px from the action group's bottom padding. Both headers scroll with
-their content rather than being pinned above it; a pinned `Folders` goes on lying about the rows
-under it once the list scrolls.
-
-**The desktop sidebar has TWO trees, not one** — `role="tree" aria-label="Folders"` and
-`role="tree" aria-label="Notes"` — with the headers as siblings between them, inside the plain
-scroll container. A section header (and the New folder `<button>` inside one) is not a legal child
-of `role="tree"`: a single tree fails axe's `aria-required-children` at **critical** impact, which
-the Playwright a11y gate in `e2e/app.spec.js` catches. Mobile has no headers, so it keeps one tree
-wrapping its own inline `New Folder` / `New Note` rows. `sidebarScrollRef` and the pointer-down
-handler stay on the outer scroller, so `useSidebarDrag`'s `[data-note-id]` queries are unaffected.
-
-**Both headers always show** — `Folders` because it carries the only desktop affordance for creating
-one, `Notes` because it is both the visible root drop target and the home of the sort control, and
-both are wanted precisely when every note has been filed into a folder. The one case `Notes` hides
-is a search that matches no root note. (`Notes` used to hide whenever there were no loose root
-notes; that reversed when the sort control moved onto it.) The `role="tree"` under it stays
-conditional — an empty tree fails axe's `aria-required-children`. This replaced an earlier
-zero-folder gap hack (16 → 24px); a labelled section does that job properly.
+- Two headers share `SectionHeader`. `Folders` carries the only desktop New Folder affordance;
+  `Notes` carries the sort toggle. Neither collapses, so neither has a chevron. Headers scroll
+  with their content; a pinned `Folders` lies about the rows under it once the list scrolls.
+- **Two trees, not one** (`role="tree"` for Folders and for Notes, headers as siblings between
+  them). A header inside a tree fails axe `aria-required-children` at critical impact, which
+  the E2E gate catches. Mobile has no headers and keeps one tree.
+- **Both headers always show**, and are wanted precisely when every note has been filed.
+  `Notes` hides only when a search matches no root note; the `role="tree"` under it stays
+  conditional because an empty tree fails axe.
+- **Section-header controls are hidden at rest** (`SectionAction`: New folder, Sort), revealed
+  at 0.55 by hovering the header or by keyboard focus, full ink when the control itself is
+  hovered or focused. All CSS (`.sidebar-section-action`); JS opacity handlers would override
+  the class rules after the first hover. Touch devices keep them always visible. 0.55 is the
+  faintest composite clearing 3:1 on the light ground. Accepted tradeoff: a mouse user has no
+  standing hint that New folder exists until they hover a header.
 
 ## Note order is a preference, not a stored arrangement
 
-One control decides how every note list in the panel is ordered — root notes and folder contents
-alike. `Most recent` (Clock3) / `Alphabetical` (ArrowDownAZ), global, persisted in
-`boojy-note-sort`, defaulting to recency. It sits on the `Notes` header as a **click-to-flip
-toggle** (judged live 2026-08-23 — two modes made the old `SortMenu` popover pure ceremony;
-SortMenu is deleted, git history has it). Convention, deliberate: the glyph shows the CURRENT
-mode, the tooltip/aria-label's tail says what a click does ("Sorted by most recent — switch to
-alphabetical"). If a third sort mode ever lands, the toggle breaks and a menu returns — that is
-the accepted bet, not an oversight.
-
-**"Most recent" is last *touched*: `max(last opened here, file mtime)`** — `recencyOf()` in
-`utils/noteSort.js`. Neither half works alone, and the reason is worth keeping. Opening a note never
-writes to disk, so mtime alone can't see reading. And last-opened alone starts *empty* on any
-existing vault, which meant "Most recent" and "Alphabetical" produced identical lists until you had
-clicked around — judged live 2026-08-22, and it reads as a broken control, not as a quiet default.
-mtime is what gives a vault meaningful order on first launch, and it is the only half that can see
-an edit made in another app.
-
-`parseNoteFile` populates `lastModified` (one `statSync` on a file it is already reading). Until
-2026-08-22 that field was a **phantom**: declared in `types/notes.ts` and read by `search.js` as a
-score tiebreak, but never written by anything, so that comparison was always 0 against 0. Populating
-it fixed search's tiebreak as a side effect. **Web has no filesystem and therefore no mtime**, so
-web notes still rely on last-opened alone.
-
-Last-opened lives in `boojy-note-opened` (localStorage), never in the user's files — stamping a file
-on open would corrupt the very mtime the sort depends on. Consequences worth knowing: that half is
-per-machine, and a vault opened elsewhere regenerates note IDs, so it starts over — but mtime
-carries the order in the meantime, so a moved vault no longer looks unsorted. Notes with **neither**
-timestamp sort alphabetically at the back.
-
-A pure `touch` with no content change does *not* refresh the order: `onFileChanged` in
-`useFileSystem.js` bails early when blocks, title and folder all match, which is deliberate
-anti-churn. Boojy's own writes don't refresh it either, and don't need to — the note you are editing
-was stamped by `openNote` when you opened it, and disk mtime catches up on the next load.
-
-`useNoteSort` prunes the map against the live note store when it writes, rather than hooking the
-delete paths: one rule covers deletions, files removed outside Boojy, and regenerated IDs. **The
-empty-store guard in that effect is load-bearing** — `noteData` is `{}` until notes finish loading,
-and writing then would erase every timestamp on launch.
-
-Recency is stamped in `openNote` (BoojyNotes) **and** in `useNoteCrud`'s `createNote` /
-`duplicateNote` / `createDraftNote`. Miss the creation sites and a note you just made sorts into
-the never-opened tail — a new "Zebra" lands at the bottom of "Most recent". Any future site that
-makes a note active needs the same stamp.
-
-`buildTree` takes an optional `sortNotes`; `sortNoteIds` returns the **same array reference** when
-the order is already correct, because the sidebar's memo chain compares identities to decide
-whether to rebuild the tree. In `SidebarContext` the comparator reads titles from `noteDataRef`,
-not from `noteData` in the dep list — depending on the store directly would rebuild the tree on
-every keystroke and undo the text-only bail-out. Alphabetical mode deliberately does not subscribe
-to the timestamps, so opening a note doesn't re-sort a list that can't change.
+- One global control orders every list, root and folders alike: Most recent / Alphabetical,
+  persisted in `boojy-note-sort`, default recency. It is a click-to-flip toggle on the `Notes`
+  header: the glyph shows the current mode and the label's tail says what a click does. A third
+  mode would need a menu; accepted bet.
+- **"Most recent" means last touched: `max(last opened here, file mtime)`** (`recencyOf()` in
+  `utils/noteSort.js`). Neither half works alone. Opening never writes to disk, so mtime can't
+  see reading; last-opened starts empty on an existing vault, which makes both modes produce
+  the same list and reads as a broken control; and mtime is the only half that sees an edit
+  made in another app.
+- Last-opened lives in localStorage (`boojy-note-opened`), never in the user's files: stamping
+  a file on open would corrupt the mtime the sort depends on. It is per-machine and starts over
+  when a vault's IDs regenerate; mtime carries the order meanwhile. Notes with neither
+  timestamp sort alphabetically at the back.
+- A pure `touch` with no content change does not refresh the order (`onFileChanged` bails when
+  nothing differs; deliberate anti-churn). The app's own writes don't refresh it and needn't.
+- **Every site that makes a note active must stamp recency** (`openNote`, and note creation
+  and duplication in `useNoteCrud`), or the note sorts into the never-opened tail.
+- `useNoteSort` prunes against the live note store when it writes. **Its empty-store guard is
+  load-bearing**: the store is `{}` until notes load, and writing then erases every timestamp.
+- `sortNoteIds` returns the same array reference when already ordered, because the sidebar's
+  memo chain compares identities. Alphabetical mode doesn't subscribe to timestamps.
 
 ### Drag means location, not order
 
-Dragging a note moves the **real `.md` file**: onto a folder row files it there, onto the
-`Notes`/root area moves it back out. It never sets a hand-arranged position — sort decides
-display order, drag decides where the note lives. Folders are always alphabetical, with no
-control to change that.
-
-**The drag ghost is a title-only pill, and a drop with no target flies back** (2026-09-03). The
-pill carries just the note title in the row's face on `BG.elevated` with `theme.dragShadow` —
-note rows carry no glyph at rest, so neither does the thing lifted off them; the old emoji
-folder/file glyphs are gone. It is born flat over the row and lifts over 120ms. Releasing
-anywhere that is not a folder row or the root area (including over the editor) cancels: the pill
-animates back to its row over 200ms and nothing changes. **Dropping a note over the editor no
-longer opens it** — drag changes where a note lives, it never navigates; click is how a note
-opens. Every completed or cancelled drag calls `suppressNextClick()` (utils/domHelpers) so the
-browser's trailing click cannot open the row the pill was lifted from.
-
-**Folder rows are not draggable at all.** The sibling-reorder half retired with manual ordering,
-and the nest/reparent half never existed — dropping a folder onto a folder highlighted the
-target and then silently did nothing. Genuine folder nesting is a future feature, not a
-regression to restore.
-
-Existing `.boojy-meta.json` files are **left untouched on disk**. Nothing reads or writes their
-`noteOrder`/`folderOrder` keys any more, so an old arrangement stays recoverable — don't "tidy
-them up", and don't reintroduce a reader for them.
+- Dragging a note moves the real `.md` file: onto a folder files it there, onto the `Notes` area
+  moves it back out. Drag never sets a position; sort decides display order. Folders are always
+  alphabetical.
+- The ghost is a title-only pill that lifts in; releasing anywhere that isn't a folder or the
+  root area flies it back and nothing changes. **Dropping over the editor does not open the
+  note**; drag never navigates. Every drag ends by suppressing the trailing click so it can't
+  open the lifted row.
+- **Folder rows are not draggable.** Nesting is a future feature, not a regression.
+- Existing `.boojy-meta.json` files are left untouched; nothing reads their ordering keys.
+  Don't tidy them and don't reintroduce a reader.
 
 ## Block drag: the gutter handle, never the text
 
-**Blocks move by a hover-revealed grip in the left gutter; the text never drags** (decided live
-2026-09-03 against a polished press-and-hold prototype). The product reason is the separation of
-zones — text = write/select, handle = move — which removes the hold-timer race where a pause
-before a drag-to-select reordered the block instead. Press-and-hold on block text is DELETED
-(`handleEditorPointerDown` is gone from `useBlockDrag`, `EditorContext` and `EditorArea`), and so
-are its "Hold and drag to reorder" tooltip, the `boojy-drag-tooltip-editor` key and the `editor`
-counter in `dragTooltipCount`. Keyboard reorder (`Cmd/Ctrl+Shift+↑/↓` in `useKeyboardHandlers`)
-is unchanged and is the non-pointer path.
-
-`BlockDragHandle.jsx` is **one** floating handle for the whole editor, not one per block — every
-block root is a contentEditable, so a control inside it would be inside the text. It mounts in
-`EditorArea` beside the blocks (desktop only; mobile never mounts it), listens for `mousemove` on
-the note **column** (`columnRef`, so hovering the gutter counts), and positions a 20×24 box
-holding a 16px `GripVertical` (content tier, stroke 1.5, **dots filled** — Lucide's stroked r=1
-rings read as smudges at 16px; `fill="currentColor"` on the wrapper gives crisp ~2.3px discs) at
-`HANDLE_W + HANDLE_GAP` = 24px left
-of the block's left edge — i.e. inside the column's existing left padding (min 24px), so it
-**never overlaps prose and never shifts layout**. Vertically it centres on the block's **first
-line box** (`firstLineRect`: the rect of the first non-empty text node, falling back to the
-element's line-height), which is what keeps it on the line the eye reads first for headings,
-list rows, quotes and multi-line paragraphs alike. Geometry is measured against a 0×0 anchor
-rendered beside it, so it is correct whatever positioned ancestor it lands in — the editor
-container (`editorContainerRef`) is `position: relative`, not the column.
-
-Behaviour: invisible at rest; the block whose band (its top → the next block's top) holds the
-pointer gets the grip; `keydown` on the column hides it; `body.block-dragging` hides it; fewer
-than two blocks means no grip at all. Pressing it and moving >3px lifts the block
-(`startHandleDrag` in `useBlockDrag`, no timer); a press released without moving does nothing.
-Reveal states are CSS in GlobalStyles (`.block-drag-handle`: mounts only when needed and fades
-0 → 0.55 muted ink beside the block via `blockHandleIn`; hovering the grip itself lifts the ink
-to full `TEXT.muted` and **nothing else — there is deliberately no hover surface**, judged live
-2026-09-03 against the earlier `BG.surface` fill and against a Notion-close ink-8% fill: the
-gutter stays part of the page, not a control strip). Don't add JS opacity handlers. It is
-`aria-hidden` with no role/tabIndex on purpose: a pointer-only affordance, with the keyboard
-shortcut as the accessible path. Cursor is `grab` on the grip, `grabbing` on `<body>` while a
-drag is live.
-
-**Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a click
-menu on the grip, a handle on mobile, an always-visible handle. The editor must keep reading as a
-document, not a block-management surface.
-
-### The drag commits on drop — nothing moves until the hand lets go
-
-Decided live 2026-09-03 in a four-way comparison (the merged live-reorder baseline, the same grip
-with a Notion-style drag phase, a Notion-close grip, and "boojy-quiet" — which won). **While the
-pointer is down the note does not change at all**: the grabbed block stays where it is at full
-opacity, a translucent copy (`GHOST_OPACITY` 0.35 — a print, not a card: no background, shadow,
-scale or lift) follows the pointer, and a **3px insertion marker** shows where release would put
-it. The reorder happens once, on release, with **one history entry, and only if the order
-actually changed** — dropping a block back where it was writes nothing. The old live reorder
-(blocks shuffling under the pointer as it crossed them, a faded `BG.surface` slot, an opaque
-card ghost with `theme.dragShadow`, the 200ms fly-to-slot settle) is deleted; git history has it.
-
-The marker (`.block-drop-marker` in GlobalStyles, an element `useBlockDrag` paints on `<body>`)
-is `color-mix(in srgb, ACCENT.primary 40%, transparent)`, radius 1.5, spanning the block column.
-Accent here is within grammar — a 2-3px marker, not a surface — and a drop line is a caret
-between blocks; it is theme-scoped through the token, so NIGHT gets its own. The hook reads the
-marker's rendered height back to centre it in the gap, so a CSS change to the height doesn't
-need a JS change. Placement rules, all in `positionMarker`:
-
-- A boundary between two blocks is drawn at the **centre of the gap** between them (blocks
-  carry a 6px bottom margin, so it never touches prose). The first/last position sits
-  `EDGE_GAP` (4px) beyond the outermost block.
-- **The no-op position is always drawn ABOVE the grabbed block (or the whole selected run),
-  never through it and never just below it.** Skipping the grabbed block as a target makes the
-  gap "between its neighbours" the grabbed block itself, so the naive midpoint cut through the
-  text; and the gap just below reads as "it will move down one" when it will not. So the
-  marker holds above the grabbed run while the pointer is anywhere over it *and* over the top
-  half of the next block; it jumps to the first real boundary (after the next block) once the
-  pointer passes that block's middle. Judged live 2026-09-03 in two rounds.
-- Releasing **outside the editor's scroll area** (over the sidebar) cancels — the marker hides
-  the moment the pointer crosses out (`bd.outside`). A zero-size scroll rect (no layout yet)
-  disables that check rather than treating everything as outside.
-
-Escape and window blur cancel through `useAppKeyboard`/BoojyNotes, and because nothing was
-written there is nothing to restore — `cancelBlockDrag` just fades the copy (`FADE_MS` 120) and
-tidies up; the hook no longer takes `popHistory`, `editorBg`, `dragShadow` or `slotBg`.
-Auto-scroll runs every frame and re-runs the target/marker pass, since the marker is
-fixed-positioned and the blocks move under a stationary pointer. Multi-select (a selection
-spanning the grabbed block) drags the run as one stacked copy and treats it as one block for the
-no-op rule. The ghost copies the source's `font-family`/`color` because it lives on `<body>`,
-which has no app font; `suppressNextClick()` swallows the click that follows every drop.
-
-Sidebar note drag keeps its own polish (title pill lifting over 120ms with `theme.dragShadow`,
-fly-back on cancel) — `theme.dragShadow` exists in both DAY and NIGHT for anything that *lifts*;
-the block ghost deliberately does not lift, so it doesn't use it.
-
-## Section-header controls: hidden at rest, revealed by the header
-
-`SectionAction` in `Sidebar.jsx` is the one component for a header's trailing control (New folder,
-Sort): 28px box, 16px nav-tier glyph. Since 2026-08-23 it follows the note-row ··· grammar —
-**invisible at rest**, revealed at 0.55 by hovering the header (`.sidebar-section-header`) or by
-keyboard focus (`:focus-within`), lifted to full `TEXT.primary` ink + `BG.surface` when the
-control itself is hovered/focused. All states are CSS (`.sidebar-section-action` in GlobalStyles)
-— don't reintroduce JS opacity handlers, they permanently override the class rules after first
-hover. Touch devices keep the controls always visible (`@media (hover: hover)` guards the hiding).
-An open menu holds its control at full ink via the `active` prop (inline opacity beats the class).
-This reversed the earlier "quiet, never hidden" rule; what that rule actually protected — keyboard
-reachability — is preserved, because focus always reveals. The 0.55 revealed ink keeps its old
-rationale: the faintest composite clearing ~3:1 on the DAY ground (0.4 does not). Known tradeoff,
-accepted single-user: a mouse user gets no standing hint that New folder exists until they hover a
-header.
-
-## Only structure and actions get a glyph
-
-Note rows carry **no file icon** at any depth — the repeated document glyph was ~13 of the ~30
-glyphs on screen and communicated nothing the row's position didn't already. Folders now carry
-**only the folder icon**: the permanent disclosure chevron was removed too (2026-08-18) — the
-whole row toggles, the open-folder glyph + indented children carry the state, and
-`aria-expanded` is always set (it's the only programmatic signal left). Collapsed vs expanded has
-no other permanent indicator and no hover chevron; the calm row is the settled treatment. The removed FileIcon's
-width is still folded into each note row's left padding, minus the chevron allowance that came
-back out of both row kinds, so titles keep their column under the folder names — don't
-"simplify" that padding away. `FileIcon` still ships in search results, which are not tree rows.
+- **Text never starts a block drag.** Text is for writing and selecting; a hover-revealed grip
+  in the left gutter moves blocks. That separation is what removes the race where a pause
+  before a drag-to-select reordered the block instead. Keyboard reorder
+  (`Cmd/Ctrl+Shift+↑/↓`) remains the non-pointer path.
+- There is **one floating handle** for the whole editor, not one per block, because every block
+  root is a contentEditable and a control inside it would be inside the text. It sits in the
+  column's existing left padding, so it **never overlaps prose and never shifts layout**, and it
+  centres on the block's first line so it lands where the eye reads first for headings, list
+  rows and multi-line paragraphs alike. Desktop only.
+- **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
+  on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
+  the grip lifts its ink and nothing else: **no hover surface**, so the gutter stays part of
+  the page rather than a control strip. Reveal is CSS; don't add JS opacity handlers. The
+  handle is `aria-hidden`, a pointer-only affordance with the keyboard shortcut as the
+  accessible path.
+- **The drag commits on drop.** While the pointer is down the note does not change: the grabbed
+  block stays put at full opacity, a quiet translucent copy (no card, shadow or lift) follows
+  the pointer, and a 3px accent insertion marker shows where release would put it. Release
+  reorders once, as one history entry, and only if the order changed. Escape, window blur, or
+  release over the sidebar cancel with nothing to undo.
+- The marker sits centred in the gap between blocks, never touching prose. **The no-op position
+  is drawn above the grabbed block**, never through it and never just below it, since "just
+  below" reads as moving down one. The marker holds there until the pointer passes the middle
+  of the next block.
+- A multi-block selection containing the grabbed block drags as one run. The sidebar note pill
+  is the thing that lifts with `theme.dragShadow`; the block ghost deliberately does not.
+- **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a
+  click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
+  reading as a document, not a block-management surface.
 
 ## The slash menu is tiered
 
-`/` opens on **eleven** commands, not fourteen. `advanced: true` in `SLASH_COMMANDS` keeps
-Callout, File attachment and Embed note off that opening screen; the moment anything is typed after
-the slash, the search runs over **everything**, so `/call` still finds Callout. Nothing was deleted
-— the tier only decides what greets a new user.
-
-**The tier rule lives in one place: `filterSlashCommands()` in `constants/data.js`.** Both
-`SlashMenu.jsx` and the arrow-key navigation in `useKeyboardHandlers.js` call it. They used to carry
-duplicate `.filter()` calls, which is how you get Enter inserting a different block than the one
-highlighted — never reintroduce a second copy.
-
-Order is deliberate and is the menu's only structure (no group labels at eleven rows): headings,
-lists, then **Table and Image** — the two commands with no typed-markdown shortcut in
-`useInputHandler.js`, which makes the menu their only comfortable route — then code and quote, with
-**Divider last** because `---` is faster to type than the menu is to open. Ten of the fourteen
-commands have live typed shortcuts (`# `, `## `, `### `, `- `, `1. `, `[] `, `> `, `---`, ```` ``` ````),
-so weigh that before promoting anything.
-
-Rows are 34px (20px glyph + 7px above/below) in a 300px menu: **bare Lucide glyph** in a 20px
-column, muted at rest and accent when selected, no chip, no border, and no markdown-syntax column.
-`desc` still records each block's markdown in the data — it is just not rendered. The shadow is
-`theme.modalShadow`; it used to be a hardcoded `0 8px 32px rgba(0,0,0,0.5)`, a NIGHT value that
-bruised the white DAY sheet.
-
-Positioning is viewport-aware (2026-08-18): `positionMenu()` in `src/utils/menuPosition.js` +
-`useMenuPosition` give SlashMenu, ContextMenu (incl. the top-right ··· note-actions menu) and
-any future popover one rule set — honour the anchor, 8px viewport margin, flip past the anchor's
-other side when the preferred side overflows, clamp as the last resort. The slash producer passes
-the block's full rect so a flipped menu sits above the line, not over it. Route new menus through
-this instead of writing a fresh clamp.
-
-Slash-menu selection is keyboard-first: opening `/` and changing its filter reset to index `0`.
-Rows update that selection on actual mouse movement, not `mouseenter`; a newly mounted or flipped
-menu can appear beneath a stationary pointer, which must not steal the initial Heading 1 selection.
+- `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps Callout, File
+  attachment and Embed note off the opening screen; typing anything after the slash searches
+  everything, so `/call` still finds Callout.
+- **The tier rule lives in one place, `filterSlashCommands()`**, used by both the menu and the
+  keyboard navigation. A second copy is how Enter inserts a different block than the one
+  highlighted.
+- Order is the menu's only structure: headings, lists, then Table and Image (no typed shortcut,
+  so the menu is their route), then code and quote, Divider last because `---` is faster to
+  type. Most commands have typed shortcuts; weigh that before promoting anything.
+- Rows are a bare Lucide glyph and a label, muted at rest and accent when selected: no chip,
+  border or markdown-syntax column. The shadow is `theme.modalShadow`.
+- Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
+  viewport margin, flip to the other side on overflow, clamp last. Route every new popover
+  through it rather than writing a fresh clamp.
+- Selection is keyboard-first: opening and filtering reset to the first row, and rows take the
+  selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
+  stationary pointer.
 
 ## Narrow desktop is still desktop
 
-**Width changes how much room Boojy has, not what Boojy is.** A narrow desktop window must never
-become the phone layout: the mobile navigation model is a *touch-device* thing, not a width
-thing. One overloaded boolean was split into three separate questions — is this a touch device,
-does the sidebar fit, is the sidebar open. Below ~780px the sidebar floats *over* the editor as
-an overlay; that is the app making room, not switching identity.
+**Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
+touch-device thing, not a width thing. Three separate questions drive layout: is this a touch
+device (`useIsMobile.ts`, misnamed; rename in the backlog), does the sidebar fit
+(`useSidebarFits.ts`), is the sidebar open. On a narrow desktop window the sidebar floats over
+the editor as an overlay; that is the app making room, not switching identity. Narrowing a
+desktop browser therefore does not preview the mobile layout; use device emulation.
 
-Consequence for dev work: **narrowing a desktop browser no longer previews the mobile layout.**
-Use DevTools device emulation, which emulates pointer type.
+## Testing notes
 
-`useIsMobile.ts` is misnamed for what it now answers ("is this a touch device"); `useSidebarFits.ts`
-carries the fit question. The rename to `useIsTouch` is outstanding — see `docs/BACKLOG.md`.
-
-## Testing note
-
-`TopBar.jsx` and its test are deleted (2026-09-03) — BoojyNotes mounts `TopBarMobile` directly under
-`isMobile`. The controls the desktop bar used to hold are covered in `EditorChrome.test.jsx` (which
-asserts the toggle is absent when expanded and pinned left when collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark-to-Settings +
-no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (migration rule)
-and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy
-migration and managed-file-only deletion. The e2e settings flow clicks
-`wordmark-settings-button` directly. `SlashMenu.test.jsx` guards the keyboard-first selection
-against stationary-pointer hover. `Sidebar.test.jsx`'s sort tests assert the toggle (flip both
-ways, no menu role) and its header-control test asserts the CSS reveal hooks (class names +
-tabIndex 0), not computed opacity — jsdom can't evaluate the GlobalStyles stylesheet. Its
-note-row test allows the row's ··· svg and forbids only `lucide-file-text`. Theme-mocking tests need `ACCENT.onAccent` in their mock or components using it throw;
-the `activeTabBg` token and `settingsTab` context field no longer exist — don't reintroduce
-either in mocks.
+- `Sidebar.test.jsx` asserts the CSS reveal hooks (class names, tabIndex) rather than computed
+  opacity, because jsdom can't evaluate the GlobalStyles stylesheet. Its note-row test allows
+  the ··· svg and forbids only the file icon.
+- `useActiveNote.test.js` guards the persistence migration; `osTrash.test.ts` the legacy
+  `.trash` migration and managed-file-only deletion; `SlashMenu.test.jsx` the keyboard-first
+  selection against stationary-pointer hover.
+- Theme mocks need `ACCENT.onAccent` or components using it throw. `activeTabBg` and
+  `settingsTab` don't exist; don't reintroduce them in mocks.

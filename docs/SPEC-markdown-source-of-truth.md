@@ -1,7 +1,10 @@
 # SPEC: Markdown is the source of truth
 
 **Status:** binding constraint (adopted v0.5.0). This is an architectural rule, not a
-feature request. It governs what blocks and interactions may exist in Boojy Notes.
+feature request. It governs what blocks and interactions may exist in Boojy Notes, what the app
+owes each piece of Markdown syntax it meets (the support levels below), and what that implies
+for the UI. Feature plans, reviews and UI decisions are judged against this document; if a
+proposal conflicts with it, the proposal changes.
 
 ---
 
@@ -14,7 +17,7 @@ Every block must serialise back to clean, human-readable markdown *losslessly*. 
 or an interaction, can't round-trip to readable markdown, **we don't ship it.** The block
 catalogue is *defined by* what markdown can represent.
 
-This is what keeps a Boojy note portable forever — openable in Obsidian, in a plain text
+This is what keeps a Boojy Notes note portable forever — openable in Obsidian, in a plain text
 editor, in `cat`, in anything that reads text.
 
 ---
@@ -40,24 +43,18 @@ renderer and the Electron main process.
 
 ## Storage truth, stated honestly per platform
 
-The *round-trip rule* above is universal. The *literal storage* is not yet — and this spec
-states that plainly rather than pretending otherwise.
+The *round-trip rule* above is universal. The *literal storage* is not, and this spec states
+that plainly rather than pretending otherwise.
 
-| Platform | What is on disk / in storage | Is markdown the literal source of truth? |
-|----------|------------------------------|------------------------------------------|
-| **Desktop (Electron)** | Real `.md` files in the vault (`electron/noteFileManager.js` writes via `blocksToMarkdown`, reads via `markdownToBlocks`). An index maps note IDs → paths. | **Yes — already true today.** |
-| **Web** | Block JSON in `localStorage` (`boojy-notes-v1`). | **No — temporary divergence.** |
-
-So on web we claim only that blocks are **provably round-trippable** (the round-trip test
-guarantees it), *not* that web "stores markdown." Do not write or imply otherwise in UI,
-docs, or marketing.
-
-### Committed direction (NOT a current milestone)
-
-Migrate web persistence to store **markdown strings directly** (not block JSON), so "markdown
-is the stored format" becomes literally true on every platform. The round-trip test is the
-gate that makes that migration safe — when web starts storing markdown, the same lossless
-contract already holds, so no note can be corrupted by the switch.
+- **Desktop (Electron) is the product, and markdown is the literal source of truth.** Notes
+  are real `.md` files in the vault: `electron/noteFileManager.js` writes via `blocksToMarkdown`
+  and reads via `markdownToBlocks`. An index in Electron's userData maps note IDs to paths; the
+  vault itself is never written except through the user's own edits.
+- **The web build is a development target, outside the product promise.** It persists block
+  JSON in `localStorage` (`boojy-notes-v1`). Those blocks are provably round-trippable, but
+  the web build does not "store markdown", and nothing in the UI, docs or marketing should
+  imply it does. Whether web persistence ever changes is a decision for the day web becomes a
+  product again; no migration is committed.
 
 ---
 
@@ -69,8 +66,8 @@ Allowed *because markdown can express them*:
   `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file.
   (`blocksToMarkdown` walks the array in order, so reordering re-serialises cleanly for free.)
-- **List indent / outdent** — markdown nested-list syntax (`  - nested`). **List types only**
-  (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
+- **List indent / outdent** — markdown nested-list syntax (a `- nested` line indented by two
+  spaces). **List types only** (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
 - Obsidian-flavoured-but-still-text marks already in use: `==highlight==`, `[[wikilinks]]`.
 
 ## Forbidden — do not build (breaks portability)
@@ -107,6 +104,51 @@ test rather than letting it pass as if lossless:
   never be the first block.
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
+
+---
+
+## The other direction: preservation
+
+The round-trip rule protects the app's own blocks. The **preservation promise** protects
+everyone else's Markdown: **editing one part of a file must not unexpectedly rewrite the rest
+of it.** Syntax Boojy Notes doesn't understand is preserved, never "cleaned up". This is a
+product requirement, not an implementation detail; it is what makes it safe to point the app at
+a folder
+of Markdown you care about.
+
+Enforcement: `tests/utils/preservation.test.js` runs a corpus of deliberately awkward files
+(`tests/fixtures/preservation/`) through the real load→save path. Known failures are marked in
+the suite, never omitted; the suite is the honest record of how far the promise currently holds.
+
+On Obsidian: Boojy Notes does **not** promise vault feature parity. The promise is narrower
+and stronger: it can work directly with the Markdown files in an Obsidian vault without damaging
+syntax it doesn't understand. Plugins, Canvas, `.obsidian` config and the rest of the workspace
+are out of scope.
+
+## Support levels
+
+Every piece of Markdown syntax Boojy Notes encounters sits at exactly one level. An Obsidian
+feature does not need to be a Boojy Notes feature just because the app can parse its syntax.
+
+| Level | Meaning | Examples |
+| --- | --- | --- |
+| **Native** | Boojy Notes creates, edits, and renders it as a first-class feature | headings, lists, checkboxes, tables, images, code, quotes |
+| **Compatible** | The app understands and renders it, but keeps the UI quiet: no permanent chrome, no promotion in menus | `[[wikilinks]]`, `#tags`, callouts, frontmatter |
+| **Preserved** | The app may not render it meaningfully, but must never destroy or rewrite it | plugin syntax, block refs `^id`, `%%comments%%`, unknown YAML |
+| **Out of scope** | No dedicated Boojy Notes feature or UI, until argued otherwise | graph view, canvas, databases, plugins, AI |
+
+Moving something *up* a level (promoting a Compatible feature to Native UI) is a product
+decision, and the question it must answer is: *does a first-time user's five minutes get
+better or busier?*
+
+### Consequences for UI
+
+- The default surface stays small: folders, search, notes, one editor. Power lives behind
+  typing (`/`, `[[`, `#`) and search, not behind permanent panels.
+- A feature that demands a permanent sidebar, header control, or panel starts from
+  "probably no".
+- Opening a note replaces the current note. Tabs, split view, and workspace machinery earn UI
+  again only if simplicity survives the argument.
 
 ---
 
