@@ -3,13 +3,21 @@ import { isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import {
   sanitizeInlineHtml,
   htmlToInlineMarkdown,
+  inlineMarkdownToHtml,
   stripMarkdownFormatting,
 } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
 import { markdownToBlocks } from "../../utils/markdown";
+import {
+  buildPastedBlocks,
+  isStructuredMarkdownLine,
+  isTextBlockType,
+  stripIncidentalLineEnding,
+} from "../../utils/pasteBlocks";
 
 export function usePasteHandler({
   noteDataRef,
+  noteTitleSetRef,
   activeNoteRef,
   blockRefs,
   commitNoteData,
@@ -20,6 +28,21 @@ export function usePasteHandler({
   reReadBlockFromDom,
   getBlock,
 }) {
+  /**
+   * Paint a destination block that survived the paste with the same id and
+   * type. The editor skips React renders for text-only changes (the page
+   * already has the text while typing), so a paste that only changes a
+   * block's text would otherwise reach state and disk but never the page,
+   * and the next keystroke would read the stale page back over it.
+   */
+  const repaintKeptBlock = (currentBlock, newBlocks) => {
+    const kept = newBlocks.find((b) => b.id === currentBlock.id);
+    if (!kept || kept.type !== currentBlock.type || !isTextBlockType(kept.type)) return;
+    const el = blockRefs.current[kept.id];
+    if (!el) return;
+    el.innerHTML = kept.text ? inlineMarkdownToHtml(kept.text, noteTitleSetRef?.current) : "<br>";
+  };
+
   const handleEditorPaste = useCallback((e) => {
     const currentNote = activeNoteRef.current;
     const files = e.clipboardData?.files;
@@ -52,7 +75,9 @@ export function usePasteHandler({
       }
     }
 
-    const textData = e.clipboardData.getData("text/plain");
+    // One terminal line ending is incidental (copying a whole line brings its
+    // break along); strip it so a one-line copy pastes inline.
+    const textData = stripIncidentalLineEnding(e.clipboardData.getData("text/plain"));
 
     // Smart paste: URL over selected text → create markdown link
     if (/^https?:\/\/\S+$/.test(textData.trim())) {
@@ -165,72 +190,12 @@ export function usePasteHandler({
           afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
         }
 
-        const blocks = noteDataRef.current[currentNote].content.blocks;
-        const currentBlock = blocks[startIdx];
-        const newBlocks = [];
-
-        // First: handle before-text + first pasted block
-        if (!beforeText.trim()) {
-          // Before cursor is empty: replace current block with first pasted block
-          const first = pastedBlocks[0];
-          if (!isEditableBlock(first)) {
-            const nb = { ...first, id: currentBlock.id };
-            delete nb.fullBlock;
-            newBlocks.push(nb);
-          } else {
-            const replaced = {
-              ...currentBlock,
-              type: first.type,
-              text: first.text,
-            };
-            if (first.checked !== undefined) replaced.checked = first.checked;
-            else delete replaced.checked;
-            if (first.indent) replaced.indent = first.indent;
-            newBlocks.push(replaced);
-          }
-        } else {
-          // Keep current block with before-text
-          newBlocks.push({ ...currentBlock, text: beforeText });
-          // First pasted block as new block
-          const first = pastedBlocks[0];
-          if (!isEditableBlock(first)) {
-            const nb = { ...first, id: genBlockId() };
-            delete nb.fullBlock;
-            newBlocks.push(nb);
-          } else {
-            const nb = { id: genBlockId(), type: first.type, text: first.text };
-            if (first.checked !== undefined) nb.checked = first.checked;
-            if (first.indent) nb.indent = first.indent;
-            newBlocks.push(nb);
-          }
-        }
-
-        // Remaining pasted blocks
-        for (let i = 1; i < pastedBlocks.length; i++) {
-          const pb = pastedBlocks[i];
-          if (!isEditableBlock(pb)) {
-            const nb = { ...pb, id: genBlockId() };
-            delete nb.fullBlock;
-            newBlocks.push(nb);
-          } else {
-            const nb = { id: genBlockId(), type: pb.type, text: pb.text };
-            if (pb.checked !== undefined) nb.checked = pb.checked;
-            if (pb.indent) nb.indent = pb.indent;
-            newBlocks.push(nb);
-          }
-        }
-
-        // Append after-text to last block or create new P block
-        if (afterText.trim()) {
-          const last = newBlocks[newBlocks.length - 1];
-          if (last.type === "p" || last.type === currentBlock.type) {
-            last.text = (last.text || "") + afterText;
-          } else {
-            newBlocks.push({ id: genBlockId(), type: "p", text: afterText });
-          }
-        }
-
-        const lastBlock = newBlocks[newBlocks.length - 1];
+        const currentBlock = noteDataRef.current[currentNote].content.blocks[startIdx];
+        const {
+          blocks: newBlocks,
+          focusId,
+          focusPos,
+        } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
 
         commitNoteData((prev) => {
           const next = { ...prev };
@@ -242,11 +207,12 @@ export function usePasteHandler({
           return next;
         });
         syncGeneration.current++;
-        focusBlockId.current = lastBlock.id;
-        focusCursorPos.current = (lastBlock.text || "").length;
+        repaintKeptBlock(currentBlock, newBlocks);
+        focusBlockId.current = focusId;
+        focusCursorPos.current = focusPos;
         // Re-place cursor after React re-render mounts the new block
-        const deferredId = lastBlock.id;
-        const deferredPos = (lastBlock.text || "").length;
+        const deferredId = focusId;
+        const deferredPos = focusPos;
         let attempts = 0;
         const tryPlace = () => {
           const el = blockRefs.current[deferredId];
@@ -261,14 +227,20 @@ export function usePasteHandler({
       }
     }
 
-    // Multi-line external paste: parse as markdown blocks
-    if (textData.includes("\n")) {
+    // Multi-line external paste, or a single structured Markdown line landing
+    // in an empty block: parse as markdown blocks. A single line anywhere else
+    // pastes inline below.
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const caretInEmptyBlock = () => {
+      const info = getBlock(sel.anchorNode);
+      return !!info && info.el.textContent.trim() === "";
+    };
+    if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       e.preventDefault();
       const pastedBlocks = markdownToBlocks(textData);
       if (!pastedBlocks.length) return;
 
-      const sel = window.getSelection();
-      if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
 
       let startIdx, deleteCount, beforeText, afterText;
@@ -314,44 +286,12 @@ export function usePasteHandler({
         afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
       }
 
-      const blocks = noteDataRef.current[currentNote].content.blocks;
-      const currentBlock = blocks[startIdx];
-      const newBlocks = [];
-
-      if (!beforeText.trim()) {
-        const first = pastedBlocks[0];
-        const replaced = { ...currentBlock, type: first.type, text: first.text };
-        if (first.checked !== undefined) replaced.checked = first.checked;
-        else delete replaced.checked;
-        if (first.indent) replaced.indent = first.indent;
-        newBlocks.push(replaced);
-      } else {
-        newBlocks.push({ ...currentBlock, text: beforeText });
-        const first = pastedBlocks[0];
-        const nb = { id: genBlockId(), type: first.type, text: first.text };
-        if (first.checked !== undefined) nb.checked = first.checked;
-        if (first.indent) nb.indent = first.indent;
-        newBlocks.push(nb);
-      }
-
-      for (let i = 1; i < pastedBlocks.length; i++) {
-        const pb = pastedBlocks[i];
-        const nb = { id: genBlockId(), type: pb.type, text: pb.text };
-        if (pb.checked !== undefined) nb.checked = pb.checked;
-        if (pb.indent) nb.indent = pb.indent;
-        newBlocks.push(nb);
-      }
-
-      if (afterText.trim()) {
-        const last = newBlocks[newBlocks.length - 1];
-        if (last.type === "p" || last.type === currentBlock.type) {
-          last.text = (last.text || "") + afterText;
-        } else {
-          newBlocks.push({ id: genBlockId(), type: "p", text: afterText });
-        }
-      }
-
-      const lastBlock = newBlocks[newBlocks.length - 1];
+      const currentBlock = noteDataRef.current[currentNote].content.blocks[startIdx];
+      const {
+        blocks: newBlocks,
+        focusId,
+        focusPos,
+      } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
 
       commitNoteData((prev) => {
         const next = { ...prev };
@@ -363,11 +303,12 @@ export function usePasteHandler({
         return next;
       });
       syncGeneration.current++;
-      focusBlockId.current = lastBlock.id;
-      focusCursorPos.current = (lastBlock.text || "").length;
+      repaintKeptBlock(currentBlock, newBlocks);
+      focusBlockId.current = focusId;
+      focusCursorPos.current = focusPos;
       {
-        const targetId = lastBlock.id;
-        const targetPos = (lastBlock.text || "").length;
+        const targetId = focusId;
+        const targetPos = focusPos;
         let attempts = 0;
         const tryPlace = () => {
           const el = blockRefs.current[targetId];
@@ -422,7 +363,20 @@ export function usePasteHandler({
     if (!startInfo || !endInfo || !blocks) return;
 
     const startIdx = startInfo.blockIndex;
-    const endIdx = endInfo.blockIndex;
+    let endIdx = endInfo.blockIndex;
+    if (endIdx > startIdx) {
+      // A triple-click (and some drags) ends at the very start of the next
+      // block without selecting any of it; that block is not part of the copy.
+      const tail = document.createRange();
+      tail.selectNodeContents(endInfo.el);
+      tail.setEnd(range.endContainer, range.endOffset);
+      if (tail.toString().length === 0) endIdx--;
+    }
+    // A selection inside one block is a text selection, as in every other
+    // editor: it copies as text, not as a block, so pasting the text of a
+    // list item onto a blank line gives the text without the list. Structure
+    // travels only when the selection spans two or more blocks.
+    if (startIdx === endIdx) return;
     const copiedBlocks = [];
 
     for (let i = startIdx; i <= endIdx; i++) {

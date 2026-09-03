@@ -33,6 +33,7 @@ vi.mock("../../src/utils/inlineFormatting", () => ({
   },
   domNodeToMarkdown: (el) => el.textContent || "",
   stripMarkdownFormatting: (md) => md,
+  inlineMarkdownToHtml: (md) => md,
 }));
 
 vi.mock("../../src/utils/storage", () => ({
@@ -79,6 +80,7 @@ function setup(blocks, noteId = "note-1") {
   });
 
   const noteDataRef = { current: noteData };
+  const noteTitleSetRef = { current: new Set() };
   const blockRefs = { current: blockRefsMap };
   const editorRef = { current: editorEl };
   const focusBlockId = { current: null };
@@ -140,6 +142,7 @@ function setup(blocks, noteId = "note-1") {
 
   const deps = {
     noteDataRef,
+    noteTitleSetRef,
     activeNote: noteId,
     commitNoteData,
     commitTextChange,
@@ -423,6 +426,168 @@ describe("useEditorHandlers", () => {
       document.execCommand = originalExecCommand;
     });
 
+    function makeBlockPasteEvent(text, boojyBlocks) {
+      const e = new Event("paste", { bubbles: true, cancelable: true });
+      e.clipboardData = {
+        getData: (type) => {
+          if (type === "text/plain") return text;
+          if (type === "text/boojy-blocks") return boojyBlocks ? JSON.stringify(boojyBlocks) : "";
+          return "";
+        },
+        setData: vi.fn(),
+        files: [],
+      };
+      e.preventDefault = vi.fn();
+      return e;
+    }
+
+    it("treats a single terminal line ending as incidental and pastes inline", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+      const originalExecCommand = document.execCommand;
+      document.execCommand = vi.fn();
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("Buy milk\n"));
+      });
+
+      expect(document.execCommand).toHaveBeenCalledWith("insertText", false, "Buy milk");
+      expect(s.commitNoteData).not.toHaveBeenCalled();
+      document.execCommand = originalExecCommand;
+    });
+
+    it("multi-line plain text into an empty checkbox keeps the checkbox", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("line one\nline two\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
+        ["checkbox", "line one", false],
+        ["p", "line two", undefined],
+      ]);
+      expect(s.focusBlockId.current).toBe(blocks[1].id);
+    });
+
+    it("multi-line CRLF text at the start of a filled checkbox keeps it a checkbox", () => {
+      const s = setup([checkbox("Task", true)]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("one\r\ntwo\r\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
+        ["checkbox", "one", true],
+        ["p", "twoTask", undefined],
+      ]);
+    });
+
+    it("a whole paragraph copied inside the app keeps the destination checkbox", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(
+          makeBlockPasteEvent("copied line", [{ type: "p", text: "copied line", fullBlock: true }]),
+        );
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks).toEqual([
+        { id: blocks[0].id, type: "checkbox", text: "copied line", checked: false },
+      ]);
+    });
+
+    it("structure copied inside the app goes in front of a populated checkbox", () => {
+      const s = setup([checkbox("Task")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(
+          makeBlockPasteEvent("Head", [{ type: "h1", text: "Head", fullBlock: true }]),
+        );
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text])).toEqual([
+        ["h1", "Head"],
+        ["checkbox", "Task"],
+      ]);
+    });
+
+    it("a single structured Markdown line takes over an empty block", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("## Title\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks).toEqual([{ id: blocks[0].id, type: "h2", text: "Title" }]);
+    });
+
+    it("a single structured Markdown line pastes inline into a populated block", () => {
+      const s = setup([checkbox("Task")]);
+      s.placeCursorInBlock(0, 4);
+      const originalExecCommand = document.execCommand;
+      document.execCommand = vi.fn();
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("## Title"));
+      });
+
+      expect(document.execCommand).toHaveBeenCalledWith("insertText", false, "## Title");
+      expect(s.commitNoteData).not.toHaveBeenCalled();
+      document.execCommand = originalExecCommand;
+    });
+
+    it("repaints the page when a paste keeps the block's id and type", () => {
+      // State alone is not enough: the editor skips text-only renders.
+      const s = setup([numbered("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(
+          makeBlockPasteEvent("item", [
+            { type: "numbered", text: "item", fullBlock: true },
+            { type: "numbered", text: "next", fullBlock: true },
+          ]),
+        );
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text])).toEqual([
+        ["numbered", "item"],
+        ["numbered", "next"],
+      ]);
+      expect(s.blockRefs.current[blocks[0].id].innerHTML).toBe("item");
+    });
+
+    it("structure at the start of a populated block goes in front and leaves it painted", () => {
+      const s = setup([paragraph("keep")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("## Head\nmore"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text])).toEqual([
+        ["h2", "Head"],
+        ["p", "more"],
+        ["p", "keep"],
+      ]);
+      expect(s.blockRefs.current[blocks[2].id].innerHTML).toBe("keep");
+      expect(s.focusBlockId.current).toBe(blocks[2].id);
+      expect(s.focusCursorPos.current).toBe(0);
+    });
+
     it("handles image file paste by calling saveAndInsertImage", () => {
       const blocks = [paragraph("hello")];
       const s = setup(blocks);
@@ -443,6 +608,63 @@ describe("useEditorHandlers", () => {
 
       expect(e.preventDefault).toHaveBeenCalled();
       expect(s.saveAndInsertImage).toHaveBeenCalledWith(s.noteId, 0, imageFile);
+    });
+  });
+
+  describe("handleEditorCopy", () => {
+    function selectAcross(s, startBlock, startOffset, endBlock, endOffset) {
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      const startEl = s.blockRefs.current[blocks[startBlock].id];
+      const endEl = s.blockRefs.current[blocks[endBlock].id];
+      const range = document.createRange();
+      range.setStart(startEl.firstChild, startOffset);
+      range.setEnd(endEl.firstChild, endOffset);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    function makeCopyEvent() {
+      const e = new Event("copy", { bubbles: true, cancelable: true });
+      e.clipboardData = { setData: vi.fn() };
+      e.preventDefault = vi.fn();
+      return e;
+    }
+    const formats = (e) => e.clipboardData.setData.mock.calls.map((c) => c[0]);
+
+    it("a selection inside one block copies as text, not as a block", () => {
+      const s = setup([numbered("im testing"), paragraph("after")]);
+      selectAcross(s, 0, 0, 0, "im testing".length);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(e.clipboardData.setData).toHaveBeenCalledWith("text/plain", "im testing");
+      expect(formats(e)).not.toContain("text/boojy-blocks");
+    });
+
+    it("a triple-click that ends at the start of the next block is still one block", () => {
+      const s = setup([numbered("im testing"), paragraph("after")]);
+      selectAcross(s, 0, 0, 1, 0);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(formats(e)).not.toContain("text/boojy-blocks");
+    });
+
+    it("a selection spanning two blocks carries their structure", () => {
+      const s = setup([numbered("one"), numbered("two")]);
+      selectAcross(s, 0, 0, 1, 3);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      const call = e.clipboardData.setData.mock.calls.find((c) => c[0] === "text/boojy-blocks");
+      expect(call).toBeDefined();
+      expect(JSON.parse(call[1])).toEqual([
+        { type: "numbered", text: "one", fullBlock: true },
+        { type: "numbered", text: "two", fullBlock: true },
+      ]);
     });
   });
 
