@@ -4,6 +4,11 @@ Boojy Notes is a desktop (Electron) editor for Markdown files you own. The web b
 (`pnpm dev:web`) is a development and test surface, not the product. Read files directly when
 needed; do not ask before reading.
 
+Naming: **Boojy** is the wider suite of creative and productivity tools; this repository and
+product is **Boojy Notes**. Use the full product name in documentation and product-facing
+prose (then "the app" or "it"), and reserve "Boojy" alone for the suite. Identifiers, stored
+keys, filenames and URLs stay as they are.
+
 Suite-wide process (branch discipline, changelog and release skeleton, working preferences)
 lives in the suite root's `AGENTS.md` (`~/Documents/Projects/boojy/AGENTS.md`). This file is
 the map: stack, layout, the invariants, the editor traps, and where the detailed rules live.
@@ -12,7 +17,7 @@ the map: stack, layout, the invariants, the editor traps, and where the detailed
 
 | Question | File |
 | --- | --- |
-| What is Boojy, how do I run it | `README.md` |
+| What is Boojy Notes, how do I run it | `README.md` |
 | What may exist: blocks, syntax support levels, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
 | What is left to do, what is known-broken | `docs/BACKLOG.md` |
 | What shipped, and what was removed | `CHANGELOG.md` |

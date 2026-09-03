@@ -16,7 +16,7 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
   light flash at launch. Wiring the saved theme back to the main process is the fix if it ever
   grates.
 - The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
-  Boojy's cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
+  Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
 - The star field (`StarField.jsx`, `starField` on each theme) is leaving the product in its
   own branch; don't extend it.
 
@@ -103,7 +103,7 @@ mixed sizes and strokes is what made the UI read as assembled.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
-- **Delete follows the platform.** Electron sends Boojy-managed `.md` files to the OS Trash;
+- **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
   web deletion is permanent behind confirmation. Folder deletion never touches the physical
   folder, so unsupported sibling files stay put. The retired private `.trash` gets one
   conservative startup migration into the OS Trash: recognised notes are copied under
@@ -199,7 +199,7 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   when a vault's IDs regenerate; mtime carries the order meanwhile. Notes with neither
   timestamp sort alphabetically at the back.
 - A pure `touch` with no content change does not refresh the order (`onFileChanged` bails when
-  nothing differs; deliberate anti-churn). Boojy's own writes don't refresh it and needn't.
+  nothing differs; deliberate anti-churn). The app's own writes don't refresh it and needn't.
 - **Every site that makes a note active must stamp recency** (`openNote`, and note creation
   and duplication in `useNoteCrud`), or the note sorts into the never-opened tail.
 - `useNoteSort` prunes against the live note store when it writes. **Its empty-store guard is
@@ -274,7 +274,7 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 
 ## Narrow desktop is still desktop
 
-**Width changes how much room Boojy has, not what Boojy is.** The mobile navigation model is a
+**Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
 touch-device thing, not a width thing. Three separate questions drive layout: is this a touch
 device (`useIsMobile.ts`, misnamed; rename in the backlog), does the sidebar fit
 (`useSidebarFits.ts`), is the sidebar open. On a narrow desktop window the sidebar floats over

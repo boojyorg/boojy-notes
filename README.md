@@ -14,7 +14,7 @@ have in those files (wikilinks, tags, callouts, frontmatter) is understood quiet
 shows up when you reach for it.
 
 One promise sits under all of it: editing part of a file must not rewrite the rest of it.
-Syntax Boojy doesn't understand is preserved, never "cleaned up", which is what makes it safe
+Syntax the app doesn't understand is preserved, never "cleaned up", which is what makes it safe
 to use on a folder you care about. The full contract is in
 [docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
 

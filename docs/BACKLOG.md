@@ -1,7 +1,7 @@
 # Boojy Notes — Backlog
 
 What is left to do and what is known to be broken. Shipped work goes in `CHANGELOG.md`, never
-here. The product philosophy that shapes this list: finish Beta, daily-drive Boojy, and let
+here. The product philosophy that shapes this list: finish Beta, daily-drive Boojy Notes, and let
 observed friction decide what deserves to exist next. Nothing is added because it sounds
 plausible.
 
