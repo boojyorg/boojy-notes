@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixes
+- **Desktop: caret no longer jumps to the top of the note, and keystrokes are no longer lost, mid-typing** — Every save Boojy made was echoed back by the file watcher, and the "ignore my own write" window was a separate timer per save on one shared list, so two saves landing 1.15–1.5s apart (a normal pause-type-pause rhythm) let the second echo through. Boojy then treated its own file as an external edit, rebuilt the note from disk, dropped the caret at the start of the first block and discarded anything typed since that save. The window is now one timer per file, reset by each write.
+
 ### Removed
 - **Cloud sync and sign-in** — Boojy is fully local for now. The dormant Supabase auth/client,
   R2-backed Edge Functions, realtime and cross-tab sync engine, conflict/first-sync UI, backend
