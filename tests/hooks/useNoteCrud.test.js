@@ -110,7 +110,7 @@ describe("useNoteCrud", () => {
       expect(markOpened).toHaveBeenCalledWith("note-1");
     });
 
-    it("creates a note with folder and sets folder and path correctly", () => {
+    it("creates a note inside the given folder", () => {
       const { result, getNoteData } = setup();
 
       act(() => {
@@ -120,7 +120,6 @@ describe("useNoteCrud", () => {
       const data = getNoteData();
       const noteId = "note-1";
       expect(data[noteId].folder).toBe("Projects/Work");
-      expect(data[noteId].path).toEqual(["Projects", "Work", "My Note"]);
       expect(data[noteId].title).toBe("My Note");
     });
   });

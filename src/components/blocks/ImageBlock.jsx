@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
-import { resolveAttachmentUrl, resolveAttachmentUrlSync } from "../../utils/attachmentUrl";
+import { resolveAttachmentUrl } from "../../utils/attachmentUrl";
 
 function ImageBlock({
   src,
@@ -25,15 +25,7 @@ function ImageBlock({
   const dragRef = useRef(null);
   const justDragged = useRef(false);
 
-  const [resolvedSrc, setResolvedSrc] = useState(() => {
-    if (!src) return "";
-    const sync = resolveAttachmentUrlSync(src);
-    return sync || "";
-  });
-  useEffect(() => {
-    if (!src || src.startsWith("data:")) return;
-    resolveAttachmentUrl(src).then(setResolvedSrc);
-  }, [src]);
+  const resolvedSrc = src ? resolveAttachmentUrl(src) : "";
 
   const [ctxMenu, setCtxMenu] = useState(null);
 

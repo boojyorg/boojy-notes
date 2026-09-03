@@ -26,14 +26,11 @@ export function useNoteCrud({
     const id = genNoteId();
     const firstBlockId = genBlockId();
     const noteTitle = title || "Untitled";
-    const pathParts = folder ? [...folder.split("/"), noteTitle] : undefined;
     const newNote = {
       id,
       title: noteTitle,
       folder,
-      path: pathParts,
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
-      words: 0,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
     open(id);
@@ -108,12 +105,7 @@ export function useNoteCrud({
       const next = { ...prev };
       for (const [id, n] of Object.entries(next)) {
         if (n.folder && (n.folder === oldPath || n.folder.startsWith(oldPath + "/"))) {
-          const updated = { ...n, folder: n.folder.replace(oldPath, newPath) };
-          if (updated.path) {
-            const oldLast = oldPath.split("/").pop();
-            updated.path = updated.path.map((s) => (s === oldLast ? newName : s));
-          }
-          next[id] = updated;
+          next[id] = { ...n, folder: n.folder.replace(oldPath, newPath) };
         }
       }
       return next;
@@ -168,7 +160,6 @@ export function useNoteCrud({
       title: "",
       folder: null,
       content: { title: "", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
-      words: 0,
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));

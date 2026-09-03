@@ -173,8 +173,6 @@ function parseNoteFile(filePath, notesDir) {
     _idIndex[id] = relPath;
 
     const blocks = markdownToBlocks(body);
-    const text = blocks.map((b) => b.text || "").join(" ");
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
     // Remember a CRLF file's line-ending style so saves re-apply it
     // (write-note → applyEol). LF files carry no field.
@@ -187,7 +185,6 @@ function parseNoteFile(filePath, notesDir) {
       title,
       folder,
       content,
-      words,
       // File mtime, which is what makes "Most recent" mean anything on a vault
       // whose notes all predate Boojy's own last-opened timestamps — and what
       // lets an edit made in another app count as recent activity. Declared in

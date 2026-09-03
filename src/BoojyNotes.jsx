@@ -9,7 +9,7 @@ import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
-import { useInlineFormatting } from "./hooks/useInlineFormatting";
+import { EMPTY_FORMATS, useInlineFormatting } from "./hooks/useInlineFormatting";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
@@ -48,15 +48,6 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
-
-const EMPTY_FORMATS = {
-  bold: false,
-  italic: false,
-  code: false,
-  link: false,
-  strikethrough: false,
-  highlight: false,
-};
 
 export default function BoojyNotes() {
   const { theme } = useTheme();

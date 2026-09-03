@@ -2,6 +2,16 @@ import { useCallback, useRef } from "react";
 import { getBlockFromNode } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
+/** No inline format active — what the toolbars show when there is no selection. */
+export const EMPTY_FORMATS = {
+  bold: false,
+  italic: false,
+  code: false,
+  link: false,
+  strikethrough: false,
+  highlight: false,
+};
+
 export function useInlineFormatting({
   blockRefs,
   editorRef,
@@ -206,15 +216,7 @@ export function useInlineFormatting({
 
   const detectActiveFormats = useCallback(() => {
     const sel = window.getSelection();
-    if (!sel.rangeCount)
-      return {
-        bold: false,
-        italic: false,
-        code: false,
-        link: false,
-        strikethrough: false,
-        highlight: false,
-      };
+    if (!sel.rangeCount) return EMPTY_FORMATS;
     const isFormatActive = (tags) => {
       let node = sel.anchorNode;
       while (node && node !== editorRef.current) {

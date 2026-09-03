@@ -7,7 +7,7 @@ interface ToastProps {
   message: string;
   type?: "error" | "warning" | "info";
   onDismiss: () => void;
-  theme?: ToastTheme;
+  theme: ToastTheme;
 }
 
 function toRgba(hex: string, alpha: number): string {
@@ -17,14 +17,7 @@ function toRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const FALLBACK_COLORS: Record<string, { bg: string; border: string }> = {
-  error: { bg: "rgba(220, 60, 60, 0.92)", border: "#dc3c3c" },
-  warning: { bg: "rgba(200, 150, 30, 0.92)", border: "#c89620" },
-  info: { bg: "rgba(74, 108, 247, 0.92)", border: "#4a6cf7" },
-};
-
-function getColors(type: string, theme?: ToastTheme): { bg: string; border: string } {
-  if (!theme) return FALLBACK_COLORS[type] || FALLBACK_COLORS.error;
+function getColors(type: string, theme: ToastTheme): { bg: string; border: string } {
   if (type === "error")
     return { bg: toRgba(theme.SEMANTIC.error, 0.92), border: theme.SEMANTIC.error };
   if (type === "warning")

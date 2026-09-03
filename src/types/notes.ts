@@ -109,10 +109,7 @@ export interface Note {
   id?: string;
   title: string;
   folder?: string | null;
-  path?: string[] | null;
   content: NoteContent;
-  /** Word count computed by the desktop loader. */
-  words?: number;
   lastModified?: number;
   _draft?: boolean;
 }
