@@ -80,14 +80,6 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
               return [...merged];
             });
           }
-        } else {
-          // Disk is empty — migrate localStorage notes to disk (one-time)
-          const current = noteDataRef.current;
-          if (Object.keys(current).length > 0) {
-            for (const note of Object.values(current)) {
-              await api.writeNote(note);
-            }
-          }
         }
       } catch (err) {
         console.error("useFileSystem: initial load failed", err);

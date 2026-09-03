@@ -29,7 +29,6 @@ export function useSidebarDrag({
     startY: 0,
     dropTarget: null,
     scrollRAF: null,
-    originalFolder: null,
   });
 
   const activateSidebarDrag = (type, id, el, pointerY) => {
@@ -124,10 +123,6 @@ export function useSidebarDrag({
     sd.startY = pointerY;
     sd.offsetY = pointerY - rect.top;
     sd.offsetX = sd.startX - rect.left;
-
-    if (type === "note") {
-      sd.originalFolder = noteDataRef.current[id]?.folder || null;
-    }
 
     // Escape handler to cancel drag
     const escHandler = (e) => {
@@ -303,7 +298,6 @@ export function useSidebarDrag({
     sd.cloneEl = null;
     sd.holdTimer = null;
     sd.dropTarget = null;
-    sd.originalFolder = null;
     sd._updatePointerY = null;
     if (sd.moveHandler) window.removeEventListener("pointermove", sd.moveHandler);
     if (sd.upHandler) window.removeEventListener("pointerup", sd.upHandler);
@@ -316,22 +310,6 @@ export function useSidebarDrag({
     if (sd.holdTimer) {
       clearTimeout(sd.holdTimer);
       sd.holdTimer = null;
-    }
-    if (!sd.active) {
-      cleanupSidebarDrag();
-      return;
-    }
-    if (sd.type === "note" && sd.originalFolder !== undefined) {
-      const noteId = sd.id;
-      const origFolder = sd.originalFolder;
-      setNoteData((prev) => {
-        if (prev[noteId]?.folder !== origFolder) {
-          const next = { ...prev };
-          next[noteId] = { ...next[noteId], folder: origFolder };
-          return next;
-        }
-        return prev;
-      });
     }
     cleanupSidebarDrag();
   };
