@@ -148,7 +148,6 @@ export default function BoojyNotes() {
 
   const { activeHint, dismissHint } = useOnboardingHints({
     noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
-    isMobile,
     isEditorFocused: !!activeNote,
   });
 

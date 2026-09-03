@@ -6,7 +6,6 @@ const HINTS = [
   { id: "slash-commands", text: "Type / for commands" },
   { id: "wikilinks", text: "Try [[ to link notes", minNotes: 2 },
   { id: "tags", text: "Use #tags to organise", minNotes: 3 },
-  { id: "swipe-nav", text: "Swipe right for notes", mobileOnly: true },
 ];
 
 function loadSeen() {
@@ -18,7 +17,7 @@ function loadSeen() {
   }
 }
 
-export default function useOnboardingHints({ noteCount, isMobile, isEditorFocused }) {
+export default function useOnboardingHints({ noteCount, isEditorFocused }) {
   const [seen, setSeen] = useState(loadSeen);
   const [activeHint, setActiveHint] = useState(null);
   const timerRef = useRef(null);
@@ -36,13 +35,11 @@ export default function useOnboardingHints({ noteCount, isMobile, isEditorFocuse
     const hint = HINTS.find((h) => {
       if (seen.includes(h.id)) return false;
       if (h.minNotes && noteCount < h.minNotes) return false;
-      if (h.mobileOnly && !isMobile) return false;
-      if (h.desktopOnly && isMobile) return false;
       return true;
     });
 
     setActiveHint(hint || null);
-  }, [shouldShow, seen, noteCount, isMobile]);
+  }, [shouldShow, seen, noteCount]);
 
   // Auto-dismiss after 8 seconds
   useEffect(() => {
