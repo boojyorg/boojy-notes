@@ -886,6 +886,7 @@ export default function BoojyNotes() {
               backlinks={currentBacklinks}
               onWikilinkClick={handleWikilinkClick}
               onWikilinkCmdClick={handleWikilinkCmdClick}
+              onTagClick={handleTagClick}
               onOpenBacklink={openNote}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}

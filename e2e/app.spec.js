@@ -46,6 +46,23 @@ test.describe("Boojy Notes", () => {
     await expect(title).toBeVisible({ timeout: 5000 });
   });
 
+  test("clicking an inline #tag filters the sidebar search", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector("[data-editor]", { timeout: 10000 });
+    const block = page.locator("[data-editor] [data-block-id]").first();
+    await block.click();
+    await page.keyboard.type("#alpha");
+    // Tags are painted as spans when the block DOM re-syncs; Enter (a new
+    // block) triggers that.
+    await page.keyboard.press("Enter");
+    const tag = page.locator("[data-editor] .inline-tag").first();
+    await expect(tag).toBeVisible({ timeout: 5000 });
+    await tag.click();
+    await expect(page.locator('input[aria-label="Search notes"]')).toHaveValue("#alpha", {
+      timeout: 5000,
+    });
+  });
+
   test("no critical accessibility violations", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("[data-editor]", { timeout: 10000 });
