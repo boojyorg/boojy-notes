@@ -3,7 +3,15 @@ import { watch } from "chokidar";
 import { parseNoteFile, saveIndex } from "./noteFileManager.js";
 
 let watcher = null;
-const ignoredPaths = new Set();
+// Our own writes echo back through chokidar ~350ms later (awaitWriteFinish).
+// Each write is suppressed for a window measured from the LATEST write to
+// that path: one timer per path, reset on every write. The old version kept
+// one timer per WRITE on a shared Set, so the first write's timer expired and
+// un-suppressed a path a later write still depended on — any two saves
+// 1.15–1.5s apart let the second echo through, and the renderer then rebuilt
+// the note from disk (caret to the top, keystrokes since the write lost).
+const WRITE_SUPPRESS_MS = 1500;
+const ignoredPaths = new Map();
 // Unlink suppression is consumed by the event itself, not a fixed timer:
 // shell.trashItem() latency is OS-mediated and unbounded (cloud sync, AV
 // scans), so a timer that expires before the unlink arrives would let our own
@@ -33,7 +41,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   watcher.on("change", (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (ignoredPaths.has(filePath)) return;
+    if (isWriteSuppressed(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
@@ -44,7 +52,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   watcher.on("add", (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (ignoredPaths.has(filePath)) return;
+    if (isWriteSuppressed(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
@@ -56,17 +64,26 @@ function startWatcher(getNotesDir, getMainWindow) {
   watcher.on("unlink", (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (releaseUnlinkSuppression(filePath)) return;
-    if (ignoredPaths.has(filePath)) return;
+    if (isWriteSuppressed(filePath)) return;
     getMainWindow()?.webContents.send("file-deleted", { filePath });
   });
 }
 
 /**
- * Temporarily suppress watcher events for a given file path (e.g. after a write).
+ * Suppress watcher events for a file we are about to write. Re-arming a path
+ * that is already suppressed extends its window from now — it never shortens it.
  */
 function suppressWatcher(filePath) {
-  ignoredPaths.add(filePath);
-  setTimeout(() => ignoredPaths.delete(filePath), 1500);
+  clearTimeout(ignoredPaths.get(filePath));
+  ignoredPaths.set(
+    filePath,
+    setTimeout(() => ignoredPaths.delete(filePath), WRITE_SUPPRESS_MS),
+  );
+}
+
+/** Whether a path is inside its own-write suppression window. */
+function isWriteSuppressed(filePath) {
+  return ignoredPaths.has(filePath);
 }
 
 /**
@@ -100,6 +117,7 @@ function closeWatcher() {
 export {
   startWatcher,
   suppressWatcher,
+  isWriteSuppressed,
   suppressNextUnlink,
   releaseUnlinkSuppression,
   closeWatcher,

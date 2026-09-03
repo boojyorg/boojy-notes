@@ -5,9 +5,8 @@ vi.mock("electron", () => ({
   ipcMain: { handle: vi.fn() },
 }));
 
-const { suppressNextUnlink, releaseUnlinkSuppression } = await import(
-  "../../electron/fileWatcher.js"
-);
+const { suppressNextUnlink, releaseUnlinkSuppression, suppressWatcher, isWriteSuppressed } =
+  await import("../../electron/fileWatcher.js");
 
 // The unlink suppression must be consumed by the event (or an explicit
 // release), NOT a short fixed timer — shell.trashItem() latency is unbounded,
@@ -43,5 +42,56 @@ describe("unlink suppression", () => {
     vi.advanceTimersByTime(60_000);
 
     expect(releaseUnlinkSuppression("/notes/Never-deleted.md")).toBe(false);
+  });
+});
+
+// Write suppression is one resettable timer per PATH, not one timer per write.
+// With per-write timers on a shared set, the first write's timer expired and
+// un-suppressed a path a later write still relied on: two saves 1.15–1.5s apart
+// let the second echo through, and the renderer rebuilt the note from disk —
+// caret to the top of the note, keystrokes since the write lost (2026-09-03).
+describe("write suppression", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("expires 1500ms after a lone write", () => {
+    suppressWatcher("/notes/Note.md");
+
+    vi.advanceTimersByTime(1499);
+    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
+
+    vi.advanceTimersByTime(1);
+    expect(isWriteSuppressed("/notes/Note.md")).toBe(false);
+  });
+
+  it("keeps a path suppressed for the full window after the LATEST write", () => {
+    suppressWatcher("/notes/Note.md");
+    vi.advanceTimersByTime(1300);
+    suppressWatcher("/notes/Note.md");
+
+    // The first write's window would have ended here; the echo of the second
+    // write lands ~350ms after it, i.e. right inside this gap
+    vi.advanceTimersByTime(350);
+    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
+
+    vi.advanceTimersByTime(1149);
+    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(isWriteSuppressed("/notes/Note.md")).toBe(false);
+  });
+
+  it("tracks paths independently", () => {
+    suppressWatcher("/notes/A.md");
+    vi.advanceTimersByTime(1000);
+    suppressWatcher("/notes/B.md");
+    vi.advanceTimersByTime(600);
+
+    expect(isWriteSuppressed("/notes/A.md")).toBe(false);
+    expect(isWriteSuppressed("/notes/B.md")).toBe(true);
   });
 });
