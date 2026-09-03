@@ -59,6 +59,10 @@ related per-pane state items with them.
   2026-08-19 while auditing the E2E suite; not urgent now that the whole job runs in 1m33s.
 
 ## Bugs / QoL
+- [ ] **Desktop empty folders exist only in memory** — a folder with no notes has no directory on
+  disk, so it vanishes on restart or after an external delete. Product decision deliberately
+  left unresolved in the 2026-09-03 correctness pass (create the directory eagerly vs accept
+  folders as a view of where notes are); don't pick semantics without Tyr.
 - [ ] Orphaned onboarding hint bubble — the "Type / for commands" tooltip floats detached
   top-center of the editor, not anchored to anything (interactive-only find; reposition/anchor it).
 - [ ] `markdownToBlocks` global ID counter — module-global `_parseBlockId` mints new block IDs on

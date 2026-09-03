@@ -1,13 +1,16 @@
 # Current target
 
-**Consolidate the current simplification pass without expanding the product.**
-
-- [x] Fix stale onboarding, error-theme tokens and the Settings update switch.
-- [x] Remove the settled design overlay and runtime experiment plumbing.
-- [x] Prune dead sync, split-view, theme and style residue.
-- [ ] Introduce a narrow shared grammar for recurring menus and buttons.
-- [ ] Decompose large components only where a stable seam is already clear.
+**None active.** The correctness/simplification pass merged as PR #92 on 2026-09-03: eight
+correctness fixes (stale-closure editor handlers, tag click, attachment size guard, crash backup,
+onboarding copy, font-size persistence), then pure deletion of retired-feature residue, then two
+test-first consolidations (sidebar tag chips / mobile rows, slash-command block insertion). Net
+−283 source lines, gates green. The earlier "shared grammar for menus/buttons" and "decompose
+large components" items were deliberately closed rather than pursued — no further refactor
+targets are being sought.
 
 ## Next
 
-- Continue the reliability and Markdown-preservation backlog before adding product surface.
+- Nothing until friction is observed in daily use (standing instruction).
+- When a release is wanted: the desktop daily-driver build does not pick up master on its own —
+  rebuild or cut a `v*` tag; `CHANGELOG.md` Unreleased already holds the notes.
+- Unresolved on purpose: desktop empty folders live only in memory (see `docs/BACKLOG.md`).
