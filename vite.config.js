@@ -10,10 +10,7 @@ export default defineConfig({
       ? []
       : [
           electron([
-            {
-              entry: "electron/main.js",
-              vite: { build: { rollupOptions: { external: ["node-pty"] } } },
-            },
+            { entry: "electron/main.js" },
             {
               entry: "electron/preload.js",
               onstart(args) {
