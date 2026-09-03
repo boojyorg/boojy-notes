@@ -620,11 +620,7 @@ describe("Sidebar tag chips", () => {
   });
 
   it("shows All Tags for a bare # with no results, and filters by the typed prefix", () => {
-    const {
-      getByText,
-      queryByText,
-      rerender: _r,
-    } = renderSidebar({
+    const { getByText, queryByText } = renderSidebar({
       searchMode: true,
       search: "#",
       searchResults: emptySearchResults,
