@@ -4,7 +4,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useHistory } from "../../src/hooks/useHistory.js";
-import { makeNoteData, paragraph } from "../mocks/blocks.js";
+import { makeNoteData, paragraph, checkbox } from "../mocks/blocks.js";
+import { buildPastedBlocks } from "../../src/utils/pasteBlocks";
 
 const NOTE_ID = "note-1";
 
@@ -283,6 +284,35 @@ describe("useHistory", () => {
       const lastCall = setNoteData.mock.calls[setNoteData.mock.calls.length - 1][0];
       // lastCall is either a function updater or an object
       expect(typeof lastCall === "function" || typeof lastCall === "object").toBe(true);
+    });
+
+    it("one undo restores the note after a multi-line paste", async () => {
+      const original = [checkbox("Task", true)];
+      const { result, getNoteData } = setup(original);
+      let n = 0;
+
+      act(() => {
+        result.current.commitNoteData((prev) => {
+          const note = prev[NOTE_ID];
+          const { blocks } = buildPastedBlocks(
+            note.content.blocks[0],
+            [
+              { type: "p", text: "one" },
+              { type: "p", text: "two" },
+            ],
+            "",
+            "Task",
+            () => `new-${++n}`,
+          );
+          return { ...prev, [NOTE_ID]: { ...note, content: { ...note.content, blocks } } };
+        });
+      });
+      await act(() => flushMicrotasks());
+      expect(getNoteData()[NOTE_ID].content.blocks).toHaveLength(2);
+
+      act(() => result.current.undo());
+
+      expect(getNoteData()[NOTE_ID].content.blocks).toEqual(original);
     });
 
     it("does nothing when undo stack is empty", () => {

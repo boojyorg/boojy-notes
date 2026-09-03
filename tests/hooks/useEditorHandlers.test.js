@@ -423,6 +423,127 @@ describe("useEditorHandlers", () => {
       document.execCommand = originalExecCommand;
     });
 
+    function makeBlockPasteEvent(text, boojyBlocks) {
+      const e = new Event("paste", { bubbles: true, cancelable: true });
+      e.clipboardData = {
+        getData: (type) => {
+          if (type === "text/plain") return text;
+          if (type === "text/boojy-blocks") return boojyBlocks ? JSON.stringify(boojyBlocks) : "";
+          return "";
+        },
+        setData: vi.fn(),
+        files: [],
+      };
+      e.preventDefault = vi.fn();
+      return e;
+    }
+
+    it("treats a single terminal line ending as incidental and pastes inline", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+      const originalExecCommand = document.execCommand;
+      document.execCommand = vi.fn();
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("Buy milk\n"));
+      });
+
+      expect(document.execCommand).toHaveBeenCalledWith("insertText", false, "Buy milk");
+      expect(s.commitNoteData).not.toHaveBeenCalled();
+      document.execCommand = originalExecCommand;
+    });
+
+    it("multi-line plain text into an empty checkbox keeps the checkbox", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("line one\nline two\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
+        ["checkbox", "line one", false],
+        ["p", "line two", undefined],
+      ]);
+      expect(s.focusBlockId.current).toBe(blocks[1].id);
+    });
+
+    it("multi-line CRLF text at the start of a filled checkbox keeps it a checkbox", () => {
+      const s = setup([checkbox("Task", true)]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("one\r\ntwo\r\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
+        ["checkbox", "one", true],
+        ["p", "twoTask", undefined],
+      ]);
+    });
+
+    it("a whole paragraph copied inside the app keeps the destination checkbox", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(
+          makeBlockPasteEvent("copied line", [{ type: "p", text: "copied line", fullBlock: true }]),
+        );
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks).toEqual([
+        { id: blocks[0].id, type: "checkbox", text: "copied line", checked: false },
+      ]);
+    });
+
+    it("structure copied inside the app goes in front of a populated checkbox", () => {
+      const s = setup([checkbox("Task")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(
+          makeBlockPasteEvent("Head", [{ type: "h1", text: "Head", fullBlock: true }]),
+        );
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text])).toEqual([
+        ["h1", "Head"],
+        ["checkbox", "Task"],
+      ]);
+    });
+
+    it("a single structured Markdown line takes over an empty block", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("## Title\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks).toEqual([{ id: blocks[0].id, type: "h2", text: "Title" }]);
+    });
+
+    it("a single structured Markdown line pastes inline into a populated block", () => {
+      const s = setup([checkbox("Task")]);
+      s.placeCursorInBlock(0, 4);
+      const originalExecCommand = document.execCommand;
+      document.execCommand = vi.fn();
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("## Title"));
+      });
+
+      expect(document.execCommand).toHaveBeenCalledWith("insertText", false, "## Title");
+      expect(s.commitNoteData).not.toHaveBeenCalled();
+      document.execCommand = originalExecCommand;
+    });
+
     it("handles image file paste by calling saveAndInsertImage", () => {
       const blocks = [paragraph("hello")];
       const s = setup(blocks);
