@@ -212,6 +212,103 @@ function SectionAction({ onClick, title, ariaLabel, active, children, ...rest })
   );
 }
 
+/** Small-caps heading used by the search views ("Tags", "Notes"). */
+const SEARCH_HEADING = {
+  fontSize: 11,
+  fontWeight: 500,
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
+/**
+ * Tag chips for a `#` search, under a heading; `children` lands inside the
+ * same padded block (the results view appends its "Notes" heading there).
+ */
+function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }) {
+  return (
+    <div style={{ padding: "4px 14px 8px" }}>
+      <div style={{ ...SEARCH_HEADING, color: TEXT.muted, marginBottom: 6 }}>{title}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {tags.slice(0, limit).map((t) => (
+          <button
+            key={t.tag}
+            onClick={() => onPick(t.tag)}
+            style={{
+              background: `${ACCENT.primary}15`,
+              color: ACCENT.primary,
+              border: "none",
+              borderRadius: 10,
+              padding: "2px 8px",
+              fontSize: 11,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${ACCENT.primary}30`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = `${ACCENT.primary}15`;
+            }}
+          >
+            <span>#{t.tag}</span>
+            <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
+          </button>
+        ))}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Mobile's inline "+ New Folder" / "+ New Note" tree rows. Desktop moved both
+ * actions into headers; mobile keeps them as quiet rows at the foot of each
+ * group, with the note row indented under the folder rows.
+ */
+function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, accentColor }) {
+  return (
+    <button
+      onClick={onClick}
+      role="treeitem"
+      style={{
+        width: "100%",
+        border: "none",
+        cursor: "pointer",
+        background: "transparent",
+        borderLeft,
+        padding: `12px 16px 12px ${paddingLeft}px`,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        color: TEXT.secondary,
+        fontSize: 17,
+        fontFamily: "inherit",
+        fontWeight: 500,
+        opacity: 0.55,
+        transition: "background 0.12s, color 0.12s, opacity 0.12s",
+        textAlign: "left",
+      }}
+      onMouseEnter={(e) => {
+        hBg(e.currentTarget, BG.elevated);
+        e.currentTarget.style.color = TEXT.primary;
+        e.currentTarget.style.opacity = "1";
+      }}
+      onMouseLeave={(e) => {
+        hBg(e.currentTarget, "transparent");
+        e.currentTarget.style.color = TEXT.secondary;
+        e.currentTarget.style.opacity = "0.55";
+      }}
+    >
+      <span style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}>+</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
 function ActionRow({ icon, label, onClick, title, TEXT, BG }) {
   return (
     <button
@@ -909,66 +1006,20 @@ const Sidebar = memo(function Sidebar({
         {searchMode && searchResults.results.length > 0 ? (
           <>
             {tagSuggestions && tagSuggestions.length > 0 && (
-              <div style={{ padding: "4px 14px 8px" }}>
+              <TagChips
+                title="Tags"
+                tags={tagSuggestions}
+                limit={20}
+                onPick={(tag) => setSearch(`#${tag}`)}
+                TEXT={TEXT}
+                ACCENT={ACCENT}
+              >
                 <div
-                  style={{
-                    fontSize: 11,
-                    color: TEXT.muted,
-                    fontWeight: 500,
-                    marginBottom: 6,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
+                  style={{ ...SEARCH_HEADING, color: TEXT.muted, marginTop: 10, marginBottom: 2 }}
                 >
-                  Tags
+                  Notes
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {tagSuggestions.slice(0, 20).map((t) => (
-                    <button
-                      key={t.tag}
-                      onClick={() => setSearch(`#${t.tag}`)}
-                      style={{
-                        background: `${ACCENT.primary}15`,
-                        color: ACCENT.primary,
-                        border: "none",
-                        borderRadius: 10,
-                        padding: "2px 8px",
-                        fontSize: 11,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        transition: "background 0.12s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = `${ACCENT.primary}30`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = `${ACCENT.primary}15`;
-                      }}
-                    >
-                      <span>#{t.tag}</span>
-                      <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
-                    </button>
-                  ))}
-                </div>
-                {searchResults.results.length > 0 && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: TEXT.muted,
-                      fontWeight: 500,
-                      marginTop: 10,
-                      marginBottom: 2,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Notes
-                  </div>
-                )}
-              </div>
+              </TagChips>
             )}
             <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
               {searchResults.totalCount <= 20
@@ -1084,51 +1135,14 @@ const Sidebar = memo(function Sidebar({
           </>
         ) : searchMode && searchResults.results.length === 0 ? (
           tagSuggestions && tagSuggestions.length > 0 ? (
-            <div style={{ padding: "4px 14px 8px" }}>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: TEXT.muted,
-                  fontWeight: 500,
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                }}
-              >
-                {search === "#" ? "All Tags" : "Tags"}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {tagSuggestions.slice(0, 30).map((t) => (
-                  <button
-                    key={t.tag}
-                    onClick={() => setSearch(`#${t.tag}`)}
-                    style={{
-                      background: `${ACCENT.primary}15`,
-                      color: ACCENT.primary,
-                      border: "none",
-                      borderRadius: 10,
-                      padding: "2px 8px",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = `${ACCENT.primary}30`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = `${ACCENT.primary}15`;
-                    }}
-                  >
-                    <span>#{t.tag}</span>
-                    <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TagChips
+              title={search === "#" ? "All Tags" : "Tags"}
+              tags={tagSuggestions}
+              limit={30}
+              onPick={(tag) => setSearch(`#${tag}`)}
+              TEXT={TEXT}
+              ACCENT={ACCENT}
+            />
           ) : (
             <div
               style={{
@@ -1156,89 +1170,29 @@ const Sidebar = memo(function Sidebar({
                 <div style={{ height: 5 }} />
                 {filteredTree.map((f) => renderFolder(f, 0))}
                 {/* Desktop's New Folder moved up into the Folders header. */}
-                {!search && isMobile && (
-                  <button
+                {!search && (
+                  <MobileTreeAction
+                    label="New Folder"
                     onClick={createFolder}
-                    role="treeitem"
-                    style={{
-                      width: "100%",
-                      border: "none",
-                      cursor: "pointer",
-                      background: "transparent",
-                      padding: isMobile ? "12px 16px 12px 10px" : `4px 10px 4px 10px`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: isMobile ? 8 : 5,
-                      color: TEXT.secondary,
-                      fontSize: isMobile ? 17 : 14,
-                      fontFamily: "inherit",
-                      fontWeight: 500,
-                      opacity: 0.55,
-                      transition: "background 0.12s, color 0.12s, opacity 0.12s",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      hBg(e.currentTarget, BG.elevated);
-                      e.currentTarget.style.color = TEXT.primary;
-                      e.currentTarget.style.opacity = "1";
-                    }}
-                    onMouseLeave={(e) => {
-                      hBg(e.currentTarget, "transparent");
-                      e.currentTarget.style.color = TEXT.secondary;
-                      e.currentTarget.style.opacity = "0.55";
-                    }}
-                  >
-                    <span
-                      style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}
-                    >
-                      +
-                    </span>
-                    <span>New Folder</span>
-                  </button>
+                    paddingLeft={10}
+                    TEXT={TEXT}
+                    BG={BG}
+                    accentColor={accentColor}
+                  />
                 )}
                 {(filteredTree.length > 0 || fNotes.length > 0) && <div style={{ height: 16 }} />}
                 {fNotes.map((nId) => renderNote(nId, 0))}
                 {/* Desktop's New Note moved up into the primary action group. */}
-                {!search && isMobile && (
-                  <button
+                {!search && (
+                  <MobileTreeAction
+                    label="New Note"
                     onClick={() => createNote(null)}
-                    role="treeitem"
-                    style={{
-                      width: "100%",
-                      border: "none",
-                      cursor: "pointer",
-                      background: "transparent",
-                      borderLeft: "3px solid transparent",
-                      padding: `12px 16px 12px ${7 + 19}px`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: isMobile ? 8 : 5,
-                      color: TEXT.secondary,
-                      fontSize: isMobile ? 17 : 14,
-                      fontFamily: "inherit",
-                      fontWeight: 500,
-                      opacity: 0.55,
-                      transition: "background 0.12s, color 0.12s, opacity 0.12s",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      hBg(e.currentTarget, BG.elevated);
-                      e.currentTarget.style.color = TEXT.primary;
-                      e.currentTarget.style.opacity = "1";
-                    }}
-                    onMouseLeave={(e) => {
-                      hBg(e.currentTarget, "transparent");
-                      e.currentTarget.style.color = TEXT.secondary;
-                      e.currentTarget.style.opacity = "0.55";
-                    }}
-                  >
-                    <span
-                      style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}
-                    >
-                      +
-                    </span>
-                    <span>New Note</span>
-                  </button>
+                    paddingLeft={7 + 19}
+                    borderLeft="3px solid transparent"
+                    TEXT={TEXT}
+                    BG={BG}
+                    accentColor={accentColor}
+                  />
                 )}
               </div>
             ) : (
