@@ -300,7 +300,7 @@ export default function BoojyNotes() {
 
   const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
-    activeNote,
+    activeNoteRef,
     setNoteData,
     pushHistory,
     popHistory,

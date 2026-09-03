@@ -1,12 +1,18 @@
 import { createContext, useContext, useMemo } from "react";
 
 /**
- * EditorContext holds STABLE editor values — refs and callbacks that never
- * change reference between renders. This lets us remove ~35 props from
- * EditorArea without breaking its custom memo comparator (which only checks
- * reactive values like toolbarState, linkPopover, etc.).
+ * EditorContext holds the editor's refs and handlers so EditorArea's custom
+ * memo comparator only has to look at reactive props (toolbarState,
+ * linkPopover, …).
  *
- * Each pane provides its own EditorContext (split mode creates one per pane).
+ * THE CONTRACT: the value is frozen at mount (`useMemo(..., [])`). Consumers
+ * always see the functions from BoojyNotes' FIRST render. That is only safe
+ * because every function passed in reads its inputs through refs
+ * (`noteDataRef`, `activeNoteRef`, `blockRefs`, `focusBlockId`, …) or through
+ * setters, never through a captured value. A handler that closes over
+ * `activeNote` (or any render-bound value) will act on a stale note forever —
+ * useBlockDrag did exactly that until 2026-09. If you add a handler here,
+ * make it ref-based, or route the changing value as an EditorArea prop.
  */
 const EditorContext = createContext(null);
 

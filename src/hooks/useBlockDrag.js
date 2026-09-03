@@ -1,9 +1,18 @@
 import { useRef, useEffect } from "react";
 import { getBlockFromNode, runAutoScroll } from "../utils/domHelpers";
 
+/**
+ * Hold-and-drag block reorder.
+ *
+ * `handleEditorPointerDown` reaches the DOM through EditorContext, whose value
+ * is frozen at mount (see EditorContext.jsx). So this hook must never read
+ * `activeNote` as a value: it takes `activeNoteRef` and resolves the current
+ * note at pointer-down time. Reading the value here is exactly the bug that
+ * made drag work only on the note that was open when the app launched.
+ */
 export function useBlockDrag({
   noteDataRef,
-  activeNote,
+  activeNoteRef,
   setNoteData,
   pushHistory,
   popHistory,
@@ -40,7 +49,8 @@ export function useBlockDrag({
 
   const activateBlockDrag = (blockInfo, pointerY) => {
     const bd = blockDrag.current;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const noteId = activeNoteRef.current;
+    const blocks = noteDataRef.current[noteId]?.content?.blocks;
     if (!blocks || blocks.length <= 1) return;
 
     const blockId = blockInfo.blockId;
@@ -70,7 +80,7 @@ export function useBlockDrag({
     setToolbarState(null);
 
     bd.originalBlocks = [...blocks];
-    bd.noteId = activeNote;
+    bd.noteId = noteId;
     bd.blockId = blockId;
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;
@@ -275,7 +285,7 @@ export function useBlockDrag({
     const t0 = performance.now();
     if (e.button !== 0) return;
     if (e.target.closest(".checkbox-box, button, img, .delete-btn")) return;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     const blockInfo = getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
     if (!blockInfo) return;
     if (!blocks || blocks.length <= 1) return;

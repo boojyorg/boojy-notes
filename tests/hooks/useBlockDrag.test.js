@@ -26,9 +26,10 @@ function setup(overrides = {}) {
   const editorScrollRef = { current: document.createElement("div") };
   const dragTooltipCount = { current: { editor: 0, sidebar: 0 } };
 
+  const activeNoteRef = { current: "n1" };
   const deps = {
     noteDataRef,
-    activeNote: "n1",
+    activeNoteRef,
     setNoteData: overrides.setNoteData || vi.fn(),
     pushHistory: overrides.pushHistory || vi.fn(),
     popHistory: overrides.popHistory || vi.fn(),
@@ -42,7 +43,7 @@ function setup(overrides = {}) {
     setToolbarState: vi.fn(),
   };
 
-  return { deps, noteDataRef, blockRefs };
+  return { deps, noteDataRef, blockRefs, activeNoteRef };
 }
 
 /**
@@ -192,10 +193,11 @@ describe("useBlockDrag", () => {
 
     it("cancel from a stale closure restores the drag's own note, never the now-active one", () => {
       const setNoteData = vi.fn();
-      const { deps, blockRefs, noteDataRef } = setup({ setNoteData, extraNotes: otherNote });
-      const { result, rerender } = renderHook((props) => useBlockDrag(props), {
-        initialProps: deps,
+      const { deps, blockRefs, noteDataRef, activeNoteRef } = setup({
+        setNoteData,
+        extraNotes: otherNote,
       });
+      const { result } = renderHook(() => useBlockDrag(deps));
       // Capture the function the way a once-registered window listener does.
       const staleCancel = result.current.cancelBlockDrag;
 
@@ -207,8 +209,8 @@ describe("useBlockDrag", () => {
         n1: { ...noteDataRef.current.n1, content: { blocks: reordered } },
       };
 
-      // The user switches notes; the app re-renders with n2 active.
-      rerender({ ...deps, activeNote: "n2" });
+      // The user switches notes mid-drag (the app rewrites the ref on render).
+      activeNoteRef.current = "n2";
 
       act(() => {
         staleCancel();
@@ -236,14 +238,57 @@ describe("useBlockDrag", () => {
       expect(updater(prev)).toBe(prev);
     });
 
+    it("a pointer-down captured at mount starts a drag on the note that is active NOW", () => {
+      // EditorContext freezes handleEditorPointerDown at BoojyNotes' first
+      // render, so this is the reference the editor really calls.
+      const { deps, blockRefs, noteDataRef, activeNoteRef } = setup({
+        extraNotes: {
+          n2: {
+            id: "n2",
+            title: "Other",
+            content: { blocks: [makeBlock("x1", "one"), makeBlock("x2", "two")] },
+          },
+        },
+      });
+      const { result } = renderHook(() => useBlockDrag(deps));
+      const frozenPointerDown = result.current.handleEditorPointerDown;
+
+      // The user opens note n2.
+      activeNoteRef.current = "n2";
+      const n2Blocks = noteDataRef.current.n2.content.blocks;
+      for (const b of n2Blocks) {
+        const el = document.createElement("p");
+        el.dataset.blockId = b.id;
+        document.body.appendChild(el);
+        blockRefs.current[b.id] = el;
+      }
+      getBlockFromNode.mockReturnValue({ blockId: "x1", blockIndex: 0 });
+      const event = new PointerEvent("pointerdown", { button: 0, clientX: 10, clientY: 10 });
+      Object.defineProperty(event, "target", { value: blockRefs.current.x1 });
+      act(() => {
+        frozenPointerDown(event);
+      });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+
+      const bd = result.current.blockDrag.current;
+      expect(bd.active).toBe(true);
+      expect(bd.noteId).toBe("n2");
+      expect(bd.originalBlocks.map((b) => b.id)).toEqual(["x1", "x2"]);
+      // getBlockFromNode was handed n2's block list, not n1's.
+      expect(getBlockFromNode.mock.calls.at(-1)[2]).toBe(n2Blocks);
+    });
+
     it("live reorder during the drag writes to the drag's note", () => {
       const setNoteData = vi.fn();
-      const { deps, blockRefs, noteDataRef } = setup({ setNoteData, extraNotes: otherNote });
-      const { result, rerender } = renderHook((props) => useBlockDrag(props), {
-        initialProps: deps,
+      const { deps, blockRefs, noteDataRef, activeNoteRef } = setup({
+        setNoteData,
+        extraNotes: otherNote,
       });
+      const { result } = renderHook(() => useBlockDrag(deps));
       activateDrag(result, blockRefs, noteDataRef.current.n1.content.blocks);
-      rerender({ ...deps, activeNote: "n2" });
+      activeNoteRef.current = "n2";
 
       // jsdom rects are all zero, so a pointer far below every block lands the
       // dragged block at the end of the list.
