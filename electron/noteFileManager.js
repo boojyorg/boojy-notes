@@ -370,8 +370,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const size = fs.statSync(filePath).size;
     const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
     if (size > MAX_FILE_SIZE) {
-      const { dialog: dlg } = require("electron");
-      dlg.showMessageBoxSync(getMainWindow(), {
+      dialog.showMessageBoxSync(getMainWindow(), {
         type: "warning",
         message: "File too large",
         detail: `The selected file is ${(size / 1024 / 1024).toFixed(0)} MB. Maximum allowed size is 100 MB.`,
