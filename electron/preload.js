@@ -15,8 +15,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   resolveAttachment: (filename) => ipcRenderer.invoke("resolve-attachment", filename),
   getFileSize: (filename) => ipcRenderer.invoke("get-file-size", filename),
   copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
-  readMeta: (folderRelPath) => ipcRenderer.invoke("read-meta", folderRelPath),
-  writeMeta: (folderRelPath, meta) => ipcRenderer.invoke("write-meta", folderRelPath, meta),
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),

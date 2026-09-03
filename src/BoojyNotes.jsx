@@ -455,11 +455,6 @@ export default function BoojyNotes() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // NOTE: `.boojy-meta.json` files are deliberately left alone. Boojy no longer
-  // reads or writes noteOrder/folderOrder — folders are always alphabetical and
-  // notes follow the sort preference — but the files stay on disk untouched, so
-  // any foreign keys in them are safe and an old manual arrangement is recoverable.
-
   // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({
     activeNote,

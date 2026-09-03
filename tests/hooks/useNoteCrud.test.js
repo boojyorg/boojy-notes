@@ -11,14 +11,6 @@ vi.mock("../../src/utils/platform", () => ({
   isNative: false,
 }));
 
-// Mock getAPI
-const mockAPI = {
-  writeMeta: vi.fn(),
-};
-vi.mock("../../src/services/apiProvider", () => ({
-  getAPI: () => mockAPI,
-}));
-
 // Mock ID generators for deterministic output
 let noteIdCounter = 0;
 let blockIdCounter = 0;

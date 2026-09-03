@@ -47,8 +47,6 @@ declare global {
       resolveAttachment: (filename: string) => Promise<string | null>;
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
-      readMeta: (folderRelPath: string) => Promise<Record<string, unknown> | null>;
-      writeMeta: (folderRelPath: string, meta: Record<string, unknown>) => Promise<void>;
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;

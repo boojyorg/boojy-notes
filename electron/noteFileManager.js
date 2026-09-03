@@ -410,21 +410,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     }
   });
 
-  ipcMain.handle("read-meta", (_event, folderRelPath) => {
-    const metaPath = path.join(getNotesDir(), folderRelPath || "", ".boojy-meta.json");
-    try {
-      return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
-    } catch {
-      return null;
-    }
-  });
-
-  ipcMain.handle("write-meta", (_event, folderRelPath, meta) => {
-    const dir = path.join(getNotesDir(), folderRelPath || "");
-    fs.mkdirSync(dir, { recursive: true });
-    writeFileAtomic(path.join(dir, ".boojy-meta.json"), JSON.stringify(meta, null, 2));
-  });
-
   ipcMain.handle("open-external", async (_event, url) => {
     if (typeof url === "string" && /^https?:\/\//i.test(url)) {
       await shell.openExternal(url);

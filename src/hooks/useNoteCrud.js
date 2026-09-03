@@ -1,7 +1,6 @@
 import { genNoteId, genBlockId } from "../utils/storage";
 import { FOLDER_TREE } from "../constants/data";
 import { isNative } from "../utils/platform";
-import { getAPI } from "../services/apiProvider";
 
 export function useNoteCrud({
   commitNoteData,
