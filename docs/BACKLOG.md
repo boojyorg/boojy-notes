@@ -1,7 +1,8 @@
 # Boojy Notes — Backlog
 
 What we are doing, what we might do, and what is known to be broken. Shipped work is in
-`CHANGELOG.md`, never here.
+`CHANGELOG.md`, never here. Pull an item up a section when it becomes real; delete it when it
+ships or stops mattering.
 
 ## Now — Beta finishing pass (desktop-only)
 
@@ -9,131 +10,114 @@ Worked one item at a time, each judged live in daily use. Standing instruction: 
 picked up until friction is observed. The product triangle to judge against: Apple Notes
 simplicity, Obsidian ownership, Notion editing fluidity.
 
-- [ ] Tables: finished-feeling basic interaction (visible cells, caret in first cell, Tab,
-  whole-table delete). Not started; Tyr gives the go.
-- [ ] Real empty folders (eager mkdir) + Move to folder… Needs a filesystem/data-safety plan
-  first, presented before any code.
+- [ ] Tables: finished-feeling basic interaction (visible cells, caret in first cell, Tab to
+  the next cell, whole-table delete). Not started; Tyr gives the go.
+- [ ] Real empty folders and Move to folder… Today a folder with no notes exists only in
+  memory (no directory on disk), so it vanishes on restart. The product decision (create the
+  directory eagerly, or accept folders as a view of where notes are) is deliberately open;
+  needs a filesystem/data-safety plan presented before any code. Don't pick semantics without
+  Tyr.
 - [ ] Hints/onboarding removal; copy pass (Quote/Checklist); font-size preference removal.
 - [ ] Preservation blockers: indented fences, tilde-fence interaction, image width clamp,
-  indented-content whitespace, trailing-space trim on list lines.
+  indented-content whitespace, trailing-space trim on list lines (details under Data safety).
 - [ ] Visual polish, Windows smoke test, release. The desktop daily-driver build does not track
   master: rebuild or cut a `v*` tag. `CHANGELOG.md` Unreleased already holds the notes.
 
-## Data safety / vault-import hazards
-(From the 2026-06-12 readiness audit and adversarial review. Its P0/P1 findings and three of
-its P2s — vault index in the vault root, non-Boojy frontmatter destroyed on write, failed
-writes never retried — are fixed and not listed here.)
+## Next — worth considering after Beta
 
-**First-edit mutations** (fine on open; the first edit of an affected note silently rewrites
-third-party content — these gate confident Vault migration):
-- [ ] Tilde-fence (`~~~`) code blocks parse as paragraphs — **rendering defect, not save damage**
-  (downgraded P1 → P2, verified 2026-08-19). The fence lines and typical content round-trip
-  byte-exact (`tilde-fences.md` passes both preservation-corpus experiments), so saving an
-  unrelated edit does NOT destroy the fence. Real remaining hazards: (a) fence content renders
-  as live rich blocks (headings/lists/checkboxes), so *interacting* with them rewrites code
-  text; (b) fence content matching a normalising construct is rewritten on any save — tables
-  reflow padding/`:---`, `- [X]` lowercases, `[!NOTE]` lowercases, bare `>` gains a space
-  (the same normalisations tracked for those constructs outside fences). Fence matcher:
-  `markdown.js:223` (backtick-only).
-- [ ] Table `:---` explicit-left-align separators normalize to `---` on first edit (P2).
-- [ ] Indented non-list content (HTML embeds, continuation paragraphs) loses leading
-  whitespace (P2). Parse loop trims every line; `indent` only attaches to list blocks.
+- **Quick Open** — Cmd+O/Cmd+P fuzzy note switcher; the natural companion to single-active-note
+  navigation.
+- **Back/forward history** — a small stack behind Cmd+[ / Cmd+]; would also soften
+  delete-lands-on-draft.
+- **Recents** — last-N notes in the sidebar or Quick Open's empty state.
+- **Keyboard shortcut reference** — a `?` overlay. The old `HelpDropdown` content is in git
+  history; re-verify its shortcuts against `useAppKeyboard` before reusing any of it.
+- **Table extras** beyond the Now item — column resize, row/column sort.
+
+## Later — deliberately parked
+
+- Note version history (browse/restore previous versions).
+- Math/LaTeX blocks (KaTeX) and Mermaid diagram blocks. Both must pass the source-of-truth
+  spec's round-trip rule first.
+- Indent guides for nested lists; auto-save indicator.
+- Web persistence storing markdown strings instead of block JSON (the spec's committed
+  direction, not a milestone).
+
+## Known technical debt
+
+- [ ] Rename `useIsMobile` → `useIsTouch` across its call sites. It answers "is this a touch
+  device", not "is the window narrow"; `useSidebarFits.ts` already carries the fit question.
+- [ ] `playwright.config.js` shells out to `npm run build && npm run preview`, so CI builds the
+  app a second time and the pnpm repo logs an `Unknown project config "node-linker"` warning.
+  Switch to pnpm.
+- [ ] `tests/electron/markdown.test.js` tests `src/utils/markdown.js`, not Electron code; it
+  belongs beside `tests/utils/markdown.test.js` (no overlapping test names).
+- [ ] `src/components/settings/ExportTab.jsx` renders the Storage section; export was removed.
+  Rename to `StorageTab`.
+- [ ] `ci.yml` triggers on pushes to `feature/**` but branches are named `feat/…`, so push-CI
+  never fires; the PR trigger covers everything. Fix the glob or drop the push trigger.
+- [ ] `engines.node` says `>=18`; Vitest 4 needs 20, Electron 42 needs 22.12, CI pins 22.
+- [ ] PWA residue on the web build: `manifest.json` and the apple-touch-icon point at
+  `/assets/icon.png`, which is not in `public/`, so the built site 404s on its own icon; the
+  theme colours are the old night values. Decide whether the web build keeps its service worker
+  at all now the product is desktop-only.
+- [ ] `markdownToBlocks` global ID counter: `_parseBlockId` mints new block IDs on every
+  re-parse, so React remounts every block (lost cursor) on re-sync. Fix is content-stable IDs;
+  non-trivial, ripple risk.
+- [ ] `TagMenu` space-dismiss: `preventDefault` swallows the space that legitimately ends a tag.
+- [ ] Orphaned onboarding hint bubble: the "Type / for commands" tooltip floats detached at the
+  top-centre of the editor, anchored to nothing (moot if the Now item removes hints).
+
+## Data safety / vault-import hazards
+
+**First-edit mutations.** Fine on open; the first edit of an affected note silently rewrites
+third-party content. These gate confident use on a vault you care about.
+
+- [ ] Tilde-fence (`~~~`) code blocks parse as paragraphs. A rendering defect, not save damage:
+  the fence lines and typical content round-trip byte-exact (`tilde-fences.md` passes the
+  preservation corpus). The real hazards: fence content renders as live rich blocks, so
+  *interacting* with it rewrites code text; and fence content matching a normalising construct
+  is rewritten on any save (tables reflow padding and `:---`, `- [X]` lowercases, `[!NOTE]`
+  lowercases, bare `>` gains a space). The fence matcher in `markdown.js` is backtick-only (P2).
+- [ ] Table `:---` explicit-left-align separators normalise to `---` on first edit (P2).
+- [ ] Indented non-list content (HTML embeds, continuation paragraphs) loses leading whitespace;
+  the parse loop trims every line and `indent` only attaches to list blocks (P2).
 - [ ] Wikilink image widths `![[img|N]]` with N < 70 clamp up to 70 on first save (P2).
 
-**Reliability follow-ups:**
+**Reliability.**
+
 - [ ] Rename crash-window can re-ID a note (crash between unlink and index save) or leave a
-  visible duplicate (crash before unlink — by design, but cleanup is manual) (P2/P3).
-- [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W + Cmd+Q;
-  no renderer-alive guard before the flush IPC (wastes the 2s cap after a renderer crash) (P3).
-- [ ] Orphaned `.*.tmp` files accumulate after a crash followed by a note rename (P3).
-- [ ] Wikilink rename doesn't update referrers — silent link breakage (audit).
-- [ ] Search index stale on text-only edits + hard 20-result cap (audit).
-- [ ] Same-title notes invisible to backlinks (audit).
-- [ ] Unparseable files silently vanish from the sidebar (audit).
-- [ ] `changeNotesDir` leaks the old vault's folders into the new one (audit).
-- [ ] Undo within 300ms gets overwritten by the text flush (audit).
-- [ ] Web `beforeunload` flush reads stale state (web-only, deferred; audit).
+  visible duplicate (crash before unlink; cleanup is manual) (P2/P3).
+- [ ] Double-close races: `ipcMain.once` flush listeners accumulate on rapid Cmd+W then Cmd+Q;
+  no renderer-alive guard before the flush IPC, which wastes the 2s cap after a renderer crash
+  (P3).
 - [ ] Concurrent flushes are not serialised: blur, quit and the write-debounce timer can each
   run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`), and flush never clears the pending
   timer. Today that means a redundant write, plus a theoretical mid-write kill if the quit
   handshake completes while a blur write is still in flight (the atomic rename keeps the last
   complete file) (P3).
+- [ ] Orphaned `.*.tmp` files accumulate after a crash followed by a note rename (P3).
 - [ ] Numbered items keep their parsed `num` after an in-app reorder, so dragging item 3 above
-  item 1 saves `3. 1. 2.` — lossless on round-trip, out of sequence in any other renderer
+  item 1 saves `3. 1. 2.`: lossless on round-trip, out of sequence in any other renderer
   (`markdown.js` `numCounter`) (P3).
+- [ ] Wikilink rename doesn't update referrers: silent link breakage.
+- [ ] Search index stale on text-only edits, plus a hard 20-result cap.
+- [ ] Same-title notes invisible to backlinks.
+- [ ] Unparseable files silently vanish from the sidebar.
+- [ ] `changeNotesDir` leaks the old vault's folders into the new one.
+- [ ] Undo within 300ms gets overwritten by the text flush.
+- [ ] Web `beforeunload` flush reads stale state (web-only).
 
-**Split-pane:** section retired 2026-08-18 — split view and tabs were removed outright
-(single-active-note refactor), which closes the PaneContainer tag-autocomplete and
-related per-pane state items with them.
+## Accessibility
 
-## Refactor / docs
-- [ ] `BoojyNotes.jsx` decomposition (standing-debt #1) — 5 hooks extracted across 2 cycles, then
-  the single-active-note refactor removed the split-view glue (root now ~1,110 lines). Remaining
-  candidates: ghost-note/draft effects, `Sidebar` (1,314 lines — now the largest file: tree +
-  search results).
-- [ ] (optional) Create `FEATURES.md` — plain-language, recruiter/user-facing tour (docs-system gap).
-- [ ] Rename `useIsMobile` → `useIsTouch` across its call sites — it answers "is this a touch
-  device", not "is the window narrow", and the misnomer is exactly the confusion the responsive
-  three-way split exists to prevent. `useSidebarFits.ts` already carries the fit question. Last
-  outstanding step of the responsive pass.
-- [ ] E2E `webServer` rebuilds the app a second time — `playwright.config.js:15` runs
-  `npm run build && npm run preview`, but CI already built one step earlier, and shelling out to
-  `npm` in a pnpm repo is the source of the `Unknown project config "node-linker"` warning. Noticed
-  2026-08-19 while auditing the E2E suite; not urgent now that the whole job runs in 1m33s.
+E2E axe only catches *critical* violations on the initial screen. Known sub-critical gaps:
 
-## Bugs / QoL
-- [ ] **Desktop empty folders exist only in memory** — a folder with no notes has no directory on
-  disk, so it vanishes on restart or after an external delete. Product decision deliberately
-  left unresolved in the 2026-09-03 correctness pass (create the directory eagerly vs accept
-  folders as a view of where notes are); don't pick semantics without Tyr.
-- [ ] Orphaned onboarding hint bubble — the "Type / for commands" tooltip floats detached
-  top-center of the editor, not anchored to anything (interactive-only find; reposition/anchor it).
-- [ ] `markdownToBlocks` global ID counter — module-global `_parseBlockId` mints new block IDs on
-  every re-parse → React remounts all block DOM (lost cursor) on re-sync. Low priority; fix is
-  content-stable IDs (non-trivial, ripple risk). `markdown.js:34`.
-- [ ] `TagMenu` space-dismiss — `preventDefault` swallows the space that legitimately ends a tag
-  (minor). `TagMenu.jsx:48`.
-
-## Cross-repo
-- [ ] `notes.boojy.org` download buttons hardcoded to `v0.1.3` — in the **separate `boojy-web`
-  repo** (now Astro). The pre-Astro path `website/src/pages/NotesPage.tsx:16,29,41` is **stale** —
-  re-find the current download-link source in boojy-web before bumping. Version *text* auto-updates
-  from the latest GitHub tag; the install links don't. (User-acknowledged deferred.)
-
-## Feature ideas
-(Folded in from the old `FUTURE-IDEAS.md`, grouped by effort/impact. **Status unverified** — some
-may already be partly shipped; confirm against the app before picking one up.)
-
-- [ ] **Quick Open** (high value / medium effort) — Cmd+O/Cmd+P fuzzy note switcher; the natural
-  companion to single-active-note navigation (no tabs to lean on).
-- [ ] **Back/forward history** (high value / low-medium) — a small stack behind Cmd+[ / Cmd+]
-  now that opening a note replaces the current one; would also soften delete-lands-on-draft.
-- [ ] **Recents** (medium / low) — last-N notes in sidebar or Quick Open's empty state.
-- [ ] **Backlinks panel** (high value / medium effort) — "Notes that link to this note" in a
-  sidebar. Wikilink data is already in block text; needs a reverse index.
-- [ ] **Note version history** (high value / medium) — browse/restore previous versions via the undo
-  system or sync snapshots.
-- [ ] **Keyboard shortcut cheat sheet** (high value / medium) — a `?` overlay listing all shortcuts;
-  helps onboarding.
-- [ ] **Math/LaTeX blocks** (high value / higher effort) — a `math` block rendering LaTeX via KaTeX.
-- [ ] **Mermaid diagram blocks** (high value / higher) — a `diagram` block in the slash menu.
-- [ ] **Table improvements** (medium / low) — column resize, row/column sort, tab-to-next-cell.
-- [ ] **Image lightbox** (medium / low) — zoom/pan, keyboard nav between images in a note.
-- [ ] **Indent guides** (medium / low) — lines connecting indented blocks to their parent.
-- [ ] **Auto-save indicator** (nice to have) — visual cue for last-saved / unsaved changes.
-
-## Tier-3 accessibility clusters
-(E2E axe only catches *critical* on the initial screen — these are the known sub-critical gaps.)
-- [ ] Sidebar focus ring invisible — inline `outline:none` overrides global; global ring is also
-  25%-opacity (fails contrast). `Sidebar.jsx`, `GlobalStyles.jsx:66`.
-- [ ] Icon-only buttons use `title` not `aria-label` (Help & Settings close buttons).
-  `HelpDropdown.jsx`. *(Narrowed: TopBar undo/redo/Help were removed in the minimal-chrome pass;
-  the surviving `EditorChrome` buttons set `aria-label`. `HelpDropdown` was deleted 2026-08-19
-  (git history has it) — this item only applies if Help returns, rebuilt.)*
-- [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker) — not keyboard-
-  reachable; missing roles + focus traps. SlashMenu `aria-selected` on `menuitem` is also invalid.
-- [ ] Low-contrast theme tokens fail AA: **NIGHT** `TEXT.muted`. `themes.js`.
-  *(DAY was fixed in the Phase 1 light-palette pass — `TEXT.muted` 4.6:1, accent 5.3:1, wikilink now
-  uses the accent. NIGHT was deliberately left untouched in that pass.)*
-- [ ] Sidebar tree: no arrow-key nav + missing `aria-level`/`setsize`/`posinset` (role is currently
-  aspirational; axe is satisfied but full keyboard nav isn't implemented). `Sidebar.jsx`.
+- [ ] Sidebar focus ring invisible: inline `outline:none` overrides the global ring, and the
+  global ring is 25%-opacity, which fails contrast (`Sidebar.jsx`, `GlobalStyles.jsx`).
+- [ ] Context menus are `<div onClick>` (Link/Table/Image/Slash/CalloutPicker): not
+  keyboard-reachable, missing roles and focus traps. SlashMenu's `aria-selected` on `menuitem`
+  is also invalid.
+- [ ] NIGHT `TEXT.muted` fails AA contrast (`themes.js`). DAY was fixed in the light-palette
+  pass; NIGHT was deliberately left for a later pass.
+- [ ] Sidebar tree has no arrow-key navigation and is missing `aria-level`/`setsize`/`posinset`;
+  axe is satisfied but full keyboard navigation isn't implemented (`Sidebar.jsx`).

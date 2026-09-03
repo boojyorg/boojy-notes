@@ -1,7 +1,10 @@
 # SPEC: Markdown is the source of truth
 
 **Status:** binding constraint (adopted v0.5.0). This is an architectural rule, not a
-feature request. It governs what blocks and interactions may exist in Boojy Notes.
+feature request. It governs what blocks and interactions may exist in Boojy Notes, what Boojy
+owes each piece of Markdown syntax it meets (the support levels below), and what that implies
+for the UI. Feature plans, reviews and UI decisions are judged against this document; if a
+proposal conflicts with it, the proposal changes.
 
 ---
 
