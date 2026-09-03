@@ -43,24 +43,18 @@ renderer and the Electron main process.
 
 ## Storage truth, stated honestly per platform
 
-The *round-trip rule* above is universal. The *literal storage* is not yet — and this spec
-states that plainly rather than pretending otherwise.
+The *round-trip rule* above is universal. The *literal storage* is not, and this spec states
+that plainly rather than pretending otherwise.
 
-| Platform | What is on disk / in storage | Is markdown the literal source of truth? |
-|----------|------------------------------|------------------------------------------|
-| **Desktop (Electron)** | Real `.md` files in the vault (`electron/noteFileManager.js` writes via `blocksToMarkdown`, reads via `markdownToBlocks`). An index maps note IDs → paths. | **Yes — already true today.** |
-| **Web** | Block JSON in `localStorage` (`boojy-notes-v1`). | **No — temporary divergence.** |
-
-So on web we claim only that blocks are **provably round-trippable** (the round-trip test
-guarantees it), *not* that web "stores markdown." Do not write or imply otherwise in UI,
-docs, or marketing.
-
-### Committed direction (NOT a current milestone)
-
-Migrate web persistence to store **markdown strings directly** (not block JSON), so "markdown
-is the stored format" becomes literally true on every platform. The round-trip test is the
-gate that makes that migration safe — when web starts storing markdown, the same lossless
-contract already holds, so no note can be corrupted by the switch.
+- **Desktop (Electron) is the product, and markdown is the literal source of truth.** Notes
+  are real `.md` files in the vault: `electron/noteFileManager.js` writes via `blocksToMarkdown`
+  and reads via `markdownToBlocks`. An index in Electron's userData maps note IDs to paths; the
+  vault itself is never written except through the user's own edits.
+- **The web build is a development target, outside the product promise.** It persists block
+  JSON in `localStorage` (`boojy-notes-v1`). Those blocks are provably round-trippable, but
+  the web build does not "store markdown", and nothing in the UI, docs or marketing should
+  imply it does. Whether web persistence ever changes is a decision for the day web becomes a
+  product again; no migration is committed.
 
 ---
 
@@ -72,8 +66,8 @@ Allowed *because markdown can express them*:
   `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file.
   (`blocksToMarkdown` walks the array in order, so reordering re-serialises cleanly for free.)
-- **List indent / outdent** — markdown nested-list syntax (`  - nested`). **List types only**
-  (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
+- **List indent / outdent** — markdown nested-list syntax (a `- nested` line indented by two
+  spaces). **List types only** (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
 - Obsidian-flavoured-but-still-text marks already in use: `==highlight==`, `[[wikilinks]]`.
 
 ## Forbidden — do not build (breaks portability)
@@ -136,7 +130,7 @@ Every piece of Markdown syntax Boojy encounters sits at exactly one level. An Ob
 does not need to be a Boojy feature just because Boojy can parse its syntax.
 
 | Level | Meaning | Examples |
-|---|---|---|
+| --- | --- | --- |
 | **Native** | Boojy creates, edits, and renders it as a first-class feature | headings, lists, checkboxes, tables, images, code, quotes |
 | **Compatible** | Boojy understands and renders it, but keeps the UI quiet: no permanent chrome, no promotion in menus | `[[wikilinks]]`, `#tags`, callouts, frontmatter |
 | **Preserved** | Boojy may not render it meaningfully, but must never destroy or rewrite it | plugin syntax, block refs `^id`, `%%comments%%`, unknown YAML |

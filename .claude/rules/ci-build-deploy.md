@@ -1,120 +1,85 @@
-# CI / build / deploy gotchas
+# CI, build, deploy
 
-Durable operational gotchas for this repo's pipelines. (No `paths:` frontmatter — these are
-project-wide and always relevant.)
+Durable operational rules for this repo's pipelines. Each carries the one reason a future
+change needs; the incidents behind them are in git.
 
-## Releases land as DRAFTS — and the matrix creates TWO of them
+## Releases
 
-electron-builder publishes GitHub releases as **drafts**; nobody had clicked publish since v0.3.0,
-so "latest release" lookups (website version text, auto-updater) resolved to v0.3.0 for weeks —
-v0.4.0 shipped its installers into a draft nobody could see. Worse, `release.yml`'s macOS and
-Windows matrix jobs **each create their own draft** on the same tag (v0.5.0: DMG in one, EXE in the
-other) — consolidated manually via the API on 2026-06-12. After every tag push: check
-`gh release list` for split drafts, merge assets into one, **publish it**, and delete the leftover.
-Proper fix (unscheduled): create the release once before the matrix (e.g. a `gh release create`
-job) so both builders upload to it, or auto-publish when both jobs succeed.
+- Pushing a `v*` tag runs `release.yml`: a macOS and a Windows job, each running
+  `pnpm build:electron` and uploading through electron-builder's GitHub publisher. macOS
+  signs and notarises only if the certificate secrets are set; otherwise it builds unsigned.
+- **Releases land as drafts, and the matrix creates two of them** on the same tag (DMG in one,
+  EXE in the other). A draft is invisible to "latest release" lookups, so the website version
+  text and the auto-updater keep resolving to the last *published* release. After every tag
+  push: check `gh release list`, merge the assets into one release, **publish it**, delete the
+  leftover draft. Proper fix, unscheduled: create the release once before the matrix so both
+  jobs upload to it, or auto-publish when both succeed.
+- Publishing a release fires `site-rebuild.yml`, which POSTs the boojy.org Cloudflare deploy
+  hook so the site picks up the new version. It skips gracefully if the secret is absent.
+- Every workflow job carries `timeout-minutes` (`ci.yml` 30, `release.yml` 30,
+  `site-rebuild.yml` 5), sized from measured actuals (installers take 1-2m on macOS, 2-4m on
+  Windows). Keep it that way; a stalled job once ran six hours unnoticed. Turning on
+  notarisation is the one change that needs the release number re-measured; it can add 10-20m.
 
-## CI Node version is pinned to 22, NOT 24
+## CI
 
-`node-version: 24` in `setup-node` **deterministically hangs** `playwright install --with-deps
-chromium` on the GitHub runner image — the Install Playwright step stalls indefinitely after the
-Chromium download (hung ~19m on two consecutive runs; instant green on revert to 22). The *actions*
-run on Node 24 via `@v6`; only the project build/test runtime is held at 22. Don't rebump
-`node-version` without fixing the Playwright install side first (pin browser deps / split the step).
-A comment is left on the line in CI.
+- **Node is pinned to 22.** Node 24 deterministically hangs the Playwright browser install on
+  the GitHub runner image. The actions themselves run on Node 24 via `@v6`; only the project
+  runtime is held at 22. Don't rebump it without fixing the Playwright install first.
+- **Playwright installs the browser only: `playwright install chromium`, never
+  `--with-deps`.** The apt half stalls for tens of minutes on a slow mirror and buys nothing:
+  every library Chromium links against is already on `ubuntu-latest`, and the packages it
+  would add are fonts this suite never renders. If a future image drops a library, Chromium
+  fails to launch naming it, in seconds. Don't restore `--with-deps` to fix a launch error
+  without confirming the named library is genuinely absent.
+- The browser is cached at `~/.cache/ms-playwright`, keyed on the lockfile hash with a
+  prefix restore-key, so an unchanged lockfile skips the download and a dep bump degrades to a
+  partial hit. A cold miss is about ten seconds. If the install step is ever slow, look at the
+  CDN or the cache action, not apt.
+- The install runs inside a `timeout` and a three-attempt loop, with `timeout-minutes` on the
+  step as the outer cap. Size any timeout to the work, not to patience: one short enough to
+  feel safe will kill a download that is merely slow and turn a passing step into a guaranteed
+  failure.
+- **The gates are `pnpm test:coverage` and the E2E suite, not `pnpm test`.** Coverage
+  thresholds in `vitest.config.js` are a floor just below actuals; ratchet up, never lower to
+  pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
+  also gates every run; it is the live security net.
 
-**Node 22 is not immunity, and `--with-deps` is gone — CI installs the browser only.**
-On 2026-08-19 PR #76 hung **40 minutes** on Node 22, in the *apt* half of `playwright install
---with-deps chromium`, never reaching the browser download; every earlier gate had passed in ~90s.
-The retry attempt exposed the real mechanism: apt is not deadlocked, it is **crawling** — the
-runner's Azure mirror served 11.4 MB in 1m52s (**~100 kB/s**), and the install then wants another
-21 MB. Read the package list and the apt half turns out to be pointless: all 25 shared libraries
-Chromium links against report *"is already the newest version"* on the `ubuntu-latest` image, and
-the 9 NEW packages are **fonts only** (CJK, Cyrillic, Thai, unifont). This suite renders none of
-them — no visual snapshots, no non-Latin fixtures.
+## pnpm and Electron
 
-So CI now caches `~/.cache/ms-playwright` and runs plain **`playwright install chromium`** — no apt
-at all — wrapped in `timeout -k 10 300` inside a 3-attempt loop, with `timeout-minutes` outside it.
-If a future runner image really does drop a library, Chromium fails to launch *naming the missing
-dependency* — seconds, and legible. Don't "restore" `--with-deps` to fix a launch error without
-first checking whether the named library is genuinely absent.
+- `.npmrc` sets `node-linker=hoisted` so electron-builder resolves dependencies; a DMG built
+  this way is verified clean.
+- pnpm 10 blocks native build scripts by default. `electron`, `electron-winstaller` and
+  `esbuild` must stay in `pnpm.onlyBuiltDependencies` in `package.json`, or their binaries
+  never build (symptom: an "Ignored build scripts" warning after install).
+- **If `pnpm dev` dies with "Electron failed to install correctly"**, a lockfile-churning
+  install relinked `node_modules/electron` without re-running its download script. Fix:
+  `pnpm rebuild electron` (about 30 seconds).
+- Anything touching Electron needs a real desktop build to verify; green web CI does not
+  exercise it.
 
-**Cache behaviour, because it changes what a red install means.** The key is
-`${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}` with a `${{ runner.os }}-playwright-`
-restore-key, so an unchanged lockfile restores the browser and skips the download entirely, and a
-dep bump degrades to a partial hit rather than a cliff. A cold miss costs about **10s** off
-Playwright's CDN (4.5s for Chrome for Testing, plus ffmpeg and the headless shell) — measured on the
-2026-08-19 green run, whole job **1m33s**, against the 42m that had to be cancelled by hand. So if
-the install step is ever slow again it is not the download: look at the CDN or the cache action,
-never at apt.
+## Web deploy
 
-Two traps found on the way, worth not repeating: a `timeout` short enough to feel safe (180s) will
-**kill a download that is merely slow**, converting a slow-but-succeeding step into a guaranteed
-3-attempt failure — size the timeout to the work, not to your patience. And `pkill -9 -f
-"apt-get|dpkg"` **matches its own command line** and kills itself (`Killed  sudo pkill -9 -f …` in
-the run log); match on `-x` or a pattern that can't self-match.
+- Pushing `master` deploys the web build to Cloudflare Pages. The build command
+  (`ELECTRON_DISABLE=1 pnpm build`) is set **in the Cloudflare dashboard**, not read from the
+  repo; confirm the deploy is green after any build change.
+- The web deploy is not the product surface. Desktop is; the web build is a development and
+  test target. Don't spend Beta effort on web-only product issues.
 
-The job carries `timeout-minutes: 30` — a master run once burned **6h1m** before a human noticed.
-A stall must fail in minutes and retry itself, never sit there waiting to be cancelled by hand.
+## Dependencies
 
-**Every workflow job now carries a `timeout-minutes`; keep it that way.** `ci.yml` 30,
-`site-rebuild.yml` 5, and `release.yml` 30 (added 2026-08-19 — it was the last one with no cap, and
-it is both the slowest job and the least watched, since nobody sits staring at a tag push). Sizes
-come from measured actuals, not taste: release installers really take ~1-2m on macOS and ~2-4m on
-Windows. Switching on macOS signing + Apple notarization is the one change that needs the release
-number re-measured, since notarization can add 10-20m by itself.
-
-## CI runs `test:coverage` + E2E, not just `pnpm test`
-
-CI gates in layers (coverage, then Playwright/axe E2E). Coverage thresholds are a floor set just
-below current actuals — ratchet **up** as presentational code gets covered, never lower to pass.
-Always run `pnpm test:coverage` (and ideally `pnpm test:e2e`) before claiming CI-green — `pnpm test`
-alone can pass while the coverage gate fails.
-
-## electron-builder under pnpm needs `node-linker=hoisted`
-
-`.npmrc` sets `node-linker=hoisted` so electron-builder resolves dependencies. Verified producing a
-DMG (the v0.4.0 build was clean). pnpm 10 also blocks native build scripts by default — esbuild and
-electron must stay listed in `pnpm.onlyBuiltDependencies` (package.json) or their native binaries
-won't build (symptom: an "Ignored build scripts" warning after install).
-
-**Electron binary vanishes after lockfile churn.** A `pnpm install` that reshuffles `node_modules`
-(e.g. after a dep-bump wave) can relink `node_modules/electron` without re-running its download
-script — `pnpm dev` then dies with *"Electron failed to install correctly, please delete
-node_modules/electron"*. Fix: **`pnpm rebuild electron`** (re-runs `install.js`, ~30s). Happened
-2026-06-07 after the Dependabot wave.
-
-## Cloudflare Pages build command lives in the dashboard, not the repo
-
-After the npm→pnpm migration the CF Pages build command must be `ELECTRON_DISABLE=1 pnpm build`,
-set **in the Cloudflare dashboard** — it is not read from the repo. CF auto-detects `pnpm-lock` for
-install, but the build command is dashboard-configured; confirm the deploy is green after changes.
-
-## There is deliberately no `.github/dependabot.yml`
-
-Routine Dependabot version updates are **off on purpose** (2026-08-23). Don't re-add the config
-because the repo "looks like it's missing one". Automatic bumps produced ten mutually-conflicting
-`pnpm-lock.yaml` PRs that sat for seven weeks and pinned Dependabot at its
-`open-pull-requests-limit`; grouping helped but still queued five majors nobody asked for.
-Dependency maintenance is now a deliberate batched pass, run by hand when chosen.
-
-Deleting that file does **not** touch security: Dependabot alerts and Dependabot security updates
-are repo settings, not config-file settings, and the `pnpm audit --audit-level critical` step in
-`ci.yml` gates every PR regardless. That audit gate is the live safety net — don't remove it.
-
-**Three independent controls, and their state as of 2026-08-23:**
+Three independent controls, deliberately set:
 
 | Control | Where it lives | State |
-|---|---|---|
-| Routine version-update PRs | `.github/dependabot.yml` | **off** (file deleted) |
+| --- | --- | --- |
+| Routine Dependabot version-update PRs | `.github/dependabot.yml` | **off** (no file; don't re-add one) |
 | Dependabot vulnerability alerts | repo security setting | **on** |
 | Automatic security-fix PRs | repo security setting | **off** |
 
-Alerts were **already off before** the config was removed — turning them on was a separate,
-deliberate change, not a side effect of it. The config file has no authority over either security
-setting, so removing it could not and did not disable them.
+Routine PRs are off because automatic bumps produced a queue of mutually conflicting lockfile
+PRs that nobody asked for. The config file has no authority over the two security settings, so
+its absence changes nothing there.
 
-**Dependency maintenance is a deliberate pass, not a queue.** Occasionally: `pnpm outdated`, batch
-the patch/minor bumps into one commit, run the whole gate sequence, one PR. Majors go **one at a
-time** on their own branch. Anything touching Electron needs a **real desktop build** — green web
-CI does not exercise it. A vulnerability alert is the trigger for an unscheduled pass.
+Maintenance is a deliberate pass, not a queue: occasionally run `pnpm outdated`, batch patch
+and minor bumps into one commit, run the whole gate sequence, one PR. Majors go one at a time
+on their own branch. A vulnerability alert is the trigger for an unscheduled pass.
