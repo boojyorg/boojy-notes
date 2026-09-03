@@ -1,6 +1,24 @@
 # Current target
 
-**None active.** The correctness/simplification pass merged as PR #92 on 2026-09-03: eight
+**Beta finishing pass (desktop-only).** Shape settled 2026-09-03 — see agent memory
+`boojy-notes-beta-shape` and the product triangle (Apple Notes simplicity · Obsidian ownership ·
+Notion editing fluidity). Worked one item at a time, each judged live, never the whole list at
+once.
+
+- [x] **Block drag → hover gutter handle** (branch `feat/block-drag-handle`, 2026-09-03). Judged
+  live against a polished hold-to-drag prototype; handle won on zone separation (text =
+  write/select, gutter = move). Hold model + tooltip deleted; sidebar drop-over-editor removed.
+- [ ] Tables: finished-feeling basic interaction (visible cells, caret in first cell, Tab, whole-
+  table delete) — NOT started; Tyr gives the go.
+- [ ] Real empty folders (eager mkdir) + Move to folder… — needs a filesystem/data-safety plan
+  first, presented before any code.
+- [ ] Hints/onboarding removal, copy pass (Quote/Checklist), font-size preference removal,
+  preservation blockers (indented fences, tilde-fence interaction, image width clamp, indented
+  content whitespace, trailing-space trim on list lines), visual polish, Windows smoke + release.
+
+---
+
+**Previously:** The correctness/simplification pass merged as PR #92 on 2026-09-03: eight
 correctness fixes (stale-closure editor handlers, tag click, attachment size guard, crash backup,
 onboarding copy, font-size persistence), then pure deletion of retired-feature residue, then two
 test-first consolidations (sidebar tag chips / mobile rows, slash-command block insertion). Net

@@ -1,13 +1,23 @@
 import { useRef, useEffect } from "react";
-import { getBlockFromNode, runAutoScroll } from "../utils/domHelpers";
+import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
+
+/** Pointer travel from the grip that means "this is a drag, not a click". */
+const DRAG_THRESHOLD = 3;
+const LIFT_MS = 120;
+const SETTLE_MS = 200;
 
 /**
- * Hold-and-drag block reorder.
+ * Block reorder by drag — started from the gutter grip (`BlockDragHandle`),
+ * never from the block text. Text is for writing and selecting; the handle is
+ * for moving. (Press-and-hold on the text was the previous model; it was
+ * removed 2026-09-03 after a live comparison, because a hold timer makes every
+ * pause-then-drag-to-select a race.) Keyboard reorder lives in
+ * `useKeyboardHandlers` (Cmd/Ctrl+Shift+↑/↓) and is untouched by this.
  *
- * `handleEditorPointerDown` reaches the DOM through EditorContext, whose value
+ * `startHandleDrag` is handed to the handle through EditorContext, whose value
  * is frozen at mount (see EditorContext.jsx). So this hook must never read
  * `activeNote` as a value: it takes `activeNoteRef` and resolves the current
- * note at pointer-down time. Reading the value here is exactly the bug that
+ * note when the press happens. Reading the value here is exactly the bug that
  * made drag work only on the note that was open when the app launched.
  */
 export function useBlockDrag({
@@ -19,10 +29,9 @@ export function useBlockDrag({
   blockRefs,
   editorRef,
   editorScrollRef,
-  accentColor,
   editorBg,
-  setDragTooltip,
-  dragTooltipCount,
+  dragShadow = "0 8px 24px rgba(0,0,0,0.18)",
+  slotBg = "transparent",
   setToolbarState,
 }) {
   const blockDrag = useRef({
@@ -43,7 +52,6 @@ export function useBlockDrag({
     offsetY: 0,
     startIndex: -1,
     currentIndex: -1,
-    holdTimer: null,
     scrollRAF: null,
   });
 
@@ -60,6 +68,8 @@ export function useBlockDrag({
 
     pushHistory();
 
+    // A selection spanning several blocks, one of them the grabbed block, drags
+    // them all — the one multi-block gesture, and it costs no extra UI.
     let draggedIds = [blockId];
     const sel = window.getSelection();
     if (sel.rangeCount && !sel.isCollapsed) {
@@ -90,51 +100,60 @@ export function useBlockDrag({
     const rect = el.getBoundingClientRect();
     bd.offsetY = pointerY - rect.top;
 
+    // Ghost: a static clone of the dragged block(s). It is born flat on top of
+    // the real block and *lifts* over LIFT_MS — that lift is the one moment
+    // that tells the hand "you have it".
     const clone = document.createElement("div");
-    if (draggedIds.length > 1) {
-      for (const id of draggedIds) {
-        const srcEl = blockRefs.current[id];
-        if (srcEl) {
-          const c = srcEl.cloneNode(true);
-          c.removeAttribute("contenteditable");
-          c.querySelectorAll("[contenteditable]").forEach((e) =>
-            e.removeAttribute("contenteditable"),
-          );
-          clone.appendChild(c);
-        }
-      }
-    } else {
-      const c = el.cloneNode(true);
+    for (const id of draggedIds) {
+      const srcEl = blockRefs.current[id];
+      if (!srcEl) continue;
+      const c = srcEl.cloneNode(true);
       c.removeAttribute("contenteditable");
       c.querySelectorAll("[contenteditable]").forEach((e) => e.removeAttribute("contenteditable"));
       clone.appendChild(c);
     }
+    // The clone lives on <body>, so carry the editor's type with it or it
+    // falls back to the browser default face.
+    const src = getComputedStyle(el);
     Object.assign(clone.style, {
+      fontFamily: src.fontFamily,
+      color: src.color,
       position: "fixed",
       left: rect.left + "px",
       top: pointerY - bd.offsetY + "px",
       width: rect.width + "px",
       zIndex: "1000",
       pointerEvents: "none",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-      opacity: "0.85",
-      transform: "scale(1.02)",
       background: editorBg,
       borderRadius: "6px",
       overflow: "hidden",
+      boxShadow: "none",
+      opacity: "1",
+      transform: "scale(1)",
       transition: "none",
+      willChange: "transform, top",
     });
     document.body.appendChild(clone);
     bd.cloneEl = clone;
+    requestAnimationFrame(() => {
+      if (bd.cloneEl !== clone) return;
+      Object.assign(clone.style, {
+        transition: `transform ${LIFT_MS}ms ease, box-shadow ${LIFT_MS}ms ease, opacity ${LIFT_MS}ms ease`,
+        transform: "scale(1.01)",
+        boxShadow: dragShadow,
+        opacity: "0.96",
+      });
+    });
 
+    // Slot: the vacated position. Neutral content-hover surface, text faded to
+    // a hint — enough to show where the block will land, no accent, no dashes.
     for (const id of draggedIds) {
       const slotEl = blockRefs.current[id];
       if (slotEl) {
         slotEl.dataset.dragSlot = "true";
-        slotEl.style.opacity = "0.25";
-        slotEl.style.outline = `2px dashed ${accentColor}40`;
-        slotEl.style.outlineOffset = "-2px";
-        slotEl.style.borderRadius = "4px";
+        slotEl.style.opacity = "0.3";
+        slotEl.style.background = slotBg;
+        slotEl.style.borderRadius = "6px";
       }
     }
 
@@ -209,8 +228,7 @@ export function useBlockDrag({
       if (el) {
         delete el.dataset.dragSlot;
         el.style.opacity = "";
-        el.style.outline = "";
-        el.style.outlineOffset = "";
+        el.style.background = "";
         el.style.borderRadius = "";
       }
     }
@@ -225,7 +243,6 @@ export function useBlockDrag({
     bd.blockIds = [];
     bd.originalBlocks = null;
     bd.cloneEl = null;
-    bd.holdTimer = null;
     bd._updatePointerY = null;
     if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
     if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
@@ -240,18 +257,22 @@ export function useBlockDrag({
       cancelAnimationFrame(bd.scrollRAF);
       bd.scrollRAF = null;
     }
+    // The pointerup that ends a drag is followed by a click; don't let it
+    // re-place the caret or hit whatever is under the pointer now.
+    suppressNextClick();
 
     const slotEl = blockRefs.current[bd.blockId];
     if (slotEl && bd.cloneEl) {
       const slotRect = slotEl.getBoundingClientRect();
       Object.assign(bd.cloneEl.style, {
-        transition: "top 200ms ease, left 200ms ease, opacity 200ms ease, transform 200ms ease",
+        transition: `top ${SETTLE_MS}ms ease, left ${SETTLE_MS}ms ease, opacity ${SETTLE_MS}ms ease, transform ${SETTLE_MS}ms ease, box-shadow ${SETTLE_MS}ms ease`,
         top: slotRect.top + "px",
         left: slotRect.left + "px",
         transform: "scale(1)",
+        boxShadow: "none",
         opacity: "0",
       });
-      setTimeout(() => cleanupBlockDrag(), 200);
+      setTimeout(() => cleanupBlockDrag(), SETTLE_MS);
     } else {
       cleanupBlockDrag();
     }
@@ -259,11 +280,11 @@ export function useBlockDrag({
 
   const cancelBlockDrag = () => {
     const bd = blockDrag.current;
-    if (bd.holdTimer) {
-      clearTimeout(bd.holdTimer);
-      bd.holdTimer = null;
+    if (!bd.active) {
+      // A press that never became a drag still holds window listeners.
+      if (bd.moveHandler || bd.upHandler) cleanupBlockDrag();
+      return;
     }
-    if (!bd.active) return;
     const noteId = bd.noteId;
     const originalBlocks = bd.originalBlocks;
     if (originalBlocks && noteId) {
@@ -281,74 +302,48 @@ export function useBlockDrag({
     cleanupBlockDrag();
   };
 
-  const handleEditorPointerDown = (e) => {
-    const t0 = performance.now();
+  /**
+   * Press on the gutter grip for `blockId`. The drag lifts on the first real
+   * movement — no timer — and a press released without moving does nothing.
+   */
+  const startHandleDrag = (blockId, e) => {
     if (e.button !== 0) return;
-    if (e.target.closest(".checkbox-box, button, img, .delete-btn")) return;
     const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
-    const blockInfo = getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
-    if (!blockInfo) return;
     if (!blocks || blocks.length <= 1) return;
-
-    // One-time tooltip
-    if (!localStorage.getItem("boojy-drag-tooltip-editor")) {
-      dragTooltipCount.current.editor++;
-      if (dragTooltipCount.current.editor === 3) {
-        localStorage.setItem("boojy-drag-tooltip-editor", "1");
-        setDragTooltip({ x: e.clientX, y: e.clientY - 40, text: "Hold and drag to reorder" });
-        setTimeout(() => setDragTooltip(null), 3000);
-      }
-    }
+    const blockIndex = blocks.findIndex((b) => b.id === blockId);
+    if (blockIndex === -1) return;
+    const blockInfo = { blockId, blockIndex };
 
     const bd = blockDrag.current;
     bd.startX = e.clientX;
     bd.startY = e.clientY;
 
-    const pY = e.clientY;
-    bd.holdTimer = setTimeout(() => {
-      activateBlockDrag(blockInfo, pY);
-    }, 400);
-
     const onMove = (ev) => {
-      if (bd.holdTimer && !bd.active) {
+      if (!bd.active) {
         const dx = ev.clientX - bd.startX;
         const dy = ev.clientY - bd.startY;
-        if (Math.hypot(dx, dy) > 5) {
-          clearTimeout(bd.holdTimer);
-          bd.holdTimer = null;
-          window.removeEventListener("pointermove", onMove);
-          window.removeEventListener("pointerup", onUp);
-        }
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD) activateBlockDrag(blockInfo, ev.clientY);
         return;
       }
-      if (bd.active) {
-        if (bd.cloneEl) {
-          bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
-        }
-        if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
-        updateBlockDropTarget(ev.clientY);
-      }
+      if (bd.cloneEl) bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
+      if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
+      updateBlockDropTarget(ev.clientY);
     };
     const onUp = () => {
-      if (bd.holdTimer) {
-        clearTimeout(bd.holdTimer);
-        bd.holdTimer = null;
-      }
-      if (bd.active) finalizeBlockDrag();
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      bd.moveHandler = null;
+      bd.upHandler = null;
+      if (bd.active) finalizeBlockDrag();
     };
     bd.moveHandler = onMove;
     bd.upHandler = onUp;
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-    const dt = performance.now() - t0;
-    if (import.meta.env.DEV && dt > 2)
-      console.warn(`[perf] handleEditorPointerDown: ${dt.toFixed(1)}ms`);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupBlockDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupBlockDrag(), []);
 
-  return { blockDrag, handleEditorPointerDown, cancelBlockDrag };
+  return { blockDrag, startHandleDrag, cancelBlockDrag };
 }

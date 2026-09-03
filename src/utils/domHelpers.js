@@ -144,6 +144,22 @@ export function runAutoScroll(scrollEl, pointerY) {
 }
 
 /**
+ * Swallow the synthetic `click` the browser fires after a pointerup that ended
+ * a drag. Without this, releasing a dragged sidebar note over its own row opens
+ * it, and releasing a block ghost re-places the caret under the pointer. One
+ * shot: the listener removes itself on the first click or after `ttl` ms.
+ */
+export function suppressNextClick(ttl = 200) {
+  const onClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    window.removeEventListener("click", onClick, true);
+  };
+  window.addEventListener("click", onClick, true);
+  setTimeout(() => window.removeEventListener("click", onClick, true), ttl);
+}
+
+/**
  * Check if a block type is editable (has text content).
  */
 export function isEditableBlock(b) {

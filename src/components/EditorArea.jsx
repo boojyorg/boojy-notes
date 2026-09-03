@@ -10,6 +10,7 @@ import { CHROME_INSET, CHROME_BTN } from "./EditorChrome";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
+import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
 import BacklinksPanel from "./BacklinksPanel";
 import LinkTooltip from "./LinkTooltip";
@@ -137,7 +138,7 @@ const EditorArea = memo(
       handleEditorInput,
       handleEditorPaste,
       handleEditorCopy,
-      handleEditorPointerDown,
+      startHandleDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
       handleEditorFocus,
@@ -172,6 +173,8 @@ const EditorArea = memo(
     const [linkTooltip, setLinkTooltip] = useState(null);
     const tooltipTimer = useRef(null);
     const editorContainerRef = useRef(null);
+    // Note column (padding + measure) — the drag handle positions against it.
+    const columnRef = useRef(null);
 
     // Clean up tooltip timer on unmount to prevent state updates on unmounted component
     useEffect(() => () => clearTimeout(tooltipTimer.current), []);
@@ -514,6 +517,7 @@ const EditorArea = memo(
         {note ? (
           <div
             key={activeNote}
+            ref={columnRef}
             style={{
               padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
               maxWidth: isMobile ? "100%" : sidebarInFlow ? 720 : 840,
@@ -704,7 +708,6 @@ const EditorArea = memo(
                 }}
                 onPaste={handleEditorPaste}
                 onCopy={handleEditorCopy}
-                onPointerDown={handleEditorPointerDown}
                 onMouseMove={handleEditorMouseMove}
                 onMouseLeave={handleEditorMouseLeave}
                 onContextMenu={handleEditorContextMenu}
@@ -818,6 +821,13 @@ const EditorArea = memo(
                   });
                 })()}
               </div>
+              {!isMobile && (
+                <BlockDragHandle
+                  columnRef={columnRef}
+                  editorRef={editorRef}
+                  startHandleDrag={startHandleDrag}
+                />
+              )}
               <FloatingToolbar
                 position={toolbarState}
                 activeFormats={activeFormats}

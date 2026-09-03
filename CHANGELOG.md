@@ -6,6 +6,9 @@
 - **Desktop: caret no longer jumps to the top of the note, and keystrokes are no longer lost, mid-typing** — Every save Boojy made was echoed back by the file watcher, and the "ignore my own write" window was a separate timer per save on one shared list, so two saves landing 1.15–1.5s apart (a normal pause-type-pause rhythm) let the second echo through. Boojy then treated its own file as an external edit, rebuilt the note from disk, dropped the caret at the start of the first block and discarded anything typed since that save. The window is now one timer per file, reset by each write.
 
 ### Removed
+- **Hold-to-drag block reorder** — Pressing and holding a block's text for 400ms no longer starts
+  a drag, and the one-time "Hold and drag to reorder" tip is gone with it. The gutter handle
+  above replaces both.
 - **Cloud sync and sign-in** — Boojy is fully local for now. The dormant Supabase auth/client,
   R2-backed Edge Functions, realtime and cross-tab sync engine, conflict/first-sync UI, backend
   migrations, tests, environment template and `@supabase/supabase-js` dependency have been
@@ -17,6 +20,16 @@
 - **Manual ordering, and folder dragging** — Notes and folders can no longer be dragged into a hand-arranged order. There were two competing ideas of "order" — a manual one saved to disk, and the new sort preference — and one had to go. Dragging a note still moves its file into a folder, because that is a real change to where the note lives. Folder rows are no longer draggable at all: dropping a folder onto another folder used to highlight the target, expand it, and then silently do nothing, so the affordance was promising something the app could not do. Genuine folder nesting can be built later as its own feature. Your existing `.boojy-meta.json` files are left untouched on disk — nothing reads or writes the ordering keys any more, so an old arrangement stays recoverable.
 
 ### Improvements
+- **Move a block by its handle, not by holding the text** — Hover any block and a small grip
+  appears in the left margin; drag it to move the block. Text is now only ever for writing and
+  selecting, so pausing before you drag to select a sentence can no longer pick the whole block
+  up instead. The lifted block rises with a soft shadow, the gap it leaves is a quiet grey, and
+  releasing settles it into place. Nothing shows until you hover, nothing is added beside the
+  grip, and `Cmd/Ctrl+Shift+↑/↓` still moves blocks from the keyboard.
+- **Calmer note dragging in the sidebar** — The lifted note is a plain pill with just its title,
+  it rises in rather than popping, and letting go anywhere that isn't a folder (or the Notes area)
+  flies it back to where it came from. Dropping a note over the editor no longer opens it; a
+  click does that.
 - **Quieter, easier-to-grab editor chrome** — Scrollbars now keep a generous pointer target while
   drawing a slim neutral thumb with reliable hover and held states in Chromium and Firefox. The
   sidebar resize edge uses the same neutral interaction language instead of a permanent divider,

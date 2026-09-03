@@ -288,7 +288,7 @@ export default function BoojyNotes() {
     });
   getLinkContextRef.current = getLinkContext;
 
-  const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({
+  const { blockDrag, startHandleDrag, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
     activeNoteRef,
     setNoteData,
@@ -297,10 +297,9 @@ export default function BoojyNotes() {
     blockRefs,
     editorRef,
     editorScrollRef,
-    accentColor,
     editorBg,
-    setDragTooltip,
-    dragTooltipCount,
+    dragShadow: theme.dragShadow,
+    slotBg: theme.BG.surface,
     setToolbarState,
   });
   const multiSelectRef = useRef(null);
@@ -318,7 +317,6 @@ export default function BoojyNotes() {
     dragTooltipCount,
     selectedNotesRef: multiSelectRef,
     clearSelectionRef: clearSelectionRef,
-    openNote,
   });
   const {
     handleEditorKeyDown,
@@ -837,7 +835,7 @@ export default function BoojyNotes() {
               handleEditorInput,
               handleEditorPaste,
               handleEditorCopy,
-              handleEditorPointerDown,
+              startHandleDrag,
               handleEditorMouseDown,
               handleEditorMouseUp,
               handleEditorFocus,
@@ -1010,7 +1008,7 @@ export default function BoojyNotes() {
             zIndex: Z.OVERLAY,
             pointerEvents: "none",
             animation: "fadeIn 0.2s ease",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+            boxShadow: theme.dragShadow,
             whiteSpace: "nowrap",
           }}
         >
