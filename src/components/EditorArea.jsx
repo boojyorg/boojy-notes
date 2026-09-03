@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
@@ -85,15 +86,6 @@ const COL_OFFSET_FROM = 560;
 const COL_OFFSET_TO = 880;
 /** The drag handle between sidebar and editor also eats width. */
 const SIDEBAR_HANDLE_W = 4;
-
-const EMPTY_FORMATS = {
-  bold: false,
-  italic: false,
-  code: false,
-  link: false,
-  strikethrough: false,
-  highlight: false,
-};
 
 // "Does this note have any content?" — drives the starfield fade. Media blocks
 // (image/file/embed/table) count as content even with no text; everything else
@@ -545,10 +537,10 @@ const EditorArea = memo(
             )}
             {/* File label — see the LABEL_* constants for why it looks like this.
                 The breadcrumb that used to sit above it is gone: it only ever
-                populated for notes created in-session inside a folder (files read
-                from disk carry `folder`, not `path`), so it appeared
-                inconsistently, and a second muted line directly above this one
-                reads as a stack of two labels. Location is the sidebar's job. */}
+                populated for notes created in-session inside a folder, so it
+                appeared inconsistently, and a second muted line directly above
+                this one reads as a stack of two labels. Location is the
+                sidebar's job. */}
             <div
               ref={titleRef}
               contentEditable
@@ -983,8 +975,6 @@ const EditorArea = memo(
     const pBlocks = prev.note?.content?.blocks;
     const nBlocks = next.note?.content?.blocks;
     if (haveEditorBlockRenderChanges(pBlocks, nBlocks)) return false;
-    // Check path changed (folder move / breadcrumb)
-    if (prev.note?.path !== next.note?.path) return false;
     const result =
       prev.activeNote === next.activeNote &&
       prev.editorFadeIn === next.editorFadeIn &&

@@ -20,33 +20,11 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for API, stale-while-revalidate for app shell
+// Fetch: stale-while-revalidate for the app shell
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Network-first for API calls (Supabase, external services)
-  if (
-    url.hostname.includes("supabase") ||
-    url.pathname.startsWith("/rest/") ||
-    url.pathname.startsWith("/auth/") ||
-    url.pathname.startsWith("/functions/")
-  ) {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match(event.request).then(
-          (cached) =>
-            cached ||
-            new Response(JSON.stringify({ error: "offline" }), {
-              status: 503,
-              headers: { "Content-Type": "application/json" },
-            }),
-        ),
-      ),
-    );
-    return;
-  }
-
-  // Stale-while-revalidate for app shell: serve cached immediately,
+  // Stale-while-revalidate: serve cached immediately,
   // fetch fresh copy in background and update cache for next load
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) =>

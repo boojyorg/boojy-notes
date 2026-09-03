@@ -1,7 +1,5 @@
 import { genNoteId, genBlockId } from "../utils/storage";
-import { FOLDER_TREE } from "../constants/data";
 import { isNative } from "../utils/platform";
-import { getAPI } from "../services/apiProvider";
 
 export function useNoteCrud({
   commitNoteData,
@@ -28,14 +26,11 @@ export function useNoteCrud({
     const id = genNoteId();
     const firstBlockId = genBlockId();
     const noteTitle = title || "Untitled";
-    const pathParts = folder ? [...folder.split("/"), noteTitle] : undefined;
     const newNote = {
       id,
       title: noteTitle,
       folder,
-      path: pathParts,
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
-      words: 0,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
     open(id);
@@ -110,12 +105,7 @@ export function useNoteCrud({
       const next = { ...prev };
       for (const [id, n] of Object.entries(next)) {
         if (n.folder && (n.folder === oldPath || n.folder.startsWith(oldPath + "/"))) {
-          const updated = { ...n, folder: n.folder.replace(oldPath, newPath) };
-          if (updated.path) {
-            const oldLast = oldPath.split("/").pop();
-            updated.path = updated.path.map((s) => (s === oldLast ? newName : s));
-          }
-          next[id] = updated;
+          next[id] = { ...n, folder: n.folder.replace(oldPath, newPath) };
         }
       }
       return next;
@@ -151,7 +141,7 @@ export function useNoteCrud({
 
   const createFolder = () => {
     let name = "Untitled Folder";
-    const existingNames = new Set([...FOLDER_TREE.map((f) => f.name), ...customFolders]);
+    const existingNames = new Set(customFolders);
     if (existingNames.has(name)) {
       let i = 2;
       while (existingNames.has(`${name} ${i}`)) i++;
@@ -170,7 +160,6 @@ export function useNoteCrud({
       title: "",
       folder: null,
       content: { title: "", blocks: [{ id: firstBlockId, type: "p", text: "" }] },
-      words: 0,
       _draft: true,
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));

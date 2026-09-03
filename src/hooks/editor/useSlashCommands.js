@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
 
+const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
+
 export function useSlashCommands({
   noteDataRef,
   blockRefs,
@@ -16,79 +18,83 @@ export function useSlashCommands({
     const block = blocks[blockIndex];
     const el = blockRefs.current[block.id];
 
-    if (command.type === "image") {
-      if (el) el.innerHTML = "<br>";
+    const updateBlocks = (mutate) => {
       commitNoteData((prev) => {
         const next = { ...prev };
         const n = { ...next[noteId] };
         const blks = [...n.content.blocks];
-        blks[blockIndex] = { ...blks[blockIndex], text: "" };
+        mutate(blks);
         n.content = { ...n.content, blocks: blks };
         next[noteId] = n;
         return next;
       });
+    };
+
+    // Replace the slash block with `special` followed by a fresh empty
+    // paragraph, and put the caret at the start of that paragraph. This is
+    // the one state operation every "insert a special block" command ends in.
+    const replaceWithSpecialBlock = (special) => {
+      const paraBlock = { id: genBlockId(), type: "p", text: "" };
+      updateBlocks((blks) => blks.splice(blockIndex, 1, special, paraBlock));
+      focusBlockId.current = paraBlock.id;
+      focusCursorPos.current = 0;
+    };
+
+    // Picker-backed commands clear the typed "/…" first so nothing lingers
+    // while the dialog is open; on cancel or failure the caret returns here.
+    const clearSlashText = () => {
+      updateBlocks((blks) => {
+        blks[blockIndex] = { ...blks[blockIndex], text: "" };
+      });
+    };
+    const refocusSlashBlock = () => {
+      focusBlockId.current = block.id;
+      focusCursorPos.current = 0;
+    };
+
+    const imageBlockFor = (picked, filename) => ({
+      id: genBlockId(),
+      type: "image",
+      src: filename,
+      alt: picked.fileName.replace(/\.[^.]+$/, ""),
+      width: 0,
+      text: "",
+    });
+
+    if (el) el.innerHTML = "<br>";
+
+    if (command.type === "image") {
+      clearSlashText();
       if (!getAPI()) return;
       try {
         const picked = await getAPI().pickImageFile();
         if (!picked) {
-          focusBlockId.current = block.id;
-          focusCursorPos.current = 0;
+          refocusSlashBlock();
           return;
         }
         const filename = await getAPI().saveImage({
           fileName: picked.fileName,
           dataBase64: picked.dataBase64,
         });
-        const imgBlock = {
-          id: genBlockId(),
-          type: "image",
-          src: filename,
-          alt: picked.fileName.replace(/\.[^.]+$/, ""),
-          width: 0,
-          text: "",
-        };
-        const paraBlock = { id: genBlockId(), type: "p", text: "" };
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const blks = [...n.content.blocks];
-          blks.splice(blockIndex, 1, imgBlock, paraBlock);
-          n.content = { ...n.content, blocks: blks };
-          next[noteId] = n;
-          return next;
-        });
-        focusBlockId.current = paraBlock.id;
-        focusCursorPos.current = 0;
+        replaceWithSpecialBlock(imageBlockFor(picked, filename));
       } catch (err) {
         console.error("Image slash command failed", err);
         onError?.("Failed to insert image");
-        focusBlockId.current = block.id;
-        focusCursorPos.current = 0;
+        refocusSlashBlock();
       }
       return;
     }
 
-    // File attachment slash command
+    // File attachment slash command — image files still become image blocks
     if (command.type === "file") {
-      if (el) el.innerHTML = "<br>";
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks[blockIndex] = { ...blks[blockIndex], text: "" };
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
+      clearSlashText();
       if (!getAPI()) return;
       try {
         const picked = await getAPI().pickFile();
         if (!picked) {
-          focusBlockId.current = block.id;
-          focusCursorPos.current = 0;
+          refocusSlashBlock();
           return;
         }
-        const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
         const ext =
           picked.fileName.lastIndexOf(".") !== -1
             ? picked.fileName.slice(picked.fileName.lastIndexOf(".")).toLowerCase()
@@ -98,134 +104,52 @@ export function useSlashCommands({
             fileName: picked.fileName,
             dataBase64: picked.dataBase64,
           });
-          const imgBlock = {
-            id: genBlockId(),
-            type: "image",
-            src: filename,
-            alt: picked.fileName.replace(/\.[^.]+$/, ""),
-            width: 0,
-            text: "",
-          };
-          const paraBlock = { id: genBlockId(), type: "p", text: "" };
-          commitNoteData((prev) => {
-            const next = { ...prev };
-            const n = { ...next[noteId] };
-            const blks = [...n.content.blocks];
-            blks.splice(blockIndex, 1, imgBlock, paraBlock);
-            n.content = { ...n.content, blocks: blks };
-            next[noteId] = n;
-            return next;
-          });
-          focusBlockId.current = paraBlock.id;
-          focusCursorPos.current = 0;
+          replaceWithSpecialBlock(imageBlockFor(picked, filename));
         } else {
           const result = await getAPI().saveAttachment({
             fileName: picked.fileName,
             dataBase64: picked.dataBase64,
           });
-          const fileBlock = {
+          replaceWithSpecialBlock({
             id: genBlockId(),
             type: "file",
             src: result.filename,
             filename: result.filename,
             size: result.size,
             text: "",
-          };
-          const paraBlock = { id: genBlockId(), type: "p", text: "" };
-          commitNoteData((prev) => {
-            const next = { ...prev };
-            const n = { ...next[noteId] };
-            const blks = [...n.content.blocks];
-            blks.splice(blockIndex, 1, fileBlock, paraBlock);
-            n.content = { ...n.content, blocks: blks };
-            next[noteId] = n;
-            return next;
           });
-          focusBlockId.current = paraBlock.id;
-          focusCursorPos.current = 0;
         }
       } catch (err) {
         console.error("File slash command failed", err);
         onError?.("Failed to attach file");
-        focusBlockId.current = block.id;
-        focusCursorPos.current = 0;
+        refocusSlashBlock();
       }
       return;
     }
 
-    // Code block slash command — create special block
     if (command.type === "code") {
-      if (el) el.innerHTML = "<br>";
-      const codeBlock = { ...block, text: "", type: "code", lang: "" };
-      const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks.splice(blockIndex, 1, codeBlock, paraBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-      focusBlockId.current = paraBlock.id;
-      focusCursorPos.current = 0;
+      replaceWithSpecialBlock({ ...block, text: "", type: "code", lang: "" });
       return;
     }
 
-    // Callout slash command
     if (command.type === "callout") {
-      if (el) el.innerHTML = "<br>";
-      const calloutBlock = {
+      replaceWithSpecialBlock({
         ...block,
         text: "",
         type: "callout",
         calloutType: command.calloutType || "note",
         title: "",
-      };
-      const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks.splice(blockIndex, 1, calloutBlock, paraBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
       });
-      focusBlockId.current = paraBlock.id;
-      focusCursorPos.current = 0;
       return;
     }
 
-    // Embed slash command
     if (command.type === "embed") {
-      if (el) el.innerHTML = "<br>";
-      const embedBlock = {
-        ...block,
-        text: "",
-        type: "embed",
-        target: "",
-        heading: null,
-      };
-      const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks.splice(blockIndex, 1, embedBlock, paraBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-      focusBlockId.current = paraBlock.id;
-      focusCursorPos.current = 0;
+      replaceWithSpecialBlock({ ...block, text: "", type: "embed", target: "", heading: null });
       return;
     }
 
-    // Table slash command
     if (command.type === "table") {
-      if (el) el.innerHTML = "<br>";
-      const tableBlock = {
+      replaceWithSpecialBlock({
         ...block,
         text: "",
         type: "table",
@@ -235,27 +159,12 @@ export function useSlashCommands({
           ["", ""],
           ["", ""],
         ],
-      };
-      const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks.splice(blockIndex, 1, tableBlock, paraBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
       });
-      focusBlockId.current = paraBlock.id;
-      focusCursorPos.current = 0;
       return;
     }
 
-    if (el) el.innerHTML = "<br>";
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blks = [...n.content.blocks];
+    // Everything else converts the block in place.
+    updateBlocks((blks) => {
       const updated = { ...blks[blockIndex], text: "", type: command.type };
       if (command.type === "checkbox") updated.checked = false;
       if (command.type === "spacer") {
@@ -264,15 +173,11 @@ export function useSlashCommands({
       }
       if (command.type !== "checkbox") delete updated.checked;
       blks[blockIndex] = updated;
-      n.content = { ...n.content, blocks: blks };
-      next[noteId] = n;
-      return next;
     });
     if (command.type === "spacer") {
       insertBlockAfter(noteId, blockIndex, "p", "");
     } else {
-      focusBlockId.current = block.id;
-      focusCursorPos.current = 0;
+      refocusSlashBlock();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
   }, []);

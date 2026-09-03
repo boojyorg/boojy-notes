@@ -18,10 +18,7 @@
  */
 import {
   ArrowDownAZ as LuArrowDownAZ,
-  Check as LuCheck,
-  ChevronDown as LuChevronDown,
   ChevronLeft as LuChevronLeft,
-  ChevronRight as LuChevronRight,
   Clock3 as LuClock3,
   Code as LuCode,
   Copy as LuCopy,
@@ -61,15 +58,7 @@ const base = { strokeWidth: ICON_STROKE };
 const navBase = { strokeWidth: ICON_STROKE_NAV };
 
 // ── Disclosure ────────────────────────────────────────────────────────────
-export const ChevronRight = ({ color = "currentColor", size = ICON_INLINE }) => (
-  <LuChevronRight {...base} size={size} color={color} />
-);
-export const ChevronDown = ({ color = "currentColor", size = ICON_INLINE }) => (
-  <LuChevronDown {...base} size={size} color={color} />
-);
 export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
-// Breadcrumb separators sit inside 12px text, so they run a step smaller.
-export const BreadcrumbChevron = () => <LuChevronRight {...base} size={14} />;
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open, color, size: sz }) => {
@@ -98,7 +87,6 @@ export const NewFolderIcon = () => <LuFolderPlus {...base} {...navBase} size={IC
 export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
 export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
-export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} size={size} />;
 export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
  *  12.5px menu labels (judged live 2026-08-23). */

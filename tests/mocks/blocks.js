@@ -71,11 +71,9 @@ export function makeNote(id, title = "Untitled", folder = null, blocks = null) {
     id,
     title,
     folder,
-    path: folder ? [...folder.split("/"), title] : undefined,
     content: {
       title,
       blocks: blocks || [paragraph("")],
     },
-    words: 0,
   };
 }

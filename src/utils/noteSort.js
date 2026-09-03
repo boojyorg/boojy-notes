@@ -27,23 +27,12 @@ export const SORT_ALPHA = /** @type {const} */ ("alpha");
 /** First run gets recency; a fresh vault has no opens, so it reads alphabetical. */
 export const DEFAULT_SORT_MODE = SORT_RECENT;
 
-/** Menu order, and the source of the labels used in the trigger's accessible name. */
-export const SORT_MODES = [
-  { id: SORT_RECENT, label: "Most recent" },
-  { id: SORT_ALPHA, label: "Alphabetical" },
-];
-
 /**
  * @param {unknown} value
  * @returns {value is SortMode}
  */
 export function isSortMode(value) {
   return value === SORT_RECENT || value === SORT_ALPHA;
-}
-
-/** @param {SortMode} mode */
-export function sortModeLabel(mode) {
-  return (SORT_MODES.find((m) => m.id === mode) || SORT_MODES[0]).label;
 }
 
 /**

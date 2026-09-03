@@ -78,7 +78,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   };
 
   const commitTextChange = (updater) => {
-    // Flush any pending text change first to avoid split-pane overwrites (Bug 7)
+    // Flush any pending debounced text change first so it cannot overwrite this one
     if (hasPendingFlush.current && textFlushTimer.current) {
       clearTimeout(textFlushTimer.current);
       textFlushTimer.current = null;

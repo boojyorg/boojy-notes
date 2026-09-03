@@ -8,7 +8,7 @@ import {
   detectEol,
   markdownToBlocks,
   parseFrontmatter,
-} from "./markdown.js";
+} from "../src/utils/markdown.js";
 
 // ─── Filename helpers ───
 
@@ -173,8 +173,6 @@ function parseNoteFile(filePath, notesDir) {
     _idIndex[id] = relPath;
 
     const blocks = markdownToBlocks(body);
-    const text = blocks.map((b) => b.text || "").join(" ");
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
     // Remember a CRLF file's line-ending style so saves re-apply it
     // (write-note → applyEol). LF files carry no field.
@@ -187,7 +185,6 @@ function parseNoteFile(filePath, notesDir) {
       title,
       folder,
       content,
-      words,
       // File mtime, which is what makes "Most recent" mean anything on a vault
       // whose notes all predate Boojy's own last-opened timestamps — and what
       // lets an edit made in another app count as recent activity. Declared in
@@ -370,8 +367,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const size = fs.statSync(filePath).size;
     const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
     if (size > MAX_FILE_SIZE) {
-      const { dialog: dlg } = require("electron");
-      dlg.showMessageBoxSync(getMainWindow(), {
+      dialog.showMessageBoxSync(getMainWindow(), {
         type: "warning",
         message: "File too large",
         detail: `The selected file is ${(size / 1024 / 1024).toFixed(0)} MB. Maximum allowed size is 100 MB.`,
@@ -409,21 +405,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     } catch {
       return false;
     }
-  });
-
-  ipcMain.handle("read-meta", (_event, folderRelPath) => {
-    const metaPath = path.join(getNotesDir(), folderRelPath || "", ".boojy-meta.json");
-    try {
-      return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
-    } catch {
-      return null;
-    }
-  });
-
-  ipcMain.handle("write-meta", (_event, folderRelPath, meta) => {
-    const dir = path.join(getNotesDir(), folderRelPath || "");
-    fs.mkdirSync(dir, { recursive: true });
-    writeFileAtomic(path.join(dir, ".boojy-meta.json"), JSON.stringify(meta, null, 2));
   });
 
   ipcMain.handle("open-external", async (_event, url) => {

@@ -157,3 +157,29 @@ describe("readAllNotes — reading never modifies files on disk", () => {
     });
   });
 });
+
+describe("pick-file IPC — oversized files", () => {
+  it("warns and returns null for a file over 100 MB instead of reading it", async () => {
+    const { ipcMain, dialog } = await import("electron");
+    const { registerNoteFileIPC } = await import("../../electron/noteFileManager.js");
+    registerNoteFileIPC(
+      () => ({}),
+      () => notesDir,
+      vi.fn(),
+    );
+    const handler = ipcMain.handle.mock.calls.find(([channel]) => channel === "pick-file")[1];
+
+    // A sparse file: reports 101 MB to stat without writing 101 MB to disk.
+    const big = path.join(notesDir, "huge.bin");
+    fs.writeFileSync(big, "");
+    fs.truncateSync(big, 101 * 1024 * 1024);
+    dialog.showOpenDialog = vi.fn(async () => ({ canceled: false, filePaths: [big] }));
+    dialog.showMessageBoxSync = vi.fn();
+
+    // This path used to call `require("electron")` inside an ES module, so the
+    // guard threw ReferenceError instead of showing the warning.
+    await expect(handler()).resolves.toBeNull();
+    expect(dialog.showMessageBoxSync).toHaveBeenCalledTimes(1);
+    expect(dialog.showMessageBoxSync.mock.calls[0][1].message).toBe("File too large");
+  });
+});

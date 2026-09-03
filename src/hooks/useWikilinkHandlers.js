@@ -138,7 +138,6 @@ export function useWikilinkHandlers({
 
   return {
     noteTitleSet,
-    backlinkIndex,
     currentBacklinks,
     handleWikilinkClick,
     handleWikilinkCmdClick,

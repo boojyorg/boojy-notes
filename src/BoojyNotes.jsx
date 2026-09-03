@@ -9,7 +9,7 @@ import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
-import { useInlineFormatting } from "./hooks/useInlineFormatting";
+import { EMPTY_FORMATS, useInlineFormatting } from "./hooks/useInlineFormatting";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
@@ -21,7 +21,7 @@ import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
 import TagMenu from "./components/TagMenu";
-import TopBar from "./components/TopBar";
+import TopBarMobile from "./components/mobile/TopBarMobile";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
@@ -48,15 +48,6 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
-
-const EMPTY_FORMATS = {
-  bold: false,
-  italic: false,
-  code: false,
-  link: false,
-  strikethrough: false,
-  highlight: false,
-};
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
@@ -148,7 +139,6 @@ export default function BoojyNotes() {
 
   const { activeHint, dismissHint } = useOnboardingHints({
     noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
-    isMobile,
     isEditorFocused: !!activeNote,
   });
 
@@ -300,7 +290,7 @@ export default function BoojyNotes() {
 
   const { blockDrag, handleEditorPointerDown, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
-    activeNote,
+    activeNoteRef,
     setNoteData,
     pushHistory,
     popHistory,
@@ -384,9 +374,7 @@ export default function BoojyNotes() {
 
   // ── Effects ─────────────────────────────────────────────────────────
   // Import handlers, plus the Electron File-menu listener
-  const { handleImportIntoFolder } = useImport({
-    isElectron,
-  });
+  const { handleImportIntoFolder } = useImport();
 
   // Editor fade-in + title sync
   useEffect(() => {
@@ -437,6 +425,9 @@ export default function BoojyNotes() {
     showToast,
   });
 
+  // Registered once. Both cancel functions read the drag's own state through
+  // refs (useBlockDrag keys its restore by the note the drag started in), so
+  // the mount-time capture is safe — don't hand them anything render-bound.
   useEffect(() => {
     const onBlur = () => {
       if (blockDrag.current.active) cancelBlockDrag();
@@ -452,11 +443,6 @@ export default function BoojyNotes() {
       document.removeEventListener("visibilitychange", onVisChange);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // NOTE: `.boojy-meta.json` files are deliberately left alone. Boojy no longer
-  // reads or writes noteOrder/folderOrder — folders are always alphabetical and
-  // notes follow the sort preference — but the files stay on disk untouched, so
-  // any foreign keys in them are safe and an old manual arrangement is recoverable.
 
   // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({
@@ -679,26 +665,27 @@ export default function BoojyNotes() {
           onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
         />
       )}
-      <TopBar
-        isMobile={isMobile}
-        activeNote={activeNote}
-        setActiveNote={setActiveNote}
-        noteTitle={noteTitle}
-        createNote={createNote}
-        onMorePress={() => setMoreMenuOpen(true)}
-        onTitlePress={() => {
-          const el = titleRef.current;
-          if (!el) return;
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-          el.focus();
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }}
-      />
+      {isMobile && (
+        <TopBarMobile
+          activeNote={activeNote}
+          setActiveNote={setActiveNote}
+          noteTitle={noteTitle}
+          createNote={createNote}
+          onMorePress={() => setMoreMenuOpen(true)}
+          onTitlePress={() => {
+            const el = titleRef.current;
+            if (!el) return;
+            el.scrollIntoView({ block: "center", behavior: "smooth" });
+            el.focus();
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }}
+        />
+      )}
 
       {/* === MAIN AREA === */}
       <div
@@ -883,6 +870,7 @@ export default function BoojyNotes() {
               backlinks={currentBacklinks}
               onWikilinkClick={handleWikilinkClick}
               onWikilinkCmdClick={handleWikilinkCmdClick}
+              onTagClick={handleTagClick}
               onOpenBacklink={openNote}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}
@@ -956,7 +944,9 @@ export default function BoojyNotes() {
         createNote={createNote}
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
-        onImport={handleImportIntoFolder}
+        // Import is a desktop file-picker flow; the item would be a dead
+        // click on web, so it isn't offered there.
+        onImport={isElectron ? handleImportIntoFolder : undefined}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}

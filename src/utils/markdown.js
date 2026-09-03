@@ -517,8 +517,6 @@ export function parseFrontmatter(content) {
     id: meta.id || null,
     title: meta.title || "Untitled",
     folder: meta.folder || null,
-    path: meta.path ? meta.path.split("/") : null,
-    words: parseInt(meta.words, 10) || 0,
     body: match[2],
   };
 }

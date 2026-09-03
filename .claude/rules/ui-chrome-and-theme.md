@@ -124,8 +124,8 @@ inconsistency, not the glyph shapes, is what made the UI read as assembled. Don'
 hand-drawn icon unless Lucide genuinely lacks it.
 
 Icons inherit colour from the parent's `color`. If you place one in a container that sets no `color`,
-set one — `SearchIcon` (sidebar search) and `BreadcrumbChevron` (EditorArea) each needed an explicit
-`color: TEXT.muted` on their wrapper for this reason.
+set one — `SearchIcon` (sidebar search) needed an explicit `color: TEXT.muted` on its wrapper for
+this reason.
 
 ## Minimal chrome + single-active-note — CURRENT STATE
 
@@ -440,9 +440,9 @@ carries the fit question. The rename to `useIsTouch` is outstanding — see `doc
 
 ## Testing note
 
-`TopBar.test.jsx` now asserts the desktop bar renders *nothing*; the controls that moved are covered
-in `EditorChrome.test.jsx` (which asserts the toggle is absent when expanded and pinned left when
-collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark-to-Settings +
+`TopBar.jsx` and its test are deleted (2026-09-03) — BoojyNotes mounts `TopBarMobile` directly under
+`isMobile`. The controls the desktop bar used to hold are covered in `EditorChrome.test.jsx` (which
+asserts the toggle is absent when expanded and pinned left when collapsed) and `Sidebar.test.jsx` (header toggle + action rows + direct wordmark-to-Settings +
 no-chevron assertions). Navigation state is covered by `useActiveNote.test.js` (migration rule)
 and `useAppPersistence.test.js` (write shape); `osTrash.test.ts` covers conservative legacy
 migration and managed-file-only deletion. The e2e settings flow clicks

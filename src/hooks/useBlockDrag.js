@@ -1,9 +1,18 @@
 import { useRef, useEffect } from "react";
 import { getBlockFromNode, runAutoScroll } from "../utils/domHelpers";
 
+/**
+ * Hold-and-drag block reorder.
+ *
+ * `handleEditorPointerDown` reaches the DOM through EditorContext, whose value
+ * is frozen at mount (see EditorContext.jsx). So this hook must never read
+ * `activeNote` as a value: it takes `activeNoteRef` and resolves the current
+ * note at pointer-down time. Reading the value here is exactly the bug that
+ * made drag work only on the note that was open when the app launched.
+ */
 export function useBlockDrag({
   noteDataRef,
-  activeNote,
+  activeNoteRef,
   setNoteData,
   pushHistory,
   popHistory,
@@ -18,6 +27,13 @@ export function useBlockDrag({
 }) {
   const blockDrag = useRef({
     active: false,
+    // The note the drag started in. Every write the drag makes (live reorder,
+    // cancel-restore) is keyed by this, never by whichever note is active when
+    // the write happens: cancel can arrive from a once-registered window
+    // listener (Escape in useAppKeyboard, window blur in BoojyNotes) whose
+    // closure may be stale, and restoring the dragged blocks into a different
+    // note is data loss.
+    noteId: null,
     blockId: null,
     blockIds: [],
     originalBlocks: null,
@@ -33,7 +49,8 @@ export function useBlockDrag({
 
   const activateBlockDrag = (blockInfo, pointerY) => {
     const bd = blockDrag.current;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const noteId = activeNoteRef.current;
+    const blocks = noteDataRef.current[noteId]?.content?.blocks;
     if (!blocks || blocks.length <= 1) return;
 
     const blockId = blockInfo.blockId;
@@ -63,6 +80,7 @@ export function useBlockDrag({
     setToolbarState(null);
 
     bd.originalBlocks = [...blocks];
+    bd.noteId = noteId;
     bd.blockId = blockId;
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;
@@ -138,7 +156,8 @@ export function useBlockDrag({
   const updateBlockDropTarget = (pointerY) => {
     const bd = blockDrag.current;
     if (!bd.active) return;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const noteId = bd.noteId;
+    const blocks = noteDataRef.current[noteId]?.content?.blocks;
     if (!blocks) return;
 
     let targetIndex = bd.currentIndex;
@@ -160,8 +179,9 @@ export function useBlockDrag({
 
     const dragIds = bd.blockIds;
     setNoteData((prev) => {
+      if (!prev[noteId]) return prev;
       const next = { ...prev };
-      const n = { ...next[activeNote] };
+      const n = { ...next[noteId] };
       const blks = [...n.content.blocks];
       const dragged = dragIds.map((id) => blks.find((b) => b.id === id)).filter(Boolean);
       const remaining = blks.filter((b) => !dragIds.includes(b.id));
@@ -173,7 +193,7 @@ export function useBlockDrag({
       insertAt = Math.min(targetIndex - removedBefore, remaining.length);
       remaining.splice(insertAt, 0, ...dragged);
       n.content = { ...n.content, blocks: remaining };
-      next[activeNote] = n;
+      next[noteId] = n;
       return next;
     });
     bd.currentIndex = targetIndex;
@@ -200,6 +220,7 @@ export function useBlockDrag({
       bd.scrollRAF = null;
     }
     bd.active = false;
+    bd.noteId = null;
     bd.blockId = null;
     bd.blockIds = [];
     bd.originalBlocks = null;
@@ -243,12 +264,16 @@ export function useBlockDrag({
       bd.holdTimer = null;
     }
     if (!bd.active) return;
-    if (bd.originalBlocks) {
+    const noteId = bd.noteId;
+    const originalBlocks = bd.originalBlocks;
+    if (originalBlocks && noteId) {
       setNoteData((prev) => {
+        // The note may have been deleted mid-drag; never conjure it back.
+        if (!prev[noteId]) return prev;
         const next = { ...prev };
-        const n = { ...next[activeNote] };
-        n.content = { ...n.content, blocks: bd.originalBlocks };
-        next[activeNote] = n;
+        const n = { ...next[noteId] };
+        n.content = { ...n.content, blocks: originalBlocks };
+        next[noteId] = n;
         return next;
       });
     }
@@ -260,7 +285,7 @@ export function useBlockDrag({
     const t0 = performance.now();
     if (e.button !== 0) return;
     if (e.target.closest(".checkbox-box, button, img, .delete-btn")) return;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     const blockInfo = getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
     if (!blockInfo) return;
     if (!blocks || blocks.length <= 1) return;

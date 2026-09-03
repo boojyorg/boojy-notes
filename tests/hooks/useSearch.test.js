@@ -30,14 +30,12 @@ function makeNoteData(...ids) {
 }
 
 function setup(initialNoteData = {}) {
-  const noteDataRef = { current: initialNoteData };
-  const { result, rerender } = renderHook(({ noteData }) => useSearch(noteData, noteDataRef), {
+  const { result, rerender } = renderHook(({ noteData }) => useSearch(noteData), {
     initialProps: { noteData: initialNoteData },
   });
   return {
     result,
     rerender: (nextNoteData) => {
-      noteDataRef.current = nextNoteData;
       rerender({ noteData: nextNoteData });
     },
   };

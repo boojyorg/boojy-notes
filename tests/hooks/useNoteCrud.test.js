@@ -11,25 +11,12 @@ vi.mock("../../src/utils/platform", () => ({
   isNative: false,
 }));
 
-// Mock getAPI
-const mockAPI = {
-  writeMeta: vi.fn(),
-};
-vi.mock("../../src/services/apiProvider", () => ({
-  getAPI: () => mockAPI,
-}));
-
 // Mock ID generators for deterministic output
 let noteIdCounter = 0;
 let blockIdCounter = 0;
 vi.mock("../../src/utils/storage", () => ({
   genNoteId: () => `note-${++noteIdCounter}`,
   genBlockId: () => `blk-${++blockIdCounter}`,
-}));
-
-// Mock FOLDER_TREE as empty
-vi.mock("../../src/constants/data", () => ({
-  FOLDER_TREE: [],
 }));
 
 beforeEach(() => {
@@ -123,7 +110,7 @@ describe("useNoteCrud", () => {
       expect(markOpened).toHaveBeenCalledWith("note-1");
     });
 
-    it("creates a note with folder and sets folder and path correctly", () => {
+    it("creates a note inside the given folder", () => {
       const { result, getNoteData } = setup();
 
       act(() => {
@@ -133,7 +120,6 @@ describe("useNoteCrud", () => {
       const data = getNoteData();
       const noteId = "note-1";
       expect(data[noteId].folder).toBe("Projects/Work");
-      expect(data[noteId].path).toEqual(["Projects", "Work", "My Note"]);
       expect(data[noteId].title).toBe("My Note");
     });
   });

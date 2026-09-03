@@ -10,14 +10,6 @@ export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
     lastClickedNote.current = null;
   }, []);
 
-  const removeFromSelection = useCallback((ids) => {
-    setSelectedNotes((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) next.delete(id);
-      return next;
-    });
-  }, []);
-
   const handleNoteClick = useCallback(
     (noteId, event) => {
       const isMeta = event.metaKey || event.ctrlKey;
@@ -59,6 +51,5 @@ export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
     selectedNotes,
     handleNoteClick,
     clearSelection,
-    removeFromSelection,
   };
 }

@@ -54,9 +54,7 @@ export function NoteDataProvider({ children }) {
     commitTextChange,
     pushHistory,
     popHistory,
-    isUndoRedo,
     noteDataRef,
-    hasPendingFlush,
     textOnlyEdit,
     textOnlyEditForSidebar,
     textOnlyEditForEditor,
@@ -78,15 +76,13 @@ export function NoteDataProvider({ children }) {
       commitTextChange,
       pushHistory,
       popHistory,
-      isUndoRedo,
       noteDataRef,
-      hasPendingFlush,
       textOnlyEdit,
       textOnlyEditForSidebar,
       textOnlyEditForEditor,
       unflushedNotes,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs (isUndoRedo, noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs (noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded
     [canUndo, canRedo, undo, redo, commitNoteData, commitTextChange, pushHistory, popHistory],
   );
 
