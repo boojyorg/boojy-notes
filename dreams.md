@@ -5,9 +5,10 @@
 Notion editing fluidity). Worked one item at a time, each judged live, never the whole list at
 once.
 
-- [x] **Block drag → hover gutter handle** (branch `feat/block-drag-handle`, 2026-09-03). Judged
+- [x] **Block drag → hover gutter handle** — MERGED as PR #93 on 2026-09-03 (branch deleted). Judged
   live against a polished hold-to-drag prototype; handle won on zone separation (text =
   write/select, gutter = move). Hold model + tooltip deleted; sidebar drop-over-editor removed.
+  Behavioural baseline accepted; exact styling refines from daily use, not further theory.
 - [ ] Tables: finished-feeling basic interaction (visible cells, caret in first cell, Tab, whole-
   table delete) — NOT started; Tyr gives the go.
 - [ ] Real empty folders (eager mkdir) + Move to folder… — needs a filesystem/data-safety plan
