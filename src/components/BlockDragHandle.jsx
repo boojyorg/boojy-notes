@@ -6,8 +6,10 @@ import { GripVerticalIcon } from "./Icons";
  *
  * Text is for writing and selecting; this is for moving. Nothing is rendered
  * at rest. Move the pointer over a block (or the gutter beside it) and a 16px
- * grip fades in at the column's left padding, aligned to the block's first
- * line. Press it and move to drag (`startHandleDrag` in useBlockDrag). It hides
+ * grip of six filled dots fades in at the column's left padding, aligned to the
+ * block's first line. Hovering the grip itself only lifts its ink — there is no
+ * hover surface; the gutter stays part of the page. Press it and move to drag
+ * (`startHandleDrag` in useBlockDrag, which commits on drop). It hides
  * the moment a key is pressed and while a drag is live, so the note stays a
  * document until the hand reaches for structure. Deliberately nothing else: no
  * "+" beside it (the slash menu creates blocks), no click menu.

@@ -3,8 +3,12 @@ import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
-const LIFT_MS = 120;
-const SETTLE_MS = 200;
+/** The copy that follows the pointer: a translucent print of the block, no card. */
+const GHOST_OPACITY = 0.35;
+/** Ghost fade-out after a drop or cancel. */
+const FADE_MS = 120;
+/** Marker offset when the drop position has no neighbour on one side. */
+const EDGE_GAP = 4;
 
 /**
  * Block reorder by drag — started from the gutter grip (`BlockDragHandle`),
@@ -13,6 +17,16 @@ const SETTLE_MS = 200;
  * removed 2026-09-03 after a live comparison, because a hold timer makes every
  * pause-then-drag-to-select a race.) Keyboard reorder lives in
  * `useKeyboardHandlers` (Cmd/Ctrl+Shift+↑/↓) and is untouched by this.
+ *
+ * The drag commits on drop. Nothing in the note moves while the pointer is
+ * down: a translucent copy of the block(s) follows the pointer, a thin
+ * insertion marker shows where release would put them, and the reorder (plus
+ * its single history entry) happens on release. Judged live 2026-09-03 against
+ * the earlier live-reorder model, whose blocks shuffled under the pointer as
+ * it crossed them; the page staying still until the hand lets go read as
+ * calmer and more trustworthy. Escape, window blur, or releasing outside the
+ * editor's scroll area cancel, and there is nothing to restore because nothing
+ * was written.
  *
  * `startHandleDrag` is handed to the handle through EditorContext, whose value
  * is frozen at mount (see EditorContext.jsx). So this hook must never read
@@ -25,35 +39,41 @@ export function useBlockDrag({
   activeNoteRef,
   setNoteData,
   pushHistory,
-  popHistory,
   blockRefs,
   editorRef,
   editorScrollRef,
-  editorBg,
-  dragShadow = "0 8px 24px rgba(0,0,0,0.18)",
-  slotBg = "transparent",
   setToolbarState,
 }) {
   const blockDrag = useRef({
     active: false,
-    // The note the drag started in. Every write the drag makes (live reorder,
-    // cancel-restore) is keyed by this, never by whichever note is active when
-    // the write happens: cancel can arrive from a once-registered window
-    // listener (Escape in useAppKeyboard, window blur in BoojyNotes) whose
-    // closure may be stale, and restoring the dragged blocks into a different
-    // note is data loss.
+    // The note the drag started in. The drop writes to this note, never to
+    // whichever note is active when the pointer is released.
     noteId: null,
     blockId: null,
     blockIds: [],
-    originalBlocks: null,
     cloneEl: null,
+    markerEl: null,
     startX: 0,
     startY: 0,
     offsetY: 0,
     startIndex: -1,
-    currentIndex: -1,
+    targetIndex: -1,
+    outside: false,
     scrollRAF: null,
   });
+
+  /** Move `dragIds` so they sit before original index `targetIndex`. */
+  const reorderBlocks = (blks, dragIds, targetIndex) => {
+    const dragged = dragIds.map((id) => blks.find((b) => b.id === id)).filter(Boolean);
+    const remaining = blks.filter((b) => !dragIds.includes(b.id));
+    let removedBefore = 0;
+    for (let i = 0; i < blks.length && i < targetIndex; i++) {
+      if (dragIds.includes(blks[i].id)) removedBefore++;
+    }
+    const insertAt = Math.min(targetIndex - removedBefore, remaining.length);
+    remaining.splice(insertAt, 0, ...dragged);
+    return remaining;
+  };
 
   const activateBlockDrag = (blockInfo, pointerY) => {
     const bd = blockDrag.current;
@@ -65,8 +85,6 @@ export function useBlockDrag({
     const blockIndex = blockInfo.blockIndex;
     const el = blockRefs.current[blockId];
     if (!el) return;
-
-    pushHistory();
 
     // A selection spanning several blocks, one of them the grabbed block, drags
     // them all — the one multi-block gesture, and it costs no extra UI.
@@ -89,20 +107,20 @@ export function useBlockDrag({
     window.getSelection().removeAllRanges();
     setToolbarState(null);
 
-    bd.originalBlocks = [...blocks];
     bd.noteId = noteId;
     bd.blockId = blockId;
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;
-    bd.currentIndex = blockIndex;
+    bd.targetIndex = blockIndex;
+    bd.outside = false;
     bd.active = true;
 
     const rect = el.getBoundingClientRect();
     bd.offsetY = pointerY - rect.top;
 
-    // Ghost: a static clone of the dragged block(s). It is born flat on top of
-    // the real block and *lifts* over LIFT_MS — that lift is the one moment
-    // that tells the hand "you have it".
+    // Ghost: a static, translucent print of the dragged block(s). No card, no
+    // shadow, no lift — the page underneath stays exactly as it was and the
+    // copy is the only thing that moves.
     const clone = document.createElement("div");
     for (const id of draggedIds) {
       const srcEl = blockRefs.current[id];
@@ -119,67 +137,106 @@ export function useBlockDrag({
       fontFamily: src.fontFamily,
       color: src.color,
       position: "fixed",
-      left: rect.left + "px",
-      top: pointerY - bd.offsetY + "px",
-      width: rect.width + "px",
+      left: `${rect.left}px`,
+      top: `${pointerY - bd.offsetY}px`,
+      width: `${rect.width}px`,
       zIndex: "1000",
       pointerEvents: "none",
-      background: editorBg,
-      borderRadius: "6px",
-      overflow: "hidden",
-      boxShadow: "none",
-      opacity: "1",
-      transform: "scale(1)",
-      transition: "none",
-      willChange: "transform, top",
+      opacity: String(GHOST_OPACITY),
+      willChange: "top",
     });
     document.body.appendChild(clone);
     bd.cloneEl = clone;
-    requestAnimationFrame(() => {
-      if (bd.cloneEl !== clone) return;
-      Object.assign(clone.style, {
-        transition: `transform ${LIFT_MS}ms ease, box-shadow ${LIFT_MS}ms ease, opacity ${LIFT_MS}ms ease`,
-        transform: "scale(1.01)",
-        boxShadow: dragShadow,
-        opacity: "0.96",
-      });
-    });
 
-    // Slot: the vacated position. Neutral content-hover surface, text faded to
-    // a hint — enough to show where the block will land, no accent, no dashes.
-    for (const id of draggedIds) {
-      const slotEl = blockRefs.current[id];
-      if (slotEl) {
-        slotEl.dataset.dragSlot = "true";
-        slotEl.style.opacity = "0.3";
-        slotEl.style.background = slotBg;
-        slotEl.style.borderRadius = "6px";
-      }
-    }
+    // Insertion marker: painted by positionMarker as the pointer moves.
+    const marker = document.createElement("div");
+    marker.className = "block-drop-marker";
+    marker.style.display = "none";
+    document.body.appendChild(marker);
+    bd.markerEl = marker;
 
     document.body.classList.add("block-dragging");
 
     const scrollEl = editorScrollRef.current;
     let lastPointerY = pointerY;
+    let lastPointerX = bd.startX;
     const scrollLoop = () => {
       if (!bd.active) return;
       runAutoScroll(scrollEl, lastPointerY);
+      // The marker is fixed-positioned, so it must follow the blocks as
+      // auto-scroll moves them under a stationary pointer.
+      updateBlockDropTarget(lastPointerY, lastPointerX);
       bd.scrollRAF = requestAnimationFrame(scrollLoop);
     };
     bd.scrollRAF = requestAnimationFrame(scrollLoop);
-    bd._updatePointerY = (y) => {
+    bd._updatePointer = (y, x) => {
       lastPointerY = y;
+      if (x != null) lastPointerX = x;
     };
   };
 
-  const updateBlockDropTarget = (pointerY) => {
+  /** Paint the insertion marker for the boundary before original index `targetIndex`. */
+  const positionMarker = (blocks, targetIndex) => {
+    const bd = blockDrag.current;
+    const marker = bd.markerEl;
+    if (!marker) return;
+    if (bd.outside) {
+      marker.style.display = "none";
+      return;
+    }
+    let before = null; // first non-dragged block at/after the boundary
+    let after = null; // last non-dragged block before the boundary
+    let firstDragged = -1;
+    let lastDragged = -1;
+    for (let i = 0; i < blocks.length; i++) {
+      if (bd.blockIds.includes(blocks[i].id)) {
+        if (firstDragged === -1) firstDragged = i;
+        lastDragged = i;
+        continue;
+      }
+      const el = blockRefs.current[blocks[i].id];
+      if (!el) continue;
+      if (i < targetIndex) after = el;
+      else if (!before) before = el;
+    }
+    let y;
+    const firstEl = blockRefs.current[blocks[firstDragged]?.id];
+    const straddles = firstEl && targetIndex >= firstDragged && targetIndex <= lastDragged + 1;
+    if (straddles) {
+      // The boundary sits where the grabbed block(s) already are: dropping here
+      // changes nothing. The gap between `after` and `before` is the grabbed run
+      // itself, so its midpoint would cut through the text, and the gap just
+      // below the run reads as "it will move down one" when it will not. So the
+      // one no-op position is drawn ABOVE the run, always; the first real
+      // boundary below appears once the pointer passes the next block's middle.
+      const runTop = firstEl.getBoundingClientRect().top;
+      y = after ? (after.getBoundingClientRect().bottom + runTop) / 2 : runTop - EDGE_GAP;
+    } else if (before && after) {
+      y = (after.getBoundingClientRect().bottom + before.getBoundingClientRect().top) / 2;
+    } else if (before) {
+      y = before.getBoundingClientRect().top - EDGE_GAP;
+    } else if (after) {
+      y = after.getBoundingClientRect().bottom + EDGE_GAP;
+    } else {
+      marker.style.display = "none";
+      return;
+    }
+    const col = (editorRef.current || before || after).getBoundingClientRect();
+    Object.assign(marker.style, {
+      display: "block",
+      left: `${col.left}px`,
+      width: `${col.width}px`,
+      top: `${y - marker.offsetHeight / 2}px`,
+    });
+  };
+
+  const updateBlockDropTarget = (pointerY, pointerX) => {
     const bd = blockDrag.current;
     if (!bd.active) return;
-    const noteId = bd.noteId;
-    const blocks = noteDataRef.current[noteId]?.content?.blocks;
+    const blocks = noteDataRef.current[bd.noteId]?.content?.blocks;
     if (!blocks) return;
 
-    let targetIndex = bd.currentIndex;
+    let targetIndex = bd.targetIndex;
     for (let i = 0; i < blocks.length; i++) {
       if (bd.blockIds.includes(blocks[i].id)) continue;
       const el = blockRefs.current[blocks[i].id];
@@ -192,46 +249,28 @@ export function useBlockDrag({
       }
       targetIndex = i + 1;
     }
-
     targetIndex = Math.max(0, Math.min(targetIndex, blocks.length));
-    if (targetIndex === bd.currentIndex) return;
 
-    const dragIds = bd.blockIds;
-    setNoteData((prev) => {
-      if (!prev[noteId]) return prev;
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blks = [...n.content.blocks];
-      const dragged = dragIds.map((id) => blks.find((b) => b.id === id)).filter(Boolean);
-      const remaining = blks.filter((b) => !dragIds.includes(b.id));
-      let insertAt = targetIndex;
-      let removedBefore = 0;
-      for (let i = 0; i < blks.length && i < targetIndex; i++) {
-        if (dragIds.includes(blks[i].id)) removedBefore++;
+    // Releasing outside the editor's scroll area (over the sidebar, say) is a
+    // cancel, so the marker disappears the moment the pointer crosses out.
+    const scrollEl = editorScrollRef.current;
+    if (scrollEl && pointerX != null) {
+      const r = scrollEl.getBoundingClientRect();
+      // A zero-size rect means the container has no layout yet; don't treat
+      // every position as outside it.
+      if (r.width && r.height) {
+        bd.outside =
+          pointerX < r.left || pointerX > r.right || pointerY < r.top || pointerY > r.bottom;
       }
-      insertAt = Math.min(targetIndex - removedBefore, remaining.length);
-      remaining.splice(insertAt, 0, ...dragged);
-      n.content = { ...n.content, blocks: remaining };
-      next[noteId] = n;
-      return next;
-    });
-    bd.currentIndex = targetIndex;
+    }
+    bd.targetIndex = targetIndex;
+    positionMarker(blocks, targetIndex);
   };
 
   const cleanupBlockDrag = () => {
     const bd = blockDrag.current;
-    if (bd.cloneEl && bd.cloneEl.parentNode) {
-      bd.cloneEl.parentNode.removeChild(bd.cloneEl);
-    }
-    for (const id of bd.blockIds || [bd.blockId]) {
-      const el = blockRefs.current[id];
-      if (el) {
-        delete el.dataset.dragSlot;
-        el.style.opacity = "";
-        el.style.background = "";
-        el.style.borderRadius = "";
-      }
-    }
+    if (bd.cloneEl?.parentNode) bd.cloneEl.parentNode.removeChild(bd.cloneEl);
+    if (bd.markerEl?.parentNode) bd.markerEl.parentNode.removeChild(bd.markerEl);
     document.body.classList.remove("block-dragging");
     if (bd.scrollRAF) {
       cancelAnimationFrame(bd.scrollRAF);
@@ -241,43 +280,74 @@ export function useBlockDrag({
     bd.noteId = null;
     bd.blockId = null;
     bd.blockIds = [];
-    bd.originalBlocks = null;
     bd.cloneEl = null;
-    bd._updatePointerY = null;
+    bd.markerEl = null;
+    bd.startIndex = -1;
+    bd.targetIndex = -1;
+    bd.outside = false;
+    bd._updatePointer = null;
     if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
     if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
     bd.moveHandler = null;
     bd.upHandler = null;
   };
 
-  const finalizeBlockDrag = () => {
+  /** End the drag: fade the copy where it is, then tidy up. */
+  const fadeOutAndCleanup = () => {
     const bd = blockDrag.current;
-    if (!bd.active) return;
     if (bd.scrollRAF) {
       cancelAnimationFrame(bd.scrollRAF);
       bd.scrollRAF = null;
     }
+    if (bd.markerEl) bd.markerEl.style.display = "none";
+    if (!bd.cloneEl) {
+      cleanupBlockDrag();
+      return;
+    }
+    Object.assign(bd.cloneEl.style, {
+      transition: `opacity ${FADE_MS}ms ease`,
+      opacity: "0",
+    });
+    // Detach the window listeners now; the DOM tidy-up waits for the fade.
+    if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
+    if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
+    bd.moveHandler = null;
+    bd.upHandler = null;
+    bd.active = false;
+    setTimeout(() => cleanupBlockDrag(), FADE_MS);
+  };
+
+  const finalizeBlockDrag = () => {
+    const bd = blockDrag.current;
+    if (!bd.active) return;
     // The pointerup that ends a drag is followed by a click; don't let it
     // re-place the caret or hit whatever is under the pointer now.
     suppressNextClick();
 
-    const slotEl = blockRefs.current[bd.blockId];
-    if (slotEl && bd.cloneEl) {
-      const slotRect = slotEl.getBoundingClientRect();
-      Object.assign(bd.cloneEl.style, {
-        transition: `top ${SETTLE_MS}ms ease, left ${SETTLE_MS}ms ease, opacity ${SETTLE_MS}ms ease, transform ${SETTLE_MS}ms ease, box-shadow ${SETTLE_MS}ms ease`,
-        top: slotRect.top + "px",
-        left: slotRect.left + "px",
-        transform: "scale(1)",
-        boxShadow: "none",
-        opacity: "0",
-      });
-      setTimeout(() => cleanupBlockDrag(), SETTLE_MS);
-    } else {
-      cleanupBlockDrag();
+    const noteId = bd.noteId;
+    const blocks = noteDataRef.current[noteId]?.content?.blocks;
+    if (!bd.outside && blocks) {
+      const next = reorderBlocks([...blocks], bd.blockIds, bd.targetIndex);
+      const changed = next.some((b, i) => b.id !== blocks[i].id);
+      // One history entry per drop that actually changed the order; dropping
+      // a block back where it was writes nothing.
+      if (changed) {
+        pushHistory();
+        setNoteData((prev) => {
+          // The note may have been deleted mid-drag; never conjure it back.
+          if (!prev[noteId]) return prev;
+          const out = { ...prev };
+          const n = { ...out[noteId] };
+          n.content = { ...n.content, blocks: next };
+          out[noteId] = n;
+          return out;
+        });
+      }
     }
+    fadeOutAndCleanup();
   };
 
+  /** Escape, window blur, or any other abort. Nothing was written, so nothing to restore. */
   const cancelBlockDrag = () => {
     const bd = blockDrag.current;
     if (!bd.active) {
@@ -285,21 +355,7 @@ export function useBlockDrag({
       if (bd.moveHandler || bd.upHandler) cleanupBlockDrag();
       return;
     }
-    const noteId = bd.noteId;
-    const originalBlocks = bd.originalBlocks;
-    if (originalBlocks && noteId) {
-      setNoteData((prev) => {
-        // The note may have been deleted mid-drag; never conjure it back.
-        if (!prev[noteId]) return prev;
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        n.content = { ...n.content, blocks: originalBlocks };
-        next[noteId] = n;
-        return next;
-      });
-    }
-    popHistory();
-    cleanupBlockDrag();
+    fadeOutAndCleanup();
   };
 
   /**
@@ -325,9 +381,9 @@ export function useBlockDrag({
         if (Math.hypot(dx, dy) > DRAG_THRESHOLD) activateBlockDrag(blockInfo, ev.clientY);
         return;
       }
-      if (bd.cloneEl) bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
-      if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
-      updateBlockDropTarget(ev.clientY);
+      if (bd.cloneEl) bd.cloneEl.style.top = `${ev.clientY - bd.offsetY}px`;
+      if (bd._updatePointer) bd._updatePointer(ev.clientY, ev.clientX);
+      updateBlockDropTarget(ev.clientY, ev.clientX);
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
