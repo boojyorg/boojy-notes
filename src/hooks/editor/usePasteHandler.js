@@ -3,6 +3,7 @@ import { isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import {
   sanitizeInlineHtml,
   htmlToInlineMarkdown,
+  inlineMarkdownToHtml,
   stripMarkdownFormatting,
 } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
@@ -10,11 +11,13 @@ import { markdownToBlocks } from "../../utils/markdown";
 import {
   buildPastedBlocks,
   isStructuredMarkdownLine,
+  isTextBlockType,
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
 
 export function usePasteHandler({
   noteDataRef,
+  noteTitleSetRef,
   activeNoteRef,
   blockRefs,
   commitNoteData,
@@ -25,6 +28,21 @@ export function usePasteHandler({
   reReadBlockFromDom,
   getBlock,
 }) {
+  /**
+   * Paint a destination block that survived the paste with the same id and
+   * type. The editor skips React renders for text-only changes (the page
+   * already has the text while typing), so a paste that only changes a
+   * block's text would otherwise reach state and disk but never the page,
+   * and the next keystroke would read the stale page back over it.
+   */
+  const repaintKeptBlock = (currentBlock, newBlocks) => {
+    const kept = newBlocks.find((b) => b.id === currentBlock.id);
+    if (!kept || kept.type !== currentBlock.type || !isTextBlockType(kept.type)) return;
+    const el = blockRefs.current[kept.id];
+    if (!el) return;
+    el.innerHTML = kept.text ? inlineMarkdownToHtml(kept.text, noteTitleSetRef?.current) : "<br>";
+  };
+
   const handleEditorPaste = useCallback((e) => {
     const currentNote = activeNoteRef.current;
     const files = e.clipboardData?.files;
@@ -189,6 +207,7 @@ export function usePasteHandler({
           return next;
         });
         syncGeneration.current++;
+        repaintKeptBlock(currentBlock, newBlocks);
         focusBlockId.current = focusId;
         focusCursorPos.current = focusPos;
         // Re-place cursor after React re-render mounts the new block
@@ -284,6 +303,7 @@ export function usePasteHandler({
         return next;
       });
       syncGeneration.current++;
+      repaintKeptBlock(currentBlock, newBlocks);
       focusBlockId.current = focusId;
       focusCursorPos.current = focusPos;
       {
@@ -343,7 +363,20 @@ export function usePasteHandler({
     if (!startInfo || !endInfo || !blocks) return;
 
     const startIdx = startInfo.blockIndex;
-    const endIdx = endInfo.blockIndex;
+    let endIdx = endInfo.blockIndex;
+    if (endIdx > startIdx) {
+      // A triple-click (and some drags) ends at the very start of the next
+      // block without selecting any of it; that block is not part of the copy.
+      const tail = document.createRange();
+      tail.selectNodeContents(endInfo.el);
+      tail.setEnd(range.endContainer, range.endOffset);
+      if (tail.toString().length === 0) endIdx--;
+    }
+    // A selection inside one block is a text selection, as in every other
+    // editor: it copies as text, not as a block, so pasting the text of a
+    // list item onto a blank line gives the text without the list. Structure
+    // travels only when the selection spans two or more blocks.
+    if (startIdx === endIdx) return;
     const copiedBlocks = [];
 
     for (let i = startIdx; i <= endIdx; i++) {

@@ -298,6 +298,9 @@ export default function BoojyNotes() {
   });
   const multiSelectRef = useRef(null);
   const clearSelectionRef = useRef(null);
+  // Read by the paste handler (frozen at mount) to paint wikilinks when it
+  // repaints a block directly; filled below once useWikilinkHandlers runs.
+  const noteTitleSetRef = useRef(null);
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag } = useSidebarDrag({
     noteDataRef,
     setNoteData,
@@ -326,6 +329,7 @@ export default function BoojyNotes() {
     executeSlashCommand,
   } = useEditorHandlers({
     noteDataRef,
+    noteTitleSetRef,
     activeNote,
     commitNoteData,
     commitTextChange,
@@ -511,6 +515,7 @@ export default function BoojyNotes() {
     focusBlockId,
     focusCursorPos,
   });
+  noteTitleSetRef.current = noteTitleSet;
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
   const { handleTagClick, handleTagSelect } = useTagHandlers({

@@ -9,6 +9,7 @@ import { useMouseHandlers } from "./editor/useMouseHandlers";
 
 export function useEditorHandlers({
   noteDataRef,
+  noteTitleSetRef,
   activeNote,
   commitNoteData,
   commitTextChange: _commitTextChange,
@@ -50,6 +51,7 @@ export function useEditorHandlers({
 
   const shared = {
     noteDataRef,
+    noteTitleSetRef,
     activeNoteRef,
     blockRefs,
     editorRef,
