@@ -385,7 +385,9 @@ is unchanged and is the non-pointer path.
 block root is a contentEditable, so a control inside it would be inside the text. It mounts in
 `EditorArea` beside the blocks (desktop only; mobile never mounts it), listens for `mousemove` on
 the note **column** (`columnRef`, so hovering the gutter counts), and positions a 20×24 box
-holding a 16px `GripVertical` (content tier, stroke 1.5) at `HANDLE_W + HANDLE_GAP` = 24px left
+holding a 16px `GripVertical` (content tier, stroke 1.5, **dots filled** — Lucide's stroked r=1
+rings read as smudges at 16px; `fill="currentColor"` on the wrapper gives crisp ~2.3px discs) at
+`HANDLE_W + HANDLE_GAP` = 24px left
 of the block's left edge — i.e. inside the column's existing left padding (min 24px), so it
 **never overlaps prose and never shifts layout**. Vertically it centres on the block's **first
 line box** (`firstLineRect`: the rect of the first non-empty text node, falling back to the
@@ -399,22 +401,63 @@ pointer gets the grip; `keydown` on the column hides it; `body.block-dragging` h
 than two blocks means no grip at all. Pressing it and moving >3px lifts the block
 (`startHandleDrag` in `useBlockDrag`, no timer); a press released without moving does nothing.
 Reveal states are CSS in GlobalStyles (`.block-drag-handle`: mounts only when needed and fades
-0 → 0.55 muted ink beside the block via `blockHandleIn`,
-full `TEXT.primary` on `BG.surface` when the grip itself is hovered) — the same grammar as the
-note-row ···; don't add JS opacity handlers. It is `aria-hidden` with no role/tabIndex on
-purpose: a pointer-only affordance, with the keyboard shortcut as the accessible path.
+0 → 0.55 muted ink beside the block via `blockHandleIn`; hovering the grip itself lifts the ink
+to full `TEXT.muted` and **nothing else — there is deliberately no hover surface**, judged live
+2026-09-03 against the earlier `BG.surface` fill and against a Notion-close ink-8% fill: the
+gutter stays part of the page, not a control strip). Don't add JS opacity handlers. It is
+`aria-hidden` with no role/tabIndex on purpose: a pointer-only affordance, with the keyboard
+shortcut as the accessible path. Cursor is `grab` on the grip, `grabbing` on `<body>` while a
+drag is live.
 
 **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a click
 menu on the grip, a handle on mobile, an always-visible handle. The editor must keep reading as a
 document, not a block-management surface.
 
-Shared drag polish (blocks and sidebar notes): the lifted object starts flat and lifts over 120ms
-(scale 1.01, `theme.dragShadow`, opacity 0.96); the vacated block slot is `BG.surface` at 0.3
-opacity with no outline (the dashed accent outline is gone — accent is never a surface); the ghost
-copies the source's `font-family`/`color` because it lives on `<body>`, which has no app font;
-Escape and window blur cancel through `useAppKeyboard`/BoojyNotes; `suppressNextClick()` swallows
-the click that follows every drop. `theme.dragShadow` exists in both DAY and NIGHT — use it for
-anything lifted while dragging rather than an `rgba(0,0,0,…)` literal.
+### The drag commits on drop — nothing moves until the hand lets go
+
+Decided live 2026-09-03 in a four-way comparison (the merged live-reorder baseline, the same grip
+with a Notion-style drag phase, a Notion-close grip, and "boojy-quiet" — which won). **While the
+pointer is down the note does not change at all**: the grabbed block stays where it is at full
+opacity, a translucent copy (`GHOST_OPACITY` 0.35 — a print, not a card: no background, shadow,
+scale or lift) follows the pointer, and a **3px insertion marker** shows where release would put
+it. The reorder happens once, on release, with **one history entry, and only if the order
+actually changed** — dropping a block back where it was writes nothing. The old live reorder
+(blocks shuffling under the pointer as it crossed them, a faded `BG.surface` slot, an opaque
+card ghost with `theme.dragShadow`, the 200ms fly-to-slot settle) is deleted; git history has it.
+
+The marker (`.block-drop-marker` in GlobalStyles, an element `useBlockDrag` paints on `<body>`)
+is `color-mix(in srgb, ACCENT.primary 40%, transparent)`, radius 1.5, spanning the block column.
+Accent here is within grammar — a 2-3px marker, not a surface — and a drop line is a caret
+between blocks; it is theme-scoped through the token, so NIGHT gets its own. The hook reads the
+marker's rendered height back to centre it in the gap, so a CSS change to the height doesn't
+need a JS change. Placement rules, all in `positionMarker`:
+
+- A boundary between two blocks is drawn at the **centre of the gap** between them (blocks
+  carry a 6px bottom margin, so it never touches prose). The first/last position sits
+  `EDGE_GAP` (4px) beyond the outermost block.
+- **The no-op position is always drawn ABOVE the grabbed block (or the whole selected run),
+  never through it and never just below it.** Skipping the grabbed block as a target makes the
+  gap "between its neighbours" the grabbed block itself, so the naive midpoint cut through the
+  text; and the gap just below reads as "it will move down one" when it will not. So the
+  marker holds above the grabbed run while the pointer is anywhere over it *and* over the top
+  half of the next block; it jumps to the first real boundary (after the next block) once the
+  pointer passes that block's middle. Judged live 2026-09-03 in two rounds.
+- Releasing **outside the editor's scroll area** (over the sidebar) cancels — the marker hides
+  the moment the pointer crosses out (`bd.outside`). A zero-size scroll rect (no layout yet)
+  disables that check rather than treating everything as outside.
+
+Escape and window blur cancel through `useAppKeyboard`/BoojyNotes, and because nothing was
+written there is nothing to restore — `cancelBlockDrag` just fades the copy (`FADE_MS` 120) and
+tidies up; the hook no longer takes `popHistory`, `editorBg`, `dragShadow` or `slotBg`.
+Auto-scroll runs every frame and re-runs the target/marker pass, since the marker is
+fixed-positioned and the blocks move under a stationary pointer. Multi-select (a selection
+spanning the grabbed block) drags the run as one stacked copy and treats it as one block for the
+no-op rule. The ghost copies the source's `font-family`/`color` because it lives on `<body>`,
+which has no app font; `suppressNextClick()` swallows the click that follows every drop.
+
+Sidebar note drag keeps its own polish (title pill lifting over 120ms with `theme.dragShadow`,
+fly-back on cancel) — `theme.dragShadow` exists in both DAY and NIGHT for anything that *lifts*;
+the block ghost deliberately does not lift, so it doesn't use it.
 
 ## Section-header controls: hidden at rest, revealed by the header
 

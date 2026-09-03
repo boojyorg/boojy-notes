@@ -97,7 +97,21 @@ describe("BlockDragHandle", () => {
     expect(top).toBeGreaterThanOrEqual(blockRects.b2.top);
     expect(top).toBeLessThan(blockRects.b2.top + 20);
     expect(handle.getAttribute("aria-hidden")).toBe("true");
-    expect(handle.querySelector("svg.lucide-grip-vertical")).not.toBe(null);
+    const svg = handle.querySelector("svg.lucide-grip-vertical");
+    expect(svg).not.toBe(null);
+    // Filled dots: Lucide's stroked r=1 rings read as smudges at 16px.
+    expect(svg.getAttribute("fill")).toBe("currentColor");
+  });
+
+  it("reveal and hover states are CSS classes, with no inline hover surface", async () => {
+    render(<Harness blocks={["b1", "b2", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(50);
+    const handle = screen.getByTestId("block-drag-handle");
+    expect(handle.className).toBe("block-drag-handle");
+    expect(handle.style.background).toBe("");
+    expect(handle.style.backgroundColor).toBe("");
+    expect(handle.style.cursor).toBe("grab");
   });
 
   it("the gap between two blocks belongs to the block above", async () => {

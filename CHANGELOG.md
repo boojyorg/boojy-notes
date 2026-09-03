@@ -23,9 +23,15 @@
 - **Move a block by its handle, not by holding the text** — Hover any block and a small grip
   appears in the left margin; drag it to move the block. Text is now only ever for writing and
   selecting, so pausing before you drag to select a sentence can no longer pick the whole block
-  up instead. The lifted block rises with a soft shadow, the gap it leaves is a quiet grey, and
-  releasing settles it into place. Nothing shows until you hover, nothing is added beside the
-  grip, and `Cmd/Ctrl+Shift+↑/↓` still moves blocks from the keyboard.
+  up instead. Nothing shows until you hover, nothing is added beside the grip, and
+  `Cmd/Ctrl+Shift+↑/↓` still moves blocks from the keyboard.
+- **Dragging a block no longer shuffles the note under your pointer** — While you drag, the note
+  stays exactly as it is: a faint copy of the block follows your hand and a thin teal line shows
+  where it will land. Let go and it moves there, in one step; let go where it started, press
+  Escape, or release over the sidebar and nothing changes. The line always sits between blocks —
+  when the drop would put the block back where it is, the line rests just above it rather than
+  cutting through the text. The grip's six dots are now solid and the grip no longer gains a
+  grey box when hovered, so the margin keeps reading as part of the page.
 - **Calmer note dragging in the sidebar** — The lifted note is a plain pill with just its title,
   it rises in rather than popping, and letting go anywhere that isn't a folder (or the Notes area)
   flies it back to where it came from. Dropping a note over the editor no longer opens it; a

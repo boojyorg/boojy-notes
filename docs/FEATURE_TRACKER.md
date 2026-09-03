@@ -12,6 +12,7 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
   table, image, file, embed, spacer, frontmatter
 - ✅ Slash commands + markdown input shortcuts
 - ✅ Block reorder — drag by the hover-revealed gutter handle (text never drags; hold-to-drag
+  removed 2026-09-03), committing on drop behind a 3px accent insertion marker (live reorder
   removed 2026-09-03) + keyboard (`Cmd/Ctrl+Shift+↑/↓`)
 - ✅ List-only indent (paragraph/heading indent removed — round-trip safe)
 

@@ -28,20 +28,33 @@ export default function GlobalStyles() {
         .sidebar-dragging * { transition: none !important; }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
-        [data-drag-slot] { transition: opacity 150ms ease, background-color 150ms ease; }
         /* Block drag handle (BlockDragHandle.jsx) follows the note-row ···
-           grammar: muted ink revealed at 0.55 beside the hovered block, full
-           ink + content-hover surface when the grip itself is hovered, gone
-           while a drag is live. All states are CSS — no JS opacity handlers. */
+           grammar for reveal: muted ink at 0.55 beside the hovered block, gone
+           while a drag is live. Hovering the grip itself lifts the ink to full
+           muted and nothing else — deliberately NO hover surface (judged live
+           2026-09-03 against an ink-8% fill): the gutter stays part of the
+           page, not a control strip. All states are CSS — no JS opacity handlers. */
         .block-drag-handle {
           opacity: 0.55;
           color: ${theme.TEXT.muted};
           animation: blockHandleIn 120ms ease;
-          transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+          transition: opacity 120ms ease, color 120ms ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
-        .block-drag-handle:hover { opacity: 1; color: ${theme.TEXT.primary}; background-color: ${theme.BG.surface}; }
+        .block-drag-handle:hover { opacity: 1; }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
+        /* Insertion marker (useBlockDrag, painted on <body>): where the block
+           lands on release. 3px of the accent at 40% — accent is allowed as a
+           2-3px marker, never as a surface, and a drop line is a caret between
+           blocks. Height is read back by the hook to centre it in the gap. */
+        .block-drop-marker {
+          position: fixed;
+          height: 3px;
+          border-radius: 1.5px;
+          pointer-events: none;
+          z-index: 999;
+          background: color-mix(in srgb, ${theme.ACCENT.primary} 40%, transparent);
+        }
         * { box-sizing: border-box; }
         /* Firefox only. Chromium 121+ IGNORES every ::-webkit-scrollbar rule on any
            element that sets scrollbar-width or scrollbar-color, so declaring these

@@ -30,25 +30,34 @@ function setup(overrides = {}) {
     activeNoteRef,
     setNoteData: overrides.setNoteData || vi.fn(),
     pushHistory: overrides.pushHistory || vi.fn(),
-    popHistory: overrides.popHistory || vi.fn(),
     blockRefs,
     editorRef,
     editorScrollRef,
-    editorBg: "#ffffff",
-    dragShadow: "0 1px 2px rgba(0,0,0,0.1)",
-    slotBg: "#f4f4f5",
     setToolbarState: vi.fn(),
   };
-  return { deps, noteDataRef, blockRefs, activeNoteRef };
+  return { deps, noteDataRef, blockRefs, activeNoteRef, editorScrollRef };
 }
 
-function mountBlocks(blockRefs, blocks) {
-  for (const b of blocks) {
+/**
+ * Mount block roots with hand-set rects: 30px rows starting at y=100, 10px
+ * apart, so drop boundaries are predictable. jsdom has no layout of its own.
+ */
+function mountBlocks(blockRefs, blocks, { rowH = 30, gap = 10, top = 100 } = {}) {
+  blocks.forEach((b, i) => {
     const el = document.createElement("p");
     el.dataset.blockId = b.id;
+    const y = top + i * (rowH + gap);
+    el.getBoundingClientRect = () => ({
+      top: y,
+      bottom: y + rowH,
+      height: rowH,
+      left: 50,
+      right: 550,
+      width: 500,
+    });
     document.body.appendChild(el);
     blockRefs.current[b.id] = el;
-  }
+  });
 }
 
 const move = (x, y) =>
@@ -56,7 +65,7 @@ const move = (x, y) =>
 const up = () => window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
 
 /** Press the grip for `blockId`, then travel far enough to lift. */
-function pressAndLift(result, blockId, from = { x: 10, y: 10 }) {
+function pressAndLift(result, blockId, from = { x: 10, y: 110 }) {
   act(() => {
     result.current.startHandleDrag(blockId, { button: 0, clientX: from.x, clientY: from.y });
   });
@@ -65,7 +74,13 @@ function pressAndLift(result, blockId, from = { x: 10, y: 10 }) {
   });
 }
 
-describe("useBlockDrag (gutter handle)", () => {
+const marker = () => document.querySelector(".block-drop-marker");
+const markerCentre = () => {
+  const m = marker();
+  return parseFloat(m.style.top) + m.offsetHeight / 2;
+};
+
+describe("useBlockDrag (gutter handle, commit on drop)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     document.body.innerHTML = "";
@@ -83,10 +98,10 @@ describe("useBlockDrag (gutter handle)", () => {
     expect(bd.active).toBe(false);
     expect(bd.blockId).toBe(null);
     expect(bd.blockIds).toEqual([]);
-    expect(bd.originalBlocks).toBe(null);
     expect(bd.cloneEl).toBe(null);
+    expect(bd.markerEl).toBe(null);
     expect(bd.startIndex).toBe(-1);
-    expect(bd.currentIndex).toBe(-1);
+    expect(bd.targetIndex).toBe(-1);
   });
 
   it("exposes startHandleDrag and cancelBlockDrag, and nothing that drags from the text", () => {
@@ -137,7 +152,7 @@ describe("useBlockDrag (gutter handle)", () => {
     expect(result.current.blockDrag.current.active).toBe(false);
   });
 
-  it("lifts on the first real movement: ghost on <body>, faded slot, history pushed", () => {
+  it("lifts on the first real movement: translucent ghost + marker on <body>, page untouched", () => {
     const { deps, blockRefs } = setup();
     mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
     const { result } = renderHook(() => useBlockDrag(deps));
@@ -146,22 +161,89 @@ describe("useBlockDrag (gutter handle)", () => {
     expect(bd.active).toBe(true);
     expect(bd.noteId).toBe("n1");
     expect(bd.blockIds).toEqual(["b1"]);
-    expect(bd.originalBlocks.map((b) => b.id)).toEqual(["b1", "b2"]);
-    expect(deps.pushHistory).toHaveBeenCalledTimes(1);
     expect(deps.setToolbarState).toHaveBeenCalledWith(null);
     expect(document.body.classList.contains("block-dragging")).toBe(true);
-    // ghost
+    // ghost: a translucent print, no card
     expect(bd.cloneEl.parentNode).toBe(document.body);
     expect(bd.cloneEl.style.position).toBe("fixed");
+    expect(bd.cloneEl.style.opacity).toBe("0.35");
+    expect(bd.cloneEl.style.boxShadow).toBe("");
+    expect(bd.cloneEl.style.background).toBe("");
     expect(bd.cloneEl.querySelector("[contenteditable]")).toBe(null);
-    // slot: neutral surface, no dashed accent outline
-    const slot = blockRefs.current.b1;
-    expect(slot.dataset.dragSlot).toBe("true");
-    expect(slot.style.opacity).toBe("0.3");
-    expect(slot.style.outline).toBe("");
+    // marker exists
+    expect(marker()).not.toBe(null);
+    // the source block is left exactly as it was
+    const src = blockRefs.current.b1;
+    expect(src.dataset.dragSlot).toBeUndefined();
+    expect(src.style.opacity).toBe("");
+    // nothing written, no history yet
+    expect(deps.setNoteData).not.toHaveBeenCalled();
+    expect(deps.pushHistory).not.toHaveBeenCalled();
   });
 
-  it("live reorder during the drag writes to the drag's note only", () => {
+  it("moving the pointer does NOT reorder; it only moves the marker", () => {
+    const setNoteData = vi.fn();
+    const { deps, blockRefs } = setup({
+      setNoteData,
+      blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3")],
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    act(() => {
+      move(10, 400); // below every block → boundary after b3
+    });
+    expect(setNoteData).not.toHaveBeenCalled();
+    expect(result.current.blockDrag.current.targetIndex).toBe(3);
+    // b3 spans 180–210; with no block after, the marker sits EDGE_GAP below it
+    expect(markerCentre()).toBe(214);
+  });
+
+  it("marks a boundary between two blocks at the centre of their gap", () => {
+    const { deps, blockRefs } = setup({
+      blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3")],
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    act(() => {
+      move(10, 200); // lower half of b3 (180–210) → before-index 3? no: mid is 195, 200 > mid → after b3
+    });
+    act(() => {
+      move(10, 185); // upper half of b3 → boundary between b2 and b3
+    });
+    // b2 bottom 170, b3 top 180 → 175
+    expect(markerCentre()).toBe(175);
+  });
+
+  it("the no-op position is always drawn ABOVE the grabbed block, never through or just below it", () => {
+    const { deps, blockRefs } = setup({
+      blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3"), makeBlock("b4")],
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    // grab b2 (140–170); the gap above is 130–140 → centre 135
+    pressAndLift(result, "b2", { x: 10, y: 150 });
+    act(() => {
+      move(10, 145); // top half of b2
+    });
+    expect(markerCentre()).toBe(135);
+    act(() => {
+      move(10, 165); // bottom half of b2 — still a no-op, still above
+    });
+    expect(markerCentre()).toBe(135);
+    act(() => {
+      move(10, 185); // top half of b3 — dropping before b3 is still a no-op
+    });
+    expect(markerCentre()).toBe(135);
+    act(() => {
+      move(10, 200); // bottom half of b3 → real move to after b3; gap 210–220 → 215
+    });
+    expect(markerCentre()).toBe(215);
+  });
+
+  it("release commits once: one history entry, one write to the drag's note only", () => {
+    vi.useFakeTimers();
     const setNoteData = vi.fn();
     const { deps, blockRefs, noteDataRef } = setup({
       setNoteData,
@@ -171,72 +253,109 @@ describe("useBlockDrag (gutter handle)", () => {
     const { result } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1");
     act(() => {
-      move(10, 400); // jsdom rects are 0 → pointer is below every other block → move to end
+      move(10, 400);
+      up();
     });
+    expect(suppressNextClick).toHaveBeenCalledTimes(1);
+    expect(deps.pushHistory).toHaveBeenCalledTimes(1);
     expect(setNoteData).toHaveBeenCalledTimes(1);
     const next = setNoteData.mock.calls[0][0](noteDataRef.current);
     expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["b2", "b1"]);
     expect(next.n2).toBe(noteDataRef.current.n2);
-  });
-
-  it("release finalizes: swallows the trailing click and restores the slot's styles", () => {
-    vi.useFakeTimers();
-    const { deps, blockRefs } = setup();
-    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
-    const { result } = renderHook(() => useBlockDrag(deps));
-    pressAndLift(result, "b1");
     act(() => {
-      up();
-    });
-    expect(suppressNextClick).toHaveBeenCalledTimes(1);
-    act(() => {
-      vi.advanceTimersByTime(250); // settle animation
+      vi.advanceTimersByTime(200); // ghost fade
     });
     const bd = result.current.blockDrag.current;
     expect(bd.active).toBe(false);
     expect(bd.cloneEl).toBe(null);
+    expect(marker()).toBe(null);
     expect(document.body.querySelector('[style*="position: fixed"]')).toBe(null);
-    const slot = blockRefs.current.b1;
-    expect(slot.dataset.dragSlot).toBeUndefined();
-    expect(slot.style.opacity).toBe("");
-    expect(slot.style.background).toBe("");
     expect(document.body.classList.contains("block-dragging")).toBe(false);
-    expect(deps.popHistory).not.toHaveBeenCalled();
   });
 
-  it("cancel restores the original order into the drag's own note and pops history", () => {
+  it("dropping back in the same place writes nothing and pushes no history", () => {
+    vi.useFakeTimers();
     const setNoteData = vi.fn();
-    const popHistory = vi.fn();
-    const { deps, blockRefs, noteDataRef, activeNoteRef } = setup({
-      setNoteData,
-      popHistory,
-      extraNotes: { n2: { id: "n2", content: { blocks: [makeBlock("x1")] } } },
+    const { deps, blockRefs } = setup({ setNoteData });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1", { x: 10, y: 105 });
+    act(() => {
+      move(10, 112); // still over b1
+      up();
     });
-    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    expect(setNoteData).not.toHaveBeenCalled();
+    expect(deps.pushHistory).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.blockDrag.current.active).toBe(false);
+  });
+
+  it("releasing outside the editor's scroll area cancels: marker hidden, nothing written", () => {
+    vi.useFakeTimers();
+    const setNoteData = vi.fn();
+    const { deps, blockRefs, editorScrollRef } = setup({ setNoteData });
+    editorScrollRef.current.getBoundingClientRect = () => ({
+      left: 40,
+      right: 600,
+      top: 0,
+      bottom: 800,
+      width: 560,
+      height: 800,
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
     const { result } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1");
+    act(() => {
+      move(10, 400); // x=10 is left of the scroll area → over the sidebar
+    });
+    expect(result.current.blockDrag.current.outside).toBe(true);
+    expect(marker().style.display).toBe("none");
+    act(() => {
+      up();
+    });
+    expect(setNoteData).not.toHaveBeenCalled();
+    expect(deps.pushHistory).not.toHaveBeenCalled();
+  });
+
+  it("cancel (Escape / blur) tears down without writing — there is nothing to restore", () => {
+    vi.useFakeTimers();
+    const setNoteData = vi.fn();
+    const { deps, blockRefs, activeNoteRef } = setup({
+      setNoteData,
+      extraNotes: { n2: { id: "n2", content: { blocks: [makeBlock("x1")] } } },
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    act(() => {
+      move(10, 400);
+    });
     // A stale listener may fire after the active note changed underneath it.
     activeNoteRef.current = "n2";
     act(() => {
       result.current.cancelBlockDrag();
     });
-    expect(popHistory).toHaveBeenCalledTimes(1);
-    const updater = setNoteData.mock.calls.at(-1)[0];
-    const next = updater(noteDataRef.current);
-    expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["b1", "b2"]);
-    expect(next.n2).toBe(noteDataRef.current.n2);
-    expect(Object.keys(next)).toEqual(["n1", "n2"]);
+    expect(setNoteData).not.toHaveBeenCalled();
+    expect(deps.pushHistory).not.toHaveBeenCalled();
     expect(result.current.blockDrag.current.active).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(marker()).toBe(null);
+    expect(document.body.classList.contains("block-dragging")).toBe(false);
   });
 
-  it("cancel after the drag's note was deleted leaves state untouched", () => {
+  it("a drop after the drag's note was deleted leaves state untouched", () => {
     const setNoteData = vi.fn();
-    const { deps, blockRefs, noteDataRef } = setup({ setNoteData });
-    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    const { deps, blockRefs } = setup({ setNoteData });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
     const { result } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1");
     act(() => {
-      result.current.cancelBlockDrag();
+      move(10, 400);
+      up();
     });
     const updater = setNoteData.mock.calls.at(-1)[0];
     const prev = { other: { id: "other", content: { blocks: [] } } };
@@ -262,6 +381,6 @@ describe("useBlockDrag (gutter handle)", () => {
     const bd = result.current.blockDrag.current;
     expect(bd.active).toBe(true);
     expect(bd.noteId).toBe("n2");
-    expect(bd.originalBlocks.map((b) => b.id)).toEqual(["x1", "x2"]);
+    expect(bd.blockIds).toEqual(["x1"]);
   });
 });

@@ -88,9 +88,11 @@ export const NewFolderIcon = () => <LuFolderPlus {...base} {...navBase} size={IC
 export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
 export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
-/** Block drag handle — content tier: 16px, stroke 1.5. */
+/** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
+ *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;
+ *  filling them gives crisp ~2.3px discs (judged live 2026-09-03). */
 export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
-  <LuGripVertical {...base} size={size} />
+  <LuGripVertical {...base} size={size} fill="currentColor" />
 );
 export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
