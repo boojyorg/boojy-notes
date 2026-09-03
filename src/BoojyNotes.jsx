@@ -437,6 +437,9 @@ export default function BoojyNotes() {
     showToast,
   });
 
+  // Registered once. Both cancel functions read the drag's own state through
+  // refs (useBlockDrag keys its restore by the note the drag started in), so
+  // the mount-time capture is safe — don't hand them anything render-bound.
   useEffect(() => {
     const onBlur = () => {
       if (blockDrag.current.active) cancelBlockDrag();

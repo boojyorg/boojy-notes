@@ -18,6 +18,13 @@ export function useBlockDrag({
 }) {
   const blockDrag = useRef({
     active: false,
+    // The note the drag started in. Every write the drag makes (live reorder,
+    // cancel-restore) is keyed by this, never by whichever note is active when
+    // the write happens: cancel can arrive from a once-registered window
+    // listener (Escape in useAppKeyboard, window blur in BoojyNotes) whose
+    // closure may be stale, and restoring the dragged blocks into a different
+    // note is data loss.
+    noteId: null,
     blockId: null,
     blockIds: [],
     originalBlocks: null,
@@ -63,6 +70,7 @@ export function useBlockDrag({
     setToolbarState(null);
 
     bd.originalBlocks = [...blocks];
+    bd.noteId = activeNote;
     bd.blockId = blockId;
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;
@@ -138,7 +146,8 @@ export function useBlockDrag({
   const updateBlockDropTarget = (pointerY) => {
     const bd = blockDrag.current;
     if (!bd.active) return;
-    const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+    const noteId = bd.noteId;
+    const blocks = noteDataRef.current[noteId]?.content?.blocks;
     if (!blocks) return;
 
     let targetIndex = bd.currentIndex;
@@ -160,8 +169,9 @@ export function useBlockDrag({
 
     const dragIds = bd.blockIds;
     setNoteData((prev) => {
+      if (!prev[noteId]) return prev;
       const next = { ...prev };
-      const n = { ...next[activeNote] };
+      const n = { ...next[noteId] };
       const blks = [...n.content.blocks];
       const dragged = dragIds.map((id) => blks.find((b) => b.id === id)).filter(Boolean);
       const remaining = blks.filter((b) => !dragIds.includes(b.id));
@@ -173,7 +183,7 @@ export function useBlockDrag({
       insertAt = Math.min(targetIndex - removedBefore, remaining.length);
       remaining.splice(insertAt, 0, ...dragged);
       n.content = { ...n.content, blocks: remaining };
-      next[activeNote] = n;
+      next[noteId] = n;
       return next;
     });
     bd.currentIndex = targetIndex;
@@ -200,6 +210,7 @@ export function useBlockDrag({
       bd.scrollRAF = null;
     }
     bd.active = false;
+    bd.noteId = null;
     bd.blockId = null;
     bd.blockIds = [];
     bd.originalBlocks = null;
@@ -243,12 +254,16 @@ export function useBlockDrag({
       bd.holdTimer = null;
     }
     if (!bd.active) return;
-    if (bd.originalBlocks) {
+    const noteId = bd.noteId;
+    const originalBlocks = bd.originalBlocks;
+    if (originalBlocks && noteId) {
       setNoteData((prev) => {
+        // The note may have been deleted mid-drag; never conjure it back.
+        if (!prev[noteId]) return prev;
         const next = { ...prev };
-        const n = { ...next[activeNote] };
-        n.content = { ...n.content, blocks: bd.originalBlocks };
-        next[activeNote] = n;
+        const n = { ...next[noteId] };
+        n.content = { ...n.content, blocks: originalBlocks };
+        next[noteId] = n;
         return next;
       });
     }
