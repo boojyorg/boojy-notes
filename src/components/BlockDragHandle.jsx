@@ -1,34 +1,66 @@
 import { useEffect, useRef, useState } from "react";
 import { GripVerticalIcon } from "./Icons";
-import { useDragMode } from "../dev/dragProto";
 
 /**
- * PROTOTYPE ("handle" drag model) — one floating grip for the whole editor.
+ * The block drag handle — one floating grip for the whole editor.
  *
- * Rather than a handle per block (which would have to live inside each
- * contentEditable root), a single 20×24 control is positioned in the left
- * gutter beside whichever block the pointer is over. It appears on hover,
- * hides the moment a key is pressed, and is invisible while a drag is live,
- * so the document stays a document until the hand reaches for structure.
+ * Text is for writing and selecting; this is for moving. Nothing is rendered
+ * at rest. Move the pointer over a block (or the gutter beside it) and a 16px
+ * grip fades in at the column's left padding, aligned to the block's first
+ * line. Press it and move to drag (`startHandleDrag` in useBlockDrag). It hides
+ * the moment a key is pressed and while a drag is live, so the note stays a
+ * document until the hand reaches for structure. Deliberately nothing else: no
+ * "+" beside it (the slash menu creates blocks), no click menu.
  *
- * Hover detection listens on `columnRef` (the padded note column, so the
- * gutter counts as hovering). Geometry is measured against an invisible anchor
- * rendered beside the handle, so it is correct whatever positioned ancestor the
- * handle actually lands in, and scrolls with the blocks.
+ * One handle rather than one per block, because every block root is a
+ * contentEditable and a control inside it would be inside the text. Geometry
+ * is measured against an invisible anchor rendered beside the handle, so it is
+ * correct whatever positioned ancestor the handle lands in, and it scrolls with
+ * the blocks. The handle is absolutely positioned in the gutter, so its
+ * appearance never shifts a line of prose.
+ *
+ * Desktop-only by design (hover is the discoverability model); the mobile
+ * layout does not mount it. Keyboard reorder (Cmd/Ctrl+Shift+↑/↓) is the
+ * non-pointer path.
  */
-const HANDLE_W = 20;
-const HANDLE_H = 24;
-const GAP = 4;
+export const HANDLE_W = 20;
+export const HANDLE_H = 24;
+/** Gap between the grip's right edge and the block's left edge. */
+export const HANDLE_GAP = 4;
+
+/**
+ * The first line box of a block: the rect of its first rendered text line
+ * (so headings, list rows, quotes and code all centre the grip on the line
+ * the eye reads first), falling back to the element's own line-height for
+ * empty blocks and media that have no text line.
+ */
+function firstLineRect(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+  });
+  const text = walker.nextNode();
+  if (text) {
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    // jsdom has no Range.getClientRects; the fallback below covers it.
+    const rects = typeof range.getClientRects === "function" ? range.getClientRects() : [];
+    if (rects.length) return rects[0];
+  }
+  const r = el.getBoundingClientRect();
+  const cs = getComputedStyle(el);
+  const lh = parseFloat(cs.lineHeight);
+  const padTop = parseFloat(cs.paddingTop) || 0;
+  const line = Number.isFinite(lh) ? lh : 28;
+  return { top: r.top + padTop, height: Math.min(line, r.height || line) };
+}
 
 export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag }) {
-  const mode = useDragMode();
   const [pos, setPos] = useState(null); // { blockId, top, left } | null
   const rafRef = useRef(null);
   const hoveringHandle = useRef(false);
   const anchorRef = useRef(null);
 
   useEffect(() => {
-    if (mode !== "handle") return;
     const column = columnRef.current;
     if (!column) return;
 
@@ -44,19 +76,18 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       const anchor = anchorRef.current;
       if (!anchor) return null;
       const origin = anchor.getBoundingClientRect(); // top-left of our containing block
-      // The block whose vertical band (top → next block's top) holds the pointer.
+      // The block whose vertical band (its top → the next block's top) holds
+      // the pointer, so the gaps between blocks belong to the block above.
       for (let i = 0; i < els.length; i++) {
         const r = els[i].getBoundingClientRect();
         const bottom = i + 1 < els.length ? els[i + 1].getBoundingClientRect().top : r.bottom;
         if (clientY >= r.top && clientY < bottom) {
-          const lh = parseFloat(getComputedStyle(els[i]).lineHeight);
-          const lineBox = Number.isFinite(lh) ? Math.min(lh, r.height) : Math.min(28, r.height);
-          const padTop = parseFloat(getComputedStyle(els[i]).paddingTop) || 0;
+          const line = firstLineRect(els[i]);
           return {
             blockId: els[i].dataset.blockId,
-            top: r.top - origin.top + padTop + (lineBox - HANDLE_H) / 2,
+            top: line.top - origin.top + (line.height - HANDLE_H) / 2,
             // Negative on purpose: the grip lives in the column's left padding.
-            left: r.left - origin.left - HANDLE_W - GAP,
+            left: r.left - origin.left - HANDLE_W - HANDLE_GAP,
           };
         }
       }
@@ -76,14 +107,11 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
         );
       });
     };
-    const hide = () => {
-      if (hoveringHandle.current) return;
-      setPos(null);
-    };
     const onLeave = (e) => {
       // Leaving the column onto the handle itself is not leaving.
       if (e.relatedTarget && column.contains(e.relatedTarget)) return;
-      hide();
+      if (hoveringHandle.current) return;
+      setPos(null);
     };
     const onKey = () => setPos(null);
 
@@ -97,9 +125,7 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [mode, columnRef, editorRef]);
-
-  if (mode !== "handle") return null;
+  }, [columnRef, editorRef]);
 
   return (
     <>
@@ -111,7 +137,8 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       {pos && (
         <div
           className="block-drag-handle"
-          data-visible="true"
+          data-testid="block-drag-handle"
+          data-target-block={pos.blockId}
           aria-hidden="true"
           onMouseEnter={() => {
             hoveringHandle.current = true;

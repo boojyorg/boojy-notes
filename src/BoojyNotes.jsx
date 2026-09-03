@@ -24,7 +24,6 @@ import TagMenu from "./components/TagMenu";
 import TopBarMobile from "./components/mobile/TopBarMobile";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
-import { DragProtoSwitch } from "./dev/dragProto";
 import EditorArea from "./components/EditorArea";
 import ImageLightbox from "./components/ImageLightbox";
 import FloatingActionButton from "./components/mobile/FloatingActionButton";
@@ -289,7 +288,7 @@ export default function BoojyNotes() {
     });
   getLinkContextRef.current = getLinkContext;
 
-  const { blockDrag, handleEditorPointerDown, startHandleDrag, cancelBlockDrag } = useBlockDrag({
+  const { blockDrag, startHandleDrag, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
     activeNoteRef,
     setNoteData,
@@ -298,12 +297,9 @@ export default function BoojyNotes() {
     blockRefs,
     editorRef,
     editorScrollRef,
-    accentColor,
     editorBg,
     dragShadow: theme.dragShadow,
     slotBg: theme.BG.surface,
-    setDragTooltip,
-    dragTooltipCount,
     setToolbarState,
   });
   const multiSelectRef = useRef(null);
@@ -839,7 +835,6 @@ export default function BoojyNotes() {
               handleEditorInput,
               handleEditorPaste,
               handleEditorCopy,
-              handleEditorPointerDown,
               startHandleDrag,
               handleEditorMouseDown,
               handleEditorMouseUp,
@@ -1020,9 +1015,6 @@ export default function BoojyNotes() {
           {dragTooltip.text}
         </div>
       )}
-
-      {/* TEMPORARY: block-drag model switch, dev builds only (src/dev/dragProto.jsx) */}
-      {!isMobile && <DragProtoSwitch />}
 
       {lightbox && (
         <ImageLightbox

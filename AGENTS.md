@@ -69,7 +69,7 @@ implementation detail, trust the rules file (and fix the drift here).
 >    every handler EditorArea/EditableBlock/MobileToolbar pull from `useEditorContext()` is the
 >    one from BoojyNotes' *first* render. Handlers must read changing state through refs
 >    (`activeNoteRef`, `noteDataRef`, `blockRefs`…), never through a captured value. A handler
->    closing over `activeNote` acts on the launch-time note forever (this is why hold-and-drag
+>    closing over `activeNote` acts on the launch-time note forever (this is why block drag
 >    silently worked only on the first note until 2026-09). Same rule for anything handed to a
 >    listener registered once (`useAppKeyboard`, the window-blur drag cancel).
 > 4. **Every desktop save echoes back through chokidar ~350ms later as `file-changed`.** `electron/fileWatcher.js` suppresses it with ONE resettable timer per path (`suppressWatcher`); the renderer's `blocksEqual` bail-out in `useFileSystem.js` is only the second line of defence, and it fails whenever a keystroke reached state after the write. An echo that escapes re-parses the file with fresh `md-N` block IDs → every block remounts → caret collapses to the top of the note and the un-saved keystroke is lost. Reproduce desktop-only bugs like this in the real Electron build (Playwright `_electron` + a temp `userData`/vault), not jsdom.

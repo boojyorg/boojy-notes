@@ -11,7 +11,8 @@ feature ideas → `BACKLOG.md` (Feature ideas section).
 - ✅ Block types — paragraph, h1–h3, bullet/numbered/checkbox list, blockquote, code, callout,
   table, image, file, embed, spacer, frontmatter
 - ✅ Slash commands + markdown input shortcuts
-- ✅ Block reorder — drag (hold-and-drag) + keyboard (`Cmd/Ctrl+Shift+↑/↓`)
+- ✅ Block reorder — drag by the hover-revealed gutter handle (text never drags; hold-to-drag
+  removed 2026-09-03) + keyboard (`Cmd/Ctrl+Shift+↑/↓`)
 - ✅ List-only indent (paragraph/heading indent removed — round-trip safe)
 
 ## Formatting & linking

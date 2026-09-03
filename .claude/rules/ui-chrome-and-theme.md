@@ -351,6 +351,16 @@ Dragging a note moves the **real `.md` file**: onto a folder row files it there,
 display order, drag decides where the note lives. Folders are always alphabetical, with no
 control to change that.
 
+**The drag ghost is a title-only pill, and a drop with no target flies back** (2026-09-03). The
+pill carries just the note title in the row's face on `BG.elevated` with `theme.dragShadow` —
+note rows carry no glyph at rest, so neither does the thing lifted off them; the old emoji
+folder/file glyphs are gone. It is born flat over the row and lifts over 120ms. Releasing
+anywhere that is not a folder row or the root area (including over the editor) cancels: the pill
+animates back to its row over 200ms and nothing changes. **Dropping a note over the editor no
+longer opens it** — drag changes where a note lives, it never navigates; click is how a note
+opens. Every completed or cancelled drag calls `suppressNextClick()` (utils/domHelpers) so the
+browser's trailing click cannot open the row the pill was lifted from.
+
 **Folder rows are not draggable at all.** The sibling-reorder half retired with manual ordering,
 and the nest/reparent half never existed — dropping a folder onto a folder highlighted the
 target and then silently did nothing. Genuine folder nesting is a future feature, not a
@@ -359,6 +369,52 @@ regression to restore.
 Existing `.boojy-meta.json` files are **left untouched on disk**. Nothing reads or writes their
 `noteOrder`/`folderOrder` keys any more, so an old arrangement stays recoverable — don't "tidy
 them up", and don't reintroduce a reader for them.
+
+## Block drag: the gutter handle, never the text
+
+**Blocks move by a hover-revealed grip in the left gutter; the text never drags** (decided live
+2026-09-03 against a polished press-and-hold prototype). The product reason is the separation of
+zones — text = write/select, handle = move — which removes the hold-timer race where a pause
+before a drag-to-select reordered the block instead. Press-and-hold on block text is DELETED
+(`handleEditorPointerDown` is gone from `useBlockDrag`, `EditorContext` and `EditorArea`), and so
+are its "Hold and drag to reorder" tooltip, the `boojy-drag-tooltip-editor` key and the `editor`
+counter in `dragTooltipCount`. Keyboard reorder (`Cmd/Ctrl+Shift+↑/↓` in `useKeyboardHandlers`)
+is unchanged and is the non-pointer path.
+
+`BlockDragHandle.jsx` is **one** floating handle for the whole editor, not one per block — every
+block root is a contentEditable, so a control inside it would be inside the text. It mounts in
+`EditorArea` beside the blocks (desktop only; mobile never mounts it), listens for `mousemove` on
+the note **column** (`columnRef`, so hovering the gutter counts), and positions a 20×24 box
+holding a 16px `GripVertical` (content tier, stroke 1.5) at `HANDLE_W + HANDLE_GAP` = 24px left
+of the block's left edge — i.e. inside the column's existing left padding (min 24px), so it
+**never overlaps prose and never shifts layout**. Vertically it centres on the block's **first
+line box** (`firstLineRect`: the rect of the first non-empty text node, falling back to the
+element's line-height), which is what keeps it on the line the eye reads first for headings,
+list rows, quotes and multi-line paragraphs alike. Geometry is measured against a 0×0 anchor
+rendered beside it, so it is correct whatever positioned ancestor it lands in — the editor
+container (`editorContainerRef`) is `position: relative`, not the column.
+
+Behaviour: invisible at rest; the block whose band (its top → the next block's top) holds the
+pointer gets the grip; `keydown` on the column hides it; `body.block-dragging` hides it; fewer
+than two blocks means no grip at all. Pressing it and moving >3px lifts the block
+(`startHandleDrag` in `useBlockDrag`, no timer); a press released without moving does nothing.
+Reveal states are CSS in GlobalStyles (`.block-drag-handle`: mounts only when needed and fades
+0 → 0.55 muted ink beside the block via `blockHandleIn`,
+full `TEXT.primary` on `BG.surface` when the grip itself is hovered) — the same grammar as the
+note-row ···; don't add JS opacity handlers. It is `aria-hidden` with no role/tabIndex on
+purpose: a pointer-only affordance, with the keyboard shortcut as the accessible path.
+
+**Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a click
+menu on the grip, a handle on mobile, an always-visible handle. The editor must keep reading as a
+document, not a block-management surface.
+
+Shared drag polish (blocks and sidebar notes): the lifted object starts flat and lifts over 120ms
+(scale 1.01, `theme.dragShadow`, opacity 0.96); the vacated block slot is `BG.surface` at 0.3
+opacity with no outline (the dashed accent outline is gone — accent is never a surface); the ghost
+copies the source's `font-family`/`color` because it lives on `<body>`, which has no app font;
+Escape and window blur cancel through `useAppKeyboard`/BoojyNotes; `suppressNextClick()` swallows
+the click that follows every drop. `theme.dragShadow` exists in both DAY and NIGHT — use it for
+anything lifted while dragging rather than an `rgba(0,0,0,…)` literal.
 
 ## Section-header controls: hidden at rest, revealed by the header
 

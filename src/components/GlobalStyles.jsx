@@ -29,16 +29,17 @@ export default function GlobalStyles() {
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         [data-drag-slot] { transition: opacity 150ms ease, background-color 150ms ease; }
-        /* PROTOTYPE block drag handle (src/components/BlockDragHandle.jsx):
-           follows the note-row ··· grammar — muted ink revealed at 0.55 beside
-           the hovered block, full ink + content-hover surface when the grip
-           itself is hovered, gone while a drag is live. */
+        /* Block drag handle (BlockDragHandle.jsx) follows the note-row ···
+           grammar: muted ink revealed at 0.55 beside the hovered block, full
+           ink + content-hover surface when the grip itself is hovered, gone
+           while a drag is live. All states are CSS — no JS opacity handlers. */
         .block-drag-handle {
-          opacity: 0;
+          opacity: 0.55;
           color: ${theme.TEXT.muted};
+          animation: blockHandleIn 120ms ease;
           transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
         }
-        .block-drag-handle[data-visible="true"] { opacity: 0.55; }
+        @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
         .block-drag-handle:hover { opacity: 1; color: ${theme.TEXT.primary}; background-color: ${theme.BG.surface}; }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
         * { box-sizing: border-box; }

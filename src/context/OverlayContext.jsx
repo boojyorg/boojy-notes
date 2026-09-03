@@ -25,7 +25,7 @@ export function OverlayProvider({ children }) {
   }, []);
 
   const [dragTooltip, setDragTooltip] = useState(null);
-  const dragTooltipCount = useRef({ editor: 0, sidebar: 0 });
+  const dragTooltipCount = useRef({ sidebar: 0 });
   const [lightbox, setLightbox] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
   const slashMenuRef = useRef(null);

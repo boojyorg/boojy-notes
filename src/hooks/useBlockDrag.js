@@ -1,29 +1,23 @@
 import { useRef, useEffect } from "react";
-import { getBlockFromNode, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
-import { getDragMode } from "../dev/dragProto";
+import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 
-const HOLD_MS = 400;
-/** Pointer travel that means "this is a drag, not a click" (handle model). */
-const HANDLE_DRAG_THRESHOLD = 3;
-/** Pointer travel during the hold that means "this is a text drag, abort" (hold model). */
-const HOLD_CANCEL_THRESHOLD = 5;
+/** Pointer travel from the grip that means "this is a drag, not a click". */
+const DRAG_THRESHOLD = 3;
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
 
 /**
- * Block reorder by drag.
+ * Block reorder by drag — started from the gutter grip (`BlockDragHandle`),
+ * never from the block text. Text is for writing and selecting; the handle is
+ * for moving. (Press-and-hold on the text was the previous model; it was
+ * removed 2026-09-03 after a live comparison, because a hold timer makes every
+ * pause-then-drag-to-select a race.) Keyboard reorder lives in
+ * `useKeyboardHandlers` (Cmd/Ctrl+Shift+↑/↓) and is untouched by this.
  *
- * Two entry points share one drag engine:
- *   - `handleEditorPointerDown` — press-and-hold on the block text (hold model)
- *   - `startHandleDrag`        — press on the gutter grip, drag begins on the
- *                                first real movement, no timer (handle model)
- * Which one is live is decided by the temporary prototype switch in
- * `src/dev/dragProto.jsx`; the losing entry point is deleted with it.
- *
- * `handleEditorPointerDown` reaches the DOM through EditorContext, whose value
+ * `startHandleDrag` is handed to the handle through EditorContext, whose value
  * is frozen at mount (see EditorContext.jsx). So this hook must never read
  * `activeNote` as a value: it takes `activeNoteRef` and resolves the current
- * note at pointer-down time. Reading the value here is exactly the bug that
+ * note when the press happens. Reading the value here is exactly the bug that
  * made drag work only on the note that was open when the app launched.
  */
 export function useBlockDrag({
@@ -35,12 +29,9 @@ export function useBlockDrag({
   blockRefs,
   editorRef,
   editorScrollRef,
-  accentColor,
   editorBg,
   dragShadow = "0 8px 24px rgba(0,0,0,0.18)",
   slotBg = "transparent",
-  setDragTooltip,
-  dragTooltipCount,
   setToolbarState,
 }) {
   const blockDrag = useRef({
@@ -61,7 +52,6 @@ export function useBlockDrag({
     offsetY: 0,
     startIndex: -1,
     currentIndex: -1,
-    holdTimer: null,
     scrollRAF: null,
   });
 
@@ -78,6 +68,8 @@ export function useBlockDrag({
 
     pushHistory();
 
+    // A selection spanning several blocks, one of them the grabbed block, drags
+    // them all — the one multi-block gesture, and it costs no extra UI.
     let draggedIds = [blockId];
     const sel = window.getSelection();
     if (sel.rangeCount && !sel.isCollapsed) {
@@ -110,8 +102,7 @@ export function useBlockDrag({
 
     // Ghost: a static clone of the dragged block(s). It is born flat on top of
     // the real block and *lifts* over LIFT_MS — that lift is the one moment
-    // that tells the hand "you have it", so it must read even when the pointer
-    // hasn't moved yet.
+    // that tells the hand "you have it".
     const clone = document.createElement("div");
     for (const id of draggedIds) {
       const srcEl = blockRefs.current[id];
@@ -252,7 +243,6 @@ export function useBlockDrag({
     bd.blockIds = [];
     bd.originalBlocks = null;
     bd.cloneEl = null;
-    bd.holdTimer = null;
     bd._updatePointerY = null;
     if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
     if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
@@ -290,11 +280,11 @@ export function useBlockDrag({
 
   const cancelBlockDrag = () => {
     const bd = blockDrag.current;
-    if (bd.holdTimer) {
-      clearTimeout(bd.holdTimer);
-      bd.holdTimer = null;
+    if (!bd.active) {
+      // A press that never became a drag still holds window listeners.
+      if (bd.moveHandler || bd.upHandler) cleanupBlockDrag();
+      return;
     }
-    if (!bd.active) return;
     const noteId = bd.noteId;
     const originalBlocks = bd.originalBlocks;
     if (originalBlocks && noteId) {
@@ -312,85 +302,9 @@ export function useBlockDrag({
     cleanupBlockDrag();
   };
 
-  /** Window pointermove/up pair shared by both entry points once tracking starts. */
-  const trackPointer = (bd, onArmedMove) => {
-    const onMove = (ev) => {
-      if (!bd.active) {
-        onArmedMove(ev, onMove, onUp);
-        return;
-      }
-      if (bd.cloneEl) {
-        bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
-      }
-      if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
-      updateBlockDropTarget(ev.clientY);
-    };
-    const onUp = () => {
-      if (bd.holdTimer) {
-        clearTimeout(bd.holdTimer);
-        bd.holdTimer = null;
-      }
-      if (bd.active) finalizeBlockDrag();
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    bd.moveHandler = onMove;
-    bd.upHandler = onUp;
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  };
-
-  /** Hold model: press on the text, hold HOLD_MS still, then drag. */
-  const handleEditorPointerDown = (e) => {
-    if (getDragMode() === "handle") return;
-    const t0 = performance.now();
-    if (e.button !== 0) return;
-    if (e.target.closest(".checkbox-box, button, img, .delete-btn")) return;
-    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
-    const blockInfo = getBlockFromNode(e.target, editorRef.current, blocks, blockRefs.current);
-    if (!blockInfo) return;
-    if (!blocks || blocks.length <= 1) return;
-
-    // One-time tooltip — the hold gesture has no visible affordance, so this
-    // is its only teaching. The handle model needs none.
-    if (!localStorage.getItem("boojy-drag-tooltip-editor")) {
-      dragTooltipCount.current.editor++;
-      if (dragTooltipCount.current.editor === 3) {
-        localStorage.setItem("boojy-drag-tooltip-editor", "1");
-        setDragTooltip({ x: e.clientX, y: e.clientY - 40, text: "Hold and drag to reorder" });
-        setTimeout(() => setDragTooltip(null), 3000);
-      }
-    }
-
-    const bd = blockDrag.current;
-    bd.startX = e.clientX;
-    bd.startY = e.clientY;
-
-    const pY = e.clientY;
-    bd.holdTimer = setTimeout(() => {
-      activateBlockDrag(blockInfo, pY);
-    }, HOLD_MS);
-
-    trackPointer(bd, (ev, onMove, onUp) => {
-      if (!bd.holdTimer) return;
-      const dx = ev.clientX - bd.startX;
-      const dy = ev.clientY - bd.startY;
-      if (Math.hypot(dx, dy) > HOLD_CANCEL_THRESHOLD) {
-        // Moving during the hold is text selection, not a drag.
-        clearTimeout(bd.holdTimer);
-        bd.holdTimer = null;
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-      }
-    });
-    const dt = performance.now() - t0;
-    if (import.meta.env.DEV && dt > 2)
-      console.warn(`[perf] handleEditorPointerDown: ${dt.toFixed(1)}ms`);
-  };
-
   /**
-   * Handle model: press on the gutter grip for `blockId`; the drag lifts on the
-   * first real movement. No timer, and the text never drags.
+   * Press on the gutter grip for `blockId`. The drag lifts on the first real
+   * movement — no timer — and a press released without moving does nothing.
    */
   const startHandleDrag = (blockId, e) => {
     if (e.button !== 0) return;
@@ -403,19 +317,33 @@ export function useBlockDrag({
     const bd = blockDrag.current;
     bd.startX = e.clientX;
     bd.startY = e.clientY;
-    trackPointer(bd, (ev) => {
-      const dx = ev.clientX - bd.startX;
-      const dy = ev.clientY - bd.startY;
-      if (Math.hypot(dx, dy) > HANDLE_DRAG_THRESHOLD) {
-        activateBlockDrag(blockInfo, ev.clientY);
-        // Nothing to do if activation refused (single block, vanished el);
-        // the listeners fall away on pointerup.
+
+    const onMove = (ev) => {
+      if (!bd.active) {
+        const dx = ev.clientX - bd.startX;
+        const dy = ev.clientY - bd.startY;
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD) activateBlockDrag(blockInfo, ev.clientY);
+        return;
       }
-    });
+      if (bd.cloneEl) bd.cloneEl.style.top = ev.clientY - bd.offsetY + "px";
+      if (bd._updatePointerY) bd._updatePointerY(ev.clientY);
+      updateBlockDropTarget(ev.clientY);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      bd.moveHandler = null;
+      bd.upHandler = null;
+      if (bd.active) finalizeBlockDrag();
+    };
+    bd.moveHandler = onMove;
+    bd.upHandler = onUp;
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupBlockDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupBlockDrag(), []);
 
-  return { blockDrag, handleEditorPointerDown, startHandleDrag, cancelBlockDrag };
+  return { blockDrag, startHandleDrag, cancelBlockDrag };
 }

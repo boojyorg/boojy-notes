@@ -138,7 +138,6 @@ const EditorArea = memo(
       handleEditorInput,
       handleEditorPaste,
       handleEditorCopy,
-      handleEditorPointerDown,
       startHandleDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
@@ -709,7 +708,6 @@ const EditorArea = memo(
                 }}
                 onPaste={handleEditorPaste}
                 onCopy={handleEditorCopy}
-                onPointerDown={handleEditorPointerDown}
                 onMouseMove={handleEditorMouseMove}
                 onMouseLeave={handleEditorMouseLeave}
                 onContextMenu={handleEditorContextMenu}
