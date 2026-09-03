@@ -272,6 +272,27 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
 
+## Paste keeps the block you are in
+
+The rule lives in `utils/pasteBlocks.ts`, shared by the internal (`text/boojy-blocks`) and
+external multi-line paste paths; single lines paste inline.
+
+- **A block holding text never changes type on paste.** Plain text merges at the caret and keeps
+  the block's type, checked state and indent; structured Markdown becomes its own block beside it
+  (in front when the caret is at the start, splitting the text in the middle). Only an *empty*
+  block is taken over, and only by structure such as `## Heading` or `- [ ] task`. A single
+  structured line does that too; anywhere else a single line pastes inline as text.
+- **One terminal line ending on the clipboard is incidental** and is stripped (LF or CRLF). Most
+  apps copy a whole line with its break, which is why pasting used to look random. A deliberately
+  copied blank line still arrives as a block.
+- **A selection inside one block copies as text**, as in every other editor; structure travels
+  only when the selection spans two or more blocks (a triple-click that ends at the very start of
+  the next block still counts as one). Copying a list item's text and pasting it on a blank line
+  therefore gives the text without the list. That looks like a missing feature; it is deliberate.
+- **A paste that keeps a block's id and type must repaint that element directly**
+  (`repaintKeptBlock`). The editor skips React renders for text-only changes, so a state-only
+  write reaches disk but never the page, and the next keystroke writes the stale page back over it.
+
 ## Narrow desktop is still desktop
 
 **Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
