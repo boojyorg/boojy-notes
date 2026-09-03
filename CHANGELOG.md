@@ -40,6 +40,7 @@
 - **Web no longer shows an "Import files here" folder action that did nothing** — Import is a desktop file-picker flow; the menu item now appears only in the desktop app.
 - **The crash screen's "your notes have been backed up" is true again** — The error boundary writes the in-memory note store to `boojy-error-backup` in local storage on a crash, but it was mounted without the reference it needed, so the backup never ran while the message still claimed it had. It is wired up now.
 - **Onboarding no longer promises "Swipe right for notes"** — There is no swipe gesture in the responsive layout (only the bottom sheet dismisses by swipe), so the mobile hint described something the app cannot do. The sequence is now the three hints that are true everywhere: slash commands, wikilinks, tags.
+- **Editor font size is remembered** — The Settings → Appearance size control worked, but the value lived only in memory and came back as 15 on every launch. It now persists alongside the other appearance preferences.
 - **Onboarding no longer advertises the removed split view** — The progressive hint sequence no
   longer tells established desktop users to press the retired split-view shortcut.
 - **Crash fallbacks use the active theme correctly** — Error boundaries now receive valid

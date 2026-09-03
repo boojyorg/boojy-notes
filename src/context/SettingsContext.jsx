@@ -3,8 +3,29 @@ import { isElectron } from "../utils/platform";
 
 const SettingsContext = createContext(null);
 
+const FONT_SIZE_KEY = "boojy-font-size";
+const FONT_SIZE_DEFAULT = 15;
+export const FONT_SIZE_MIN = 10;
+export const FONT_SIZE_MAX = 24;
+
+function readFontSize() {
+  try {
+    const saved = Number(localStorage.getItem(FONT_SIZE_KEY));
+    if (Number.isInteger(saved) && saved >= FONT_SIZE_MIN && saved <= FONT_SIZE_MAX) return saved;
+  } catch {}
+  return FONT_SIZE_DEFAULT;
+}
+
 export function SettingsProvider({ children }) {
-  const [settingsFontSize, setSettingsFontSize] = useState(15);
+  // Editor font size (Settings → Appearance). Persisted like uiScale below;
+  // until 2026-09 it was plain state and reset to 15 on every launch.
+  const [settingsFontSize, setSettingsFontSize] = useState(readFontSize);
+  useEffect(() => {
+    try {
+      localStorage.setItem(FONT_SIZE_KEY, String(settingsFontSize));
+    } catch {}
+  }, [settingsFontSize]);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // UI Scale state — no settings UI; driven by the Cmd+Plus/Minus/0 shortcuts.

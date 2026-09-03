@@ -1,5 +1,5 @@
 import { useTheme } from "../../hooks/useTheme";
-import { useSettings } from "../../context/SettingsContext";
+import { useSettings, FONT_SIZE_MIN, FONT_SIZE_MAX } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
 import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
@@ -49,7 +49,7 @@ export default function AppearanceTab({ SectionHeader }) {
             {settingsFontSize}
           </span>
           <button
-            onClick={() => setSettingsFontSize((prev) => Math.max(10, prev - 1))}
+            onClick={() => setSettingsFontSize((prev) => Math.max(FONT_SIZE_MIN, prev - 1))}
             onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
             onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
             style={{
@@ -72,7 +72,7 @@ export default function AppearanceTab({ SectionHeader }) {
             {"\u2212"}
           </button>
           <button
-            onClick={() => setSettingsFontSize((prev) => Math.min(24, prev + 1))}
+            onClick={() => setSettingsFontSize((prev) => Math.min(FONT_SIZE_MAX, prev + 1))}
             onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
             onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
             style={{
