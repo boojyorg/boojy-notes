@@ -82,6 +82,8 @@ export const NIGHT = {
   searchInputBg: "#18191E",
   modalBg: "rgba(20,22,35,0.95)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
+  /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
+  dragShadow: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)",
   syntax: {
     comment: "#636980",
     punctuation: "#9B9EB0",
@@ -183,6 +185,8 @@ export const DAY = {
   searchInputBg: "#FFFFFF",
   modalBg: "rgba(255,255,255,0.97)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08)",
+  /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
+  dragShadow: "0 8px 24px rgba(20,17,15,0.12), 0 2px 6px rgba(20,17,15,0.08)",
   syntax: {
     comment: "#8090A0",
     punctuation: "#4A5468",

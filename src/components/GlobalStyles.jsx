@@ -28,7 +28,19 @@ export default function GlobalStyles() {
         .sidebar-dragging * { transition: none !important; }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
-        [data-drag-slot] { transition: opacity 150ms ease; }
+        [data-drag-slot] { transition: opacity 150ms ease, background-color 150ms ease; }
+        /* PROTOTYPE block drag handle (src/components/BlockDragHandle.jsx):
+           follows the note-row ··· grammar — muted ink revealed at 0.55 beside
+           the hovered block, full ink + content-hover surface when the grip
+           itself is hovered, gone while a drag is live. */
+        .block-drag-handle {
+          opacity: 0;
+          color: ${theme.TEXT.muted};
+          transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+        }
+        .block-drag-handle[data-visible="true"] { opacity: 0.55; }
+        .block-drag-handle:hover { opacity: 1; color: ${theme.TEXT.primary}; background-color: ${theme.BG.surface}; }
+        body.block-dragging .block-drag-handle { opacity: 0 !important; }
         * { box-sizing: border-box; }
         /* Firefox only. Chromium 121+ IGNORES every ::-webkit-scrollbar rule on any
            element that sets scrollbar-width or scrollbar-color, so declaring these

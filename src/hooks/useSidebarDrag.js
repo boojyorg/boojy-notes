@@ -2,7 +2,10 @@ import { useRef, useEffect } from "react";
 import { useTheme } from "./useTheme";
 import { isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
-import { runAutoScroll } from "../utils/domHelpers";
+import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
+
+const LIFT_MS = 120;
+const SETTLE_MS = 200;
 
 export function useSidebarDrag({
   noteDataRef,
@@ -10,12 +13,11 @@ export function useSidebarDrag({
   customFolders: _customFolders,
   sidebarScrollRef,
   accentColor,
-  chromeBg,
+  chromeBg: _chromeBg,
   setDragTooltip,
   dragTooltipCount,
   selectedNotesRef,
   clearSelectionRef,
-  openNote,
 }) {
   const { theme } = useTheme();
   const sidebarDrag = useRef({
@@ -54,7 +56,9 @@ export function useSidebarDrag({
 
     const rect = el.getBoundingClientRect();
 
-    // Build compact pill ghost instead of cloned DOM element
+    // Ghost: a compact pill carrying just the title — note rows carry no glyph
+    // at rest, so neither does the thing you lift off them. Born flat over the
+    // row and lifted over LIFT_MS so the hand knows it has it.
     const noteTitle =
       (type === "note" && noteDataRef.current[id]?.title) || el.textContent?.trim() || "Untitled";
     const pill = document.createElement("div");
@@ -62,31 +66,28 @@ export function useSidebarDrag({
       position: "fixed",
       left: rect.left + "px",
       top: rect.top + "px",
-      maxWidth: "200px",
-      padding: "4px 12px",
+      maxWidth: "220px",
+      height: rect.height + "px",
+      padding: "0 12px",
       borderRadius: "12px",
       zIndex: "1000",
       pointerEvents: "none",
-      boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-      opacity: "0.9",
-      background: chromeBg,
+      background: theme.BG.elevated,
+      color: theme.TEXT.primary,
+      boxShadow: "none",
+      opacity: "1",
+      transform: "scale(1)",
       transition: "none",
       display: "flex",
       alignItems: "center",
-      gap: "5px",
-      fontSize: "12px",
+      fontSize: "13px",
       fontWeight: "500",
-      color: "inherit",
-      fontFamily: "inherit",
+      // On <body> "inherit" is the browser default face; take the row's.
+      fontFamily: getComputedStyle(el).fontFamily,
       whiteSpace: "nowrap",
       overflow: "hidden",
+      willChange: "transform, top, left",
     });
-    // File icon
-    const icon = document.createElement("span");
-    icon.textContent = type === "folder" ? "\uD83D\uDCC1" : "\uD83D\uDCC4";
-    icon.style.flexShrink = "0";
-    pill.appendChild(icon);
-    // Title (truncated)
     const titleSpan = document.createElement("span");
     titleSpan.textContent = noteTitle;
     Object.assign(titleSpan.style, {
@@ -112,7 +113,7 @@ export function useSidebarDrag({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+        boxShadow: theme.dragShadow,
       });
       badge.textContent = String(sd.draggedIds.length);
       pill.style.overflow = "visible";
@@ -120,9 +121,19 @@ export function useSidebarDrag({
     }
     document.body.appendChild(pill);
     sd.cloneEl = pill;
+    sd.originRect = rect;
     sd.startY = pointerY;
     sd.offsetY = pointerY - rect.top;
     sd.offsetX = sd.startX - rect.left;
+    requestAnimationFrame(() => {
+      if (sd.cloneEl !== pill) return;
+      Object.assign(pill.style, {
+        transition: `transform ${LIFT_MS}ms ease, box-shadow ${LIFT_MS}ms ease, opacity ${LIFT_MS}ms ease`,
+        transform: "scale(1.02)",
+        boxShadow: theme.dragShadow,
+        opacity: "0.96",
+      });
+    });
 
     // Escape handler to cancel drag
     const escHandler = (e) => {
@@ -178,24 +189,9 @@ export function useSidebarDrag({
       pointerY > scrollRect.bottom
     ) {
       clearDropHighlights(scrollEl);
-
-      // Dropping a note anywhere over the editor opens it
-      if (sd.type === "note" && openNote) {
-        const editorArea = document.querySelector(".editor-scroll")?.parentElement;
-        if (editorArea) {
-          const editorRect = editorArea.getBoundingClientRect();
-          if (
-            pointerX >= editorRect.left &&
-            pointerX <= editorRect.right &&
-            pointerY >= editorRect.top &&
-            pointerY <= editorRect.bottom
-          ) {
-            sd.dropTarget = { type: "editor-open", rect: editorRect };
-            return;
-          }
-        }
-      }
-
+      // Outside the sidebar there is no target. Dropping here cancels: drag
+      // changes where a note lives, it never navigates (dropping over the
+      // editor used to open the note — removed 2026-09-03).
       sd.dropTarget = null;
       return;
     }
@@ -244,15 +240,16 @@ export function useSidebarDrag({
     const sd = sidebarDrag.current;
     if (!sd.active) return;
     const target = sd.dropTarget;
+    // The pointerup that ends a drag is followed by a click on whatever is
+    // under the pointer — very often the row we lifted from. Swallow it.
+    suppressNextClick();
 
-    if (target && sd.type === "note") {
-      if (target.type === "editor-open") {
-        // Dropped over the editor — open the note
-        if (openNote) openNote(sd.id);
-        cleanupSidebarDrag();
-        return;
-      }
+    if (!target) {
+      flyBack();
+      return;
+    }
 
+    if (sd.type === "note") {
       // The only remaining outcome: move the note's real file. `folder: null`
       // is root; anything else is that folder. write-note relocates the .md on
       // disk (new file written before the old one is unlinked).
@@ -271,6 +268,35 @@ export function useSidebarDrag({
       });
     }
 
+    cleanupSidebarDrag();
+  };
+
+  /** No valid target: the pill returns to the row it came from, then everything resets. */
+  const flyBack = () => {
+    const sd = sidebarDrag.current;
+    const pill = sd.cloneEl;
+    const origin = sd.originRect;
+    if (!pill || !origin) {
+      cleanupSidebarDrag();
+      return;
+    }
+    if (sd.scrollRAF) {
+      cancelAnimationFrame(sd.scrollRAF);
+      sd.scrollRAF = null;
+    }
+    clearDropHighlights(sidebarScrollRef.current);
+    Object.assign(pill.style, {
+      transition: `top ${SETTLE_MS}ms ease, left ${SETTLE_MS}ms ease, opacity ${SETTLE_MS}ms ease, transform ${SETTLE_MS}ms ease, box-shadow ${SETTLE_MS}ms ease`,
+      top: origin.top + "px",
+      left: origin.left + "px",
+      transform: "scale(1)",
+      boxShadow: "none",
+      opacity: "0",
+    });
+    // Detach the pill from the drag record so cleanup can run now (listeners,
+    // classes, state) while the pill finishes its flight on its own.
+    sd.cloneEl = null;
+    setTimeout(() => pill.parentNode?.removeChild(pill), SETTLE_MS);
     cleanupSidebarDrag();
   };
 
@@ -296,6 +322,7 @@ export function useSidebarDrag({
     sd.id = null;
     sd.draggedIds = [];
     sd.cloneEl = null;
+    sd.originRect = null;
     sd.holdTimer = null;
     sd.dropTarget = null;
     sd._updatePointerY = null;
@@ -310,6 +337,11 @@ export function useSidebarDrag({
     if (sd.holdTimer) {
       clearTimeout(sd.holdTimer);
       sd.holdTimer = null;
+    }
+    if (sd.active) {
+      suppressNextClick();
+      flyBack();
+      return;
     }
     cleanupSidebarDrag();
   };

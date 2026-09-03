@@ -26,6 +26,7 @@ import {
   Folder as LuFolder,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
+  GripVertical as LuGripVertical,
   Heading1 as LuHeading1,
   Heading2 as LuHeading2,
   Heading3 as LuHeading3,
@@ -87,6 +88,10 @@ export const NewFolderIcon = () => <LuFolderPlus {...base} {...navBase} size={IC
 export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
 export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
+/** Block drag handle (prototype) — content tier: 16px, stroke 1.5. */
+export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
+  <LuGripVertical {...base} size={size} />
+);
 export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
  *  12.5px menu labels (judged live 2026-08-23). */
