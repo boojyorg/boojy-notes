@@ -403,3 +403,14 @@ describe("ordered-list number formatting (fidelity fix, 2026-08)", () => {
     expect(out.numRaw).toBeUndefined();
   });
 });
+
+describe("paragraph model (PR B) — round trip of a soft break, on record", () => {
+  // A paragraph block holding a soft break serialises as two adjacent lines,
+  // which the line-per-block parser reads back as two blocks. The conventional
+  // paragraph model (docs: the paragraph architecture plan) reads them back as
+  // one. Marked it.fails so it turns red, and the mark comes off, when it lands.
+  it.fails("a paragraph with a soft break reads back as one paragraph block (KNOWN until PR B)", () => {
+    const blocks = [{ type: "p", text: "one\ntwo" }];
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+});

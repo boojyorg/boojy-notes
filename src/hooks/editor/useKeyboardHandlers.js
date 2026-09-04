@@ -4,6 +4,9 @@ import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineForm
 import { genBlockId } from "../../utils/storage";
 import { filterSlashCommands } from "../../constants/data";
 
+/** Blocks whose Markdown may span lines, so Shift+Enter puts a soft break inside them. */
+const SOFT_BREAK_TYPES = new Set(["p", "bullet", "numbered", "checkbox", "blockquote"]);
+
 export function useKeyboardHandlers({
   noteDataRef,
   activeNoteRef,
@@ -113,8 +116,18 @@ export function useKeyboardHandlers({
       ? htmlToInlineMarkdown(sanitizeInlineHtml(el.innerHTML)).replace(/\n$/, "")
       : "";
 
+    // Shift+Enter — a line break inside the block, never a new block. Chromium
+    // inserts the <br> and fires `input`, so the ordinary commit path stores
+    // it as a newline in the block's text: a conventional soft break on disk.
+    // Headings have no second line in Markdown, so there Shift+Enter is Enter.
+    if (e.key === "Enter" && e.shiftKey && SOFT_BREAK_TYPES.has(blocks[blockIndex].type)) {
+      e.preventDefault();
+      document.execCommand?.("insertLineBreak");
+      return;
+    }
+
     // Enter — split block
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       const blockType = blocks[blockIndex].type;
       const isList =

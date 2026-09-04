@@ -88,6 +88,35 @@ const LINK_SELECTOR = "a, .wikilink";
 
 const isIcon = (textNode) => textNode.parentElement?.classList?.contains("external-link-icon");
 
+/**
+ * A block's final <br> is Chromium's way of keeping an empty last line
+ * visible (or an artifact after a delete); it stands for no character. Every
+ * other <br> is a soft break and counts as the "\n" in the block's text.
+ */
+const isTrailingBr = (br, el) => br === el.lastChild;
+
+const isBr = (node) => node.nodeType === Node.ELEMENT_NODE && node.nodeName === "BR";
+
+/**
+ * How many caret positions a block holds: its text (icons and caret anchors
+ * aside) plus one per soft-break <br>. This is the length of the block's
+ * Markdown text, which is what the caret arithmetic is measured in.
+ */
+export function caretLength(el) {
+  if (!el) return 0;
+  let n = 0;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (!isIcon(node)) n += node.data.replace(ANCHOR_RE, "").length;
+    } else if (isBr(node) && !isTrailingBr(node, el)) {
+      n++;
+    }
+  }
+  return n;
+}
+
 /** The link (`<a>` or wikilink span) inside `el` that `node` sits in, if any. */
 function enclosingLink(node, el) {
   const link = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest(
@@ -152,6 +181,10 @@ export function getCaretOffset(el) {
     for (const icon of el.querySelectorAll(".external-link-icon")) {
       if (range.intersectsNode(icon)) offset -= icon.textContent.length;
     }
+    // A soft-break <br> before the caret is one character of the text.
+    for (const br of el.querySelectorAll("br")) {
+      if (!isTrailingBr(br, el) && range.comparePoint(br, 0) <= 0) offset++;
+    }
     return Math.max(0, offset);
   } catch {
     return -1;
@@ -186,10 +219,23 @@ export function placeCaret(el, pos = 0) {
       range.setStart(el.firstChild, 0);
     } else {
       let remaining = pos;
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
       let textNode,
         placed = false;
       while ((textNode = walker.nextNode())) {
+        if (textNode.nodeType === Node.ELEMENT_NODE) {
+          // A soft-break <br> is one character; landing on it puts the caret
+          // just after it, at the start of the next line.
+          if (isBr(textNode) && !isTrailingBr(textNode, el)) {
+            if (remaining <= 1) {
+              range.setStartAfter(textNode);
+              placed = true;
+              break;
+            }
+            remaining--;
+          }
+          continue;
+        }
         // Skip decorative icon text nodes (↗ inside links)
         if (isIcon(textNode)) continue;
         const visibleLength = textNode.data.replace(ANCHOR_RE, "").length;

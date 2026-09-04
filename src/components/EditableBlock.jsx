@@ -1,7 +1,7 @@
 import { memo, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
-import { getCaretOffset, placeCaret } from "../utils/domHelpers";
+import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -59,7 +59,7 @@ const EditableBlock = memo(
       } else {
         el.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
       }
-      if (caret >= 0) placeCaret(el, Math.min(caret, el.textContent.length));
+      if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
     }, [syncGen, noteTitleSet]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
     useLayoutEffect(() => {

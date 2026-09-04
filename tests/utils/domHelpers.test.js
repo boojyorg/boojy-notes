@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   CARET_ANCHOR,
+  caretLength,
   getCaretOffset,
   placeCaret,
   titleFieldText,
@@ -126,5 +127,49 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     const { node } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(node.previousSibling.className).toBe("wikilink");
+  });
+});
+
+describe("soft breaks: a <br> is one caret position, the newline it stands for", () => {
+  // Caret positions are measured in the block's Markdown text, where a soft
+  // break is "\n". A block's final <br> keeps an empty last line visible and
+  // stands for nothing.
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+
+  it("caretLength counts text plus soft breaks, not the trailing <br>", () => {
+    expect(caretLength(editable("one<br>two"))).toBe("one\ntwo".length);
+    expect(caretLength(editable("one<br><br>"))).toBe("one\n".length);
+    expect(caretLength(editable("<br>"))).toBe(0);
+    expect(caretLength(editable("plain"))).toBe(5);
+  });
+
+  it("places the caret at the start of the second line for the offset after the break", () => {
+    const el = editable("one<br>two");
+    placeCaret(el, "one\n".length);
+    const { node, offset } = anchorAt();
+    // Just after the <br>: on the second line, before "two".
+    expect(node).toBe(el);
+    expect(offset).toBe(2);
+    expect(getCaretOffset(el)).toBe("one\n".length);
+  });
+
+  it("round-trips every offset across a break", () => {
+    const el = editable("one<br>two");
+    for (let pos = 0; pos <= "one\ntwo".length; pos++) {
+      placeCaret(el, pos);
+      expect(getCaretOffset(el), `offset ${pos}`).toBe(pos);
+    }
+  });
+
+  it("reaches the empty last line after a trailing break", () => {
+    const el = editable("one<br><br>");
+    placeCaret(el, "one\n".length);
+    const { node, offset } = anchorAt();
+    expect(node).toBe(el);
+    expect(offset).toBe(2); // between the two <br>s: the empty second line
+    expect(getCaretOffset(el)).toBe("one\n".length);
   });
 });
