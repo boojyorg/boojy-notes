@@ -47,17 +47,9 @@ describe("useQuitFlush", () => {
     expect(flushToDisk).toHaveBeenCalledWith(noteDataRef.current, ["note-1", "note-2"]);
   });
 
-  it("clears the unflushed set after a successful flush", async () => {
-    unflushedNotes.current.add("note-1");
-    render();
-
-    await willCloseCallback();
-
-    expect(unflushedNotes.current.size).toBe(0);
-  });
-
-  it("restores the unflushed set when the flush fails", async () => {
-    flushToDisk.mockRejectedValue(new Error("disk full"));
+  it("leaves membership of the unflushed set to the flush itself", async () => {
+    // useFileSystem removes a note only once its newest content is on disk;
+    // clearing here would drop the safety net for a write that then failed.
     unflushedNotes.current.add("note-1");
     render();
 

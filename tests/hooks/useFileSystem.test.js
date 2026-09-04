@@ -208,3 +208,95 @@ describe("useFileSystem — initial load", () => {
     expect(trashNote).not.toHaveBeenCalled();
   });
 });
+
+describe("useFileSystem — quit-flush safety set", () => {
+  const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+  const edited = { id: "n1", title: "Edited", content: { title: "Edited", blocks: [] } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function renderEdited() {
+    readAllNotes.mockResolvedValue({ n1: saved });
+    const unflushedNotes = { current: new Set(["n1"]) };
+    const latestNoteDataRef = { current: { n1: edited } };
+    const onError = vi.fn();
+    // Stable setters: the initial-load effect keys on them, and a fresh mock
+    // per render would re-run it and swallow the edit as an external update.
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const quitSafety = { unflushedNotes, latestNoteDataRef };
+    const hook = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, quitSafety),
+      { initialProps: { data: { n1: saved } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: saved } }));
+    vi.useFakeTimers();
+    await act(async () => hook.rerender({ data: { n1: edited } }));
+    return { ...hook, unflushedNotes, latestNoteDataRef, onError };
+  }
+
+  const runDebounce = () => act(async () => vi.advanceTimersByTimeAsync(500));
+
+  it("removes a note from the set once the object written is still the newest", async () => {
+    writeNote.mockResolvedValue({});
+    const { unflushedNotes } = await renderEdited();
+
+    await runDebounce();
+
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(edited);
+    expect(unflushedNotes.current.has("n1")).toBe(false);
+  });
+
+  it("keeps a note in the set when the editor moved on during the write", async () => {
+    const { unflushedNotes, latestNoteDataRef } = await renderEdited();
+    writeNote.mockImplementation(async () => {
+      // A keystroke lands while the write is in flight: the authoritative ref
+      // holds a newer object than the one being persisted.
+      latestNoteDataRef.current = { n1: { ...edited, title: "Edited more" } };
+      return {};
+    });
+
+    await runDebounce();
+
+    expect(writeNote).toHaveBeenCalledTimes(1);
+    expect(unflushedNotes.current.has("n1")).toBe(true);
+  });
+
+  it("keeps a failed write in the set and still retries it", async () => {
+    writeNote.mockRejectedValueOnce(new Error("disk unavailable")).mockResolvedValueOnce({});
+    const { unflushedNotes } = await renderEdited();
+
+    await runDebounce();
+    expect(writeNote).toHaveBeenCalledTimes(1);
+    expect(unflushedNotes.current.has("n1")).toBe(true);
+
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(writeNote).toHaveBeenCalledTimes(2);
+    expect(unflushedNotes.current.has("n1")).toBe(false);
+  });
+
+  it("a quit/blur flush cancels the pending debounced write instead of duplicating it", async () => {
+    writeNote.mockResolvedValue({});
+    const { result, latestNoteDataRef } = await renderEdited();
+
+    // Quit arrives before the 500ms debounce: flush now, from the ref.
+    await act(async () => result.current.flushToDisk(latestNoteDataRef.current, ["n1"]));
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(edited);
+
+    await runDebounce();
+    expect(writeNote).toHaveBeenCalledTimes(1);
+  });
+});
