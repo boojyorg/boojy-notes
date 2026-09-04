@@ -166,7 +166,10 @@ export default function BoojyNotes() {
     loading: fsLoading,
     changeNotesDir,
     flushToDisk,
-  } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast);
+  } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast, {
+    unflushedNotes,
+    latestNoteDataRef: noteDataRef,
+  });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
   /**

@@ -41,6 +41,8 @@ export interface Vault {
   read(rel: string): string;
   write(rel: string, content: string): void;
   exists(rel: string): boolean;
+  /** File modification time in ms, the "most recently modified" truth. */
+  mtimeMs(rel: string): number;
   /** Every file under the vault, as vault-relative paths, sorted. */
   list(): string[];
 }
@@ -63,6 +65,7 @@ function makeVault(dir: string): Vault {
       fs.writeFileSync(path.join(dir, rel), content);
     },
     exists: (rel) => fs.existsSync(path.join(dir, rel)),
+    mtimeMs: (rel) => fs.statSync(path.join(dir, rel)).mtimeMs,
     list: () => walk(dir).sort(),
   };
 }
@@ -76,9 +79,14 @@ export interface AppHandle {
   pageErrors: string[];
   /** Click a note row in the sidebar by its visible title. */
   openNote(title: string): Promise<void>;
+  /**
+   * Quit the way the user does (Cmd+Q): the main process holds the window
+   * close until the renderer has flushed pending edits, then exits.
+   */
+  quit(): Promise<void>;
   /** Quit and relaunch against the same vault and userData, like the user restarting. */
   restart(): Promise<void>;
-  /** Quit the app (flushing pending edits as a real quit does) and delete the temp dirs. */
+  /** Quit (if still running) and delete the temp dirs. */
   close(): Promise<void>;
 }
 
@@ -136,13 +144,22 @@ export async function launchApp(files: Record<string, string> = {}): Promise<App
     await handle.page.locator('[role="treeitem"]').filter({ hasText: title }).first().click();
     await handle.page.getByRole("textbox", { name: "Note title" }).waitFor();
   };
+  let running = true;
+  handle.quit = async () => {
+    if (!running) return;
+    running = false;
+    const exited = handle.app.waitForEvent("close");
+    await handle.app.evaluate(({ app }) => app.quit());
+    await exited;
+  };
   handle.restart = async () => {
-    await handle.app.close();
+    await handle.quit();
     attach(await launchElectron(userData));
+    running = true;
   };
   handle.close = async () => {
     try {
-      await handle.app.close();
+      await handle.quit();
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

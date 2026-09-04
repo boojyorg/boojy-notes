@@ -13,28 +13,22 @@ import { isElectron } from "../utils/platform";
  * Reads from useHistory's noteDataRef, which is updated synchronously on every
  * keystroke — not from React state, which lags during typing.
  *
- * `unflushedNotes` is the Set of every note edited since the last quit/blur
- * flush. More than one note can be edited inside a debounce window (for
- * example, edit then switch notes), so a single-slot hint is not sufficient.
+ * `unflushedNotes` is the Set of notes whose latest keystrokes may not have
+ * reached React state yet (and so were never marked dirty there). More than
+ * one note can be edited inside a debounce window (for example, edit then
+ * switch notes), so a single-slot hint is not sufficient. Membership is owned
+ * by useFileSystem's flush: a note leaves the set only once a write of its
+ * newest content has succeeded, so a failed write keeps it, and a note that
+ * was persisted and untouched since is not written again here.
  */
 export function useQuitFlush(flushToDisk, noteDataRef, unflushedNotes) {
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onAppWillClose) return;
 
-    const flushAll = async () => {
-      // Notes whose edits may not have reached React state were never marked
-      // dirty — pass them explicitly alongside the authoritative data.
-      // Snapshot-and-clear up front: edits landing mid-flush re-add their note
-      // and survive for the next flush. On failure, restore the snapshot.
-      const extra = [...unflushedNotes.current];
-      unflushedNotes.current.clear();
-      try {
-        await flushToDisk(noteDataRef.current, extra);
-      } catch (err) {
-        for (const id of extra) unflushedNotes.current.add(id);
-        throw err;
-      }
-    };
+    // Notes whose edits may not have reached React state were never marked
+    // dirty — pass them explicitly alongside the authoritative data. The flush
+    // removes each one only after its newest content is safely on disk.
+    const flushAll = () => flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
 
     const unsubClose = window.electronAPI.onAppWillClose(async () => {
       try {

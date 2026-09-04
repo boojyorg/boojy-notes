@@ -33,7 +33,24 @@ function blocksEqual(a, b) {
   return true;
 }
 
-export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, onError) {
+/**
+ * @param quitSafety Optional `{ unflushedNotes, latestNoteDataRef }` from useHistory.
+ *   `unflushedNotes` is the quit/blur safety net: notes whose latest keystrokes
+ *   may still be inside the text-commit debounce and so not yet in React state.
+ *   A successful write here removes a note from it only when the object written
+ *   is still the newest one in `latestNoteDataRef` — the ref is replaced on
+ *   every keystroke, so identity means "nothing typed since". Without that
+ *   check, a debounced write of the state's copy (up to 300ms behind the
+ *   editor) would clear the net and an immediate quit would drop the tail.
+ */
+export function useFileSystem(
+  noteData,
+  setNoteData,
+  setCustomFolders,
+  syncGeneration,
+  onError,
+  quitSafety = null,
+) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
 
@@ -142,6 +159,11 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
     if (!isNative) return;
     const api = getAPI();
 
+    // This flush supersedes the debounced one. Cancel it so it cannot fire
+    // behind a quit or blur flush and write the same notes a second time.
+    clearTimeout(writeTimer.current);
+    writeTimer.current = null;
+
     if (extraDirtyIds) for (const id of extraDirtyIds) dirtyNotes.current.add(id);
     const source = latestData || noteDataRef.current;
     const dirty = [...dirtyNotes.current];
@@ -165,6 +187,13 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
         }
       }
       dirtyNotes.current.delete(noteId);
+      // Persisted, and nothing typed since: the quit/blur net no longer needs
+      // it. A failed write above `continue`s before this line, so a note that
+      // did not reach disk stays in both sets and is retried.
+      const safety = quitSafetyRef.current;
+      if (safety && safety.latestNoteDataRef.current[noteId] === note) {
+        safety.unflushedNotes.current.delete(noteId);
+      }
     }
 
     if (dirtyNotes.current.size > 0 && retryTimer.current === null) {
@@ -196,6 +225,8 @@ export function useFileSystem(noteData, setNoteData, setCustomFolders, syncGener
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
+  const quitSafetyRef = useRef(quitSafety);
+  quitSafetyRef.current = quitSafety;
 
   // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
   useEffect(() => {
