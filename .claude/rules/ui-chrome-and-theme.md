@@ -339,8 +339,20 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   and joining the lazy line would change its bytes on save. The cost, on record as an `it.fails`
   in the interop suite: a paragraph typed directly after a quote is folded into the quote by
   other readers. Resolving it needs a decision on how a quote remembers a lazy line.
-- A file's final newline is still the empty last row, as it always was; the phantom row is a
-  candidate for the spacing pass, not a model question.
+- A file's final newline is still the empty last row, as it always was.
+- **Three pitches, in order** (`PARAGRAPH_GAP` in `EditableBlock`, applied in `GlobalStyles`): a
+  soft break is line height alone; Enter adds the paragraph pitch (12px) after a paragraph or
+  quote; an empty row adds a whole line on top, so Enter twice is exactly twice a paragraph
+  break. A paragraph after a list item gets the same 12px above it from a sibling rule on
+  `data-block-type`, because list rows keep their tight 2px padding. The paragraph's margin
+  lives in the stylesheet, not inline, so that sibling rule can win; don't move it back. Every
+  block root carries `data-block-type` for this. Lists, headings, code and callouts keep their
+  own rhythm. The geometry test in `paragraph-model.spec.ts` guards the order, not the pixels.
+- **Known, by the model:** a blank line before a heading, list, fence or quote, or after a
+  quote, is an empty row, so an Obsidian-style note (blank lines around every heading) reads
+  airy. Counted in the Obsidian vault: 1256 heading→blank→text against 106 tight, 1386
+  paragraph→blank→heading against 0 tight, 352 paragraph→blank→list against 354 tight. Whether
+  one such blank becomes structure too is a model decision, not a spacing one.
 
 ## Paste keeps the block you are in
 

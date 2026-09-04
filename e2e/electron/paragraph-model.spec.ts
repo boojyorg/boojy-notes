@@ -115,3 +115,69 @@ test("an Obsidian-style note opens as its structure, and an edit leaves the rest
     await h.close();
   }
 });
+
+/**
+ * The three states must read as three, at any font size: a soft break is line
+ * height alone, a paragraph break adds the paragraph pitch, an empty row adds a
+ * whole line on top; and a paragraph after a list item or a quote gets the
+ * paragraph pitch, not the list's row padding. Measured from geometry, not
+ * pixels, so a retune of the values cannot break it while the order holds.
+ */
+test("soft break, paragraph break and empty row are three distinct pitches", async () => {
+  const h = await launchApp({
+    "Rhythm.md": [
+      "Line one",
+      "line two of one paragraph.",
+      "",
+      "Second paragraph.",
+      "",
+      "",
+      "After an empty row.",
+      "",
+      "- item",
+      "",
+      "After the list.",
+      "",
+      "> quoted",
+      "",
+      "After the quote.",
+    ].join("\n"),
+  });
+  try {
+    await h.openNote("Rhythm");
+    const boxes = await h.page.evaluate(() =>
+      Array.from(document.querySelectorAll("[data-block-id]")).map((b) => {
+        const r = b.getBoundingClientRect();
+        const el = b as HTMLElement;
+        return {
+          type: b.getAttribute("data-block-type"),
+          text: el.innerText.replace(/\n$/, "").replace(/^[●◦▪]\n/, ""),
+          top: r.top,
+          bottom: r.bottom,
+          lines: el.innerText.replace(/\n$/, "").split("\n").length,
+        };
+      }),
+    );
+    const at = (text: string) => {
+      const b = boxes.find((x) => x.text === text);
+      if (!b) throw new Error(`no block "${text}"`);
+      return b;
+    };
+    const first = at("Line one\nline two of one paragraph.");
+    const softPitch = (first.bottom - first.top) / first.lines;
+    const paragraphPitch = at("Second paragraph.").top - first.top - softPitch * (first.lines - 1);
+    const emptyRowPitch = at("After an empty row.").top - at("Second paragraph.").top;
+    const paragraphGap = at("Second paragraph.").top - first.bottom;
+
+    expect(paragraphPitch).toBeGreaterThan(softPitch * 1.3);
+    expect(emptyRowPitch).toBeGreaterThan(paragraphPitch * 1.8);
+    // A paragraph after a list item or a quote is spaced like a paragraph.
+    expect(at("After the list.").top - at("item").bottom).toBeGreaterThanOrEqual(paragraphGap - 1);
+    expect(at("After the quote.").top - at("quoted").bottom).toBeGreaterThanOrEqual(
+      paragraphGap - 1,
+    );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
