@@ -43,6 +43,70 @@ function listIndent(block) {
   return block.indentStr ?? "  ".repeat(block.indent || 0);
 }
 
+// ─── Paragraph structure ───
+// Blocks represent Markdown structure, not source lines. A paragraph block
+// holds every adjacent plain line of the source joined by "\n" (soft breaks);
+// a single blank line between two paragraphs, or between a list item and a
+// paragraph, is the separator conventional Markdown needs and is not a block;
+// every further blank line is an empty paragraph block, a visible empty row.
+// A plain line directly under a list item is a lazy continuation and belongs
+// to the item, as it does to every Markdown reader. Nothing is recorded that
+// the source does not say: the separator is implied by structure, so an
+// untouched file serialises to the same bytes it was read from.
+
+const isListItem = (b) => b.type === "bullet" || b.type === "numbered" || b.type === "checkbox";
+/** A blank source line: an empty paragraph block, or one holding only whitespace. */
+const isBlankParagraph = (b) => b.type === "p" && (b.text || "").trim() === "";
+const isTextParagraph = (b) => b.type === "p" && !isBlankParagraph(b);
+/**
+ * A block a following plain line would be absorbed into by a conventional
+ * reader unless a blank line separates them. Quotes and callouts would absorb
+ * one too, but their lines are written with a `> ` prefix, so a lazy line
+ * under them cannot be stored as part of the block without changing the
+ * bytes on save; it stays its own paragraph, and no separator is written.
+ */
+const absorbsFollowingLine = (b) => isTextParagraph(b) || isListItem(b);
+
+/**
+ * From one block per source line to one block per structure: merge adjacent
+ * plain lines into a paragraph, attach a lazy continuation to its list item,
+ * and drop the single separator blank between an absorbing block and the
+ * paragraph after it. Extra blanks stay, as empty paragraph blocks.
+ */
+function structureParagraphs(lineBlocks) {
+  const merged = [];
+  for (const b of lineBlocks) {
+    const prev = merged[merged.length - 1];
+    if (isTextParagraph(b) && prev && (isTextParagraph(prev) || isListItem(prev))) {
+      prev.text = `${prev.text}\n${b.text}`;
+      continue;
+    }
+    merged.push(b);
+  }
+  const out = [];
+  for (let i = 0; i < merged.length; i++) {
+    const b = merged[i];
+    const prev = out[out.length - 1];
+    if (isBlankParagraph(b) && prev && absorbsFollowingLine(prev)) {
+      let j = i;
+      while (j < merged.length && isBlankParagraph(merged[j])) j++;
+      // The first blank of the run is the separator; keep the rest. Only a run
+      // of exactly empty lines has one: a whitespace-only line is a blank line
+      // to a reader too, but its bytes are the file's own, so such a run is
+      // kept literally, every line a row, and the serializer writes no
+      // separator in front of it. The two rules mirror each other on the run.
+      const literalRun = merged.slice(i, j).some((r) => (r.text || "") !== "");
+      if (j < merged.length && isTextParagraph(merged[j]) && !literalRun) {
+        for (let k = i + 1; k < j; k++) out.push(merged[k]);
+        i = j - 1;
+        continue;
+      }
+    }
+    out.push(b);
+  }
+  return out;
+}
+
 /**
  * The file's dominant line-ending style. Read before parsing, kept on
  * note.content.eol (desktop), re-applied by applyEol on write — so a CRLF
@@ -62,11 +126,29 @@ export function applyEol(md, eol) {
 
 export function blocksToMarkdown(blocks) {
   const lines = [];
+  // Where each block's lines end, so the paragraph separator can be written
+  // directly after the block it terminates, ahead of any empty rows between.
+  const endOfBlock = [];
   // Numbered items keep their parsed number (block.num); items created in-app
   // have none and continue sequentially from the previous item in the run.
   let numCounter = 0;
-  for (const block of blocks) {
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     numCounter = block.type === "numbered" ? (block.num ?? numCounter + 1) : 0;
+    if (isTextParagraph(block)) {
+      // A paragraph after a paragraph or a list item needs one blank line, or
+      // a conventional reader folds it into the block above. The blank goes
+      // right after that block; empty rows between them follow it.
+      let j = i - 1;
+      let literalRun = false;
+      while (j >= 0 && isBlankParagraph(blocks[j])) {
+        if ((blocks[j].text || "") !== "") literalRun = true;
+        j--;
+      }
+      if (j >= 0 && absorbsFollowingLine(blocks[j]) && !literalRun) {
+        lines.splice(endOfBlock[j], 0, "");
+      }
+    }
     switch (block.type) {
       case "h1":
         lines.push(`# ${block.text || ""}`);
@@ -180,6 +262,7 @@ export function blocksToMarkdown(blocks) {
         lines.push(block.text || "");
         break;
     }
+    endOfBlock[i] = lines.length;
   }
   return lines.join("\n");
 }
@@ -453,7 +536,7 @@ export function markdownToBlocks(md) {
   if (blocks.length === 0) {
     blocks.push({ id: `md-${++_parseBlockId}`, type: "p", text: "" });
   }
-  return blocks;
+  return structureParagraphs(blocks);
 }
 
 export function parseTableRow(line) {

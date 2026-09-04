@@ -307,6 +307,8 @@ describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => 
   it("keeps leading indentation (indented code / HTML stay intact)", () => {
     const md = "    indented code line\n\ttab-indented line\n   three-space paragraph";
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+    // Adjacent lines are one paragraph; each line keeps its own whitespace.
+    expect(markdownToBlocks(md)).toHaveLength(1);
   });
 
   it("keeps trailing spaces (markdown hard breaks survive)", () => {
@@ -404,13 +406,98 @@ describe("ordered-list number formatting (fidelity fix, 2026-08)", () => {
   });
 });
 
-describe("paragraph model (PR B) — round trip of a soft break, on record", () => {
-  // A paragraph block holding a soft break serialises as two adjacent lines,
-  // which the line-per-block parser reads back as two blocks. The conventional
-  // paragraph model (docs: the paragraph architecture plan) reads them back as
-  // one. Marked it.fails so it turns red, and the mark comes off, when it lands.
-  it.fails("a paragraph with a soft break reads back as one paragraph block (KNOWN until PR B)", () => {
-    const blocks = [{ type: "p", text: "one\ntwo" }];
+describe("paragraph model: blocks are Markdown structure, not source lines", () => {
+  // Round trips through the desktop path. A paragraph holds its soft breaks;
+  // two paragraphs are separated by one blank line, which is structure and
+  // not a block; further blanks are empty rows; a plain line under a list
+  // item belongs to the item. Each case is written exactly as the parser
+  // emits it, so a clean round trip deep-equals it.
+  const p = (text) => ({ type: "p", text });
+  const bullet = (text) => ({ type: "bullet", text });
+
+  it("a paragraph with a soft break reads back as one paragraph block", () => {
+    const blocks = [p("one\ntwo")];
+    expect(blocksToMarkdown(blocks)).toBe("one\ntwo");
     expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("two paragraphs are written with one blank line between them", () => {
+    const blocks = [p("First."), p("Second.")];
+    expect(blocksToMarkdown(blocks)).toBe("First.\n\nSecond.");
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("one blank line in the source is the separator, not a block", () => {
+    expect(stripIds(markdownToBlocks("First.\n\nSecond."))).toEqual([p("First."), p("Second.")]);
+  });
+
+  it("each blank line beyond the separator is an empty row, and comes back", () => {
+    expect(stripIds(markdownToBlocks("First.\n\n\nSecond."))).toEqual([
+      p("First."),
+      p(""),
+      p("Second."),
+    ]);
+    const blocks = [p("First."), p(""), p(""), p("Second.")];
+    expect(blocksToMarkdown(blocks)).toBe("First.\n\n\n\nSecond.");
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("leading and trailing blank lines are empty rows, with no separator invented", () => {
+    for (const md of ["\n\nFirst.", "First.\n", "First.\n\n", "\nFirst.\n"]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
+    expect(stripIds(markdownToBlocks("First.\n"))).toEqual([p("First."), p("")]);
+  });
+
+  it("a paragraph after a list item is written with a blank line, never as a lazy line", () => {
+    const blocks = [bullet("item"), p("After the list.")];
+    expect(blocksToMarkdown(blocks)).toBe("- item\n\nAfter the list.");
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("a plain line directly under a list item is the item's continuation", () => {
+    expect(stripIds(markdownToBlocks("- item\ncontinued here\n- next"))).toEqual([
+      bullet("item\ncontinued here"),
+      bullet("next"),
+    ]);
+    expect(blocksToMarkdown(markdownToBlocks("- item\ncontinued here\n- next"))).toBe(
+      "- item\ncontinued here\n- next",
+    );
+  });
+
+  it("a paragraph after a quote keeps its own block and its bytes (see the interop note)", () => {
+    const md = "> quoted\nlazy line\n\nAfter.";
+    expect(stripIds(markdownToBlocks(md))).toEqual([
+      { type: "blockquote", text: "quoted" },
+      p("lazy line"),
+      p("After."),
+    ]);
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("a blank line before a heading or a list stays an empty row, so those files keep their bytes", () => {
+    for (const md of ["# T\n\nPara", "# T\nPara", "Para\n\n- a", "- a\n\n- b", "- a\n- b"]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
+  });
+
+  it("a whitespace-only line is a blank line that keeps its bytes as a row", () => {
+    // It separates the paragraphs like any blank line, but its spaces are the
+    // file's own, so it is kept as a row and no separator is written before it.
+    expect(stripIds(markdownToBlocks("First.\n   \nSecond."))).toEqual([
+      p("First."),
+      p("   "),
+      p("Second."),
+    ]);
+    for (const md of [
+      "First.\n   \nSecond.",
+      "First.\n   \n\nSecond.",
+      "First.\n\n\n   \nSecond.",
+      // A run that holds a whitespace-only line is written literally, all rows.
+      "- a\n\n  \n\nSecond.",
+      "- a\n\n  \nSecond.",
+    ]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
   });
 });

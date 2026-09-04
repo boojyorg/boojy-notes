@@ -22,6 +22,16 @@ editor, in `cat`, in anything that reads text.
 
 ---
 
+## Blocks are structure, not lines
+
+A block is one Markdown structure: a paragraph block holds every adjacent plain line of the
+paragraph, joined by soft breaks; a list item holds its lazy continuation lines. One blank line
+between two paragraphs, or between a list item and a paragraph, is the separator conventional
+Markdown needs and is not a block; every further blank line is an empty paragraph block. Enter
+starts a new paragraph (and writes that separator); Shift+Enter is a soft break inside the
+paragraph. Nothing is recorded that the file does not say, and reading a file never rewrites it.
+What the app writes must mean the same to any conventional reader (`tests/utils/markdownInterop.test.js`).
+
 ## The enforceable core: the round-trip rule
 
 > Every block MUST losslessly round-trip: **block → markdown → block**, producing an identical
