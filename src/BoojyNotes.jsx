@@ -104,7 +104,7 @@ export default function BoojyNotes() {
     filteredTree,
     fNotes,
     folderList,
-    markOpened,
+    markEdited,
   } = useSidebar();
 
   const {
@@ -169,6 +169,7 @@ export default function BoojyNotes() {
   } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
+    onNotesEdited: markEdited,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
@@ -181,14 +182,11 @@ export default function BoojyNotes() {
   const openNote = useCallback(
     (id) => {
       closeOverlay();
-      // Recency is stamped here, the one place a note becomes the open one.
-      // The promotion is immediate and deliberate: in "Most recent" the row
-      // jumps to the top of its list as you click it. (Revert: drop this line
-      // and recency stops updating.)
-      markOpened(id);
+      // Opening is side-effect-free for ordering: "Most recent" means most
+      // recently modified, and the row must not move under the pointer.
       setActiveNote(id);
     },
-    [closeOverlay, markOpened, setActiveNote],
+    [closeOverlay, setActiveNote],
   );
 
   // Start renaming a note where the user can see it: the sidebar row swaps to
@@ -238,7 +236,6 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
-    markOpened,
   });
   const {
     updateBlockText,

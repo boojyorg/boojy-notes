@@ -62,7 +62,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
 
   const commitNoteData = (updater) => {
     if (!isUndoRedo.current) pushHistory();
-    if (activeNoteRef.current) unflushedNotes.current.add(activeNoteRef.current);
     textOnlyEdit.current = false;
     textOnlyEditForSidebar.current = false;
     textOnlyEditForEditor.current = false;
@@ -73,7 +72,18 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       hasPendingFlush.current = false;
     }
     // Apply updater to ref so it reflects both pending text changes AND this structural change
-    noteDataRef.current = updater(noteDataRef.current);
+    const before = noteDataRef.current;
+    noteDataRef.current = updater(before);
+    // The quit/blur net records the notes this commit actually changed — not
+    // the active note, which a commit about something else (discarding the
+    // launch draft, renaming another row) would otherwise stamp without it
+    // ever becoming dirty, so the quit flush would rewrite it untouched.
+    if (noteDataRef.current !== before) {
+      for (const id of Object.keys(noteDataRef.current)) {
+        const note = noteDataRef.current[id];
+        if (note !== before[id] && !note?._draft) unflushedNotes.current.add(id);
+      }
+    }
     setNoteData(noteDataRef.current);
   };
 

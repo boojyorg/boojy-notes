@@ -300,3 +300,40 @@ describe("useFileSystem — quit-flush safety set", () => {
     expect(writeNote).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("useFileSystem — edited-note reporting for recency", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+
+  it("reports notes that became dirty here, but not drafts or the disk load", async () => {
+    const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+    readAllNotes.mockResolvedValue({ n1: saved });
+    writeNote.mockResolvedValue({});
+    const onNotesEdited = vi.fn();
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const links = { onNotesEdited };
+    const { result, rerender } = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), links),
+      { initialProps: { data: {} } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    // The disk load and its first render are not edits.
+    await act(async () => rerender({ data: { n1: saved } }));
+    expect(onNotesEdited).not.toHaveBeenCalled();
+
+    // A brand-new note and an edited one are; a draft is not.
+    const fresh = { id: "n2", title: "New", content: { title: "New", blocks: [] } };
+    const draft = { id: "d1", title: "", content: { title: "", blocks: [] }, _draft: true };
+    const edited = { ...saved, title: "Saved, edited" };
+    await act(async () => rerender({ data: { n1: edited, n2: fresh, d1: draft } }));
+    expect(onNotesEdited).toHaveBeenCalledExactlyOnceWith(["n1", "n2"]);
+  });
+});

@@ -34,7 +34,12 @@ function blocksEqual(a, b) {
 }
 
 /**
- * @param quitSafety Optional `{ unflushedNotes, latestNoteDataRef }` from useHistory.
+ * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, onNotesEdited }`.
+ *   `onNotesEdited(ids)` is called with every note that just became dirty here —
+ *   the one moment that means "modified in this app", whatever the edit was
+ *   (typing after its commit, a checkbox, a rename, a move, a new note). It feeds
+ *   the sidebar's "Most recent" order; external changes carry their own mtime
+ *   and are skipped, so the watcher never double-stamps.
  *   `unflushedNotes` is the quit/blur safety net: notes whose latest keystrokes
  *   may still be inside the text-commit debounce and so not yet in React state.
  *   A successful write here removes a note from it only when the object written
@@ -49,7 +54,7 @@ export function useFileSystem(
   setCustomFolders,
   syncGeneration,
   onError,
-  quitSafety = null,
+  editorLinks = null,
 ) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
@@ -128,12 +133,15 @@ export function useFileSystem(
       return;
     }
 
+    const newlyDirty = [];
     for (const id of Object.keys(noteData)) {
       if (noteData[id]?._draft) continue; // Skip drafts
       if (!prev[id] || prev[id] !== noteData[id]) {
         dirtyNotes.current.add(id);
+        newlyDirty.push(id);
       }
     }
+    if (newlyDirty.length > 0) editorLinksRef.current?.onNotesEdited?.(newlyDirty);
 
     for (const id of Object.keys(prev)) {
       if (!noteData[id] && !prev[id]?._draft) {
@@ -190,9 +198,9 @@ export function useFileSystem(
       // Persisted, and nothing typed since: the quit/blur net no longer needs
       // it. A failed write above `continue`s before this line, so a note that
       // did not reach disk stays in both sets and is retried.
-      const safety = quitSafetyRef.current;
-      if (safety && safety.latestNoteDataRef.current[noteId] === note) {
-        safety.unflushedNotes.current.delete(noteId);
+      const links = editorLinksRef.current;
+      if (links?.unflushedNotes && links.latestNoteDataRef.current[noteId] === note) {
+        links.unflushedNotes.current.delete(noteId);
       }
     }
 
@@ -225,8 +233,8 @@ export function useFileSystem(
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  const quitSafetyRef = useRef(quitSafety);
-  quitSafetyRef.current = quitSafety;
+  const editorLinksRef = useRef(editorLinks);
+  editorLinksRef.current = editorLinks;
 
   // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
   useEffect(() => {

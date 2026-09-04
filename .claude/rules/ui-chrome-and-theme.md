@@ -189,21 +189,22 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   persisted in `boojy-note-sort`, default recency. It is a click-to-flip toggle on the `Notes`
   header: the glyph shows the current mode and the label's tail says what a click does. A third
   mode would need a menu; accepted bet.
-- **"Most recent" means last touched: `max(last opened here, file mtime)`** (`recencyOf()` in
-  `utils/noteSort.js`). Neither half works alone. Opening never writes to disk, so mtime can't
-  see reading; last-opened starts empty on an existing vault, which makes both modes produce
-  the same list and reads as a broken control; and mtime is the only half that sees an edit
-  made in another app.
-- Last-opened lives in localStorage (`boojy-note-opened`), never in the user's files: stamping
-  a file on open would corrupt the mtime the sort depends on. It is per-machine and starts over
-  when a vault's IDs regenerate; mtime carries the order meanwhile. Notes with neither
-  timestamp sort alphabetically at the back.
+- **"Most recent" means most recently modified, never opened: `max(edited here this session,
+  file mtime)`** (`recencyOf()` in `utils/noteSort.js`). The file's mtime is the durable truth
+  and orders the vault at launch; it is also the only signal that sees an edit made in another
+  app, which the watcher delivers live. Because the app's own writes don't refresh
+  `lastModified` in state, `useFileSystem` stamps a note in an in-memory "edited at" map the
+  moment it becomes dirty (typing after its commit, a checkbox, a rename, a move, a new or
+  duplicated note). Nothing is persisted by the app and nothing is written to the user's files;
+  the old `boojy-note-opened` key is no longer read.
+- **Opening, selecting or reading a note has no effect on order.** The list never reshuffles
+  under the pointer, which is what makes double-click rename safe in recency mode. Don't
+  reintroduce an open-stamp for any reason.
+- Rename and move count as modification because they rewrite the file; accepted for Beta rather
+  than adding filesystem work to preserve the old mtime.
 - A pure `touch` with no content change does not refresh the order (`onFileChanged` bails when
-  nothing differs; deliberate anti-churn). The app's own writes don't refresh it and needn't.
-- **Every site that makes a note active must stamp recency** (`openNote`, and note creation
-  and duplication in `useNoteCrud`), or the note sorts into the never-opened tail.
-- `useNoteSort` prunes against the live note store when it writes. **Its empty-store guard is
-  load-bearing**: the store is `{}` until notes load, and writing then erases every timestamp.
+  nothing differs; deliberate anti-churn). Notes with no timestamp at all sort alphabetically at
+  the back.
 - `sortNoteIds` returns the same array reference when already ordered, because the sidebar's
   memo chain compares identities. Alphabetical mode doesn't subscribe to timestamps.
 
