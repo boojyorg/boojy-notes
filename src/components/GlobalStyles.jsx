@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { PARAGRAPH_GAP } from "./EditableBlock";
 
 export default function GlobalStyles() {
   const { theme } = useTheme();
@@ -533,6 +534,19 @@ export default function GlobalStyles() {
           line-height: 1.6;
           color: ${theme.TEXT.secondary};
           white-space: pre-wrap;
+        }
+        /* The paragraph pitch (EditableBlock.PARAGRAPH_GAP): a soft break is
+           line height alone, Enter adds this, an empty row adds a whole line.
+           A paragraph after a list item is its own structure now (the file
+           has a blank line between them) and gets the same gap above it,
+           which the list's tight row padding does not give. */
+        p[data-block-type="p"] {
+          margin: 0 0 ${PARAGRAPH_GAP}px;
+        }
+        [data-block-type="bullet"] + p[data-block-type="p"],
+        [data-block-type="numbered"] + p[data-block-type="p"],
+        [data-block-type="checkbox"] + p[data-block-type="p"] {
+          margin-top: ${PARAGRAPH_GAP}px;
         }
         .empty-block {
           position: relative;

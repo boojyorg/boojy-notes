@@ -11,6 +11,16 @@ import FileBlock from "./blocks/FileBlock";
 import EmbedBlock from "./blocks/EmbedBlock";
 import SpacerBlock from "./blocks/SpacerBlock";
 
+/**
+ * The paragraph pitch: the space after a paragraph or quote block. A soft break
+ * (Shift+Enter) is line height alone, a paragraph break (Enter) adds this, and
+ * an empty row (Enter twice) adds a whole line on top; the three must read as
+ * three. Lists and headings keep their own rhythm. The paragraph's own margin
+ * is set in GlobalStyles from this value, beside the rule that gives a
+ * paragraph after a list item the same gap; the quote uses it inline.
+ */
+export const PARAGRAPH_GAP = 12;
+
 const INDENT_PX = 24;
 
 const EditableBlock = memo(
@@ -75,6 +85,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ padding: "8px 0", userSelect: "none" }}
@@ -104,6 +115,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ padding: "8px 0", userSelect: "none" }}
@@ -125,6 +137,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ userSelect: "none" }}
@@ -146,6 +159,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ userSelect: "none" }}
@@ -159,6 +173,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ userSelect: "none" }}
@@ -179,6 +194,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ userSelect: "none" }}
@@ -199,6 +215,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           contentEditable="false"
           suppressContentEditableWarning
           style={{ padding: "4px 0", userSelect: "none" }}
@@ -225,12 +242,13 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           suppressContentEditableWarning
           style={{
             contain: "content",
             borderLeft: `3px solid ${accentColor}`,
             paddingLeft: 14 + indentPad,
-            margin: "0 0 6px",
+            margin: `0 0 ${PARAGRAPH_GAP}px`,
             lineHeight: 1.7,
           }}
         >
@@ -253,14 +271,16 @@ const EditableBlock = memo(
         <p
           ref={elRef}
           data-block-id={block.id}
+          data-block-type={block.type}
           data-placeholder="Type / for commands..."
           className={blockIndex === 0 ? "empty-block" : undefined}
           role="textbox"
           aria-multiline="true"
           aria-label="Paragraph"
           style={{
+            // Vertical rhythm lives in GlobalStyles (the paragraph pitch and the
+            // gap after a list item), where a sibling rule can reach it.
             contain: "content",
-            margin: "0 0 6px",
             lineHeight: 1.7,
             color: TEXT.primary,
             fontSize,
@@ -276,6 +296,7 @@ const EditableBlock = memo(
         <h1
           ref={elRef}
           data-block-id={block.id}
+          data-block-type={block.type}
           aria-label="Heading 1"
           style={{
             contain: "content",
@@ -297,6 +318,7 @@ const EditableBlock = memo(
         <h2
           ref={elRef}
           data-block-id={block.id}
+          data-block-type={block.type}
           aria-label="Heading 2"
           style={{
             contain: "content",
@@ -318,6 +340,7 @@ const EditableBlock = memo(
         <h3
           ref={elRef}
           data-block-id={block.id}
+          data-block-type={block.type}
           aria-label="Heading 3"
           style={{
             contain: "content",
@@ -337,6 +360,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           suppressContentEditableWarning
           style={{
             contain: "content",
@@ -376,6 +400,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           suppressContentEditableWarning
           style={{
             contain: "content",
@@ -416,6 +441,7 @@ const EditableBlock = memo(
       return (
         <div
           data-block-id={block.id}
+          data-block-type={block.type}
           suppressContentEditableWarning
           style={{
             contain: "content",
