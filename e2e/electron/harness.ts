@@ -214,12 +214,16 @@ export async function waitForFile(
   );
 }
 
-/** The editor's blocks as the user reads them, one line per block. */
+/**
+ * The editor's blocks as the user reads them, one line per block. The
+ * zero-width space the editor parks the caret on after a link has no glyph
+ * and never reaches Markdown, so it is not part of what the user reads.
+ */
 export async function editorText(page: Page): Promise<string> {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll("[data-block-id]"))
       // An empty block holds a <br> for the caret, whose innerText is "\n".
-      .map((b) => (b as HTMLElement).innerText.replace(/\n$/, ""))
+      .map((b) => (b as HTMLElement).innerText.replace(/\n$/, "").replace(/\u200B/g, ""))
       .join("\n"),
   );
 }

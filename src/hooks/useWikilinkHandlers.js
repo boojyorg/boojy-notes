@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { buildBacklinkIndex, getBacklinksForNote } from "../utils/backlinkIndex";
+import { placeCaret } from "../utils/domHelpers";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 
 /**
@@ -107,16 +108,14 @@ export function useWikilinkHandlers({
         // React won't re-render the (text-optimised) editor — so the syncGen
         // DOM-resync effect never runs and the link would stay invisible. Write
         // the rendered HTML to the block directly (same approach useInputHandler
-        // uses for markdown conversions) and drop the caret at the end.
+        // uses for markdown conversions) and put the caret after the link —
+        // through placeCaret, which anchors it *outside* the link so the next
+        // keystroke is prose, not part of the alias. The queued focus below
+        // re-places it the same way after the re-render repaints the block.
         const el = blockRefs.current[blocks[blockIndex].id];
         if (el) {
           el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSet);
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          range.collapse(false);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
+          placeCaret(el, el.textContent.length);
         }
         focusBlockId.current = blocks[blockIndex].id;
         focusCursorPos.current = newText.length;
