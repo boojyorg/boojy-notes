@@ -24,6 +24,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 
 import EditableBlock from "../../src/components/EditableBlock.jsx";
+import { getCaretOffset, placeCaret } from "../../src/utils/domHelpers.js";
 import {
   paragraph,
   heading,
@@ -38,15 +39,14 @@ import {
 
 const noop = () => {};
 
-function renderBlock(block, overrides = {}) {
-  const registerRef = vi.fn();
-  const props = {
+function baseProps(block, overrides = {}) {
+  return {
     block,
     blockIndex: 0,
     noteId: "note-1",
     onCheckToggle: noop,
     onDeleteBlock: noop,
-    registerRef,
+    registerRef: noop,
     syncGen: 1,
     accentColor: "#A4CACE",
     fontSize: 14,
@@ -69,6 +69,11 @@ function renderBlock(block, overrides = {}) {
     onNavigateToNote: noop,
     ...overrides,
   };
+}
+
+function renderBlock(block, overrides = {}) {
+  const registerRef = vi.fn();
+  const props = baseProps(block, { registerRef, ...overrides });
   const result = render(<EditableBlock {...props} />);
   return { ...result, registerRef };
 }
@@ -78,6 +83,23 @@ beforeEach(() => {
 });
 
 describe("EditableBlock", () => {
+  // Regression: a syncGen repaint (undo, redo, external change) replaced
+  // innerHTML and collapsed the caret to the start of the block, so typing
+  // after an undo landed at the front of the line.
+  it("keeps the caret in place, clamped to the new text, across a syncGen repaint", () => {
+    const block = paragraph("hello A");
+    const { container, rerender } = renderBlock(block);
+    const el = container.querySelector(`[data-block-id="${block.id}"]`);
+    placeCaret(el, 7);
+    expect(getCaretOffset(el)).toBe(7);
+
+    const restored = { ...block, text: "hello" };
+    rerender(<EditableBlock {...baseProps(restored)} syncGen={2} />);
+
+    expect(el.textContent).toBe("hello");
+    expect(getCaretOffset(el)).toBe(5);
+  });
+
   it("renders paragraph block with data-block-id", () => {
     const block = paragraph("hello");
     const { container } = renderBlock(block);

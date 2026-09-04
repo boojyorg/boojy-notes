@@ -40,7 +40,8 @@ pnpm dev              # Electron + Vite
 pnpm dev:web          # browser only (ELECTRON_DISABLE=1)
 pnpm test             # unit tests
 pnpm test:coverage    # unit tests with the CI coverage gate; run before pushing
-pnpm test:e2e         # Playwright, Chromium
+pnpm test:e2e         # Playwright, Chromium (web build)
+pnpm test:electron    # real-Electron core journeys against a throwaway vault
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
 pnpm build:electron   # web build + desktop installers into dist/
@@ -119,8 +120,19 @@ Each of these has caused a real bug. Read before touching the editor.
 - Unit tests in `tests/` (Vitest, jsdom, Testing Library); E2E in `e2e/`. The preservation
   corpus in `tests/fixtures/preservation/` is byte-sensitive and protected by `.gitattributes`.
 - Coverage floors in `vitest.config.js` sit just below actuals. Ratchet up; never lower to pass.
-- CI runs `test:coverage` and E2E, not `pnpm test`. Desktop behaviour is only proven in a real
-  Electron build; the web build cannot stand in for it.
+- CI runs `test:coverage`, the web E2E and the Electron suite, not `pnpm test`. Desktop
+  behaviour is only proven in a real Electron build; the web build cannot stand in for it.
+- **The real-Electron suite (`e2e/electron/`, `pnpm test:electron`) is where cross-layer
+  behaviour is proven**: it launches the built app against a temp vault and userData and asserts
+  observable truth — editor text, the Markdown on disk, filenames, mtimes, state after a restart,
+  leftover temp files. The core invariant is that once an operation settles, what the user sees
+  and what is persisted describe the same note. There is no test-only bridge into React state;
+  add one only if an important invariant genuinely cannot be proven from the outside.
+- **Correctness fixes include a regression test that fails before the fix**, at the lowest
+  trustworthy layer practical: pure logic in Vitest, component-only behaviour in jsdom, anything
+  crossing the text-commit or write debounces, IPC, the watcher, the filesystem or a restart in
+  the Electron suite. Where deterministic reproduction is genuinely unreasonable (a race with no
+  stable trigger, a native dialog), say so in the PR and cover the nearest deterministic seam.
 - Never skip the pre-commit hook with `--no-verify`.
 
 ## Release

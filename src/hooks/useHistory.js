@@ -121,6 +121,37 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     }, 300);
   };
 
+  // Restore a snapshot as the note's current state, for undo and redo.
+  //
+  // Two things here are load-bearing. First, a text commit may still be
+  // pending in `textFlushTimer`; left alone it would fire after the restore and
+  // write the pre-undo text back over it, and while it is pending the
+  // "text-only edit" flags tell the editor to skip its next render — which
+  // would skip painting the restored text. Cancel the commit and clear the
+  // flags before restoring. Second, `noteDataRef` only syncs from state when no
+  // flush is pending, so write the restored data to the ref directly (as
+  // commitNoteData does) rather than leaving it stale until the next render.
+  const restoreSnapshot = (noteId, snapshot) => {
+    if (textFlushTimer.current) {
+      clearTimeout(textFlushTimer.current);
+      textFlushTimer.current = null;
+    }
+    hasPendingFlush.current = false;
+    textOnlyEdit.current = false;
+    textOnlyEditForSidebar.current = false;
+    textOnlyEditForEditor.current = false;
+    // Typing that resumes after an undo starts a fresh history entry.
+    if (historyTimer.current) {
+      clearTimeout(historyTimer.current);
+      historyTimer.current = null;
+    }
+    isUndoRedo.current = true;
+    syncGeneration.current++;
+    noteDataRef.current = { ...noteDataRef.current, [noteId]: snapshot };
+    setNoteData(noteDataRef.current);
+    isUndoRedo.current = false;
+  };
+
   const undo = () => {
     if (undoStack.current.length === 0) return;
     const entry = undoStack.current.pop();
@@ -130,10 +161,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       noteId: entry.noteId,
       snapshot: currentNote ? cloneNote(currentNote) : null,
     });
-    isUndoRedo.current = true;
-    syncGeneration.current++;
-    setNoteData((prev) => ({ ...prev, [entry.noteId]: entry.snapshot }));
-    isUndoRedo.current = false;
+    restoreSnapshot(entry.noteId, entry.snapshot);
     setCanUndo(undoStack.current.length > 0);
     setCanRedo(true);
   };
@@ -152,10 +180,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       noteId: entry.noteId,
       snapshot: currentNote ? cloneNote(currentNote) : null,
     });
-    isUndoRedo.current = true;
-    syncGeneration.current++;
-    setNoteData((prev) => ({ ...prev, [entry.noteId]: entry.snapshot }));
-    isUndoRedo.current = false;
+    restoreSnapshot(entry.noteId, entry.snapshot);
     setCanUndo(true);
     setCanRedo(redoStack.current.length > 0);
   };

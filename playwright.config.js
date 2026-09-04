@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // The real-Electron suite has its own config and needs no web server.
+  testIgnore: ["**/electron/**"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

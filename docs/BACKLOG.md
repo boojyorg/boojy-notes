@@ -86,7 +86,6 @@ third-party content. These are the preservation blockers in the Beta list.
 - [ ] **Same-title notes are invisible to backlinks.**
 - [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **`changeNotesDir` leaks the old vault's folders** into the new one.
-- [ ] **Undo within 300ms is overwritten by the text flush.**
 
 ## Accessibility
 

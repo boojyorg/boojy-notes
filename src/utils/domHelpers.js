@@ -62,6 +62,34 @@ export function findNearestBlock(sel, blocks, blockRefs) {
 }
 
 /**
+ * Character offset of the caret inside `el`, counted the way `placeCaret`
+ * counts (text nodes in document order, decorative link icons skipped), or -1
+ * when the selection is collapsed somewhere else or absent. `placeCaret(el,
+ * getCaretOffset(el))` is the identity, which is what lets a block repaint its
+ * innerHTML without losing the caret.
+ */
+export function getCaretOffset(el) {
+  if (!el) return -1;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return -1;
+  const { anchorNode, anchorOffset } = sel;
+  if (!anchorNode || !el.contains(anchorNode)) return -1;
+  try {
+    const range = document.createRange();
+    range.setStart(el, 0);
+    range.setEnd(anchorNode, anchorOffset);
+    let offset = range.toString().length;
+    // placeCaret never counts the ↗ inside external links; neither do we.
+    for (const icon of el.querySelectorAll(".external-link-icon")) {
+      if (range.intersectsNode(icon)) offset -= icon.textContent.length;
+    }
+    return Math.max(0, offset);
+  } catch {
+    return -1;
+  }
+}
+
+/**
  * Place cursor at character offset inside a contentEditable element.
  * IMPORTANT: This must be a pure selection operation — no DOM mutations
  * except adding an empty text node for caret anchoring.
