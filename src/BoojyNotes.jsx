@@ -41,6 +41,7 @@ import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
+import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useImport } from "./hooks/useImport";
@@ -563,59 +564,49 @@ export default function BoojyNotes() {
 
   const selectedCount = selectedNotes.size;
 
-  // On web, deleting is permanent (no Trash to recover from) — confirm first.
-  // On desktop, deleteNote moves the Markdown file to the OS Trash/Recycle Bin,
-  // so it remains externally recoverable; skip the prompt.
+  // Deletion asks only when it should, in words that say what happens
+  // (utils/deletionPrompt owns the wording). Desktop moves a note's file to the
+  // OS Trash: a single note goes at once with a quiet toast; a folder or a bulk
+  // selection asks first. The folder on disk and any file in it that is not a
+  // note are never touched. Web deletion is permanent, so every kind asks.
+  const askBeforeDeleting = useCallback(
+    async (kind, ctx) => {
+      const prompt = deletionPrompt(kind, { ...ctx, isWeb });
+      return prompt ? requestConfirm(prompt) : true;
+    },
+    [requestConfirm],
+  );
+
   const confirmDeleteNote = useCallback(
     async (id) => {
       const note = noteDataRef.current?.[id];
-      if (isWeb) {
-        const ok = await requestConfirm({
-          title: "Delete note?",
-          message: `"${note?.title || "Untitled"}" will be permanently deleted. This can't be undone.`,
-          confirmLabel: "Delete",
-          danger: true,
-        });
-        if (!ok) return false;
-      }
+      if (!(await askBeforeDeleting("note", { count: 1, name: note?.title }))) return false;
       deleteNote(id);
+      if (!isWeb) showToast(trashedToast(note?.title), "info");
       return true;
     },
-    [deleteNote, requestConfirm, noteDataRef],
+    [deleteNote, askBeforeDeleting, noteDataRef, showToast],
   );
 
   const confirmDeleteFolder = useCallback(
     async (folderPath) => {
-      if (isWeb) {
-        const name = folderPath.split("/").pop();
-        const ok = await requestConfirm({
-          title: "Delete folder?",
-          message: `"${name}" and all notes inside it will be permanently deleted. This can't be undone.`,
-          confirmLabel: "Delete",
-          danger: true,
-        });
-        if (!ok) return;
-      }
+      const count = Object.values(noteDataRef.current || {}).filter(
+        (n) => n.folder && (n.folder === folderPath || n.folder.startsWith(`${folderPath}/`)),
+      ).length;
+      const name = folderPath.split("/").pop();
+      if (!(await askBeforeDeleting("folder", { count, name }))) return;
       deleteFolder(folderPath);
     },
-    [deleteFolder, requestConfirm],
+    [deleteFolder, askBeforeDeleting, noteDataRef],
   );
 
   const bulkDeleteNotes = useCallback(
     async (ids) => {
-      if (isWeb && ids.length > 0) {
-        const ok = await requestConfirm({
-          title: `Delete ${ids.length} note${ids.length !== 1 ? "s" : ""}?`,
-          message: "These will be permanently deleted. This can't be undone.",
-          confirmLabel: "Delete",
-          danger: true,
-        });
-        if (!ok) return;
-      }
+      if (!(await askBeforeDeleting("bulk", { count: ids.length }))) return;
       for (const id of ids) deleteNote(id);
       clearSelection();
     },
-    [deleteNote, clearSelection, requestConfirm],
+    [deleteNote, clearSelection, askBeforeDeleting],
   );
 
   const bulkMoveNotes = useCallback(

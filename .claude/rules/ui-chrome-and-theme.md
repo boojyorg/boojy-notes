@@ -105,7 +105,12 @@ mixed sizes and strokes is what made the UI read as assembled.
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
 - **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
   web deletion is permanent behind confirmation. Folder deletion never touches the physical
-  folder, so unsupported sibling files stay put. The retired private `.trash` gets one
+  folder, so unsupported sibling files stay put. **Desktop asks only when the action is more than
+  one recoverable file:** a single note goes at once with a quiet toast; a folder with notes and a
+  bulk selection confirm first, worded as `Move N notes to the Trash?` with the promise that the
+  folder and non-note files stay; a folder with no notes just leaves the sidebar. The wording lives
+  in one place, `utils/deletionPrompt.ts`; don't add a second phrasing. No undo or recovery UI, by
+  decision: the OS Trash is the recovery surface. The retired private `.trash` gets one
   conservative startup migration into the OS Trash: recognised notes are copied under
   collision-safe names before the source is removed, ambiguous items are left untouched and
   reported once per distinct problem set, OS cruft is ignored. Deleting a note that never
