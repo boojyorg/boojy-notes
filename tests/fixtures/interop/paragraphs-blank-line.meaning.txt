@@ -1,0 +1,2 @@
+paragraph "First paragraph."
+paragraph "Second paragraph, after one blank line."

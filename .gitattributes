@@ -2,3 +2,6 @@
 # newline). Git must never normalise their line endings — the tests assert on
 # exact bytes.
 tests/fixtures/preservation/* -text
+
+# Interop fixtures carry hard-break trailing spaces; keep them exactly as written.
+tests/fixtures/interop/*.md -text

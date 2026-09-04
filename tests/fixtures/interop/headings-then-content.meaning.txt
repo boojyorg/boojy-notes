@@ -1,0 +1,15 @@
+h1 "Title"
+paragraph "Intro right under the heading, no blank line."
+h2 "Section"
+paragraph "A paragraph after a blank line."
+bullet list
+  item
+    paragraph "first item"
+  item
+    paragraph "second item"
+h3 "Sub-section"
+ordered list
+  item
+    paragraph "one"
+  item
+    paragraph "two"

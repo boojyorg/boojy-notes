@@ -1,0 +1,13 @@
+h1 "Weekly review"
+paragraph "Tags: #review #2026"
+paragraph "See [[Project plan]] and the site."
+h2 "Done"
+bullet list
+  item
+    paragraph "[x] Shipped the thing"
+  item
+    paragraph "[ ] Write it up"
+h2 "Notes"
+paragraph "Some bold and italic text, plus code.\nSame paragraph, next line."
+thematic break
+paragraph "Final thought."

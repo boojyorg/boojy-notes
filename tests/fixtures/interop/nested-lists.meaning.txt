@@ -1,0 +1,21 @@
+bullet list
+  item
+    paragraph "parent"
+    bullet list
+      item
+        paragraph "child"
+        bullet list
+          item
+            paragraph "grandchild"
+      item
+        paragraph "second child"
+  item
+    paragraph "sibling"
+ordered list
+  item
+    paragraph "step"
+    bullet list
+      item
+        paragraph "detail under step"
+  item
+    paragraph "next step"

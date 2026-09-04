@@ -1,0 +1,14 @@
+table
+    row
+      header "Name"
+      header "Qty"
+      header "Price"
+    row
+      cell "Tea"
+      cell "2"
+      cell "3.50"
+    row
+      cell "Milk"
+      cell "1"
+      cell "1.20"
+paragraph "A paragraph after the table."
