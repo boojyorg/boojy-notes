@@ -51,6 +51,7 @@ export function NoteDataProvider({ children }) {
     undo,
     redo,
     commitNoteData,
+    adoptNoteData,
     commitTextChange,
     pushHistory,
     popHistory,
@@ -73,6 +74,7 @@ export function NoteDataProvider({ children }) {
       undo,
       redo,
       commitNoteData,
+      adoptNoteData,
       commitTextChange,
       pushHistory,
       popHistory,
@@ -83,7 +85,17 @@ export function NoteDataProvider({ children }) {
       unflushedNotes,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs (noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded
-    [canUndo, canRedo, undo, redo, commitNoteData, commitTextChange, pushHistory, popHistory],
+    [
+      canUndo,
+      canRedo,
+      undo,
+      redo,
+      commitNoteData,
+      adoptNoteData,
+      commitTextChange,
+      pushHistory,
+      popHistory,
+    ],
   );
 
   return (

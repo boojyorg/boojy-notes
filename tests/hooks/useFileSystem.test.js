@@ -337,3 +337,73 @@ describe("useFileSystem — edited-note reporting for recency", () => {
     expect(onNotesEdited).toHaveBeenCalledExactlyOnceWith(["n1", "n2"]);
   });
 });
+
+describe("useFileSystem — the title follows the filename the write produced", () => {
+  const saved = {
+    id: "n1",
+    title: "Meeting notes",
+    content: { title: "Meeting notes", blocks: [] },
+  };
+  const moved = { ...saved, folder: "Work" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function renderMoved(links) {
+    readAllNotes.mockResolvedValue({ n1: saved });
+    // Stable setters, as in the quit-flush tests: the initial-load effect keys on them.
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const hook = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), links),
+      { initialProps: { data: { n1: saved } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: saved } }));
+    vi.useFakeTimers();
+    await act(async () => hook.rerender({ data: { n1: moved } }));
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    return hook;
+  }
+
+  it("reports a basename that differs from the title written, with the note written", async () => {
+    writeNote.mockResolvedValue({
+      filePath: "/notes/Work/Meeting notes-2.md",
+      title: "Meeting notes-2",
+    });
+    const onTitleResolved = vi.fn();
+
+    await renderMoved({ onTitleResolved });
+
+    // `toHaveBeenCalledWith`, not exactly-once: a retry timer from an earlier
+    // test in this file can still fire a write for its own note here.
+    expect(writeNote).toHaveBeenCalledWith(moved);
+    expect(onTitleResolved).toHaveBeenCalledExactlyOnceWith("n1", moved, "Meeting notes-2");
+  });
+
+  it("stays quiet when the file got the title asked for, or the API predates the answer", async () => {
+    const onTitleResolved = vi.fn();
+    writeNote.mockResolvedValue({
+      filePath: "/notes/Work/Meeting notes.md",
+      title: "Meeting notes",
+    });
+    await renderMoved({ onTitleResolved });
+    expect(onTitleResolved).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+    writeNote.mockResolvedValue(undefined);
+    await renderMoved({ onTitleResolved });
+    expect(onTitleResolved).not.toHaveBeenCalled();
+  });
+});

@@ -190,6 +190,56 @@ describe("useHistory", () => {
 
   // ─── commitTextChange ─────────────────────────────────────────────
 
+  // ─── adoptNoteData ────────────────────────────────────────────────
+
+  describe("adoptNoteData", () => {
+    // A write can land a note under a basename other than the title written
+    // (a namesake forced a suffix, a colon became an underscore). Adopting that
+    // name is a change of record, not an edit: it publishes like a structural
+    // commit but leaves no history entry, so Cmd+Z after the rename undoes the
+    // rename rather than restoring the requested name for the file to reject
+    // again.
+    it("publishes the change without a history entry", async () => {
+      const { result, getNoteData } = setup();
+      act(() => {
+        result.current.adoptNoteData((prev) => ({
+          ...prev,
+          [NOTE_ID]: { ...prev[NOTE_ID], title: "Meeting notes-2" },
+        }));
+      });
+      await flushMicrotasks();
+
+      expect(getNoteData()[NOTE_ID].title).toBe("Meeting notes-2");
+      expect(result.current.noteDataRef.current[NOTE_ID].title).toBe("Meeting notes-2");
+      expect(result.current.canUndo).toBe(false);
+      // It reaches disk like any change: the note is in the quit/blur net.
+      expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(true);
+    });
+
+    it("carries pending text with it rather than losing it to the cancelled commit", () => {
+      const { result, getNoteData } = setup();
+      act(() => {
+        result.current.commitTextChange((prev) => ({
+          ...prev,
+          [NOTE_ID]: {
+            ...prev[NOTE_ID],
+            content: { ...prev[NOTE_ID].content, blocks: [paragraph("typed")] },
+          },
+        }));
+      });
+      act(() => {
+        result.current.adoptNoteData((prev) => ({
+          ...prev,
+          [NOTE_ID]: { ...prev[NOTE_ID], title: "Adopted" },
+        }));
+      });
+
+      const note = getNoteData()[NOTE_ID];
+      expect(note.title).toBe("Adopted");
+      expect(note.content.blocks[0].text).toBe("typed");
+    });
+  });
+
   describe("commitTextChange", () => {
     it("pushes history on the first call", async () => {
       const { result } = setup();

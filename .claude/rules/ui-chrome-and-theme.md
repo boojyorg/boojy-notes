@@ -165,6 +165,27 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
   second toggle rather than delaying single-click to disambiguate.
 
+### A persisted note's title is its filename
+
+- **For every persisted desktop note, the title shown equals the Markdown basename.** Drafts are
+  excluded until they become files. The rule is enforced from the persistence side: `write-note`
+  in `electron/noteFileManager.js` is the only place that knows the final name (collision suffix,
+  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, the volume's own casing)
+  and answers every write with it. `useFileSystem` hands a differing answer to `useResolvedTitle`,
+  which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
+  itself) and repaints the editor's title field, caret preserved when the user is still in it.
+  Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
+- **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
+  own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
+  other file on disk is a collision, indexed or not.
+- **A blank title under the caret is left alone.** The placeholder already reads `Untitled`, and
+  filling it in would land in front of whatever is typed next; it resolves on the next write, or
+  when the note is next opened. The emptied field's own `<br>` reads as "\n"; `titleFieldText()`
+  is the one reading of the field, shared by the input handler and the adoption hook.
+- The editor title repaints from state when the field is not focused (a sidebar rename of the
+  open note); while focused the field is ahead of state and is never repainted from it.
+- No inline "a note with this name already exists" validation, by decision; correctness first.
+
 ### Sections: `Folders` and `Notes`
 
 - Two headers share `SectionHeader`. `Folders` carries the only desktop New Folder affordance;

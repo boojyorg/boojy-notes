@@ -40,6 +40,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
+import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useImport } from "./hooks/useImport";
@@ -64,6 +65,7 @@ export default function BoojyNotes() {
     undo,
     redo,
     commitNoteData,
+    adoptNoteData,
     commitTextChange,
     pushHistory,
     noteDataRef,
@@ -159,6 +161,10 @@ export default function BoojyNotes() {
   // ── Sync activeNoteRef from context ─────────────────────────────────
   activeNoteRef.current = activeNote;
 
+  // A persisted note's title is its filename: when a write lands under
+  // another basename, the title follows it, in state and in the title field.
+  const onTitleResolved = useResolvedTitle({ titleRef, activeNoteRef, noteDataRef, adoptNoteData });
+
   // ── External hooks ──────────────────────────────────────────────────
   const {
     isElectron: isDesktop,
@@ -170,6 +176,7 @@ export default function BoojyNotes() {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
     onNotesEdited: markEdited,
+    onTitleResolved,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
@@ -391,6 +398,20 @@ export default function BoojyNotes() {
       }
     }
   }, [activeNote, syncGeneration.current]); // eslint-disable-line -- only on note switch + external sync, NOT every keystroke
+
+  // A rename made elsewhere — the sidebar row, or the filename the write
+  // actually produced — reaches the title field as long as the user is not in
+  // it. While they are, the field is ahead of state (its commit is debounced)
+  // and a repaint would throw the caret to the start, so it is left alone;
+  // useResolvedTitle handles that case with the caret preserved.
+  const openNoteTitle = noteData[activeNote]?.title;
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el || openNoteTitle === undefined || document.activeElement === el) return;
+    if ((el.textContent ?? "") === openNoteTitle) return;
+    if (openNoteTitle === "") el.innerHTML = "<br>";
+    else el.textContent = openNoteTitle;
+  }, [openNoteTitle]);
 
   useAppKeyboard({
     activeNote,

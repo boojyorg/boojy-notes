@@ -17,7 +17,7 @@ import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
 import OnboardingHint from "./OnboardingHint";
 import LinkContextMenu from "./LinkContextMenu";
-import { getBlockFromNode, placeCaret, isEditableBlock } from "../utils/domHelpers";
+import { getBlockFromNode, placeCaret, isEditableBlock, titleFieldText } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
@@ -558,7 +558,7 @@ const EditorArea = memo(
               aria-label="Note title"
               className={!note.title ? "empty-title" : undefined}
               onInput={(e) => {
-                const newTitle = e.currentTarget.innerText;
+                const newTitle = titleFieldText(e.currentTarget);
                 commitTextChange((prev) => {
                   const next = { ...prev };
                   const n = { ...next[activeNote] };
