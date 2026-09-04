@@ -31,8 +31,17 @@ function getMainWindow() {
   return mainWindow;
 }
 
+// Test-only. The real-Electron suite (`pnpm test:electron`) runs the app with
+// its window hidden so routine runs don't take over the desktop; Playwright
+// drives the renderer over CDP, which needs no OS focus. Timers must keep
+// running at full speed while hidden, or the text-commit and write debounces
+// the suite exists to exercise would stall behind Chromium's background
+// throttling. Never set outside the test harness.
+const hiddenForTests = process.env.BOOJY_TEST_HIDDEN === "1";
+
 function createWindow() {
   mainWindow = new BrowserWindow({
+    show: !hiddenForTests,
     width: 1200,
     height: 800,
     minWidth: 600,
@@ -55,6 +64,7 @@ function createWindow() {
       nodeIntegration: false,
       spellcheck: true,
       preload: path.join(__dirname, "preload.js"),
+      backgroundThrottling: !hiddenForTests,
     },
   });
 
@@ -110,6 +120,9 @@ setupAutoUpdater(getMainWindow);
 
 app.whenReady().then(async () => {
   app.setName("Boojy Notes");
+  // No Dock icon either while hidden for tests, or launching would still pull
+  // focus to the app on macOS.
+  if (hiddenForTests) app.dock?.hide();
   // Native chrome (menus, dialogs) follows the OS. Forcing "dark" here made
   // native surfaces dark even for the (default) light app theme.
   nativeTheme.themeSource = "system";

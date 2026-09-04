@@ -41,7 +41,8 @@ pnpm dev:web          # browser only (ELECTRON_DISABLE=1)
 pnpm test             # unit tests
 pnpm test:coverage    # unit tests with the CI coverage gate; run before pushing
 pnpm test:e2e         # Playwright, Chromium (web build)
-pnpm test:electron    # real-Electron core journeys against a throwaway vault
+pnpm test:electron    # real-Electron core journeys against a throwaway vault, window hidden
+pnpm test:electron:headed  # the few *.headed.spec.ts that need real focus/clipboard/menus
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
 pnpm build:electron   # web build + desktop installers into dist/
@@ -127,7 +128,10 @@ Each of these has caused a real bug. Read before touching the editor.
   observable truth — editor text, the Markdown on disk, filenames, mtimes, state after a restart,
   leftover temp files. The core invariant is that once an operation settles, what the user sees
   and what is persisted describe the same note. There is no test-only bridge into React state;
-  add one only if an important invariant genuinely cannot be proven from the outside.
+  add one only if an important invariant genuinely cannot be proven from the outside. The app
+  runs with its window hidden (`BOOJY_TEST_HIDDEN`, main process) so routine runs never steal
+  focus; a spec that needs real OS focus, the system clipboard or native menus is a
+  `*.headed.spec.ts` and runs only via `pnpm test:electron:headed`.
 - **Correctness fixes include a regression test that fails before the fix**, at the lowest
   trustworthy layer practical: pure logic in Vitest, component-only behaviour in jsdom, anything
   crossing the text-commit or write debounces, IPC, the watcher, the filesystem or a restart in
