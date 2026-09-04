@@ -74,11 +74,68 @@ export function titleFieldText(el) {
 }
 
 /**
+ * The zero-width space that holds the caret just outside a link. Chromium
+ * canonicalises a caret at the edge of an inline element to *inside* it, so
+ * text typed after a rendered `[[wikilink]]` or `<a>` went into the link and
+ * rewrote its alias; a boundary between a link and a following text node is
+ * canonicalised the same way. A zero-width space is the one anchor Chromium
+ * honours. It is transient DOM: both DOM→Markdown walkers drop it, the caret
+ * arithmetic here ignores it, and the next repaint from state wipes it.
+ */
+export const CARET_ANCHOR = "\u200B";
+const ANCHOR_RE = /\u200B/g;
+const LINK_SELECTOR = "a, .wikilink";
+
+const isIcon = (textNode) => textNode.parentElement?.classList?.contains("external-link-icon");
+
+/** The link (`<a>` or wikilink span) inside `el` that `node` sits in, if any. */
+function enclosingLink(node, el) {
+  const link = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest(
+    LINK_SELECTOR,
+  );
+  return link && link !== el && el.contains(link) ? link : null;
+}
+
+/** Whether `textNode` is the last real text (icons aside) inside `link`. */
+function isLastTextIn(link, textNode) {
+  const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT);
+  let last = null;
+  let n;
+  while ((n = walker.nextNode())) if (!isIcon(n)) last = n;
+  return last === textNode;
+}
+
+/**
+ * Move `range` to just after `link`, on a caret anchor: reusing one already
+ * there, else inserting one. A caret placed here stays outside the link.
+ */
+function anchorAfterLink(range, link) {
+  const next = link.nextSibling;
+  if (next?.nodeType === Node.TEXT_NODE && next.data.startsWith(CARET_ANCHOR)) {
+    range.setStart(next, 1);
+    return;
+  }
+  const anchor = document.createTextNode(CARET_ANCHOR);
+  link.after(anchor);
+  range.setStart(anchor, 1);
+}
+
+/** Raw index in `data` of the `visible`-th character, anchors not counted. */
+function rawIndex(data, visible) {
+  let seen = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (seen === visible) return i;
+    if (data[i] !== CARET_ANCHOR) seen++;
+  }
+  return data.length;
+}
+
+/**
  * Character offset of the caret inside `el`, counted the way `placeCaret`
- * counts (text nodes in document order, decorative link icons skipped), or -1
- * when the selection is collapsed somewhere else or absent. `placeCaret(el,
- * getCaretOffset(el))` is the identity, which is what lets a block repaint its
- * innerHTML without losing the caret.
+ * counts (text nodes in document order, decorative link icons and caret
+ * anchors skipped), or -1 when the selection is collapsed somewhere else or
+ * absent. `placeCaret(el, getCaretOffset(el))` is the identity, which is what
+ * lets a block repaint its innerHTML without losing the caret.
  */
 export function getCaretOffset(el) {
   if (!el) return -1;
@@ -90,7 +147,7 @@ export function getCaretOffset(el) {
     const range = document.createRange();
     range.setStart(el, 0);
     range.setEnd(anchorNode, anchorOffset);
-    let offset = range.toString().length;
+    let offset = range.toString().replace(ANCHOR_RE, "").length;
     // placeCaret never counts the ↗ inside external links; neither do we.
     for (const icon of el.querySelectorAll(".external-link-icon")) {
       if (range.intersectsNode(icon)) offset -= icon.textContent.length;
@@ -104,7 +161,13 @@ export function getCaretOffset(el) {
 /**
  * Place cursor at character offset inside a contentEditable element.
  * IMPORTANT: This must be a pure selection operation — no DOM mutations
- * except adding an empty text node for caret anchoring.
+ * except adding a text node for caret anchoring (empty at the start of an
+ * empty element, a CARET_ANCHOR after a link).
+ *
+ * A position at the very end of a link's text is placed just *after* the
+ * link, on an anchor, so that typing there continues as prose. Other inline
+ * formatting (bold, italic) keeps the browser's own behaviour: typing at the
+ * end of bold text extends the bold, as in every editor.
  */
 export function placeCaret(el, pos = 0) {
   if (!el || !el.isConnected) return false;
@@ -128,17 +191,29 @@ export function placeCaret(el, pos = 0) {
         placed = false;
       while ((textNode = walker.nextNode())) {
         // Skip decorative icon text nodes (↗ inside links)
-        if (textNode.parentElement?.classList?.contains("external-link-icon")) continue;
-        if (remaining <= textNode.length) {
-          range.setStart(textNode, remaining);
+        if (isIcon(textNode)) continue;
+        const visibleLength = textNode.data.replace(ANCHOR_RE, "").length;
+        if (remaining <= visibleLength) {
+          const link = enclosingLink(textNode, el);
+          if (remaining === visibleLength && link && isLastTextIn(link, textNode)) {
+            anchorAfterLink(range, link);
+          } else {
+            range.setStart(textNode, rawIndex(textNode.data, remaining));
+          }
           placed = true;
           break;
         }
-        remaining -= textNode.length;
+        remaining -= visibleLength;
       }
       if (!placed) {
-        range.selectNodeContents(el);
-        range.collapse(false);
+        const last = el.lastChild;
+        const link = last?.nodeType === Node.ELEMENT_NODE ? enclosingLink(last, el) : null;
+        if (link) {
+          anchorAfterLink(range, link);
+        } else {
+          range.selectNodeContents(el);
+          range.collapse(false);
+        }
         sel.removeAllRanges();
         sel.addRange(range);
         return true;

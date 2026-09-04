@@ -274,6 +274,22 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
   reading as a document, not a block-management surface.
 
+## Links: the caret stays outside, the tooltip waits for a rest
+
+- **A caret at the end of a link's text is placed just after the link, on a zero-width space**
+  (`CARET_ANCHOR` in `utils/domHelpers.js`, applied inside `placeCaret`). Chromium canonicalises a
+  caret at a link's edge, or at the boundary before following text, to *inside* the link, and the
+  next keystroke then rewrote a `[[wikilink]]`'s alias; the zero-width space is the one anchor it
+  honours (probed in the real app; an empty text node is not). The anchor is scaffolding: both
+  DOM→Markdown walkers drop it, `getCaretOffset` and `placeCaret` don't count it, and a repaint
+  from state wipes it. Don't add a second caret placement path that bypasses `placeCaret`.
+- Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
+  typing at the end of bold text extends it, as in every editor.
+- **The hover tooltip is `useLinkHoverTooltip`**: half a second at rest on a link shows its URL or
+  `[[target]]`; the pending hover is an object holding the timer and the URL, and the callback
+  checks it is still current before showing anything. Never hang data off a timer handle; it is a
+  number in the browser and the assignment throws in strict mode.
+
 ## The slash menu is tiered
 
 - `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps Callout, File

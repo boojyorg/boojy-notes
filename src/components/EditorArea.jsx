@@ -19,6 +19,7 @@ import OnboardingHint from "./OnboardingHint";
 import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock, titleFieldText } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
+import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
 
@@ -172,15 +173,9 @@ const EditorArea = memo(
     const [findBarOpen, setFindBarOpen] = useState(false);
     const [findBarReplace, setFindBarReplace] = useState(false);
 
-    // Link tooltip state
-    const [linkTooltip, setLinkTooltip] = useState(null);
-    const tooltipTimer = useRef(null);
     const editorContainerRef = useRef(null);
     // Note column (padding + measure) — the drag handle positions against it.
     const columnRef = useRef(null);
-
-    // Clean up tooltip timer on unmount to prevent state updates on unmounted component
-    useEffect(() => () => clearTimeout(tooltipTimer.current), []);
 
     // ── Starfield fade: "note has content" signal ──────────────────────────────
     // Stars show on an empty note and fade out once it has content — tied to
@@ -233,43 +228,12 @@ const EditorArea = memo(
       [toolbarState],
     );
 
-    const handleEditorMouseMove = useCallback((e) => {
-      const link = e.target.closest("a") || e.target.closest(".wikilink");
-      if (link) {
-        const url =
-          link.getAttribute("data-url") ||
-          link.getAttribute("href") ||
-          link.getAttribute("data-target");
-        if (url && (!tooltipTimer.current || tooltipTimer.current._url !== url)) {
-          clearTimeout(tooltipTimer.current);
-          const timer = setTimeout(() => {
-            const containerRect = editorContainerRef.current?.getBoundingClientRect();
-            const linkRect = link.getBoundingClientRect();
-            if (containerRect) {
-              setLinkTooltip({
-                url: link.classList.contains("wikilink") ? `[[${url}]]` : url,
-                position: {
-                  top: linkRect.bottom - containerRect.top + 4,
-                  left: linkRect.left - containerRect.left,
-                },
-              });
-            }
-          }, 500);
-          timer._url = url;
-          tooltipTimer.current = timer;
-        }
-      } else {
-        clearTimeout(tooltipTimer.current);
-        tooltipTimer.current = null;
-        setLinkTooltip(null);
-      }
-    }, []);
-
-    const handleEditorMouseLeave = useCallback(() => {
-      clearTimeout(tooltipTimer.current);
-      tooltipTimer.current = null;
-      setLinkTooltip(null);
-    }, []);
+    // Link hover tooltip: the URL or [[target]] under the pointer after a rest.
+    const {
+      tooltip: linkTooltip,
+      onMouseMove: handleEditorMouseMove,
+      onMouseLeave: handleEditorMouseLeave,
+    } = useLinkHoverTooltip(editorContainerRef);
 
     // Link popover handlers
     const handleLinkApply = useCallback(

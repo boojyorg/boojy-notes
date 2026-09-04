@@ -431,3 +431,19 @@ describe("domNodeToMarkdown", () => {
     }
   });
 });
+
+describe("caret anchors never reach Markdown", () => {
+  // placeCaret parks the caret on a zero-width space after a link (domHelpers
+  // CARET_ANCHOR); it is editor scaffolding and both converters drop it.
+  it("htmlToInlineMarkdown drops the zero-width space after a link", () => {
+    expect(
+      htmlToInlineMarkdown('see <span class="wikilink" data-target="Beta">Beta</span>\u200B after'),
+    ).toBe("see [[Beta]] after");
+  });
+
+  it("domNodeToMarkdown drops it from a live element", () => {
+    const el = document.createElement("p");
+    el.innerHTML = 'see <span class="wikilink" data-target="Beta">Beta</span>\u200B after';
+    expect(domNodeToMarkdown(el)).toBe("see [[Beta]] after");
+  });
+});

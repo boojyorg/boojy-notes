@@ -91,11 +91,15 @@ export function htmlToInlineMarkdown(html) {
   return walkNode(doc.body);
 }
 
+// The zero-width space placeCaret parks the caret on after a link is editor
+// scaffolding, never note text (domHelpers CARET_ANCHOR).
+const CARET_ANCHOR_RE = /\u200B/g;
+
 function walkNode(node) {
   let result = "";
   for (const child of node.childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      result += child.textContent;
+      result += child.textContent.replace(CARET_ANCHOR_RE, "");
     } else if (child.nodeType === Node.ELEMENT_NODE) {
       const tag = child.nodeName;
       const inner = walkNode(child);
@@ -291,7 +295,7 @@ function walkLiveNode(node) {
   let result = "";
   for (const child of node.childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      result += child.textContent;
+      result += child.textContent.replace(CARET_ANCHOR_RE, "");
     } else if (child.nodeType === Node.ELEMENT_NODE) {
       const tag = child.nodeName;
       const inner = walkLiveNode(child);

@@ -2,7 +2,12 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { getCaretOffset, placeCaret, titleFieldText } from "../../src/utils/domHelpers.js";
+import {
+  CARET_ANCHOR,
+  getCaretOffset,
+  placeCaret,
+  titleFieldText,
+} from "../../src/utils/domHelpers.js";
 
 function editable(html) {
   document.body.innerHTML = `<div contenteditable="true"><p id="b">${html}</p></div>`;
@@ -61,5 +66,65 @@ describe("titleFieldText", () => {
     const el = document.createElement("div");
     el.textContent = "Notes: a/b?";
     expect(titleFieldText(el)).toBe("Notes: a/b?");
+  });
+});
+
+describe("placeCaret — a caret at the end of a link lands outside it", () => {
+  // Chromium canonicalises a caret at a link's edge to inside the link, so the
+  // next keystroke extended the link (a completed [[wikilink]] became
+  // `[[Beta|Beta after]]` on disk). The only anchor Chromium honours there is
+  // a zero-width space after the link; it is dropped on the way to Markdown.
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+
+  it("anchors after a wikilink that ends the block", () => {
+    const el = editable('see <span class="wikilink" data-target="Beta">Beta</span>');
+    placeCaret(el, "see Beta".length);
+    const { node, offset } = anchorAt();
+    expect(node.nodeType).toBe(Node.TEXT_NODE);
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.previousSibling.className).toBe("wikilink");
+    // The anchor is not note text.
+    expect(getCaretOffset(el)).toBe("see Beta".length);
+  });
+
+  it("anchors after a link that is followed by text", () => {
+    const el = editable('see <a href="https://x.y">link</a> after');
+    placeCaret(el, "see link".length);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.nextSibling.data).toBe(" after");
+    // Placing there again reuses the anchor rather than stacking another.
+    placeCaret(el, "see link".length);
+    expect(el.textContent).toBe(`see link${CARET_ANCHOR} after`);
+  });
+
+  it("does not count anchors when placing later in the text", () => {
+    const el = editable(`see <a href="https://x.y">link</a>${CARET_ANCHOR} after`);
+    placeCaret(el, "see link af".length);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(`${CARET_ANCHOR} after`);
+    expect(offset).toBe(" af".length + 1);
+    expect(getCaretOffset(el)).toBe("see link af".length);
+  });
+
+  it("still lets bold and other formatting be extended", () => {
+    const el = editable("see <strong>bold</strong>");
+    placeCaret(el, "see bold".length);
+    const { node } = anchorAt();
+    expect(node.parentElement.tagName).toBe("STRONG");
+    expect(el.textContent).toBe("see bold");
+  });
+
+  it("reaches past a wikilink in the end-of-element fallback", () => {
+    const el = editable('see <span class="wikilink" data-target="Beta">Beta</span>');
+    placeCaret(el, 999);
+    const { node } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(node.previousSibling.className).toBe("wikilink");
   });
 });
