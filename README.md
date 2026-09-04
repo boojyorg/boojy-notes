@@ -50,12 +50,17 @@ handy for tests, and its notes live in browser storage rather than on disk.
 | `build`          | Production build (web)                |
 | `build:electron` | Production build + desktop installers |
 | `test`           | Unit tests (Vitest)                   |
-| `test:e2e`       | End-to-end tests (Playwright)         |
+| `test:coverage`  | Unit tests with the CI coverage floor |
+| `test:e2e`       | Web end-to-end tests (Playwright)     |
+| `test:electron`  | Real desktop app against a temp vault |
+| `test:electron:headed` | The few desktop tests that need real focus or the clipboard |
 | `check`          | Biome lint + format in one pass       |
 | `typecheck`      | TypeScript check (`tsc --noEmit`)     |
 
-All scripts run via `pnpm <script>`. Architecture, conventions and the things that will bite
-you are in [AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
+All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`,
+`test:coverage`, `test:e2e` and `test:electron`, plus a critical-level dependency audit; `test`
+alone is not the gate. Architecture, conventions and the things that will bite you are in
+[AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 Built with React 19 and Vite 6, Electron 42 for the desktop shell, Vitest and Playwright for
 tests, Biome for lint and format, pnpm for packages.

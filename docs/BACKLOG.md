@@ -1,9 +1,24 @@
 # Boojy Notes — Backlog
 
-What is left to do and what is known to be broken. Shipped work goes in `CHANGELOG.md`, never
-here. The product philosophy that shapes this list: finish Beta, daily-drive Boojy Notes, and let
-observed friction decide what deserves to exist next. Nothing is added because it sounds
-plausible.
+What is left to do and what is known to be broken, checked against master after the September
+2026 correctness wave (PRs #97–#106). Shipped work goes in `CHANGELOG.md`, never here. The
+philosophy: finish Beta, daily-drive Boojy Notes, and let observed friction decide what deserves
+to exist next. Nothing is added because it sounds plausible.
+
+## Open decisions
+
+Product calls for Tyr; each trades conventional Markdown meaning against byte preservation.
+
+- **A paragraph typed straight after a quote is folded into the quote by other readers.** A lazy
+  line read from a file stays its own paragraph so its bytes survive (quote lines are written
+  with `> `), which means no blank line can be written before a paragraph after a quote. Fixing
+  it needs a way for a quote to remember a lazy line without hidden per-block state. On record as
+  one `it.fails` in `tests/utils/markdownInterop.test.js`.
+- **Blank lines around headings, lists, fences and quotes are empty rows.** Only the blank line
+  between a paragraph or list item and the paragraph after it is structure; every other blank is
+  a visible row, so an Obsidian-style note, which puts a blank line around nearly every heading,
+  reads airy in the editor. Making one such blank structural too keeps the common form tidy but
+  needs a per-block "written tight" record to keep the rarer tight form byte-identical.
 
 ## Beta
 
@@ -23,8 +38,29 @@ missing core features no longer limit it. Worked one item at a time, each judged
 - [ ] **Subtraction** — onboarding hints, the font-size preference; copy pass on Quote and
   Checklist.
 - [ ] **Preservation blockers** — the first-edit mutations listed under Data safety below.
-- [ ] **Visual polish, Windows smoke test, release.** The daily-driver desktop build does not
-  track master: rebuild or cut a `v*` tag. `CHANGELOG.md` Unreleased already holds the notes.
+- [ ] **Visual polish, Windows smoke test, release.** The daily-driver build in `/Applications`
+  is current master as of 2026-09-04 and never self-updates: rebuild after merges (CI rule) or
+  cut a `v*` tag. `CHANGELOG.md` Unreleased already holds the notes.
+
+## From the September 2026 review
+
+Still reproduce on master, in the review's order. None blocks Beta on its own.
+
+- [ ] **New note writes `Untitled.md` at once** — `createNote` makes a real note, so the sidebar's
+  New note and Cmd+N reach disk within a second even if nothing is typed; only the empty-state
+  draft waits for content (`useNoteCrud.js`).
+- [ ] **A new folder's name is not selected** — the inline input autofocuses but does not select
+  "Untitled Folder", so typing appends (`Sidebar.jsx`); note rows do select.
+- [ ] **No context menu on plain text** — the editor's right-click handles links only and Electron
+  supplies no default menu, so cut, copy and paste have no menu on desktop (`EditorArea.jsx`).
+- [ ] **Rich paste is flattened** — paste reads `text/plain` only, so links and formatting from a
+  browser or another app are dropped (`usePasteHandler.js`).
+- [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
+  the third attempt.
+- [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
+- [ ] **Folder names are outside the title-is-filename rule** — a folder renamed to `a:b` is
+  `a_b` on disk and the sidebar keeps `a:b` until restart (`renameFolder` strips only slashes;
+  `noteToFilePath` sanitises the rest).
 
 ## Later / ideas
 
@@ -54,25 +90,22 @@ Only ideas worth remembering. Empty is fine.
 
 ## Data safety / reliability
 
-**First-edit mutations.** Fine on open; the first edit of an affected note rewrites
-third-party content. These are the preservation blockers in the Beta list.
+**First-edit mutations.** Fine on open; the first edit of an affected note rewrites third-party
+content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list; these two block Beta.
 
 - [ ] **Tilde fences (`~~~`) parse as paragraphs** — the fence lines round-trip byte-exact, but
   the content renders as live blocks, so interacting with it rewrites code, and content that
   matches a normalising construct (tables, `- [X]`, `[!NOTE]`, bare `>`) is rewritten on any
   save. The fence matcher in `markdown.js` is backtick-only.
 - [ ] **Table `:---` separators normalise to `---`** on first edit.
-- [ ] **Indented non-list content loses its leading whitespace** — the parse loop trims every
-  line; `indent` only attaches to list blocks.
-- [ ] **Wikilink image widths below 70 clamp up to 70** on first save.
 
 **Lost edits and filesystem.**
 
 - [ ] **Concurrent flushes are not serialised** — blur, quit and the write-debounce timer can
-  each run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`), and flush never clears the
-  pending timer. Today: a redundant write, plus a theoretical mid-write kill if the quit
-  handshake completes while a blur write is in flight (the atomic rename keeps the last
-  complete file).
+  each run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`). A flush now cancels the
+  pending timer, so what remains is a redundant write when two overlap, and a theoretical
+  mid-write kill if the quit handshake completes while a blur write is in flight (the atomic
+  rename keeps the last complete file).
 - [ ] **Rename crash window** — a crash between unlink and index save re-IDs the note; a crash
   before unlink leaves a visible duplicate that needs manual cleanup.
 - [ ] **Double-close races** — `ipcMain.once` flush listeners accumulate on rapid Cmd+W then

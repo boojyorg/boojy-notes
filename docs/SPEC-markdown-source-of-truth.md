@@ -15,7 +15,9 @@ the storage format.**
 
 Every block must serialise back to clean, human-readable markdown *losslessly*. If a block,
 or an interaction, can't round-trip to readable markdown, **we don't ship it.** The block
-catalogue is *defined by* what markdown can represent.
+catalogue is *defined by* what markdown can represent. Three tests hold the contract: the
+round-trip, the byte-preservation corpus, and the interoperability suite that asks what the
+Markdown means to an independent parser.
 
 This is what keeps a Boojy Notes note portable forever — openable in Obsidian, in a plain text
 editor, in `cat`, in anything that reads text.
@@ -24,13 +26,11 @@ editor, in `cat`, in anything that reads text.
 
 ## Blocks are structure, not lines
 
-A block is one Markdown structure: a paragraph block holds every adjacent plain line of the
-paragraph, joined by soft breaks; a list item holds its lazy continuation lines. One blank line
-between two paragraphs, or between a list item and a paragraph, is the separator conventional
-Markdown needs and is not a block; every further blank line is an empty paragraph block. Enter
-starts a new paragraph (and writes that separator); Shift+Enter is a soft break inside the
-paragraph. Nothing is recorded that the file does not say, and reading a file never rewrites it.
-What the app writes must mean the same to any conventional reader (`tests/utils/markdownInterop.test.js`).
+A paragraph block holds every adjacent plain line of the paragraph, joined by soft breaks; a list
+item holds its lazy continuation lines; one blank line between such blocks is the separator and
+not a block, and every further blank line is an empty paragraph block. Enter starts a paragraph,
+Shift+Enter a soft break. Nothing is recorded that the file does not say, and reading a file never
+rewrites it. The exact rules live in the UI rule's paragraph-model section.
 
 ## The enforceable core: the round-trip rule
 
@@ -123,8 +123,7 @@ The round-trip rule protects the app's own blocks. The **preservation promise** 
 everyone else's Markdown: **editing one part of a file must not unexpectedly rewrite the rest
 of it.** Syntax Boojy Notes doesn't understand is preserved, never "cleaned up". This is a
 product requirement, not an implementation detail; it is what makes it safe to point the app at
-a folder
-of Markdown you care about.
+a folder of Markdown you care about.
 
 Enforcement: `tests/utils/preservation.test.js` runs a corpus of deliberately awkward files
 (`tests/fixtures/preservation/`) through the real load→save path. Known failures are marked in
@@ -167,6 +166,9 @@ better or busier?*
 - **Reviewing a new block idea?** Ask: "Does it round-trip to clean markdown?" If no → reject
   or redesign. Add a fixture to `tests/utils/markdown.test.js` proving the round-trip before
   the block ships.
-- **Touching `markdown.js`?** Run the round-trip test. A red test means you broke the
-  contract — fix the converter, don't weaken the test.
+- **Touching `markdown.js`?** Run the three contracts: round-trip (`tests/utils/markdown.test.js`),
+  byte preservation (`preservation.test.js` over `tests/fixtures/preservation/`) and conventional
+  meaning (`markdownInterop.test.js`, judged by an independent CommonMark parser against
+  `tests/fixtures/interop/`). A red test means you broke a contract — fix the converter, don't
+  weaken the test; a known gap is a narrow `it.fails`, never a deleted fixture.
 - **Asked to add nesting/columns/metadata-blocks?** Decline and link here.

@@ -63,6 +63,13 @@ change needs; the incidents behind them are in git.
   `pnpm rebuild electron` (about 30 seconds).
 - Anything touching Electron needs a real desktop build to verify; green web CI does not
   exercise it.
+- **The daily-driver build is `pnpm build:electron` on master.** It writes
+  `dist/mac-arm64/Boojy Notes.app` and the DMG; electron-builder signs with whatever Developer
+  ID identity the keychain holds and builds unsigned without one. Quit the running app first (its
+  quit flush saves pending edits), replace `/Applications/Boojy Notes.app`, then check
+  `codesign --verify --deep --strict` and the version in Settings. The installed app never
+  self-updates, so rebuild after every product merge. `pnpm test:e2e` and the Electron suite
+  overwrite `dist/`, so build after testing. Distributed releases go through `release.yml` only.
 
 ## Web deploy
 

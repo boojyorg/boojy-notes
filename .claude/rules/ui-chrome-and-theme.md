@@ -170,27 +170,6 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
   second toggle rather than delaying single-click to disambiguate.
 
-### A persisted note's title is its filename
-
-- **For every persisted desktop note, the title shown equals the Markdown basename.** Drafts are
-  excluded until they become files. The rule is enforced from the persistence side: `write-note`
-  in `electron/noteFileManager.js` is the only place that knows the final name (collision suffix,
-  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, the volume's own casing)
-  and answers every write with it. `useFileSystem` hands a differing answer to `useResolvedTitle`,
-  which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
-  itself) and repaints the editor's title field, caret preserved when the user is still in it.
-  Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
-- **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
-  own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
-  other file on disk is a collision, indexed or not.
-- **A blank title under the caret is left alone.** The placeholder already reads `Untitled`, and
-  filling it in would land in front of whatever is typed next; it resolves on the next write, or
-  when the note is next opened. The emptied field's own `<br>` reads as "\n"; `titleFieldText()`
-  is the one reading of the field, shared by the input handler and the adoption hook.
-- The editor title repaints from state when the field is not focused (a sidebar rename of the
-  open note); while focused the field is ahead of state and is never repainted from it.
-- No inline "a note with this name already exists" validation, by decision; correctness first.
-
 ### Sections: `Folders` and `Notes`
 
 - Two headers share `SectionHeader`. `Folders` carries the only desktop New Folder affordance;
@@ -246,6 +225,27 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 - **Folder rows are not draggable.** Nesting is a future feature, not a regression.
 - Existing `.boojy-meta.json` files are left untouched; nothing reads their ordering keys.
   Don't tidy them and don't reintroduce a reader.
+
+## A note's title is its filename
+
+- **For every persisted desktop note, the title shown equals the Markdown basename.** Drafts are
+  excluded until they become files. The rule is enforced from the persistence side: `write-note`
+  in `electron/noteFileManager.js` is the only place that knows the final name (collision suffix,
+  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, the volume's own casing)
+  and answers every write with it. `useFileSystem` hands a differing answer to `useResolvedTitle`,
+  which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
+  itself) and repaints the editor's title field, caret preserved when the user is still in it.
+  Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
+- **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
+  own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
+  other file on disk is a collision, indexed or not.
+- **A blank title under the caret is left alone.** The placeholder already reads `Untitled`, and
+  filling it in would land in front of whatever is typed next; it resolves on the next write, or
+  when the note is next opened. The emptied field's own `<br>` reads as "\n"; `titleFieldText()`
+  is the one reading of the field, shared by the input handler and the adoption hook.
+- The editor title repaints from state when the field is not focused (a sidebar rename of the
+  open note); while focused the field is ahead of state and is never repainted from it.
+- No inline "a note with this name already exists" validation, by decision; correctness first.
 
 ## Block drag: the gutter handle, never the text
 
@@ -315,44 +315,35 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
 
-## Soft breaks inside a block
+## The paragraph model
 
-- **A newline in block text is a `<br>` on screen, and a `<br>` reads back as a newline.**
-  `inlineMarkdownToHtml` draws every `\n` as `<br>` and gives a trailing one a second `<br>` so
-  the empty last line stays visible and reachable; both DOM→Markdown walkers ignore a block's
-  final `<br>`. The two directions must stay in step.
-- **Caret arithmetic is measured in the block's Markdown text**: `getCaretOffset`, `placeCaret`
-  and `caretLength` count a soft-break `<br>` as one character and the trailing `<br>` as none.
-  Never clamp a caret to `textContent.length`; use `caretLength(el)`.
-- **Shift+Enter** inserts the break (`insertLineBreak`, so Chromium fires `input` and the normal
-  commit path stores it) in paragraphs, list items and quotes; in a heading it acts as Enter.
-- **Blocks are Markdown structure, not source lines** (`structureParagraphs` in
-  `utils/markdown.js`). Adjacent plain lines are one paragraph block joined by `\n`; a plain line
-  directly under a list item is the item's lazy continuation and joins it; Enter makes a new
-  paragraph, which the serializer separates from a paragraph or list item above it with one blank
-  line. That single blank is structure, not a block; every further blank line is an empty
-  paragraph block, a visible row. A blank-line run holding a whitespace-only line is kept
-  literally, every line a row, and gets no separator, so the file's own bytes survive. Nothing is
-  recorded that the file does not say: no per-block join state, no note-level framing.
-- **Quotes and callouts do not absorb.** A lazy line under a quote stays its own paragraph block
-  and no separator is written before it, because a quote's lines are written with a `> ` prefix
-  and joining the lazy line would change its bytes on save. The cost, on record as an `it.fails`
-  in the interop suite: a paragraph typed directly after a quote is folded into the quote by
-  other readers. Resolving it needs a decision on how a quote remembers a lazy line.
-- A file's final newline is still the empty last row, as it always was.
+Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).
+
+- **A paragraph block holds every adjacent plain line**, joined by `\n`; a plain line directly
+  under a list item is the item's lazy continuation. Enter makes a new paragraph, which the
+  serializer separates from a paragraph or list item above it with one blank line. Shift+Enter
+  inserts a soft break (`insertLineBreak`, so Chromium fires `input` and the normal commit path
+  stores it) in paragraphs, list items and quotes, and acts as Enter in a heading.
+- **One blank line is structure, not a row**, only between a paragraph or list item and the
+  paragraph after it, and only when every blank in the run is exactly empty. Every other blank
+  line, including a run holding a whitespace-only line, is an empty paragraph block, a visible
+  row; the file's final newline is the empty last row. Nothing is recorded that the file does
+  not say: no per-block join state, no note-level framing.
+- **Quotes and callouts do not absorb.** A lazy line under a quote stays its own paragraph and
+  gets no separator, because quote lines are written with `> ` and joining it would change bytes
+  on save. That cost, and the blank-line rule's effect on Obsidian-style notes, are the open
+  decisions in `docs/BACKLOG.md`.
+- **On screen a newline is a `<br>`, and a `<br>` reads back as a newline.** `inlineMarkdownToHtml`
+  gives a trailing newline a second `<br>` so the empty last line stays reachable; both
+  DOM→Markdown walkers ignore a block's final `<br>`. Caret arithmetic (`getCaretOffset`,
+  `placeCaret`, `caretLength`) counts a soft-break `<br>` as one character and the trailing one
+  as none; never clamp a caret to `textContent.length`.
 - **Three pitches, in order** (`PARAGRAPH_GAP` in `EditableBlock`, applied in `GlobalStyles`): a
-  soft break is line height alone; Enter adds the paragraph pitch (12px) after a paragraph or
-  quote; an empty row adds a whole line on top, so Enter twice is exactly twice a paragraph
-  break. A paragraph after a list item gets the same 12px above it from a sibling rule on
-  `data-block-type`, because list rows keep their tight 2px padding. The paragraph's margin
-  lives in the stylesheet, not inline, so that sibling rule can win; don't move it back. Every
-  block root carries `data-block-type` for this. Lists, headings, code and callouts keep their
-  own rhythm. The geometry test in `paragraph-model.spec.ts` guards the order, not the pixels.
-- **Known, by the model:** a blank line before a heading, list, fence or quote, or after a
-  quote, is an empty row, so an Obsidian-style note (blank lines around every heading) reads
-  airy. Counted in the Obsidian vault: 1256 heading→blank→text against 106 tight, 1386
-  paragraph→blank→heading against 0 tight, 352 paragraph→blank→list against 354 tight. Whether
-  one such blank becomes structure too is a model decision, not a spacing one.
+  soft break is line height alone; Enter adds 12px after a paragraph or quote; an empty row adds
+  a whole line, so Enter twice is twice a paragraph break. A paragraph after a list item gets the
+  same 12px from a sibling rule on `data-block-type`, which every block root carries; the
+  paragraph's margin lives in the stylesheet so that rule can win. The geometry test in
+  `paragraph-model.spec.ts` guards the order, not the pixels.
 
 ## Paste keeps the block you are in
 
