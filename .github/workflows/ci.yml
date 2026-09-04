@@ -73,3 +73,10 @@ jobs:
       - name: E2E tests
         timeout-minutes: 15
         run: pnpm test:e2e
+
+      # The real desktop app against a throwaway vault. Needs a display; xvfb is
+      # on the runner image. Builds its own dist-electron (the Build step above
+      # is web-only).
+      - name: Electron core-journey tests
+        timeout-minutes: 15
+        run: xvfb-run -a pnpm test:electron

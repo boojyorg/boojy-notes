@@ -104,6 +104,9 @@ const EditorArea = memo(
   function EditorArea({
     isMobile,
     textOnlyEditForEditor,
+    // The current value of the sync generation, passed as a plain prop so the
+    // memo comparator can see it change (the ref itself never changes identity).
+    syncGen: _syncGen,
     note,
     activeNote,
     editorFadeIn,
@@ -972,6 +975,12 @@ const EditorArea = memo(
   },
   (prev, next) => {
     const t0 = performance.now();
+
+    // A sync-generation bump means the blocks must be repainted from state:
+    // undo/redo, an external file change, a paste. It outranks every other
+    // shortcut here, because a text-only undo looks exactly like a text-only
+    // edit to the checks below — and those exist to *skip* the repaint.
+    if (prev.syncGen !== next.syncGen) return false;
 
     // Fast path: text-only edits don't change block structure, and the
     // contentEditable DOM is already correct — skip the block loop entirely.

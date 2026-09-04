@@ -267,6 +267,40 @@ describe("useHistory", () => {
   // ─── undo / redo ──────────────────────────────────────────────────
 
   describe("undo", () => {
+    // Regression: Cmd+Z inside the 300ms text-commit window used to be
+    // overwritten when that commit fired, and the "text-only edit" flag it had
+    // raised told the editor to skip painting the restored text.
+    it("cancels a pending text commit so it cannot overwrite the restored snapshot", async () => {
+      const { result, getNoteData, syncGeneration } = setup([paragraph("hello")]);
+
+      act(() => {
+        result.current.commitTextChange((prev) => ({
+          ...prev,
+          [NOTE_ID]: {
+            ...prev[NOTE_ID],
+            content: {
+              ...prev[NOTE_ID].content,
+              blocks: [{ ...prev[NOTE_ID].content.blocks[0], text: "hello fast" }],
+            },
+          },
+        }));
+      });
+      await act(() => flushMicrotasks());
+      expect(result.current.hasPendingFlush.current).toBe(true);
+
+      act(() => result.current.undo());
+
+      expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("hello");
+      expect(result.current.noteDataRef.current[NOTE_ID].content.blocks[0].text).toBe("hello");
+      expect(result.current.hasPendingFlush.current).toBe(false);
+      expect(result.current.textOnlyEditForEditor.current).toBe(false);
+      expect(syncGeneration.current).toBe(1);
+
+      // The commit that was pending must not fire and put "hello fast" back.
+      act(() => vi.advanceTimersByTime(400));
+      expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("hello");
+    });
+
     it("restores previous state", async () => {
       const { result, setNoteData } = setup();
 

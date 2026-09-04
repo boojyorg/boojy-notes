@@ -1,6 +1,7 @@
 import { memo, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
+import { getCaretOffset, placeCaret } from "../utils/domHelpers";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -45,15 +46,20 @@ const EditableBlock = memo(
     const { BG, TEXT, ACCENT } = theme;
     const elRef = useRef(null);
 
-    // Set text on mount and force-resync on undo/redo (syncGen changes)
+    // Set text on mount and force-resync on undo/redo (syncGen changes).
+    // Replacing innerHTML collapses a caret that was inside this block to its
+    // start, so an undo would leave the user typing at the front of the line;
+    // remember the offset first and put the caret back, clamped to the new text.
     useLayoutEffect(() => {
-      if (elRef.current && block.text !== undefined) {
-        if (block.text === "") {
-          elRef.current.innerHTML = "<br>";
-        } else {
-          elRef.current.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
-        }
+      const el = elRef.current;
+      if (!el || block.text === undefined) return;
+      const caret = getCaretOffset(el);
+      if (block.text === "") {
+        el.innerHTML = "<br>";
+      } else {
+        el.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
       }
+      if (caret >= 0) placeCaret(el, Math.min(caret, el.textContent.length));
     }, [syncGen, noteTitleSet]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
 
     useLayoutEffect(() => {

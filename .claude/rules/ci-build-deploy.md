@@ -40,10 +40,16 @@ change needs; the incidents behind them are in git.
   step as the outer cap. Size any timeout to the work, not to patience: one short enough to
   feel safe will kill a download that is merely slow and turn a passing step into a guaranteed
   failure.
-- **The gates are `pnpm test:coverage` and the E2E suite, not `pnpm test`.** Coverage
-  thresholds in `vitest.config.js` are a floor just below actuals; ratchet up, never lower to
-  pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
+- **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
+  `pnpm test`.** Coverage thresholds in `vitest.config.js` are a floor just below actuals;
+  ratchet up, never lower to pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
   also gates every run; it is the live security net.
+- **The real-Electron suite runs under `xvfb-run` on the same Ubuntu job**, after the web E2E.
+  `pnpm test:electron` builds `dist/` and `dist-electron/` itself, because the job's build step
+  uses `ELECTRON_DISABLE=1` and produces no main process. Its assertions are about files on disk,
+  so Linux is a fair proxy for the renderer and main-process logic; anything that depends on the
+  OS Trash or native dialogs is macOS-only and says so in the spec. `--no-sandbox` is passed only
+  when `CI` is set.
 
 ## pnpm and Electron
 

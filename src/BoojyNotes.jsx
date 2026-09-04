@@ -861,6 +861,7 @@ export default function BoojyNotes() {
               isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}
+              syncGen={syncGeneration.current}
               note={note}
               activeNote={activeNote}
               editorFadeIn={editorFadeIn}
