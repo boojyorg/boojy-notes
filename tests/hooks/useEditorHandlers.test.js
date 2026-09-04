@@ -456,7 +456,10 @@ describe("useEditorHandlers", () => {
       document.execCommand = originalExecCommand;
     });
 
-    it("multi-line plain text into an empty checkbox keeps the checkbox", () => {
+    // Blocks are Markdown structure: plain lines with no blank line between
+    // them are one paragraph, so they paste as soft breaks inside the
+    // destination; a blank line in the clipboard starts a new block.
+    it("multi-line plain text into an empty checkbox keeps the checkbox, lines as soft breaks", () => {
       const s = setup([checkbox("")]);
       s.placeCursorInBlock(0, 0);
 
@@ -466,10 +469,9 @@ describe("useEditorHandlers", () => {
 
       const blocks = s.getNoteData()[s.noteId].content.blocks;
       expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
-        ["checkbox", "line one", false],
-        ["p", "line two", undefined],
+        ["checkbox", "line one\nline two", false],
       ]);
-      expect(s.focusBlockId.current).toBe(blocks[1].id);
+      expect(s.focusBlockId.current).toBe(blocks[0].id);
     });
 
     it("multi-line CRLF text at the start of a filled checkbox keeps it a checkbox", () => {
@@ -482,8 +484,22 @@ describe("useEditorHandlers", () => {
 
       const blocks = s.getNoteData()[s.noteId].content.blocks;
       expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
-        ["checkbox", "one", true],
-        ["p", "twoTask", undefined],
+        ["checkbox", "one\ntwoTask", true],
+      ]);
+    });
+
+    it("a blank line in pasted plain text starts a new block", () => {
+      const s = setup([checkbox("")]);
+      s.placeCursorInBlock(0, 0);
+
+      act(() => {
+        s.result.current.handleEditorPaste(makePasteEvent("line one\n\nline two\n"));
+      });
+
+      const blocks = s.getNoteData()[s.noteId].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text, b.checked])).toEqual([
+        ["checkbox", "line one", false],
+        ["p", "line two", undefined],
       ]);
     });
 

@@ -326,9 +326,21 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   Never clamp a caret to `textContent.length`; use `caretLength(el)`.
 - **Shift+Enter** inserts the break (`insertLineBreak`, so Chromium fires `input` and the normal
   commit path stores it) in paragraphs, list items and quotes; in a heading it acts as Enter.
-- Until the paragraph model lands (PR B of the plan), a paragraph with a soft break reads back
-  from disk as two blocks; on disk it is already a conventional soft break. That gap is on
-  record as an `it.fails` in `markdown.test.js` and in the interop suite.
+- **Blocks are Markdown structure, not source lines** (`structureParagraphs` in
+  `utils/markdown.js`). Adjacent plain lines are one paragraph block joined by `\n`; a plain line
+  directly under a list item is the item's lazy continuation and joins it; Enter makes a new
+  paragraph, which the serializer separates from a paragraph or list item above it with one blank
+  line. That single blank is structure, not a block; every further blank line is an empty
+  paragraph block, a visible row. A blank-line run holding a whitespace-only line is kept
+  literally, every line a row, and gets no separator, so the file's own bytes survive. Nothing is
+  recorded that the file does not say: no per-block join state, no note-level framing.
+- **Quotes and callouts do not absorb.** A lazy line under a quote stays its own paragraph block
+  and no separator is written before it, because a quote's lines are written with a `> ` prefix
+  and joining the lazy line would change its bytes on save. The cost, on record as an `it.fails`
+  in the interop suite: a paragraph typed directly after a quote is folded into the quote by
+  other readers. Resolving it needs a decision on how a quote remembers a lazy line.
+- A file's final newline is still the empty last row, as it always was; the phantom row is a
+  candidate for the spacing pass, not a model question.
 
 ## Paste keeps the block you are in
 
@@ -336,7 +348,9 @@ The rule lives in `utils/pasteBlocks.ts`, shared by the internal (`text/boojy-bl
 external multi-line paste paths; single lines paste inline.
 
 - **A block holding text never changes type on paste.** Plain text merges at the caret and keeps
-  the block's type, checked state and indent; structured Markdown becomes its own block beside it
+  the block's type, checked state and indent; plain lines with no blank line between them stay
+  together as soft breaks inside that block, and a blank line in the clipboard starts a new
+  block; structured Markdown becomes its own block beside it
   (in front when the caret is at the start, splitting the text in the middle). Only an *empty*
   block is taken over, and only by structure such as `## Heading` or `- [ ] task`. A single
   structured line does that too; anywhere else a single line pastes inline as text.

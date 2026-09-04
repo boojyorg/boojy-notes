@@ -71,10 +71,12 @@ docs/private/           # gitignored personal notes
 ## Invariants
 
 - **Markdown is the source of truth.** A note *is* its markdown; blocks are an in-memory
-  rendering. Every block round-trips block→markdown→block losslessly, and editing one part of
-  a file must not rewrite the rest. No nesting, columns or JSON-blob blocks. Read the spec
-  before adding or changing a block type, and check its support levels before planning a
-  feature.
+  rendering of its *structure*, not of its source lines: a paragraph block holds every adjacent
+  line of the paragraph, one blank line between paragraphs is structure rather than a block,
+  further blank lines are empty rows. Every block round-trips block→markdown→block losslessly,
+  and editing one part of a file must not rewrite the rest. No nesting, columns or JSON-blob
+  blocks. Read the spec before adding or changing a block type, and check its support levels
+  before planning a feature.
 - **A persisted note's title is its filename.** The write reports the basename the file actually
   got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once;
   nothing in the UI re-implements filename rules. Details and the caret rule: UI rule.

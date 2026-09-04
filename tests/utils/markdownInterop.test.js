@@ -165,32 +165,41 @@ describe("interop — the conventional meaning of Markdown written elsewhere", (
 describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
   const authored = (blocks) => meaningOf(blocksToMarkdown(blocks));
 
-  // ── The paragraph mismatch this layer exists to expose ────────────────────
-  // Two paragraph blocks on screen serialise as two adjacent lines. A
-  // conventional parser reads adjacent lines as ONE paragraph with a soft
-  // break; only a blank line separates paragraphs. Not fixed here; the
-  // representation is decided in the paragraph architecture plan.
-  it.fails("two paragraph blocks mean two paragraphs outside Boojy Notes (KNOWN MISMATCH)", () => {
+  // ── The paragraph model ───────────────────────────────────────────────────
+  // Blocks are Markdown structure: two paragraph blocks are written with a
+  // blank line between them, a two-line paragraph is one block, and a
+  // paragraph after a list item is separated from it.
+  it("two paragraph blocks mean two paragraphs outside Boojy Notes", () => {
     expect(authored([paragraph("First paragraph."), paragraph("Second paragraph.")])).toBe(
       'paragraph "First paragraph."\nparagraph "Second paragraph."\n',
     );
   });
 
-  // The same gap from the reading side: one conventional paragraph written
-  // over two lines is shown as two blocks, so the editor's block count and the
-  // conventional paragraph count disagree even though the bytes survive.
-  it.fails("one paragraph written over two lines is one block on screen (KNOWN MISMATCH)", () => {
+  it("one paragraph written over two lines is one block on screen", () => {
     const blocks = markdownToBlocks("Line one\nline two continues the same paragraph.\n");
     const paragraphBlocks = blocks.filter((b) => b.type === "p" && b.text !== "");
     expect(paragraphBlocks).toHaveLength(1);
   });
 
-  // A paragraph block straight after a list block serialises as a lazy
-  // continuation line: conventionally it is still part of the last list item.
-  it.fails("a paragraph block after a list is a paragraph, not part of the item (KNOWN MISMATCH)", () => {
+  it("a paragraph block after a list is a paragraph, not part of the item", () => {
     expect(authored([bullet("an item"), paragraph("A paragraph after the list.")])).toBe(
       'bullet list\n  item\n    paragraph "an item"\nparagraph "A paragraph after the list."\n',
     );
+  });
+
+  // ── On record: the one place meaning and bytes still disagree ─────────────
+  // A paragraph block straight after a quote block is written on the next
+  // line, which a conventional reader folds into the quote. Writing a blank
+  // line there would be right for authored notes, but a lazy line read from a
+  // file is stored as its own paragraph (a quote's lines are written with a
+  // `> ` prefix, so it cannot join the block without changing the bytes on
+  // save), and that paragraph must be written back without a blank line.
+  // Resolving this needs a decision on how a quote remembers a lazy line;
+  // until then the gap is narrow and explicit.
+  it.fails("a paragraph block after a quote is a paragraph, not part of the quote (KNOWN MISMATCH)", () => {
+    expect(
+      authored([{ id: "q", type: "blockquote", text: "quoted" }, paragraph("After the quote.")]),
+    ).toBe('blockquote\n  paragraph "quoted"\nparagraph "After the quote."\n');
   });
 
   // ── What already means the right thing ────────────────────────────────────

@@ -45,23 +45,35 @@ describe("buildPastedBlocks", () => {
       expect(r.focusPos).toBe("Buy milk ".length);
     });
 
-    it("multi-line plain text into an empty checkbox keeps the first line in it", () => {
+    // Blocks are Markdown structure: lines with no blank line between them are
+    // one paragraph, so they paste as soft breaks inside the destination (what
+    // Shift+Enter would have typed); a blank line in the clipboard starts a
+    // new block.
+    it("plain lines with no blank between them stay in the destination as soft breaks", () => {
       const r = buildPastedBlocks(emptyCheckbox, pasted("line one\nline two"), "", "", genId);
+      expect(r.blocks).toEqual([
+        { id: "dest", type: "checkbox", text: "line one\nline two", checked: false },
+      ]);
+      expect(r.focusId).toBe("dest");
+      expect(r.focusPos).toBe("line one\nline two".length);
+    });
+
+    it("plain lines at the start of a filled checkbox merge in front of its text", () => {
+      const dest: Block = { id: "dest", type: "checkbox", text: "Task", checked: false };
+      const r = buildPastedBlocks(dest, pasted("line one\nline two"), "", "Task", genId);
+      expect(r.blocks).toEqual([
+        { id: "dest", type: "checkbox", text: "line one\nline twoTask", checked: false },
+      ]);
+      expect(r.focusPos).toBe("line one\nline two".length);
+    });
+
+    it("a blank line in the clipboard starts a new block", () => {
+      const r = buildPastedBlocks(emptyCheckbox, pasted("line one\n\nline two"), "", "", genId);
       expect(r.blocks).toEqual([
         { id: "dest", type: "checkbox", text: "line one", checked: false },
         { id: "new-1", type: "p", text: "line two" },
       ]);
       expect(r.focusId).toBe("new-1");
-    });
-
-    it("multi-line plain text at the start of a filled checkbox splits like a text editor", () => {
-      const dest: Block = { id: "dest", type: "checkbox", text: "Task", checked: false };
-      const r = buildPastedBlocks(dest, pasted("line one\nline two"), "", "Task", genId);
-      expect(r.blocks).toEqual([
-        { id: "dest", type: "checkbox", text: "line one", checked: false },
-        { id: "new-2", type: "p", text: "line twoTask" },
-      ]);
-      expect(r.focusPos).toBe("line two".length);
     });
 
     it.each([
