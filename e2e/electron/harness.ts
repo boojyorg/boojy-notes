@@ -11,6 +11,14 @@
  * Markdown on disk says, which files exist. There is no test-only bridge into
  * React state; if an invariant cannot be proven from the outside, say so in the
  * spec rather than adding one.
+ *
+ * The app runs with its window hidden by default (`BOOJY_TEST_HIDDEN=1`, read
+ * by the main process), so a routine run never steals focus. Playwright drives
+ * the renderer over CDP, which needs no OS focus, and the main process turns
+ * off background throttling so debounces run at full speed. A test that
+ * genuinely needs the foreground — real OS focus, the system clipboard through
+ * Cmd+V, native menus or dialogs — goes in a `*.headed.spec.ts` file and runs
+ * through `pnpm test:electron:headed`, which sets `BOOJY_TEST_HEADED=1`.
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -43,6 +51,8 @@ export interface Vault {
   exists(rel: string): boolean;
   /** File modification time in ms, the "most recently modified" truth. */
   mtimeMs(rel: string): number;
+  /** Set a file's modification time, to seed a vault with a history. */
+  setMtime(rel: string, ms: number): void;
   /** Every file under the vault, as vault-relative paths, sorted. */
   list(): string[];
 }
@@ -66,6 +76,7 @@ function makeVault(dir: string): Vault {
     },
     exists: (rel) => fs.existsSync(path.join(dir, rel)),
     mtimeMs: (rel) => fs.statSync(path.join(dir, rel)).mtimeMs,
+    setMtime: (rel, ms) => fs.utimesSync(path.join(dir, rel), ms / 1000, ms / 1000),
     list: () => walk(dir).sort(),
   };
 }
@@ -98,7 +109,11 @@ async function launchElectron(userData: string) {
       ...(process.env.CI ? ["--no-sandbox"] : []),
     ],
     cwd: repoRoot,
-    env: { ...process.env, BOOJY_TEST_USERDATA: userData },
+    env: {
+      ...process.env,
+      BOOJY_TEST_USERDATA: userData,
+      BOOJY_TEST_HIDDEN: process.env.BOOJY_TEST_HEADED === "1" ? "0" : "1",
+    },
   });
   const page = await app.firstWindow();
   const pageErrors: string[] = [];
@@ -107,9 +122,15 @@ async function launchElectron(userData: string) {
     if (m.type() === "error" && !m.text().includes("Electron Security Warning"))
       pageErrors.push(`console.error: ${m.text()}`);
   });
-  await page.waitForLoadState("domcontentloaded");
-  // The sidebar renders once the vault has been read.
-  await page.getByText("New note", { exact: true }).waitFor();
+  try {
+    await page.waitForLoadState("domcontentloaded");
+    // The sidebar renders once the vault has been read.
+    await page.getByText("New note", { exact: true }).waitFor();
+  } catch (err) {
+    // Don't leave a hidden app process behind when the launch itself failed.
+    await app.close().catch(() => {});
+    throw err;
+  }
   return { app, page, pageErrors };
 }
 
@@ -118,7 +139,10 @@ async function launchElectron(userData: string) {
  * Markdown). Each call gets its own userData, so no theme, sort mode or
  * last-open note leaks between tests.
  */
-export async function launchApp(files: Record<string, string> = {}): Promise<AppHandle> {
+export async function launchApp(
+  files: Record<string, string> = {},
+  { prepare }: { prepare?: (vault: Vault) => void } = {},
+): Promise<AppHandle> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-e2e-"));
   const vaultDir = path.join(root, "vault");
   const userData = path.join(root, "userData");
@@ -126,6 +150,7 @@ export async function launchApp(files: Record<string, string> = {}): Promise<App
   fs.mkdirSync(userData, { recursive: true });
   const vault = makeVault(vaultDir);
   for (const [rel, content] of Object.entries(files)) vault.write(rel, content);
+  prepare?.(vault);
   fs.writeFileSync(path.join(userData, "config.json"), JSON.stringify({ notesDir: vaultDir }));
   // Keep the test offline: no update check against GitHub.
   fs.writeFileSync(path.join(userData, "settings.json"), JSON.stringify({ autoUpdate: false }));
@@ -228,4 +253,25 @@ export async function expectNoteMatchesDisk(page: Page, vault: Vault, rel: strin
 export function expectNoTempFiles(vault: Vault) {
   const stray = vault.list().filter((f) => /(^|\/)\..*\.tmp$/.test(f));
   expect(stray, "leftover temp files in the vault").toEqual([]);
+}
+
+/** Titles of the root `Notes` list, top to bottom, as the user reads them. */
+export async function rootNoteOrder(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const trees = document.querySelectorAll('[role="tree"]');
+    const notes = trees[trees.length - 1];
+    return Array.from(notes?.querySelectorAll('[role="treeitem"]') ?? []).map((row) =>
+      (row as HTMLElement).innerText.trim(),
+    );
+  });
+}
+
+/** Rename a sidebar row the way the user does: double-click, type, Enter. */
+export async function renameRow(page: Page, title: string, newName: string) {
+  await page.locator('[role="treeitem"]').filter({ hasText: title }).first().dblclick();
+  const input = page.locator("input:focus");
+  await input.waitFor();
+  await page.keyboard.press(`${MOD}+a`);
+  await page.keyboard.type(newName);
+  await page.keyboard.press("Enter");
 }

@@ -53,6 +53,35 @@ describe("useHistory", () => {
   // ─── commitNoteData ───────────────────────────────────────────────
 
   describe("commitNoteData", () => {
+    // Regression: the quit/blur net used to record the *active* note on every
+    // commit. Discarding the launch draft on the way into a note, or renaming
+    // another row, stamped a note that never became dirty, and the quit flush
+    // rewrote it untouched — bumping its mtime and its "Most recent" position.
+    it("records only the notes the commit changed in the quit/blur net", () => {
+      const { result } = setup();
+      const other = { id: "note-2", title: "Other", content: { title: "Other", blocks: [] } };
+      act(() => {
+        result.current.commitNoteData((prev) => ({ ...prev, "note-2": other }));
+      });
+      expect([...result.current.unflushedNotes.current]).toEqual(["note-2"]);
+
+      // A commit that changes nothing (same map back) stamps nothing.
+      result.current.unflushedNotes.current.clear();
+      act(() => {
+        result.current.commitNoteData((prev) => prev);
+      });
+      expect(result.current.unflushedNotes.current.size).toBe(0);
+
+      // Drafts never reach disk, so they never enter the net.
+      act(() => {
+        result.current.commitNoteData((prev) => ({
+          ...prev,
+          draft: { id: "draft", title: "", content: { blocks: [] }, _draft: true },
+        }));
+      });
+      expect(result.current.unflushedNotes.current.size).toBe(0);
+    });
+
     it("pushes to undo stack", async () => {
       const { result } = setup();
 
@@ -231,7 +260,12 @@ describe("useHistory", () => {
     it("records structural edits in unflushedNotes too", () => {
       const { result } = setup();
 
-      act(() => result.current.commitNoteData((prev) => prev));
+      act(() =>
+        result.current.commitNoteData((prev) => ({
+          ...prev,
+          [NOTE_ID]: { ...prev[NOTE_ID], title: "Renamed" },
+        })),
+      );
 
       expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(true);
     });

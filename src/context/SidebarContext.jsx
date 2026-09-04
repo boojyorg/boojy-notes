@@ -50,7 +50,7 @@ export function SidebarProvider({ children }) {
   const [renamingNote, setRenamingNote] = useState(null);
 
   // The one ordering source for every note list in the panel.
-  const { sortMode, setSortMode, lastOpened, markOpened } = useNoteSort(noteData);
+  const { sortMode, setSortMode, editedAt, markEdited } = useNoteSort();
 
   // ── Search ────────────────────────────────────────────────────────────
   const {
@@ -100,9 +100,9 @@ export function SidebarProvider({ children }) {
     return { allFolders: folders, knownPaths: paths };
   }, [customFolders, folderNoteMap]);
 
-  // Alphabetical mode can't care when a note was opened, so it must not rebuild
+  // Alphabetical mode can't care when a note was edited, so it must not rebuild
   // the tree every time one is. Only recency subscribes to the timestamps.
-  const sortSignal = sortMode === SORT_RECENT ? lastOpened : null;
+  const sortSignal = sortMode === SORT_RECENT ? editedAt : null;
 
   const { folderTree, sortedRootNotes } = useMemo(() => {
     // Titles come from the ref, not from `noteData` in the dep list: depending
@@ -169,7 +169,7 @@ export function SidebarProvider({ children }) {
       folderList,
       sortMode,
       setSortMode,
-      markOpened,
+      markEdited,
     }),
     [
       search,
@@ -189,7 +189,7 @@ export function SidebarProvider({ children }) {
       folderList,
       sortMode,
       setSortMode,
-      markOpened,
+      markEdited,
     ],
   );
 

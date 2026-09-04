@@ -48,7 +48,6 @@ function setup(initialNoteData = {}, opts = {}) {
   });
   const titleRef = { current: null };
   const setRenamingFolder = vi.fn();
-  const markOpened = vi.fn();
   const { result } = renderHook(() =>
     useNoteCrud({
       commitNoteData,
@@ -60,7 +59,6 @@ function setup(initialNoteData = {}, opts = {}) {
       setExpanded,
       titleRef,
       setRenamingFolder,
-      markOpened,
     }),
   );
 
@@ -76,7 +74,6 @@ function setup(initialNoteData = {}, opts = {}) {
     setCustomFolders,
     setExpanded,
     setRenamingFolder,
-    markOpened,
   };
 }
 
@@ -97,17 +94,6 @@ describe("useNoteCrud", () => {
       expect(data[noteId].content.blocks[0].id).toBe("blk-1");
       expect(data[noteId].content.blocks[0].type).toBe("p");
       expect(setActiveNote).toHaveBeenCalledWith(noteId);
-    });
-
-    // Found live: without this, a note you just made carries no timestamp and
-    // sorts into the never-opened alphabetical tail — a new "Zebra" appears at
-    // the bottom of "Most recent" instead of the top.
-    it("stamps recency, so a new note leads the Most recent list", () => {
-      const { result, markOpened } = setup();
-      act(() => {
-        result.current.createNote();
-      });
-      expect(markOpened).toHaveBeenCalledWith("note-1");
     });
 
     it("creates a note inside the given folder", () => {

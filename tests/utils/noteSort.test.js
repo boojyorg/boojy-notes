@@ -18,8 +18,7 @@ const noteData = {
   w10: { title: "Week 10" },
 };
 
-const sort = (ids, mode, lastOpened = {}) =>
-  sortNoteIds(ids, compareNotes(mode, noteData, lastOpened));
+const sort = (ids, mode, editedAt = {}) => sortNoteIds(ids, compareNotes(mode, noteData, editedAt));
 
 describe("sort modes", () => {
   it("defaults to recency", () => {
@@ -45,7 +44,7 @@ describe("alphabetical", () => {
     expect(ids).toEqual(["x", "y", "z"]);
   });
 
-  it("ignores last-opened entirely", () => {
+  it("ignores in-session edits entirely", () => {
     const opened = { m: 3000, b: 2000 };
     expect(sort(["a", "b", "i", "m"], SORT_ALPHA, opened)).toEqual(["a", "b", "i", "m"]);
   });
@@ -56,16 +55,16 @@ describe("alphabetical", () => {
 });
 
 describe("recency", () => {
-  it("puts the most recently opened first", () => {
+  it("puts the most recently edited first", () => {
     const opened = { b: 1000, i: 2000, m: 3000 };
     expect(sort(["a", "b", "i", "m"], SORT_RECENT, opened)).toEqual(["m", "i", "b", "a"]);
   });
 
-  it("reads alphabetical when nothing has been opened — the day-one list", () => {
+  it("reads alphabetical when nothing carries a timestamp", () => {
     expect(sort(["m", "i", "b", "a"], SORT_RECENT, {})).toEqual(["a", "b", "i", "m"]);
   });
 
-  it("keeps never-opened notes as an alphabetical tail behind the opened ones", () => {
+  it("keeps notes without a timestamp as an alphabetical tail behind the edited ones", () => {
     const opened = { m: 3000 };
     expect(sort(["w10", "a", "m", "w2"], SORT_RECENT, opened)).toEqual(["m", "a", "w2", "w10"]);
   });
@@ -76,12 +75,10 @@ describe("recency", () => {
   });
 });
 
-describe("recency = last touched (opened here, or modified on disk)", () => {
-  // The bug this fixes: on a vault whose notes all predate the feature, the
-  // last-opened map is empty, so "Most recent" produced the same list as
-  // "Alphabetical" and the control looked broken. File mtime gives an existing
-  // vault meaningful order from the first launch.
-  it("orders by file mtime when nothing has been opened", () => {
+describe("recency = most recently modified (edited here, or on disk)", () => {
+  // File mtime is the durable truth: it orders an existing vault from the first
+  // launch, and it is the only signal that sees an edit made in another app.
+  it("orders by file mtime when nothing has been edited here", () => {
     const data = {
       old: { title: "Old", lastModified: 1000 },
       mid: { title: "Mid", lastModified: 2000 },
@@ -91,20 +88,20 @@ describe("recency = last touched (opened here, or modified on disk)", () => {
     expect(ids).toEqual(["new", "mid", "old"]);
   });
 
-  it("takes the later of the two clocks, not just last-opened", () => {
-    // Opened yesterday, but edited since — the edit is the more recent touch.
+  it("takes the later of the two clocks", () => {
+    // Edited here earlier, then written on disk since (a save, or another app).
     const data = { a: { title: "A", lastModified: 9000 }, b: { title: "B", lastModified: 0 } };
     expect(recencyOf("a", data, { a: 1000 })).toBe(9000);
     expect(recencyOf("b", data, { b: 5000 })).toBe(5000);
   });
 
-  it("lets reading a note outrank an older edit", () => {
+  it("lets an edit made here outrank an older mtime, until the save refreshes it", () => {
     const data = { a: { title: "A", lastModified: 5000 }, b: { title: "B", lastModified: 6000 } };
     const ids = sortNoteIds(["a", "b"], compareNotes(SORT_RECENT, data, { a: 7000 }));
     expect(ids).toEqual(["a", "b"]);
   });
 
-  it("lets an edit made outside Boojy outrank a note opened here earlier", () => {
+  it("lets an edit made outside Boojy outrank one made here earlier", () => {
     const data = { a: { title: "A", lastModified: 0 }, b: { title: "B", lastModified: 9000 } };
     const ids = sortNoteIds(["a", "b"], compareNotes(SORT_RECENT, data, { a: 8000 }));
     expect(ids).toEqual(["b", "a"]);

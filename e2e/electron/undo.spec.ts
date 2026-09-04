@@ -33,7 +33,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await h.close();
+  await h?.close();
 });
 
 test("undo after a pause repaints the screen, and typing continues from the undone text", async () => {

@@ -7,13 +7,13 @@
  * *location*, sort decides *display order* — the manual `noteOrder`/`folderOrder`
  * metadata that used to compete with it is gone.
  *
- * "Most recent" means **last touched**: the later of when you last opened the
- * note in Boojy and when its file was last modified. Neither half is sufficient
- * on its own. Opening never writes to disk, so mtime alone would ignore reading;
- * and last-opened alone starts empty on an existing vault, which made the two
- * sort modes produce identical lists until you had clicked around — the control
- * looked broken on day one. mtime is what gives a vault meaningful order
- * immediately, and it is the only half that can see an edit made in another app.
+ * "Most recent" means **most recently modified**, never merely opened. The
+ * durable truth is the file's mtime, which is what orders a vault at launch and
+ * the only signal that sees an edit made in another app. Because the app's own
+ * writes do not refresh `lastModified` in state, an in-session "edited at" map
+ * (stamped the moment a note becomes dirty) covers the gap until the next
+ * launch reads the fresh mtime. Opening, selecting or reading a note touches
+ * neither, so the list never reshuffles under the pointer.
  */
 
 import { naturalCompare } from "./sidebarTree";
@@ -24,7 +24,7 @@ import { naturalCompare } from "./sidebarTree";
 export const SORT_RECENT = /** @type {const} */ ("recent");
 export const SORT_ALPHA = /** @type {const} */ ("alpha");
 
-/** First run gets recency; a fresh vault has no opens, so it reads alphabetical. */
+/** First run gets recency; a vault with no timestamps at all reads alphabetical. */
 export const DEFAULT_SORT_MODE = SORT_RECENT;
 
 /**
@@ -36,19 +36,19 @@ export function isSortMode(value) {
 }
 
 /**
- * The moment a note was last touched: opened here, or written to on disk,
- * whichever is later. Both are epoch ms, so they compare directly. 0 means the
- * app knows nothing about it — a web note (no filesystem, so no mtime) or one
- * whose file has since vanished — and those sort alphabetically at the back
- * rather than pretending to be ancient.
+ * The moment a note was last modified: edited here this session, or written
+ * on disk, whichever is later. Both are epoch ms, so they compare directly.
+ * 0 means the app knows nothing about it — a web note (no filesystem, so no
+ * mtime) or one whose file has since vanished — and those sort alphabetically
+ * at the back rather than pretending to be ancient.
  *
  * @param {string} id
  * @param {NoteData} noteData
- * @param {Record<string, number>} lastOpened
+ * @param {Record<string, number>} editedAt noteId → epoch ms of its last in-app edit
  * @returns {number}
  */
-export function recencyOf(id, noteData, lastOpened) {
-  return Math.max(lastOpened[id] || 0, noteData[id]?.lastModified || 0);
+export function recencyOf(id, noteData, editedAt) {
+  return Math.max(editedAt[id] || 0, noteData[id]?.lastModified || 0);
 }
 
 /**
@@ -59,10 +59,10 @@ export function recencyOf(id, noteData, lastOpened) {
  *
  * @param {SortMode} mode
  * @param {NoteData} noteData
- * @param {Record<string, number>} lastOpened noteId → epoch ms
+ * @param {Record<string, number>} editedAt noteId → epoch ms of its last in-app edit
  * @returns {(a: string, b: string) => number}
  */
-export function compareNotes(mode, noteData, lastOpened) {
+export function compareNotes(mode, noteData, editedAt) {
   const title = (/** @type {string} */ id) => noteData[id]?.title || "";
   // Titles are filenames, so collisions are rare — but ties must still resolve
   // the same way every render, or the list reshuffles on unrelated state changes.
@@ -72,8 +72,8 @@ export function compareNotes(mode, noteData, lastOpened) {
   if (mode === SORT_ALPHA) return byTitle;
 
   return (a, b) => {
-    const ta = recencyOf(a, noteData, lastOpened);
-    const tb = recencyOf(b, noteData, lastOpened);
+    const ta = recencyOf(a, noteData, editedAt);
+    const tb = recencyOf(b, noteData, editedAt);
     if (ta && tb) return tb - ta || byTitle(a, b);
     if (ta) return -1;
     if (tb) return 1;
