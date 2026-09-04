@@ -275,3 +275,64 @@ export async function renameRow(page: Page, title: string, newName: string) {
   await page.keyboard.type(newName);
   await page.keyboard.press("Enter");
 }
+
+/**
+ * Move a note into a folder the way the user does: press on its row, hold
+ * until the pill lifts, carry it over the folder row, release. Drag never
+ * opens the note, so the editor is untouched afterwards.
+ */
+export async function moveNoteToFolder(page: Page, title: string, folder: string) {
+  const row = page.locator("[data-note-id]").filter({ hasText: title }).first();
+  const target = page.locator(`[data-folder-path="${folder}"]`).first();
+  const from = await row.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error(`moveNoteToFolder: row or folder "${folder}" not visible`);
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  // The hold-to-lift delay is 400ms; a move of more than 5px before it cancels.
+  await sleep(600);
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await sleep(100);
+  await page.mouse.up();
+}
+
+/** Expand every collapsed folder row so each note row is on screen. */
+export async function expandAllFolders(page: Page) {
+  const collapsed = page.locator('[data-folder-path][aria-expanded="false"]');
+  while ((await collapsed.count()) > 0) await collapsed.first().click();
+}
+
+/** Titles of every note row on screen, in tree order, as the user reads them. */
+export async function sidebarNoteTitles(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll("[data-note-id]")).map((row) =>
+      (row as HTMLElement).innerText.trim(),
+    ),
+  );
+}
+
+/** What the editor's title field shows for the open note. */
+export async function editorTitle(page: Page): Promise<string> {
+  return page.getByRole("textbox", { name: "Note title" }).innerText();
+}
+
+/**
+ * The title/filename invariant: for every persisted note, the title the
+ * sidebar shows is the basename of its Markdown file. Compares the two sets
+ * as sorted lists, so a note shown under one name while the file carries
+ * another fails with both names in the diff. Folders are expanded first so
+ * every row is rendered; a draft never has a file and never has a row here.
+ */
+export async function expectTitlesMatchFiles(page: Page, vault: Vault) {
+  await expandAllFolders(page);
+  const files = vault
+    .list()
+    .filter((f) => f.endsWith(".md") && !path.basename(f).startsWith("."))
+    .map((f) => path.basename(f, ".md"))
+    .sort();
+  await expect
+    .poll(async () => (await sidebarNoteTitles(page)).sort(), {
+      message: "sidebar titles vs Markdown basenames on disk",
+    })
+    .toEqual(files);
+}

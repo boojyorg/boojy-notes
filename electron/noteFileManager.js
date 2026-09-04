@@ -28,14 +28,63 @@ function noteToFilePath(note, notesDir) {
   return path.join(notesDir, sanitized);
 }
 
-function ensureUniqueFilePath(filePath) {
-  if (!fs.existsSync(filePath)) return filePath;
+/**
+ * The path a file may be written to without clobbering anything: `filePath`
+ * itself if nothing is there, else the first free `name-2`, `name-3`, …
+ *
+ * `ownPath` is the file this write already owns (a note's current path). It
+ * counts as free: a note that resolved to `Meeting notes-2.md` last time, and
+ * whose requested name is still taken by its namesake, lands on `-2` again
+ * rather than being treated as a collision with itself and bounced to `-3`
+ * (and back to `-2` on the save after, forever). Every other file on disk is
+ * a collision, whether or not the ID index knows it — an unindexed file, or a
+ * case-variant on a case-insensitive volume, must never be overwritten.
+ */
+function ensureUniqueFilePath(filePath, ownPath = null) {
+  if (filePath === ownPath || !fs.existsSync(filePath)) return filePath;
   const dir = path.dirname(filePath);
   const ext = path.extname(filePath);
   const base = path.basename(filePath, ext);
-  let i = 2;
-  while (fs.existsSync(path.join(dir, `${base}-${i}${ext}`))) i++;
-  return path.join(dir, `${base}-${i}${ext}`);
+  for (let i = 2; ; i++) {
+    const candidate = path.join(dir, `${base}-${i}${ext}`);
+    if (candidate === ownPath || !fs.existsSync(candidate)) return candidate;
+  }
+}
+
+/** Whether two paths name the same file on disk (false if either is missing). */
+function isSameFile(a, b) {
+  try {
+    const sa = fs.statSync(a);
+    const sb = fs.statSync(b);
+    return sa.ino === sb.ino && sa.dev === sb.dev;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The name the directory entry actually carries, which on a case-insensitive
+ * or normalising volume can differ from the name that was asked for. Falls
+ * back to the requested basename if the volume can't answer.
+ */
+function realBasename(filePath) {
+  try {
+    return path.basename(fs.realpathSync.native(filePath));
+  } catch {
+    return path.basename(filePath);
+  }
+}
+
+/**
+ * Where a note's file goes on this write, and whether the write is a rename
+ * of the note's own file to a name the volume considers the same (a
+ * case-only or Unicode-normalisation change). Pure decision; no writes.
+ */
+function resolveWritePath(targetPath, existingPath) {
+  if (existingPath === targetPath) return { finalPath: targetPath, sameFile: false };
+  if (existingPath && fs.existsSync(targetPath) && isSameFile(existingPath, targetPath))
+    return { finalPath: targetPath, sameFile: true };
+  return { finalPath: ensureUniqueFilePath(targetPath, existingPath), sameFile: false };
 }
 
 /**
@@ -241,6 +290,13 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     return readAllNotes(notesDir);
   });
 
+  // Writes the note and answers with the path and basename the file actually
+  // got. The requested title may not survive the filesystem — a namesake
+  // forces a `-2` suffix, characters a filename cannot hold become `_`, edges
+  // are trimmed, a blank name becomes `Untitled` — and the renderer adopts the
+  // returned `title` so what the user sees is what a restart will read. This
+  // handler is the one place that knows the final name; nothing in the UI
+  // second-guesses it.
   ipcMain.handle("write-note", (_event, note) => {
     const notesDir = getNotesDir();
     const targetPath = noteToFilePath(note, notesDir);
@@ -249,20 +305,19 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const existingRelPath = _idIndex[note.id];
     const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
 
-    // Determine final path (avoid overwriting a different note's file)
-    let finalPath = targetPath;
-    if (!existingPath || existingPath !== targetPath) {
-      if (fs.existsSync(targetPath)) {
-        const targetRelPath = path.relative(notesDir, targetPath);
-        const ownerNoteId = Object.entries(_idIndex).find(([, p]) => p === targetRelPath)?.[0];
-        if (ownerNoteId && ownerNoteId !== note.id) {
-          finalPath = ensureUniqueFilePath(targetPath);
-        }
-      }
-    }
+    const { finalPath, sameFile } = resolveWritePath(targetPath, existingPath);
 
     // Ensure directory exists
     fs.mkdirSync(path.dirname(finalPath), { recursive: true });
+
+    // A case-only rename of the note's own file: move the directory entry
+    // first, so the new casing is what the volume records (writing over the
+    // old entry would keep its name), and skip the old-file removal below,
+    // which would delete the file just written.
+    if (sameFile) {
+      suppressWatcher(existingPath);
+      fs.renameSync(existingPath, finalPath);
+    }
 
     // Serialize — just markdown body, no frontmatter; restore the file's
     // original line-ending style (content.eol is set by parseNoteFile)
@@ -273,7 +328,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
     // On rename, remove the old file only after the new one is safely on disk —
     // a crash in between leaves a duplicate (recoverable), never a missing note
-    if (existingPath && existingPath !== finalPath) {
+    if (existingPath && existingPath !== finalPath && !sameFile) {
       suppressWatcher(existingPath);
       try {
         fs.unlinkSync(existingPath);
@@ -292,11 +347,13 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
       }
     }
 
-    // Update index
-    _idIndex[note.id] = path.relative(notesDir, finalPath);
+    // Index and report the entry the volume actually holds. On disk the
+    // basename is the note's title; `readAllNotes` reads it back as such.
+    const realPath = path.join(path.dirname(finalPath), realBasename(finalPath));
+    _idIndex[note.id] = path.relative(notesDir, realPath);
     saveIndex(notesDir);
 
-    return { filePath: finalPath };
+    return { filePath: realPath, title: path.basename(realPath, ".md") };
   });
 
   ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
@@ -473,6 +530,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 export {
   sanitizeFilename,
   ensureUniqueFilePath,
+  resolveWritePath,
   noteToFilePath,
   getIdIndex,
   setIndexDir,

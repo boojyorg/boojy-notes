@@ -60,8 +60,19 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     }
   };
 
-  const commitNoteData = (updater) => {
-    if (!isUndoRedo.current) pushHistory();
+  const commitNoteData = (updater) => applyCommit(updater, true);
+
+  // Take a change of record that came from persistence rather than from the
+  // user: the filename the write actually produced. Same publication path as
+  // a structural commit (pending text is already in the ref and goes out with
+  // it), but no history entry, so Cmd+Z after a rename undoes the rename
+  // itself instead of bouncing between the requested name and the one the
+  // file got. The note becomes dirty like any change and is written once
+  // more under its own name, which is then already its path.
+  const adoptNoteData = (updater) => applyCommit(updater, false);
+
+  const applyCommit = (updater, recordHistory) => {
+    if (recordHistory && !isUndoRedo.current) pushHistory();
     textOnlyEdit.current = false;
     textOnlyEditForSidebar.current = false;
     textOnlyEditForEditor.current = false;
@@ -201,6 +212,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     undo,
     redo,
     commitNoteData,
+    adoptNoteData,
     commitTextChange,
     pushHistory,
     popHistory,

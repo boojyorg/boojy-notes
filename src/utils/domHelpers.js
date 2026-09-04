@@ -62,6 +62,18 @@ export function findNearestBlock(sel, blocks, blockRefs) {
 }
 
 /**
+ * What a single-line contentEditable field (the note title) says. An emptied
+ * field keeps a `<br>` for the caret, which `innerText` reads as "\n"; taken
+ * literally that became a title of "\n" and a file called `_.md`. Trailing
+ * line breaks are the field's, not the title's. Falls back to `textContent`
+ * where `innerText` is not implemented (jsdom).
+ */
+export function titleFieldText(el) {
+  const raw = typeof el.innerText === "string" ? el.innerText : (el.textContent ?? "");
+  return raw.replace(/\n+$/, "");
+}
+
+/**
  * Character offset of the caret inside `el`, counted the way `placeCaret`
  * counts (text nodes in document order, decorative link icons skipped), or -1
  * when the selection is collapsed somewhere else or absent. `placeCaret(el,

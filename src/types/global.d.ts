@@ -33,7 +33,8 @@ declare global {
       getNotesDir: () => Promise<string>;
       chooseNotesDir: () => Promise<string | null>;
       readAllNotes: () => Promise<Record<string, Note>>;
-      writeNote: (note: Note) => Promise<{ filePath: string }>;
+      /** `title` is the basename the file actually got, which the title adopts. */
+      writeNote: (note: Note) => Promise<{ filePath: string; title: string }>;
       saveImage: (data: { fileName: string; dataBase64: string }) => Promise<string>;
       saveAttachment: (data: {
         fileName: string;

@@ -183,3 +183,116 @@ describe("pick-file IPC — oversized files", () => {
     expect(dialog.showMessageBoxSync.mock.calls[0][1].message).toBe("File too large");
   });
 });
+
+// ─── Title is filename: the write path reports the name the file really got ───
+
+describe("ensureUniqueFilePath — a note's own file is not a collision", () => {
+  it("returns the own path even though a file exists there", async () => {
+    const { ensureUniqueFilePath } = await import("../../electron/noteFileManager.js");
+    const own = path.join(notesDir, "Meeting notes-2.md");
+    const namesake = path.join(notesDir, "Meeting notes.md");
+    fs.writeFileSync(namesake, "theirs", "utf-8");
+    fs.writeFileSync(own, "mine", "utf-8");
+
+    // Requested name is taken by the namesake; the first free suffix is the
+    // note's own file, so that is where it stays — not `-3`.
+    expect(ensureUniqueFilePath(namesake, own)).toBe(own);
+    // With no own path (a brand-new note), the same request skips both.
+    expect(ensureUniqueFilePath(namesake)).toBe(path.join(notesDir, "Meeting notes-3.md"));
+    // A free requested name is used as is.
+    expect(ensureUniqueFilePath(path.join(notesDir, "Free.md"), own)).toBe(
+      path.join(notesDir, "Free.md"),
+    );
+  });
+});
+
+describe("write-note — the returned title is the basename on disk", () => {
+  let writeNote;
+  let registered;
+
+  beforeEach(async () => {
+    const { ipcMain } = await import("electron");
+    const { registerNoteFileIPC } = await import("../../electron/noteFileManager.js");
+    if (!registered) {
+      registerNoteFileIPC(
+        () => null,
+        () => notesDir,
+        () => {},
+      );
+      registered = true;
+    }
+    const handler = ipcMain.handle.mock.calls.find(([name]) => name === "write-note")[1];
+    writeNote = (note) => handler(null, note);
+    readAllNotes(notesDir); // load (an empty) index for this vault
+  });
+
+  const note = (id, title, folder = null, text = "body") => ({
+    id,
+    title,
+    folder,
+    content: { title, blocks: [{ id: "b1", type: "p", text }] },
+  });
+
+  it("suffixes a namesake and keeps that suffix on every later save", () => {
+    fs.mkdirSync(path.join(notesDir, "Work"));
+    fs.writeFileSync(path.join(notesDir, "Work", "Meeting notes.md"), "theirs", "utf-8");
+    readAllNotes(notesDir); // the namesake is indexed as another note
+
+    const moved = note("note-moved", "Meeting notes", "Work", "mine");
+    const first = writeNote(moved);
+    expect(first.title).toBe("Meeting notes-2");
+    expect(first.filePath).toBe(path.join(notesDir, "Work", "Meeting notes-2.md"));
+
+    // The renderer has not adopted the name yet (or was undone): the same
+    // request must land on the same file, never bounce between -2 and -3.
+    for (let i = 0; i < 3; i++) {
+      const again = writeNote({ ...moved, content: { ...moved.content, blocks: [] } });
+      expect(again.filePath, `save ${i + 2}`).toBe(first.filePath);
+      expect(again.title, `save ${i + 2}`).toBe("Meeting notes-2");
+    }
+    expect(fs.readdirSync(path.join(notesDir, "Work")).sort()).toEqual([
+      "Meeting notes-2.md",
+      "Meeting notes.md",
+    ]);
+    expect(fs.readFileSync(path.join(notesDir, "Work", "Meeting notes.md"), "utf-8")).toBe(
+      "theirs",
+    );
+  });
+
+  it("reports the sanitised and trimmed name, and Untitled for a blank one", () => {
+    expect(writeNote(note("n-sanitised", "Notes: a/b?")).title).toBe("Notes_ a_b_");
+    expect(writeNote(note("n-trimmed", "  Padded  ")).title).toBe("Padded");
+    expect(writeNote(note("n-blank", "")).title).toBe("Untitled");
+    expect(writeNote(note("n-blank-2", "   ")).title).toBe("Untitled-2");
+    expect(fs.readdirSync(notesDir).sort()).toEqual([
+      "Notes_ a_b_.md",
+      "Padded.md",
+      "Untitled-2.md",
+      "Untitled.md",
+    ]);
+  });
+
+  it("never overwrites a file it did not index", () => {
+    // A file that appeared on disk between vault walks (no watcher in tests).
+    fs.writeFileSync(path.join(notesDir, "Draft.md"), "someone else's", "utf-8");
+
+    const result = writeNote(note("n-new", "Draft", null, "mine"));
+
+    expect(result.title).toBe("Draft-2");
+    expect(fs.readFileSync(path.join(notesDir, "Draft.md"), "utf-8")).toBe("someone else's");
+    expect(fs.readFileSync(path.join(notesDir, "Draft-2.md"), "utf-8")).toBe("mine");
+  });
+
+  it("renames its own file when only the letter case changes", () => {
+    const first = writeNote(note("n-case", "meeting", null, "mine"));
+    expect(first.title).toBe("meeting");
+
+    const renamed = writeNote(note("n-case", "Meeting", null, "mine"));
+
+    // One file, under the new casing, with its content — on a case-insensitive
+    // volume the old entry must be moved, not written over and then deleted.
+    expect(renamed.title).toBe("Meeting");
+    expect(fs.readdirSync(notesDir)).toEqual(["Meeting.md"]);
+    expect(fs.readFileSync(path.join(notesDir, "Meeting.md"), "utf-8")).toBe("mine");
+  });
+});

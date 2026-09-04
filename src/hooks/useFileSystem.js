@@ -34,7 +34,14 @@ function blocksEqual(a, b) {
 }
 
 /**
- * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, onNotesEdited }`.
+ * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, onNotesEdited,
+ *   onTitleResolved }`.
+ *   `onTitleResolved(id, written, title)` is called when the write landed the
+ *   note under a basename other than the title it was written with: a
+ *   namesake forced a suffix, characters a filename cannot hold were replaced,
+ *   edges were trimmed. `written` is the note object that was written, so the
+ *   receiver can tell whether the user has renamed it since. The filename is
+ *   the title on disk and after a restart, so the receiver adopts it now.
  *   `onNotesEdited(ids)` is called with every note that just became dirty here —
  *   the one moment that means "modified in this app", whatever the edit was
  *   (typing after its commit, a checkbox, a rename, a move, a new note). It feeds
@@ -183,8 +190,10 @@ export function useFileSystem(
       }
       if (note) {
         try {
-          await api.writeNote(note);
+          const written = await api.writeNote(note);
           reportedWriteFailures.current.delete(noteId);
+          if (typeof written?.title === "string" && written.title !== note.title)
+            editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
         } catch (err) {
           console.error("useFileSystem: write failed", noteId, err);
           if (!reportedWriteFailures.current.has(noteId)) {

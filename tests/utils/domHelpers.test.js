@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { getCaretOffset, placeCaret } from "../../src/utils/domHelpers.js";
+import { getCaretOffset, placeCaret, titleFieldText } from "../../src/utils/domHelpers.js";
 
 function editable(html) {
   document.body.innerHTML = `<div contenteditable="true"><p id="b">${html}</p></div>`;
@@ -43,5 +43,23 @@ describe("getCaretOffset", () => {
     );
     placeCaret(el, 9); // "See site|" then " now"
     expect(getCaretOffset(el)).toBe(9);
+  });
+});
+
+describe("titleFieldText", () => {
+  // Chromium reads an emptied contentEditable (which keeps a <br> for the
+  // caret) as "\n". Committed as the title, that named the file `_.md`.
+  it("drops the trailing line break an emptied field reports", () => {
+    const el = document.createElement("div");
+    el.innerText = "\n"; // what Chromium's innerText reports for <br>
+    expect(titleFieldText(el)).toBe("");
+    el.innerText = "Meeting notes\n";
+    expect(titleFieldText(el)).toBe("Meeting notes");
+  });
+
+  it("reads a plain title as is", () => {
+    const el = document.createElement("div");
+    el.textContent = "Notes: a/b?";
+    expect(titleFieldText(el)).toBe("Notes: a/b?");
   });
 });
