@@ -1,0 +1,5 @@
+blockquote
+  paragraph "A quoted line\nand its continuation."
+blockquote
+  paragraph "[!note] An Obsidian callout\nreads as a plain blockquote elsewhere."
+paragraph "Text after the quotes."

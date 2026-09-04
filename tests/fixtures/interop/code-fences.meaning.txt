@@ -1,0 +1,4 @@
+paragraph "Before the fence."
+code lang=js "const a = 1;\n\nconsole.log(a);\n"
+code "no language, and a *star* that is not emphasis\n"
+paragraph "After the fences."

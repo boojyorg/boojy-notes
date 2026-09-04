@@ -1,0 +1,23 @@
+bullet list
+  item
+    paragraph "apples"
+  item
+    paragraph "pears"
+ordered list
+  item
+    paragraph "wake"
+  item
+    paragraph "write"
+  item
+    paragraph "rest"
+bullet list
+  item
+    paragraph "[ ] todo"
+  item
+    paragraph "[x] done"
+bullet list
+  item
+    paragraph "star bullet"
+bullet list
+  item
+    paragraph "plus bullet"

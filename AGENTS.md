@@ -123,6 +123,14 @@ Each of these has caused a real bug. Read before touching the editor.
 
 - Unit tests in `tests/` (Vitest, jsdom, Testing Library); E2E in `e2e/`. The preservation
   corpus in `tests/fixtures/preservation/` is byte-sensitive and protected by `.gitattributes`.
+- **Markdown has three contracts, one file each.** `tests/utils/markdown.test.js`: block →
+  markdown → block (what the app creates survives its own reader). `preservation.test.js`:
+  markdown → blocks → markdown byte for byte (did we alter the source?).
+  `markdownInterop.test.js`: what the Markdown *means* outside Boojy Notes, judged by an
+  independent CommonMark parser (`markdown-it`, dev only) against `tests/fixtures/interop/`,
+  each fixture paired with a reviewed `.meaning.txt` outline. `src/utils/markdown.js` is never
+  the oracle. Known mismatches are narrow `it.fails` cases, never a weakened oracle; the
+  paragraph ones are the evidence for the paragraph architecture decision.
 - Coverage floors in `vitest.config.js` sit just below actuals. Ratchet up; never lower to pass.
 - CI runs `test:coverage`, the web E2E and the Electron suite, not `pnpm test`. Desktop
   behaviour is only proven in a real Electron build; the web build cannot stand in for it.
