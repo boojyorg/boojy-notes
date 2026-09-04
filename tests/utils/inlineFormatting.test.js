@@ -447,3 +447,36 @@ describe("caret anchors never reach Markdown", () => {
     expect(domNodeToMarkdown(el)).toBe("see [[Beta]] after");
   });
 });
+
+describe("soft breaks: a newline inside block text is a visible line break", () => {
+  // The paragraph model's foundation (PR A): the renderer never turned a
+  // newline back into a <br>, so a Shift+Enter break collapsed to a space on
+  // the next repaint. The DOM→Markdown walkers already read <br> as "\n" and
+  // ignore a block's final <br>, so the two directions agree.
+  it("renders each newline as one <br>", () => {
+    expect(inlineMarkdownToHtml("one\ntwo")).toBe("one<br>two");
+    expect(inlineMarkdownToHtml("a\nb\nc")).toBe("a<br>b<br>c");
+  });
+
+  it("gives a trailing newline a second <br> so the empty last line is visible", () => {
+    expect(inlineMarkdownToHtml("one\n")).toBe("one<br><br>");
+  });
+
+  it("reads the rendered breaks back as the same text", () => {
+    for (const text of ["one\ntwo", "a\nb\nc", "one\n"]) {
+      expect(htmlToInlineMarkdown(inlineMarkdownToHtml(text))).toBe(text);
+      const el = document.createElement("p");
+      el.innerHTML = inlineMarkdownToHtml(text);
+      expect(domNodeToMarkdown(el)).toBe(text);
+    }
+  });
+
+  it("keeps a hard break's trailing spaces on the line before the break", () => {
+    expect(inlineMarkdownToHtml("hard  \nbreak")).toBe("hard  <br>break");
+    expect(htmlToInlineMarkdown("hard  <br>break")).toBe("hard  \nbreak");
+  });
+
+  it("does not let inline formatting span a line break", () => {
+    expect(inlineMarkdownToHtml("**a\nb**")).toBe("**a<br>b**");
+  });
+});

@@ -74,6 +74,13 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // Restore backslash-escaped characters
   s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => escapes[parseInt(i, 10)]);
 
+  // 12. A newline inside block text is a soft break: one line break on screen.
+  // A trailing newline gets a second <br>, the way Chromium keeps an empty
+  // last line visible and reachable by the caret; the DOM→Markdown walkers
+  // ignore a block's final <br>, so "a<br><br>" reads back as "a\n".
+  s = s.replace(/\n/g, "<br>");
+  if (s.endsWith("<br>")) s += "<br>";
+
   return s;
 }
 

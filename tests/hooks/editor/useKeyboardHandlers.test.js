@@ -100,6 +100,35 @@ describe("useKeyboardHandlers", () => {
     expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1);
   });
 
+  it("Shift+Enter inserts a line break inside a paragraph instead of splitting it", () => {
+    document.execCommand = vi.fn();
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(document.execCommand).toHaveBeenCalledWith("insertLineBreak");
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
+    expect(deps.insertBlockAfter).not.toHaveBeenCalled();
+  });
+
+  it("Shift+Enter in a heading behaves like Enter: headings have no second line", () => {
+    document.execCommand = vi.fn();
+    deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "h2", text: "Title" };
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event);
+
+    // The app owns the key (no browser line break inside the heading); the
+    // split itself needs a live selection, which jsdom does not provide.
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(document.execCommand).not.toHaveBeenCalled();
+  });
+
   it("handleBlockKeyDown handles Tab for indentation on list blocks", () => {
     deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "bullet", text: "x" };
     const { result } = renderHook(() => useKeyboardHandlers(deps));

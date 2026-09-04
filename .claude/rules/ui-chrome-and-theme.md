@@ -315,6 +315,21 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
 
+## Soft breaks inside a block
+
+- **A newline in block text is a `<br>` on screen, and a `<br>` reads back as a newline.**
+  `inlineMarkdownToHtml` draws every `\n` as `<br>` and gives a trailing one a second `<br>` so
+  the empty last line stays visible and reachable; both DOM→Markdown walkers ignore a block's
+  final `<br>`. The two directions must stay in step.
+- **Caret arithmetic is measured in the block's Markdown text**: `getCaretOffset`, `placeCaret`
+  and `caretLength` count a soft-break `<br>` as one character and the trailing `<br>` as none.
+  Never clamp a caret to `textContent.length`; use `caretLength(el)`.
+- **Shift+Enter** inserts the break (`insertLineBreak`, so Chromium fires `input` and the normal
+  commit path stores it) in paragraphs, list items and quotes; in a heading it acts as Enter.
+- Until the paragraph model lands (PR B of the plan), a paragraph with a soft break reads back
+  from disk as two blocks; on disk it is already a conventional soft break. That gap is on
+  record as an `it.fails` in `markdown.test.js` and in the interop suite.
+
 ## Paste keeps the block you are in
 
 The rule lives in `utils/pasteBlocks.ts`, shared by the internal (`text/boojy-blocks`) and
