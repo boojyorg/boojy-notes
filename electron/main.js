@@ -62,7 +62,7 @@ function createWindow() {
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).
     backgroundColor: "#FCFCFC",
-    icon: path.join(__dirname, "../assets/icon.png"),
+    icon: path.join(__dirname, "../assets/boojy-notes-app-icon.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

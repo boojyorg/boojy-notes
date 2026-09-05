@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.6.1 — 2026-09-05
+
+### Improvements
+- **New application icon** — The macOS app icon is now the Notes mark on a light rounded square, replacing the placeholder gold circle on a dark tile. It is sized to Apple's icon grid (the rounded square at 824px on the 1024px canvas, corners transparent), so it sits in the Dock at the same size as every other app. The build input is `assets/boojy-notes-app-icon.png`, generated from the full-bleed source export beside it.
+- **Dependency and security maintenance** — Electron 42.4.0 to 42.11.2 (the Chromium fixes of seven patch releases), Vite 6.4.3, and the patched in-range versions of every transitive dependency with an open advisory, including the YAML parser the auto-updater ships. The full open Dependabot set was cleared and `pnpm audit` reports nothing in either mode. No product or code changes.
 
 ### Bug Fixes
 - **Dividers can be selected and deleted, and mean "divider" on disk** — A divider was a block nothing owned: you could type `---` to make one but not click it, land on it with the arrow keys or delete it, and Backspace from the paragraph below stepped over it and merged your text into the paragraph above. Now a click selects it (a soft accent band appears around the rule), Backspace or Delete removes it, Enter opens a paragraph under it, and the arrow keys stop on it on the way past. Backspace at the start of the paragraph below selects the divider first and a second Backspace removes it, so nothing merges across a line you can still see. Images follow the same grammar. The gutter grip can now lift a divider too. Underneath, a divider typed straight after a paragraph was written with no blank line before it, which every other Markdown reader takes for a heading underline: Obsidian showed a heading and no divider at all. The blank line is now written, and read back as structure rather than as an empty row, so an Obsidian-authored divider no longer opens with a stray empty row above it.
