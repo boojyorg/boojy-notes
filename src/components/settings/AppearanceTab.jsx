@@ -1,104 +1,21 @@
 import { useTheme } from "../../hooks/useTheme";
-import { useSettings, FONT_SIZE_MIN, FONT_SIZE_MAX } from "../../context/SettingsContext";
 import { useLayout } from "../../context/LayoutContext";
 import { spacing } from "../../tokens/spacing";
 import { radius } from "../../tokens/radius";
 import { fontSize, fontWeight } from "../../tokens/typography";
 
 export default function AppearanceTab({ SectionHeader }) {
-  const { settingsFontSize, setSettingsFontSize } = useSettings();
-
   const { accentColor } = useLayout();
-
-  const {
-    theme,
-    themeMode,
-    setThemeMode,
-    autoMethod,
-    setAutoMethod,
-    isDark,
-    dayStartHour,
-    setDayStartHour,
-    dayEndHour,
-    setDayEndHour,
-  } = useTheme();
+  const { theme, themeMode, setThemeMode, isDark } = useTheme();
   const { BG, TEXT } = theme;
 
   return (
     <div>
       <SectionHeader title="Appearance" />
-      {/* Font size row */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "2px 0",
-        }}
-      >
-        <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Font size</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            style={{
-              fontSize: fontSize.md,
-              color: TEXT.secondary,
-              minWidth: 20,
-              textAlign: "center",
-            }}
-          >
-            {settingsFontSize}
-          </span>
-          <button
-            onClick={() => setSettingsFontSize((prev) => Math.max(FONT_SIZE_MIN, prev - 1))}
-            onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
-            onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: radius.default,
-              background: theme.overlay(0.05),
-              border: `1px solid ${theme.overlay(0.08)}`,
-              color: TEXT.secondary,
-              fontSize: 15,
-              fontWeight: fontWeight.medium,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background 0.15s",
-              fontFamily: "inherit",
-            }}
-          >
-            {"\u2212"}
-          </button>
-          <button
-            onClick={() => setSettingsFontSize((prev) => Math.min(FONT_SIZE_MAX, prev + 1))}
-            onMouseEnter={(e) => (e.currentTarget.style.background = theme.overlay(0.08))}
-            onMouseLeave={(e) => (e.currentTarget.style.background = theme.overlay(0.05))}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: radius.default,
-              background: theme.overlay(0.05),
-              border: `1px solid ${theme.overlay(0.08)}`,
-              color: TEXT.secondary,
-              fontSize: 15,
-              fontWeight: fontWeight.medium,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background 0.15s",
-              fontFamily: "inherit",
-            }}
-          >
-            +
-          </button>
-        </div>
-      </div>
 
-      {/* UI scale has no settings row — it stays a keyboard feature
-          (Cmd+Plus / Cmd+Minus / Cmd+0 in useAppKeyboard). */}
+      {/* Appearance is the theme picker alone. UI scale stays a keyboard
+          feature (Cmd+Plus / Cmd+Minus / Cmd+0 in useAppKeyboard); the
+          font-size row that sat here was removed on 2026-09-05. */}
 
       {/* Theme row */}
       <div
@@ -106,7 +23,7 @@ export default function AppearanceTab({ SectionHeader }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "10px 0 2px",
+          padding: "2px 0",
         }}
       >
         <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Theme</span>
@@ -118,13 +35,13 @@ export default function AppearanceTab({ SectionHeader }) {
             border: `1px solid ${BG.divider}`,
           }}
         >
-          {/* Stored keys stay "day"/"night" so every saved preference keeps
-              working; only the labels say Light/Dark. Light leads — it is
-              the default theme. */}
+          {/* Stored keys stay "day"/"night"/"auto" so every saved preference
+              keeps working; only the labels say Light/Dark/System. Light
+              leads — it is the default theme. */}
           {[
             ["day", "Light"],
             ["night", "Dark"],
-            ["auto", "Auto"],
+            ["auto", "System"],
           ].map(([mode, label]) => (
             <button
               key={mode}
@@ -146,112 +63,6 @@ export default function AppearanceTab({ SectionHeader }) {
           ))}
         </div>
       </div>
-
-      {/* Auto method row */}
-      {themeMode === "auto" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 0 2px",
-          }}
-        >
-          <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>Auto method</span>
-          <div
-            style={{
-              display: "flex",
-              borderRadius: radius.default,
-              overflow: "hidden",
-              border: `1px solid ${BG.divider}`,
-            }}
-          >
-            {[
-              { value: "system", label: "System" },
-              { value: "time", label: "Time of day" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setAutoMethod(opt.value)}
-                style={{
-                  background: autoMethod === opt.value ? accentColor : "transparent",
-                  color: autoMethod === opt.value ? (isDark ? BG.darkest : "#fff") : TEXT.muted,
-                  border: "none",
-                  padding: "3px 10px",
-                  fontSize: fontSize.xs,
-                  fontWeight: fontWeight.medium,
-                  cursor: "pointer",
-                  transition: "background 0.15s, color 0.15s",
-                  fontFamily: "inherit",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Schedule row */}
-      {themeMode === "auto" && autoMethod === "time" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 0 2px",
-          }}
-        >
-          <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>Schedule</span>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: spacing.sm,
-              fontSize: fontSize.sm,
-            }}
-          >
-            <span style={{ color: TEXT.muted }}>Light</span>
-            <select
-              value={dayStartHour}
-              onChange={(e) => setDayStartHour(+e.target.value)}
-              style={{
-                background: theme.overlay(0.05),
-                border: `1px solid ${theme.overlay(0.08)}`,
-                borderRadius: radius.sm,
-                color: TEXT.secondary,
-                fontSize: fontSize.sm,
-                padding: "2px 4px",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>{`${i}:00`}</option>
-              ))}
-            </select>
-            <span style={{ color: TEXT.muted }}>to</span>
-            <select
-              value={dayEndHour}
-              onChange={(e) => setDayEndHour(+e.target.value)}
-              style={{
-                background: theme.overlay(0.05),
-                border: `1px solid ${theme.overlay(0.08)}`,
-                borderRadius: radius.sm,
-                color: TEXT.secondary,
-                fontSize: fontSize.sm,
-                padding: "2px 4px",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>{`${i}:00`}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

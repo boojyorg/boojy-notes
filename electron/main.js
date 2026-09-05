@@ -219,27 +219,10 @@ app.whenReady().then(async () => {
       : []),
     {
       label: "File",
-      submenu: [
-        {
-          label: "Import",
-          submenu: [
-            {
-              label: "Markdown Files...",
-              click: () => mainWindow?.webContents.send("menu:import", "markdown"),
-            },
-            {
-              label: "HTML Files...",
-              click: () => mainWindow?.webContents.send("menu:import", "html"),
-            },
-            {
-              label: "Folder...",
-              click: () => mainWindow?.webContents.send("menu:import", "folder"),
-            },
-          ],
-        },
-        { type: "separator" },
-        process.platform === "darwin" ? { role: "close" } : { role: "quit" },
-      ],
+      // Import (Markdown / HTML / Folder) was removed 2026-09-05: a folder in
+      // the sidebar is a directory, so files dropped into the vault in the OS
+      // file manager simply appear.
+      submenu: [process.platform === "darwin" ? { role: "close" } : { role: "quit" }],
     },
     {
       label: "Edit",

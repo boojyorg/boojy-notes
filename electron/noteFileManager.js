@@ -499,49 +499,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     const dataBase64 = fs.readFileSync(filePath).toString("base64");
     return { fileName: path.basename(filePath), dataBase64 };
   });
-
-  // ─── Import IPC handlers ───
-
-  ipcMain.handle("import:markdown", async (_event, opts) => {
-    const result = await dialog.showOpenDialog(getMainWindow(), {
-      properties: ["openFile", "multiSelections"],
-      filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
-    });
-    if (result.canceled) return { imported: [] };
-    const { importMarkdownFiles } = await import("./import.js");
-    const notesDir = getNotesDir();
-    const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
-    fs.mkdirSync(targetDir, { recursive: true });
-    const imported = importMarkdownFiles(result.filePaths, targetDir);
-    return { imported };
-  });
-
-  ipcMain.handle("import:html", async (_event, opts) => {
-    const result = await dialog.showOpenDialog(getMainWindow(), {
-      properties: ["openFile", "multiSelections"],
-      filters: [{ name: "HTML", extensions: ["html", "htm"] }],
-    });
-    if (result.canceled) return { imported: [] };
-    const { importHtmlFiles } = await import("./import.js");
-    const notesDir = getNotesDir();
-    const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
-    fs.mkdirSync(targetDir, { recursive: true });
-    const imported = await importHtmlFiles(result.filePaths, targetDir);
-    return { imported };
-  });
-
-  ipcMain.handle("import:folder", async (_event, opts) => {
-    const result = await dialog.showOpenDialog(getMainWindow(), {
-      properties: ["openDirectory"],
-    });
-    if (result.canceled) return { imported: [] };
-    const { importMarkdownFolder } = await import("./import.js");
-    const notesDir = getNotesDir();
-    const targetDir = opts?.targetFolder ? path.join(notesDir, opts.targetFolder) : notesDir;
-    fs.mkdirSync(targetDir, { recursive: true });
-    const imported = importMarkdownFolder(result.filePaths[0], targetDir);
-    return { imported };
-  });
 }
 
 export {

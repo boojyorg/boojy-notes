@@ -63,7 +63,6 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 }));
 
 const settingsState = {
-  settingsFontSize: 15,
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
 };
@@ -485,34 +484,20 @@ describe("Sidebar", () => {
     expect(queryByRole("menu", { name: "Vault options" })).not.toBeInTheDocument();
   });
 
-  it("collapses every folder from the menu", () => {
-    const setExpanded = vi.fn();
-    const { getByLabelText, getByRole } = renderSidebar({
-      setExpanded,
-      expanded: { A: true, "A/B": true },
-    });
-    fireEvent.click(getByLabelText("Vault options"));
-    fireEvent.click(getByRole("menuitem", { name: "Collapse all folders" }));
-    expect(setExpanded).toHaveBeenCalledWith({});
-  });
-
-  it("offers the desktop vault actions only when handlers are provided", () => {
-    const { getByLabelText, queryByRole, rerender, unmount } = renderSidebar();
+  it("offers Reveal only when a handler is provided, and never Collapse all or Change vault", () => {
+    const { getByLabelText, queryByRole, unmount } = renderSidebar();
     fireEvent.click(getByLabelText("Vault options"));
     expect(queryByRole("menuitem", { name: /Reveal in Finder|Show in folder/ })).toBeNull();
-    expect(queryByRole("menuitem", { name: "Change vault folder…" })).toBeNull();
     unmount();
 
     const onRevealVault = vi.fn();
-    const onChangeVault = vi.fn();
-    const r = renderSidebar({ onRevealVault, onChangeVault });
+    const r = renderSidebar({ onRevealVault });
     fireEvent.click(r.getByLabelText("Vault options"));
+    // Both removed 2026-09-05: Change vault folder is Settings → Storage only.
+    expect(r.queryByRole("menuitem", { name: "Collapse all folders" })).toBeNull();
+    expect(r.queryByRole("menuitem", { name: "Change vault folder…" })).toBeNull();
     fireEvent.click(r.getByRole("menuitem", { name: /Reveal in Finder|Show in folder/ }));
     expect(onRevealVault).toHaveBeenCalled();
-    fireEvent.click(r.getByLabelText("Vault options"));
-    fireEvent.click(r.getByRole("menuitem", { name: "Change vault folder…" }));
-    expect(onChangeVault).toHaveBeenCalled();
-    void rerender;
   });
 
   // The header's two controls are hover-revealed (New note moved to the editor

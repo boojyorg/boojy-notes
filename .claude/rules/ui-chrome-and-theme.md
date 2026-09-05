@@ -10,15 +10,17 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
 
 - **Product terminology is Light / Dark / System.** The stored preference keys stay
   `day` / `night` / `auto`, and the theme objects stay `DAY` / `NIGHT`; renaming either would
-  orphan saved preferences for no user benefit. Copy changes, keys don't.
+  orphan saved preferences for no user benefit. Copy changes, keys don't. System (`auto`)
+  follows the OS appearance and nothing else; the time-of-day schedule that used to sit under
+  it was removed on 2026-09-05, and a saved `autoMethod` is ignored.
 - Light is the first-run default when nothing is saved; a saved choice always wins.
 - Electron's first-paint `backgroundColor` is Light's ground, so a Dark user sees one brief
   light flash at launch. Wiring the saved theme back to the main process is the fix if it ever
   grates.
 - The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
   Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
-- The star field (`StarField.jsx`, `starField` on each theme) is leaving the product in its
-  own branch; don't extend it.
+- There is no decorative background. The Dark star field was removed on 2026-09-05 (git has
+  it, tag-free); the editor ground is the theme's `BG.editor` and nothing else.
 
 **Surface roles, Light, in order light → dark.** Use them by role, not by which grey looks
 right; naming greys by darkness is what makes every region read as a separate boxed panel.
@@ -105,6 +107,9 @@ mixed sizes and strokes is what made the UI read as assembled.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+  Appearance is the theme picker alone: the font-size row (`settingsFontSize`, 10–24) was
+  removed on 2026-09-05 because the scale shortcuts already size everything, and body text is
+  the fixed `EDITOR_FONT_SIZE` in `EditableBlock`. Don't reintroduce `settingsFontSize` in mocks.
 - **One zoom system: the app's own UI scale.** The View menu carries no `zoomIn` / `zoomOut` /
   `resetZoom` roles, because a menu role takes the shortcut before the renderer sees it, so the
   app's scale never fired and Chromium's page zoom ran instead, persisted per origin in the
@@ -221,9 +226,11 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above;
   two rows of 18px glyphs stacked read as two toolbars, which is why New note left the header.
   **Never a third glyph here.** New folder is also the first item of the ··· menu, the
-  standing hint for a hover-revealed control and the keyboard path. Sort, Collapse all
-  folders, Reveal in Finder and Change vault folder follow (`VaultMenu.tsx`, keyboard grammar
-  as `ContextMenu`); anything rarer goes there too, never onto the header. The
+  standing hint for a hover-revealed control and the keyboard path. Sort and Reveal in Finder
+  follow (`VaultMenu.tsx`, keyboard grammar as `ContextMenu`); anything rarer goes there too,
+  never onto the header. Not in the menu, by decision (2026-09-05): Collapse all folders
+  (folders toggle on click and persist as left) and Change vault folder, which is Settings →
+  Storage only, beside the path it changes. The
   `--visible` variant of `SectionAction` exists for a control that must show at rest; nothing
   uses it today.
 - **One `role="tree"`, the header a sibling above it, never inside it.** A header inside a tree

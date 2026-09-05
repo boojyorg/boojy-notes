@@ -21,7 +21,6 @@ const ContextMenu = memo(function ContextMenu({
   createFolder,
   setRenamingFolder,
   onRenameNote,
-  onImport,
   onRevealFolder,
   selectedNotes,
   selectedCount,
@@ -155,17 +154,6 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
-            ...(onImport
-              ? [
-                  {
-                    label: "Import files here",
-                    action: () => {
-                      onImport(ctxMenu.id);
-                      setCtxMenu(null);
-                    },
-                  },
-                ]
-              : []),
             {
               label: "Rename",
               action: () => {

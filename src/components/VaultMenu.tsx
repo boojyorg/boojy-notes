@@ -12,6 +12,10 @@ import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
  * ever earns its place. Same keyboard grammar as ContextMenu: arrows move,
  * Enter/Space activate, Escape closes; a pointer-opened menu parks initial
  * focus on the container so no item paints a focus ring.
+ *
+ * Deliberately absent (removed 2026-09-05): "Collapse all folders", since
+ * folders toggle on click and stay as left across launches; and "Change vault
+ * folder…", which lives in Settings → Storage only, beside the path it changes.
  */
 
 interface VaultMenuProps {
@@ -19,13 +23,10 @@ interface VaultMenuProps {
   anchor: { top: number; bottom: number; left: number; right: number };
   sortMode: string;
   setSortMode: (mode: string) => void;
-  onCollapseAll: () => void;
   /** The standing hint for a control that is hover-revealed on the header. */
   onNewFolder: () => void;
   /** Desktop only: show the vault directory in the OS file manager. */
   onReveal?: () => void;
-  /** Desktop only: pick another vault directory. */
-  onChangeVault?: () => void;
   revealLabel: string;
   onClose: () => void;
 }
@@ -48,10 +49,8 @@ export default function VaultMenu({
   anchor,
   sortMode,
   setSortMode,
-  onCollapseAll,
   onNewFolder,
   onReveal,
-  onChangeVault,
   revealLabel,
   onClose,
 }: VaultMenuProps) {
@@ -100,14 +99,6 @@ export default function VaultMenu({
           onClose();
         },
       },
-      {
-        label: "Collapse all folders",
-        separator: true,
-        action: () => {
-          onCollapseAll();
-          onClose();
-        },
-      },
     ];
     if (onReveal) {
       list.push({
@@ -119,27 +110,8 @@ export default function VaultMenu({
         },
       });
     }
-    if (onChangeVault) {
-      list.push({
-        label: "Change vault folder…",
-        separator: !onReveal,
-        action: () => {
-          onChangeVault();
-          onClose();
-        },
-      });
-    }
     return list;
-  }, [
-    sortMode,
-    setSortMode,
-    onCollapseAll,
-    onNewFolder,
-    onReveal,
-    onChangeVault,
-    revealLabel,
-    onClose,
-  ]);
+  }, [sortMode, setSortMode, onNewFolder, onReveal, revealLabel, onClose]);
 
   const interactive = useMemo(
     () => items.map((item, i) => (item.heading ? -1 : i)).filter((i) => i >= 0),

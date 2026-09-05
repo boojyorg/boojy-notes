@@ -290,9 +290,9 @@ const Sidebar = memo(function Sidebar({
   isMobile,
   // The vault folder's basename ("Notes" on web, where there is no folder).
   vaultName = "Notes",
-  // Desktop only: the ··· menu's whole-vault actions.
+  // Desktop only: the ··· menu's whole-vault action. (Change vault folder is
+  // Settings → Storage only.)
   onRevealVault,
-  onChangeVault,
   // Desktop only: the chrome row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
@@ -329,7 +329,6 @@ const Sidebar = memo(function Sidebar({
   // Anchor rect of the ··· trigger, or null when the vault menu is closed.
   const [vaultMenuAnchor, setVaultMenuAnchor] = useState(null);
   const closeVaultMenu = () => setVaultMenuAnchor(null);
-  const collapseAllFolders = () => setExpanded({});
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -1110,10 +1109,8 @@ const Sidebar = memo(function Sidebar({
                     anchor={vaultMenuAnchor}
                     sortMode={sortMode}
                     setSortMode={setSortMode}
-                    onCollapseAll={collapseAllFolders}
                     onNewFolder={() => createFolder(null)}
                     onReveal={onRevealVault}
-                    onChangeVault={onChangeVault}
                     revealLabel={isElectronMac ? "Reveal in Finder" : "Show in folder"}
                     onClose={closeVaultMenu}
                   />

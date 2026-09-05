@@ -1,13 +1,12 @@
 import { useCallback, useMemo, useRef } from "react";
-import { buildBacklinkIndex, getBacklinksForNote } from "../utils/backlinkIndex";
 import { placeCaret } from "../utils/domHelpers";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 
 /**
- * Wikilink + backlink wiring for the editor:
+ * Wikilink wiring for the editor:
  *   - the note-title set used to detect broken `[[links]]`,
- *   - the backlink index + the current note's backlinks,
  *   - click / Cmd-click navigation, and autocomplete insertion.
+ * (The backlink index and the panel under the note were removed 2026-09-05.)
  *
  * Extracted from BoojyNotes. Two subtleties are preserved verbatim:
  *   1. `noteTitlesKey` short-circuits on `textOnlyEdit` so plain typing doesn't
@@ -19,8 +18,6 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 export function useWikilinkHandlers({
   noteData,
   noteDataRef,
-  activeNote,
-  note,
   textOnlyEdit,
   openNote,
   createNote,
@@ -49,17 +46,6 @@ export function useWikilinkHandlers({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteData]);
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
-
-  // Backlink index
-  const backlinkIndex = useMemo(
-    () => buildBacklinkIndex(noteDataRef.current),
-    [noteTitlesKey, activeNote], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-  const noteTitle = note?.title;
-  const currentBacklinks = useMemo(
-    () => (noteTitle ? getBacklinksForNote(backlinkIndex, noteTitle) : []),
-    [backlinkIndex, noteTitle],
-  );
 
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
@@ -137,7 +123,6 @@ export function useWikilinkHandlers({
 
   return {
     noteTitleSet,
-    currentBacklinks,
     handleWikilinkClick,
     handleWikilinkCmdClick,
     handleWikilinkSelect,

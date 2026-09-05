@@ -38,7 +38,6 @@ import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
-import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
@@ -46,7 +45,6 @@ import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { useTagHandlers } from "./hooks/useTagHandlers";
-import { useImport } from "./hooks/useImport";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
@@ -139,11 +137,6 @@ export default function BoojyNotes() {
   const { activeNote, setActiveNote } = useActiveNote();
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
-
-  const { activeHint, dismissHint } = useOnboardingHints({
-    noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
-    isEditorFocused: !!activeNote,
-  });
 
   // Keep document + native window title in sync with the active note
   useDocumentTitle(activeNote, noteData[activeNote]?.title);
@@ -403,9 +396,6 @@ export default function BoojyNotes() {
   });
 
   // ── Effects ─────────────────────────────────────────────────────────
-  // Import handlers, plus the Electron File-menu listener
-  const { handleImportIntoFolder } = useImport();
-
   // Editor fade-in + title sync
   useEffect(() => {
     setEditorFadeIn(false);
@@ -541,29 +531,22 @@ export default function BoojyNotes() {
   const noteTitle = note?.title;
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
-  // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)
-  const {
-    noteTitleSet,
-    currentBacklinks,
-    handleWikilinkClick,
-    handleWikilinkCmdClick,
-    handleWikilinkSelect,
-  } = useWikilinkHandlers({
-    noteData,
-    noteDataRef,
-    activeNote,
-    note,
-    textOnlyEdit,
-    openNote,
-    createNote,
-    wikilinkMenuRef,
-    setWikilinkMenu,
-    syncGeneration,
-    commitNoteData,
-    blockRefs,
-    focusBlockId,
-    focusCursorPos,
-  });
+  // Wikilink wiring (title set, click/cmd-click/select)
+  const { noteTitleSet, handleWikilinkClick, handleWikilinkCmdClick, handleWikilinkSelect } =
+    useWikilinkHandlers({
+      noteData,
+      noteDataRef,
+      textOnlyEdit,
+      openNote,
+      createNote,
+      wikilinkMenuRef,
+      setWikilinkMenu,
+      syncGeneration,
+      commitNoteData,
+      blockRefs,
+      focusBlockId,
+      focusCursorPos,
+    });
   noteTitleSetRef.current = noteTitleSet;
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
@@ -793,7 +776,6 @@ export default function BoojyNotes() {
             isMobile={isMobile}
             vaultName={vaultName}
             onRevealVault={isElectron ? revealVault : undefined}
-            onChangeVault={isElectron ? changeNotesDir : undefined}
             onOpenSearch={openSearch}
           />
           {isMobile && !activeNote && (
@@ -910,11 +892,9 @@ export default function BoojyNotes() {
               note={note}
               activeNote={activeNote}
               editorFadeIn={editorFadeIn}
-              backlinks={currentBacklinks}
               onWikilinkClick={handleWikilinkClick}
               onWikilinkCmdClick={handleWikilinkCmdClick}
               onTagClick={handleTagClick}
-              onOpenBacklink={openNote}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}
               linkPopover={linkPopover}
@@ -924,8 +904,6 @@ export default function BoojyNotes() {
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}
-              activeHint={activeHint}
-              dismissHint={dismissHint}
             />
             {isMobile && (
               <MobileToolbar
@@ -992,9 +970,6 @@ export default function BoojyNotes() {
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
         onRevealFolder={folderOps?.reveal}
-        // Import is a desktop file-picker flow; the item would be a dead
-        // click on web, so it isn't offered there.
-        onImport={isElectron ? handleImportIntoFolder : undefined}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}
