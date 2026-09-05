@@ -14,7 +14,6 @@ import FloatingToolbar from "./FloatingToolbar";
 import BacklinksPanel from "./BacklinksPanel";
 import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
-import OnboardingHint from "./OnboardingHint";
 import LinkContextMenu from "./LinkContextMenu";
 import { getBlockFromNode, placeCaret, isEditableBlock, titleFieldText } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
@@ -113,8 +112,6 @@ const EditorArea = memo(
     openNote: openNoteProp,
     onEditorClick,
     onWikilinkCmdClick,
-    activeHint,
-    dismissHint,
   }) {
     const {
       editorRef,
@@ -452,9 +449,6 @@ const EditorArea = memo(
               zIndex: Z.BASE,
             }}
           >
-            {activeHint && (
-              <OnboardingHint hint={activeHint} onDismiss={dismissHint} accentColor={accentColor} />
-            )}
             {/* File label — see the LABEL_* constants for why it looks like this.
                 The breadcrumb that used to sit above it is gone: it only ever
                 populated for notes created in-session inside a folder, so it
@@ -912,8 +906,7 @@ const EditorArea = memo(
       prev.linkPopover === next.linkPopover &&
       prev.selectedImageBlockId === next.selectedImageBlockId &&
       prev.lightbox === next.lightbox &&
-      prev.backlinks === next.backlinks &&
-      prev.activeHint === next.activeHint;
+      prev.backlinks === next.backlinks;
     const dt = performance.now() - t0;
     if (import.meta.env.DEV && dt > 0.5)
       console.warn(

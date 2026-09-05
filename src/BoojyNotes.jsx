@@ -38,7 +38,6 @@ import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
-import useOnboardingHints from "./hooks/useOnboardingHints";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
@@ -139,11 +138,6 @@ export default function BoojyNotes() {
   const { activeNote, setActiveNote } = useActiveNote();
 
   const [editorFadeIn, setEditorFadeIn] = useState(false);
-
-  const { activeHint, dismissHint } = useOnboardingHints({
-    noteCount: Object.keys(noteData).filter((id) => !noteData[id]._draft).length,
-    isEditorFocused: !!activeNote,
-  });
 
   // Keep document + native window title in sync with the active note
   useDocumentTitle(activeNote, noteData[activeNote]?.title);
@@ -924,8 +918,6 @@ export default function BoojyNotes() {
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}
-              activeHint={activeHint}
-              dismissHint={dismissHint}
             />
             {isMobile && (
               <MobileToolbar
