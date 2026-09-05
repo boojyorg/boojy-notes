@@ -167,17 +167,23 @@ describe("EditableBlock", () => {
     expect(registerRef).toHaveBeenCalledWith(block.id, root);
   });
 
-  it("a click on a divider selects it, and a selected divider paints the rule in the accent", () => {
+  it("a click on a divider selects it; selected, a tinted band appears and the rule lifts to the accent", () => {
     const block = spacer();
     const onBlockSelect = vi.fn();
     const { container, rerender } = renderBlock(block, { onBlockSelect });
+    const root = () => container.querySelector('[data-block-type="spacer"]');
     fireEvent.click(container.querySelector("hr"));
     expect(onBlockSelect).toHaveBeenCalledWith(block.id);
-    expect(container.querySelector("hr").style.borderTop).toMatch(/^1px solid/);
+    expect(root().style.background).toBe("transparent");
+    expect(container.querySelector("hr").style.borderTop).toBe("1px solid rgb(85, 85, 85)");
     expect(container.querySelector("[data-selected]")).toBeNull();
 
     rerender(<EditableBlock {...baseProps(block, { isBlockSelected: true })} />);
-    expect(container.querySelector("hr").style.borderTop).toMatch(/^2px solid/);
+    // accentColor #A4CACE at 10% (Light) around it, the rule at 40% inside; still 1px.
+    expect(root().style.background).toBe("rgba(164, 202, 206, 0.1)");
+    expect(container.querySelector("hr").style.borderTop).toBe(
+      "1px solid rgba(164, 202, 206, 0.4)",
+    );
     expect(container.querySelector('[data-selected="true"]')).toBeInTheDocument();
   });
 
