@@ -268,6 +268,16 @@ describe("markdown round-trip — intrinsic, documented losses", () => {
   });
 });
 
+describe("divider tight under a paragraph: a documented byte change", () => {
+  it("`---` straight under a paragraph line reads as a divider and is written back with the blank line", () => {
+    // Outside Boojy Notes the tight form is a setext heading underline: the file
+    // meant "a heading called hello" while the editor showed a divider. The
+    // first save writes the blank so the file means what the editor showed.
+    // Reading it as a heading instead is an open decision in docs/BACKLOG.md.
+    expect(blocksToMarkdown(markdownToBlocks("hello\n---\nworld"))).toBe("hello\n\n---\nworld");
+  });
+});
+
 describe("table cells with literal pipes (preservation fix, 2026-08)", () => {
   // A naive split("|") used to delete cell content on files using `\|` —
   // the worst finding of the preservation damage report.
@@ -453,6 +463,43 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     const blocks = [bullet("item"), p("After the list.")];
     expect(blocksToMarkdown(blocks)).toBe("- item\n\nAfter the list.");
     expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  const spacer = () => ({ type: "spacer", text: "" });
+
+  it("a divider after a paragraph is written with a blank line: `---` straight under text is a heading underline elsewhere", () => {
+    const blocks = [p("Before."), spacer(), p("After.")];
+    expect(blocksToMarkdown(blocks)).toBe("Before.\n\n---\nAfter.");
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("a divider after a list item is written with the same blank line", () => {
+    const blocks = [bullet("item"), spacer(), p("After.")];
+    expect(blocksToMarkdown(blocks)).toBe("- item\n\n---\nAfter.");
+    expect(roundTrip(blocks)).toEqual(blocks);
+  });
+
+  it("one blank line before a divider is the separator, not a row; a blank after it is a row", () => {
+    expect(stripIds(markdownToBlocks("Before.\n\n---\nAfter."))).toEqual([
+      p("Before."),
+      spacer(),
+      p("After."),
+    ]);
+    expect(stripIds(markdownToBlocks("Before.\n\n---\n\nAfter."))).toEqual([
+      p("Before."),
+      spacer(),
+      p(""),
+      p("After."),
+    ]);
+    for (const md of [
+      "Before.\n\n---\nAfter.",
+      "Before.\n\n---\n\nAfter.",
+      "Before.\n\n\n---\nAfter.",
+      "# Heading\n---\nAfter.",
+      "> quoted\n---\nAfter.",
+    ]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
   });
 
   it("a plain line directly under a list item is the item's continuation", () => {

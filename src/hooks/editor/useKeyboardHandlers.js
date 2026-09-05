@@ -1,5 +1,29 @@
 import { useCallback } from "react";
-import { findNearestBlock, isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import {
+  findNearestBlock,
+  isEditableBlock,
+  isSelectableBlock,
+  placeCaret,
+} from "../../utils/domHelpers";
+
+/**
+ * Where Backspace at the start of a block, or ArrowUp from its first line,
+ * lands: the nearest block above that holds a caret or is selected as a whole
+ * (a divider or an image). -1 at the top. Blocks that are neither (code,
+ * table, callout, file) are stepped over as before.
+ */
+function landingBefore(blocks, index) {
+  let i = index - 1;
+  while (i >= 0 && !isEditableBlock(blocks[i]) && !isSelectableBlock(blocks[i])) i--;
+  return i;
+}
+
+/** The ArrowDown counterpart of landingBefore. -1 at the bottom. */
+function landingAfter(blocks, index) {
+  let i = index + 1;
+  while (i < blocks.length && !isEditableBlock(blocks[i]) && !isSelectableBlock(blocks[i])) i++;
+  return i < blocks.length ? i : -1;
+}
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
 import { filterSlashCommands } from "../../constants/data";
@@ -28,6 +52,7 @@ export function useKeyboardHandlers({
   onOpenLinkEditor,
   updateBlockIndent,
   moveBlock,
+  selectBlock,
   getBlock,
   executeSlashCommand,
   handleBlockInput: _handleBlockInput,
@@ -194,8 +219,13 @@ export function useKeyboardHandlers({
         }
         if (blocks.length <= 1) return;
         e.preventDefault();
-        let prevIdx = blockIndex - 1;
-        while (prevIdx >= 0 && !isEditableBlock(blocks[prevIdx])) prevIdx--;
+        const prevIdx = landingBefore(blocks, blockIndex);
+        if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
+          // A divider or image above: select it rather than stepping over it.
+          // The next Backspace removes it; this empty row stays until then.
+          selectBlock(blocks[prevIdx].id);
+          return;
+        }
         if (prevIdx >= 0) {
           focusBlockId.current = blocks[prevIdx].id;
           focusCursorPos.current = (blocks[prevIdx].text || "").length;
@@ -218,8 +248,14 @@ export function useKeyboardHandlers({
               focusCursorPos.current = 0;
               return;
             }
-            let prevIdx = blockIndex - 1;
-            while (prevIdx >= 0 && !isEditableBlock(blocks[prevIdx])) prevIdx--;
+            const prevIdx = landingBefore(blocks, blockIndex);
+            if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
+              // Never merge text across a divider or image the user can see:
+              // select it, and let the next Backspace remove it.
+              e.preventDefault();
+              selectBlock(blocks[prevIdx].id);
+              return;
+            }
             if (prevIdx >= 0) {
               e.preventDefault();
               const prevBlock = blocks[prevIdx];
@@ -249,9 +285,10 @@ export function useKeyboardHandlers({
             const titleEl = editorRef.current?.parentElement?.querySelector("h1[contenteditable]");
             if (titleEl) titleEl.focus();
           } else {
-            let prevIdx = blockIndex - 1;
-            while (prevIdx >= 0 && !isEditableBlock(blocks[prevIdx])) prevIdx--;
-            if (prevIdx >= 0) {
+            const prevIdx = landingBefore(blocks, blockIndex);
+            if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
+              selectBlock(blocks[prevIdx].id);
+            } else if (prevIdx >= 0) {
               const prevEl = blockRefs.current[blocks[prevIdx].id];
               if (prevEl) placeCaret(prevEl, (blocks[prevIdx].text || "").length);
             }
@@ -268,12 +305,15 @@ export function useKeyboardHandlers({
         const rect = range.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
         if (elRect.bottom - rect.bottom < 5) {
-          let nextIdx = blockIndex + 1;
-          while (nextIdx < blocks.length && !isEditableBlock(blocks[nextIdx])) nextIdx++;
-          if (nextIdx < blocks.length) {
+          const nextIdx = landingAfter(blocks, blockIndex);
+          if (nextIdx >= 0) {
             e.preventDefault();
-            const nextEl = blockRefs.current[blocks[nextIdx].id];
-            if (nextEl) placeCaret(nextEl, 0);
+            if (isSelectableBlock(blocks[nextIdx])) {
+              selectBlock(blocks[nextIdx].id);
+            } else {
+              const nextEl = blockRefs.current[blocks[nextIdx].id];
+              if (nextEl) placeCaret(nextEl, 0);
+            }
           }
         }
       }

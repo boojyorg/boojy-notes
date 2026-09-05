@@ -66,12 +66,19 @@ const isTextParagraph = (b) => b.type === "p" && !isBlankParagraph(b);
  * bytes on save; it stays its own paragraph, and no separator is written.
  */
 const absorbsFollowingLine = (b) => isTextParagraph(b) || isListItem(b);
+/**
+ * A block that needs the single separator blank after an absorbing block: a
+ * text paragraph, or a divider. Without the blank a reader folds the paragraph
+ * into the block above, and takes `---` under a paragraph for a setext heading
+ * underline: `hello` / `---` is a heading called "hello" and no divider at all.
+ */
+const takesSeparator = (b) => isTextParagraph(b) || b.type === "spacer";
 
 /**
  * From one block per source line to one block per structure: merge adjacent
  * plain lines into a paragraph, attach a lazy continuation to its list item,
  * and drop the single separator blank between an absorbing block and the
- * paragraph after it. Extra blanks stay, as empty paragraph blocks.
+ * paragraph or divider after it. Extra blanks stay, as empty paragraph blocks.
  */
 function structureParagraphs(lineBlocks) {
   const merged = [];
@@ -96,7 +103,7 @@ function structureParagraphs(lineBlocks) {
       // kept literally, every line a row, and the serializer writes no
       // separator in front of it. The two rules mirror each other on the run.
       const literalRun = merged.slice(i, j).some((r) => (r.text || "") !== "");
-      if (j < merged.length && isTextParagraph(merged[j]) && !literalRun) {
+      if (j < merged.length && takesSeparator(merged[j]) && !literalRun) {
         for (let k = i + 1; k < j; k++) out.push(merged[k]);
         i = j - 1;
         continue;
@@ -135,10 +142,11 @@ export function blocksToMarkdown(blocks) {
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     numCounter = block.type === "numbered" ? (block.num ?? numCounter + 1) : 0;
-    if (isTextParagraph(block)) {
-      // A paragraph after a paragraph or a list item needs one blank line, or
-      // a conventional reader folds it into the block above. The blank goes
-      // right after that block; empty rows between them follow it.
+    if (takesSeparator(block)) {
+      // A paragraph or divider after a paragraph or a list item needs one blank
+      // line, or a conventional reader folds the paragraph into the block above
+      // and reads the divider as a heading underline. The blank goes right
+      // after that block; empty rows between them follow it.
       let j = i - 1;
       let literalRun = false;
       while (j >= 0 && isBlankParagraph(blocks[j])) {

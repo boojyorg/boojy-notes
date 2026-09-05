@@ -1,0 +1,11 @@
+paragraph "A paragraph before the rule."
+thematic break
+paragraph "A paragraph after the rule, then a list."
+bullet list
+  item
+    paragraph "one"
+  item
+    paragraph "two"
+thematic break
+h2 "After the second rule"
+paragraph "Closing paragraph."

@@ -277,8 +277,8 @@ export default function BoojyNotes() {
     onError: showToast,
   });
 
-  // Image selection + lightbox state
-  const [selectedImageBlockId, setSelectedImageBlockId] = useState(null);
+  // The selected whole block (a divider or an image; see isSelectableBlock) + lightbox state
+  const [selectedBlockId, setSelectedBlockId] = useState(null);
 
   // Link popover state
   const [linkPopover, setLinkPopover] = useState(null);
@@ -374,6 +374,7 @@ export default function BoojyNotes() {
     onOpenLinkEditor: openLinkEditor,
     updateBlockIndent,
     moveBlock,
+    selectBlock: setSelectedBlockId,
     onError: showToast,
   });
   // Search-result navigation (clear multi-select on search; scroll + highlight on open)
@@ -399,7 +400,7 @@ export default function BoojyNotes() {
   // Editor fade-in + title sync
   useEffect(() => {
     setEditorFadeIn(false);
-    setSelectedImageBlockId(null);
+    setSelectedBlockId(null);
     setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
@@ -899,8 +900,8 @@ export default function BoojyNotes() {
               noteTitleSet={noteTitleSet}
               linkPopover={linkPopover}
               setLinkPopover={setLinkPopover}
-              selectedImageBlockId={selectedImageBlockId}
-              setSelectedImageBlockId={setSelectedImageBlockId}
+              selectedBlockId={selectedBlockId}
+              setSelectedBlockId={setSelectedBlockId}
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}

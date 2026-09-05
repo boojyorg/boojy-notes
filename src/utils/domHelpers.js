@@ -48,6 +48,9 @@ export function findNearestBlock(sel, blocks, blockRefs) {
   let closestIdx = blocks.length - 1;
   let closestDist = Infinity;
   for (let i = 0; i < blocks.length; i++) {
+    // Only a block that can hold a caret is a landing spot; a divider is in the
+    // ref map for the gutter grip, not for the caret.
+    if (!isEditableBlock(blocks[i])) continue;
     const el = blockRefs[blocks[i].id];
     if (!el) continue;
     const rect = el.getBoundingClientRect();
@@ -333,4 +336,15 @@ export function isEditableBlock(b) {
     b.type !== "callout" &&
     b.type !== "frontmatter"
   );
+}
+
+/**
+ * A block with no text that is addressed as a whole: a click selects it,
+ * Backspace or Delete removes it, Enter opens a paragraph under it, and the
+ * arrow keys stop on it on the way past instead of skipping it. Dividers and
+ * images. The other non-text blocks (code, table, callout, file) own their
+ * focus or carry their own controls and are still skipped.
+ */
+export function isSelectableBlock(b) {
+  return b.type === "spacer" || b.type === "image";
 }

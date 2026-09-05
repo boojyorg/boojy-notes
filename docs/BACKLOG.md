@@ -15,10 +15,18 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   it needs a way for a quote to remember a lazy line without hidden per-block state. On record as
   one `it.fails` in `tests/utils/markdownInterop.test.js`.
 - **Blank lines around headings, lists, fences and quotes are empty rows.** Only the blank line
-  between a paragraph or list item and the paragraph after it is structure; every other blank is
-  a visible row, so an Obsidian-style note, which puts a blank line around nearly every heading,
-  reads airy in the editor. Making one such blank structural too keeps the common form tidy but
-  needs a per-block "written tight" record to keep the rarer tight form byte-identical.
+  between a paragraph or list item and the paragraph or divider after it is structure; every
+  other blank is a visible row, so an Obsidian-style note, which puts a blank line around nearly
+  every heading, reads airy in the editor. The blank *after* a divider is the same case (the one
+  before it became structure on 2026-09-05, because without it `---` is a heading underline).
+  Making one such blank structural too keeps the common form tidy but needs a per-block "written
+  tight" record to keep the rarer tight form byte-identical.
+- **A `---` directly under a paragraph line is read as a divider, not a setext heading.** To
+  every other reader `hello` / `---` is a heading called "hello"; Boojy Notes shows a paragraph
+  and a rule, and its first save writes the blank line that makes the file a divider everywhere
+  (a sanctioned byte change, see the spec). Reading it as a heading would be right and needs a
+  setext heading form the serializer can write back byte-exact. On record as one `it.fails` in
+  `tests/utils/markdownInterop.test.js`.
 
 ## Beta
 
