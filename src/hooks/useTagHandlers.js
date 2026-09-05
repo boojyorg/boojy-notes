@@ -10,6 +10,7 @@ import { useCallback } from "react";
  */
 export function useTagHandlers({
   setSearch,
+  openSearch,
   tagMenuRef,
   noteDataRef,
   commitTextChange,
@@ -18,12 +19,14 @@ export function useTagHandlers({
   focusCursorPos,
   setTagMenu,
 }) {
-  // Tag click handler: sets sidebar search to #tagname
+  // Tag click handler: searches for #tagname (the palette on desktop, the
+  // sidebar field on mobile, which has no palette to open).
   const handleTagClick = useCallback(
     (tagName) => {
       setSearch(`#${tagName}`);
+      openSearch?.();
     },
-    [setSearch],
+    [setSearch, openSearch],
   );
 
   // Tag autocomplete select handler

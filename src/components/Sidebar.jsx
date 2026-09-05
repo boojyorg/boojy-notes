@@ -16,6 +16,7 @@ import {
 import { CHROME_TOP, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
 import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
+import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
 const hBg = (el, c) => {
@@ -271,58 +272,6 @@ function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, a
   );
 }
 
-/** Small-caps heading used by the search views ("Tags", "Notes"). */
-const SEARCH_HEADING = {
-  fontSize: 11,
-  fontWeight: 500,
-  textTransform: "uppercase",
-  letterSpacing: "0.5px",
-};
-
-/**
- * Tag chips for a `#` search, under a heading; `children` lands inside the
- * same padded block (the results view appends its "Notes" heading there).
- */
-function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }) {
-  return (
-    <div style={{ padding: "4px 14px 8px" }}>
-      <div style={{ ...SEARCH_HEADING, color: TEXT.muted, marginBottom: 6 }}>{title}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {tags.slice(0, limit).map((t) => (
-          <button
-            key={t.tag}
-            onClick={() => onPick(t.tag)}
-            style={{
-              background: `${ACCENT.primary}15`,
-              color: ACCENT.primary,
-              border: "none",
-              borderRadius: 10,
-              padding: "2px 8px",
-              fontSize: 11,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              transition: "background 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${ACCENT.primary}30`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = `${ACCENT.primary}15`;
-            }}
-          >
-            <span>#{t.tag}</span>
-            <span style={{ color: TEXT.muted, fontSize: 10 }}>{t.count}</span>
-          </button>
-        ))}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
@@ -344,8 +293,10 @@ const Sidebar = memo(function Sidebar({
   // Desktop only: the ··· menu's whole-vault actions.
   onRevealVault,
   onChangeVault,
+  // Desktop only: the chrome row's Search glyph opens the search palette.
+  onOpenSearch,
 }) {
-  const { accentColor, chromeBg, toggleSidebar } = useLayout();
+  const { accentColor, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -878,16 +829,10 @@ const Sidebar = memo(function Sidebar({
           </button>
           {/* Window-level controls live in the chrome row with the traffic
               lights: Search and the panel toggle. The vault header below is
-              the first content line. Search reveals the field until the
-              search palette (Cmd+K) replaces it. */}
+              the first content line. Search opens the palette (Cmd+K); the
+              panel itself never shows a field or results on desktop. */}
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <ChromeButton
-              onClick={() => {
-                setSearchFocused(true);
-                setTimeout(() => searchInputRef.current?.focus(), 0);
-              }}
-              title="Search"
-            >
+            <ChromeButton onClick={onOpenSearch} title="Search">
               <SearchIcon size={18} />
             </ChromeButton>
             <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
@@ -941,54 +886,9 @@ const Sidebar = memo(function Sidebar({
           padding: isMobile ? "2px 0" : "0 0 2px",
         }}
       >
-        {!isMobile && (searchFocused || search) && (
-          <div
-            style={{
-              // Sticky, not fixed: pinned while the tree scrolls beneath.
-              // chromeBg keeps rows from ghosting through; matches the panel.
-              position: "sticky",
-              top: 0,
-              zIndex: 1,
-              background: chromeBg,
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              padding: `4px ${ROW_INSET}px 8px ${ROW_INSET}px`,
-              flexShrink: 0,
-            }}
-          >
-            {/* The search field appears only while searching, opened from the
-                chrome row's Search glyph; at rest the vault header is the
-                first line of the panel. Interim until the Cmd+K palette. */}
-            <div
-              onClick={() => searchInputRef.current?.focus()}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                height: 28,
-                margin: "0 4px",
-                borderRadius: 14,
-                boxSizing: "border-box",
-                background: BG.surface,
-                border: `1px solid ${searchFocused ? `${accentColor}60` : "transparent"}`,
-                padding: "0 10px 0 9px",
-                cursor: "text",
-                overflow: "hidden",
-                transition: "border-color 0.15s ease",
-              }}
-            >
-              <span
-                style={{ display: "flex", alignItems: "center", flexShrink: 0, color: TEXT.muted }}
-              >
-                <SearchIcon size={14} />
-              </span>
-              {searchInput}
-              {clearSearchButton}
-            </div>
-          </div>
-        )}
-        {searchMode && searchResults.results.length > 0 ? (
+        {/* Search results and the empty state are mobile-only: on desktop
+            the palette owns them and the tree stays put behind it. */}
+        {isMobile && searchMode && searchResults.results.length > 0 ? (
           <>
             {tagSuggestions && tagSuggestions.length > 0 && (
               <TagChips
@@ -1118,7 +1018,7 @@ const Sidebar = memo(function Sidebar({
               </div>
             ))}
           </>
-        ) : searchMode && searchResults.results.length === 0 ? (
+        ) : isMobile && searchMode && searchResults.results.length === 0 ? (
           tagSuggestions && tagSuggestions.length > 0 ? (
             <TagChips
               title={search === "#" ? "All Tags" : "Tags"}
@@ -1237,34 +1137,3 @@ const Sidebar = memo(function Sidebar({
 });
 
 export default Sidebar;
-
-// Helper: render title with highlighted match portion
-function renderHighlightedTitle(title, matchStart, matchEnd, accentColor) {
-  if (matchStart < 0 || matchEnd <= matchStart) return title;
-  return (
-    <>
-      {title.slice(0, matchStart)}
-      <span style={{ color: accentColor, fontWeight: 600 }}>
-        {title.slice(matchStart, matchEnd)}
-      </span>
-      {title.slice(matchEnd)}
-    </>
-  );
-}
-
-// Helper: render snippet with highlighted match text
-function renderSnippet(snippet, accentColor) {
-  if (!snippet) return null;
-  const { text, highlightStart, highlightEnd } = snippet;
-  if (highlightStart < 0 || highlightEnd <= highlightStart || highlightStart >= text.length)
-    return text;
-  return (
-    <>
-      {text.slice(0, highlightStart)}
-      <span style={{ color: accentColor, fontWeight: 600 }}>
-        {text.slice(highlightStart, highlightEnd)}
-      </span>
-      {text.slice(highlightEnd)}
-    </>
-  );
-}

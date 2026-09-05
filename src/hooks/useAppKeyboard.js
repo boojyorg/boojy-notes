@@ -21,13 +21,13 @@ export function useAppKeyboard({
   blockDrag,
   sidebarDrag,
   titleRef,
-  searchInputRef,
   // Actions
   undo,
   redo,
   createNote,
   setSettingsOpen,
   revealSidebar,
+  openSearch,
   closeOverlay,
   setUiScale,
   cancelBlockDrag,
@@ -45,6 +45,7 @@ export function useAppKeyboard({
     createNote,
     setSettingsOpen,
     revealSidebar,
+    openSearch,
     closeOverlay,
     setUiScale,
     cancelBlockDrag,
@@ -103,12 +104,11 @@ export function useAppKeyboard({
         L.createNote(null);
         return;
       }
-      if (mod && e.key === "p") {
+      // Search is a palette over the window, so it needs no sidebar: Cmd+K
+      // is the convention, Cmd+P the habit this app taught before.
+      if (mod && (e.key === "k" || e.key === "p")) {
         e.preventDefault();
-        // Reveal, however the sidebar is currently painted — at narrow widths
-        // un-collapsing would leave the search field off-screen.
-        L.revealSidebar();
-        setTimeout(() => searchInputRef.current?.focus(), 250);
+        L.openSearch?.();
         return;
       }
       // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
