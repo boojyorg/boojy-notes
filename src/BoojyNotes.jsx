@@ -43,6 +43,7 @@ import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
+import SearchPalette from "./components/SearchPalette";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useImport } from "./hooks/useImport";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
@@ -97,7 +98,6 @@ export default function BoojyNotes() {
   const {
     search,
     setSearch,
-    searchInputRef,
     sidebarScrollRef,
     expanded,
     setExpanded,
@@ -383,6 +383,16 @@ export default function BoojyNotes() {
     onError: showToast,
   });
   // Search-result navigation (clear multi-select on search; scroll + highlight on open)
+  // The desktop search palette (Cmd+K). Closing clears the shared search
+  // state so the sidebar tree, filtered behind the scrim, comes back whole.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const openSearch = useCallback(() => {
+    if (!isMobile) setSearchOpen(true);
+  }, [isMobile]);
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearch("");
+  }, [setSearch]);
   const { handleSearchResultOpen } = useSearchNavigation({
     search,
     clearSelectionRef,
@@ -438,12 +448,12 @@ export default function BoojyNotes() {
     blockDrag,
     sidebarDrag,
     titleRef,
-    searchInputRef,
     undo,
     redo,
     createNote,
     setSettingsOpen,
     revealSidebar,
+    openSearch,
     closeOverlay,
     setUiScale,
     cancelBlockDrag,
@@ -557,6 +567,7 @@ export default function BoojyNotes() {
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
   const { handleTagClick, handleTagSelect } = useTagHandlers({
     setSearch,
+    openSearch,
     tagMenuRef,
     noteDataRef,
     commitTextChange,
@@ -781,6 +792,7 @@ export default function BoojyNotes() {
             vaultName={vaultName}
             onRevealVault={isElectron ? revealVault : undefined}
             onChangeVault={isElectron ? changeNotesDir : undefined}
+            onOpenSearch={openSearch}
           />
           {isMobile && !activeNote && (
             <FloatingActionButton
@@ -963,6 +975,9 @@ export default function BoojyNotes() {
       )}
 
       {/* === Overlays === */}
+      {searchOpen && !isMobile && (
+        <SearchPalette onOpenResult={handleSearchResultOpen} onClose={closeSearch} />
+      )}
       <ContextMenu
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}

@@ -59,7 +59,7 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 
 Only ideas worth remembering. Empty is fine.
 
-- Quick Open (Cmd+P note switcher), if daily use shows switching friction now there are no tabs.
+- A Recent list in the empty search palette, if daily use shows the last-touched note is hard to get back to.
 - Move to folder… for a single note (drag and the bulk menu cover it today).
 - A muted "N other files" hint on folders that hold PDFs and images the app cannot open; the
   folder's Reveal in Finder answers it for now.

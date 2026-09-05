@@ -19,6 +19,7 @@ function makeDeps(overrides = {}) {
     createNote: vi.fn(),
     setSettingsOpen: vi.fn(),
     revealSidebar: vi.fn(),
+    openSearch: vi.fn(),
     closeOverlay: vi.fn(),
     setUiScale: vi.fn(),
     cancelBlockDrag: vi.fn(),
@@ -45,8 +46,8 @@ describe("useAppKeyboard", () => {
     first.blockDrag.current.active = true;
 
     key("p", { metaKey: true });
-    expect(second.revealSidebar).toHaveBeenCalledTimes(1);
-    expect(first.revealSidebar).not.toHaveBeenCalled();
+    expect(second.openSearch).toHaveBeenCalledTimes(1);
+    expect(first.openSearch).not.toHaveBeenCalled();
 
     key("Escape");
     expect(second.cancelBlockDrag).toHaveBeenCalledTimes(1);
@@ -95,5 +96,18 @@ describe("useAppKeyboard", () => {
     expect(next.setUiScale).toHaveBeenCalledWith(100);
     key("0", { metaKey: true });
     expect(next.setUiScale).toHaveBeenCalledWith(100);
+  });
+});
+
+// Search is a palette over the window (2026-09-05): Cmd+K is the convention,
+// Cmd+P the habit this app taught before, and neither touches the sidebar.
+describe("search shortcuts", () => {
+  it("opens the search palette on Cmd+K and Cmd+P, without revealing the sidebar", () => {
+    const deps = makeDeps();
+    renderHook((props) => useAppKeyboard(props), { initialProps: deps });
+    key("k", { metaKey: true });
+    key("p", { metaKey: true });
+    expect(deps.openSearch).toHaveBeenCalledTimes(2);
+    expect(deps.revealSidebar).not.toHaveBeenCalled();
   });
 });

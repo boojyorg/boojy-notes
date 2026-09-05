@@ -143,6 +143,7 @@ function renderSidebar(overrides = {}) {
     handleNoteClick: null,
     clearSelection: noop,
     isMobile: overrides.isMobile ?? false,
+    onOpenSearch: overrides.onOpenSearch,
     vaultName: overrides.vaultName ?? "My Vault",
     onRevealVault: overrides.onRevealVault,
     onChangeVault: overrides.onChangeVault,
@@ -174,23 +175,19 @@ describe("Sidebar", () => {
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
-  // Search is a chrome-row glyph beside the panel toggle (2026-09-05); the
-  // field appears only while searching, so at rest the vault header is the
-  // first line of the panel. Interim until the Cmd+K palette.
-  it("shows no search field at rest, and reveals it from the chrome row's Search glyph", () => {
-    const setSearchFocused = vi.fn();
-    const { getByLabelText, queryByLabelText } = renderSidebar({ setSearchFocused });
+  // Search is a palette over the window (2026-09-05). The chrome row's Search
+  // glyph opens it; the desktop panel never shows a field or results, so the
+  // vault header is always the first line of the panel.
+  it("opens the search palette from the chrome row's Search glyph and shows no field", () => {
+    const onOpenSearch = vi.fn();
+    const { getByLabelText, queryByLabelText } = renderSidebar({ onOpenSearch });
     expect(queryByLabelText("Search notes")).not.toBeInTheDocument();
     fireEvent.click(getByLabelText("Search"));
-    expect(setSearchFocused).toHaveBeenCalledWith(true);
-  });
-
-  it("keeps the field while search is focused or holds text", () => {
-    expect(
-      renderSidebar({ searchFocused: true }).getByLabelText("Search notes"),
-    ).toBeInTheDocument();
+    expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();
-    expect(renderSidebar({ search: "abc" }).getByLabelText("Search notes")).toBeInTheDocument();
+    expect(
+      renderSidebar({ searchFocused: true, search: "abc" }).queryByLabelText("Search notes"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders folder names from filteredTree", () => {
@@ -363,6 +360,7 @@ describe("Sidebar", () => {
       totalCount: 1,
     };
     const { container, getByText } = renderSidebar({
+      isMobile: true,
       searchMode: true,
       search: "Result",
       searchResults,
@@ -411,13 +409,14 @@ describe("Sidebar", () => {
     expect(queryByText("New Folder")).not.toBeInTheDocument();
   });
 
-  it("hides the header while a search shows results or none", () => {
-    const { queryByText } = renderSidebar({
+  it("keeps the header and tree while a search runs: the palette owns the results", () => {
+    const { getByText, queryByText } = renderSidebar({
       searchMode: true,
       search: "xyz",
       searchResults: { results: [], groups: [], totalCount: 0 },
     });
-    expect(queryByText("My Vault")).not.toBeInTheDocument();
+    expect(getByText("My Vault")).toBeInTheDocument();
+    expect(queryByText(/No results for/)).not.toBeInTheDocument();
   });
 
   it("keeps the header, and renders no empty tree, when the vault has no rows", () => {
@@ -561,6 +560,7 @@ describe("Sidebar", () => {
 
   it("renders empty search message when searchMode is active but results are empty", () => {
     const { getByText } = renderSidebar({
+      isMobile: true,
       searchMode: true,
       search: "xyz",
       searchResults: { results: [], groups: [], totalCount: 0 },
@@ -660,6 +660,7 @@ describe("Sidebar tag chips", () => {
   it("lists tags by count above search results, then a Notes heading", () => {
     const setSearch = vi.fn();
     const { getByText, getAllByRole } = renderSidebar({
+      isMobile: true,
       searchMode: true,
       search: "#",
       searchResults: oneResult,
@@ -676,6 +677,7 @@ describe("Sidebar tag chips", () => {
 
   it("shows All Tags for a bare # with no results, and filters by the typed prefix", () => {
     const { getByText, queryByText } = renderSidebar({
+      isMobile: true,
       searchMode: true,
       search: "#",
       searchResults: emptySearchResults,
@@ -685,6 +687,7 @@ describe("Sidebar tag chips", () => {
     expect(queryByText(/No results for/)).not.toBeInTheDocument();
     cleanup();
     const filtered = renderSidebar({
+      isMobile: true,
       searchMode: true,
       search: "#ho",
       searchResults: emptySearchResults,

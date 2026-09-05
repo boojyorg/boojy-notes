@@ -133,9 +133,8 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 ### Alignment and rows
 
 - **The chrome row is `wordmark … Search, toggle`** (2026-09-05). Search is a `ChromeButton`
-  beside the panel toggle; clicking it drops the search field in above the vault header, and
-  the field leaves again when it is empty and blurred, so at rest the vault header is the
-  first line of the panel. Interim until the Cmd+K search palette replaces the field. **New
+  beside the panel toggle that opens the search palette; the desktop panel never shows a
+  field or results, so the vault header is always the first line of the panel. **New
   note lives above the editor** (`EditorChrome`, beside the note's ···), Apple Notes style:
   the sidebar's row is for finding and hiding, the editor's for making and managing, and the
   button is still there with the sidebar collapsed. Cmd+N is unchanged. The `New Note` and
@@ -211,6 +210,25 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   regardless, since it is the root drop target and the home of New note. Folders come first,
   alphabetical; root notes follow in the sort preference, exactly as inside a folder. **The
   root is a folder.** Mobile has no header and keeps its own inline rows.
+
+## Search is a palette, not a panel
+
+- **On desktop, search is `SearchPalette.tsx`**: Cmd+K (the convention) or Cmd+P (the habit
+  this app taught before), the chrome row's Search glyph, or a click on an inline `#tag`. A
+  560px dialog in the top third of the window over a dimmed scrim, results growing downward.
+  Search only: no commands, no recent list, nothing before you type. Escape, Enter or a click
+  outside closes it; closing clears the query.
+- **Version B of the three judged on 2026-09-05**: title hits show the match in the accent and
+  nothing else, even when the body also matched; a body hit shows one muted line of context
+  under the title with the word in the accent; every row carries its folder path, muted, on
+  the right, with ` / ` between segments. No grouping by folder (the path carries that at a
+  quarter of the ink), no "title match" note. A `#` with no results shows the tag chips.
+- **One search, two faces.** The palette reads and writes the sidebar's search state
+  (`SidebarContext`: `search`, `searchResults`, `activeResultIndex`, `navigateResults`), so
+  Enter opens the highlighted result and jumps to its matched block exactly as the sidebar
+  did. The sidebar tree filters behind the scrim while you type; closing clears it. The mobile
+  layout keeps its field and inline results (`isMobile`-gated in `Sidebar.jsx`); the chips and
+  highlighters they share live in `SearchParts.tsx`. Cmd+F in-note find is separate (`FindBar`).
 
 ## Note order is a preference, not a stored arrangement
 
