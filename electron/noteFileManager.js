@@ -1,4 +1,5 @@
 import { app, ipcMain, dialog, shell, clipboard, nativeImage } from "electron";
+import { trace } from "./trace.js";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
@@ -301,6 +302,14 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
   ipcMain.handle("write-note", (_event, note) => {
     const notesDir = getNotesDir();
     const targetPath = noteToFilePath(note, notesDir);
+    const traceStart = Date.now();
+    trace(
+      "M",
+      "write-note start",
+      path.relative(notesDir, targetPath),
+      "blocks",
+      note.content?.blocks?.length ?? 0,
+    );
 
     // Check if this note already exists at a different path (title/folder rename)
     const existingRelPath = _idIndex[note.id];
@@ -324,7 +333,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     // original line-ending style (content.eol is set by parseNoteFile)
     const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
-    suppressWatcher(finalPath);
+    suppressWatcher(finalPath, bodyMd);
     writeFileAtomic(finalPath, bodyMd);
 
     // On rename, remove the old file only after the new one is safely on disk —
@@ -354,6 +363,13 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     _idIndex[note.id] = path.relative(notesDir, realPath);
     saveIndex(notesDir);
 
+    trace(
+      "M",
+      "write-note done",
+      path.relative(notesDir, realPath),
+      `${Date.now() - traceStart}ms`,
+      `${bodyMd.length}b`,
+    );
     return { filePath: realPath, title: path.basename(realPath, ".md") };
   });
 

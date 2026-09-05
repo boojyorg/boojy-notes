@@ -2,6 +2,7 @@ import { memo, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
+import { trace } from "../utils/trace";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -64,6 +65,17 @@ const EditableBlock = memo(
       const el = elRef.current;
       if (!el || block.text === undefined) return;
       const caret = getCaretOffset(el);
+      trace(
+        "block repaint",
+        block.id,
+        block.type,
+        "caret",
+        caret,
+        "syncGen",
+        syncGen,
+        "len",
+        (block.text || "").length,
+      );
       if (block.text === "") {
         el.innerHTML = "<br>";
       } else {

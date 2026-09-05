@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
 import { useLayout, SIDEBAR_SCRIM } from "./context/LayoutContext";
@@ -416,6 +417,7 @@ export default function BoojyNotes() {
 
   useLayoutEffect(() => {
     const title = noteData[activeNote]?.content?.title;
+    trace("title sync effect", activeNote, "syncGen", syncGeneration.current);
     if (titleRef.current && title !== undefined) {
       if (title === "") {
         titleRef.current.innerHTML = "<br>";

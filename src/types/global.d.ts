@@ -65,6 +65,9 @@ declare global {
 
       // File watcher events
       onFileChanged: (callback: (note: Note) => void) => Unsubscribe;
+      /** Diagnostic trace (electron/trace.js); `trace` is a no-op unless enabled. */
+      traceEnabled: boolean;
+      trace: (line: string) => void;
       onFileDeleted: (callback: (data: { filePath: string }) => void) => Unsubscribe;
 
       // Quit/close flush handshake

@@ -126,6 +126,20 @@ mixed sizes and strokes is what made the UI read as assembled.
   reported once per distinct problem set, OS cruft is ignored. Deleting a note that never
   reached disk is a benign no-op, and the watcher's unlink suppression is event-consumed rather
   than timed so a slow trash move can't fire a spurious `file-deleted`.
+- **An own write is recognised by its bytes, not by the clock.** `write-note` hands
+  `suppressWatcher(path, body)` the text it is writing; the watcher hashes it, and any later
+  `change`/`add` whose file still holds exactly those bytes is dropped as an echo
+  (`isOwnEcho`), however late. The 1.5s timer stays as the cheap first filter. macOS sends a
+  second `change` for one write 1.5–2.7s later (same mtime and size, only ctime moved: metadata
+  settling), which no fixed window can cover; before the hash check every one of them rebuilt
+  the note from disk mid-typing, caret to the first block, keystrokes since the save lost. Don't
+  replace the hash with a longer timer.
+- **To see what the editor is doing, trace it, don't theorise.** `BOOJY_TRACE=/path/to/log
+  node_modules/.bin/electron .` (after `pnpm build`; it uses the real profile and vault) appends
+  one line per watcher event, save, external reload, keystroke target, caret move between blocks
+  and block repaint from both processes on one clock (`electron/trace.js`, `src/utils/trace.js`).
+  Everything is a no-op unless the variable is set. Quit the installed app first; two instances
+  share the profile.
 - **`syncGeneration` is editor plumbing, not cloud sync.** It tells uncontrolled blocks when to
   repaint from state. Don't remove it on the strength of its name.
 - Word count is mobile-only. Undo/redo are keyboard-only.

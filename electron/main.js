@@ -21,6 +21,7 @@ import {
   registerSettingsIPC,
   checkForUpdatesOnStartup,
 } from "./settingsManager.js";
+import { trace, traceEnabled } from "./trace.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -121,6 +122,12 @@ function restartWatcher() {
 }
 
 registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher);
+// Diagnostic trace (electron/trace.js): the renderer asks once whether it is
+// on, then sends its lines here to be stamped on the same clock as main's.
+ipcMain.on("trace-enabled", (event) => {
+  event.returnValue = traceEnabled;
+});
+ipcMain.on("trace", (_event, line) => trace("R", line));
 registerOSTrashIPC(getNotesDir, {
   suppressUnlink: suppressNextUnlink,
   releaseUnlink: releaseUnlinkSuppression,
@@ -133,6 +140,7 @@ setupAutoUpdater(getMainWindow);
 
 app.whenReady().then(async () => {
   app.setName("Boojy Notes");
+  trace("M", "start notesDir", getNotesDir());
   // No Dock icon either while hidden for tests, or launching would still pull
   // focus to the app on macOS.
   if (hiddenForTests) app.dock?.hide();

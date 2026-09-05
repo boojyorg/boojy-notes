@@ -9,6 +9,7 @@ import { OverlayProvider } from "./context/OverlayContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { isWeb } from "./utils/platform";
+import { installTraceProbes } from "./utils/trace";
 
 // The crash screen promises "your notes have been backed up to local
 // storage"; that only happens if the boundary can reach the live note store.
@@ -36,6 +37,7 @@ document.head.appendChild(highlightStyle);
 
 // Log unhandled promise rejections
 window.addEventListener("unhandledrejection", (e) => console.error("[unhandled]", e.reason));
+installTraceProbes();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

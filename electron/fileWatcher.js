@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 import { watch } from "chokidar";
 import { parseNoteFile, saveIndex } from "./noteFileManager.js";
+import { trace, traceEnabled } from "./trace.js";
 
 let watcher = null;
 // Our own writes echo back through chokidar ~350ms later (awaitWriteFinish).
@@ -12,6 +15,16 @@ let watcher = null;
 // the note from disk (caret to the top, keystrokes since the write lost).
 const WRITE_SUPPRESS_MS = 1500;
 const ignoredPaths = new Map();
+// The timer alone is not enough: macOS delivers a second `change` for one
+// write 1.5–2.7s later (measured 2026-09-05 from a trace of the daily driver),
+// after any sane window, and the renderer then rebuilt the note from disk
+// mid-typing. So each own write also records a hash of the bytes it wrote,
+// and an event whose file still holds exactly those bytes is an echo whatever
+// the clock says. An outside edit that leaves the same bytes is a no-op anyway.
+const ownContentHash = new Map();
+const hashOf = (text) => createHash("sha1").update(text).digest("hex");
+// Trace only: when each path was last armed, so an escaping echo can be timed.
+const lastSuppressAt = new Map();
 // Unlink suppression is consumed by the event itself, not a fixed timer:
 // shell.trashItem() latency is OS-mediated and unbounded (cloud sync, AV
 // scans), so a timer that expires before the unlink arrives would let our own
@@ -49,13 +62,43 @@ function startWatcher(getNotesDir, getMainWindow) {
     ignored: [/(^|[/\\])\./, /\.boojy-index\.json$/, /[/\\]attachments[/\\]/],
   });
 
+  if (traceEnabled) {
+    watcher.on("all", (event, filePath) => {
+      const armed = lastSuppressAt.get(filePath);
+      let stat = "";
+      try {
+        const s = fs.statSync(filePath);
+        stat = `mtime=${Math.round(s.mtimeMs)} ctime=${Math.round(s.ctimeMs)} size=${s.size}`;
+      } catch {
+        stat = "stat-failed";
+      }
+      trace(
+        "M",
+        "fs",
+        event,
+        path.relative(notesDir, filePath),
+        isWriteSuppressed(filePath) ? "SUPPRESSED" : "PASS",
+        armed === undefined ? "never-written-by-us" : `${Date.now() - armed}ms after own write`,
+        stat,
+      );
+    });
+  }
+
   watcher.on("change", (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (isWriteSuppressed(filePath)) return;
+    if (isOwnEcho(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
       saveIndex(notesDir);
+      trace(
+        "M",
+        "send file-changed",
+        path.relative(notesDir, filePath),
+        "blocks",
+        note.content?.blocks?.length ?? 0,
+      );
       getMainWindow().webContents.send("file-changed", note);
     }
   });
@@ -63,6 +106,7 @@ function startWatcher(getNotesDir, getMainWindow) {
   watcher.on("add", (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (isWriteSuppressed(filePath)) return;
+    if (isOwnEcho(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
@@ -95,8 +139,21 @@ function startWatcher(getNotesDir, getMainWindow) {
 /**
  * Suppress watcher events for a file we are about to write. Re-arming a path
  * that is already suppressed extends its window from now — it never shortens it.
+ * With `body`, the bytes being written are remembered so a late echo is still
+ * recognised after the window (see `isOwnEcho`).
  */
-function suppressWatcher(filePath) {
+function suppressWatcher(filePath, body) {
+  if (typeof body === "string") ownContentHash.set(filePath, hashOf(body));
+  if (traceEnabled) {
+    lastSuppressAt.set(filePath, Date.now());
+    trace(
+      "M",
+      "suppress",
+      path.basename(filePath),
+      `${WRITE_SUPPRESS_MS}ms`,
+      body === undefined ? "" : "+hash",
+    );
+  }
   clearTimeout(ignoredPaths.get(filePath));
   ignoredPaths.set(
     filePath,
@@ -114,6 +171,27 @@ function suppressWatcherTree(dirPath) {
     dirPath,
     setTimeout(() => ignoredTrees.delete(dirPath), WRITE_SUPPRESS_MS),
   );
+}
+
+/** Whether the file holds exactly the bytes of our last write to it: a late echo, not an edit. */
+function isOwnEcho(filePath) {
+  const expected = ownContentHash.get(filePath);
+  if (expected === undefined) return false;
+  let current;
+  try {
+    current = hashOf(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    return false;
+  }
+  const echo = current === expected;
+  if (traceEnabled)
+    trace(
+      "M",
+      "echo-check",
+      path.basename(filePath),
+      echo ? "ECHO (own bytes, ignored)" : "differs → real change",
+    );
+  return echo;
 }
 
 /** Whether a path is inside its own-write suppression window, or under a suppressed tree. */
@@ -159,6 +237,7 @@ export {
   suppressWatcher,
   suppressWatcherTree,
   isWriteSuppressed,
+  isOwnEcho,
   suppressNextUnlink,
   releaseUnlinkSuppression,
   closeWatcher,
