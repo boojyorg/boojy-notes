@@ -132,9 +132,23 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 
 ### Alignment and rows
 
-- `New note` / `Search` sit under the wordmark as plain rows that hover to `BG.hover`. Clicking
-  Search swaps the row in place for the field at the same geometry. The `New Note` and
+- **The chrome row is `wordmark … Search, toggle`** (2026-09-05). Search is a `ChromeButton`
+  beside the panel toggle; clicking it drops the search field in above the vault header, and
+  the field leaves again when it is empty and blurred, so at rest the vault header is the
+  first line of the panel. Interim until the Cmd+K search palette replaces the field. **New
+  note lives above the editor** (`EditorChrome`, beside the note's ···), Apple Notes style:
+  the sidebar's row is for finding and hiding, the editor's for making and managing, and the
+  button is still there with the sidebar collapsed. Cmd+N is unchanged. The `New Note` and
   `New Folder` tree rows are mobile-only.
+- **Wordmark at 18px, drawn at 0.92 opacity** so its pure black lands near `TEXT.primary`; at
+  20px full black it out-shouted the note's H1. A re-drawn asset in the ink colour is the
+  proper fix. The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
+  vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
+- **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through
+  its children (`SPINE + SPINE_ICON / 2 + depth × 20`). In one mixed tree, root notes have no
+  glyph and sit on the folder-label column, so without the line they read as children of the
+  last open folder; the line ending is what says "this folder ends here". No breath before the
+  root notes: the row rhythm stays even. Tree rows are 28px with a 2px gap.
 - **The action group is a sticky block inside the sidebar's single scroll container.** Every
   sidebar state shares that one scroller so the search field never remounts (and drops focus)
   mid-typing; don't split states back into separate scrollers. Rows slide under the sticky
@@ -172,30 +186,38 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
   second toggle rather than delaying single-click to disambiguate.
 
-### Sections: `Folders` and `Notes`
+### The vault header and its one tree
 
-- Two headers share `SectionHeader`. `Folders` carries the only desktop New Folder affordance;
-  `Notes` carries the sort toggle. Neither collapses, so neither has a chevron. Headers scroll
-  with their content; a pinned `Folders` lies about the rows under it once the list scrolls.
-- **Two trees, not one** (`role="tree"` for Folders and for Notes, headers as siblings between
-  them). A header inside a tree fails axe `aria-required-children` at critical impact, which
-  the E2E gate catches. Mobile has no headers and keeps one tree.
-- **Both headers always show**, and are wanted precisely when every note has been filed.
-  `Notes` hides only when a search matches no root note; the `role="tree"` under it stays
-  conditional because an empty tree fails axe.
-- **Section-header controls are hidden at rest** (`SectionAction`: New folder, Sort), revealed
-  at 0.55 by hovering the header or by keyboard focus, full ink when the control itself is
-  hovered or focused. All CSS (`.sidebar-section-action`); JS opacity handlers would override
-  the class rules after the first hover. Touch devices keep them always visible. 0.55 is the
-  faintest composite clearing 3:1 on the light ground. Accepted tradeoff: a mouse user has no
-  standing hint that New folder exists until they hover a header.
+- **One header, named after the vault folder** (`vaultName`, the basename of the notes
+  directory; `Notes` on web), replaces the `Folders` and `Notes` sections (2026-09-05). Row
+  height, row size (14px), weight 500, `TEXT.muted`: a label for the list, not a heading over
+  it (judged live against 15px/600/primary, which fought the wordmark). 10px below the chrome
+  row, 2px to the first row. It does not collapse, so no chevron. It scrolls with the tree; a
+  pinned header lies about the rows under it once the list scrolls. It is hidden with the tree
+  while a search shows results or none.
+- **The header carries New folder and the ··· menu, hover-revealed at the 16px row tier**
+  (`SectionAction`, `.sidebar-section-action`, reveal on header hover or focus-within, all
+  CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above;
+  two rows of 18px glyphs stacked read as two toolbars, which is why New note left the header.
+  **Never a third glyph here.** New folder is also the first item of the ··· menu, the
+  standing hint for a hover-revealed control and the keyboard path. Sort, Collapse all
+  folders, Reveal in Finder and Change vault folder follow (`VaultMenu.tsx`, keyboard grammar
+  as `ContextMenu`); anything rarer goes there too, never onto the header. The
+  `--visible` variant of `SectionAction` exists for a control that must show at rest; nothing
+  uses it today.
+- **One `role="tree"`, the header a sibling above it, never inside it.** A header inside a tree
+  fails axe `aria-required-children` at critical impact, which the E2E gate catches. The tree
+  element exists only when it has rows, because an empty tree fails axe too; the header stays
+  regardless, since it is the root drop target and the home of New note. Folders come first,
+  alphabetical; root notes follow in the sort preference, exactly as inside a folder. **The
+  root is a folder.** Mobile has no header and keeps its own inline rows.
 
 ## Note order is a preference, not a stored arrangement
 
 - One global control orders every list, root and folders alike: Most recent / Alphabetical,
-  persisted in `boojy-note-sort`, default recency. It is a click-to-flip toggle on the `Notes`
-  header: the glyph shows the current mode and the label's tail says what a click does. A third
-  mode would need a menu; accepted bet.
+  persisted in `boojy-note-sort`, default recency. It lives in the vault header's ··· menu as
+  a pair of radio items with the current mode marked; a preference flipped a few times a month
+  does not earn a standing glyph, and the menu has room for a third mode if one ever earns it.
 - **"Most recent" means most recently modified, never opened: `max(edited here this session,
   file mtime)`** (`recencyOf()` in `utils/noteSort.js`). The file's mtime is the durable truth
   and orders the vault at launch; it is also the only signal that sees an edit made in another
@@ -217,15 +239,15 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 
 ### Drag means location, not order
 
-- Dragging a note moves the real `.md` file: onto a folder files it there, onto the `Notes` area
-  moves it back out. Drag never sets a position; sort decides display order. Folders are always
-  alphabetical.
+- Dragging a note moves the real `.md` file: onto a folder files it there, onto the vault header
+  or the empty space under the tree moves it back out. Drag never sets a position; sort decides
+  display order. Folders are always alphabetical.
 - The ghost is a title-only pill that lifts in; releasing anywhere that isn't a folder or the
   root area flies it back and nothing changes. **Dropping over the editor does not open the
   note**; drag never navigates. Every drag ends by suppressing the trailing click so it can't
   open the lifted row.
-- **Dragging a folder moves its directory**: onto another folder nests it, onto the `Notes`
-  area moves it back to the root. Never into itself or its own subtree (those rows are not
+- **Dragging a folder moves its directory**: onto another folder nests it, onto the vault
+  header or the space under the tree moves it back to the root. Never into itself or its own subtree (those rows are not
   targets; the pointer falls through to the root). Same lift, ghost and cancel grammar as notes.
 - Existing `.boojy-meta.json` files are left untouched; nothing reads their ordering keys.
   Don't tidy them and don't reintroduce a reader.

@@ -6,7 +6,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { CHROME_INSET, CHROME_BTN } from "./EditorChrome";
+import { CHROME_INSET, CHROME_TOP, CHROME_BTN } from "./EditorChrome";
 import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -41,7 +41,7 @@ import { ramp } from "../utils/fluidLength";
  */
 const LABEL_FONT_SIZE = 13.5;
 const LABEL_LINE_HEIGHT = 1.4;
-const LABEL_ROW_CENTER = CHROME_INSET + CHROME_BTN / 2;
+const LABEL_ROW_CENTER = CHROME_TOP + CHROME_BTN / 2;
 const LABEL_TOP = Math.round(LABEL_ROW_CENTER - (LABEL_FONT_SIZE * LABEL_LINE_HEIGHT) / 2);
 /** Air between the label row and the first Markdown block. */
 const LABEL_GAP = 26;

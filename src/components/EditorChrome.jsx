@@ -1,7 +1,7 @@
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
-import { SidebarToggleIcon, MoreHorizontalIcon } from "./Icons";
+import { SidebarToggleIcon, MoreHorizontalIcon, NewNoteIcon } from "./Icons";
 import { isElectronMac } from "../utils/platform";
 
 /**
@@ -26,6 +26,9 @@ import { isElectronMac } from "../utils/platform";
  */
 
 export const CHROME_INSET = 10;
+/** Top of the chrome row's buttons; centres them on the traffic lights
+ *  (main.js trafficLightPosition.y = CHROME_TOP + CHROME_BTN / 2). */
+export const CHROME_TOP = 7;
 export const CHROME_BTN = 32;
 /**
  * Left inset that clears the macOS traffic lights (x:14, ~52px of buttons,
@@ -78,7 +81,10 @@ export function ChromeButton({ onClick, title, ariaLabel, children, style }) {
   );
 }
 
-export default function EditorChrome({ activeNote, onNoteActions }) {
+// New note lives above the editor, Apple Notes style (2026-09-05): the
+// sidebar's chrome row is for finding and hiding, the editor's for making
+// and managing, and the button is still there with the sidebar collapsed.
+export default function EditorChrome({ activeNote, onNoteActions, onNewNote }) {
   const { sidebarVisible, toggleSidebar } = useLayout();
 
   return (
@@ -104,7 +110,7 @@ export default function EditorChrome({ activeNote, onNoteActions }) {
         <div
           style={{
             position: "fixed",
-            top: CHROME_INSET,
+            top: CHROME_TOP,
             // Clear the traffic lights, which hold the viewport's top-left
             // corner on macOS once the sidebar (and its header) is hidden.
             left: isElectronMac ? MAC_TRAFFIC_INSET : CHROME_INSET,
@@ -117,15 +123,23 @@ export default function EditorChrome({ activeNote, onNoteActions }) {
         </div>
       )}
 
-      {activeNote && (
-        <div
-          style={{
-            position: "fixed",
-            top: CHROME_INSET,
-            right: CHROME_INSET,
-            zIndex: Z.TOOLBAR,
-          }}
-        >
+      <div
+        style={{
+          position: "fixed",
+          top: CHROME_TOP,
+          right: CHROME_INSET,
+          zIndex: Z.TOOLBAR,
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        {onNewNote && (
+          <ChromeButton onClick={onNewNote} title="New note">
+            <NewNoteIcon size={18} />
+          </ChromeButton>
+        )}
+        {activeNote && (
           <ChromeButton
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
@@ -136,8 +150,8 @@ export default function EditorChrome({ activeNote, onNoteActions }) {
           >
             <MoreHorizontalIcon />
           </ChromeButton>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

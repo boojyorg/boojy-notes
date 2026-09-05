@@ -125,7 +125,7 @@ async function launchElectron(userData: string) {
   try {
     await page.waitForLoadState("domcontentloaded");
     // The sidebar renders once the vault has been read.
-    await page.getByText("New note", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "New note" }).waitFor();
   } catch (err) {
     // Don't leave a hidden app process behind when the launch itself failed.
     await app.close().catch(() => {});
@@ -259,12 +259,15 @@ export function expectNoTempFiles(vault: Vault) {
   expect(stray, "leftover temp files in the vault").toEqual([]);
 }
 
-/** Titles of the root `Notes` list, top to bottom, as the user reads them. */
+/**
+ * Titles of the root notes, top to bottom, as the user reads them. One tree
+ * holds folders (each wrapped in a block) and then the root notes as direct
+ * children, so `:scope >` picks the root notes alone.
+ */
 export async function rootNoteOrder(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const trees = document.querySelectorAll('[role="tree"]');
-    const notes = trees[trees.length - 1];
-    return Array.from(notes?.querySelectorAll('[role="treeitem"]') ?? []).map((row) =>
+    const tree = document.querySelector('[role="tree"]');
+    return Array.from(tree?.querySelectorAll(":scope > [data-note-id]") ?? []).map((row) =>
       (row as HTMLElement).innerText.trim(),
     );
   });
@@ -302,7 +305,7 @@ export async function moveNoteToFolder(page: Page, title: string, folder: string
 
 /**
  * Drag a folder row onto another folder row (`target` a folder path) or onto
- * the root drop target (`target` null, the `Notes` header). Folders are
+ * the root drop target (`target` null, the vault header). Folders are
  * directories, so the drop is one directory move on disk.
  */
 export async function moveFolderTo(page: Page, folder: string, target: string | null) {

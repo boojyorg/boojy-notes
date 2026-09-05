@@ -44,6 +44,7 @@ const renderChrome = (props = {}) =>
     <EditorChrome
       activeNote={props.activeNote === undefined ? "n1" : props.activeNote}
       onNoteActions={props.onNoteActions ?? vi.fn()}
+      onNewNote={props.onNewNote}
     />,
   );
 
@@ -66,6 +67,21 @@ describe("EditorChrome", () => {
     const { getByTitle } = renderChrome();
     fireEvent.click(getByTitle("Show sidebar"));
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
+  });
+
+  // New note lives above the editor, Apple Notes style (2026-09-05), so it is
+  // still there when the sidebar is collapsed; it exists only when wired.
+  it("makes a new note from the editor header, with or without an open note", () => {
+    const onNewNote = vi.fn();
+    const { getByTitle, queryByTitle } = renderChrome({ onNewNote, activeNote: null });
+    expect(queryByTitle("Note actions")).not.toBeInTheDocument();
+    fireEvent.click(getByTitle("New note"));
+    expect(onNewNote).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no New note button when none is wired", () => {
+    const { queryByTitle } = renderChrome();
+    expect(queryByTitle("New note")).not.toBeInTheDocument();
   });
 
   it("opens note actions with viewport coordinates anchored to the button", () => {

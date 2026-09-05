@@ -55,7 +55,7 @@ function createWindow() {
     // lights ride a few px lower than pure maths says (judged live
     // 2026-08-23). x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move
     // one, re-judge the other.
-    trafficLightPosition: { x: 14, y: 26 },
+    trafficLightPosition: { x: 14, y: 23 },
     // First-paint ground before React takes over. DAY's BG.darkest — light is
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).

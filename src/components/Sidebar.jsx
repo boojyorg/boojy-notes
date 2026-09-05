@@ -9,15 +9,12 @@ import {
   FolderIcon,
   FileIcon,
   NewFolderIcon,
-  NewNoteIcon,
   SearchIcon,
   MoreHorizontalIcon,
   SidebarToggleIcon,
-  SortAlphaIcon,
-  SortRecentIcon,
 } from "./Icons";
-import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
-import { CHROME_INSET, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
+import { CHROME_TOP, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
+import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -78,7 +75,7 @@ function Collapsible({ open, children }) {
 /** Left inset of the wordmark from the sidebar edge. */
 const HEADER_LEFT_INSET = 12;
 /** Breathing room between the toggle's right edge and the sidebar divider. */
-const HEADER_RIGHT_INSET = 12;
+const HEADER_RIGHT_INSET = 6;
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
@@ -102,19 +99,13 @@ const ROW_INSET_RIGHT = 2;
 const SPINE_ICON = 16;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
-/** Action glyphs (New note / Search) run on the 18px navigation tier
- *  (judged 2026-08-19, "icon system C"). The box widens with the glyph and
- *  the gap shrinks, so the left edge stays on SPINE and labels on TEXT_COL. */
-const ACTION_ICON = 18;
-const ACTION_ICON_GAP = TEXT_COL - SPINE - ACTION_ICON;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
-// neutral BG.hover for hover AND selected, no boxes at rest. Actions are 32px,
-// tree rows 30px with a 2px rhythm gap.
-const ACTION_ROW_H = 32;
+// neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
+// 28px with a 2px rhythm gap; the vault header is the same height.
 const ACTION_RADIUS = 12;
-const TREE_ROW_H = 30;
+const TREE_ROW_H = 28;
 const TREE_ROW_GAP = 2;
 // ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
 // just below the note row and grows rightward into the editor, its left edge
@@ -133,13 +124,15 @@ const NOTE_MENU_SHIFT = 8;
 // One spacing rule for every section: SECTION_GAP above the header, then
 // SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
 // action group's own bottom padding, which is set to the same 12.
-const SECTION_HEADER_H = 28;
+const SECTION_HEADER_H = TREE_ROW_H;
 const SECTION_HEADER_LEFT = SPINE;
-/** 6px + the 28px button's own 6px glyph inset = the spine's 12px, mirrored right. */
-const SECTION_HEADER_RIGHT = 6;
-const SECTION_BTN = 28;
+/** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
+ *  HEADER_RIGHT_INSET (12) + the chrome glyph's 7px inset − this row's 8px. */
+const SECTION_HEADER_RIGHT = 5;
+/** Header controls share the chrome row's 32px hit box and 18px nav glyph. */
+const SECTION_BTN = 32;
 const SECTION_GAP = 12;
-const SECTION_CONTENT_GAP = 4;
+const SECTION_CONTENT_GAP = 2;
 // Header controls hide at rest and reveal on header hover / keyboard focus,
 // mirroring the note-row ··· grammar (judged live 2026-08-23 — this reversed
 // the earlier always-visible-at-0.55 rule). All rest/reveal/emphasis states
@@ -147,17 +140,18 @@ const SECTION_CONTENT_GAP = 4;
 // locked out (focus reveals), and touch devices keep the controls visible.
 
 /**
- * A section lid: bold label left, optional single action right.
- * `role="presentation"` keeps it out of the surrounding tree's item list — the
- * text still reads, it just isn't announced as a row.
+ * The one section lid: the vault's name left, its controls right.
+ * `role="presentation"` keeps it out of the tree below — the text still
+ * reads, it just isn't announced as a row. The name is the vault folder's
+ * basename, quiet secondary ink: it says where you are, nothing more.
  */
 function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
     <div
       role="presentation"
       className="sidebar-section-header"
-      // `Notes` doubles as the visible root drop target during a note drag:
-      // drop on a folder → into that folder, drop on Notes → back to root.
+      // The header doubles as the visible root drop target during a drag:
+      // drop on a folder → into that folder, drop here → back to the root.
       // useSidebarDrag finds it by this attribute and paints it neutrally.
       {...(dropRoot ? { "data-drop-root": "true" } : {})}
       style={{
@@ -168,26 +162,46 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
         boxSizing: "border-box",
         paddingLeft: SECTION_HEADER_LEFT,
         paddingRight: SECTION_HEADER_RIGHT,
-        marginTop: first ? 0 : SECTION_GAP,
+        // A first header sits a touch below the chrome row rather than on it.
+        marginTop: first ? 10 : SECTION_GAP,
         marginBottom: SECTION_CONTENT_GAP,
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT.secondary }}>{label}</span>
-      {children}
+      <span
+        style={{
+          // Row size, a step quieter in ink, a step heavier in weight: a
+          // label for the list, not a heading over it.
+          fontSize: 14,
+          fontWeight: 500,
+          color: TEXT.muted,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ display: "flex", alignItems: "center", flexShrink: 0, gap: 2 }}>
+        {children}
+      </span>
     </div>
   );
 }
 
 /**
- * The single trailing control a section header may carry (New folder, Sort).
- * One component so both wear the same geometry and the same rest/hover ink.
+ * A trailing header control (New note, New folder, ···). One component so
+ * all wear the same geometry and the same rest/hover ink. `visible` keeps
+ * the control on screen at rest (muted) instead of hover-revealed; the vault
+ * header's three are, because New note cannot be a secret. Never a fourth:
+ * three muted glyphs read as a set, four read as a toolbar.
  */
-function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
+function SectionAction({ onClick, title, ariaLabel, active, visible, children, ...rest }) {
   return (
     <button
       type="button"
-      className="sidebar-section-action"
+      className={`sidebar-section-action${visible ? " sidebar-section-action--visible" : ""}`}
       onClick={onClick}
       title={title}
       aria-label={ariaLabel || title}
@@ -208,6 +222,51 @@ function SectionAction({ onClick, title, ariaLabel, active, children, ...rest })
       {...rest}
     >
       {children}
+    </button>
+  );
+}
+
+/**
+ * Mobile's inline "+ New Folder" / "+ New Note" tree rows. Desktop moved both
+ * actions into headers; mobile keeps them as quiet rows at the foot of each
+ * group, with the note row indented under the folder rows.
+ */
+function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, accentColor }) {
+  return (
+    <button
+      onClick={onClick}
+      role="treeitem"
+      style={{
+        width: "100%",
+        border: "none",
+        cursor: "pointer",
+        background: "transparent",
+        borderLeft,
+        padding: `12px 16px 12px ${paddingLeft}px`,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        color: TEXT.secondary,
+        fontSize: 17,
+        fontFamily: "inherit",
+        fontWeight: 500,
+        opacity: 0.55,
+        transition: "background 0.12s, color 0.12s, opacity 0.12s",
+        textAlign: "left",
+      }}
+      onMouseEnter={(e) => {
+        hBg(e.currentTarget, BG.elevated);
+        e.currentTarget.style.color = TEXT.primary;
+        e.currentTarget.style.opacity = "1";
+      }}
+      onMouseLeave={(e) => {
+        hBg(e.currentTarget, "transparent");
+        e.currentTarget.style.color = TEXT.secondary;
+        e.currentTarget.style.opacity = "0.55";
+      }}
+    >
+      <span style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}>+</span>
+      <span>{label}</span>
     </button>
   );
 }
@@ -264,105 +323,6 @@ function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }) {
   );
 }
 
-/**
- * Mobile's inline "+ New Folder" / "+ New Note" tree rows. Desktop moved both
- * actions into headers; mobile keeps them as quiet rows at the foot of each
- * group, with the note row indented under the folder rows.
- */
-function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, accentColor }) {
-  return (
-    <button
-      onClick={onClick}
-      role="treeitem"
-      style={{
-        width: "100%",
-        border: "none",
-        cursor: "pointer",
-        background: "transparent",
-        borderLeft,
-        padding: `12px 16px 12px ${paddingLeft}px`,
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        color: TEXT.secondary,
-        fontSize: 17,
-        fontFamily: "inherit",
-        fontWeight: 500,
-        opacity: 0.55,
-        transition: "background 0.12s, color 0.12s, opacity 0.12s",
-        textAlign: "left",
-      }}
-      onMouseEnter={(e) => {
-        hBg(e.currentTarget, BG.elevated);
-        e.currentTarget.style.color = TEXT.primary;
-        e.currentTarget.style.opacity = "1";
-      }}
-      onMouseLeave={(e) => {
-        hBg(e.currentTarget, "transparent");
-        e.currentTarget.style.color = TEXT.secondary;
-        e.currentTarget.style.opacity = "0.55";
-      }}
-    >
-      <span style={{ width: 17, flexShrink: 0, textAlign: "center", color: accentColor }}>+</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function ActionRow({ icon, label, onClick, title, TEXT, BG }) {
-  return (
-    <button
-      type="button"
-      className="sidebar-action-row"
-      onClick={onClick}
-      title={title}
-      style={{
-        width: "100%",
-        height: ACTION_ROW_H,
-        display: "flex",
-        alignItems: "center",
-        // Container is inset ROW_INSET, so this lands the glyph box on SPINE
-        // and (with ICON_GAP) the label on TEXT_COL.
-        padding: `0 8px 0 ${SPINE - ROW_INSET}px`,
-        border: "none",
-        background: "transparent",
-        borderRadius: ACTION_RADIUS,
-        cursor: "pointer",
-        color: TEXT.secondary,
-        fontSize: 14,
-        fontWeight: 400,
-        fontFamily: "inherit",
-        textAlign: "left",
-        transition: "background 120ms, color 120ms",
-      }}
-      onMouseEnter={(e) => {
-        hBg(e.currentTarget, BG.hover);
-        e.currentTarget.style.color = TEXT.primary;
-      }}
-      onMouseLeave={(e) => {
-        hBg(e.currentTarget, "transparent");
-        e.currentTarget.style.color = TEXT.secondary;
-      }}
-    >
-      <span
-        style={{
-          width: ACTION_ICON,
-          marginRight: ACTION_ICON_GAP,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {icon}
-      </span>
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-    </button>
-  );
-}
-
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
@@ -379,6 +339,11 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   ctxMenuNoteId,
   isMobile,
+  // The vault folder's basename ("Notes" on web, where there is no folder).
+  vaultName = "Notes",
+  // Desktop only: the ··· menu's whole-vault actions.
+  onRevealVault,
+  onChangeVault,
 }) {
   const { accentColor, chromeBg, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
@@ -393,6 +358,7 @@ const Sidebar = memo(function Sidebar({
     searchInputRef,
     sidebarScrollRef,
     expanded,
+    setExpanded,
     filteredTree,
     fNotes,
     renamingFolder,
@@ -409,7 +375,10 @@ const Sidebar = memo(function Sidebar({
     setSortMode,
   } = useSidebar();
 
-  // Anchor rect of the sort trigger, or null when the menu is closed.
+  // Anchor rect of the ··· trigger, or null when the vault menu is closed.
+  const [vaultMenuAnchor, setVaultMenuAnchor] = useState(null);
+  const closeVaultMenu = () => setVaultMenuAnchor(null);
+  const collapseAllFolders = () => setExpanded({});
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -730,8 +699,26 @@ const Sidebar = memo(function Sidebar({
         </button>
         {hasChildren && (
           <Collapsible open={isOpen}>
-            {/* No guide line — indentation alone carries the nesting. */}
-            <div>
+            {/* LIVE TRY 2026-09-05: an indent guide, a hairline dropping from
+                the folder glyph's centre through its children. In one mixed
+                tree, root notes (no glyph, text on the folder-label column)
+                otherwise read as children of the last open folder above them;
+                the line ending is what says "this folder ends here". */}
+            <div style={{ position: "relative" }}>
+              {!isMobile && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: TREE_ROW_GAP,
+                    left: SPINE + SPINE_ICON / 2 + depth * 20,
+                    width: 1,
+                    background: BG.divider,
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
             </div>
@@ -741,15 +728,10 @@ const Sidebar = memo(function Sidebar({
     );
   };
 
-  // On desktop the Search action row swaps into a field once search is engaged;
-  // mobile always shows the field.
-  const searchActive = Boolean(searchFocused || search);
-
   const searchInput = (
     <input
       ref={searchInputRef}
       type="text"
-      autoFocus={!isMobile}
       aria-label="Search notes"
       value={search}
       onChange={(e) => setSearch(e.target.value)}
@@ -778,7 +760,7 @@ const Sidebar = memo(function Sidebar({
         border: "none",
         outline: "none",
         color: TEXT.primary,
-        fontSize: isMobile ? 15 : 14,
+        fontSize: isMobile ? 15 : 13,
         width: "100%",
         fontFamily: "inherit",
       }}
@@ -853,7 +835,7 @@ const Sidebar = memo(function Sidebar({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            height: CHROME_INSET + CHROME_BTN,
+            height: CHROME_TOP + CHROME_BTN,
             boxSizing: "border-box",
             // Children are centred, so top padding shifts them by half of it.
             // Height is unchanged, so nothing below the header moves.
@@ -883,11 +865,35 @@ const Sidebar = memo(function Sidebar({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            <img src={boojyWordmark} alt="" style={{ height: 20 }} draggable="false" />
+            {/* 18px: a label, not a headline — at 20 it out-shouted the note's H1.
+                LIVE TRY 2026-09-05: the asset is pure black, the heaviest ink in
+                the window; 0.92 lands it near TEXT.primary (#14110F). A re-drawn
+                asset in the ink colour is the real fix if this stays. */}
+            <img
+              src={boojyWordmark}
+              alt=""
+              style={{ height: 18, opacity: 0.92 }}
+              draggable="false"
+            />
           </button>
-          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
-            <SidebarToggleIcon />
-          </ChromeButton>
+          {/* Window-level controls live in the chrome row with the traffic
+              lights: Search and the panel toggle. The vault header below is
+              the first content line. Search reveals the field until the
+              search palette (Cmd+K) replaces it. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <ChromeButton
+              onClick={() => {
+                setSearchFocused(true);
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+              }}
+              title="Search"
+            >
+              <SearchIcon size={18} />
+            </ChromeButton>
+            <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
+              <SidebarToggleIcon />
+            </ChromeButton>
+          </div>
         </div>
       )}
 
@@ -935,7 +941,7 @@ const Sidebar = memo(function Sidebar({
           padding: isMobile ? "2px 0" : "0 0 2px",
         }}
       >
-        {!isMobile && (
+        {!isMobile && (searchFocused || search) && (
           <div
             style={{
               // Sticky, not fixed: pinned while the tree scrolls beneath.
@@ -947,68 +953,39 @@ const Sidebar = memo(function Sidebar({
               display: "flex",
               flexDirection: "column",
               gap: 4,
-              padding: `4px ${ROW_INSET}px 12px ${ROW_INSET}px`,
+              padding: `4px ${ROW_INSET}px 8px ${ROW_INSET}px`,
               flexShrink: 0,
             }}
           >
-            <ActionRow
-              icon={<NewNoteIcon size={ACTION_ICON} />}
-              label="New note"
-              title="New note"
-              onClick={() => createNote(null)}
-              TEXT={TEXT}
-              BG={BG}
-            />
-            {searchActive ? (
-              // Same row geometry as the action rows, so opening search doesn't
-              // shift the group \u2014 the row just gains a field and a surface.
-              <div
-                onClick={() => searchInputRef.current?.focus()}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  height: ACTION_ROW_H,
-                  borderRadius: ACTION_RADIUS,
-                  boxSizing: "border-box",
-                  background: theme.searchInputBg,
-                  border: `1px solid ${searchFocused ? `${accentColor}60` : BG.divider}`,
-                  paddingRight: 8,
-                  cursor: "text",
-                  overflow: "hidden",
-                }}
+            {/* The search field appears only while searching, opened from the
+                chrome row's Search glyph; at rest the vault header is the
+                first line of the panel. Interim until the Cmd+K palette. */}
+            <div
+              onClick={() => searchInputRef.current?.focus()}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                height: 28,
+                margin: "0 4px",
+                borderRadius: 14,
+                boxSizing: "border-box",
+                background: BG.surface,
+                border: `1px solid ${searchFocused ? `${accentColor}60` : "transparent"}`,
+                padding: "0 10px 0 9px",
+                cursor: "text",
+                overflow: "hidden",
+                transition: "border-color 0.15s ease",
+              }}
+            >
+              <span
+                style={{ display: "flex", alignItems: "center", flexShrink: 0, color: TEXT.muted }}
               >
-                <span
-                  style={{
-                    // −1 compensates the field's 1px border so the glyph stays
-                    // on the spine and the input text on TEXT_COL.
-                    width: ACTION_ICON,
-                    marginLeft: SPINE - ROW_INSET - 1,
-                    marginRight: ACTION_ICON_GAP,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: TEXT.muted,
-                  }}
-                >
-                  <SearchIcon size={ACTION_ICON} />
-                </span>
-                {searchInput}
-                {clearSearchButton}
-              </div>
-            ) : (
-              <ActionRow
-                icon={<SearchIcon size={ACTION_ICON} />}
-                label="Search"
-                title="Search notes"
-                onClick={() => {
-                  setSearchFocused(true);
-                  setTimeout(() => searchInputRef.current?.focus(), 0);
-                }}
-                TEXT={TEXT}
-                BG={BG}
-              />
-            )}
+                <SearchIcon size={14} />
+              </span>
+              {searchInput}
+              {clearSearchButton}
+            </div>
           </div>
         )}
         {searchMode && searchResults.results.length > 0 ? (
@@ -1169,10 +1146,10 @@ const Sidebar = memo(function Sidebar({
           )
         ) : (
           <>
-            {/* Two labelled trees, not one: a section header — and the New folder
-                button inside it — is not a legal child of role="tree" (axe
-                aria-required-children, caught by the e2e a11y gate). Mobile has no
-                headers, so it keeps a single tree with its own inline rows. */}
+            {/* One tree under one header. The header is a sibling above the
+                tree, never inside it: a header is not a legal child of
+                role="tree" (axe aria-required-children, caught by the e2e a11y
+                gate). Mobile has no header and keeps its inline rows. */}
             {isMobile ? (
               <div role="tree" aria-label="Notes">
                 <div style={{ height: 5 }} />
@@ -1205,47 +1182,50 @@ const Sidebar = memo(function Sidebar({
               </div>
             ) : (
               <>
-                <SectionHeader label="Folders" TEXT={TEXT} first>
+                {/* The vault header: where you are, and everything that makes
+                    something. It is also the root drop target, so it stays
+                    put however empty the vault is. Folders come first,
+                    alphabetical; root notes follow in the sort preference,
+                    exactly as inside a folder — the root is a folder. */}
+                {/* The vault row is a title with quiet controls: New folder and
+                    the ··· reveal on hover or focus, at the 16px row tier so
+                    they read with the folder glyphs below, not with the chrome
+                    row above. New note lives in the chrome row. */}
+                <SectionHeader label={vaultName} TEXT={TEXT} first dropRoot>
                   <SectionAction onClick={() => createFolder(null)} title="New folder">
-                    <NewFolderIcon />
+                    <NewFolderIcon size={16} />
+                  </SectionAction>
+                  <SectionAction
+                    onClick={(e) => setVaultMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                    title="Vault options"
+                    aria-haspopup="menu"
+                    aria-expanded={vaultMenuAnchor !== null}
+                    active={vaultMenuAnchor !== null}
+                  >
+                    <MoreHorizontalIcon size={16} />
                   </SectionAction>
                 </SectionHeader>
-                {filteredTree.length > 0 && (
-                  <div role="tree" aria-label="Folders">
-                    {filteredTree.map((f) => renderFolder(f, 0))}
-                  </div>
+                {vaultMenuAnchor && (
+                  <VaultMenu
+                    anchor={vaultMenuAnchor}
+                    sortMode={sortMode}
+                    setSortMode={setSortMode}
+                    onCollapseAll={collapseAllFolders}
+                    onNewFolder={() => createFolder(null)}
+                    onReveal={onRevealVault}
+                    onChangeVault={onChangeVault}
+                    revealLabel={isElectronMac ? "Reveal in Finder" : "Show in folder"}
+                    onClose={closeVaultMenu}
+                  />
                 )}
-                {/* The header stays put when the section is empty: it is both the
-                    visible root drop target and the home of the sort control, and
-                    those are needed exactly when there are no root notes to show.
-                    A search that matches no root note is the one case it hides. */}
-                {(!search || fNotes.length > 0) && (
-                  <>
-                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
-                      {/* Two modes only, so sort is a click-to-flip toggle, not
-                          a menu (judged live 2026-08-23; SortMenu was deleted —
-                          git history has it). The glyph shows the CURRENT mode;
-                          the label's tail says what a click does — that
-                          convention choice is deliberate, keep them consistent. */}
-                      <SectionAction
-                        onClick={() =>
-                          setSortMode(sortMode === SORT_RECENT ? SORT_ALPHA : SORT_RECENT)
-                        }
-                        title={
-                          sortMode === SORT_RECENT
-                            ? "Sorted by most recent — switch to alphabetical"
-                            : "Sorted alphabetically — switch to most recent"
-                        }
-                      >
-                        {sortMode === SORT_RECENT ? <SortRecentIcon /> : <SortAlphaIcon />}
-                      </SectionAction>
-                    </SectionHeader>
-                    {fNotes.length > 0 && (
-                      <div role="tree" aria-label="Notes">
-                        {fNotes.map((nId) => renderNote(nId, 0))}
-                      </div>
-                    )}
-                  </>
+                {/* An empty tree fails axe, so the element exists only with rows. */}
+                {(filteredTree.length > 0 || fNotes.length > 0) && (
+                  <div role="tree" aria-label={vaultName}>
+                    {filteredTree.map((f) => renderFolder(f, 0))}
+                    {/* No breath before the root notes: the guide line ending
+                        says the folder ended; the row rhythm stays even. */}
+                    {fNotes.map((nId) => renderNote(nId, 0))}
+                  </div>
                 )}
               </>
             )}
