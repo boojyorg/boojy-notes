@@ -27,12 +27,10 @@ missing core features no longer limit it. Worked one item at a time, each judged
 
 - [ ] **Tables** — finished-feeling basic interaction: visible cells, caret in the first cell,
   Tab to the next cell, whole-table delete. Not started; Tyr gives the go.
-- [ ] **Appearance cleanup** — remove the star field from the product (`StarField.jsx`,
-  `DAY.starField`/`NIGHT.starField`, its `EditorArea` mount) and collapse the "Auto" mode plus
-  its "Auto method" row into a plain System option so the picker reads Light / Dark / System.
-  Stored `day`/`night`/`auto` values stay. Own small branch.
-- [ ] **Subtraction** — onboarding hints, the font-size preference; copy pass on Quote and
-  Checklist.
+- [ ] **Copy pass on Quote and Checklist.** (The rest of the subtraction pass landed on
+  2026-09-05: theme picker Light / Dark / System, star field, onboarding hints, font-size
+  preference, Collapse all folders, Change vault folder in the vault menu, Import, the
+  backlinks panel and the PWA residue; see `CHANGELOG.md` Removed.)
 - [ ] **Preservation blockers** — the first-edit mutations listed under Data safety below.
 - [ ] **Visual polish, Windows smoke test, release.** The daily-driver build in `/Applications`
   is current master as of 2026-09-04 and never self-updates: rebuild after merges (CI rule) or
@@ -79,9 +77,6 @@ Only ideas worth remembering. Empty is fine.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
 - **`TagMenu` swallows the space that ends a tag** — `preventDefault` on space-dismiss.
-- **Web build residue** — `manifest.json` and the apple-touch-icon point at an icon path that
-  is not in `public/`, the theme colours are old night values, and the service worker's
-  purpose is unclear now web is on hold. Parked with the web question, not Beta work.
 
 ## Data safety / reliability
 
@@ -111,7 +106,6 @@ content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list
   (`markdown.js` `numCounter`).
 - [ ] **Wikilink rename does not update referrers** — silent link breakage.
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
-- [ ] **Same-title notes are invisible to backlinks.**
 - [ ] **Unparseable files vanish from the sidebar** silently.
 
 ## Accessibility
