@@ -20,8 +20,6 @@ function setup(overrides = {}) {
   const deps = {
     noteData,
     noteDataRef: { current: noteData },
-    activeNote: "n1",
-    note: noteData.n1,
     textOnlyEdit: { current: false },
     openNote,
     createNote,
@@ -39,12 +37,12 @@ function setup(overrides = {}) {
 }
 
 describe("useWikilinkHandlers", () => {
-  it("builds the title set (lowercased) and the current note's backlinks", () => {
+  it("builds the title set (lowercased)", () => {
     const { result } = setup();
     expect(result.current.noteTitleSet.has("alpha")).toBe(true);
     expect(result.current.noteTitleSet.has("beta")).toBe(true);
-    // n1 "Alpha" is referenced by n1's own block "[[Be" — no full link to Alpha, so none
-    expect(Array.isArray(result.current.currentBacklinks)).toBe(true);
+    // The backlink index left with the panel (2026-09-05).
+    expect(result.current).not.toHaveProperty("currentBacklinks");
   });
 
   it("click opens an existing note by title (case-insensitive)", () => {

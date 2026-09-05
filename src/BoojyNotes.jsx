@@ -531,29 +531,22 @@ export default function BoojyNotes() {
   const noteTitle = note?.title;
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
-  // Wikilink + backlink wiring (title set, backlinks, click/cmd-click/select)
-  const {
-    noteTitleSet,
-    currentBacklinks,
-    handleWikilinkClick,
-    handleWikilinkCmdClick,
-    handleWikilinkSelect,
-  } = useWikilinkHandlers({
-    noteData,
-    noteDataRef,
-    activeNote,
-    note,
-    textOnlyEdit,
-    openNote,
-    createNote,
-    wikilinkMenuRef,
-    setWikilinkMenu,
-    syncGeneration,
-    commitNoteData,
-    blockRefs,
-    focusBlockId,
-    focusCursorPos,
-  });
+  // Wikilink wiring (title set, click/cmd-click/select)
+  const { noteTitleSet, handleWikilinkClick, handleWikilinkCmdClick, handleWikilinkSelect } =
+    useWikilinkHandlers({
+      noteData,
+      noteDataRef,
+      textOnlyEdit,
+      openNote,
+      createNote,
+      wikilinkMenuRef,
+      setWikilinkMenu,
+      syncGeneration,
+      commitNoteData,
+      blockRefs,
+      focusBlockId,
+      focusCursorPos,
+    });
   noteTitleSetRef.current = noteTitleSet;
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
@@ -899,11 +892,9 @@ export default function BoojyNotes() {
               note={note}
               activeNote={activeNote}
               editorFadeIn={editorFadeIn}
-              backlinks={currentBacklinks}
               onWikilinkClick={handleWikilinkClick}
               onWikilinkCmdClick={handleWikilinkCmdClick}
               onTagClick={handleTagClick}
-              onOpenBacklink={openNote}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}
               linkPopover={linkPopover}

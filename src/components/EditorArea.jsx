@@ -10,7 +10,6 @@ import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
-import BacklinksPanel from "./BacklinksPanel";
 import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
 import LinkContextMenu from "./LinkContextMenu";
@@ -96,10 +95,8 @@ const EditorArea = memo(
     note,
     activeNote,
     editorFadeIn,
-    backlinks,
     onWikilinkClick,
     onTagClick,
-    onOpenBacklink,
     toolbarState,
     noteTitleSet,
     linkPopover,
@@ -783,13 +780,6 @@ const EditorArea = memo(
               }}
             />
 
-            {/* Backlinks panel */}
-            <BacklinksPanel
-              backlinks={backlinks}
-              onOpenNote={onOpenBacklink}
-              accentColor={accentColor}
-            />
-
             {/* Link context menu */}
             {linkCtxMenu && (
               <LinkContextMenu
@@ -902,8 +892,7 @@ const EditorArea = memo(
       prev.noteTitleSet === next.noteTitleSet &&
       prev.linkPopover === next.linkPopover &&
       prev.selectedImageBlockId === next.selectedImageBlockId &&
-      prev.lightbox === next.lightbox &&
-      prev.backlinks === next.backlinks;
+      prev.lightbox === next.lightbox;
     const dt = performance.now() - t0;
     if (import.meta.env.DEV && dt > 0.5)
       console.warn(

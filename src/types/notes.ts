@@ -130,13 +130,6 @@ export interface SearchIndexEntry {
   lastModified: number;
 }
 
-export interface BacklinkEntry {
-  sourceNoteId: string;
-  sourceTitle: string;
-  snippet: string;
-  wikilinkMatch: string;
-}
-
 export interface SlashCommand {
   id: string;
   label: string;
