@@ -787,7 +787,6 @@ export default function BoojyNotes() {
             isMobile={isMobile}
             vaultName={vaultName}
             onRevealVault={isElectron ? revealVault : undefined}
-            onChangeVault={isElectron ? changeNotesDir : undefined}
             onOpenSearch={openSearch}
           />
           {isMobile && !activeNote && (

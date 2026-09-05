@@ -226,9 +226,11 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above;
   two rows of 18px glyphs stacked read as two toolbars, which is why New note left the header.
   **Never a third glyph here.** New folder is also the first item of the ··· menu, the
-  standing hint for a hover-revealed control and the keyboard path. Sort, Collapse all
-  folders, Reveal in Finder and Change vault folder follow (`VaultMenu.tsx`, keyboard grammar
-  as `ContextMenu`); anything rarer goes there too, never onto the header. The
+  standing hint for a hover-revealed control and the keyboard path. Sort and Reveal in Finder
+  follow (`VaultMenu.tsx`, keyboard grammar as `ContextMenu`); anything rarer goes there too,
+  never onto the header. Not in the menu, by decision (2026-09-05): Collapse all folders
+  (folders toggle on click and persist as left) and Change vault folder, which is Settings →
+  Storage only, beside the path it changes. The
   `--visible` variant of `SectionAction` exists for a control that must show at rest; nothing
   uses it today.
 - **One `role="tree"`, the header a sibling above it, never inside it.** A header inside a tree
