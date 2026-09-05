@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+- **A task's checkbox sits on its first line** — When a task wrapped to two or more lines the box slid to the vertical middle of the text, so it no longer read as the start of the item. It now sits on the first line, level with where a bullet or a list number would be, whatever the item's length.
+
 ## v0.6.1 — 2026-09-05
 
 ### Improvements
