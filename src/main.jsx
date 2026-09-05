@@ -8,7 +8,6 @@ import { SidebarProvider } from "./context/SidebarContext";
 import { OverlayProvider } from "./context/OverlayContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
-import { isWeb } from "./utils/platform";
 import { installTraceProbes } from "./utils/trace";
 
 // The crash screen promises "your notes have been backed up to local
@@ -58,10 +57,3 @@ createRoot(document.getElementById("root")).render(
     </ThemeProvider>
   </StrictMode>,
 );
-
-// Register service worker for PWA (web only, not Electron)
-if (isWeb && "serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("/sw.js")
-    .catch((e) => console.error("[sw] Registration failed:", e));
-}
