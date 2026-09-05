@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Bug Fixes
+- **Desktop: the traffic lights no longer sit on the wordmark, and Cmd+Plus/Minus/0 scale the app** — The View menu's built-in Zoom In / Zoom Out / Actual Size took those shortcuts before Boojy Notes saw them, so its own UI scale never changed and Chromium zoomed the page instead, remembered per site and never moving the native window controls. That page zoom is what made a development window look larger than the installed app, and the traffic-light and wordmark spacing had been judged in one, so at true size on macOS 26 the third light overlapped the wordmark and the lights rode low. The menu zoom is gone, any remembered page zoom is reset on launch, and the lights and wordmark are re-aligned at 100%.
+
 ## v0.6.0 — 2026-09-05
 
 ### Bug Fixes

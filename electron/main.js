@@ -50,12 +50,13 @@ function createWindow() {
     minHeight: 400,
     title: "Boojy Notes",
     titleBarStyle: "hiddenInset",
-    // The lights share the sidebar header row. Its children centre at ~25px,
-    // but the wordmark's optical mass sits below its geometric centre, so the
-    // lights ride a few px lower than pure maths says (judged live
-    // 2026-08-23). x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move
-    // one, re-judge the other.
-    trafficLightPosition: { x: 14, y: 23 },
+    // The lights share the sidebar header row, whose wordmark centres at
+    // ~25px. macOS 26 draws each light 14px across, so y = 25 - 7. The old
+    // y: 23 was judged in a dev window Chromium had zoomed to 131%, where the
+    // header sat lower; at true size it rode 5px low (measured 2026-09-05).
+    // x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move one, re-judge
+    // the other, and only at 100% (View has no zoom, see below).
+    trafficLightPosition: { x: 14, y: 18 },
     // First-paint ground before React takes over. DAY's BG.darkest — light is
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).
@@ -94,6 +95,15 @@ function createWindow() {
     const timer = setTimeout(finish, 2000);
     ipcMain.once("flush-before-close-done", finish);
     win.webContents.send("app-will-close");
+  });
+
+  // Boojy Notes scales its own UI (Cmd+Plus/Minus/0 → `boojy-ui-scale`); the
+  // native controls never scale with Chromium's page zoom, so any page zoom
+  // misaligns the traffic lights and the wordmark. Chromium persists page zoom
+  // per origin, and the View menu once carried its zoom roles, so a profile
+  // may still hold one: reset it on every load so 100% is the only baseline.
+  mainWindow.webContents.on("dom-ready", () => {
+    mainWindow?.webContents.setZoomLevel(0);
   });
 
   // Dev: load Vite dev server; Prod: load built files
@@ -241,10 +251,9 @@ app.whenReady().then(async () => {
         { role: "reload" },
         { role: "forceReload" },
         ...(isDev ? [{ role: "toggleDevTools" }] : []),
-        { type: "separator" },
-        { role: "resetZoom" },
-        { role: "zoomIn" },
-        { role: "zoomOut" },
+        // No zoom roles: they would take Cmd+Plus/Minus/0 before the renderer
+        // sees them, so the app's own UI scale never fired and Chromium's page
+        // zoom (which leaves the native traffic lights behind) ran instead.
         { type: "separator" },
         { role: "togglefullscreen" },
       ],

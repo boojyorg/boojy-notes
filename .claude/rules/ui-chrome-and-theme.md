@@ -89,7 +89,9 @@ mixed sizes and strokes is what made the UI read as assembled.
 
 - **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS Electron the
   traffic lights sit inline in the sidebar header, and the wordmark shifts by
-  `MAC_TRAFFIC_INSET` to clear them (move one, re-judge the other). The header is the window
+  `MAC_TRAFFIC_INSET` to clear them (move one, re-judge the other, **at 100% page zoom only**:
+  the lights are native and never scale with the page, and macOS 26 draws them 14px on a 23px
+  pitch, so they end at 75px). The header is the window
   drag region; the wordmark and chrome buttons opt out. Collapsed, a thin invisible strip along
   the viewport top keeps the window draggable and deliberately stops above the note label's
   line box so it never steals label clicks. Web and non-mac Electron render none of this.
@@ -103,6 +105,12 @@ mixed sizes and strokes is what made the UI read as assembled.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+- **One zoom system: the app's own UI scale.** The View menu carries no `zoomIn` / `zoomOut` /
+  `resetZoom` roles, because a menu role takes the shortcut before the renderer sees it, so the
+  app's scale never fired and Chromium's page zoom ran instead, persisted per origin in the
+  profile and leaving the native traffic lights behind. `main.js` resets Chromium's zoom level
+  to 0 on every `dom-ready` so a stale profile can't reintroduce it. If a dev window ever looks
+  bigger than the installed app, that is page zoom; judge chrome geometry only after Cmd+0.
 - **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
   web deletion is permanent behind confirmation. Folder deletion never touches a file that is not
   a note; the directory itself goes only once nothing is left in it (OS cruft such as `.DS_Store`
