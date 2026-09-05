@@ -10,7 +10,9 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
 
 - **Product terminology is Light / Dark / System.** The stored preference keys stay
   `day` / `night` / `auto`, and the theme objects stay `DAY` / `NIGHT`; renaming either would
-  orphan saved preferences for no user benefit. Copy changes, keys don't.
+  orphan saved preferences for no user benefit. Copy changes, keys don't. System (`auto`)
+  follows the OS appearance and nothing else; the time-of-day schedule that used to sit under
+  it was removed on 2026-09-05, and a saved `autoMethod` is ignored.
 - Light is the first-run default when nothing is saved; a saved choice always wins.
 - Electron's first-paint `backgroundColor` is Light's ground, so a Dark user sees one brief
   light flash at launch. Wiring the saved theme back to the main process is the fix if it ever

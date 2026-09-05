@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useContext } from "react";
 import { ThemeContext, ThemeProvider } from "../../src/context/ThemeContext";
@@ -42,8 +42,13 @@ describe("ThemeContext", () => {
       expect(result.current.themeMode).toBe("night");
     });
 
-    it("retains a saved auto preference", () => {
-      localStorage.setItem(LS_KEY, JSON.stringify({ themeMode: "auto", autoMethod: "system" }));
+    it("retains a saved System preference (stored as auto) and ignores a legacy autoMethod", () => {
+      // Older builds offered a time-of-day schedule under Auto; that saved
+      // method is now ignored and "auto" always follows the OS appearance.
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({ themeMode: "auto", autoMethod: "time", dayStartHour: 0, dayEndHour: 0 }),
+      );
       const { result } = renderTheme();
       expect(result.current.themeMode).toBe("auto");
       expect(result.current.theme).toBe(DAY);
@@ -90,32 +95,20 @@ describe("ThemeContext", () => {
       expect(saved.themeMode).toBe("day");
     });
 
-    it("saves autoMethod to localStorage", () => {
+    it("no longer writes the retired schedule keys", () => {
+      localStorage.setItem(LS_KEY, JSON.stringify({ themeMode: "auto", autoMethod: "time" }));
       const { result } = renderTheme();
 
       act(() => {
-        result.current.setAutoMethod("time");
+        result.current.setThemeMode("night");
       });
 
       const saved = JSON.parse(localStorage.getItem(LS_KEY));
-      expect(saved.autoMethod).toBe("time");
-    });
-
-    it("saves dayStartHour and dayEndHour to localStorage", () => {
-      const { result } = renderTheme();
-
-      act(() => {
-        result.current.setDayStartHour(8);
-        result.current.setDayEndHour(20);
-      });
-
-      const saved = JSON.parse(localStorage.getItem(LS_KEY));
-      expect(saved.dayStartHour).toBe(8);
-      expect(saved.dayEndHour).toBe(20);
+      expect(saved).toEqual({ themeMode: "night" });
     });
   });
 
-  describe("auto mode with system method", () => {
+  describe("System mode", () => {
     it("resolves to day when matchMedia prefers-color-scheme is not dark", () => {
       // setup.js matchMedia returns matches: false (light preference)
       const { result } = renderTheme();

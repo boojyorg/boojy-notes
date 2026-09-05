@@ -5,9 +5,10 @@
 ### Bug Fixes
 - **Desktop: the caret no longer jumps to the top of the note mid-typing, and no keystrokes are lost when it did** — After every save, macOS reported the file changed a second time one and a half to nearly three seconds later, once its metadata settled, which was outside the window in which Boojy Notes ignores the echo of its own writes. The app took that for an outside edit and rebuilt the note from disk: the caret went to the first block for a moment and whatever was typed since the save vanished. A save now also remembers the exact bytes it wrote, so a change event whose file still holds those bytes is recognised as ours however late it arrives. Traced live on the daily driver; a run of the same typing after the fix showed every late event recognised and ignored.
 - **Diagnostic trace** — Start the app with `BOOJY_TRACE=/path/to/log` and both processes append one timestamped line per watcher event, save, external reload, keystroke target, caret move between blocks and block repaint, on one clock. It is a no-op otherwise. This is how the caret jump was finally caught.
-
-### Bug Fixes
 - **Desktop: the traffic lights no longer sit on the wordmark, and Cmd+Plus/Minus/0 scale the app** — The View menu's built-in Zoom In / Zoom Out / Actual Size took those shortcuts before Boojy Notes saw them, so its own UI scale never changed and Chromium zoomed the page instead, remembered per site and never moving the native window controls. That page zoom is what made a development window look larger than the installed app, and the traffic-light and wordmark spacing had been judged in one, so at true size on macOS 26 the third light overlapped the wordmark and the lights rode low. The menu zoom is gone, any remembered page zoom is reset on launch, and the lights and wordmark are re-aligned at 100%.
+
+### Removed
+- **Theme picker reads Light / Dark / System** — The third option was "Auto", which opened a second row to choose between following the system and a time-of-day schedule with two hour pickers. The schedule is gone; System follows the OS appearance and the picker is one row of three. A saved schedule preference silently becomes System.
 
 ## v0.6.0 — 2026-09-05
 
