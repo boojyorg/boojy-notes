@@ -19,8 +19,8 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
   grates.
 - The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
   Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
-- The star field (`StarField.jsx`, `starField` on each theme) is leaving the product in its
-  own branch; don't extend it.
+- There is no decorative background. The Dark star field was removed on 2026-09-05 (git has
+  it, tag-free); the editor ground is the theme's `BG.editor` and nothing else.
 
 **Surface roles, Light, in order light → dark.** Use them by role, not by which grey looks
 right; naming greys by darkness is what makes every region read as a separate boxed panel.

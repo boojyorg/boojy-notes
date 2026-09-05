@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import { Z } from "../constants/zIndex";
@@ -7,7 +7,6 @@ import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { CHROME_INSET, CHROME_TOP, CHROME_BTN } from "./EditorChrome";
-import StarField from "./StarField";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
@@ -89,18 +88,6 @@ const COL_OFFSET_TO = 880;
 /** The drag handle between sidebar and editor also eats width. */
 const SIDEBAR_HANDLE_W = 4;
 
-// "Does this note have any content?" — drives the starfield fade. Media blocks
-// (image/file/embed/table) count as content even with no text; everything else
-// counts only if it has non-whitespace text. A fresh note is a single empty `p`
-// → false → stars show.
-const MEDIA_BLOCK_TYPES = new Set(["image", "file", "embed", "table"]);
-function blocksHaveContent(blocks) {
-  if (!blocks) return false;
-  return blocks.some((b) =>
-    MEDIA_BLOCK_TYPES.has(b.type) ? true : (b.text || "").trim().length > 0,
-  );
-}
-
 const EditorArea = memo(
   function EditorArea({
     isMobile,
@@ -176,41 +163,6 @@ const EditorArea = memo(
     const editorContainerRef = useRef(null);
     // Note column (padding + measure) — the drag handle positions against it.
     const columnRef = useRef(null);
-
-    // ── Starfield fade: "note has content" signal ──────────────────────────────
-    // Stars show on an empty note and fade out once it has content — tied to
-    // CONTENT, not focus. Two sources keep this both correct and instant:
-    //  (A) authoritative — recompute from the note's blocks on open/switch and on
-    //      any structural change (delete/undo). This handles "open a written note →
-    //      no stars" and "emptied → fade back in".
-    //  (B) instant — the live DOM on the first keystroke. block.text lags typing by
-    //      the 300ms commit debounce, so reading state here would make the fade feel
-    //      laggy; we read the DOM instead (per the editor gotchas in CLAUDE.md).
-    // (B) only ever turns the fade ON (content just arrived); (A) owns turning it
-    // back off, so a media-only note never wrongly fades back in.
-    const [noteHasContent, setNoteHasContent] = useState(false);
-    const noteHasContentRef = useRef(false);
-    const applyHasContent = useCallback((val) => {
-      if (noteHasContentRef.current === val) return;
-      noteHasContentRef.current = val;
-      setNoteHasContent(val);
-    }, []);
-
-    // (A) authoritative — blocks identity changes on open/switch/edit-commit/undo.
-    // useLayoutEffect (not useEffect) so the correct value is set BEFORE paint:
-    // opening a written note must show no stars, with no one-frame flash.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeNote keys the note; blocks identity is the change signal
-    useLayoutEffect(() => {
-      applyHasContent(blocksHaveContent(note?.content?.blocks));
-    }, [activeNote, note?.content?.blocks, applyHasContent]);
-
-    // (B) instant fade-out on first keystroke (reads DOM, pre-debounce)
-    const handleContentInput = useCallback(() => {
-      if (noteHasContentRef.current) return; // already faded out
-      if ((editorRef.current?.textContent || "").trim().length > 0) {
-        applyHasContent(true);
-      }
-    }, [applyHasContent, editorRef]);
 
     const onNavigateToNote = useCallback(
       (target, create) => {
@@ -478,9 +430,6 @@ const EditorArea = memo(
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {theme.starField && (
-          <StarField mode="editor" seed={activeNote || "__empty__"} hasContent={noteHasContent} />
-        )}
         {note ? (
           <div
             key={activeNote}
@@ -669,10 +618,7 @@ const EditorArea = memo(
                   }
                   handleEditorKeyDown(e);
                 }}
-                onInput={(e) => {
-                  handleEditorInput(e);
-                  handleContentInput();
-                }}
+                onInput={handleEditorInput}
                 onPaste={handleEditorPaste}
                 onCopy={handleEditorCopy}
                 onMouseMove={handleEditorMouseMove}
