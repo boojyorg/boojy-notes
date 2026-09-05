@@ -28,6 +28,9 @@ export const PARAGRAPH_GAP = 12;
  * already scale the whole app and one knob is enough.
  */
 export const EDITOR_FONT_SIZE = 15;
+/** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
+const CHECKBOX_LINE_HEIGHT = 1.6;
+const CHECKBOX_SIZE = 16;
 
 const INDENT_PX = 24;
 
@@ -472,11 +475,13 @@ const EditableBlock = memo(
           style={{
             contain: "content",
             display: "flex",
-            alignItems: "center",
+            // Top-aligned, like the bullet and number markers: the box sits on
+            // the first line of a wrapped task, not the middle of the block.
+            alignItems: "flex-start",
             gap: 9,
             padding: "2.5px 0",
             fontSize: EDITOR_FONT_SIZE,
-            lineHeight: 1.6,
+            lineHeight: CHECKBOX_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
@@ -491,8 +496,10 @@ const EditableBlock = memo(
               onCheckToggle(noteId, blockIndex);
             }}
             style={{
-              width: 16,
-              height: 16,
+              width: CHECKBOX_SIZE,
+              height: CHECKBOX_SIZE,
+              // Centre the box on the first line's height, whatever the font size.
+              marginTop: (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
               borderRadius: 3.5,
               flexShrink: 0,
               cursor: "pointer",
