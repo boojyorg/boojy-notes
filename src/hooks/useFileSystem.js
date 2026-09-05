@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
 
@@ -54,6 +54,9 @@ function blocksEqual(a, b) {
  *   every keystroke, so identity means "nothing typed since". Without that
  *   check, a debounced write of the state's copy (up to 300ms behind the
  *   editor) would clear the net and an immediate quit would drop the tail.
+ *   `remapNoteFolders(remap)` (useHistory) moves every note's `folder` field
+ *   through `remap` in the live data and in every undo snapshot after a
+ *   directory rename; it returns whether anything changed.
  */
 export function useFileSystem(
   noteData,
@@ -75,6 +78,30 @@ export function useFileSystem(
   const isExternalUpdate = useRef(false);
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const notesDirRef = useRef(notesDir);
+  notesDirRef.current = notesDir;
+  // Work to run once the next flush has finished: after pending writes and
+  // Trash moves. Removing a folder's directory waits on this, so it can only
+  // happen after the notes inside it have left.
+  const afterFlushCallbacks = useRef([]);
+  const afterNextFlush = useCallback((fn) => {
+    afterFlushCallbacks.current.push(fn);
+  }, []);
+
+  // ─── Folders are directories (desktop) ───
+  // The folder list is the disk walk, not "where notes happen to be": an empty
+  // directory shows, and a new one survives a restart. On web the list stays
+  // in memory (useNoteCrud's fallback) and this is a no-op.
+  const refreshFolders = useCallback(async () => {
+    const api = getAPI();
+    if (typeof api?.readFolders !== "function") return;
+    const folders = await api.readFolders();
+    setCustomFolders((prev) =>
+      prev.length === folders.length && prev.every((f, i) => f === folders[i]) ? prev : folders,
+    );
+  }, [setCustomFolders]);
 
   // ─── Initial load from disk ───
   useEffect(() => {
@@ -97,19 +124,8 @@ export function useFileSystem(
           // finishes; bump syncGeneration (like onFileChanged does) so the
           // title-sync layout effects re-run once the data is actually here
           if (syncGeneration) syncGeneration.current++;
-
-          // Extract unique folders
-          const folders = new Set();
-          for (const note of Object.values(diskNotes)) {
-            if (note.folder) folders.add(note.folder);
-          }
-          if (folders.size > 0) {
-            setCustomFolders((prev) => {
-              const merged = new Set([...prev, ...folders]);
-              return [...merged];
-            });
-          }
         }
+        await refreshFolders();
       } catch (err) {
         console.error("useFileSystem: initial load failed", err);
         onError?.("Failed to load notes from disk");
@@ -122,7 +138,7 @@ export function useFileSystem(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; including it would re-run initial load
-  }, [setNoteData, setCustomFolders]);
+  }, [setNoteData, setCustomFolders, refreshFolders]);
 
   // ─── Detect local changes and debounce writes ───
   useEffect(() => {
@@ -237,6 +253,16 @@ export function useFileSystem(
       }
       deletedNotes.current.delete(noteId);
     }
+
+    const callbacks = afterFlushCallbacks.current;
+    afterFlushCallbacks.current = [];
+    for (const cb of callbacks) {
+      try {
+        await cb();
+      } catch (err) {
+        console.error("useFileSystem: after-flush work failed", err);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
   }, []);
 
@@ -282,28 +308,22 @@ export function useFileSystem(
       }
     });
 
-    // Sync folders after external file change — remove stale folders
+    // The folder list is re-read whenever the disk may have changed it.
     const syncFoldersFromDisk = async () => {
       try {
-        const diskNotes = await window.electronAPI.readAllNotes();
-        const diskFolders = new Set();
-        for (const n of Object.values(diskNotes)) {
-          if (n.folder) diskFolders.add(n.folder);
-        }
-        setCustomFolders((prev) => {
-          const filtered = prev.filter((f) => diskFolders.has(f));
-          for (const f of diskFolders) {
-            if (!filtered.includes(f)) filtered.push(f);
-          }
-          if (filtered.length === prev.length && filtered.every((f, i) => f === prev[i]))
-            return prev;
-          return filtered;
-        });
+        await refreshFolders();
       } catch (err) {
         console.error("useFileSystem: folder sync failed", err);
         onError?.("Failed to sync folders from disk");
       }
     };
+
+    // A directory made or removed outside the app (Finder, git, another editor).
+    const unsubFolders = window.electronAPI.onFoldersChanged
+      ? window.electronAPI.onFoldersChanged(() => {
+          syncFoldersFromDisk();
+        })
+      : () => {};
 
     const unsubDelete = window.electronAPI.onFileDeleted(({ filePath: _filePath }) => {
       // Re-read all notes and sync folders to remove stale entries
@@ -331,9 +351,10 @@ export function useFileSystem(
     return () => {
       unsubChange();
       unsubDelete();
+      unsubFolders();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
-  }, [setNoteData, setCustomFolders, syncGeneration]);
+  }, [setNoteData, setCustomFolders, syncGeneration, refreshFolders]);
 
   // Cleanup timer
   useEffect(() => {
@@ -355,21 +376,109 @@ export function useFileSystem(
       isExternalUpdate.current = true;
       setNoteData(diskNotes);
       if (syncGeneration) syncGeneration.current++;
-
-      const folders = new Set();
-      for (const note of Object.values(diskNotes)) {
-        if (note.folder) folders.add(note.folder);
-      }
-      setCustomFolders((prev) => {
-        const merged = new Set([...prev, ...folders]);
-        return [...merged];
-      });
+      // The new vault's directories replace the old vault's, never merge with them.
+      await refreshFolders();
     } catch (err) {
       console.error("useFileSystem: changeNotesDir failed", err);
       onError?.("Failed to change notes directory");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
-  }, [setNoteData, setCustomFolders]);
+  }, [setNoteData, setCustomFolders, refreshFolders]);
 
-  return { isElectron, isNative, notesDir, loading, changeNotesDir, flushToDisk: flush };
+  // ─── Folder operations (desktop): the disk answers, state follows ───
+  // Each call returns the vault-relative path the directory actually got, the
+  // way write-note answers with a note's final basename. `null` on web, where
+  // useNoteCrud keeps folders in memory.
+  const folderOps = useMemo(() => {
+    if (!isNative) return null;
+    const remapPaths = (oldPath, newPath) => (p) =>
+      p === oldPath ? newPath : p.startsWith(`${oldPath}/`) ? newPath + p.slice(oldPath.length) : p;
+    return {
+      /** mkdir now, so the folder exists before anything is put in it. */
+      create: async (relPath) => {
+        const { path } = await getAPI().createFolder(relPath);
+        setCustomFolders((prev) => (prev.includes(path) ? prev : [...prev, path]));
+        return path;
+      },
+      /**
+       * Rename (same parent) or move (new parent) as one directory rename, so
+       * every file inside travels together. Pending edits under the folder are
+       * flushed first, or a late write would land at the old path. The notes'
+       * `folder` fields then follow the answer without becoming dirty: nothing
+       * was edited, so nothing is rewritten and no mtime moves.
+       */
+      rename: async (oldPath, newPath) => {
+        const links = editorLinksRef.current;
+        await flushRef.current(
+          links?.latestNoteDataRef?.current,
+          links?.unflushedNotes ? [...links.unflushedNotes.current] : undefined,
+        );
+        const { path: finalPath } = await getAPI().renameFolder(oldPath, newPath);
+        const remap = remapPaths(oldPath, finalPath);
+        const affected = Object.values(noteDataRef.current).some(
+          (n) => n.folder && remap(n.folder) !== n.folder,
+        );
+        if (affected) {
+          // Not a local edit: the next state change must not mark anything dirty.
+          isExternalUpdate.current = true;
+          const remapper = editorLinksRef.current?.remapNoteFolders;
+          if (remapper) {
+            // If the history ref already agreed (nothing to change), no render
+            // is coming to consume the flag; clear it or the next real edit
+            // would be mistaken for an external one and never reach disk.
+            if (!remapper(remap)) isExternalUpdate.current = false;
+          } else {
+            setNoteData((prev) => {
+              const next = {};
+              for (const [id, n] of Object.entries(prev)) {
+                next[id] =
+                  n.folder && remap(n.folder) !== n.folder ? { ...n, folder: remap(n.folder) } : n;
+              }
+              return next;
+            });
+          }
+        }
+        setCustomFolders((prev) => prev.map(remap));
+        return finalPath;
+      },
+      /**
+       * Remove the directory once its notes have reached the Trash, and only
+       * if nothing else is left in it; a folder that keeps other files stays,
+       * with a toast saying so. With no notes at stake it runs at once.
+       */
+      remove: async (relPath, { hasNotes }) => {
+        const run = async () => {
+          const { removed } = await getAPI().deleteFolder(relPath);
+          if (removed) {
+            setCustomFolders((prev) =>
+              prev.filter((f) => f !== relPath && !f.startsWith(`${relPath}/`)),
+            );
+            return;
+          }
+          const name = relPath.split("/").pop();
+          onErrorRef.current?.(
+            `"${name}" still holds files that are not notes, so it stays on disk`,
+            "info",
+          );
+        };
+        if (hasNotes) afterNextFlush(run);
+        else await run();
+      },
+      /** Show the directory in the OS file manager. */
+      reveal: (relPath) => {
+        const dir = notesDirRef.current;
+        if (dir) getAPI().showItemInFolder(`${dir}/${relPath}`);
+      },
+    };
+  }, [setNoteData, setCustomFolders, afterNextFlush]);
+
+  return {
+    isElectron,
+    isNative,
+    notesDir,
+    loading,
+    changeNotesDir,
+    flushToDisk: flush,
+    folderOps,
+  };
 }

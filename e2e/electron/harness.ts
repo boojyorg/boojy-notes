@@ -300,6 +300,28 @@ export async function moveNoteToFolder(page: Page, title: string, folder: string
   await page.mouse.up();
 }
 
+/**
+ * Drag a folder row onto another folder row (`target` a folder path) or onto
+ * the root drop target (`target` null, the `Notes` header). Folders are
+ * directories, so the drop is one directory move on disk.
+ */
+export async function moveFolderTo(page: Page, folder: string, target: string | null) {
+  const row = page.locator(`[data-folder-path="${folder}"]`).first();
+  const dest =
+    target === null
+      ? page.locator("[data-drop-root]").first()
+      : page.locator(`[data-folder-path="${target}"]`).first();
+  const from = await row.boundingBox();
+  const to = await dest.boundingBox();
+  if (!from || !to) throw new Error(`moveFolderTo: "${folder}" or its target is not visible`);
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await sleep(600);
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await sleep(100);
+  await page.mouse.up();
+}
+
 /** Expand every collapsed folder row so each note row is on screen. */
 export async function expandAllFolders(page: Page) {
   const collapsed = page.locator('[data-folder-path][aria-expanded="false"]');

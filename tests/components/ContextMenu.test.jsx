@@ -41,6 +41,7 @@ const baseProps = () => ({
   deleteNote: vi.fn(),
   deleteFolder: vi.fn(),
   createNote: vi.fn(),
+  createFolder: vi.fn(),
   setRenamingFolder: vi.fn(),
   onRenameNote: vi.fn(),
   onImport: null,
@@ -76,8 +77,30 @@ describe("ContextMenu", () => {
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
     const { getByText } = render(<ContextMenu {...props} />);
     expect(getByText("New note here")).toBeInTheDocument();
+    expect(getByText("New folder inside")).toBeInTheDocument();
     expect(getByText("Rename")).toBeInTheDocument();
     expect(getByText("Delete folder")).toBeInTheDocument();
+  });
+
+  it("New folder inside creates under the clicked folder", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("New folder inside"));
+    expect(props.createFolder).toHaveBeenCalledWith("Uni/Sem 1");
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+  });
+
+  it("offers Reveal only when a reveal handler is provided (desktop)", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
+    const { queryByText, rerender } = render(<ContextMenu {...props} />);
+    expect(queryByText(/Reveal in Finder|Show in folder/)).not.toBeInTheDocument();
+
+    const onRevealFolder = vi.fn();
+    rerender(<ContextMenu {...props} onRevealFolder={onRevealFolder} />);
+    fireEvent.click(queryByText(/Reveal in Finder|Show in folder/));
+    expect(onRevealFolder).toHaveBeenCalledWith("f1");
   });
 
   it("offers Import only when an import handler is provided (desktop)", () => {

@@ -52,6 +52,17 @@ declare global {
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;
 
+      // Folders are directories. Vault-relative `/` paths; each mutation
+      // answers with the path the disk holds (sanitised, de-duplicated).
+      readFolders: () => Promise<string[]>;
+      createFolder: (relPath: string) => Promise<{ path: string }>;
+      /** Rename (new name, same parent) or move (new parent) in one directory rename. */
+      renameFolder: (oldRelPath: string, newRelPath: string) => Promise<{ path: string }>;
+      /** Removes the directory only if nothing but OS cruft is left in it. */
+      deleteFolder: (relPath: string) => Promise<{ removed: boolean }>;
+      /** A directory appeared or vanished outside the app; re-read the folder list. */
+      onFoldersChanged: (callback: () => void) => Unsubscribe;
+
       // File watcher events
       onFileChanged: (callback: (note: Note) => void) => Unsubscribe;
       onFileDeleted: (callback: (data: { filePath: string }) => void) => Unsubscribe;

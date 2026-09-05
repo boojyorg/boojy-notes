@@ -27,10 +27,6 @@ missing core features no longer limit it. Worked one item at a time, each judged
 
 - [ ] **Tables** — finished-feeling basic interaction: visible cells, caret in the first cell,
   Tab to the next cell, whole-table delete. Not started; Tyr gives the go.
-- [ ] **Real empty folders and Move to folder…** — a folder with no notes exists only in memory
-  today (no directory on disk) and vanishes on restart. Whether to create the directory eagerly
-  or treat folders as a view of where notes are is Tyr's call; a filesystem/data-safety plan
-  comes before any code.
 - [ ] **Appearance cleanup** — remove the star field from the product (`StarField.jsx`,
   `DAY.starField`/`NIGHT.starField`, its `EditorArea` mount) and collapse the "Auto" mode plus
   its "Auto method" row into a plain System option so the picker reads Light / Dark / System.
@@ -58,16 +54,15 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
   the third attempt.
 - [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
-- [ ] **Folder names are outside the title-is-filename rule** — a folder renamed to `a:b` is
-  `a_b` on disk and the sidebar keeps `a:b` until restart (`renameFolder` strips only slashes;
-  `noteToFilePath` sanitises the rest).
 
 ## Later / ideas
 
 Only ideas worth remembering. Empty is fine.
 
 - Quick Open (Cmd+P note switcher), if daily use shows switching friction now there are no tabs.
-- Genuine folder nesting (folder rows are not draggable today, on purpose).
+- Move to folder… for a single note (drag and the bulk menu cover it today).
+- A muted "N other files" hint on folders that hold PDFs and images the app cannot open; the
+  folder's Reveal in Finder answers it for now.
 
 ## Known technical debt
 
@@ -118,7 +113,6 @@ content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Same-title notes are invisible to backlinks.**
 - [ ] **Unparseable files vanish from the sidebar** silently.
-- [ ] **`changeNotesDir` leaks the old vault's folders** into the new one.
 
 ## Accessibility
 

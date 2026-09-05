@@ -104,11 +104,13 @@ mixed sizes and strokes is what made the UI read as assembled.
   footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
 - **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
-  web deletion is permanent behind confirmation. Folder deletion never touches the physical
-  folder, so unsupported sibling files stay put. **Desktop asks only when the action is more than
-  one recoverable file:** a single note goes at once with a quiet toast; a folder with notes and a
-  bulk selection confirm first, worded as `Move N notes to the Trash?` with the promise that the
-  folder and non-note files stay; a folder with no notes just leaves the sidebar. The wording lives
+  web deletion is permanent behind confirmation. Folder deletion never touches a file that is not
+  a note; the directory itself goes only once nothing is left in it (OS cruft such as `.DS_Store`
+  does not count), and a folder that keeps other files stays, with a toast saying so. **Desktop
+  asks only when the action is more than one recoverable file:** a single note goes at once with
+  a quiet toast; a folder with notes and a bulk selection confirm first, worded as `Move N notes
+  to the Trash?` with the promise that non-note files stay and the folder goes only if emptied; a
+  folder with no notes asks nothing. The wording lives
   in one place, `utils/deletionPrompt.ts`; don't add a second phrasing. No undo or recovery UI, by
   decision: the OS Trash is the recovery surface. The retired private `.trash` gets one
   conservative startup migration into the OS Trash: recognised notes are copied under
@@ -222,9 +224,41 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   root area flies it back and nothing changes. **Dropping over the editor does not open the
   note**; drag never navigates. Every drag ends by suppressing the trailing click so it can't
   open the lifted row.
-- **Folder rows are not draggable.** Nesting is a future feature, not a regression.
+- **Dragging a folder moves its directory**: onto another folder nests it, onto the `Notes`
+  area moves it back to the root. Never into itself or its own subtree (those rows are not
+  targets; the pointer falls through to the root). Same lift, ghost and cancel grammar as notes.
 - Existing `.boojy-meta.json` files are left untouched; nothing reads their ordering keys.
   Don't tidy them and don't reintroduce a reader.
+
+### Folders are directories
+
+- **A folder in the sidebar is a directory in the vault**, the way Finder and Obsidian treat it,
+  not "where a note happens to be". Every subdirectory shows, empty or not (your `Resources` of
+  PDFs is a folder); dot-directories and `attachments` are skipped at any depth, matching the
+  note walk. The list comes from `read-folders` at load, after any external delete, on
+  `folders-changed` (chokidar `addDir`/`unlinkDir`, coalesced) and when the vault changes; the
+  new vault's directories replace the old vault's. Web keeps folders in memory (`useNoteCrud`'s
+  fallback); nothing on web makes a directory.
+- **The main process is the only place that knows a folder's final name**, `electron/folders.ts`,
+  the same rule as `write-note` for a note's basename: the last segment is sanitised and
+  de-duplicated (`-2`), a case-only rename is a rename, a path can never escape the vault, and
+  every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
+  the answer; no input sanitises a folder name.
+- **New folder makes the directory at once** (root from the header, `New folder inside` from a
+  folder's menu), opens the parent, and opens the inline rename. The rename input commits once:
+  Enter unmounts it and the blur that can follow must not rename the moved directory again.
+- **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
+  files travel together. Pending edits under the folder are flushed first, or a late write would
+  land at the old path. The note index is rewritten under the old prefix so IDs (and the open
+  note) survive; the notes' `folder` fields then follow through `remapNoteFolders` (useHistory),
+  which also rewrites every undo snapshot, so a later undo of a text edit cannot restore a stale
+  path and move one file back into a recreated old directory. Not an edit: nothing becomes dirty,
+  no file is rewritten, no mtime moves, and the rename itself is not undoable. The watcher is
+  suppressed under both directories for the write window (`suppressWatcherTree`); an event that
+  escapes re-reads what is already true.
+- **Delete waits for the Trash.** The notes are removed from state, the debounced flush trashes
+  them, and `afterNextFlush` then asks the main process to remove the directory, which it does
+  only if nothing but OS cruft is left. A folder with no notes skips the flush and goes at once.
 
 ## A note's title is its filename
 

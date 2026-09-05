@@ -91,7 +91,10 @@ test("confirmed deletion moves only the notes; a single note goes at once with a
       .click({ button: "right" });
     await h.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(h.page.getByRole("alert")).toContainText("Loose one");
+    // Two toasts can be up: the folder above kept its budget.txt and said so.
+    await expect(h.page.getByRole("alert").filter({ hasText: "Loose one" })).toContainText(
+      "moved to the Trash",
+    );
     await expect.poll(() => h.vault.exists("Loose one.md"), { timeout: 5_000 }).toBe(false);
     await sleep(SETTLE_MS);
     expect(mdFiles(h.vault.list())).toEqual(["Loose two.md"]);

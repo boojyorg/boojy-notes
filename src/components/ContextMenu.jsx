@@ -4,6 +4,7 @@ import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { isElectronMac } from "../utils/platform";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -17,9 +18,11 @@ const ContextMenu = memo(function ContextMenu({
   deleteNote,
   deleteFolder,
   createNote,
+  createFolder,
   setRenamingFolder,
   onRenameNote,
   onImport,
+  onRevealFolder,
   selectedNotes,
   selectedCount,
   bulkDeleteNotes,
@@ -145,6 +148,13 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
+            {
+              label: "New folder inside",
+              action: () => {
+                createFolder(ctxMenu.id);
+                setCtxMenu(null);
+              },
+            },
             ...(onImport
               ? [
                   {
@@ -163,6 +173,19 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
+            // Folders are directories, so the file manager can show one; the
+            // item is desktop-only because web folders exist only in memory.
+            ...(onRevealFolder
+              ? [
+                  {
+                    label: isElectronMac ? "Reveal in Finder" : "Show in folder",
+                    action: () => {
+                      onRevealFolder(ctxMenu.id);
+                      setCtxMenu(null);
+                    },
+                  },
+                ]
+              : []),
             {
               label: "Delete folder",
               action: () => {

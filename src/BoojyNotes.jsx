@@ -67,6 +67,7 @@ export default function BoojyNotes() {
     redo,
     commitNoteData,
     adoptNoteData,
+    remapNoteFolders,
     commitTextChange,
     pushHistory,
     noteDataRef,
@@ -173,11 +174,13 @@ export default function BoojyNotes() {
     loading: fsLoading,
     changeNotesDir,
     flushToDisk,
+    folderOps,
   } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
     onNotesEdited: markEdited,
     onTitleResolved,
+    remapNoteFolders,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
@@ -229,6 +232,7 @@ export default function BoojyNotes() {
     duplicateNote,
     renameNote,
     renameFolder,
+    moveFolder,
     deleteFolder,
     createFolder,
     createDraftNote,
@@ -244,6 +248,8 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
+    folderOps,
+    onError: showToast,
   });
   const {
     updateBlockText,
@@ -322,6 +328,7 @@ export default function BoojyNotes() {
     dragTooltipCount,
     selectedNotesRef: multiSelectRef,
     clearSelectionRef: clearSelectionRef,
+    moveFolder,
   });
   const {
     handleEditorKeyDown,
@@ -952,8 +959,10 @@ export default function BoojyNotes() {
         deleteNote={confirmDeleteNote}
         deleteFolder={confirmDeleteFolder}
         createNote={createNote}
+        createFolder={createFolder}
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
+        onRevealFolder={folderOps?.reveal}
         // Import is a desktop file-picker flow; the item would be a dead
         // click on web, so it isn't offered there.
         onImport={isElectron ? handleImportIntoFolder : undefined}

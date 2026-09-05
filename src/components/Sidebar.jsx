@@ -684,16 +684,24 @@ const Sidebar = memo(function Sidebar({
               autoFocus
               defaultValue={folder.name}
               onClick={(e) => e.stopPropagation()}
+              // Commit once: Enter commits and unmounts the field, and the blur
+              // that can follow must not rename the (now moved) directory again.
               onBlur={(e) => {
+                if (e.target.dataset.committed) return;
+                e.target.dataset.committed = "1";
                 renameFolder(folderPath, e.target.value.trim());
                 setRenamingFolder(null);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  renameFolder(folderPath, e.target.value.trim());
+                  e.currentTarget.dataset.committed = "1";
+                  renameFolder(folderPath, e.currentTarget.value.trim());
                   setRenamingFolder(null);
                 }
-                if (e.key === "Escape") setRenamingFolder(null);
+                if (e.key === "Escape") {
+                  e.currentTarget.dataset.committed = "1";
+                  setRenamingFolder(null);
+                }
               }}
               style={{
                 background: BG.darkest,
@@ -1173,7 +1181,7 @@ const Sidebar = memo(function Sidebar({
                 {!search && (
                   <MobileTreeAction
                     label="New Folder"
-                    onClick={createFolder}
+                    onClick={() => createFolder(null)}
                     paddingLeft={10}
                     TEXT={TEXT}
                     BG={BG}
@@ -1198,7 +1206,7 @@ const Sidebar = memo(function Sidebar({
             ) : (
               <>
                 <SectionHeader label="Folders" TEXT={TEXT} first>
-                  <SectionAction onClick={createFolder} title="New folder">
+                  <SectionAction onClick={() => createFolder(null)} title="New folder">
                     <NewFolderIcon />
                   </SectionAction>
                 </SectionHeader>

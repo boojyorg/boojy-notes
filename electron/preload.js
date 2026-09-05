@@ -19,6 +19,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),
 
+  // Folders are directories. Paths are vault-relative with `/` separators;
+  // each mutation answers with the path the disk actually holds.
+  readFolders: () => ipcRenderer.invoke("read-folders"),
+  createFolder: (relPath) => ipcRenderer.invoke("create-folder", relPath),
+  renameFolder: (oldRelPath, newRelPath) =>
+    ipcRenderer.invoke("rename-folder", oldRelPath, newRelPath),
+  deleteFolder: (relPath) => ipcRenderer.invoke("delete-folder", relPath),
+  onFoldersChanged: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("folders-changed", handler);
+    return () => ipcRenderer.removeListener("folders-changed", handler);
+  },
+
   onFileChanged: (callback) => {
     const handler = (_event, note) => callback(note);
     ipcRenderer.on("file-changed", handler);
