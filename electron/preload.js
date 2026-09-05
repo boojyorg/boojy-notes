@@ -82,4 +82,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Window
   setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
+
+  // Diagnostic trace (electron/trace.js): a no-op unless BOOJY_TRACE is set.
+  traceEnabled: ipcRenderer.sendSync("trace-enabled"),
+  trace: (line) => ipcRenderer.send("trace", line),
 });

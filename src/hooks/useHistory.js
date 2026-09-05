@@ -1,5 +1,7 @@
 import { useState, useRef, startTransition } from "react";
 
+import { trace } from "../utils/trace";
+
 export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef) {
   const undoStack = useRef([]);
   const redoStack = useRef([]);
@@ -176,6 +178,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       textOnlyEdit.current = false;
       textOnlyEditForSidebar.current = false;
       textOnlyEditForEditor.current = false;
+      trace("textcommit → setNoteData");
       startTransition(() => {
         setNoteData(noteDataRef.current);
       });
@@ -208,6 +211,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     }
     isUndoRedo.current = true;
     syncGeneration.current++;
+    trace("restoreSnapshot (undo/redo)", noteId);
     noteDataRef.current = { ...noteDataRef.current, [noteId]: snapshot };
     setNoteData(noteDataRef.current);
     isUndoRedo.current = false;

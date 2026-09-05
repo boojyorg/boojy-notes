@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
+import { trace } from "../utils/trace";
 
 const WRITE_DEBOUNCE_MS = 500;
 const WRITE_RETRY_MS = 5000;
@@ -164,7 +165,10 @@ export function useFileSystem(
         newlyDirty.push(id);
       }
     }
-    if (newlyDirty.length > 0) editorLinksRef.current?.onNotesEdited?.(newlyDirty);
+    if (newlyDirty.length > 0) {
+      trace("dirty", newlyDirty.join(","));
+      editorLinksRef.current?.onNotesEdited?.(newlyDirty);
+    }
 
     for (const id of Object.keys(prev)) {
       if (!noteData[id] && !prev[id]?._draft) {
@@ -206,7 +210,15 @@ export function useFileSystem(
       }
       if (note) {
         try {
+          const t0 = performance.now();
+          trace("write start", noteId, "blocks", note.content?.blocks?.length ?? 0);
           const written = await api.writeNote(note);
+          trace(
+            "write done",
+            noteId,
+            `${Math.round(performance.now() - t0)}ms`,
+            written?.title !== note.title ? `TITLE-ADOPT "${written?.title}"` : "",
+          );
           reportedWriteFailures.current.delete(noteId);
           if (typeof written?.title === "string" && written.title !== note.title)
             editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
@@ -283,12 +295,22 @@ export function useFileSystem(
       // Check if content actually changed before queueing state update —
       // avoids block ID churn when chokidar echoes back a file we just wrote
       const existing = noteDataRef.current[cleanNote.id];
-      if (
+      const same =
         existing &&
         blocksEqual(existing.content?.blocks, cleanNote.content?.blocks) &&
         existing.title === cleanNote.title &&
-        existing.folder === cleanNote.folder
-      ) {
+        existing.folder === cleanNote.folder;
+      trace(
+        "file-changed recv",
+        cleanNote.id,
+        JSON.stringify(cleanNote.title),
+        same ? "SAME (ignored)" : "DIFFERS → APPLY external update",
+        "memBlocks",
+        existing?.content?.blocks?.length ?? "none",
+        "diskBlocks",
+        cleanNote.content?.blocks?.length ?? 0,
+      );
+      if (same) {
         return; // Nothing changed, skip entirely
       }
 

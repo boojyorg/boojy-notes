@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({
@@ -11,6 +14,7 @@ const {
   suppressWatcher,
   suppressWatcherTree,
   isWriteSuppressed,
+  isOwnEcho,
 } = await import("../../electron/fileWatcher.js");
 
 // The unlink suppression must be consumed by the event (or an explicit
@@ -129,5 +133,67 @@ describe("subtree suppression", () => {
     expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(true);
     vi.advanceTimersByTime(1);
     expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(false);
+  });
+});
+
+// The timer is not the whole story. macOS delivers a second `change` for one
+// of our writes 1.5–2.7s later — the file's mtime and size are those of our
+// write, only the inode change time has moved (metadata, not content) — which
+// is past any window the timer could reasonably hold. Traced live on the
+// daily driver 2026-09-05: every such event rebuilt the note from disk
+// mid-typing. A write therefore also records the bytes it wrote, and an event
+// whose file still holds exactly those bytes is an echo whenever it arrives.
+describe("own-write echo by content", () => {
+  let dir;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-watcher-"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("recognises the written bytes long after the timer window", () => {
+    const file = path.join(dir, "Note.md");
+    suppressWatcher(file, "hello\n");
+    fs.writeFileSync(file, "hello\n");
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(isWriteSuppressed(file)).toBe(false);
+    expect(isOwnEcho(file)).toBe(true);
+  });
+
+  it("lets a real outside edit through", () => {
+    const file = path.join(dir, "Note.md");
+    suppressWatcher(file, "hello\n");
+    fs.writeFileSync(file, "hello from another editor\n");
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(isOwnEcho(file)).toBe(false);
+  });
+
+  it("compares against the LATEST write, so a late echo of an older write is still ours", () => {
+    const file = path.join(dir, "Note.md");
+    suppressWatcher(file, "first\n");
+    fs.writeFileSync(file, "first\n");
+    suppressWatcher(file, "second\n");
+    fs.writeFileSync(file, "second\n");
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(isOwnEcho(file)).toBe(true);
+  });
+
+  it("is never an echo for a file we have not written, or one that is gone", () => {
+    const file = path.join(dir, "Foreign.md");
+    fs.writeFileSync(file, "theirs\n");
+    expect(isOwnEcho(file)).toBe(false);
+
+    const missing = path.join(dir, "Gone.md");
+    suppressWatcher(missing, "was here\n");
+    expect(isOwnEcho(missing)).toBe(false);
   });
 });
