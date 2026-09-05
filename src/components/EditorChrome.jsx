@@ -31,11 +31,14 @@ export const CHROME_INSET = 10;
 export const CHROME_TOP = 7;
 export const CHROME_BTN = 32;
 /**
- * Left inset that clears the macOS traffic lights (x:14, ~52px of buttons,
- * then breathing room). Shared by the sidebar header's wordmark and the
- * collapsed toggle. Pairs with trafficLightPosition in electron/main.js.
+ * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
+ * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
+ * the sidebar header's wordmark and the collapsed toggle. Pairs with
+ * trafficLightPosition in electron/main.js. Judge it at 100% only: the old 70
+ * was settled in a dev window Chromium had zoomed to 131%, and at true size
+ * the third light sat on the wordmark (measured 2026-09-05).
  */
-export const MAC_TRAFFIC_INSET = 70;
+export const MAC_TRAFFIC_INSET = 86;
 /** Height of the collapsed-state drag strip — stops above the note label's
     line box (top ≈16px) so the strip never steals its clicks. */
 const DRAG_STRIP_H = 14;
