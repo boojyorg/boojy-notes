@@ -3,7 +3,6 @@ import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
-import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { CHROME_INSET, CHROME_TOP, CHROME_BTN } from "./EditorChrome";
@@ -151,7 +150,6 @@ const EditorArea = memo(
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
     const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth } = useLayout();
-    const { settingsFontSize } = useSettings();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -704,7 +702,6 @@ const EditorArea = memo(
                           registerRef={registerBlockRef}
                           syncGen={syncGeneration.current}
                           accentColor={accentColor}
-                          fontSize={settingsFontSize}
                           numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
                           onUpdateCode={updateCodeText}
                           onUpdateLang={updateCodeLang}

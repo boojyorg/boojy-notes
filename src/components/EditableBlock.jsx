@@ -22,6 +22,13 @@ import SpacerBlock from "./blocks/SpacerBlock";
  */
 export const PARAGRAPH_GAP = 12;
 
+/**
+ * Body text size for every text block. Not a preference: the Settings row that
+ * used to set it (10–24) was removed on 2026-09-05 because Cmd+Plus/Minus/0
+ * already scale the whole app and one knob is enough.
+ */
+export const EDITOR_FONT_SIZE = 15;
+
 const INDENT_PX = 24;
 
 const EditableBlock = memo(
@@ -34,7 +41,6 @@ const EditableBlock = memo(
     registerRef,
     syncGen,
     accentColor,
-    fontSize,
     numberedIndex,
     onUpdateCode,
     onUpdateLang,
@@ -271,7 +277,7 @@ const EditableBlock = memo(
               fontStyle: "italic",
               outline: "none",
               display: "block",
-              fontSize,
+              fontSize: EDITOR_FONT_SIZE,
             }}
           />
         </div>
@@ -295,7 +301,7 @@ const EditableBlock = memo(
             contain: "content",
             lineHeight: 1.7,
             color: TEXT.primary,
-            fontSize,
+            fontSize: EDITOR_FONT_SIZE,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
@@ -380,7 +386,7 @@ const EditableBlock = memo(
             alignItems: "flex-start",
             gap: 9,
             padding: "2px 0",
-            fontSize,
+            fontSize: EDITOR_FONT_SIZE,
             lineHeight: 1.7,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
@@ -420,7 +426,7 @@ const EditableBlock = memo(
             alignItems: "flex-start",
             gap: 9,
             padding: "2px 0",
-            fontSize,
+            fontSize: EDITOR_FONT_SIZE,
             lineHeight: 1.7,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
@@ -431,7 +437,7 @@ const EditableBlock = memo(
             style={{
               color: TEXT.secondary,
               flexShrink: 0,
-              fontSize,
+              fontSize: EDITOR_FONT_SIZE,
               userSelect: "none",
               minWidth: 18,
               textAlign: "right",
@@ -461,7 +467,7 @@ const EditableBlock = memo(
             alignItems: "center",
             gap: 9,
             padding: "2.5px 0",
-            fontSize,
+            fontSize: EDITOR_FONT_SIZE,
             lineHeight: 1.6,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
@@ -544,7 +550,6 @@ const EditableBlock = memo(
       prev.blockIndex === next.blockIndex &&
       prev.syncGen === next.syncGen &&
       prev.accentColor === next.accentColor &&
-      prev.fontSize === next.fontSize &&
       prev.numberedIndex === next.numberedIndex &&
       prev.isImageSelected === next.isImageSelected &&
       (prev.block.text === "") === (next.block.text === "") &&

@@ -107,6 +107,9 @@ mixed sizes and strokes is what made the UI read as assembled.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+  Appearance is the theme picker alone: the font-size row (`settingsFontSize`, 10–24) was
+  removed on 2026-09-05 because the scale shortcuts already size everything, and body text is
+  the fixed `EDITOR_FONT_SIZE` in `EditableBlock`. Don't reintroduce `settingsFontSize` in mocks.
 - **One zoom system: the app's own UI scale.** The View menu carries no `zoomIn` / `zoomOut` /
   `resetZoom` roles, because a menu role takes the shortcut before the renderer sees it, so the
   app's scale never fired and Chromium's page zoom ran instead, persisted per origin in the

@@ -63,7 +63,6 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 }));
 
 const settingsState = {
-  settingsFontSize: 15,
   settingsOpen: false,
   setSettingsOpen: vi.fn(),
 };

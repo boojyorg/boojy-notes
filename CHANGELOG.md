@@ -11,6 +11,7 @@
 - **Theme picker reads Light / Dark / System** — The third option was "Auto", which opened a second row to choose between following the system and a time-of-day schedule with two hour pickers. The schedule is gone; System follows the OS appearance and the picker is one row of three. A saved schedule preference silently becomes System.
 - **The star field** — Dark mode drew a seeded field of stars behind an empty note and faded it out as you typed. It, its per-theme flag and the "does this note have content yet" plumbing in the editor are gone; the editor ground is now the theme colour alone in both modes.
 - **Onboarding hints** — The three one-line tips that appeared above a new note ("Type / for commands", "Try [[ to link notes", "Use #tags to organise") are gone. The empty paragraph's own placeholder already says to type `/`, and the rest is the kind of thing a first note teaches by itself.
+- **The font-size preference** — Settings had a Font size row (10 to 24) that resized body text only, beside the keyboard UI scale (Cmd+Plus / Cmd+Minus / Cmd+0) that resizes everything. One size control is enough, so the row is gone and body text is 15px before scaling. A saved font size is no longer read.
 
 ## v0.6.0 — 2026-09-05
 
