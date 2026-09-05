@@ -63,6 +63,14 @@ change needs; the incidents behind them are in git.
   `pnpm rebuild electron` (about 30 seconds).
 - Anything touching Electron needs a real desktop build to verify; green web CI does not
   exercise it.
+- **The app icon is `assets/boojy-notes-app-icon.png`**: 1024px, transparent corners, the
+  rounded square at 824px on Apple's icon grid so the Dock draws it the size of every other app.
+  All three electron-builder targets and the `BrowserWindow` icon in `main.js` point at it, and
+  electron-builder makes the `.icns` itself. It is generated, never hand-edited, from
+  `assets/boojy-notes-app-icon-source.png`, the full-bleed 1071px export of the artwork:
+  `magick <source> -resize 824x824 -background none -gravity center -extent 1024x1024 <icon>`.
+  Replace the source and re-run that; a full-bleed PNG handed straight to electron-builder
+  renders about a quarter too large beside native icons.
 - **The daily-driver build is `pnpm build:electron` on master.** It writes
   `dist/mac-arm64/Boojy Notes.app` and the DMG; electron-builder signs with whatever Developer
   ID identity the keychain holds and builds unsigned without one. Quit the running app first (its

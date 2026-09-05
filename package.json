@@ -1,7 +1,7 @@
 {
   "name": "boojy-notes",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Boojy Notes",
   "author": "Tyr Bujac",
   "type": "module",
@@ -93,20 +93,20 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/boojy-notes-app-icon.png"
     },
     "mac": {
       "target": [
         "dmg"
       ],
-      "icon": "assets/icon.png",
+      "icon": "assets/boojy-notes-app-icon.png",
       "category": "public.app-category.productivity"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/boojy-notes-app-icon.png"
     }
   }
 }
