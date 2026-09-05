@@ -2,7 +2,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent, cleanup } from "@testing-library/react";
 import { useRef } from "react";
-import BlockDragHandle, { HANDLE_W, HANDLE_GAP } from "../../src/components/BlockDragHandle";
+import BlockDragHandle, {
+  HANDLE_W,
+  HANDLE_H,
+  HANDLE_GAP,
+} from "../../src/components/BlockDragHandle";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -21,6 +25,7 @@ const blockRects = {
   b1: { top: 40, height: 30 },
   b2: { top: 80, height: 51 }, // two-line paragraph
   b3: { top: 140, height: 30 },
+  hr: { top: 80, height: 17, rule: { top: 88, height: 1 } }, // a divider: 8px, the rule, 8px
 };
 
 function rect(left, top, width, height) {
@@ -33,11 +38,17 @@ function Harness({ blocks, startHandleDrag }) {
   return (
     <div ref={columnRef} data-testid="column" style={{ position: "relative" }}>
       <div ref={editorRef} contentEditable suppressContentEditableWarning>
-        {blocks.map((id) => (
-          <p key={id} data-block-id={id}>
-            {id} text
-          </p>
-        ))}
+        {blocks.map((id) =>
+          id.startsWith("hr") ? (
+            <div key={id} data-block-id={id} data-block-type="spacer" contentEditable="false">
+              <hr />
+            </div>
+          ) : (
+            <p key={id} data-block-id={id}>
+              {id} text
+            </p>
+          ),
+        )}
       </div>
       <BlockDragHandle
         columnRef={columnRef}
@@ -53,6 +64,8 @@ function layOut() {
   for (const p of document.querySelectorAll("[data-block-id]")) {
     const r = blockRects[p.dataset.blockId];
     p.getBoundingClientRect = () => rect(BLOCK_LEFT, r.top, 500, r.height);
+    const rule = p.querySelector("hr");
+    if (rule) rule.getBoundingClientRect = () => rect(BLOCK_LEFT, r.rule.top, 500, r.rule.height);
   }
   const anchor = document.querySelector('[aria-hidden="true"][style*="width: 0px"]');
   anchor.getBoundingClientRect = () => rect(COLUMN.left, COLUMN.top, 0, 0);
@@ -112,6 +125,16 @@ describe("BlockDragHandle", () => {
     expect(handle.style.background).toBe("");
     expect(handle.style.backgroundColor).toBe("");
     expect(handle.style.cursor).toBe("grab");
+  });
+
+  it("beside a divider it centres on the rule itself, not on a line box below it", async () => {
+    render(<Harness blocks={["b1", "hr", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(84); // inside the divider's band
+    const handle = screen.getByTestId("block-drag-handle");
+    expect(handle.dataset.targetBlock).toBe("hr");
+    const { top: ruleTop, height: ruleH } = blockRects.hr.rule;
+    expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(ruleTop + ruleH / 2, 5);
   });
 
   it("the gap between two blocks belongs to the block above", async () => {

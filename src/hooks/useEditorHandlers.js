@@ -37,6 +37,7 @@ export function useEditorHandlers({
   onOpenLinkEditor,
   updateBlockIndent,
   moveBlock,
+  selectBlock,
   onError,
 }) {
   // Use a ref for activeNote so inner helpers don't need it as a dependency
@@ -88,6 +89,7 @@ export function useEditorHandlers({
     onOpenLinkEditor,
     updateBlockIndent,
     moveBlock,
+    selectBlock,
     executeSlashCommand,
     handleBlockInput,
   });

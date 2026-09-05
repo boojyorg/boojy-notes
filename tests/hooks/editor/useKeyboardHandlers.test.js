@@ -1,12 +1,14 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useKeyboardHandlers } from "../../../src/hooks/editor/useKeyboardHandlers";
+import { placeCaret } from "../../../src/utils/domHelpers";
 
 // Mock dependencies
 vi.mock("../../../src/utils/domHelpers", () => ({
   findNearestBlock: vi.fn(),
   isEditableBlock: (block) => !["image", "spacer", "embed", "file"].includes(block.type),
+  isSelectableBlock: (block) => block.type === "spacer" || block.type === "image",
   placeCaret: vi.fn(() => true),
 }));
 
@@ -70,6 +72,7 @@ describe("useKeyboardHandlers", () => {
       onOpenLinkEditor: vi.fn(),
       updateBlockIndent: vi.fn(),
       moveBlock: vi.fn(),
+      selectBlock: vi.fn(),
       getBlock: vi.fn(),
       executeSlashCommand: vi.fn(),
       handleBlockInput: vi.fn(),
@@ -240,5 +243,150 @@ describe("useKeyboardHandlers", () => {
     result.current.handleBlockKeyDown("note-1", 0, event);
     expect(deps.executeSlashCommand).toHaveBeenCalled();
     expect(deps.setSlashMenu).toHaveBeenCalledWith(null);
+  });
+
+  describe("selectable blocks: a divider or image stops the keys instead of being skipped", () => {
+    const withDivider = () => ({
+      content: {
+        blocks: [
+          { id: "b1", type: "p", text: "Hello" },
+          { id: "hr", type: "spacer" },
+          { id: "b2", type: "p", text: "World" },
+        ],
+      },
+    });
+    /** A real collapsed selection in jsdom, `offset` characters into the block's text. */
+    function caretIn(el, text, offset) {
+      el.textContent = text;
+      document.body.appendChild(el);
+      const range = document.createRange();
+      range.setStart(el.firstChild, offset);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    const key = (k) => {
+      const e = new KeyboardEvent("keydown", { key: k, bubbles: true });
+      Object.defineProperty(e, "preventDefault", { value: vi.fn() });
+      return e;
+    };
+
+    beforeEach(() => {
+      deps.noteDataRef.current["note-1"] = withDivider();
+      deps.blockRefs.current = {
+        b1: document.createElement("div"),
+        hr: document.createElement("div"),
+        b2: document.createElement("div"),
+      };
+      // jsdom has no layout: a Range has no rect at all and an element's is all
+      // zeros, which the arrow handlers read as "caret on the first and last
+      // line", exactly the edge they act on.
+      Range.prototype.getBoundingClientRect = () => ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+      });
+    });
+    afterEach(() => {
+      document.body.innerHTML = "";
+    });
+
+    it("Backspace in an empty block under a divider selects the divider and deletes nothing", () => {
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("Backspace");
+      result.current.handleBlockKeyDown("note-1", 2, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.selectBlock).toHaveBeenCalledWith("hr");
+      expect(deps.deleteBlock).not.toHaveBeenCalled();
+    });
+
+    it("Backspace at the start of a block under a divider selects it and merges nothing across it", () => {
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("Backspace");
+      result.current.handleBlockKeyDown("note-1", 2, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.selectBlock).toHaveBeenCalledWith("hr");
+      expect(deps.updateBlockText).not.toHaveBeenCalled();
+      expect(deps.deleteBlock).not.toHaveBeenCalled();
+    });
+
+    it("Backspace at the start of a block under a paragraph still merges into it", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 1, key("Backspace"));
+      expect(deps.selectBlock).not.toHaveBeenCalled();
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1);
+    });
+
+    it("ArrowUp from the first line of the block under a divider selects it", () => {
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("ArrowUp");
+      result.current.handleBlockKeyDown("note-1", 2, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.selectBlock).toHaveBeenCalledWith("hr");
+      expect(placeCaret).not.toHaveBeenCalled();
+    });
+
+    it("ArrowDown from the last line of the block above a divider selects it", () => {
+      caretIn(deps.blockRefs.current.b1, "Hello", 5);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("ArrowDown");
+      result.current.handleBlockKeyDown("note-1", 0, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.selectBlock).toHaveBeenCalledWith("hr");
+      expect(placeCaret).not.toHaveBeenCalled();
+    });
+
+    it("an image is stopped on too; a file block between is still stepped over", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "img", type: "image", src: "a.png" },
+            { id: "f", type: "file", src: "a.pdf" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.img = document.createElement("div");
+      deps.blockRefs.current.f = document.createElement("div");
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 3, key("ArrowUp"));
+      expect(deps.selectBlock).toHaveBeenCalledWith("img");
+    });
+
+    it("with nothing selectable between, ArrowUp still walks to the previous text block", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "f", type: "file", src: "a.pdf" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.f = document.createElement("div");
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("ArrowUp"));
+      expect(deps.selectBlock).not.toHaveBeenCalled();
+      expect(placeCaret).toHaveBeenCalledWith(deps.blockRefs.current.b1, 5);
+    });
   });
 });

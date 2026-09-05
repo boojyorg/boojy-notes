@@ -33,8 +33,9 @@ export const HANDLE_GAP = 4;
 /**
  * The first line box of a block: the rect of its first rendered text line
  * (so headings, list rows, quotes and code all centre the grip on the line
- * the eye reads first), falling back to the element's own line-height for
- * empty blocks and media that have no text line.
+ * the eye reads first); a divider's is its rule, so the grip centres on the
+ * line itself; otherwise the element's own line-height, for empty blocks and
+ * media that have no text line.
  */
 function firstLineRect(el) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
@@ -48,6 +49,8 @@ function firstLineRect(el) {
     const rects = typeof range.getClientRects === "function" ? range.getClientRects() : [];
     if (rects.length) return rects[0];
   }
+  const rule = el.querySelector("hr");
+  if (rule) return rule.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   const lh = parseFloat(cs.lineHeight);

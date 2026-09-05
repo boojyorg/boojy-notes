@@ -48,8 +48,8 @@ const EditableBlock = memo(
     onUpdateTableRows,
     noteTitleSet,
     onBlockNav,
-    isImageSelected,
-    onImageSelect,
+    isBlockSelected,
+    onBlockSelect,
     onImageLightbox,
     onImageReplace,
     onImageCopyImage,
@@ -96,7 +96,15 @@ const EditableBlock = memo(
     }, [block.id]);
 
     if (block.type === "spacer") {
-      return <SpacerBlock blockId={block.id} />;
+      return (
+        <SpacerBlock
+          blockId={block.id}
+          isSelected={isBlockSelected}
+          accentColor={accentColor}
+          onSelect={() => onBlockSelect(block.id)}
+          registerRef={registerRef}
+        />
+      );
     }
 
     if (block.type === "image") {
@@ -112,9 +120,9 @@ const EditableBlock = memo(
             src={block.src}
             alt={block.alt}
             width={block.width || 100}
-            isSelected={isImageSelected}
+            isSelected={isBlockSelected}
             accentColor={accentColor}
-            onSelect={() => onImageSelect(block.id)}
+            onSelect={() => onBlockSelect(block.id)}
             onLightbox={() => onImageLightbox(block.src, block.alt)}
             onDelete={() => onDeleteBlock(noteId, blockIndex)}
             onReplace={() => onImageReplace(noteId, blockIndex)}
@@ -551,7 +559,7 @@ const EditableBlock = memo(
       prev.syncGen === next.syncGen &&
       prev.accentColor === next.accentColor &&
       prev.numberedIndex === next.numberedIndex &&
-      prev.isImageSelected === next.isImageSelected &&
+      prev.isBlockSelected === next.isBlockSelected &&
       (prev.block.text === "") === (next.block.text === "") &&
       (prev.block.text === next.block.text ||
         (prev.block.type !== "code" && prev.block.type !== "callout")) &&

@@ -4,7 +4,15 @@ import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
 import { describe, expect, it } from "vitest";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown.js";
-import { bullet, checkbox, codeBlock, heading, numbered, paragraph } from "../mocks/blocks.js";
+import {
+  bullet,
+  checkbox,
+  codeBlock,
+  heading,
+  numbered,
+  paragraph,
+  spacer,
+} from "../mocks/blocks.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKDOWN INTEROPERABILITY
@@ -160,6 +168,17 @@ describe("interop — the conventional meaning of Markdown written elsewhere", (
       expect(meaningOf(saveCycle(source))).toBe(meaningOf(source));
     });
   }
+
+  // ── On record ─────────────────────────────────────────────────────────────
+  // A `---` directly under a paragraph line is a setext heading underline to a
+  // conventional reader. Boojy Notes reads a divider, as it always has, and its
+  // first save now writes the blank line that makes the file mean a divider
+  // everywhere. Reading the tight form as a heading instead is a spec decision
+  // on the backlog; until then the change of meaning is narrow and explicit.
+  it.fails("`---` tight under a paragraph means a heading outside and a divider inside (KNOWN MISMATCH)", () => {
+    const tight = "hello\n---\nworld\n";
+    expect(meaningOf(saveCycle(tight))).toBe(meaningOf(tight));
+  });
 });
 
 describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
@@ -184,6 +203,21 @@ describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
   it("a paragraph block after a list is a paragraph, not part of the item", () => {
     expect(authored([bullet("an item"), paragraph("A paragraph after the list.")])).toBe(
       'bullet list\n  item\n    paragraph "an item"\nparagraph "A paragraph after the list."\n',
+    );
+  });
+
+  // A divider block is written with a blank line before it after a paragraph
+  // or a list item; without one, `---` under a paragraph line is a setext
+  // heading underline, and the paragraph becomes a heading with no rule at all.
+  it("a divider block after a paragraph is a thematic break, not a heading underline", () => {
+    expect(authored([paragraph("Before."), spacer(), paragraph("After.")])).toBe(
+      'paragraph "Before."\nthematic break\nparagraph "After."\n',
+    );
+  });
+
+  it("a divider block after a list item ends the list and is a thematic break", () => {
+    expect(authored([bullet("item"), spacer(), paragraph("After.")])).toBe(
+      'bullet list\n  item\n    paragraph "item"\nthematic break\nparagraph "After."\n',
     );
   });
 

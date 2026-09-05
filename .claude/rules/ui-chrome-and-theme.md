@@ -45,7 +45,11 @@ Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on
 - **Accent is theme-scoped.** Dark's accent is illegible on a light ground. Never share one
   accent constant across themes.
 - **Accent is never a desktop surface.** It is identity, focus rings, 2-3px markers, wikilinks
-  and the caret. Desktop selected rows are neutral. Mobile note rows keep a compact
+  and the caret. Desktop selected rows are neutral. The one sanctioned tint is the selected
+  divider's band, a transient selection state and closer to a focus ring than a surface: accent
+  at 10% in Light, 18% in Dark, judged 2026-09-05 against a recoloured rule (which read as "a
+  styled line", not "a selected object") and a neutral `BG.hover` band (which swallowed the
+  rule, two greys three steps apart). Mobile note rows keep a compact
   accent-tinted pill because the denser layout needs it; that is fixed styling, not an option.
 
 Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use plain black
@@ -447,6 +451,39 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   same 12px from a sibling rule on `data-block-type`, which every block root carries; the
   paragraph's margin lives in the stylesheet so that rule can win. The geometry test in
   `paragraph-model.spec.ts` guards the order, not the pixels.
+
+- **One blank line before a divider is structure too**, after a paragraph or a list item: dropped on
+  read, written on save, the same run rule as the paragraph separator (`takesSeparator`). Without
+  it `---` under a line of text is a setext heading underline to every other reader, so the
+  paragraph became a heading and the rule vanished. A blank *after* a divider stays an empty row
+  (backlog: blank lines around headings). A file with the tight form still opens as a divider and
+  gains the blank on its first save; sanctioned in the spec.
+
+### Dividers are selectable blocks
+
+- **A divider (or an image) is addressed as a whole, Notion-style** (`isSelectableBlock` in
+  `utils/domHelpers.js`; the state is `selectedBlockId`, one for both). A click selects it and a
+  band appears around it, the block's own box with a 4px radius reaching 4px past the text
+  column each side, accent at 10% (Light) / 18% (Dark), the rule inside lifted to accent at 40%
+  so it stays visible in the tint; Backspace or Delete removes it; Enter opens a paragraph under
+  it; Escape deselects and moves nothing; a printable character deselects and types where the
+  caret already is. No hover state, default cursor: the editor stays clean at rest, and the block
+  never changes height. The alphas live in `SpacerBlock`, theme-scoped by `theme.name`.
+- **The arrow keys stop on it, and Backspace from the block below selects it first.** ArrowDown
+  from the last line above selects the divider, ArrowDown again puts the caret at the start of the
+  next text block; ArrowUp mirrors it. Backspace at the start of the block below (empty or not)
+  selects the divider instead of merging text across a line the user can see; the second Backspace
+  removes it and lands the caret at the start of the next text block (the end of the previous one
+  if there is none), so a third Backspace merges as it always did. Code, table, callout and file
+  blocks are still stepped over (`landingBefore` / `landingAfter` in `useKeyboardHandlers`).
+- **The divider's root registers itself in the block ref map** from its own effect, so the gutter
+  grip can lift it and drop geometry sees it; the grip centres on the rule itself
+  (`firstLineRect` in `BlockDragHandle` takes a block's `hr` as its line), where the text-line
+  fallback sat it 8px low. It must not share `EditableBlock`'s `elRef`: that
+  ref's repaint effect would replace the rule with a `<br>` (a parsed divider carries `text: ""`).
+  `findNearestBlock` skips non-editable blocks so the mouse-up caret never lands in it.
+- Deliberately absent: a hover treatment on the rule, a block menu, Duplicate or Turn into, forward
+  Delete from the end of the block above (unhandled for every block).
 
 ## Paste keeps the block you are in
 

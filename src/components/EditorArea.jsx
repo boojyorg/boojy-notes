@@ -13,7 +13,13 @@ import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import LinkEditPopover from "./LinkEditPopover";
 import LinkContextMenu from "./LinkContextMenu";
-import { getBlockFromNode, placeCaret, isEditableBlock, titleFieldText } from "../utils/domHelpers";
+import {
+  getBlockFromNode,
+  placeCaret,
+  caretLength,
+  isEditableBlock,
+  titleFieldText,
+} from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
@@ -101,8 +107,8 @@ const EditorArea = memo(
     noteTitleSet,
     linkPopover,
     setLinkPopover,
-    selectedImageBlockId,
-    setSelectedImageBlockId,
+    selectedBlockId,
+    setSelectedBlockId,
     lightbox,
     setLightbox,
     openNote: openNoteProp,
@@ -297,12 +303,85 @@ const EditorArea = memo(
       [activeNote, noteDataRef, blockRefs, editorRef, titleRef],
     );
 
-    // Image interaction callbacks
-    const handleImageSelect = useCallback(
+    // Whole-block selection: a divider or an image (isSelectableBlock)
+    const handleBlockSelect = useCallback(
       (blockId) => {
-        setSelectedImageBlockId(blockId);
+        setSelectedBlockId(blockId);
       },
-      [setSelectedImageBlockId],
+      [setSelectedBlockId],
+    );
+
+    // Keys while a whole block is selected. Escape deselects and moves nothing;
+    // the arrows put the caret in the nearest text block on that side;
+    // Backspace and Delete remove the block and land the caret at the start of
+    // the next text block (the end of the previous one if there is none), so a
+    // Backspace that arrived from the block below can carry on from where it
+    // was; Enter opens a paragraph under the block; a printable character
+    // deselects and types where the caret already is. True when consumed.
+    const handleSelectedBlockKey = useCallback(
+      (e) => {
+        const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+        const idx = blocks.findIndex((b) => b.id === selectedBlockId);
+        if (idx < 0) {
+          setSelectedBlockId(null);
+          return false;
+        }
+        const nearestText = (from, step) => {
+          let i = from;
+          while (i >= 0 && i < blocks.length && !isEditableBlock(blocks[i])) i += step;
+          return i >= 0 && i < blocks.length ? i : -1;
+        };
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setSelectedBlockId(null);
+          return true;
+        }
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+          e.preventDefault();
+          const up = e.key === "ArrowUp";
+          const target = nearestText(idx + (up ? -1 : 1), up ? -1 : 1);
+          setSelectedBlockId(null);
+          if (target >= 0) {
+            const el = blockRefs.current[blocks[target].id];
+            if (el) placeCaret(el, up ? caretLength(el) : 0);
+          }
+          return true;
+        }
+        if (e.key === "Backspace" || e.key === "Delete") {
+          e.preventDefault();
+          const next = nearestText(idx + 1, 1);
+          const prev = nearestText(idx - 1, -1);
+          if (next >= 0) {
+            focusBlockId.current = blocks[next].id;
+            focusCursorPos.current = 0;
+          } else if (prev >= 0) {
+            focusBlockId.current = blocks[prev].id;
+            focusCursorPos.current = (blocks[prev].text || "").length;
+          }
+          deleteBlock(activeNote, idx);
+          setSelectedBlockId(null);
+          return true;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          setSelectedBlockId(null);
+          insertBlockAfter(activeNote, idx, "p", "");
+          return true;
+        }
+        if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) setSelectedBlockId(null);
+        return false;
+      },
+      [
+        activeNote,
+        selectedBlockId,
+        setSelectedBlockId,
+        noteDataRef,
+        blockRefs,
+        deleteBlock,
+        insertBlockAfter,
+        focusBlockId,
+        focusCursorPos,
+      ],
     );
 
     const handleImageLightbox = useCallback(
@@ -348,18 +427,19 @@ const EditorArea = memo(
       if (absPath && api.showItemInFolder) api.showItemInFolder(absPath);
     }, []);
 
-    // Click outside image to deselect
+    // Click outside the selected block to deselect
     const handleEditorClick = useCallback(
       (e) => {
-        // Don't deselect if clicking on an image block or its context menu
+        // A click on a selectable block's own root (its onClick has just set
+        // the selection) or on the image's context menu keeps it.
         if (
-          !e.target.closest("[data-block-id]")?.querySelector("img") &&
+          !e.target.closest('[data-block-type="image"], [data-block-type="spacer"]') &&
           !e.target.closest(".image-context-menu")
         ) {
-          if (selectedImageBlockId) setSelectedImageBlockId(null);
+          if (selectedBlockId) setSelectedBlockId(null);
         }
       },
-      [selectedImageBlockId, setSelectedImageBlockId],
+      [selectedBlockId, setSelectedBlockId],
     );
 
     // Right-click context menu for links
@@ -585,26 +665,8 @@ const EditorArea = memo(
                     setFindBarOpen(true);
                     return;
                   }
-                  // Handle image selection keys
-                  if (selectedImageBlockId) {
-                    if (e.key === "Escape" || e.key === "ArrowUp" || e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setSelectedImageBlockId(null);
-                      return;
-                    }
-                    if (e.key === "Backspace" || e.key === "Delete") {
-                      e.preventDefault();
-                      const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
-                      const idx = blocks.findIndex((b) => b.id === selectedImageBlockId);
-                      if (idx >= 0) deleteBlock(activeNote, idx);
-                      setSelectedImageBlockId(null);
-                      return;
-                    }
-                    // Printable character: deselect image and let keystroke through
-                    if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
-                      setSelectedImageBlockId(null);
-                    }
-                  }
+                  // A selected whole block (divider or image) takes the key first.
+                  if (selectedBlockId && handleSelectedBlockKey(e)) return;
                   handleEditorKeyDown(e);
                 }}
                 onInput={handleEditorInput}
@@ -706,8 +768,8 @@ const EditorArea = memo(
                           onUpdateTableRows={updateTableRows}
                           noteTitleSet={noteTitleSet}
                           onBlockNav={handleBlockNav}
-                          isImageSelected={selectedImageBlockId === block.id}
-                          onImageSelect={handleImageSelect}
+                          isBlockSelected={selectedBlockId === block.id}
+                          onBlockSelect={handleBlockSelect}
                           onImageLightbox={handleImageLightbox}
                           onImageReplace={handleImageReplace}
                           onImageCopyImage={handleImageCopyImage}
@@ -891,7 +953,7 @@ const EditorArea = memo(
       prev.toolbarState === next.toolbarState &&
       prev.noteTitleSet === next.noteTitleSet &&
       prev.linkPopover === next.linkPopover &&
-      prev.selectedImageBlockId === next.selectedImageBlockId &&
+      prev.selectedBlockId === next.selectedBlockId &&
       prev.lightbox === next.lightbox;
     const dt = performance.now() - t0;
     if (import.meta.env.DEV && dt > 0.5)

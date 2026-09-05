@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -57,8 +57,8 @@ function baseProps(block, overrides = {}) {
     onUpdateTableRows: noop,
     noteTitleSet: new Set(),
     onBlockNav: noop,
-    isImageSelected: false,
-    onImageSelect: noop,
+    isBlockSelected: false,
+    onBlockSelect: noop,
     onImageLightbox: noop,
     onImageReplace: noop,
     onImageCopyImage: noop,
@@ -156,6 +156,35 @@ describe("EditableBlock", () => {
     const block = spacer();
     const { container } = renderBlock(block);
     expect(container.querySelector("hr")).toBeInTheDocument();
+  });
+
+  it("a divider carries its type on its root and registers it, so the gutter grip can lift it", () => {
+    const block = spacer();
+    const { container, registerRef } = renderBlock(block);
+    const root = container.querySelector('[data-block-type="spacer"]');
+    expect(root).toBeInTheDocument();
+    expect(root.getAttribute("contenteditable")).toBe("false");
+    expect(registerRef).toHaveBeenCalledWith(block.id, root);
+  });
+
+  it("a click on a divider selects it; selected, a tinted band appears and the rule lifts to the accent", () => {
+    const block = spacer();
+    const onBlockSelect = vi.fn();
+    const { container, rerender } = renderBlock(block, { onBlockSelect });
+    const root = () => container.querySelector('[data-block-type="spacer"]');
+    fireEvent.click(container.querySelector("hr"));
+    expect(onBlockSelect).toHaveBeenCalledWith(block.id);
+    expect(root().style.background).toBe("transparent");
+    expect(container.querySelector("hr").style.borderTop).toBe("1px solid rgb(85, 85, 85)");
+    expect(container.querySelector("[data-selected]")).toBeNull();
+
+    rerender(<EditableBlock {...baseProps(block, { isBlockSelected: true })} />);
+    // accentColor #A4CACE at 10% (Light) around it, the rule at 40% inside; still 1px.
+    expect(root().style.background).toBe("rgba(164, 202, 206, 0.1)");
+    expect(container.querySelector("hr").style.borderTop).toBe(
+      "1px solid rgba(164, 202, 206, 0.4)",
+    );
+    expect(container.querySelector('[data-selected="true"]')).toBeInTheDocument();
   });
 
   it("renders image block with img tag", () => {
