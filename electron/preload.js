@@ -58,16 +58,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setSetting: (key, value) => ipcRenderer.invoke("set-setting", key, value),
   toggleSpellcheck: (opts) => ipcRenderer.invoke("toggle-spellcheck", opts),
 
-  // Import
-  importMarkdown: (opts) => ipcRenderer.invoke("import:markdown", opts),
-  importHtml: (opts) => ipcRenderer.invoke("import:html", opts),
-  importFolder: (opts) => ipcRenderer.invoke("import:folder", opts),
-  onMenuImport: (callback) => {
-    const handler = (_event, fmt) => callback(fmt);
-    ipcRenderer.on("menu:import", handler);
-    return () => ipcRenderer.removeListener("menu:import", handler);
-  },
-
   // Auto-update
   checkForUpdate: () => ipcRenderer.invoke("check-for-update"),
   installUpdate: () => ipcRenderer.invoke("install-update"),

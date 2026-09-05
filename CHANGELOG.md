@@ -13,6 +13,7 @@
 - **Onboarding hints** — The three one-line tips that appeared above a new note ("Type / for commands", "Try [[ to link notes", "Use #tags to organise") are gone. The empty paragraph's own placeholder already says to type `/`, and the rest is the kind of thing a first note teaches by itself.
 - **The font-size preference** — Settings had a Font size row (10 to 24) that resized body text only, beside the keyboard UI scale (Cmd+Plus / Cmd+Minus / Cmd+0) that resizes everything. One size control is enough, so the row is gone and body text is 15px before scaling. A saved font size is no longer read.
 - **Two items from the vault ··· menu** — "Collapse all folders" is gone: folders toggle on click and stay as you left them across launches, so a bulk close was rarely worth a menu row. "Change vault folder…" is gone from the menu too; it lives in Settings → Storage only, next to the path it changes, so there is one place to look for it. The menu is now New folder, Sort by, and Reveal in Finder.
+- **Import** — The File menu's Import submenu (Markdown Files, HTML Files, Folder) and the folder menu's "Import files here" are gone, along with the HTML-to-Markdown converter and its `turndown` dependency. Since a folder in the sidebar is a directory on disk, copying files into the vault in Finder or Explorer does the same job and the app picks them up as they land. HTML conversion was the one thing that had no other route; a Markdown editor is not the place for it.
 
 ## v0.6.0 — 2026-09-05
 

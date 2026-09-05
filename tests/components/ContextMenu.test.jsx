@@ -44,7 +44,6 @@ const baseProps = () => ({
   createFolder: vi.fn(),
   setRenamingFolder: vi.fn(),
   onRenameNote: vi.fn(),
-  onImport: null,
   selectedNotes: new Set(),
   selectedCount: 0,
   bulkDeleteNotes: vi.fn(),
@@ -103,16 +102,11 @@ describe("ContextMenu", () => {
     expect(onRevealFolder).toHaveBeenCalledWith("f1");
   });
 
-  it("offers Import only when an import handler is provided (desktop)", () => {
+  it("has no Import item (removed 2026-09-05; files are added in the OS file manager)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
-    const { queryByText, rerender } = render(<ContextMenu {...props} />);
+    const { queryByText } = render(<ContextMenu {...props} />);
     expect(queryByText("Import files here")).not.toBeInTheDocument();
-
-    const onImport = vi.fn();
-    rerender(<ContextMenu {...props} onImport={onImport} />);
-    fireEvent.click(queryByText("Import files here"));
-    expect(onImport).toHaveBeenCalledWith("f1");
   });
 
   it("calls deleteNote when Delete is clicked", () => {

@@ -62,7 +62,7 @@ src/
 ├── constants/          # themes.js (the only colour authority), slash commands, z-index
 ├── tokens/             # spacing, radius, typography, shadows
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
-electron/               # main process: IPC, file I/O, watcher, OS trash, import
+electron/               # main process: IPC, file I/O, watcher, OS trash, folders
 tests/                  # unit tests and the preservation fixture corpus
 e2e/                    # Playwright
 docs/private/           # gitignored personal notes

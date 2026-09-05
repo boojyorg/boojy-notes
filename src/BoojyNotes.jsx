@@ -45,7 +45,6 @@ import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { useTagHandlers } from "./hooks/useTagHandlers";
-import { useImport } from "./hooks/useImport";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
@@ -397,9 +396,6 @@ export default function BoojyNotes() {
   });
 
   // ── Effects ─────────────────────────────────────────────────────────
-  // Import handlers, plus the Electron File-menu listener
-  const { handleImportIntoFolder } = useImport();
-
   // Editor fade-in + title sync
   useEffect(() => {
     setEditorFadeIn(false);
@@ -983,9 +979,6 @@ export default function BoojyNotes() {
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
         onRevealFolder={folderOps?.reveal}
-        // Import is a desktop file-picker flow; the item would be a dead
-        // click on web, so it isn't offered there.
-        onImport={isElectron ? handleImportIntoFolder : undefined}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}

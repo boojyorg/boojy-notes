@@ -82,12 +82,6 @@ declare global {
         languages?: string[];
       }) => Promise<DesktopSettings>;
 
-      // Import (returns absolute paths of the files written into the vault)
-      importMarkdown: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
-      importHtml: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
-      importFolder: (opts?: { targetFolder?: string }) => Promise<{ imported: string[] }>;
-      onMenuImport: (callback: (format: string) => void) => Unsubscribe;
-
       // Auto-update
       checkForUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
