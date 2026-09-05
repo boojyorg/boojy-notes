@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
 import { useLayout, SIDEBAR_SCRIM } from "./context/LayoutContext";
@@ -183,6 +183,14 @@ export default function BoojyNotes() {
     remapNoteFolders,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
+  // The sidebar header carries the vault folder's own name; web has no folder.
+  const vaultName = useMemo(
+    () => (notesDir ? notesDir.split(/[\\/]/).filter(Boolean).pop() : null) || "Notes",
+    [notesDir],
+  );
+  const revealVault = useCallback(() => {
+    if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
+  }, [notesDir]);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
   /**
    * Opening a note dismisses an overlay sidebar — by click or by drag. The
@@ -769,6 +777,9 @@ export default function BoojyNotes() {
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
             isMobile={isMobile}
+            vaultName={vaultName}
+            onRevealVault={isElectron ? revealVault : undefined}
+            onChangeVault={isElectron ? changeNotesDir : undefined}
           />
           {isMobile && !activeNote && (
             <FloatingActionButton

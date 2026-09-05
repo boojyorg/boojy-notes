@@ -16,8 +16,8 @@ import {
   SortAlphaIcon,
   SortRecentIcon,
 } from "./Icons";
-import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
 import { CHROME_INSET, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
+import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
 import boojyWordmark from "/assets/boojy-notes-wordmark.png";
 
@@ -147,17 +147,18 @@ const SECTION_CONTENT_GAP = 4;
 // locked out (focus reveals), and touch devices keep the controls visible.
 
 /**
- * A section lid: bold label left, optional single action right.
- * `role="presentation"` keeps it out of the surrounding tree's item list — the
- * text still reads, it just isn't announced as a row.
+ * The one section lid: the vault's name left, its controls right.
+ * `role="presentation"` keeps it out of the tree below — the text still
+ * reads, it just isn't announced as a row. The name is the vault folder's
+ * basename, quiet secondary ink: it says where you are, nothing more.
  */
 function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
     <div
       role="presentation"
       className="sidebar-section-header"
-      // `Notes` doubles as the visible root drop target during a note drag:
-      // drop on a folder → into that folder, drop on Notes → back to root.
+      // The header doubles as the visible root drop target during a drag:
+      // drop on a folder → into that folder, drop here → back to the root.
       // useSidebarDrag finds it by this attribute and paints it neutrally.
       {...(dropRoot ? { "data-drop-root": "true" } : {})}
       style={{
@@ -173,21 +174,36 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: 13, fontWeight: 700, color: TEXT.secondary }}>{label}</span>
-      {children}
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: TEXT.secondary,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>{children}</span>
     </div>
   );
 }
 
 /**
- * The single trailing control a section header may carry (New folder, Sort).
- * One component so both wear the same geometry and the same rest/hover ink.
+ * A trailing header control (New note, New folder, ···). One component so
+ * all wear the same geometry and the same rest/hover ink. `visible` keeps
+ * the control on screen at rest (muted) instead of hover-revealed; the vault
+ * header's three are, because New note cannot be a secret. Never a fourth:
+ * three muted glyphs read as a set, four read as a toolbar.
  */
-function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
+function SectionAction({ onClick, title, ariaLabel, active, visible, children, ...rest }) {
   return (
     <button
       type="button"
-      className="sidebar-section-action"
+      className={`sidebar-section-action${visible ? " sidebar-section-action--visible" : ""}`}
       onClick={onClick}
       title={title}
       aria-label={ariaLabel || title}
@@ -379,6 +395,11 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   ctxMenuNoteId,
   isMobile,
+  // The vault folder's basename ("Notes" on web, where there is no folder).
+  vaultName = "Notes",
+  // Desktop only: the ··· menu's whole-vault actions.
+  onRevealVault,
+  onChangeVault,
 }) {
   const { accentColor, chromeBg, toggleSidebar } = useLayout();
   const { setSettingsOpen } = useSettings();
@@ -393,6 +414,7 @@ const Sidebar = memo(function Sidebar({
     searchInputRef,
     sidebarScrollRef,
     expanded,
+    setExpanded,
     filteredTree,
     fNotes,
     renamingFolder,
@@ -409,7 +431,10 @@ const Sidebar = memo(function Sidebar({
     setSortMode,
   } = useSidebar();
 
-  // Anchor rect of the sort trigger, or null when the menu is closed.
+  // Anchor rect of the ··· trigger, or null when the vault menu is closed.
+  const [vaultMenuAnchor, setVaultMenuAnchor] = useState(null);
+  const closeVaultMenu = () => setVaultMenuAnchor(null);
+  const collapseAllFolders = () => setExpanded({});
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -951,14 +976,10 @@ const Sidebar = memo(function Sidebar({
               flexShrink: 0,
             }}
           >
-            <ActionRow
-              icon={<NewNoteIcon size={ACTION_ICON} />}
-              label="New note"
-              title="New note"
-              onClick={() => createNote(null)}
-              TEXT={TEXT}
-              BG={BG}
-            />
+            {/* New note moved up into the vault header (2026-09-05): every
+                action that makes something lives in one place, and the
+                sidebar reads identity, Search, tree. Search stays a row
+                because it swaps into a field at the same geometry. */}
             {searchActive ? (
               // Same row geometry as the action rows, so opening search doesn't
               // shift the group \u2014 the row just gains a field and a surface.
@@ -1169,10 +1190,10 @@ const Sidebar = memo(function Sidebar({
           )
         ) : (
           <>
-            {/* Two labelled trees, not one: a section header — and the New folder
-                button inside it — is not a legal child of role="tree" (axe
-                aria-required-children, caught by the e2e a11y gate). Mobile has no
-                headers, so it keeps a single tree with its own inline rows. */}
+            {/* One tree under one header. The header is a sibling above the
+                tree, never inside it: a header is not a legal child of
+                role="tree" (axe aria-required-children, caught by the e2e a11y
+                gate). Mobile has no header and keeps its inline rows. */}
             {isMobile ? (
               <div role="tree" aria-label="Notes">
                 <div style={{ height: 5 }} />
@@ -1205,47 +1226,47 @@ const Sidebar = memo(function Sidebar({
               </div>
             ) : (
               <>
-                <SectionHeader label="Folders" TEXT={TEXT} first>
-                  <SectionAction onClick={() => createFolder(null)} title="New folder">
+                {/* The vault header: where you are, and everything that makes
+                    something. It is also the root drop target, so it stays
+                    put however empty the vault is. Folders come first,
+                    alphabetical; root notes follow in the sort preference,
+                    exactly as inside a folder — the root is a folder. */}
+                <SectionHeader label={vaultName} TEXT={TEXT} first dropRoot>
+                  <SectionAction onClick={() => createNote(null)} title="New note" visible>
+                    <NewNoteIcon />
+                  </SectionAction>
+                  <SectionAction onClick={() => createFolder(null)} title="New folder" visible>
                     <NewFolderIcon />
                   </SectionAction>
+                  <SectionAction
+                    onClick={(e) => setVaultMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                    title="Vault options"
+                    aria-haspopup="menu"
+                    aria-expanded={vaultMenuAnchor !== null}
+                    active={vaultMenuAnchor !== null}
+                    visible
+                  >
+                    <MoreHorizontalIcon size={16} />
+                  </SectionAction>
                 </SectionHeader>
-                {filteredTree.length > 0 && (
-                  <div role="tree" aria-label="Folders">
-                    {filteredTree.map((f) => renderFolder(f, 0))}
-                  </div>
+                {vaultMenuAnchor && (
+                  <VaultMenu
+                    anchor={vaultMenuAnchor}
+                    sortMode={sortMode}
+                    setSortMode={setSortMode}
+                    onCollapseAll={collapseAllFolders}
+                    onReveal={onRevealVault}
+                    onChangeVault={onChangeVault}
+                    revealLabel={isElectronMac ? "Reveal in Finder" : "Show in folder"}
+                    onClose={closeVaultMenu}
+                  />
                 )}
-                {/* The header stays put when the section is empty: it is both the
-                    visible root drop target and the home of the sort control, and
-                    those are needed exactly when there are no root notes to show.
-                    A search that matches no root note is the one case it hides. */}
-                {(!search || fNotes.length > 0) && (
-                  <>
-                    <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
-                      {/* Two modes only, so sort is a click-to-flip toggle, not
-                          a menu (judged live 2026-08-23; SortMenu was deleted —
-                          git history has it). The glyph shows the CURRENT mode;
-                          the label's tail says what a click does — that
-                          convention choice is deliberate, keep them consistent. */}
-                      <SectionAction
-                        onClick={() =>
-                          setSortMode(sortMode === SORT_RECENT ? SORT_ALPHA : SORT_RECENT)
-                        }
-                        title={
-                          sortMode === SORT_RECENT
-                            ? "Sorted by most recent — switch to alphabetical"
-                            : "Sorted alphabetically — switch to most recent"
-                        }
-                      >
-                        {sortMode === SORT_RECENT ? <SortRecentIcon /> : <SortAlphaIcon />}
-                      </SectionAction>
-                    </SectionHeader>
-                    {fNotes.length > 0 && (
-                      <div role="tree" aria-label="Notes">
-                        {fNotes.map((nId) => renderNote(nId, 0))}
-                      </div>
-                    )}
-                  </>
+                {/* An empty tree fails axe, so the element exists only with rows. */}
+                {(filteredTree.length > 0 || fNotes.length > 0) && (
+                  <div role="tree" aria-label={vaultName}>
+                    {filteredTree.map((f) => renderFolder(f, 0))}
+                    {fNotes.map((nId) => renderNote(nId, 0))}
+                  </div>
                 )}
               </>
             )}

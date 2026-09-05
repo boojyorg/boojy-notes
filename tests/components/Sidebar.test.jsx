@@ -92,7 +92,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
     searchInputRef: _sidebarOverrides.searchInputRef ?? { current: null },
     sidebarScrollRef: _sidebarOverrides.sidebarScrollRef ?? { current: null },
     expanded: _sidebarOverrides.expanded ?? {},
-    setExpanded: vi.fn(),
+    setExpanded: _sidebarOverrides.setExpanded ?? vi.fn(),
     filteredTree: _sidebarOverrides.filteredTree ?? [],
     fNotes: _sidebarOverrides.fNotes ?? [],
     renamingFolder: null,
@@ -143,6 +143,9 @@ function renderSidebar(overrides = {}) {
     handleNoteClick: null,
     clearSelection: noop,
     isMobile: overrides.isMobile ?? false,
+    vaultName: overrides.vaultName ?? "My Vault",
+    onRevealVault: overrides.onRevealVault,
+    onChangeVault: overrides.onChangeVault,
   };
 
   return render(<Sidebar {...props} />);
@@ -383,103 +386,151 @@ describe("Sidebar", () => {
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
   });
 
-  it("calls createNote from the New note action row", () => {
+  // ── The vault header (2026-09-05) ─────────────────────────────────────────
+  // One header carrying the vault folder's name replaces the `Folders` and
+  // `Notes` sections. Everything that makes something lives on it: New note,
+  // New folder, and the ··· menu holding the rare whole-vault actions.
+
+  it("names the header after the vault and makes New note from it", () => {
     const createNote = vi.fn();
-    const { getByText } = renderSidebar({ createNote });
-    fireEvent.click(getByText("New note"));
+    const { getByText, getByLabelText, queryByText } = renderSidebar({
+      createNote,
+      vaultName: "Vault",
+    });
+    expect(getByText("Vault")).toBeInTheDocument();
+    fireEvent.click(getByLabelText("New note"));
     expect(createNote).toHaveBeenCalledWith(null);
+    // The labelled action row is gone; Cmd+N and the header glyph remain.
+    expect(queryByText("New note")).not.toBeInTheDocument();
+    expect(queryByText("Folders")).not.toBeInTheDocument();
+    expect(queryByText("Notes")).not.toBeInTheDocument();
   });
 
-  it("renders the Folders section header with a New folder button", () => {
+  it("makes a root folder from the header's New folder control", () => {
     const createFolder = vi.fn();
-    const { getByText, getByLabelText, queryByText } = renderSidebar({ createFolder });
-    expect(getByText("Folders")).toBeInTheDocument();
+    const { getByLabelText, queryByText } = renderSidebar({ createFolder });
     fireEvent.click(getByLabelText("New folder"));
-    expect(createFolder).toHaveBeenCalled();
+    expect(createFolder).toHaveBeenCalledWith(null);
     // The old tree-style row is gone on desktop.
     expect(queryByText("New Folder")).not.toBeInTheDocument();
   });
 
-  it("hides the Folders header while searching", () => {
+  it("hides the header while a search shows results or none", () => {
     const { queryByText } = renderSidebar({
       searchMode: true,
       search: "xyz",
       searchResults: { results: [], groups: [], totalCount: 0 },
     });
-    expect(queryByText("Folders")).not.toBeInTheDocument();
+    expect(queryByText("My Vault")).not.toBeInTheDocument();
   });
 
-  it("keeps the Folders header when there are no folders", () => {
-    const { getByText, getByLabelText } = renderSidebar({ filteredTree: [] });
-    expect(getByText("Folders")).toBeInTheDocument();
+  it("keeps the header, and renders no empty tree, when the vault has no rows", () => {
+    const { getByText, getByLabelText, queryByRole } = renderSidebar({
+      filteredTree: [],
+      fNotes: [],
+    });
+    expect(getByText("My Vault")).toBeInTheDocument();
     expect(getByLabelText("New folder")).toBeInTheDocument();
+    // An empty tree fails axe's aria-required-children.
+    expect(queryByRole("tree")).not.toBeInTheDocument();
   });
 
-  it("renders the Notes section header when there are loose root notes", () => {
-    const noteData = buildNoteData([{ id: "r1", title: "Loose Note" }]);
-    const { getByText } = renderSidebar({ noteData, fNotes: ["r1"] });
-    expect(getByText("Notes")).toBeInTheDocument();
-    expect(getByText("Loose Note")).toBeInTheDocument();
+  it("keeps the header while a search narrows the tree to nothing", () => {
+    const { getByText } = renderSidebar({ search: "zzz", filteredTree: [], fNotes: [] });
+    expect(getByText("My Vault")).toBeInTheDocument();
   });
 
-  // Reversed on purpose when the sort control moved onto this header: it is
-  // both the visible root drop target and the only place to change ordering,
-  // and both are wanted precisely when every note is inside a folder.
-  it("keeps the Notes section header when there are no loose root notes", () => {
-    const { getByText, queryByRole } = renderSidebar({ fNotes: [] });
-    expect(getByText("Notes")).toBeInTheDocument();
-    expect(getByText("Folders")).toBeInTheDocument();
-    // ...but no empty tree, which would fail axe's aria-required-children.
-    expect(queryByRole("tree", { name: "Notes" })).not.toBeInTheDocument();
+  it("renders one tree named after the vault: folders first, then root notes", () => {
+    const noteData = buildNoteData([
+      { id: "r1", title: "Loose Note" },
+      { id: "n1", title: "Nested Note" },
+    ]);
+    const filteredTree = [{ name: "Zed Folder", _path: "Zed Folder", children: [], notes: ["n1"] }];
+    const { getAllByRole, getByRole } = renderSidebar({
+      noteData,
+      filteredTree,
+      fNotes: ["r1"],
+      expanded: { "Zed Folder": true },
+    });
+    expect(getAllByRole("tree")).toHaveLength(1);
+    const tree = getByRole("tree", { name: "My Vault" });
+    const rows = Array.from(tree.querySelectorAll('[role="treeitem"]')).map((r) =>
+      r.textContent.trim(),
+    );
+    expect(rows[0]).toBe("Zed Folder");
+    expect(rows[1]).toContain("Nested Note");
+    expect(rows[2]).toContain("Loose Note");
   });
 
-  it("hides the Notes section header when a search matches no root note", () => {
-    const { queryByText } = renderSidebar({ search: "zzz", fNotes: [] });
-    expect(queryByText("Notes")).not.toBeInTheDocument();
-  });
-
-  it("marks the Notes header as the root drop target", () => {
+  it("marks the vault header as the root drop target", () => {
     const { getByText } = renderSidebar({ fNotes: [] });
-    const header = getByText("Notes").closest("[data-drop-root]");
-    expect(header).not.toBeNull();
+    expect(getByText("My Vault").closest("[data-drop-root]")).not.toBeNull();
   });
 
-  // ── Sort control (toggle, 2026-08-23) ────────────────────────────────────
-  // Two modes only, so the menu became a click-to-flip toggle. The glyph and
-  // accessible name announce the CURRENT state; the label's tail announces
-  // what a click does.
+  // ── The ··· menu ──────────────────────────────────────────────────────────
+  // Sort is a preference flipped a few times a month, so it lives in the
+  // menu rather than on the header; the current mode is a radio item.
 
-  it("announces the current mode and the flip action", () => {
-    const { getByLabelText } = renderSidebar({ sortMode: "alpha" });
-    expect(getByLabelText("Sorted alphabetically — switch to most recent")).toBeInTheDocument();
-  });
-
-  it("flips recent to alphabetical on click, with no menu", () => {
+  it("opens the vault menu with the current sort mode checked, and flips it", () => {
     const setSortMode = vi.fn();
-    const { getByLabelText, queryByRole } = renderSidebar({ setSortMode, sortMode: "recent" });
-    fireEvent.click(getByLabelText("Sorted by most recent — switch to alphabetical"));
+    const { getByLabelText, getByRole, queryByRole } = renderSidebar({
+      setSortMode,
+      sortMode: "recent",
+    });
+    expect(queryByRole("menu", { name: "Vault options" })).not.toBeInTheDocument();
+    fireEvent.click(getByLabelText("Vault options"));
+    const menu = getByRole("menu", { name: "Vault options" });
+    expect(menu).toBeInTheDocument();
+    expect(getByRole("menuitemradio", { name: "Most recent" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    fireEvent.click(getByRole("menuitemradio", { name: "Alphabetical" }));
     expect(setSortMode).toHaveBeenCalledWith("alpha");
-    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+    expect(queryByRole("menu", { name: "Vault options" })).not.toBeInTheDocument();
   });
 
-  it("flips alphabetical to most recent on click", () => {
-    const setSortMode = vi.fn();
-    const { getByLabelText } = renderSidebar({ setSortMode, sortMode: "alpha" });
-    fireEvent.click(getByLabelText("Sorted alphabetically — switch to most recent"));
-    expect(setSortMode).toHaveBeenCalledWith("recent");
+  it("collapses every folder from the menu", () => {
+    const setExpanded = vi.fn();
+    const { getByLabelText, getByRole } = renderSidebar({
+      setExpanded,
+      expanded: { A: true, "A/B": true },
+    });
+    fireEvent.click(getByLabelText("Vault options"));
+    fireEvent.click(getByRole("menuitem", { name: "Collapse all folders" }));
+    expect(setExpanded).toHaveBeenCalledWith({});
   });
 
-  // Reveal is CSS-driven (.sidebar-section-action in GlobalStyles): hidden at
-  // rest on hover-capable devices, revealed by header hover/focus-within,
-  // lifted by :focus-visible. jsdom can't compute that stylesheet, so assert
-  // the contract's DOM hooks: keyboard-reachable buttons wearing the class,
-  // inside a header wearing the class the reveal selectors scope to.
-  it("keeps both header controls keyboard-reachable with the CSS reveal hooks", () => {
+  it("offers the desktop vault actions only when handlers are provided", () => {
+    const { getByLabelText, queryByRole, rerender, unmount } = renderSidebar();
+    fireEvent.click(getByLabelText("Vault options"));
+    expect(queryByRole("menuitem", { name: /Reveal in Finder|Show in folder/ })).toBeNull();
+    expect(queryByRole("menuitem", { name: "Change vault folder…" })).toBeNull();
+    unmount();
+
+    const onRevealVault = vi.fn();
+    const onChangeVault = vi.fn();
+    const r = renderSidebar({ onRevealVault, onChangeVault });
+    fireEvent.click(r.getByLabelText("Vault options"));
+    fireEvent.click(r.getByRole("menuitem", { name: /Reveal in Finder|Show in folder/ }));
+    expect(onRevealVault).toHaveBeenCalled();
+    fireEvent.click(r.getByLabelText("Vault options"));
+    fireEvent.click(r.getByRole("menuitem", { name: "Change vault folder…" }));
+    expect(onChangeVault).toHaveBeenCalled();
+    void rerender;
+  });
+
+  // The header's controls are visible at rest (muted) rather than hover-
+  // revealed: New note is the most frequent action in the app and cannot be a
+  // secret. jsdom can't compute the stylesheet, so assert the DOM hooks: the
+  // shared class plus the visible variant, inside the header the selectors
+  // scope to, keyboard-reachable.
+  it("keeps the three header controls keyboard-reachable and visible at rest", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["New folder", "Sorted by most recent — switch to alphabetical"]) {
+    for (const name of ["New note", "New folder", "Vault options"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
-      expect(btn.className).toContain("sidebar-section-action");
+      expect(btn.className).toContain("sidebar-section-action--visible");
       expect(btn.closest(".sidebar-section-header")).not.toBeNull();
     }
   });

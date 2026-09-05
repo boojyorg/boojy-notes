@@ -137,6 +137,10 @@ export default function GlobalStyles() {
             .sidebar-section-action {
             opacity: 0.55;
           }
+          /* The vault header's controls stay visible at rest: New note is the
+             most frequent action in the app and cannot be a secret. Muted ink,
+             full on hover, same as the section-action emphasis below. */
+          .sidebar-section-action--visible { opacity: 0.55; }
         }
         .sidebar-section-action:hover,
         .sidebar-section-action:focus-visible {

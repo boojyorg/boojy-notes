@@ -140,7 +140,7 @@ test("renaming a folder moves everything in it together, and the open note follo
   }
 });
 
-test("dragging a folder onto a folder nests it; dropping it on the Notes header moves it back out", async () => {
+test("dragging a folder onto a folder nests it; dropping it on the vault header moves it back out", async () => {
   const h = await launchApp({ "Work/Note.md": "Note.\n", "Archive/Old.md": "Old.\n" });
   try {
     await moveFolderTo(h.page, "Work", "Archive");
