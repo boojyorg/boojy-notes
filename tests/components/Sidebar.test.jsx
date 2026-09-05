@@ -174,22 +174,23 @@ describe("Sidebar", () => {
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the Search action row", () => {
-    const { getByText } = renderSidebar();
-    expect(getByText("Search")).toBeInTheDocument();
-  });
-
-  it("focuses search when the Search action row is clicked", () => {
+  // Search is a chrome-row glyph beside the panel toggle (2026-09-05); the
+  // field appears only while searching, so at rest the vault header is the
+  // first line of the panel. Interim until the Cmd+K palette.
+  it("shows no search field at rest, and reveals it from the chrome row's Search glyph", () => {
     const setSearchFocused = vi.fn();
-    const { getByText } = renderSidebar({ setSearchFocused });
-    fireEvent.click(getByText("Search"));
+    const { getByLabelText, queryByLabelText } = renderSidebar({ setSearchFocused });
+    expect(queryByLabelText("Search notes")).not.toBeInTheDocument();
+    fireEvent.click(getByLabelText("Search"));
     expect(setSearchFocused).toHaveBeenCalledWith(true);
   });
 
-  it("swaps the Search row for a field once search is engaged", () => {
-    const { queryByText, getByLabelText } = renderSidebar({ searchFocused: true });
-    expect(getByLabelText("Search notes")).toBeInTheDocument();
-    expect(queryByText("Search")).not.toBeInTheDocument();
+  it("keeps the field while search is focused or holds text", () => {
+    expect(
+      renderSidebar({ searchFocused: true }).getByLabelText("Search notes"),
+    ).toBeInTheDocument();
+    cleanup();
+    expect(renderSidebar({ search: "abc" }).getByLabelText("Search notes")).toBeInTheDocument();
   });
 
   it("renders folder names from filteredTree", () => {
@@ -391,16 +392,11 @@ describe("Sidebar", () => {
   // `Notes` sections. Everything that makes something lives on it: New note,
   // New folder, and the ··· menu holding the rare whole-vault actions.
 
-  it("names the header after the vault and makes New note from it", () => {
-    const createNote = vi.fn();
-    const { getByText, getByLabelText, queryByText } = renderSidebar({
-      createNote,
-      vaultName: "Vault",
-    });
+  it("names the header after the vault and carries no New note of its own", () => {
+    const { getByText, queryByText, queryByLabelText } = renderSidebar({ vaultName: "Vault" });
     expect(getByText("Vault")).toBeInTheDocument();
-    fireEvent.click(getByLabelText("New note"));
-    expect(createNote).toHaveBeenCalledWith(null);
-    // The labelled action row is gone; Cmd+N and the header glyph remain.
+    // New note lives above the editor (EditorChrome), not in the panel.
+    expect(queryByLabelText("New note")).not.toBeInTheDocument();
     expect(queryByText("New note")).not.toBeInTheDocument();
     expect(queryByText("Folders")).not.toBeInTheDocument();
     expect(queryByText("Notes")).not.toBeInTheDocument();
@@ -520,19 +516,27 @@ describe("Sidebar", () => {
     void rerender;
   });
 
-  // The header's controls are visible at rest (muted) rather than hover-
-  // revealed: New note is the most frequent action in the app and cannot be a
-  // secret. jsdom can't compute the stylesheet, so assert the DOM hooks: the
-  // shared class plus the visible variant, inside the header the selectors
-  // scope to, keyboard-reachable.
-  it("keeps the three header controls keyboard-reachable and visible at rest", () => {
+  // The header's two controls are hover-revealed (New note moved to the editor
+  // header, so nothing frequent hides here). jsdom can't compute the
+  // stylesheet, so assert the DOM hooks: the reveal class, inside the header
+  // the selectors scope to, keyboard-reachable, and not the visible variant.
+  it("keeps the two header controls keyboard-reachable with the CSS reveal hooks", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["New note", "New folder", "Vault options"]) {
+    for (const name of ["New folder", "Vault options"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
-      expect(btn.className).toContain("sidebar-section-action--visible");
+      expect(btn.className).toContain("sidebar-section-action");
+      expect(btn.className).not.toContain("--visible");
       expect(btn.closest(".sidebar-section-header")).not.toBeNull();
     }
+  });
+
+  it("lists New folder in the vault menu as the standing hint for the hover control", () => {
+    const createFolder = vi.fn();
+    const { getByLabelText, getByRole } = renderSidebar({ createFolder });
+    fireEvent.click(getByLabelText("Vault options"));
+    fireEvent.click(getByRole("menuitem", { name: "New folder" }));
+    expect(createFolder).toHaveBeenCalledWith(null);
   });
 
   it("renders note rows without a file glyph, at any depth", () => {

@@ -83,7 +83,9 @@ export const SearchIcon = ({ size = ICON_INLINE }) => (
 export const NewNoteIcon = ({ size = ICON_INLINE }) => (
   <LuSquarePen {...base} {...navBase} size={size} />
 );
-export const NewFolderIcon = () => <LuFolderPlus {...base} {...navBase} size={ICON_INLINE} />;
+export const NewFolderIcon = ({ size = ICON_INLINE }) => (
+  <LuFolderPlus {...base} {...navBase} size={size} />
+);
 /** Sort trigger — glyph reflects the active mode. Section-header tier: 16px, nav stroke. */
 export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
 export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;

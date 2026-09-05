@@ -687,6 +687,7 @@ export default function BoojyNotes() {
         <EditorChrome
           activeNote={activeNote}
           onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
+          onNewNote={() => createNote(null)}
         />
       )}
       {isMobile && (

@@ -20,6 +20,8 @@ interface VaultMenuProps {
   sortMode: string;
   setSortMode: (mode: string) => void;
   onCollapseAll: () => void;
+  /** The standing hint for a control that is hover-revealed on the header. */
+  onNewFolder: () => void;
   /** Desktop only: show the vault directory in the OS file manager. */
   onReveal?: () => void;
   /** Desktop only: pick another vault directory. */
@@ -47,6 +49,7 @@ export default function VaultMenu({
   sortMode,
   setSortMode,
   onCollapseAll,
+  onNewFolder,
   onReveal,
   onChangeVault,
   revealLabel,
@@ -73,7 +76,14 @@ export default function VaultMenu({
 
   const items: Item[] = useMemo(() => {
     const list: Item[] = [
-      { label: "Sort by", action: () => {}, heading: true },
+      {
+        label: "New folder",
+        action: () => {
+          onNewFolder();
+          onClose();
+        },
+      },
+      { label: "Sort by", action: () => {}, heading: true, separator: true },
       {
         label: "Most recent",
         checked: sortMode === SORT_RECENT,
@@ -120,7 +130,16 @@ export default function VaultMenu({
       });
     }
     return list;
-  }, [sortMode, setSortMode, onCollapseAll, onReveal, onChangeVault, revealLabel, onClose]);
+  }, [
+    sortMode,
+    setSortMode,
+    onCollapseAll,
+    onNewFolder,
+    onReveal,
+    onChangeVault,
+    revealLabel,
+    onClose,
+  ]);
 
   const interactive = useMemo(
     () => items.map((item, i) => (item.heading ? -1 : i)).filter((i) => i >= 0),
@@ -177,18 +196,22 @@ export default function VaultMenu({
       >
         {items.map((item, index) =>
           item.heading ? (
-            <div
-              key={item.label}
-              style={{
-                padding: "6px 10px 2px",
-                fontSize: 11,
-                fontWeight: 500,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                color: TEXT.muted,
-              }}
-            >
-              {item.label}
+            <div key={item.label}>
+              {item.separator && (
+                <div style={{ height: 1, background: BG.divider, margin: "4px 6px" }} />
+              )}
+              <div
+                style={{
+                  padding: "6px 10px 2px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  color: TEXT.muted,
+                }}
+              >
+                {item.label}
+              </div>
             </div>
           ) : (
             <div key={item.label}>
