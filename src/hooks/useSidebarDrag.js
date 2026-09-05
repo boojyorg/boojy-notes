@@ -18,6 +18,7 @@ export function useSidebarDrag({
   dragTooltipCount,
   selectedNotesRef,
   clearSelectionRef,
+  moveFolder,
 }) {
   const { theme } = useTheme();
   const sidebarDrag = useRef({
@@ -206,9 +207,14 @@ export function useSidebarDrag({
     clearDropHighlights(scrollEl);
 
     for (const el of folderEls) {
+      const folderPath = el.dataset.folderPath;
+      // A folder cannot be dropped into itself or its own subtree; those rows
+      // are not targets, so the pointer falls through to the root.
+      if (sd.type === "folder" && (folderPath === sd.id || folderPath.startsWith(`${sd.id}/`)))
+        continue;
       const rect = el.getBoundingClientRect();
       if (pointerY >= rect.top && pointerY <= rect.bottom) {
-        target = { type: "folder", id: el.dataset.folderPath, el };
+        target = { type: "folder", id: folderPath, el };
         break;
       }
     }
@@ -266,6 +272,10 @@ export function useSidebarDrag({
         }
         return changed ? next : prev;
       });
+    } else if (sd.type === "folder" && moveFolder) {
+      // Folders are directories: the move is one directory rename on disk,
+      // into the target folder or back to the root. Never a reorder.
+      moveFolder(sd.id, target.type === "folder" ? target.id : null);
     }
 
     cleanupSidebarDrag();
@@ -350,12 +360,13 @@ export function useSidebarDrag({
     if (e.button !== 0) return;
     if (e.target.closest(".delete-btn, input")) return;
 
-    // Notes only. Folder dragging is gone: its sibling-reorder half is retired
-    // with the rest of manual ordering, and its nest/reparent half never existed
-    // — dropping a folder on a folder highlighted the target, then silently did
-    // nothing. Removing the affordance beats keeping a promise the app can't keep.
-    const noteEl = e.target.closest("[data-note-id]");
-    if (!noteEl) return;
+    // Notes and folders both drag, and both mean location: a note's file moves
+    // into the target folder, a folder's directory moves into it (or out to the
+    // root). There is no reorder; the sort preference decides display order. A
+    // folder row is a button beside its children, so a press on a nested note
+    // resolves to the note, never to the folder above it.
+    const rowEl = e.target.closest("[data-note-id], [data-folder-path]");
+    if (!rowEl) return;
 
     // Prevent browser scroll takeover on touch devices
     if (e.pointerType === "touch") e.preventDefault();
@@ -373,9 +384,9 @@ export function useSidebarDrag({
       }
     }
 
-    const type = "note";
-    const id = noteEl.dataset.noteId;
-    const targetEl = noteEl;
+    const type = rowEl.dataset.noteId ? "note" : "folder";
+    const id = type === "note" ? rowEl.dataset.noteId : rowEl.dataset.folderPath;
+    const targetEl = rowEl;
 
     const sd = sidebarDrag.current;
     sd.startX = e.clientX;

@@ -6,11 +6,13 @@ describe("deletionPrompt — desktop (files move to the OS Trash)", () => {
     expect(deletionPrompt("note", { count: 1, name: "Loose one", isWeb: false })).toBeNull();
   });
 
-  it("asks before a folder, counting its notes and promising to leave the rest alone", () => {
+  it("asks before a folder, counting its notes and promising to leave other files alone", () => {
     const p = deletionPrompt("folder", { count: 1, name: "Work", isWeb: false });
     expect(p?.title).toBe("Move 1 note to the Trash?");
     expect(p?.message).toContain('"Work"');
-    expect(p?.message).toContain("stay exactly as they are");
+    expect(p?.message).toContain("stays exactly where it is");
+    // Folders are directories: the emptied one goes, one holding other files stays.
+    expect(p?.message).toContain("removed only if nothing is left in it");
     expect(p?.message).not.toMatch(/delete/i);
     expect(p?.confirmLabel).toBe("Move to Trash");
     expect(p?.danger).toBe(false);
@@ -20,7 +22,7 @@ describe("deletionPrompt — desktop (files move to the OS Trash)", () => {
     );
   });
 
-  it("does not prompt for a folder with no notes: nothing on disk changes", () => {
+  it("does not prompt for a folder with no notes: no note is at stake", () => {
     expect(deletionPrompt("folder", { count: 0, name: "Empty", isWeb: false })).toBeNull();
   });
 

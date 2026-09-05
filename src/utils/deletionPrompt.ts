@@ -4,10 +4,10 @@
  *
  * Desktop moves a note's Markdown file to the OS Trash, where it can be
  * recovered; a single note therefore goes at once (with a quiet toast), and
- * only a folder or a bulk selection asks first. The folder on disk and any
- * file in it that is not a Boojy Notes note are never touched, and the prompt
- * says so. The web build has no Trash: deletion is permanent there, so every
- * kind asks, in the danger colour.
+ * only a folder or a bulk selection asks first. A file in a folder that is
+ * not a Boojy Notes note is never touched; the folder itself is removed only
+ * when nothing is left in it, and the prompt says so. The web build has no
+ * Trash: deletion is permanent there, so every kind asks, in the danger colour.
  */
 
 export type DeletionKind = "note" | "folder" | "bulk";
@@ -62,11 +62,11 @@ export function deletionPrompt(kind: DeletionKind, ctx: DeletionContext): Deleti
   if (kind === "note") return null;
 
   if (kind === "folder") {
-    // Nothing on disk changes for a folder with no notes; the row just goes.
+    // No note is at stake: an empty directory goes, one holding other files stays.
     if (count === 0) return null;
     return {
       title: `Move ${notes(count)} to the Trash?`,
-      message: `The ${count === 1 ? "note" : "notes"} in "${name}" will move to the system Trash. The folder on disk, and any file in it that is not a note, stay exactly as they are.`,
+      message: `The ${count === 1 ? "note" : "notes"} in "${name}" will move to the system Trash. Any file in it that is not a note stays exactly where it is, and the folder is removed only if nothing is left in it.`,
       confirmLabel: "Move to Trash",
       danger: false,
     };

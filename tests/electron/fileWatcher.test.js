@@ -5,8 +5,13 @@ vi.mock("electron", () => ({
   ipcMain: { handle: vi.fn() },
 }));
 
-const { suppressNextUnlink, releaseUnlinkSuppression, suppressWatcher, isWriteSuppressed } =
-  await import("../../electron/fileWatcher.js");
+const {
+  suppressNextUnlink,
+  releaseUnlinkSuppression,
+  suppressWatcher,
+  suppressWatcherTree,
+  isWriteSuppressed,
+} = await import("../../electron/fileWatcher.js");
 
 // The unlink suppression must be consumed by the event (or an explicit
 // release), NOT a short fixed timer — shell.trashItem() latency is unbounded,
@@ -93,5 +98,36 @@ describe("write suppression", () => {
 
     expect(isWriteSuppressed("/notes/A.md")).toBe(false);
     expect(isWriteSuppressed("/notes/B.md")).toBe(true);
+  });
+});
+
+// A folder rename or removal is one operation the app already knows the
+// outcome of, reported by chokidar as one event per file underneath. The whole
+// subtree is suppressed for the write window, the directory itself included.
+describe("subtree suppression", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("covers the directory and everything under it, and nothing beside it", () => {
+    suppressWatcherTree("/notes/Work");
+
+    expect(isWriteSuppressed("/notes/Work")).toBe(true);
+    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(true);
+    expect(isWriteSuppressed("/notes/Work/Deep/Note.md")).toBe(true);
+    expect(isWriteSuppressed("/notes/Workshop/Note.md")).toBe(false);
+    expect(isWriteSuppressed("/notes/Other.md")).toBe(false);
+  });
+
+  it("expires with the write window", () => {
+    suppressWatcherTree("/notes/Work");
+    vi.advanceTimersByTime(1499);
+    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(false);
   });
 });

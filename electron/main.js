@@ -4,9 +4,11 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { registerNoteFileIPC } from "./noteFileManager.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
+import { registerFolderIPC } from "./folders.js";
 import {
   startWatcher,
   suppressWatcher,
+  suppressWatcherTree,
   suppressNextUnlink,
   releaseUnlinkSuppression,
   closeWatcher,
@@ -113,6 +115,7 @@ registerOSTrashIPC(getNotesDir, {
   suppressUnlink: suppressNextUnlink,
   releaseUnlink: releaseUnlinkSuppression,
 });
+registerFolderIPC(getNotesDir, { suppressTree: suppressWatcherTree });
 registerSettingsIPC(getMainWindow, restartWatcher);
 setupAutoUpdater(getMainWindow);
 

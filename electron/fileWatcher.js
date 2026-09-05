@@ -19,6 +19,16 @@ const ignoredPaths = new Map();
 // an unlink chokidar never delivers — by then the event is long stale.
 const UNLINK_SUPPRESS_FALLBACK_MS = 60_000;
 const ignoredUnlinks = new Map();
+// A folder rename or removal is one filesystem operation that chokidar reports
+// as one event per file underneath. The renderer already knows the outcome
+// from the IPC answer, so every event under the old and new directory is
+// suppressed for the same window a write is; one that escapes (a huge folder
+// still being scanned) is harmless, because it re-reads what is already true.
+const ignoredTrees = new Map();
+// Directory add/unlink events are coalesced into one `folders-changed` so a
+// folder pasted in Finder with twenty subfolders triggers one re-read.
+const FOLDERS_CHANGED_DEBOUNCE_MS = 300;
+let foldersChangedTimer = null;
 
 /**
  * Start (or restart) the chokidar file watcher on the notes directory.
@@ -67,6 +77,19 @@ function startWatcher(getNotesDir, getMainWindow) {
     if (isWriteSuppressed(filePath)) return;
     getMainWindow()?.webContents.send("file-deleted", { filePath });
   });
+
+  // Folders are directories: one made or removed outside the app changes the
+  // sidebar. The renderer re-reads the folder list; it carries no payload.
+  const onDirEvent = (dirPath) => {
+    if (isWriteSuppressed(dirPath)) return;
+    clearTimeout(foldersChangedTimer);
+    foldersChangedTimer = setTimeout(() => {
+      foldersChangedTimer = null;
+      getMainWindow()?.webContents.send("folders-changed");
+    }, FOLDERS_CHANGED_DEBOUNCE_MS);
+  };
+  watcher.on("addDir", onDirEvent);
+  watcher.on("unlinkDir", onDirEvent);
 }
 
 /**
@@ -81,9 +104,26 @@ function suppressWatcher(filePath) {
   );
 }
 
-/** Whether a path is inside its own-write suppression window. */
+/**
+ * Suppress every event under a directory we are about to rename or remove,
+ * including the event for the directory itself. Same window as a write.
+ */
+function suppressWatcherTree(dirPath) {
+  clearTimeout(ignoredTrees.get(dirPath));
+  ignoredTrees.set(
+    dirPath,
+    setTimeout(() => ignoredTrees.delete(dirPath), WRITE_SUPPRESS_MS),
+  );
+}
+
+/** Whether a path is inside its own-write suppression window, or under a suppressed tree. */
 function isWriteSuppressed(filePath) {
-  return ignoredPaths.has(filePath);
+  if (ignoredPaths.has(filePath)) return true;
+  for (const dir of ignoredTrees.keys()) {
+    if (filePath === dir || filePath.startsWith(`${dir}/`) || filePath.startsWith(`${dir}\\`))
+      return true;
+  }
+  return false;
 }
 
 /**
@@ -117,6 +157,7 @@ function closeWatcher() {
 export {
   startWatcher,
   suppressWatcher,
+  suppressWatcherTree,
   isWriteSuppressed,
   suppressNextUnlink,
   releaseUnlinkSuppression,

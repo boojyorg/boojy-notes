@@ -71,6 +71,46 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // more under its own name, which is then already its path.
   const adoptNoteData = (updater) => applyCommit(updater, false);
 
+  // A folder rename or move on disk changes where notes live without any of
+  // them being edited. The `folder` field follows in the live data AND in every
+  // undo/redo snapshot, so a later undo of a text edit cannot restore a stale
+  // folder path and quietly move that file back into a recreated old directory.
+  // Not an edit: no history entry, nothing joins the quit-flush net, and the
+  // caller (useFileSystem) tells its dirty detection to ignore the update.
+  // Returns whether anything changed, so the caller knows whether a render
+  // (and its external-update bookkeeping) is coming.
+  const remapNoteFolders = (remap) => {
+    const move = (n) => {
+      if (!n?.folder) return n;
+      const folder = remap(n.folder);
+      return folder === n.folder ? n : { ...n, folder };
+    };
+    for (const stack of [undoStack.current, redoStack.current]) {
+      for (const entry of stack) if (entry.snapshot) entry.snapshot = move(entry.snapshot);
+    }
+    const before = noteDataRef.current;
+    let changed = false;
+    const next = {};
+    for (const [id, n] of Object.entries(before)) {
+      next[id] = move(n);
+      if (next[id] !== n) changed = true;
+    }
+    if (!changed) return false;
+    // Same discipline as applyCommit: a pending text flush must not fire
+    // afterwards and write the pre-remap data back over this.
+    if (textFlushTimer.current) {
+      clearTimeout(textFlushTimer.current);
+      textFlushTimer.current = null;
+      hasPendingFlush.current = false;
+    }
+    textOnlyEdit.current = false;
+    textOnlyEditForSidebar.current = false;
+    textOnlyEditForEditor.current = false;
+    noteDataRef.current = next;
+    setNoteData(next);
+    return true;
+  };
+
   const applyCommit = (updater, recordHistory) => {
     if (recordHistory && !isUndoRedo.current) pushHistory();
     textOnlyEdit.current = false;
@@ -213,6 +253,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     redo,
     commitNoteData,
     adoptNoteData,
+    remapNoteFolders,
     commitTextChange,
     pushHistory,
     popHistory,

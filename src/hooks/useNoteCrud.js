@@ -11,6 +11,11 @@ export function useNoteCrud({
   setExpanded,
   titleRef,
   setRenamingFolder,
+  // Desktop: useFileSystem's directory operations (create / rename / remove),
+  // each answering with the path the disk holds. Null on web, where folders
+  // live in memory beside the notes.
+  folderOps = null,
+  onError,
 }) {
   // Making a note active has no effect on its "Most recent" position. A new or
   // duplicated note still rises to the top, because it becomes dirty the moment
@@ -87,63 +92,125 @@ export function useNoteCrud({
     });
   };
 
+  // ── Folders ──
+  // A folder path is `Parent/Child`; every path under a renamed or moved
+  // folder moves with it, in the notes, the folder list and the expanded map.
+  const remapPaths = (oldPath, newPath) => (p) =>
+    p === oldPath ? newPath : p.startsWith(`${oldPath}/`) ? newPath + p.slice(oldPath.length) : p;
+
+  const remapExpanded = (oldPath, newPath) => {
+    const remap = remapPaths(oldPath, newPath);
+    setExpanded((prev) => {
+      const next = {};
+      for (const [key, val] of Object.entries(prev)) next[remap(key)] = val;
+      return next;
+    });
+  };
+
+  const changeFolderPath = (oldPath, newPath) => {
+    if (newPath === oldPath) return;
+    if (folderOps) {
+      // The disk decides the final path (sanitised, de-duplicated); the notes'
+      // folder fields and the folder list follow inside folderOps.rename.
+      folderOps
+        .rename(oldPath, newPath)
+        .then((finalPath) => remapExpanded(oldPath, finalPath))
+        .catch((err) => {
+          console.error("useNoteCrud: folder rename failed", err);
+          onError?.("Failed to rename the folder on disk");
+        });
+      return;
+    }
+    const remap = remapPaths(oldPath, newPath);
+    commitNoteData((prev) => {
+      const next = { ...prev };
+      for (const [id, n] of Object.entries(next)) {
+        if (n.folder && remap(n.folder) !== n.folder) next[id] = { ...n, folder: remap(n.folder) };
+      }
+      return next;
+    });
+    remapExpanded(oldPath, newPath);
+    setCustomFolders((prev) => prev.map(remap));
+  };
+
   const renameFolder = (oldPath, newName) => {
     if (!newName) return;
     newName = newName.replace(/[/\\]/g, "-");
     if (!newName) return;
     const parts = oldPath.split("/");
     parts[parts.length - 1] = newName;
-    const newPath = parts.join("/");
-    if (newPath === oldPath) return;
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      for (const [id, n] of Object.entries(next)) {
-        if (n.folder && (n.folder === oldPath || n.folder.startsWith(oldPath + "/"))) {
-          next[id] = { ...n, folder: n.folder.replace(oldPath, newPath) };
-        }
-      }
-      return next;
-    });
-    setExpanded((prev) => {
-      const next = {};
-      for (const [key, val] of Object.entries(prev)) {
-        if (key === oldPath) next[newPath] = val;
-        else if (key.startsWith(oldPath + "/")) next[key.replace(oldPath, newPath)] = val;
-        else next[key] = val;
-      }
-      return next;
-    });
-    setCustomFolders((prev) => prev.map((f) => (f === oldPath ? newPath : f)));
+    changeFolderPath(oldPath, parts.join("/"));
+  };
+
+  // Drag a folder onto another folder, or onto the root (`null`). Location
+  // only, never order; a folder cannot go into itself or its own subtree.
+  const moveFolder = (folderPath, targetParent) => {
+    const parent = targetParent || null;
+    const slash = folderPath.lastIndexOf("/");
+    const currentParent = slash === -1 ? null : folderPath.slice(0, slash);
+    if (parent === currentParent) return;
+    if (parent && (parent === folderPath || parent.startsWith(`${folderPath}/`))) return;
+    const name = folderPath.slice(slash + 1);
+    changeFolderPath(folderPath, parent ? `${parent}/${name}` : name);
   };
 
   const deleteFolder = (folderPath) => {
-    const noteEntries = Object.entries(noteDataRef.current).filter(
-      ([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(folderPath + "/")),
-    );
-    const noteIds = noteEntries.map(([id]) => id);
+    const noteIds = Object.entries(noteDataRef.current)
+      .filter(
+        ([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(`${folderPath}/`)),
+      )
+      .map(([id]) => id);
 
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      noteIds.forEach((id) => delete next[id]);
-      return next;
-    });
+    if (noteIds.length > 0) {
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        for (const id of noteIds) delete next[id];
+        return next;
+      });
+    }
     if (noteIds.includes(activeNote)) setActiveNote(null);
+    if (folderOps) {
+      // The directory goes once the notes have reached the Trash, and only if
+      // nothing else is left in it; folderOps reports a kept folder itself.
+      folderOps.remove(folderPath, { hasNotes: noteIds.length > 0 }).catch((err) => {
+        console.error("useNoteCrud: folder removal failed", err);
+        onError?.("Failed to remove the folder on disk");
+      });
+      return;
+    }
     setCustomFolders((prev) =>
-      prev.filter((f) => f !== folderPath && !f.startsWith(folderPath + "/")),
+      prev.filter((f) => f !== folderPath && !f.startsWith(`${folderPath}/`)),
     );
   };
 
-  const createFolder = () => {
-    let name = "Untitled Folder";
-    const existingNames = new Set(customFolders);
-    if (existingNames.has(name)) {
-      let i = 2;
-      while (existingNames.has(`${name} ${i}`)) i++;
-      name = `${name} ${i}`;
+  // `parent` is a folder path for "New folder inside", or null for the root.
+  // (The header button passes its click event; anything but a string is root.)
+  const createFolder = (parent = null) => {
+    const parentPath = typeof parent === "string" ? parent : null;
+    const base = parentPath ? `${parentPath}/Untitled Folder` : "Untitled Folder";
+    const reveal = (path) => {
+      setExpanded((prev) => ({
+        ...prev,
+        ...(parentPath ? { [parentPath]: true } : {}),
+        [path]: false,
+      }));
+      setTimeout(() => setRenamingFolder(path), 50);
+    };
+    if (folderOps) {
+      folderOps
+        .create(base)
+        .then(reveal)
+        .catch((err) => {
+          console.error("useNoteCrud: folder creation failed", err);
+          onError?.("Failed to create the folder on disk");
+        });
+      return;
     }
-    setCustomFolders((prev) => [...prev, name]);
-    setExpanded((prev) => ({ ...prev, [name]: false }));
-    setTimeout(() => setRenamingFolder(name), 50);
+    const existing = new Set(customFolders);
+    let path = base;
+    for (let i = 2; existing.has(path); i++) path = `${base}-${i}`;
+    setCustomFolders((prev) => [...prev, path]);
+    reveal(path);
   };
 
   const createDraftNote = () => {
@@ -185,6 +252,7 @@ export function useNoteCrud({
     duplicateNote,
     renameNote,
     renameFolder,
+    moveFolder,
     deleteFolder,
     createFolder,
     createDraftNote,

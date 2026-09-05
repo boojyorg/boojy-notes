@@ -192,7 +192,8 @@ function parseNoteFile(filePath, notesDir) {
     const raw = fs.readFileSync(filePath, "utf-8");
     const relPath = path.relative(notesDir, filePath);
     const relDir = path.relative(notesDir, path.dirname(filePath));
-    const folder = relDir || null;
+    // `/`-separated on every OS: the renderer joins and splits folder paths on it.
+    const folder = relDir ? relDir.split(path.sep).join("/") : null;
     const title = path.basename(filePath, ".md");
 
     let body = raw;
