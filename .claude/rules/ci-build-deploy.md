@@ -46,7 +46,13 @@ change needs; the incidents behind them are in git.
   also gates every run; it is the live security net.
 - **The real-Electron suite runs under `xvfb-run` on the same Ubuntu job**, after the web E2E.
   `pnpm test:electron` builds `dist/` and `dist-electron/` itself, because the job's build step
-  uses `ELECTRON_DISABLE=1` and produces no main process. Its assertions are about files on disk,
+  uses `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
+  (each test owns its app process, vault and userData; measured 2026-09-06: 333 s to 175 s on the
+  runner, five runs with no flake), and `e2e/electron/global-setup.ts` resolves the Electron
+  binary once before any worker starts: Electron 42 fetches its binary on the first
+  `require("electron")` when `dist/` is empty, which on CI is the first test's launch, and two
+  first launches at once left one worker spawning a half-written executable (`spawn ETXTBSY`).
+  Don't remove the global setup when touching the workers. Its assertions are about files on disk,
   so Linux is a fair proxy for the renderer and main-process logic; anything that depends on the
   OS Trash or native dialogs is macOS-only and says so in the spec. `--no-sandbox` is passed only
   when `CI` is set.
