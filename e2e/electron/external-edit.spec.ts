@@ -10,6 +10,8 @@
  * Needs the real app: the text-commit and write debounces, the watcher and
  * its echo suppression are what the bug lives in.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { END_OF_LINE, SETTLE_MS, launchApp, noteText, sleep, waitForFile } from "./harness";
 
@@ -119,6 +121,42 @@ test("an outside edit to the open note while edits are pending keeps both: disk 
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe("Alpha body.\nTheirs, from outside.\n");
     expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("when the conflict copy cannot be written, blur and quit never put the local version over the outside edit", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
+  try {
+    // Make the copy's write fail, and only the copy's: the atomic write opens
+    // `.<name>.md.tmp` beside the file, so a directory in its place fails it
+    // with EISDIR while `Alpha.md` itself stays perfectly writable.
+    const copyName = `Alpha (conflicted copy ${TODAY})`;
+    const blocker = path.join(h.vault.dir, `.${copyName}.md.tmp`);
+    fs.mkdirSync(blocker);
+
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" mine", { delay: 60 });
+    h.vault.write("Alpha.md", "Alpha body.\nTheirs, from outside.\n");
+    await expect(h.page.getByText("could not be saved as a copy")).toBeVisible({ timeout: 5_000 });
+
+    // The local work is still here, and the outside version is untouched.
+    expect(await noteText(h.page)).toBe("Alpha body. mine");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha body.\nTheirs, from outside.\n");
+
+    // Blur, as switching apps does, then wait out every debounce and retry.
+    await h.page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md"), "after blur").toBe("Alpha body.\nTheirs, from outside.\n");
+    expect(h.vault.exists(`${copyName}.md`)).toBe(false);
+
+    // Quit (its flush before close is the last chance to write anything).
+    await h.quit();
+    expect(h.vault.read("Alpha.md"), "after quit").toBe("Alpha body.\nTheirs, from outside.\n");
+    expect(h.vault.exists(`${copyName}.md`)).toBe(false);
   } finally {
     await h.close();
   }

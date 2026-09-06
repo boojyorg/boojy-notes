@@ -160,9 +160,13 @@ mixed sizes and strokes is what made the UI read as assembled.
   YYYY-MM-DD)` through the ordinary write path, and only once that write has succeeded is
   the disk version adopted, the copy adopted (dirty, so the ordinary flush rewrites it with
   any keystrokes typed during the write), and the editor moved to the copy with the caret's
-  block and offset carried through the focus refs. A failed copy replaces nothing and says so;
-  the debounce will not write the local version over the disk one, but the quit/blur net still
-  holds it, so quitting tries to save it under the note's own name rather than lose it.
+  block and offset carried through the focus refs. A failed copy replaces nothing and says so
+  once, and the note is remembered as conflicted (`conflicted` in `useFileSystem`): from then
+  on every flush, the debounce, the 5 s retry, blur and quit alike, writes it as the copy and
+  never under its own name, until a copy write succeeds. **Once a conflict has been detected,
+  the local version never goes over the outside edit's path.** The one residual: if the copy
+  still cannot be written inside the 2 s the main process holds a quit, the local version is
+  lost with the quit, as any unsaved work is; it is never resolved by overwriting the file.
   No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
   covered: the app's own debounced write landing over an outside write before the watcher
   reports it (the last-writer race), which needs instrumenting under a sync provider first.
