@@ -17,7 +17,7 @@ on:
 jobs:
   checks:
     name: checks, types, unit tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -45,7 +45,7 @@ jobs:
 
   web-e2e:
     name: web E2E
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -87,7 +87,7 @@ jobs:
 
   electron-e2e:
     name: Electron E2E
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -110,7 +110,7 @@ jobs:
   ci:
     needs: [checks, web-e2e, electron-e2e]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
     steps:
       - name: All jobs succeeded
