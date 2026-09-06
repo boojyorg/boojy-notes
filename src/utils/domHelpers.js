@@ -291,6 +291,38 @@ export function placeCaret(el, pos = 0) {
 }
 
 /**
+ * Move a collapsed caret that Chromium has put at the very end of a link's
+ * text (End, a click past the link or on its right edge, ArrowRight through
+ * it) onto the anchor after the link, the position `placeCaret` would have
+ * chosen. Called from the editor's `beforeinput` listener, so it runs only
+ * when text is about to be inserted: caret movement, selection, deletion and
+ * IME composition are never touched, and a caret anywhere short of the link's
+ * last character (alias editing) is left where it is. Returns whether the
+ * caret moved. Insertion then lands outside the link, so a typed continuation
+ * is prose rather than a rewritten alias.
+ */
+export function caretOutOfLinkEnd(root) {
+  if (!root) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+  const { anchorNode, anchorOffset } = sel;
+  if (anchorNode?.nodeType !== Node.TEXT_NODE || !root.contains(anchorNode)) return false;
+  if (isIcon(anchorNode) || anchorOffset !== anchorNode.data.length) return false;
+  const link = enclosingLink(anchorNode, root);
+  if (!link || !isLastTextIn(link, anchorNode)) return false;
+  try {
+    const range = document.createRange();
+    anchorAfterLink(range, link);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Auto-scroll a container when pointer is near its edges.
  */
 export function runAutoScroll(scrollEl, pointerY) {

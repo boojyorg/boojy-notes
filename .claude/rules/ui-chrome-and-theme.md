@@ -422,6 +422,17 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   honours (probed in the real app; an empty text node is not). The anchor is scaffolding: both
   DOM→Markdown walkers drop it, `getCaretOffset` and `placeCaret` don't count it, and a repaint
   from state wipes it. Don't add a second caret placement path that bypasses `placeCaret`.
+- **The browser's own caret is caught at the keystroke, not at the move** (2026-09-06). End, a
+  click past a link or on its right edge, and ArrowRight all leave Chromium's caret at the last
+  offset of the link's text node, inside the span, which `placeCaret` never sees; `See
+  [[Welcome]]` + End + ` after` was saved as `See [[Welcome|Welcome after]]`. A native
+  `beforeinput` listener (`useEditorFocusUX`) runs `caretOutOfLinkEnd` before any insertion
+  outside an IME composition: a collapsed caret at the end of a link's last text node moves onto
+  the same anchor, and the text lands outside. It is deliberately not a `selectionchange`
+  normaliser: probed live, that would re-anchor the caret after every ArrowLeft back into the
+  link (the anchor is one arrow step, then the link's text) and after the Backspace that
+  removes the anchor, so neither could ever reach the link's last character. Nothing about
+  where the caret may rest changed; only where typed text goes.
 - Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
   typing at the end of bold text extends it, as in every editor.
 - **The hover tooltip is `useLinkHoverTooltip`**: half a second at rest on a link shows its URL or

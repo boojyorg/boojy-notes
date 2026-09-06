@@ -1,11 +1,20 @@
 import { useEffect, useLayoutEffect } from "react";
-import { cleanOrphanNodes, getBlockFromNode, placeCaret } from "../utils/domHelpers";
+import {
+  caretOutOfLinkEnd,
+  cleanOrphanNodes,
+  getBlockFromNode,
+  placeCaret,
+} from "../utils/domHelpers";
 
 /**
- * Editor focus/caret UX. Two effects, no return value:
+ * Editor focus/caret UX. Three effects, no return value:
  *   1. selectionchange → position the floating formatting toolbar over the selection
  *      (rAF-debounced; clears the toolbar when the selection leaves the editor).
- *   2. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
+ *   2. beforeinput → a caret Chromium left at the end of a link's text (End, a click,
+ *      ArrowRight) is moved onto the anchor after the link before the text lands, so
+ *      typing continues as prose rather than rewriting the link's alias. Only insertions
+ *      outside an IME composition; caret movement and deletion are never touched.
+ *   3. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
  *      places the caret in that block, re-asserts it after the next frame if the DOM
  *      moved, and scrolls the block into view if it landed near the bottom.
  *
@@ -73,6 +82,18 @@ export function useEditorFocusUX({
       document.removeEventListener("selectionchange", debouncedSelChange);
     };
   }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Typing at the end of a link: move the caret outside first. A native
+  // listener, because React's onBeforeInput is synthesised from other events
+  // and can fire after the insertion has already happened.
+  useEffect(() => {
+    const onBeforeInput = (e) => {
+      if (e.isComposing || !e.inputType?.startsWith("insert")) return;
+      caretOutOfLinkEnd(editorRef.current);
+    };
+    document.addEventListener("beforeinput", onBeforeInput);
+    return () => document.removeEventListener("beforeinput", onBeforeInput);
+  }, [editorRef]);
 
   // Focus block layout effect
   useLayoutEffect(() => {

@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   CARET_ANCHOR,
   caretLength,
+  caretOutOfLinkEnd,
   getCaretOffset,
   placeCaret,
   titleFieldText,
@@ -127,6 +128,108 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     const { node } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(node.previousSibling.className).toBe("wikilink");
+  });
+});
+
+describe("caretOutOfLinkEnd — a browser-placed caret at the end of a link moves outside", () => {
+  // End, a click past the link or on its right edge, and ArrowRight all leave
+  // Chromium's caret at the last offset of the link's own text node. Called
+  // from beforeinput, this moves it onto the anchor placeCaret would have
+  // used, so the insertion lands outside the link.
+  const root = () => document.querySelector("[contenteditable]");
+  const setCaret = (node, offset) => {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+
+  it("moves a caret at the end of a wikilink that ends the block onto an anchor after it", () => {
+    const el = editable('See <span class="wikilink" data-target="Welcome">Welcome</span>');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    setCaret(linkText, "Welcome".length);
+    expect(caretOutOfLinkEnd(root())).toBe(true);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.previousSibling.className).toBe("wikilink");
+    // Same Markdown position, just outside the link; the anchor is not text.
+    expect(getCaretOffset(el)).toBe("See Welcome".length);
+    expect(el.querySelector(".wikilink").textContent).toBe("Welcome");
+  });
+
+  it("moves a caret on the seam between a link and the text after it", () => {
+    const el = editable('See <a href="https://x.y">site</a> now');
+    const linkText = el.querySelector("a").firstChild;
+    setCaret(linkText, "site".length);
+    expect(caretOutOfLinkEnd(root())).toBe(true);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.nextSibling.data).toBe(" now");
+    expect(el.textContent).toBe(`See site${CARET_ANCHOR} now`);
+  });
+
+  it("reuses an anchor already after the link rather than stacking another", () => {
+    const el = editable(`See <a href="https://x.y">site</a>${CARET_ANCHOR} now`);
+    setCaret(el.querySelector("a").firstChild, "site".length);
+    expect(caretOutOfLinkEnd(root())).toBe(true);
+    expect(el.textContent).toBe(`See site${CARET_ANCHOR} now`);
+    expect(anchorAt().node).toBe(el.querySelector("a").nextSibling);
+  });
+
+  it("leaves a caret inside a link alone, so alias editing still works", () => {
+    const el = editable('See <span class="wikilink" data-target="Welcome">Welcome</span>');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    for (const offset of [0, 3, "Welcome".length - 1]) {
+      setCaret(linkText, offset);
+      expect(caretOutOfLinkEnd(root())).toBe(false);
+      expect(anchorAt()).toEqual({ node: linkText, offset });
+    }
+    expect(el.textContent).toBe("See Welcome");
+  });
+
+  it("leaves a caret outside any link alone, including at the end of bold text", () => {
+    const el = editable('See <strong>bold</strong> and <a href="https://x.y">site</a> now');
+    const bold = el.querySelector("strong").firstChild;
+    setCaret(bold, "bold".length);
+    expect(caretOutOfLinkEnd(root())).toBe(false);
+    expect(anchorAt()).toEqual({ node: bold, offset: "bold".length });
+    const tail = el.lastChild;
+    setCaret(tail, 1);
+    expect(caretOutOfLinkEnd(root())).toBe(false);
+    expect(anchorAt()).toEqual({ node: tail, offset: 1 });
+    expect(el.textContent).toBe("See bold and site now");
+  });
+
+  it("leaves a range selection alone", () => {
+    const el = editable('See <span class="wikilink" data-target="Welcome">Welcome</span>');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    const range = document.createRange();
+    range.setStart(linkText, 2);
+    range.setEnd(linkText, "Welcome".length);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    expect(caretOutOfLinkEnd(root())).toBe(false);
+    expect(sel.isCollapsed).toBe(false);
+    expect(el.textContent).toBe("See Welcome");
+  });
+
+  it("only acts inside the given root, and never without one", () => {
+    const el = editable('See <span class="wikilink" data-target="Welcome">Welcome</span>');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    setCaret(linkText, "Welcome".length);
+    expect(caretOutOfLinkEnd(null)).toBe(false);
+    document.body.insertAdjacentHTML("beforeend", '<div id="elsewhere"></div>');
+    expect(caretOutOfLinkEnd(document.getElementById("elsewhere"))).toBe(false);
+    expect(anchorAt()).toEqual({ node: linkText, offset: "Welcome".length });
   });
 });
 
