@@ -56,7 +56,10 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   and a rule, and its first save writes the blank line that makes the file a divider everywhere
   (a sanctioned byte change, see the spec). Reading it as a heading would be right and needs a
   setext heading form the serializer can write back byte-exact. On record as one `it.fails` in
-  `tests/utils/markdownInterop.test.js`.
+  `tests/utils/markdownInterop.test.js`. The same underline problem has a second form since
+  2026-09-06: an empty bullet left tight under a paragraph (`hello` / `- `, now read as an empty
+  item rather than folded into the paragraph) is a setext underline outside too, and no blank
+  is written for it, so the file keeps meaning a heading there. One decision, two `it.fails`.
 
 ## Beta: release requirements
 
