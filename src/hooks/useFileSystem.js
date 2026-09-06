@@ -1,42 +1,55 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { isElectron, isNative } from "../utils/platform";
 import { getAPI } from "../services/apiProvider";
+import { blocksToMarkdown } from "../utils/markdown";
+import { genNoteId } from "../utils/storage";
 import { trace } from "../utils/trace";
 
 const WRITE_DEBOUNCE_MS = 500;
 const WRITE_RETRY_MS = 5000;
 
-// Compare blocks structurally (type, text, checked) ignoring IDs
-function blocksEqual(a, b) {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i].type !== b[i].type) return false;
-    if (a[i].type === "image") {
-      if (a[i].src !== b[i].src || (a[i].alt || "") !== (b[i].alt || "")) return false;
-    } else {
-      if ((a[i].text || "") !== (b[i].text || "")) return false;
-    }
-    if (a[i].checked !== b[i].checked) return false;
-    // Multi-line block properties
-    if ((a[i].lang || "") !== (b[i].lang || "")) return false;
-    if ((a[i].calloutType || "") !== (b[i].calloutType || "")) return false;
-    if ((a[i].calloutTypeRaw || "") !== (b[i].calloutTypeRaw || "")) return false;
-    if ((a[i].title || "") !== (b[i].title || "")) return false;
-    // Table rows
-    if (a[i].rows || b[i].rows) {
-      const ar = JSON.stringify(a[i].rows || []);
-      const br = JSON.stringify(b[i].rows || []);
-      if (ar !== br) return false;
-    }
-  }
-  return true;
+/**
+ * Whether two versions of a note would be written as the same file: same
+ * name, same folder, same line-ending style, same Markdown. The comparison
+ * is the writer itself, so it covers every field that reaches disk and
+ * nothing else. A hand-kept field list once missed indent, list markers,
+ * numbering, table alignment and image widths, so an outside re-indent read
+ * as "same" and the next keystroke wrote the old file back over it.
+ */
+export function persistedEquals(a, b) {
+  if (!a || !b) return !a && !b;
+  return (
+    a.title === b.title &&
+    (a.folder ?? null) === (b.folder ?? null) &&
+    (a.content?.eol ?? "\n") === (b.content?.eol ?? "\n") &&
+    blocksToMarkdown(a.content?.blocks || []) === blocksToMarkdown(b.content?.blocks || [])
+  );
+}
+
+/** The name a note's unsaved version is kept under when the file changed outside the app. */
+export function conflictCopyTitle(title, date = new Date()) {
+  const day = date.toISOString().slice(0, 10);
+  return `${title || "Untitled"} (conflicted copy ${day})`;
 }
 
 /**
- * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, onNotesEdited,
- *   onTitleResolved }`.
+ * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, activeNoteRef,
+ *   applyExternalNote, adoptNoteData, onExternalConflict, onNotesEdited,
+ *   onTitleResolved, remapNoteFolders }`.
+ *   `applyExternalNote(note)` (useHistory) is the one path for a note as the
+ *   disk now holds it: it updates the history ref and state together, so a
+ *   pending text commit for another note can no longer republish a stale copy.
+ *   `activeNoteRef` says which note is being edited. An outside change to any
+ *   other note, or to the open note with nothing pending, is taken at once.
+ *   One to the open note while edits are pending (`unflushedNotes` or the
+ *   dirty set) keeps both versions: the outside bytes stay under the note's
+ *   own name, the local version is written as a conflict copy through the
+ *   ordinary write path, and only once that write has succeeded is the copy
+ *   adopted (via `adoptNoteData`, so the ordinary flush rewrites it with any
+ *   keystrokes typed during the write) and `onExternalConflict({ noteId,
+ *   title, copyId, copyTitle })` called, so the editor can continue in the
+ *   copy. If the copy cannot be written, nothing is replaced: the local work
+ *   stays in memory, the outside bytes stay on disk, and the failure is shown.
  *   `onTitleResolved(id, written, title)` is called when the write landed the
  *   note under a basename other than the title it was written with: a
  *   namesake forced a suffix, characters a filename cannot hold were replaced,
@@ -77,6 +90,11 @@ export function useFileSystem(
   const retryTimer = useRef(null);
   const reportedWriteFailures = useRef(new Set());
   const isExternalUpdate = useRef(false);
+  // Notes whose next state change came from disk: skipped by the dirty scan
+  // one at a time, so a keystroke that shares a render with an outside change
+  // to another note is still marked dirty. The boolean above is for whole-vault
+  // replacements (initial load, vault change, the rebuild after a delete).
+  const externalIds = useRef(new Set());
   const noteDataRef = useRef(noteData);
   noteDataRef.current = noteData;
   const onErrorRef = useRef(onError);
@@ -147,6 +165,7 @@ export function useFileSystem(
 
     if (isExternalUpdate.current) {
       isExternalUpdate.current = false;
+      externalIds.current.clear();
       prevNoteData.current = noteData;
       return;
     }
@@ -161,10 +180,17 @@ export function useFileSystem(
     for (const id of Object.keys(noteData)) {
       if (noteData[id]?._draft) continue; // Skip drafts
       if (!prev[id] || prev[id] !== noteData[id]) {
+        if (externalIds.current.has(id)) {
+          dirtyNotes.current.delete(id);
+          continue;
+        }
         dirtyNotes.current.add(id);
         newlyDirty.push(id);
       }
     }
+    // The render that carries an outside change is always the next one after
+    // it was marked, so nothing marked can outlive this scan.
+    externalIds.current.clear();
     if (newlyDirty.length > 0) {
       trace("dirty", newlyDirty.join(","));
       editorLinksRef.current?.onNotesEdited?.(newlyDirty);
@@ -287,47 +313,112 @@ export function useFileSystem(
   useEffect(() => {
     if (!isElectron) return;
 
+    // The note's folder must exist in the sidebar's list.
+    const ensureFolder = (folder) => {
+      if (!folder) return;
+      setCustomFolders((prev) => (prev.includes(folder) ? prev : [...prev, folder]));
+    };
+
+    // Take the disk's version of a note. The editor repaints from state only
+    // when it is the open note: a repaint while typing in another note would
+    // paint that note's state, which lags the keystrokes still inside the
+    // text-commit debounce, over the live DOM.
+    const applyExternal = (external) => {
+      const links = editorLinksRef.current;
+      dirtyNotes.current.delete(external.id);
+      if (links?.applyExternalNote) {
+        externalIds.current.add(external.id);
+        links.applyExternalNote(external);
+      } else {
+        isExternalUpdate.current = true;
+        setNoteData((prev) => ({ ...prev, [external.id]: external }));
+      }
+      const active = links?.activeNoteRef ? links.activeNoteRef.current : external.id;
+      if (syncGeneration && active === external.id) syncGeneration.current++;
+      ensureFolder(external.folder);
+    };
+
+    // The open note changed on disk while edits to it are pending here. The
+    // outside bytes keep the note's name; the local version, pending text
+    // included, is written as a conflict copy first, and only once that write
+    // has succeeded is anything in memory replaced. A failed copy replaces
+    // nothing: the work stays here, unsaved, and the failure is shown.
+    const keepBothVersions = async (external, local) => {
+      const api = getAPI();
+      const copyId = genNoteId();
+      const requestedTitle = conflictCopyTitle(local.title);
+      const snapshot = (source, title) => ({
+        ...source,
+        id: copyId,
+        title,
+        content: { ...source.content, title, blocks: source.content?.blocks || [] },
+        lastModified: Date.now(),
+      });
+      let written;
+      try {
+        written = await api.writeNote(snapshot(local, requestedTitle));
+      } catch (err) {
+        console.error("useFileSystem: conflict copy write failed", external.id, err);
+        onErrorRef.current?.(
+          `"${external.title}" changed outside Boojy Notes and your edits could not be saved as a copy. They are still here, unsaved.`,
+        );
+        return;
+      }
+      trace("conflict copy written", external.id, "→", copyId, JSON.stringify(written?.title));
+      // The links object is rebuilt on every render; read it after the await.
+      const links = editorLinksRef.current;
+      const copyTitle = typeof written?.title === "string" ? written.title : requestedTitle;
+      // Keystrokes typed during the write are in the latest local version;
+      // the copy adopts it and the ordinary flush writes the copy once more.
+      const latest = links.latestNoteDataRef?.current?.[external.id] || local;
+      const copy = snapshot(latest, copyTitle);
+      dirtyNotes.current.delete(external.id);
+      externalIds.current.add(external.id);
+      links.applyExternalNote(external);
+      links.adoptNoteData((prev) => ({ ...prev, [copyId]: copy }));
+      if (syncGeneration) syncGeneration.current++;
+      ensureFolder(external.folder);
+      links.onExternalConflict?.({ noteId: external.id, title: external.title, copyId, copyTitle });
+    };
+
     const unsubChange = window.electronAPI.onFileChanged((note) => {
       if (!note?.id) return;
       // Strip internal _filePath from the note before setting state
-      const { _filePath, ...cleanNote } = note;
-
-      // Check if content actually changed before queueing state update —
-      // avoids block ID churn when chokidar echoes back a file we just wrote
-      const existing = noteDataRef.current[cleanNote.id];
-      const same =
-        existing &&
-        blocksEqual(existing.content?.blocks, cleanNote.content?.blocks) &&
-        existing.title === cleanNote.title &&
-        existing.folder === cleanNote.folder;
+      const { _filePath, ...external } = note;
+      const links = editorLinksRef.current;
+      // The latest local version, pending text included, is what the disk is
+      // compared against and what a conflict copy must hold.
+      const local =
+        links?.latestNoteDataRef?.current?.[external.id] ?? noteDataRef.current[external.id];
+      const same = !!local && persistedEquals(local, external);
+      const isActive = !!links?.activeNoteRef && links.activeNoteRef.current === external.id;
+      const pending =
+        !!local &&
+        !local._draft &&
+        (dirtyNotes.current.has(external.id) || !!links?.unflushedNotes?.current?.has(external.id));
       trace(
         "file-changed recv",
-        cleanNote.id,
-        JSON.stringify(cleanNote.title),
-        same ? "SAME (ignored)" : "DIFFERS → APPLY external update",
+        external.id,
+        JSON.stringify(external.title),
+        same ? "SAME (ignored)" : isActive && pending ? "CONFLICT → keep both" : "DIFFERS → apply",
         "memBlocks",
-        existing?.content?.blocks?.length ?? "none",
+        local?.content?.blocks?.length ?? "none",
         "diskBlocks",
-        cleanNote.content?.blocks?.length ?? 0,
+        external.content?.blocks?.length ?? 0,
       );
-      if (same) {
-        return; // Nothing changed, skip entirely
+      if (same) return;
+      if (isActive && pending && links?.applyExternalNote && links?.adoptNoteData) {
+        // Dropped now, not after the copy is written: a debounced flush firing
+        // during that write would otherwise put the local bytes over the
+        // outside edit. A failed copy leaves it dropped too: the work stays in
+        // memory and is not written over the disk version by the debounce
+        // (the quit/blur net still holds it, so a quit tries to save it under
+        // the note's own name rather than lose it).
+        dirtyNotes.current.delete(external.id);
+        keepBothVersions(external, local);
+        return;
       }
-
-      isExternalUpdate.current = true;
-      setNoteData((prev) => ({ ...prev, [cleanNote.id]: cleanNote }));
-
-      // Bump syncGeneration so EditableBlock re-syncs DOM from new block data
-      if (syncGeneration) {
-        syncGeneration.current++;
-      }
-      // If the note lives in a folder, ensure that folder exists in customFolders
-      if (cleanNote.folder) {
-        setCustomFolders((prev) => {
-          if (prev.includes(cleanNote.folder)) return prev;
-          return [...prev, cleanNote.folder];
-        });
-      }
+      applyExternal(external);
     });
 
     // The folder list is re-read whenever the disk may have changed it.

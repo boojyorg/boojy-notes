@@ -701,3 +701,97 @@ describe("useHistory", () => {
     });
   });
 });
+
+// ─── applyExternalNote ───────────────────────────────────────────────────
+// The one path for a note as the disk now holds it. Regression (2026-09-06):
+// an outside change applied through the raw setter while a text commit was
+// pending for another note; the ref had skipped syncing, the pending commit
+// then republished the stale copy, and the outside edit was written over.
+describe("applyExternalNote", () => {
+  const OTHER = "note-2";
+  const outside = (text) => ({
+    id: OTHER,
+    title: "Other",
+    content: { title: "Other", blocks: [paragraph(text)] },
+  });
+
+  it("puts the disk version in the ref at once, so a pending text commit for another note republishes it", () => {
+    vi.useFakeTimers();
+    const { result, getNoteData } = setup();
+    act(() => {
+      result.current.commitNoteData((prev) => ({ ...prev, [OTHER]: outside("old") }));
+    });
+    // Typing in the active note: the commit is pending, the ref is ahead of state.
+    act(() => {
+      result.current.commitTextChange((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], content: { blocks: [paragraph("typed")] } },
+      }));
+    });
+    expect(result.current.hasPendingFlush.current).toBe(true);
+
+    act(() => {
+      result.current.applyExternalNote(outside("changed outside"));
+    });
+    expect(result.current.noteDataRef.current[OTHER].content.blocks[0].text).toBe(
+      "changed outside",
+    );
+    expect(getNoteData()[OTHER].content.blocks[0].text).toBe("changed outside");
+    // The pending commit for the active note is untouched, and when it fires
+    // it carries the outside version, not the stale one.
+    expect(result.current.hasPendingFlush.current).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(getNoteData()[OTHER].content.blocks[0].text).toBe("changed outside");
+    expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("typed");
+    expect(result.current.unflushedNotes.current.has(OTHER)).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("supersedes pending text for the note itself and drops its undo entries, leaving other notes' history alone", async () => {
+    vi.useFakeTimers();
+    const { result, getNoteData, activeNoteRef } = setup();
+    // An undo entry that belongs to the other note.
+    act(() => {
+      result.current.commitNoteData((prev) => ({ ...prev, [OTHER]: outside("old") }));
+    });
+    activeNoteRef.current = OTHER;
+    act(() => {
+      result.current.commitNoteData((prev) => ({
+        ...prev,
+        [OTHER]: { ...prev[OTHER], title: "Other, renamed" },
+      }));
+    });
+    await act(async () => {});
+    activeNoteRef.current = NOTE_ID;
+    // Typing in the active note: pending commit, and an entry of its own.
+    act(() => {
+      result.current.commitTextChange((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], content: { blocks: [paragraph("typed")] } },
+      }));
+    });
+    await act(async () => {});
+    expect(result.current.canUndo).toBe(true);
+
+    const disk = { ...getNoteData()[NOTE_ID], content: { blocks: [paragraph("from disk")] } };
+    act(() => {
+      result.current.applyExternalNote(disk);
+    });
+    // The pending commit is cancelled: it would have put the typed text back.
+    expect(result.current.hasPendingFlush.current).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("from disk");
+    // Undo skips the replaced note's dropped entries and lands on the other note's.
+    act(() => {
+      result.current.undo();
+    });
+    expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("from disk");
+    expect(getNoteData()[OTHER].title).toBe("Other");
+    expect(result.current.canUndo).toBe(false);
+    vi.useRealTimers();
+  });
+});

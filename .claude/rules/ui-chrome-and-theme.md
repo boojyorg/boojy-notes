@@ -143,6 +143,29 @@ mixed sizes and strokes is what made the UI read as assembled.
   settling), which no fixed window can cover; before the hash check every one of them rebuilt
   the note from disk mid-typing, caret to the first block, keystrokes since the save lost. Don't
   replace the hash with a longer timer.
+- **An outside edit is never silently overwritten** (2026-09-06). The watcher asks the bytes
+  before the clock: a recorded hash that differs is a real change however soon after the
+  app's own save it lands, one that matches is an echo however late, and the timer decides
+  only for a path with no recorded bytes (the old path of a rename, a renamed directory).
+  In the renderer every note that arrives from disk goes through one path,
+  `applyExternalNote` (useHistory), which updates the history ref and state together; the
+  raw setter is not used for it, because a text commit pending for another note republished
+  the stale ref and wrote the old bytes back over the edit. "Same" is judged by the writer
+  itself (`persistedEquals`: `blocksToMarkdown` plus title, folder and line-ending style),
+  never by a field list. A change to a note that is not open, or to the open note with
+  nothing pending, is taken at once, and the editor repaints only when it is the open note (a
+  repaint while typing elsewhere would paint lagging state over the live DOM). A change to the
+  open note while edits are pending keeps both: the outside bytes stay under the note's name,
+  the local version, pending text included, is written first as `Title (conflicted copy
+  YYYY-MM-DD)` through the ordinary write path, and only once that write has succeeded is
+  the disk version adopted, the copy adopted (dirty, so the ordinary flush rewrites it with
+  any keystrokes typed during the write), and the editor moved to the copy with the caret's
+  block and offset carried through the focus refs. A failed copy replaces nothing and says so;
+  the debounce will not write the local version over the disk one, but the quit/blur net still
+  holds it, so quitting tries to save it under the note's own name rather than lose it.
+  No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
+  covered: the app's own debounced write landing over an outside write before the watcher
+  reports it (the last-writer race), which needs instrumenting under a sync provider first.
 - **To see what the editor is doing, trace it, don't theorise.** `BOOJY_TRACE=/path/to/log
   node_modules/.bin/electron .` (after `pnpm build`; it uses the real profile and vault) appends
   one line per watcher event, save, external reload, keystroke target, caret move between blocks

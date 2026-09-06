@@ -22,7 +22,7 @@ vi.mock("../../src/services/apiProvider", () => ({
   }),
 }));
 
-import { useFileSystem } from "../../src/hooks/useFileSystem";
+import { conflictCopyTitle, persistedEquals, useFileSystem } from "../../src/hooks/useFileSystem";
 
 describe("useFileSystem — initial load", () => {
   beforeEach(() => {
@@ -405,5 +405,247 @@ describe("useFileSystem — the title follows the filename the write produced", 
     writeNote.mockResolvedValue(undefined);
     await renderMoved({ onTitleResolved });
     expect(onTitleResolved).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Outside edits are never silently overwritten ────────────────────────────
+// Policy (2026-09-06): a change made outside the app to a note that is not
+// being edited wins at once; so does one to the open note when nothing is
+// pending; one to the open note while edits are pending keeps both versions.
+describe("persistedEquals: two versions are the same when they write the same file", () => {
+  const note = (blocks, extra = {}) => ({
+    id: "n1",
+    title: "T",
+    folder: null,
+    content: { title: "T", blocks },
+    ...extra,
+  });
+
+  it("ignores block ids and compares the Markdown the writer would produce", () => {
+    const a = note([{ id: "a", type: "p", text: "hello" }]);
+    const b = note([{ id: "b", type: "p", text: "hello" }]);
+    expect(persistedEquals(a, b)).toBe(true);
+  });
+
+  it("sees an outside re-indent, marker change or numbering change (the old field list did not)", () => {
+    const base = [{ id: "a", type: "bullet", text: "one" }];
+    expect(persistedEquals(note(base), note([{ ...base[0], indent: 1 }]))).toBe(false);
+    expect(persistedEquals(note(base), note([{ ...base[0], marker: "*" }]))).toBe(false);
+    expect(
+      persistedEquals(
+        note([{ id: "a", type: "numbered", text: "one", num: 1 }]),
+        note([{ id: "a", type: "numbered", text: "one", num: 7 }]),
+      ),
+    ).toBe(false);
+  });
+
+  it("sees a change of name, folder or line-ending style", () => {
+    const a = note([]);
+    expect(persistedEquals(a, { ...a, title: "U", content: { ...a.content, title: "U" } })).toBe(
+      false,
+    );
+    expect(persistedEquals(a, { ...a, folder: "Work" })).toBe(false);
+    expect(persistedEquals(a, { ...a, content: { ...a.content, eol: "\r\n" } })).toBe(false);
+    expect(persistedEquals(a, { ...a, folder: undefined })).toBe(true);
+  });
+
+  it("names the conflict copy after the note and the day", () => {
+    expect(conflictCopyTitle("Alpha", new Date("2026-09-06T15:00:00Z"))).toBe(
+      "Alpha (conflicted copy 2026-09-06)",
+    );
+    expect(conflictCopyTitle("", new Date("2026-09-06T15:00:00Z"))).toBe(
+      "Untitled (conflicted copy 2026-09-06)",
+    );
+  });
+});
+
+describe("useFileSystem — outside edits", () => {
+  const p = (text) => ({ id: `b-${text.length}-${Math.random()}`, type: "p", text });
+  const alpha = {
+    id: "n1",
+    title: "Alpha",
+    folder: null,
+    content: { title: "Alpha", blocks: [p("Alpha body.")] },
+  };
+  const beta = {
+    id: "n2",
+    title: "Beta",
+    folder: null,
+    content: { title: "Beta", blocks: [p("Beta body.")] },
+  };
+  const betaOutside = {
+    ...beta,
+    content: { title: "Beta", blocks: [p("Beta body.\nAdded outside.")] },
+    lastModified: 5,
+    _filePath: "/notes/Beta.md",
+  };
+  const alphaOutside = {
+    ...alpha,
+    content: { title: "Alpha", blocks: [p("Alpha body.\nTheirs.")] },
+    lastModified: 5,
+    _filePath: "/notes/Alpha.md",
+  };
+  const alphaMine = { ...alpha, content: { title: "Alpha", blocks: [p("Alpha body. mine")] } };
+
+  let fileChanged;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn((handler) => {
+        fileChanged = handler;
+        return () => {};
+      }),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function renderWith({
+    active = "n1",
+    unflushed = [],
+    latest = { n1: alpha, n2: beta },
+  } = {}) {
+    readAllNotes.mockResolvedValue({ n1: alpha, n2: beta });
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const onError = vi.fn();
+    const syncGeneration = { current: 0 };
+    const links = {
+      unflushedNotes: { current: new Set(unflushed) },
+      latestNoteDataRef: { current: latest },
+      activeNoteRef: { current: active },
+      applyExternalNote: vi.fn(),
+      adoptNoteData: vi.fn(),
+      onExternalConflict: vi.fn(),
+      onNotesEdited: vi.fn(),
+    };
+    const hook = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, links),
+      { initialProps: { data: { n1: alpha, n2: beta } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: alpha, n2: beta } }));
+    // The disk load itself set state and bumped the generation; measure from here.
+    setNoteData.mockClear();
+    const generationBefore = syncGeneration.current;
+    return { ...hook, links, setNoteData, onError, syncGeneration, generationBefore };
+  }
+
+  it("takes an outside change to another note through the one external path, without repainting the editor", async () => {
+    const { links, setNoteData, syncGeneration, generationBefore } = await renderWith();
+    await act(async () => fileChanged(betaOutside));
+    const { _filePath, ...expected } = betaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expected);
+    expect(setNoteData).not.toHaveBeenCalled();
+    // Not the open note: a repaint would paint state, which lags the keystrokes
+    // still inside the text-commit debounce, over the live DOM.
+    expect(syncGeneration.current).toBe(generationBefore);
+    expect(links.onExternalConflict).not.toHaveBeenCalled();
+  });
+
+  it("takes an outside change to the open note when nothing is pending, and repaints", async () => {
+    const { links, syncGeneration, generationBefore } = await renderWith();
+    await act(async () => fileChanged(alphaOutside));
+    expect(links.applyExternalNote).toHaveBeenCalledTimes(1);
+    expect(links.applyExternalNote.mock.calls[0][0].content.blocks[0].text).toBe(
+      "Alpha body.\nTheirs.",
+    );
+    expect(syncGeneration.current).toBe(generationBefore + 1);
+    expect(links.onExternalConflict).not.toHaveBeenCalled();
+  });
+
+  it("ignores a change that writes the same file, whatever its block ids", async () => {
+    const { links } = await renderWith();
+    const sameBytes = {
+      ...beta,
+      content: { title: "Beta", blocks: [p("Beta body.")] },
+      _filePath: "x",
+    };
+    await act(async () => fileChanged(sameBytes));
+    expect(links.applyExternalNote).not.toHaveBeenCalled();
+  });
+
+  it("a keystroke that shares a render with an outside change to another note is still marked dirty, and the outside note is not", async () => {
+    writeNote.mockResolvedValue({});
+    const { rerender, links } = await renderWith();
+    vi.useFakeTimers();
+    await act(async () => fileChanged(betaOutside));
+    const { _filePath, ...betaApplied } = betaOutside;
+    // The render that carries both: the outside note (from applyExternalNote)
+    // and the text commit of the note being typed in.
+    await act(async () => rerender({ data: { n1: alphaMine, n2: betaApplied } }));
+    expect(links.onNotesEdited).toHaveBeenCalledExactlyOnceWith(["n1"]);
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(alphaMine);
+  });
+
+  it("keeps both versions when the open note has pending edits: the copy is written first, then adopted, then the editor moves to it", async () => {
+    writeNote.mockResolvedValue({
+      filePath: "/notes/Alpha (conflicted copy 2026-09-06)-2.md",
+      title: "Alpha (conflicted copy 2026-09-06)-2",
+    });
+    const { links, syncGeneration, onError, generationBefore } = await renderWith({
+      unflushed: ["n1"],
+      latest: { n1: alphaMine, n2: beta },
+    });
+    await act(async () => fileChanged(alphaOutside));
+    await waitFor(() => expect(links.onExternalConflict).toHaveBeenCalled());
+
+    // Written through the ordinary write path, with the local version, under a new id.
+    expect(writeNote).toHaveBeenCalledTimes(1);
+    const written = writeNote.mock.calls[0][0];
+    expect(written.id).not.toBe("n1");
+    expect(written.title).toMatch(/^Alpha \(conflicted copy \d{4}-\d{2}-\d{2}\)$/);
+    expect(written.content.title).toBe(written.title);
+    expect(written.content.blocks).toEqual(alphaMine.content.blocks);
+
+    // Only then: the disk version replaces the note, the copy is adopted under
+    // the name the file actually got, and the editor is told to continue in it.
+    const { _filePath, ...expectedExternal } = alphaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
+    const copy = links.adoptNoteData.mock.calls[0][0]({})[written.id];
+    expect(copy.title).toBe("Alpha (conflicted copy 2026-09-06)-2");
+    expect(copy.content.blocks).toEqual(alphaMine.content.blocks);
+    expect(links.onExternalConflict).toHaveBeenCalledExactlyOnceWith({
+      noteId: "n1",
+      title: "Alpha",
+      copyId: written.id,
+      copyTitle: "Alpha (conflicted copy 2026-09-06)-2",
+    });
+    expect(syncGeneration.current).toBe(generationBefore + 1);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("replaces nothing when the copy cannot be written: the work stays in memory, the disk keeps the outside bytes, and the failure is shown", async () => {
+    // Only the copy's write fails; hooks left mounted by earlier tests may
+    // still retry their own notes here, so the rejection must not be a "once".
+    writeNote.mockImplementation(async (note) => {
+      if (/conflicted copy/.test(note.title)) throw new Error("disk unavailable");
+      return {};
+    });
+    const { rerender, links, onError } = await renderWith({
+      unflushed: ["n1"],
+      latest: { n1: alphaMine, n2: beta },
+    });
+    vi.useFakeTimers();
+    // The local edit has reached state, so its debounced write is scheduled.
+    await act(async () => rerender({ data: { n1: alphaMine, n2: beta } }));
+    await act(async () => fileChanged(alphaOutside));
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    expect(onError).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("could not be saved as a copy"),
+    );
+    expect(links.applyExternalNote).not.toHaveBeenCalled();
+    expect(links.adoptNoteData).not.toHaveBeenCalled();
+    expect(links.onExternalConflict).not.toHaveBeenCalled();
+
+    // The scheduled write of the local version does not go over the outside edit.
+    await act(async () => vi.advanceTimersByTimeAsync(5500));
+    expect(writeNote.mock.calls.filter((c) => /conflicted copy/.test(c[0].title))).toHaveLength(1);
+    expect(writeNote).not.toHaveBeenCalledWith(alphaMine);
   });
 });

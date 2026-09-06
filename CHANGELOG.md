@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Bug Fixes
+- **Edits made outside Boojy Notes are no longer silently overwritten** — Two windows let an outside change to a note vanish: changing a note's file while typing in another note wrote the old bytes back over it two seconds later, and changing the open note's file within 1.5 seconds of the app's own save was dropped unseen and overwritten by the next keystroke. Now a change to a note you are not editing, or to the open note when nothing is pending, is taken at once. A change to the open note while your edits are still unsaved keeps both versions: the outside version keeps the note's name, your version is saved beside it as `Title (conflicted copy YYYY-MM-DD)`, the editor moves to that copy with the caret where it was, and a toast says so. Nothing is merged.
+- **An outside change to a list's indentation, markers or numbering, a table's alignment or an image's width is no longer mistaken for "no change"** and reverted by the next keystroke.
 - **A task's checkbox sits on its first line** — When a task wrapped to two or more lines the box slid to the vertical middle of the text, so it no longer read as the start of the item. It now sits on the first line, level with where a bullet or a list number would be, whatever the item's length.
 
 ## v0.6.1 — 2026-09-05
