@@ -6,44 +6,56 @@ on:
   pull_request:
     branches: [master]
 
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+# Three independent jobs run side by side, so the wall clock follows the
+# slowest (the Electron suite) rather than their sum. Measured 2026-09-06 on
+# the serial layout: checks and unit tests ~70 s, web E2E ~15 s, Electron ~180 s
+# with two workers; serially that was ~270 s of a ~4.5 min job. Each job
+# installs for itself (a cache hit, ~10 s); nothing is passed between them.
+# The `ci` job at the end is the one status branch protection requires; it
+# only reports whether the three above all succeeded.
 
+jobs:
+  checks:
+    name: checks, types, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-
       - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v6
         with:
           # Node 22 (LTS): Node 24 hangs `playwright install --with-deps` on the
           # GitHub runner image. Actions themselves run on Node 24 via @v6.
           node-version: 22
           cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Audit
         run: pnpm audit --audit-level critical
-
       - name: Lint
         run: pnpm lint
-
       - name: Format check
         run: pnpm format:check
-
       - name: Type check
         run: pnpm typecheck
-
       - name: Test
         run: pnpm test:coverage
-
       - name: Build
         run: ELECTRON_DISABLE=1 pnpm build
 
+  web-e2e:
+    name: web E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       # `playwright install --with-deps` has stalled CI twice, both times in its
       # apt half — and the apt half buys us nothing. Every shared library Chromium
       # links against is already present on the ubuntu-latest image (all 25 report
@@ -59,7 +71,6 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-playwright-
-
       - name: Install Playwright browser
         timeout-minutes: 10
         run: |
@@ -69,14 +80,44 @@ jobs:
             sleep 10
           done
           exit 1
-
+      # The web server builds the web bundle itself (playwright.config.js).
       - name: E2E tests
         timeout-minutes: 15
         run: pnpm test:e2e
 
+  electron-e2e:
+    name: Electron E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       # The real desktop app against a throwaway vault. Needs a display; xvfb is
-      # on the runner image. Builds its own dist-electron (the Build step above
-      # is web-only).
+      # on the runner image. Builds its own dist and dist-electron, and drives the
+      # electron binary from node_modules, so no Playwright browser download.
       - name: Electron core-journey tests
         timeout-minutes: 15
         run: xvfb-run -a pnpm test:electron
+
+  # The single status branch protection requires. Runs even when a job above
+  # failed or was cancelled, and reports that as a failure of its own.
+  ci:
+    needs: [checks, web-e2e, electron-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All jobs succeeded
+        run: |
+          echo "checks: ${{ needs.checks.result }}"
+          echo "web-e2e: ${{ needs.web-e2e.result }}"
+          echo "electron-e2e: ${{ needs.electron-e2e.result }}"
+          test "${{ needs.checks.result }}" = success
+          test "${{ needs.web-e2e.result }}" = success
+          test "${{ needs.electron-e2e.result }}" = success

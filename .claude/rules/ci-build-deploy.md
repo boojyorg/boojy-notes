@@ -16,10 +16,11 @@ change needs; the incidents behind them are in git.
   jobs upload to it, or auto-publish when both succeed.
 - Publishing a release fires `site-rebuild.yml`, which POSTs the boojy.org Cloudflare deploy
   hook so the site picks up the new version. It skips gracefully if the secret is absent.
-- Every workflow job carries `timeout-minutes` (`ci.yml` 30, `release.yml` 30,
-  `site-rebuild.yml` 5), sized from measured actuals (installers take 1-2m on macOS, 2-4m on
-  Windows). Keep it that way; a stalled job once ran six hours unnoticed. Turning on
-  notarisation is the one change that needs the release number re-measured; it can add 10-20m.
+- Every workflow job carries `timeout-minutes` (`ci.yml`: checks 15, web E2E 15, Electron 20,
+  the `ci` summary 5; `release.yml` 30; `site-rebuild.yml` 5), sized from measured actuals
+  (installers take 1-2m on macOS, 2-4m on Windows). Keep it that way; a stalled job once ran six
+  hours unnoticed. Turning on notarisation is the one change that needs the release number
+  re-measured; it can add 10-20m.
 
 ## CI
 
@@ -40,13 +41,22 @@ change needs; the incidents behind them are in git.
   step as the outer cap. Size any timeout to the work, not to patience: one short enough to
   feel safe will kill a download that is merely slow and turn a passing step into a guaranteed
   failure.
+- **`ci.yml` is three jobs side by side plus a summary** (2026-09-06): `checks` (audit, lint,
+  format, typecheck, unit tests with coverage, the web build), `web-e2e` and `electron-e2e`,
+  each installing for itself from the pnpm cache, so the wall clock follows the slowest job
+  rather than their sum. The `ci` job at the end only reports whether all three succeeded; it
+  is the one status branch protection requires, so keep that job name. Measured 2026-09-06 over
+  five runs of one commit: wall clock 197 s (serial, the same steps took 256 s; before the
+  two-worker change, 422 s), with the Electron job the critical path at ~190 s, checks ~74 s,
+  web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
   `pnpm test`.** Coverage thresholds in `vitest.config.js` are a floor just below actuals;
   ratchet up, never lower to pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
   also gates every run; it is the live security net.
-- **The real-Electron suite runs under `xvfb-run` on the same Ubuntu job**, after the web E2E.
-  `pnpm test:electron` builds `dist/` and `dist-electron/` itself, because the job's build step
-  uses `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
+- **The real-Electron suite runs under `xvfb-run` in its own job**, with no Playwright browser
+  download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
+  `dist/` and `dist-electron/` itself; the web build elsewhere in the workflow uses
+  `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
   (each test owns its app process, vault and userData; measured 2026-09-06: 333 s to 175 s on the
   runner, five runs with no flake), and `e2e/electron/global-setup.ts` resolves the Electron
   binary once before any worker starts: Electron 42 fetches its binary on the first
