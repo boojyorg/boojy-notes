@@ -45,8 +45,10 @@ change needs; the incidents behind them are in git.
   format, typecheck, unit tests with coverage, the web build), `web-e2e` and `electron-e2e`,
   each installing for itself from the pnpm cache, so the wall clock follows the slowest job
   rather than their sum. The `ci` job at the end only reports whether all three succeeded; it
-  is the one status branch protection requires, so keep that job name. Serial, the same steps
-  took ~256 s after the two-worker change; measured figures for the parallel layout are on PR #126.
+  is the one status branch protection requires, so keep that job name. Measured 2026-09-06 over
+  five runs of one commit: wall clock 197 s (serial, the same steps took 256 s; before the
+  two-worker change, 422 s), with the Electron job the critical path at ~190 s, checks ~74 s,
+  web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
   `pnpm test`.** Coverage thresholds in `vitest.config.js` are a floor just below actuals;
   ratchet up, never lower to pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
