@@ -19,6 +19,8 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e/electron",
+  // Fetches the Electron binary once, before the workers race to (global-setup.ts).
+  globalSetup: "./e2e/electron/global-setup.ts",
   fullyParallel: false,
   workers: 2,
   forbidOnly: !!process.env.CI,
