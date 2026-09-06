@@ -643,9 +643,58 @@ describe("useFileSystem — outside edits", () => {
     expect(links.adoptNoteData).not.toHaveBeenCalled();
     expect(links.onExternalConflict).not.toHaveBeenCalled();
 
-    // The scheduled write of the local version does not go over the outside edit.
+    // The scheduled write of the local version does not go over the outside
+    // edit; the retry tries the copy again instead.
     await act(async () => vi.advanceTimersByTimeAsync(5500));
-    expect(writeNote.mock.calls.filter((c) => /conflicted copy/.test(c[0].title))).toHaveLength(1);
+    expect(
+      writeNote.mock.calls.filter((c) => /conflicted copy/.test(c[0].title)).length,
+    ).toBeGreaterThanOrEqual(2);
     expect(writeNote).not.toHaveBeenCalledWith(alphaMine);
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it("after a failed copy write, the blur/quit flush retries the copy and never writes the local version under the note's own name", async () => {
+    // Regression (2026-09-06): the quit/blur net still held the note, so the
+    // next blur or quit wrote the local version over the outside edit.
+    let copyWrites = 0;
+    let copyFails = true;
+    writeNote.mockImplementation(async (note) => {
+      if (/conflicted copy/.test(note.title)) {
+        copyWrites++;
+        if (copyFails) throw new Error("disk unavailable");
+        return { filePath: `/notes/${note.title}.md`, title: note.title };
+      }
+      return {};
+    });
+    const { result, links, onError } = await renderWith({
+      unflushed: ["n1"],
+      latest: { n1: alphaMine, n2: beta },
+    });
+    await act(async () => fileChanged(alphaOutside));
+    await waitFor(() => expect(copyWrites).toBe(1));
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    // Blur / quit: the net still names n1 and hands over the latest data.
+    // (Hooks left mounted by earlier tests may write their own notes here, so
+    // only this flush's writes are inspected.)
+    let before = writeNote.mock.calls.length;
+    await act(async () => result.current.flushToDisk({ n1: alphaMine, n2: beta }, ["n1"]));
+    expect(copyWrites).toBe(2);
+    const flushed = () => writeNote.mock.calls.slice(before).map((c) => c[0]);
+    expect(flushed().every((n) => /conflicted copy/.test(n.title))).toBe(true);
+    expect(flushed()).not.toContain(alphaMine);
+    expect(links.applyExternalNote).not.toHaveBeenCalled();
+    // The failure is reported once, not on every retry.
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    // Once the copy can be written, the conflict resolves the ordinary way.
+    copyFails = false;
+    before = writeNote.mock.calls.length;
+    await act(async () => result.current.flushToDisk({ n1: alphaMine, n2: beta }, ["n1"]));
+    expect(copyWrites).toBe(3);
+    const { _filePath, ...expectedExternal } = alphaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
+    expect(links.onExternalConflict).toHaveBeenCalledTimes(1);
+    expect(flushed().every((n) => /conflicted copy/.test(n.title))).toBe(true);
   });
 });
