@@ -512,6 +512,38 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     );
   });
 
+  it("an indented quote line is a quote that keeps its indent, and the parser terminates", () => {
+    // Reproduces the 2026-09-06 Blocker: the opening test used the trimmed
+    // line and the consuming loop the raw one, so `  > quote` consumed nothing
+    // and the parser never advanced. CommonMark allows up to three spaces
+    // before the marker; a quote under a list item is ordinary Obsidian output.
+    expect(stripIds(markdownToBlocks("- item\n  > quote under item\n"))).toEqual([
+      bullet("item"),
+      { type: "blockquote", text: "quote under item", indentStr: "  " },
+      p(""),
+    ]);
+    expect(stripIds(markdownToBlocks("   > three"))).toEqual([
+      { type: "blockquote", text: "three", indentStr: "   " },
+    ]);
+    // Four spaces is an indented code line to every reader; it stays a
+    // paragraph with its own bytes, as indented code always has here.
+    expect(stripIds(markdownToBlocks("    > code"))).toEqual([p("    > code")]);
+    // A change of indent inside a run starts a new block, so the bytes survive.
+    expect(stripIds(markdownToBlocks("> a\n  > b"))).toEqual([
+      { type: "blockquote", text: "a" },
+      { type: "blockquote", text: "b", indentStr: "  " },
+    ]);
+    for (const md of [
+      "  > quote",
+      "- item\n  > quote under item\n",
+      "   > three\n",
+      "> a\n  > b\n> c",
+      "    > code\n",
+    ]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
+  });
+
   it("a paragraph after a quote keeps its own block and its bytes (see the interop note)", () => {
     const md = "> quoted\nlazy line\n\nAfter.";
     expect(stripIds(markdownToBlocks(md))).toEqual([

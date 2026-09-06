@@ -43,6 +43,19 @@ function listIndent(block) {
   return block.indentStr ?? "  ".repeat(block.indent || 0);
 }
 
+/**
+ * The leading spaces of a blockquote line (`> text`, `>` alone, or `>` and a
+ * tab), or null when the raw line is not one. `>text` with no space is not a
+ * quote line, as before. One predicate for both the opening test and the
+ * consuming loop of the blockquote branch; see the note there.
+ * @param {string} raw
+ * @returns {string | null}
+ */
+function quoteIndent(raw) {
+  const m = raw.match(/^( {0,3})>(?:\s|$)/);
+  return m ? m[1] : null;
+}
+
 // ─── Paragraph structure ───
 // Blocks represent Markdown structure, not source lines. A paragraph block
 // holds every adjacent plain line of the source joined by "\n" (soft breaks);
@@ -218,8 +231,9 @@ export function blocksToMarkdown(blocks) {
       }
       case "blockquote": {
         const bqLines = (block.text || "").split("\n");
+        const bqIndent = block.indentStr || "";
         for (const bqLine of bqLines) {
-          lines.push(`> ${bqLine}`);
+          lines.push(`${bqIndent}> ${bqLine}`);
         }
         break;
       }
@@ -358,18 +372,25 @@ export function markdownToBlocks(md) {
       continue;
     }
 
-    // 3b. Blockquote
-    if (/^>\s/.test(line) || line === ">") {
+    // 3b. Blockquote. CommonMark allows up to three spaces before the marker
+    // (four is an indented code line, kept as a paragraph like any other). The
+    // opening test and the consuming loop share one predicate on the raw line,
+    // so the loop always advances: testing the trimmed line here and the raw
+    // line below consumed nothing on `  > quote` and never moved on. The
+    // indent is kept on the block (indentStr, as list items keep theirs) so
+    // the file's bytes survive a save; a change of indent starts a new block
+    // for the same reason.
+    const bqIndent = quoteIndent(raw);
+    if (bqIndent !== null) {
       const bqLines = [];
-      while (i < lines.length && (/^>\s/.test(lines[i]) || lines[i].trim() === ">")) {
-        bqLines.push(lines[i].replace(/^>\s?/, ""));
+      while (i < lines.length && quoteIndent(lines[i]) === bqIndent) {
+        bqLines.push(lines[i].slice(bqIndent.length).replace(/^>\s?/, ""));
         i++;
       }
-      blocks.push({
-        id: `md-${++_parseBlockId}`,
-        type: "blockquote",
-        text: bqLines.join("\n"),
-      });
+      /** @type {{ id: string; type: string; text: string; indentStr?: string }} */
+      const bq = { id: `md-${++_parseBlockId}`, type: "blockquote", text: bqLines.join("\n") };
+      if (bqIndent) bq.indentStr = bqIndent;
+      blocks.push(bq);
       continue;
     }
 
