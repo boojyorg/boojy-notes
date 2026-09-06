@@ -113,6 +113,25 @@ describe("create-folder — the directory exists at once, under the name the dis
     ]);
   });
 
+  it("never makes a directory its own walk would skip", () => {
+    // A `.archive` directory hid every note inside it at the next restart, and
+    // a folder called `attachments` is the attachment store to the walk.
+    expect(createFolder(notesDir, ".archive")).toEqual({ path: "_archive" });
+    expect(createFolder(notesDir, "attachments")).toEqual({ path: "_attachments" });
+    expect(createFolder(notesDir, "Attachments")).toEqual({ path: "Attachments" });
+    mkdir("Uni");
+    expect(createFolder(notesDir, "Uni/.hidden")).toEqual({ path: "Uni/_hidden" });
+    expect(createFolder(notesDir, "Uni/attachments")).toEqual({ path: "Uni/_attachments" });
+    expect(readAllFolders(notesDir)).toEqual([
+      "Attachments",
+      "Uni",
+      "Uni/_attachments",
+      "Uni/_hidden",
+      "_archive",
+      "_attachments",
+    ]);
+  });
+
   it("refuses a parent that does not exist or lies outside the vault", () => {
     expect(() => createFolder(notesDir, "Missing/New")).toThrow();
     expect(() => createFolder(notesDir, "../New")).toThrow();
@@ -161,6 +180,15 @@ describe("rename-folder — one directory rename carries every file with it", ()
     expect(renameFolder(notesDir, "Work", "a:b")).toEqual({ path: "a_b" });
     expect(renameFolder(notesDir, "a_b", "Clients")).toEqual({ path: "Clients-2" });
     expect(readAllFolders(notesDir)).toEqual(["Clients", "Clients-2"]);
+  });
+
+  it("renames onto a visible name when asked for a hidden or reserved one", () => {
+    mkdir("Work");
+    write("Work/Note.md");
+    expect(renameFolder(notesDir, "Work", ".old")).toEqual({ path: "_old" });
+    expect(renameFolder(notesDir, "_old", "attachments")).toEqual({ path: "_attachments" });
+    expect(readAllFolders(notesDir)).toEqual(["_attachments"]);
+    expect(exists("_attachments/Note.md")).toBe(true);
   });
 
   it("changes only the letter case without treating the folder as its own namesake", () => {

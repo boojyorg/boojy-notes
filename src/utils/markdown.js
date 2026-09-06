@@ -68,6 +68,8 @@ function quoteIndent(raw) {
 // untouched file serialises to the same bytes it was read from.
 
 const isListItem = (b) => b.type === "bullet" || b.type === "numbered" || b.type === "checkbox";
+/** An item with no text: `- `, `1. `, `- [ ] `, or the bare marker alone. */
+const isEmptyListItem = (b) => isListItem(b) && (b.text || "") === "";
 /** A blank source line: an empty paragraph block, or one holding only whitespace. */
 const isBlankParagraph = (b) => b.type === "p" && (b.text || "").trim() === "";
 const isTextParagraph = (b) => b.type === "p" && !isBlankParagraph(b);
@@ -77,8 +79,11 @@ const isTextParagraph = (b) => b.type === "p" && !isBlankParagraph(b);
  * one too, but their lines are written with a `> ` prefix, so a lazy line
  * under them cannot be stored as part of the block without changing the
  * bytes on save; it stays its own paragraph, and no separator is written.
+ * An empty item absorbs nothing either: a lazy line continues the paragraph
+ * inside the item, and an empty item has none, so `- ` over `foo` is an
+ * empty item and then a paragraph to every reader.
  */
-const absorbsFollowingLine = (b) => isTextParagraph(b) || isListItem(b);
+const absorbsFollowingLine = (b) => isTextParagraph(b) || (isListItem(b) && !isEmptyListItem(b));
 /**
  * A block that needs the single separator blank after an absorbing block: a
  * text paragraph, or a divider. Without the blank a reader folds the paragraph
@@ -97,7 +102,7 @@ function structureParagraphs(lineBlocks) {
   const merged = [];
   for (const b of lineBlocks) {
     const prev = merged[merged.length - 1];
-    if (isTextParagraph(b) && prev && (isTextParagraph(prev) || isListItem(prev))) {
+    if (isTextParagraph(b) && prev && absorbsFollowingLine(prev)) {
       prev.text = `${prev.text}\n${b.text}`;
       continue;
     }
@@ -144,6 +149,15 @@ export function applyEol(md, eol) {
   return eol === "\r\n" ? md.replace(/\n/g, "\r\n") : md;
 }
 
+/**
+ * A marker line's text with the space after the marker: `- text`, `# text`,
+ * `- ` for an empty item the app made. A file written elsewhere may hold the
+ * bare marker (`-`, `1.`, `#`) with no space; that is read as the same empty
+ * block with `bare` set, and written back without the space until text is
+ * typed, so the file's bytes are its own.
+ */
+const afterMarker = (block) => (block.bare && !block.text ? "" : ` ${block.text || ""}`);
+
 export function blocksToMarkdown(blocks) {
   const lines = [];
   // Where each block's lines end, so the paragraph separator can be written
@@ -172,22 +186,22 @@ export function blocksToMarkdown(blocks) {
     }
     switch (block.type) {
       case "h1":
-        lines.push(`# ${block.text || ""}`);
+        lines.push(`#${afterMarker(block)}`);
         break;
       case "h2":
-        lines.push(`## ${block.text || ""}`);
+        lines.push(`##${afterMarker(block)}`);
         break;
       case "h3":
-        lines.push(`### ${block.text || ""}`);
+        lines.push(`###${afterMarker(block)}`);
         break;
       case "bullet":
-        lines.push(`${listIndent(block)}${block.marker || "-"} ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.marker || "-"}${afterMarker(block)}`);
         break;
       case "numbered":
-        lines.push(`${listIndent(block)}${block.numRaw ?? numCounter}. ${block.text || ""}`);
+        lines.push(`${listIndent(block)}${block.numRaw ?? numCounter}.${afterMarker(block)}`);
         break;
       case "checkbox":
-        lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}] ${block.text || ""}`);
+        lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}]${afterMarker(block)}`);
         break;
       case "spacer":
         lines.push("---");
@@ -489,42 +503,52 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
       if (leadingWs && leadingWs !== "  ".repeat(indent)) b.indentStr = leadingWs;
     };
+    // The marker forms match on the trimmed line, so the marker alone is the
+    // empty block (`- `, `1. `, `- [ ] `, `# ` are what the app writes for an
+    // item left empty; CommonMark reads them so, and the bare `-`, `1.`, `#`
+    // too). A bare marker is remembered on the block so its bytes survive.
+    const markerText = (m) => {
+      const text = line.slice(m[0].length);
+      // Bare: nothing at all after the marker on the source line, not even the space.
+      if (text === "" && raw.trimStart().length === m[0].trimEnd().length) block.bare = true;
+      return text;
+    };
+    let m;
     if (line === "---") {
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
-    } else if (/^- \[([ xX])\] /.test(line)) {
-      const checked = line[3] !== " ";
-      block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: line.slice(6), checked };
+    } else if ((m = line.match(/^- \[([ xX])\](?: |$)/))) {
+      const checked = m[1] !== " ";
+      block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: "", checked };
+      block.text = markerText(m);
       applyListIndent(block);
-    } else if (/^\d+\.\s/.test(line)) {
+    } else if ((m = line.match(/^(\d+)\.(?:\s|$)/))) {
       block = {
         id: `md-${++_parseBlockId}`,
         type: "numbered",
-        text: line.replace(/^\d+\.\s/, ""),
+        text: "",
         num: parseInt(line, 10),
       };
+      block.text = markerText(m);
       // Keep the number exactly as written when parseInt would reformat it
       // (leading zeros: "007." must not become "7." on save)
-      const numStr = line.match(/^(\d+)\./)[1];
-      if (numStr !== String(block.num)) block.numRaw = numStr;
+      if (m[1] !== String(block.num)) block.numRaw = m[1];
       applyListIndent(block);
-    } else if (line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")) {
+    } else if ((m = line.match(/^[-*+](?: |$)/))) {
       // All three CommonMark bullet markers; the marker is kept only when it
       // is not the in-app default "-", so app-created bullets stay unchanged
-      block = { id: `md-${++_parseBlockId}`, type: "bullet", text: line.slice(2) };
+      block = { id: `md-${++_parseBlockId}`, type: "bullet", text: "" };
+      block.text = markerText(m);
       if (line[0] !== "-") block.marker = line[0];
       applyListIndent(block);
-    } else if (line.startsWith("### ")) {
-      block = { id: `md-${++_parseBlockId}`, type: "h3", text: line.slice(4) };
-    } else if (line.startsWith("## ")) {
-      block = { id: `md-${++_parseBlockId}`, type: "h2", text: line.slice(3) };
-    } else if (line.startsWith("# ")) {
-      block = { id: `md-${++_parseBlockId}`, type: "h1", text: line.slice(2) };
+    } else if ((m = line.match(/^(#{1,3})(?: |$)/))) {
+      block = { id: `md-${++_parseBlockId}`, type: `h${m[1].length}`, text: "" };
+      block.text = markerText(m);
     } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
       const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       // Obsidian-style width suffix in the alt: ![alt|350](url)

@@ -48,6 +48,17 @@ const LOSSLESS_CASES = [
   ["checkbox unchecked", [{ type: "checkbox", text: "todo", checked: false }]],
   ["checkbox checked", [{ type: "checkbox", text: "done", checked: true }]],
   ["checkbox (indented)", [{ type: "checkbox", text: "sub task", checked: false, indent: 1 }]],
+  // The empty forms the app leaves behind when you click away from a fresh
+  // item: `- `, `1. `, `- [ ] `, `# ` used to read back as a paragraph (or an
+  // empty checkbox as a bullet reading `[ ]`).
+  ["bullet (empty)", [{ type: "bullet", text: "" }]],
+  ["bullet (empty, indented)", [{ type: "bullet", text: "", indent: 1 }]],
+  ["numbered (empty)", [{ type: "numbered", text: "", num: 1 }]],
+  ["checkbox (empty, unchecked)", [{ type: "checkbox", text: "", checked: false }]],
+  ["checkbox (empty, checked)", [{ type: "checkbox", text: "", checked: true }]],
+  ["h1 (empty)", [{ type: "h1", text: "" }]],
+  ["h2 (empty)", [{ type: "h2", text: "" }]],
+  ["h3 (empty)", [{ type: "h3", text: "" }]],
   // spacer must NOT be the first block (a leading `---` parses as frontmatter),
   // so it carries a preceding paragraph for context.
   [
@@ -359,6 +370,81 @@ describe("list marker + raw indent preservation (preservation fix, 2026-08)", ()
     const [out] = markdownToBlocks(blocksToMarkdown([{ type: "bullet", text: "plain" }]));
     expect(out.marker).toBeUndefined();
     expect(out.indentStr).toBeUndefined();
+  });
+});
+
+describe("empty list items and headings (preservation fix, 2026-09)", () => {
+  // The single-line matchers work on the trimmed line, so the marker alone
+  // (`- `, `1. `, `- [ ] `, `# `) matched nothing and fell through to a
+  // paragraph; `x\n- ` even folded into the paragraph above as a lazy line.
+
+  it("reads the app's own empty forms back as the same block types", () => {
+    const md = "- \n1. \n- [ ] \n- [x] \n# \n## \n### \n  - \n* \n";
+    const blocks = markdownToBlocks(md);
+    expect(blocks.map((b) => [b.type, b.text])).toEqual([
+      ["bullet", ""],
+      ["numbered", ""],
+      ["checkbox", ""],
+      ["checkbox", ""],
+      ["h1", ""],
+      ["h2", ""],
+      ["h3", ""],
+      ["bullet", ""],
+      ["bullet", ""],
+      ["p", ""],
+    ]);
+    expect(blocks[2].checked).toBe(false);
+    expect(blocks[3].checked).toBe(true);
+    expect(blocks[7].indent).toBe(1);
+    expect(blocks[8].marker).toBe("*");
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("reads the bare marker forms other editors write, and writes them back byte-exact", () => {
+    const md = "-\n1.\n- [ ]\n#\n##\n###\n\t-\n007.\n";
+    const blocks = markdownToBlocks(md);
+    expect(blocks.map((b) => b.type)).toEqual([
+      "bullet",
+      "numbered",
+      "checkbox",
+      "h1",
+      "h2",
+      "h3",
+      "bullet",
+      "numbered",
+      "p",
+    ]);
+    expect(blocks.map((b) => b.text)).toEqual(["", "", "", "", "", "", "", "", ""]);
+    expect(blocks[7].numRaw).toBe("007");
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("the bare form gains its space once text is typed, like any other item", () => {
+    const [bullet] = markdownToBlocks("-\n");
+    expect(blocksToMarkdown([{ ...bullet, text: "typed" }])).toBe("- typed");
+    const [heading] = markdownToBlocks("#\n");
+    expect(blocksToMarkdown([{ ...heading, text: "Title" }])).toBe("# Title");
+  });
+
+  it("an empty item takes no lazy continuation: the line under it is its own paragraph", () => {
+    // CommonMark: `- ` followed by `foo` is an empty item and then a paragraph;
+    // there is no paragraph inside the item for `foo` to continue.
+    const md = "- \nfoo\n";
+    const blocks = markdownToBlocks(md);
+    expect(blocks.map((b) => [b.type, b.text])).toEqual([
+      ["bullet", ""],
+      ["p", "foo"],
+      ["p", ""],
+    ]);
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("leaves non-empty items, a #tag line and a four-hash line as they were", () => {
+    const blocks = markdownToBlocks("- item\n#tag first\n#### four\n-- not a marker\n");
+    expect(blocks.map((b) => [b.type, b.text])).toEqual([
+      ["bullet", "item\n#tag first\n#### four\n-- not a marker"],
+      ["p", ""],
+    ]);
   });
 });
 

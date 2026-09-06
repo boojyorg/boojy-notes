@@ -272,6 +272,24 @@ describe("write-note — the returned title is the basename on disk", () => {
     ]);
   });
 
+  it("never hides a note from its own walk: a leading dot becomes an underscore", () => {
+    // `.env.md` was written fine, then skipped by the vault walk, the folder
+    // walk and the watcher alike, so the note vanished at the next restart.
+    expect(writeNote(note("n-dot", ".env")).title).toBe("_env");
+    expect(writeNote(note("n-dot-padded", "  .archive  ")).title).toBe("_archive");
+    expect(writeNote(note("n-dots", "..")).title).toBe("_.");
+    expect(writeNote(note("n-dot-only", ".")).title).toBe("_");
+    // Ordinary names are untouched, dots inside them included.
+    expect(writeNote(note("n-inner-dot", "v1.2 notes")).title).toBe("v1.2 notes");
+    const onDisk = fs.readdirSync(notesDir).sort();
+    expect(onDisk).toEqual(["_..md", "_.md", "_archive.md", "_env.md", "v1.2 notes.md"]);
+    expect(
+      Object.values(readAllNotes(notesDir))
+        .map((n) => n.title)
+        .sort(),
+    ).toEqual(["_", "_.", "_archive", "_env", "v1.2 notes"]);
+  });
+
   it("never overwrites a file it did not index", () => {
     // A file that appeared on disk between vault walks (no watcher in tests).
     fs.writeFileSync(path.join(notesDir, "Draft.md"), "someone else's", "utf-8");

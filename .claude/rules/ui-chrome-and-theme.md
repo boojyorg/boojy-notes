@@ -341,7 +341,9 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   fallback); nothing on web makes a directory.
 - **The main process is the only place that knows a folder's final name**, `electron/folders.ts`,
   the same rule as `write-note` for a note's basename: the last segment is sanitised and
-  de-duplicated (`-2`), a case-only rename is a rename, a path can never escape the vault, and
+  de-duplicated (`-2`), a leading dot and the reserved name `attachments` become `_…` because
+  the walk would skip the directory and hide every note in it (2026-09-06), a case-only rename
+  is a rename, a path can never escape the vault, and
   every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
   the answer; no input sanitises a folder name.
 - **New folder makes the directory at once** (root from the header, `New folder inside` from a
@@ -365,7 +367,9 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 - **For every persisted desktop note, the title shown equals the Markdown basename.** Drafts are
   excluded until they become files. The rule is enforced from the persistence side: `write-note`
   in `electron/noteFileManager.js` is the only place that knows the final name (collision suffix,
-  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, the volume's own casing)
+  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, a leading dot to `_`
+  because the vault walk and the watcher skip dot-entries and `.env.md` vanished at the next
+  restart (2026-09-06), the volume's own casing)
   and answers every write with it. `useFileSystem` hands a differing answer to `useResolvedTitle`,
   which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
   itself) and repaints the editor's title field, caret preserved when the user is still in it.
@@ -435,6 +439,11 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   where the caret may rest changed; only where typed text goes.
 - Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
   typing at the end of bold text extends it, as in every editor.
+- **A backslash escape is shown as written** (`\*not italic\*` reads exactly so on screen, never
+  as italic), the way Obsidian's live preview shows it. The renderer once hid the backslash; the
+  DOM walkers read text back verbatim, so the escape was gone on the first edit and the text
+  became italic on the next repaint (2026-09-06). Don't hide it again without teaching both
+  walkers to put it back.
 - **The hover tooltip is `useLinkHoverTooltip`**: half a second at rest on a link shows its URL or
   `[[target]]`; the pending hover is an object holding the timer and the URL, and the callback
   checks it is still current before showing anything. Never hang data off a timer handle; it is a
@@ -465,7 +474,9 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
 Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).
 
 - **A paragraph block holds every adjacent plain line**, joined by `\n`; a plain line directly
-  under a list item is the item's lazy continuation. Enter makes a new paragraph, which the
+  under a list item is the item's lazy continuation, unless the item is empty (an empty item
+  has no paragraph to continue, so `- ` over `foo` is an empty item and then a paragraph, as
+  CommonMark reads it). Enter makes a new paragraph, which the
   serializer separates from a paragraph or list item above it with one blank line. Shift+Enter
   inserts a soft break (`insertLineBreak`, so Chromium fires `input` and the normal commit path
   stores it) in paragraphs, list items and quotes, and acts as Enter in a heading.

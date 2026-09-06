@@ -118,11 +118,22 @@ function realRelPath(notesDir: string, abs: string): string {
   return toPosix(path.relative(notesDir, path.join(path.dirname(abs), name)));
 }
 
+/**
+ * A folder's name is a filename (same sanitiser, so a leading dot is `_`)
+ * with one more rule: the walk skips a directory named exactly `attachments`
+ * as the attachment store, so a folder asked for under that name would hide
+ * every note put in it. It gets the same `_` the other unusable names get.
+ */
+function sanitizeFolderName(name: string): string {
+  const safe = sanitizeFilename(name);
+  return safe === "attachments" ? `_${safe}` : safe;
+}
+
 /** Split a requested path into an existing parent (absolute) and a sanitised last segment. */
 function splitTarget(notesDir: string, rel: string): { parentAbs: string; name: string } {
   if (typeof rel !== "string") throw new Error("Folder path must be a string");
   const parts = rel.split("/");
-  const name = sanitizeFilename(parts.pop() ?? "");
+  const name = sanitizeFolderName(parts.pop() ?? "");
   const parentRel = parts.join("/");
   const parentAbs = parentRel ? resolveVaultDir(notesDir, parentRel) : path.resolve(notesDir);
   if (!parentAbs || !isDirectory(parentAbs)) throw new Error("The parent folder does not exist");
