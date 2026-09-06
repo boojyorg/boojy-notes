@@ -79,6 +79,14 @@ found on the way gate it as well, without needing a line here.
   release, never the daily-driver build, so a Beta that lives only in `/Applications` is not
   released. `CHANGELOG.md` Unreleased holds the notes; the release runs the docs pass in
   `AGENTS.md` and the draft-release steps in the CI rule.
+- [ ] **Halve the install size before publishing** (measured 2026-09-07: 603 MB installed, 240 MB
+  DMG). The electron-builder `files` glob `dist/**/*` in `package.json` packs the previous
+  build's own `dist/mac-arm64/Boojy Notes.app` into every new `app.asar` (293 MB of the 329 MB
+  asar); nothing reads it. Narrow the glob to the web build's files or exclude `dist/mac-arm64`
+  and the DMG. Secondary, same asar: `lucide-react` is copied wholesale (19 MB, unbundled
+  source) and `react-dom` (7 MB) with it, rather than reaching the app only through the Vite
+  bundle. The floor is the Electron framework, 272 MB, so expect about 280 to 300 MB after.
+  Part of the packaging and release session.
 
 ## Beta: candidates
 
