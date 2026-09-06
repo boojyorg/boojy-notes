@@ -1,0 +1,16 @@
+bullet list
+  item
+ordered list
+  item
+bullet list
+  item
+    paragraph "[ ]"
+h1 ""
+bullet list
+  item
+ordered list
+  item
+h1 ""
+bullet list
+  item
+paragraph "line after an empty item"

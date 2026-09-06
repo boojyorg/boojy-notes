@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import MarkdownIt from "markdown-it";
 import { describe, expect, it } from "vitest";
+import { htmlToInlineMarkdown, inlineMarkdownToHtml } from "../../src/utils/inlineFormatting.js";
 import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown.js";
 import {
   bullet,
@@ -183,6 +184,36 @@ describe("interop — the conventional meaning of Markdown written elsewhere", (
 
 describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
   const authored = (blocks) => meaningOf(blocksToMarkdown(blocks));
+
+  // ── Escapes ───────────────────────────────────────────────────────────────
+  // A backslash escape means "this character, literally" to every reader. The
+  // edit path (render to the editor, read the DOM back, serialise) used to
+  // drop the backslash, so a save after one keystroke changed the meaning.
+  it("a backslash escape still means the literal character after the edit path", () => {
+    const source = "\\*not italic\\* and \\# not a heading\n";
+    const edited = htmlToInlineMarkdown(inlineMarkdownToHtml(source.trimEnd()));
+    expect(meaningOf(source)).toBe('paragraph "*not italic* and # not a heading"\n');
+    expect(meaningOf(`${edited}\n`)).toBe(meaningOf(source));
+  });
+
+  // ── Empty items and headings ──────────────────────────────────────────────
+  it("an empty bullet, numbered item and heading mean the same empty thing outside", () => {
+    expect(authored([bullet("")])).toBe("bullet list\n  item\n");
+    expect(authored([numbered("")])).toBe("ordered list\n  item\n");
+    expect(authored([heading(2, "")])).toBe('h2 ""\n');
+    // And they come back as the same blocks after a save cycle.
+    for (const source of ["- \n", "1. \n", "- [ ] \n", "# \n"]) {
+      expect(meaningOf(saveCycle(source))).toBe(meaningOf(source));
+    }
+  });
+
+  // On record: a `-` line directly under a paragraph is a setext heading
+  // underline to a conventional reader, exactly as `---` is. An empty bullet
+  // left under a paragraph is therefore written as a heading outside; the
+  // same tight-form decision as the divider, on the backlog.
+  it.fails("an empty bullet authored tight under a paragraph means a list outside (KNOWN MISMATCH)", () => {
+    expect(authored([paragraph("x"), bullet("")])).toBe('paragraph "x"\nbullet list\n  item\n');
+  });
 
   // ── The paragraph model ───────────────────────────────────────────────────
   // Blocks are Markdown structure: two paragraph blocks are written with a

@@ -13,10 +13,17 @@ import {
 
 // ─── Filename helpers ───
 
+/**
+ * The one place a name the app creates is made safe for the vault. Invalid
+ * characters become `_`, the edges are trimmed, a blank name is `Untitled`,
+ * and a leading dot becomes `_`: the vault walk, the folder walk and the
+ * watcher all skip dot-entries, so `.env.md` or a `.archive/` directory was
+ * written fine and then vanished at the next restart, notes and all. The
+ * same rule covers `.` and `..`, so no name can be a traversal component.
+ */
 function sanitizeFilename(name) {
   let sanitized = name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "Untitled";
-  // Prevent path traversal via ".." or "." components
-  if (sanitized === ".." || sanitized === ".") sanitized = "_";
+  if (sanitized.startsWith(".")) sanitized = `_${sanitized.slice(1)}`;
   return sanitized;
 }
 

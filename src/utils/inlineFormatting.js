@@ -13,8 +13,11 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 1. Escape HTML entities (prevent XSS / accidental tag injection)
   s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-  // 1b. Protect backslash-escaped characters (e.g., \* \~ \= \`)
-  // Replace \X with a placeholder, then restore after all formatting
+  // 1b. Protect backslash-escaped characters (e.g., \* \~ \= \`) from the
+  // formatting passes below. They are restored *with* their backslash, shown
+  // as written the way Obsidian's live preview shows them: the DOM walkers
+  // read the text back verbatim, so a hidden backslash was gone on the first
+  // edit and `\*not italic\*` became italic on the next repaint.
   const escapes = [];
   s = s.replace(/\\([*~`=[\]#])/g, (_, ch) => {
     escapes.push(ch);
@@ -71,8 +74,8 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     '$1<span class="inline-tag" data-tag="$2">#$2</span>',
   );
 
-  // Restore backslash-escaped characters
-  s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => escapes[parseInt(i, 10)]);
+  // Restore backslash-escaped characters, backslash included
+  s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[parseInt(i, 10)]}`);
 
   // 12. A newline inside block text is a soft break: one line break on screen.
   // A trailing newline gets a second <br>, the way Chromium keeps an empty

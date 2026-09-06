@@ -148,22 +148,45 @@ describe("inlineMarkdownToHtml", () => {
     expect(result).not.toContain("<em>");
   });
 
-  it("handles backslash-escaped asterisks", () => {
+  // A backslash escape is shown as written, the way Obsidian's live preview
+  // shows it: hiding it looked tidier, but the DOM walker read the text back
+  // without it, so `\*not italic\*` became `*not italic*` on the first edit
+  // and rendered as italic on the next repaint.
+  it("shows backslash-escaped asterisks literally and never as italic", () => {
     const result = inlineMarkdownToHtml("\\*not italic\\*");
     expect(result).not.toContain("<em>");
-    expect(result).toContain("*not italic*");
+    expect(result).toBe("\\*not italic\\*");
   });
 
-  it("handles backslash-escaped tildes", () => {
+  it("shows backslash-escaped tildes literally and never as strikethrough", () => {
     const result = inlineMarkdownToHtml("\\~\\~not deleted\\~\\~");
     expect(result).not.toContain("<del>");
-    expect(result).toContain("~~not deleted~~");
+    expect(result).toBe("\\~\\~not deleted\\~\\~");
   });
 
-  it("handles backslash-escaped backticks", () => {
+  it("shows backslash-escaped backticks literally and never as code", () => {
     const result = inlineMarkdownToHtml("\\`not code\\`");
     expect(result).not.toContain("<code>");
-    expect(result).toContain("`not code`");
+    expect(result).toBe("\\`not code\\`");
+  });
+
+  it("keeps every escape through the edit path: render, walk, serialise", () => {
+    const cases = [
+      "\\*not italic\\*",
+      "\\~\\~kept\\~\\~",
+      "\\`not code\\`",
+      "\\=\\=not marked\\=\\=",
+      "\\[not a link\\]",
+      "\\[\\[not a wikilink\\]\\]",
+      "\\# not a tag",
+      "mixed **bold** and \\*escaped\\* and [[Real]]",
+    ];
+    for (const md of cases) {
+      const html = inlineMarkdownToHtml(md);
+      expect(htmlToInlineMarkdown(html), md).toBe(md);
+      expect(domNodeToMarkdown(makeEl(html)), md).toBe(md);
+    }
+    expect(inlineMarkdownToHtml("\\[\\[not a wikilink\\]\\]")).not.toContain("class=");
   });
 
   it("handles & in HTML entity escaping", () => {

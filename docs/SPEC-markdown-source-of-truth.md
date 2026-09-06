@@ -33,6 +33,12 @@ paragraph block. Enter starts a paragraph, Shift+Enter a soft break. Nothing is 
 file does not say, and reading a file never rewrites it. The exact rules live in the UI rule's
 paragraph-model section.
 
+An empty list item or heading is the block its marker says: `- `, `1. `, `- [ ] `, `# ` (what
+the app writes for one left empty) and the bare `-`, `1.`, `- [ ]`, `#` other editors write all
+read back as that block with no text, never as a paragraph. A bare marker is remembered on the
+block (`bare`) and written back without the space until text is typed, so the file's bytes stay
+its own. An empty item takes no lazy continuation line.
+
 ## The enforceable core: the round-trip rule
 
 > Every block MUST losslessly round-trip: **block → markdown → block**, producing an identical
