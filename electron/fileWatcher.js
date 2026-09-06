@@ -86,8 +86,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   watcher.on("change", (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (isWriteSuppressed(filePath)) return;
-    if (isOwnEcho(filePath)) return;
+    if (isOwnWriteEvent(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
@@ -105,8 +104,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   watcher.on("add", (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (isWriteSuppressed(filePath)) return;
-    if (isOwnEcho(filePath)) return;
+    if (isOwnWriteEvent(filePath)) return;
     const notesDir = getNotesDir();
     const note = parseNoteFile(filePath, notesDir);
     if (note && getMainWindow()) {
@@ -173,15 +171,20 @@ function suppressWatcherTree(dirPath) {
   );
 }
 
-/** Whether the file holds exactly the bytes of our last write to it: a late echo, not an edit. */
-function isOwnEcho(filePath) {
+/**
+ * What the recorded bytes say about a change to the file: `true` when it
+ * still holds exactly our last write (an echo), `false` when it holds
+ * something else (a real change), `null` when nothing was recorded for the
+ * path or the file cannot be read, so the bytes cannot decide.
+ */
+function ownEchoVerdict(filePath) {
   const expected = ownContentHash.get(filePath);
-  if (expected === undefined) return false;
+  if (expected === undefined) return null;
   let current;
   try {
     current = hashOf(fs.readFileSync(filePath, "utf-8"));
   } catch {
-    return false;
+    return null;
   }
   const echo = current === expected;
   if (traceEnabled)
@@ -192,6 +195,27 @@ function isOwnEcho(filePath) {
       echo ? "ECHO (own bytes, ignored)" : "differs → real change",
     );
   return echo;
+}
+
+/** Whether the file holds exactly the bytes of our last write to it: a late echo, not an edit. */
+function isOwnEcho(filePath) {
+  return ownEchoVerdict(filePath) === true;
+}
+
+/**
+ * Whether a change or add event is the app's own write coming back, and so
+ * must not reach the renderer. The bytes decide whenever a write was recorded
+ * for the path: equal is an echo however late it arrives, different is a real
+ * change however soon, so an outside edit that lands inside the timer window
+ * is never dropped on the clock alone (one made about a second after a save
+ * was, and the next keystroke then overwrote it). The timer decides only for a
+ * path with no recorded bytes: the old path of a rename, or a path under a
+ * directory being renamed or removed.
+ */
+function isOwnWriteEvent(filePath) {
+  const verdict = ownEchoVerdict(filePath);
+  if (verdict !== null) return verdict;
+  return isWriteSuppressed(filePath);
 }
 
 /** Whether a path is inside its own-write suppression window, or under a suppressed tree. */
@@ -238,6 +262,7 @@ export {
   suppressWatcherTree,
   isWriteSuppressed,
   isOwnEcho,
+  isOwnWriteEvent,
   suppressNextUnlink,
   releaseUnlinkSuppression,
   closeWatcher,

@@ -15,6 +15,7 @@ const {
   suppressWatcherTree,
   isWriteSuppressed,
   isOwnEcho,
+  isOwnWriteEvent,
 } = await import("../../electron/fileWatcher.js");
 
 // The unlink suppression must be consumed by the event (or an explicit
@@ -195,5 +196,52 @@ describe("own-write echo by content", () => {
     const missing = path.join(dir, "Gone.md");
     suppressWatcher(missing, "was here\n");
     expect(isOwnEcho(missing)).toBe(false);
+  });
+});
+
+// What reaches the renderer is decided by the bytes first and the timer only
+// for a path with no recorded bytes. The old order asked the timer first, so an
+// outside edit landing inside the 1.5s window was dropped whatever it held
+// (traced 2026-09-06: an edit ~1s after a save never appeared, and the next
+// keystroke wrote the stale note back over it).
+describe("own-write event: bytes before the timer", () => {
+  let dir;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-watcher-"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("passes an outside edit made inside the write window when the bytes differ", () => {
+    const file = path.join(dir, "Note.md");
+    suppressWatcher(file, "ours\n");
+    fs.writeFileSync(file, "ours\n");
+    vi.advanceTimersByTime(700);
+    fs.writeFileSync(file, "theirs\n");
+
+    expect(isWriteSuppressed(file)).toBe(true);
+    expect(isOwnWriteEvent(file)).toBe(false);
+  });
+
+  it("drops an echo of our own bytes inside the window and long after it", () => {
+    const file = path.join(dir, "Note.md");
+    suppressWatcher(file, "ours\n");
+    fs.writeFileSync(file, "ours\n");
+
+    expect(isOwnWriteEvent(file)).toBe(true);
+    vi.advanceTimersByTime(10_000);
+    expect(isOwnWriteEvent(file)).toBe(true);
+  });
+
+  it("falls back to the timer for a path with no recorded bytes, such as the old path of a rename", () => {
+    const file = path.join(dir, "Old.md");
+    suppressWatcher(file);
+
+    expect(isOwnWriteEvent(file)).toBe(true);
+    vi.advanceTimersByTime(1500);
+    expect(isOwnWriteEvent(file)).toBe(false);
   });
 });

@@ -41,6 +41,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
+import { getCaretOffset } from "./utils/domHelpers";
 import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
@@ -67,6 +68,7 @@ export default function BoojyNotes() {
     redo,
     commitNoteData,
     adoptNoteData,
+    applyExternalNote,
     remapNoteFolders,
     commitTextChange,
     pushHistory,
@@ -161,6 +163,32 @@ export default function BoojyNotes() {
   // another basename, the title follows it, in state and in the title field.
   const onTitleResolved = useResolvedTitle({ titleRef, activeNoteRef, noteDataRef, adoptNoteData });
 
+  // The open note changed on disk while edits were pending, and the local
+  // version has just been saved as a conflict copy. Continue in the copy: it
+  // keeps the note's block ids, so the caret's block and offset carry over
+  // through the focus refs the note switch consumes.
+  const onExternalConflict = useCallback(
+    ({ title, copyId, copyTitle }) => {
+      const sel = window.getSelection();
+      const node = sel?.rangeCount ? sel.anchorNode : null;
+      const blockEl = (node?.nodeType === 1 ? node : node?.parentElement)?.closest?.(
+        "[data-block-id]",
+      );
+      const blockId = blockEl?.getAttribute("data-block-id");
+      const el = blockId ? blockRefs.current[blockId] : null;
+      if (el && editorRef.current?.contains(el)) {
+        focusBlockId.current = blockId;
+        focusCursorPos.current = Math.max(0, getCaretOffset(el));
+      }
+      setActiveNote(copyId);
+      showToast(
+        `"${title}" changed outside Boojy Notes. Your edits were kept in "${copyTitle}".`,
+        "info",
+      );
+    },
+    [setActiveNote, showToast],
+  );
+
   // ── External hooks ──────────────────────────────────────────────────
   const {
     isElectron: isDesktop,
@@ -172,6 +200,10 @@ export default function BoojyNotes() {
   } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
+    activeNoteRef,
+    applyExternalNote,
+    adoptNoteData,
+    onExternalConflict,
     onNotesEdited: markEdited,
     onTitleResolved,
     remapNoteFolders,

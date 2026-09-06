@@ -113,6 +113,37 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     return true;
   };
 
+  // Take a note as the disk now holds it: an edit made in another program,
+  // or the conflict copy the app has just written. This is the one path for a
+  // change of record that did not come from the user here. The history ref
+  // takes it at once, so a text commit pending for another note republishes
+  // the disk version instead of the stale one the ref would otherwise have
+  // carried (which marked the note dirty and wrote the old bytes back over
+  // the outside edit). Pending text for the note itself is superseded: the
+  // caller has either established there is none, or has moved it into a
+  // conflict copy. Its undo entries describe a lineage the disk no longer
+  // holds and are dropped. Nothing becomes dirty and nothing joins the
+  // quit-flush net; the note is already on disk.
+  const applyExternalNote = (note) => {
+    const id = note.id;
+    if (id === activeNoteRef.current && textFlushTimer.current) {
+      clearTimeout(textFlushTimer.current);
+      textFlushTimer.current = null;
+      hasPendingFlush.current = false;
+      textOnlyEdit.current = false;
+      textOnlyEditForSidebar.current = false;
+      textOnlyEditForEditor.current = false;
+    }
+    undoStack.current = undoStack.current.filter((e) => e.noteId !== id);
+    redoStack.current = redoStack.current.filter((e) => e.noteId !== id);
+    setCanUndo(undoStack.current.length > 0);
+    setCanRedo(redoStack.current.length > 0);
+    unflushedNotes.current.delete(id);
+    trace("applyExternalNote", id);
+    noteDataRef.current = { ...noteDataRef.current, [id]: note };
+    setNoteData((prev) => ({ ...prev, [id]: note }));
+  };
+
   const applyCommit = (updater, recordHistory) => {
     if (recordHistory && !isUndoRedo.current) pushHistory();
     textOnlyEdit.current = false;
@@ -257,6 +288,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     redo,
     commitNoteData,
     adoptNoteData,
+    applyExternalNote,
     remapNoteFolders,
     commitTextChange,
     pushHistory,
