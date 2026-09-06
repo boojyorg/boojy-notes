@@ -19,7 +19,7 @@ the map: stack, layout, the invariants, the editor traps, and where the detailed
 | --- | --- |
 | What is Boojy Notes, how do I run it | `README.md` |
 | What may exist: blocks, syntax support levels, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
-| What is left to do, what is known-broken | `docs/BACKLOG.md` |
+| Direction, Beta requirements and candidates, what is known-broken, what comes after Beta | `docs/BACKLOG.md` |
 | What shipped, and what was removed | `CHANGELOG.md` |
 | How the UI is built, and which oddities are deliberate | `.claude/rules/ui-chrome-and-theme.md` |
 | CI, build, release, dependency policy | `.claude/rules/ci-build-deploy.md` |
@@ -156,8 +156,13 @@ Each of these has caused a real bug. Read before touching the editor.
 
 The version source is `package.json` (Settings imports it; never hardcode a version). Pushing a
 `v*` tag builds the installers; pushing `master` deploys the web build. Mechanics, the draft
-release trap and the dependency policy: CI rule. On release also update the Notes row in the
-suite root's `README.md` and `VISION.md`, then run `/suite-sync`.
+release trap and the dependency policy: CI rule.
+
+Every release runs the docs pass: shipped items leave `docs/BACKLOG.md` and are recorded in
+`CHANGELOG.md` (the backlog never lists shipped work); the README Status paragraph and the
+backlog's Direction section are re-read against what actually shipped; the backlog's
+last-reviewed date is bumped; the Notes row in the suite root's `README.md` and `VISION.md` is
+updated; then run `/suite-sync`.
 
 ## Conventions
 
@@ -174,8 +179,11 @@ suite root's `README.md` and `VISION.md`, then run `/suite-sync`.
 ## Docs and Claude Code
 
 One planning file (`docs/BACKLOG.md`) and one history file (`CHANGELOG.md`); there is
-deliberately no roadmap, feature tracker or current-target file. A change to UI behaviour
-updates the UI rule in the same commit; a release bumps the version and `CHANGELOG.md`.
+deliberately no roadmap, feature tracker or current-target file. The backlog holds the
+direction and the post-Beta ideas too, in tiers (release requirements, Beta candidates,
+future), so that no separate direction document is needed; a preference recorded there is not
+a task. A change to UI behaviour updates the UI rule in the same commit; a release bumps the
+version and `CHANGELOG.md` and runs the docs pass above.
 
 `.claude/settings.json` runs `.claude/hooks/post-edit-validation.sh` after every
 `.js/.jsx/.ts/.tsx` edit: Biome with fixes, typecheck for `.ts`/`.tsx`, then `vitest related`.

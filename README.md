@@ -24,7 +24,7 @@ to use on a folder you care about. The full contract is in
 - Slash commands and typed Markdown shortcuts (`#`, `-`, `>` and a space, or a code fence)
 - Notes are `.md` files in a folder you choose, including an existing Obsidian vault
 - Wikilinks, tags, callouts and frontmatter understood without extra chrome
-- Folder tree and search, sorted by most recent or by name
+- Folder tree sorted by most recent or by name, and a search palette (Cmd+K)
 - One note open at a time
 - Light, Dark and System appearance
 
@@ -71,6 +71,10 @@ Boojy Notes is preparing for its first desktop Beta. Beta starts when the local 
 feels complete enough for ordinary daily use that I no longer feel limited by missing core
 features. It isn't there yet. I use it every day, and what I bump into decides what gets
 finished next.
+
+Beta is desktop-first: local files, no account, no sync. Web, mobile and a free sync service
+are future work, after the desktop release. The direction, what is being considered for Beta
+and what is deliberately not being built are in [docs/BACKLOG.md](docs/BACKLOG.md).
 
 Several things were built and then removed to keep the product small: cloud sync and sign-in,
 PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in
