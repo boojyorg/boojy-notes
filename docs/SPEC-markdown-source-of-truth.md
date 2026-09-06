@@ -124,6 +124,12 @@ test rather than letting it pass as if lossless:
   first save writes the separator blank before the `---`, so the file comes to mean what the
   editor showed. Whether to read the tight form as a heading instead is an open decision in
   `docs/BACKLOG.md`.
+- **An empty bullet tight under a paragraph line** — `hello` / `- ` is the same setext underline
+  to a conventional reader (a lone `-` qualifies as `---` does), so an empty item left directly
+  under a paragraph means a heading outside and an empty item inside. Unlike the divider, no
+  blank is written for it: the bytes stay the file's own and the meaning outside stays a
+  heading. The same open decision; on record as a second `it.fails` in
+  `tests/utils/markdownInterop.test.js`.
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
 
