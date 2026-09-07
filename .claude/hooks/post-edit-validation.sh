@@ -17,6 +17,8 @@ TS_REGEX='\.(ts|tsx)$'           # which edits additionally run typecheck
 # -------------------------------------------------------------------------
 
 JSON_INPUT=$(cat)
+LOG=$(mktemp "${TMPDIR:-/tmp}/boojy-post-edit.XXXXXX")
+trap 'rm -f "$LOG"' EXIT
 FILE_PATH=$(echo "$JSON_INPUT" | jq -r '.tool_input.file_path // .tool_input.path // ""')
 
 if [[ "$FILE_PATH" =~ $EXT_REGEX ]]; then
@@ -26,35 +28,29 @@ if [[ "$FILE_PATH" =~ $EXT_REGEX ]]; then
 
     # ---- Gate 1: Biome format + lint + safe fixes (file-scoped) ----
     echo "▶️ Running Biome check..."
-    if ! pnpm exec biome check --write "$FILE_PATH" > .lint_errors.log 2>&1; then
+    if ! pnpm exec biome check --write "$FILE_PATH" > "$LOG" 2>&1; then
         echo "❌ Validation Failed: formatting/lint errors found." >&2
-        cat .lint_errors.log >&2
-        rm -f .lint_errors.log
+        cat "$LOG" >&2
         exit 1
     fi
-    rm -f .lint_errors.log
 
     # ---- Gate 2: TypeScript typecheck (project-wide, only for .ts/.tsx edits) ----
     if [[ "$FILE_PATH" =~ $TS_REGEX ]]; then
         echo "▶️ Running TypeScript typecheck..."
-        if ! pnpm typecheck > .ts_errors.log 2>&1; then
+        if ! pnpm typecheck > "$LOG" 2>&1; then
             echo "❌ Validation Failed: TypeScript compilation errors found." >&2
-            cat .ts_errors.log >&2
-            rm -f .ts_errors.log
-            exit 1
+            cat "$LOG" >&2
+                exit 1
         fi
-        rm -f .ts_errors.log
     fi
 
     # ---- Gate 3: Vitest related suite (file-scoped) ----
     echo "▶️ Executing related Vitest suite..."
-    if ! pnpm exec vitest related "$FILE_PATH" --run --passWithNoTests > .test_errors.log 2>&1; then
+    if ! pnpm exec vitest related "$FILE_PATH" --run --passWithNoTests > "$LOG" 2>&1; then
         echo "❌ Validation Failed: dependent unit tests failed." >&2
-        cat .test_errors.log >&2
-        rm -f .test_errors.log
+        cat "$LOG" >&2
         exit 1
     fi
-    rm -f .test_errors.log
 
     echo "✅ Validation Passed: formatted, types verified, tests green."
 fi

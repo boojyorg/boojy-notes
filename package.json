@@ -14,20 +14,13 @@
     "build:electron": "node -e \"fs.rmSync('dist-electron',{recursive:true,force:true})\" && vite build && electron-builder",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "biome lint .",
-    "lint:fix": "biome lint --write .",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:electron": "vite build && playwright test -c playwright.electron.config.ts --project hidden",
-    "test:electron:headed": "vite build && BOOJY_TEST_HEADED=1 playwright test -c playwright.electron.config.ts --project headed"
+    "test:electron": "vite build && playwright test -c playwright.electron.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -58,7 +51,7 @@
     "vitest": "^4.1.8"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -89,7 +82,6 @@
       "dist-electron/**/*",
       "assets/boojy-notes-app-icon.png"
     ],
-    "npmRebuild": true,
     "win": {
       "target": [
         "nsis"
@@ -102,12 +94,6 @@
       ],
       "icon": "assets/boojy-notes-app-icon.png",
       "category": "public.app-category.productivity"
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "icon": "assets/boojy-notes-app-icon.png"
     }
   }
 }

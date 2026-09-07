@@ -54,7 +54,6 @@ handy for tests, and its notes live in browser storage rather than on disk.
 | `test:coverage`        | Unit tests with the CI coverage floor                       |
 | `test:e2e`             | Web end-to-end tests (Playwright)                           |
 | `test:electron`        | Real desktop app against a temp vault                       |
-| `test:electron:headed` | The few desktop tests that need real focus or the clipboard |
 | `check`                | Biome lint + format in one pass                             |
 | `typecheck`            | TypeScript check (`tsc --noEmit`)                           |
 

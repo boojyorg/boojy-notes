@@ -50,8 +50,11 @@ change needs; the incidents behind them are in git.
   two-worker change, 422 s), with the Electron job the critical path at ~190 s, checks ~74 s,
   web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
-  `pnpm test`.** Coverage thresholds in `vitest.config.js` are a floor just below actuals;
-  ratchet up, never lower to pass. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
+  `pnpm test`.** Coverage is measured against every file under `src/` and `electron/`
+  (`coverage.include`, 2026-09-07), whether or not a test imports it; before that, Vitest 4
+  counted only files the tests happened to load, and a quarter of the source was missing from
+  the denominator. The thresholds in `vitest.config.js` are a floor just below those honest
+  actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
   also gates every run; it is the live security net.
 - **The real-Electron suite runs under `xvfb-run` in its own job**, with no Playwright browser
   download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
@@ -65,7 +68,9 @@ change needs; the incidents behind them are in git.
   Don't remove the global setup when touching the workers. Its assertions are about files on disk,
   so Linux is a fair proxy for the renderer and main-process logic; anything that depends on the
   OS Trash or native dialogs is macOS-only and says so in the spec. `--no-sandbox` is passed only
-  when `CI` is set.
+  when `CI` is set. The window is always hidden (`BOOJY_TEST_HEADED=1` shows it for watching a
+  run); the `headed` project and `pnpm test:electron:headed` were removed on 2026-09-07 because
+  the bucket never held a spec and the script exited 1 with "No tests found".
 
 ## pnpm and Electron
 
@@ -81,7 +86,8 @@ change needs; the incidents behind them are in git.
   exercise it.
 - **The app icon is `assets/boojy-notes-app-icon.png`**: 1024px, transparent corners, the
   rounded square at 824px on Apple's icon grid so the Dock draws it the size of every other app.
-  All three electron-builder targets and the `BrowserWindow` icon in `main.js` point at it, and
+  Both electron-builder targets (macOS DMG, Windows NSIS; the unused Linux block went on
+  2026-09-07 with the default-valued `npmRebuild`) and the `BrowserWindow` icon in `main.js` point at it, and
   electron-builder makes the `.icns` itself. It is generated, never hand-edited, from
   `assets/boojy-notes-app-icon-source.png`, the full-bleed 1071px export of the artwork:
   `magick <source> -resize 824x824 -background none -gravity center -extent 1024x1024 <icon>`.
