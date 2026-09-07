@@ -39,6 +39,15 @@ export const CHROME_BTN = 32;
  * the third light sat on the wordmark (measured 2026-09-05).
  */
 export const MAC_TRAFFIC_INSET = 86;
+/**
+ * Where the collapsed toggle's box sits and ends. Anything else on that row
+ * while the sidebar is hidden (the note label, EditorArea) starts at
+ * COLLAPSED_TOGGLE_CLEARANCE or later: the toggle's right edge plus 8px of
+ * air. It was measured from CHROME_INSET alone, so on macOS, where the toggle
+ * clears the traffic lights, it sat on the first letters of the note's name.
+ */
+export const COLLAPSED_TOGGLE_LEFT = isElectronMac ? MAC_TRAFFIC_INSET : CHROME_INSET;
+export const COLLAPSED_TOGGLE_CLEARANCE = COLLAPSED_TOGGLE_LEFT + CHROME_BTN + 8;
 /** Height of the collapsed-state drag strip — stops above the note label's
     line box (top ≈16px) so the strip never steals its clicks. */
 const DRAG_STRIP_H = 14;
@@ -116,7 +125,7 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote }) {
             top: CHROME_TOP,
             // Clear the traffic lights, which hold the viewport's top-left
             // corner on macOS once the sidebar (and its header) is hidden.
-            left: isElectronMac ? MAC_TRAFFIC_INSET : CHROME_INSET,
+            left: COLLAPSED_TOGGLE_LEFT,
             zIndex: Z.TOOLBAR,
           }}
         >

@@ -37,7 +37,10 @@ right; naming greys by darkness is what makes every region read as a separate bo
 | `BG.divider` | border, ink at 8% |
 
 Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground;
-`ACCENT.onAccent` is for anything sitting on an accent fill.
+`ACCENT.onAccent` is for anything sitting on an accent fill (the Updates "Restart & Update"
+button and the auto-update switch's on-state knob were hardcoded white until 2026-09-07,
+unreadable on Dark's pale accent; the off-state knob is `TEXT.secondary`, since a white dot on
+the 6% track was invisible in Light).
 
 - **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
   hover *and* select to `BG.hover`, so hover previews selection. Every new hover state is one
@@ -55,7 +58,7 @@ Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on
 Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use plain black
 alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme;
 `Toast` and the danger `ConfirmDialog` keep `#fff` on semantic status colours, deliberately
-outside the accent scope.
+outside the accent scope; `UpdatesTab` no longer does.
 
 ## Scrollbars
 
@@ -185,6 +188,12 @@ mixed sizes and strokes is what made the UI read as assembled.
 **The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
 opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
 renders it fixed at the viewport's top-left. Both use the exported `ChromeButton`.
+**The note label steps around the collapsed toggle by `COLLAPSED_TOGGLE_CLEARANCE`**
+(`EditorChrome`: the toggle's left, `MAC_TRAFFIC_INSET` or `CHROME_INSET`, plus its box plus
+8px of air), and only while the sidebar is hidden; the body column never moves. The reserve
+was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first letters of
+the name at every width (2026-09-07). Keep the clearance next to the toggle's position; the
+two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 
 ## Sidebar
 
@@ -197,9 +206,18 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   the sidebar's row is for finding and hiding, the editor's for making and managing, and the
   button is still there with the sidebar collapsed. Cmd+N is unchanged. The `New Note` and
   `New Folder` tree rows are mobile-only.
-- **Wordmark at 18px, drawn at 0.92 opacity** so its pure black lands near `TEXT.primary`; at
-  20px full black it out-shouted the note's H1. A re-drawn asset in the ink colour is the
-  proper fix. The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
+- **Wordmark at 18px, one asset per theme, drawn in the theme's ink** (`Wordmark.tsx`,
+  2026-09-07; mobile draws the same component at 30px). At 20px it out-shouted the note's
+  H1. The artwork is two colours, the cyan N (the same in both themes) and "otes" in
+  `TEXT.primary`; before this the black master was drawn in both themes at 0.92 opacity, and
+  in Dark "otes" was near-black on the dark ground. A CSS `invert()` was rejected because it
+  would also turn the N into its complement. The master `assets/boojy-notes-wordmark.png` is
+  never drawn; the two drawn files are generated from it, alpha untouched, and regenerated
+  whenever a theme's `TEXT.primary` moves:
+  `magick assets/boojy-notes-wordmark.png \( +clone -alpha extract \) \( -clone 0 -alpha off
+  -fill "<TEXT.primary>" -opaque black \) -delete 0 +swap -alpha off -compose CopyOpacity
+  -composite assets/boojy-notes-wordmark-<light|dark>.png`.
+  The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
   vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
 - **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through
   its children (`SPINE + SPINE_ICON / 2 + depth × 20`). In one mixed tree, root notes have no

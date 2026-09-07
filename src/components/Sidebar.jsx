@@ -17,7 +17,7 @@ import { CHROME_TOP, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./Edito
 import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
-import boojyWordmark from "/assets/boojy-notes-wordmark.png";
+import Wordmark from "./Wordmark";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -816,15 +816,9 @@ const Sidebar = memo(function Sidebar({
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             {/* 18px: a label, not a headline — at 20 it out-shouted the note's H1.
-                LIVE TRY 2026-09-05: the asset is pure black, the heaviest ink in
-                the window; 0.92 lands it near TEXT.primary (#14110F). A re-drawn
-                asset in the ink colour is the real fix if this stays. */}
-            <img
-              src={boojyWordmark}
-              alt=""
-              style={{ height: 18, opacity: 0.92 }}
-              draggable="false"
-            />
+                Drawn in the theme's ink (Wordmark picks the per-theme asset);
+                the 0.92-opacity stand-in for a black asset is gone with it. */}
+            <Wordmark height={18} />
           </button>
           {/* Window-level controls live in the chrome row with the traffic
               lights: Search and the panel toggle. The vault header below is

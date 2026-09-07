@@ -21,7 +21,7 @@ interface UpdateStatus {
 
 interface UpdatesTheme {
   TEXT: { primary: string; secondary: string; muted: string };
-  ACCENT: { primary: string };
+  ACCENT: { primary: string; onAccent: string };
   SEMANTIC: { error: string };
   overlay: (alpha: number) => string;
 }
@@ -96,7 +96,10 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
               width: 14,
               height: 14,
               borderRadius: "50%",
-              background: "#fff",
+              // On the accent fill the knob takes the accent's own ink; off,
+              // a secondary-ink dot on the neutral track. A white knob was
+              // invisible on Light's pale off-track and on Dark's pale accent.
+              background: autoUpdateEnabled ? ACCENT.onAccent : TEXT.secondary,
               position: "absolute",
               top: 3,
               left: autoUpdateEnabled ? 19 : 3,
@@ -161,7 +164,8 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
               style={{
                 ...buttonBase,
                 background: accentColor,
-                color: "#fff",
+                // Dark's accent is pale; white on it was about 1.7:1.
+                color: ACCENT.onAccent,
                 padding: `${spacing.xs}px ${spacing.md}px`,
                 fontSize: fontSize.sm,
               }}

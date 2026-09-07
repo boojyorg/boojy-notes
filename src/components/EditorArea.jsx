@@ -5,7 +5,7 @@ import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { CHROME_INSET, CHROME_TOP, CHROME_BTN } from "./EditorChrome";
+import { CHROME_TOP, CHROME_BTN, COLLAPSED_TOGGLE_CLEARANCE } from "./EditorChrome";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
@@ -55,11 +55,13 @@ const LABEL_RIGHT_RESERVE = 48;
 const LABEL_PAD_X = 5;
 /**
  * Kept clear on the label's LEFT, but only while the panel toggle is pinned to
- * the viewport corner. At full padding the label starts well clear of it; once
- * the gutters tighten (see below) the two would collide. Measured to the hover
- * pill rather than the text, so what you see keeps 8px of air from the toggle.
+ * the viewport corner. Measured to the hover pill rather than the text, so what
+ * you see keeps the chrome's 8px of air from the toggle. The clearance comes
+ * from EditorChrome, which knows where the toggle is: on macOS it sits right
+ * of the traffic lights, and a reserve counted from the web inset left it on
+ * the first letters of the name at every window width (2026-09-07).
  */
-const LABEL_LEFT_RESERVE = CHROME_INSET + CHROME_BTN + 8 + LABEL_PAD_X;
+const LABEL_LEFT_RESERVE = COLLAPSED_TOGGLE_CLEARANCE + LABEL_PAD_X;
 
 /*
  * The writing column is fluid, because the window is.
