@@ -3,6 +3,7 @@ import { trace } from "./trace.js";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
+import { writeFileAtomic } from "./atomicWrite.js";
 import {
   applyEol,
   blocksToMarkdown,
@@ -84,6 +85,31 @@ function realBasename(filePath) {
 }
 
 /**
+ * The absolute path `candidate` names if it lies in the vault (the root
+ * itself included), else null. Every IPC handler that takes a path from the
+ * renderer goes through this: a note's file block can name any path, and the
+ * handlers hand paths to `shell`, the clipboard and `stat`. Lexical, like the
+ * `boojy-att` protocol's check; a symlink inside the vault is the user's own.
+ */
+function insideVault(notesDir, candidate) {
+  if (typeof candidate !== "string" || candidate === "") return null;
+  const root = path.resolve(notesDir);
+  const abs = path.resolve(root, candidate);
+  return abs === root || abs.startsWith(root + path.sep) ? abs : null;
+}
+
+/**
+ * A vault that is not there is not recreated. The default vault is made by
+ * `getNotesDir` the first time it is asked for; a vault the user chose that
+ * is missing (an unmounted volume, a folder moved in Finder) must not come
+ * back as an empty directory on the boot disk with new notes quietly going
+ * into it. A write refuses instead, and the renderer's save toast says so.
+ */
+function assertVaultPresent(notesDir) {
+  if (!fs.existsSync(notesDir)) throw new Error(`The notes folder is missing: ${notesDir}`);
+}
+
+/**
  * Where a note's file goes on this write, and whether the write is a rename
  * of the note's own file to a name the volume considers the same (a
  * case-only or Unicode-normalisation change). Pure decision; no writes.
@@ -93,39 +119,6 @@ function resolveWritePath(targetPath, existingPath) {
   if (existingPath && fs.existsSync(targetPath) && isSameFile(existingPath, targetPath))
     return { finalPath: targetPath, sameFile: true };
   return { finalPath: ensureUniqueFilePath(targetPath, existingPath), sameFile: false };
-}
-
-/**
- * Crash-safe write: write to a temp file, fsync it, then rename over the
- * target. Rename is atomic on the same volume, so a crash mid-write leaves the
- * previous file intact instead of a truncated one. The fsync before the rename
- * matters for power loss: without it the rename can hit the journal while the
- * data is still only in the page cache, leaving the target pointing at zeroed
- * blocks. The dot-prefix keeps the temp file invisible to the chokidar watcher
- * and the vault walk.
- */
-function writeFileAtomic(filePath, data) {
-  const tmpPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.tmp`);
-  const fd = fs.openSync(tmpPath, "w");
-  try {
-    fs.writeSync(fd, data, null, "utf-8");
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-  fs.renameSync(tmpPath, filePath);
-  // Persist the directory entry too, so the rename itself survives power loss.
-  // Best-effort: Windows cannot fsync a directory handle opened this way.
-  try {
-    const dirFd = fs.openSync(path.dirname(filePath), "r");
-    try {
-      fs.fsyncSync(dirFd);
-    } finally {
-      fs.closeSync(dirFd);
-    }
-  } catch {
-    /* directory fsync unsupported on this platform */
-  }
 }
 
 // ─── Note ID index ───
@@ -293,11 +286,7 @@ function readAllNotes(notesDir) {
 function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
   ipcMain.handle("get-notes-dir", () => getNotesDir());
 
-  ipcMain.handle("read-all-notes", () => {
-    const notesDir = getNotesDir();
-    fs.mkdirSync(notesDir, { recursive: true });
-    return readAllNotes(notesDir);
-  });
+  ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
 
   // Writes the note and answers with the path and basename the file actually
   // got. The requested title may not survive the filesystem — a namesake
@@ -308,6 +297,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
   // second-guesses it.
   ipcMain.handle("write-note", (_event, note) => {
     const notesDir = getNotesDir();
+    assertVaultPresent(notesDir);
     const targetPath = noteToFilePath(note, notesDir);
     const traceStart = Date.now();
     trace(
@@ -344,21 +334,15 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     writeFileAtomic(finalPath, bodyMd);
 
     // On rename, remove the old file only after the new one is safely on disk —
-    // a crash in between leaves a duplicate (recoverable), never a missing note
+    // a crash in between leaves a duplicate (recoverable), never a missing note.
+    // The directory it leaves stays, however empty: a folder is a directory
+    // the user made, and only an explicit folder removal takes one away
+    // (decision D8, 2026-09-07). Until then the emptied parent was removed
+    // here, so moving the last note out of a folder deleted the folder.
     if (existingPath && existingPath !== finalPath && !sameFile) {
       suppressWatcher(existingPath);
       try {
         fs.unlinkSync(existingPath);
-        // Clean empty parent dirs
-        const oldDir = path.dirname(existingPath);
-        if (oldDir !== notesDir) {
-          try {
-            const entries = fs.readdirSync(oldDir);
-            if (entries.length === 0) fs.rmdirSync(oldDir);
-          } catch {
-            // dir not empty or already removed
-          }
-        }
       } catch {
         // old file already gone
       }
@@ -382,6 +366,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
   ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
+    assertVaultPresent(notesDir);
     const attDir = path.join(notesDir, "attachments");
     fs.mkdirSync(attDir, { recursive: true });
     const safeName =
@@ -393,6 +378,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
   ipcMain.handle("save-attachment", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
+    assertVaultPresent(notesDir);
     const attDir = path.join(notesDir, "attachments");
     fs.mkdirSync(attDir, { recursive: true });
     const safeName =
@@ -405,38 +391,36 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
   ipcMain.handle("resolve-attachment", (_event, filename) => {
     const notesDir = getNotesDir();
-    const candidates = [
-      path.join(notesDir, "attachments", filename),
-      path.join(notesDir, filename),
-    ];
+    if (typeof filename !== "string") return null;
+    const candidates = [path.join("attachments", filename), filename];
     const legacyAttDir = path.join(notesDir, ".attachments");
     if (fs.existsSync(legacyAttDir)) {
       try {
         for (const sub of fs.readdirSync(legacyAttDir, { withFileTypes: true })) {
-          if (sub.isDirectory()) {
-            candidates.push(path.join(legacyAttDir, sub.name, filename));
-          }
+          if (sub.isDirectory()) candidates.push(path.join(".attachments", sub.name, filename));
         }
       } catch {
         /* ignore */
       }
     }
     for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) return candidate;
+      const abs = insideVault(notesDir, candidate);
+      if (abs && fs.existsSync(abs)) return abs;
     }
     return null;
   });
 
+  // The two `shell` handlers take absolute paths (a resolved attachment, a
+  // note's file, the vault itself for Reveal in Finder) and open nothing
+  // outside the vault.
   ipcMain.handle("open-path", async (_event, absolutePath) => {
-    if (typeof absolutePath === "string" && fs.existsSync(absolutePath)) {
-      await shell.openPath(absolutePath);
-    }
+    const abs = insideVault(getNotesDir(), absolutePath);
+    if (abs && fs.existsSync(abs)) await shell.openPath(abs);
   });
 
   ipcMain.handle("show-item-in-folder", (_event, absolutePath) => {
-    if (typeof absolutePath === "string" && fs.existsSync(absolutePath)) {
-      shell.showItemInFolder(absolutePath);
-    }
+    const abs = insideVault(getNotesDir(), absolutePath);
+    if (abs && fs.existsSync(abs)) shell.showItemInFolder(abs);
   });
 
   ipcMain.handle("pick-file", async () => {
@@ -461,13 +445,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
   ipcMain.handle("get-file-size", (_event, filename) => {
     const notesDir = getNotesDir();
-    const candidates = [
-      path.join(notesDir, "attachments", filename),
-      path.join(notesDir, filename),
-    ];
-    for (const candidate of candidates) {
+    if (typeof filename !== "string") return null;
+    for (const candidate of [path.join("attachments", filename), filename]) {
+      const abs = insideVault(notesDir, candidate);
+      if (!abs) continue;
       try {
-        return fs.statSync(candidate).size;
+        return fs.statSync(abs).size;
       } catch {
         /* try next */
       }
@@ -477,8 +460,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 
   ipcMain.handle("copy-image-to-clipboard", (_event, filename) => {
     const notesDir = getNotesDir();
-    const absPath = path.join(notesDir, "attachments", filename);
-    if (!fs.existsSync(absPath)) return false;
+    if (typeof filename !== "string") return false;
+    const absPath = insideVault(notesDir, path.join("attachments", filename));
+    if (!absPath || !fs.existsSync(absPath)) return false;
     try {
       const img = nativeImage.createFromPath(absPath);
       clipboard.writeImage(img);
@@ -509,6 +493,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
 }
 
 export {
+  writeFileAtomic,
+  insideVault,
   sanitizeFilename,
   ensureUniqueFilePath,
   resolveWritePath,

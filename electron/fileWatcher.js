@@ -48,8 +48,8 @@ let foldersChangedTimer = null;
  * Sends `file-changed` / `file-deleted` events to the renderer.
  */
 function startWatcher(getNotesDir, getMainWindow) {
+  // A missing vault is not made here: see `getNotesDir` in settingsManager.
   const notesDir = getNotesDir();
-  fs.mkdirSync(notesDir, { recursive: true });
 
   if (watcher) watcher.close();
   // Pending suppressions belong to the previous watch session; carrying one
@@ -59,7 +59,7 @@ function startWatcher(getNotesDir, getMainWindow) {
   watcher = watch(notesDir, {
     ignoreInitial: true,
     awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 50 },
-    ignored: [/(^|[/\\])\./, /\.boojy-index\.json$/, /[/\\]attachments[/\\]/],
+    ignored: (filePath) => isIgnoredPath(notesDir, filePath),
   });
 
   if (traceEnabled) {
@@ -132,6 +132,21 @@ function startWatcher(getNotesDir, getMainWindow) {
   };
   watcher.on("addDir", onDirEvent);
   watcher.on("unlinkDir", onDirEvent);
+}
+
+/**
+ * What the watcher never reports, judged on the path *inside* the vault:
+ * dot-entries at any depth, the attachment store, and the pre-v0.5.0 in-vault
+ * index. The vault root itself is never a match, so a vault that lives under
+ * a dot-directory (`~/.notes`) is watched like any other; the old regex ran
+ * on the absolute path, root included, and such a vault got no watcher and no
+ * error. Mirrors the note walk's skip rule in `readAllNotes`.
+ */
+function isIgnoredPath(notesDir, filePath) {
+  const rel = path.relative(notesDir, filePath);
+  if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) return false;
+  const segments = rel.split(/[/\\]/);
+  return segments.some((s) => s.startsWith(".") || s === "attachments");
 }
 
 /**
@@ -257,6 +272,7 @@ function closeWatcher() {
 }
 
 export {
+  isIgnoredPath,
   startWatcher,
   suppressWatcher,
   suppressWatcherTree,

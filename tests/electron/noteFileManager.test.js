@@ -314,3 +314,96 @@ describe("write-note — the returned title is the basename on disk", () => {
     expect(fs.readFileSync(path.join(notesDir, "Meeting.md"), "utf-8")).toBe("mine");
   });
 });
+
+// ─── Electron hygiene (2026-09-07): folders survive, the vault is never made twice, paths stay inside ───
+
+describe("IPC handlers — folders, a missing vault, and path containment", () => {
+  let handlers;
+  let shell;
+
+  beforeEach(async () => {
+    const electron = await import("electron");
+    shell = electron.shell;
+    const { registerNoteFileIPC } = await import("../../electron/noteFileManager.js");
+    registerNoteFileIPC(
+      () => null,
+      () => notesDir,
+      () => {},
+    );
+    // The most recent registration wins; earlier ones closed over other vaults.
+    handlers = Object.fromEntries(
+      electron.ipcMain.handle.mock.calls.map(([channel, fn]) => [channel, fn]),
+    );
+    readAllNotes(notesDir);
+  });
+
+  const note = (id, title, folder = null) => ({
+    id,
+    title,
+    folder,
+    content: { title, blocks: [{ id: "b1", type: "p", text: "body" }] },
+  });
+
+  // Decision D8 (2026-09-07): a folder is a directory the user made; only an
+  // explicit folder removal takes one away. Until this the write path removed
+  // the emptied parent, so moving the last note out of a folder deleted it.
+  it("moving the last note out of a folder keeps the folder", () => {
+    handlers["write-note"](null, note("n1", "Plan", "Work"));
+    expect(fs.existsSync(path.join(notesDir, "Work", "Plan.md"))).toBe(true);
+
+    handlers["write-note"](null, note("n1", "Plan", null));
+
+    expect(fs.existsSync(path.join(notesDir, "Plan.md"))).toBe(true);
+    expect(fs.existsSync(path.join(notesDir, "Work", "Plan.md"))).toBe(false);
+    expect(fs.statSync(path.join(notesDir, "Work")).isDirectory()).toBe(true);
+  });
+
+  it("refuses to write into a vault that is missing, and makes nothing", () => {
+    fs.rmSync(notesDir, { recursive: true, force: true });
+
+    expect(() => handlers["write-note"](null, note("n2", "New"))).toThrow(/missing/);
+    expect(() => handlers["save-image"](null, { fileName: "a.png", dataBase64: "AA==" })).toThrow(
+      /missing/,
+    );
+    expect(handlers["read-all-notes"]()).toEqual({});
+
+    expect(fs.existsSync(notesDir)).toBe(false);
+  });
+
+  it("resolves attachments only inside the vault", () => {
+    const outside = path.join(path.dirname(notesDir), `${path.basename(notesDir)}-outside.png`);
+    fs.writeFileSync(outside, "x");
+    fs.mkdirSync(path.join(notesDir, "attachments"));
+    fs.writeFileSync(path.join(notesDir, "attachments", "in.png"), "x");
+    try {
+      expect(handlers["resolve-attachment"](null, "in.png")).toBe(
+        path.join(notesDir, "attachments", "in.png"),
+      );
+      expect(handlers["get-file-size"](null, "in.png")).toBe(1);
+      const traversal = `../${path.basename(outside)}`;
+      expect(handlers["resolve-attachment"](null, traversal)).toBeNull();
+      expect(handlers["get-file-size"](null, traversal)).toBeNull();
+      expect(handlers["copy-image-to-clipboard"](null, `../${traversal}`)).toBe(false);
+      expect(handlers["resolve-attachment"](null, outside)).toBeNull();
+    } finally {
+      fs.rmSync(outside, { force: true });
+    }
+  });
+
+  it("opens and reveals only paths inside the vault, the vault root included", async () => {
+    shell.openPath = vi.fn(async () => "");
+    shell.showItemInFolder = vi.fn();
+    const inside = path.join(notesDir, "Note.md");
+    fs.writeFileSync(inside, "x");
+    const outside = path.dirname(notesDir); // exists, and is not the vault
+
+    await handlers["open-path"](null, inside);
+    handlers["show-item-in-folder"](null, notesDir);
+    await handlers["open-path"](null, outside);
+    handlers["show-item-in-folder"](null, outside);
+    await handlers["open-path"](null, path.join(notesDir, "..", path.basename(outside)));
+
+    expect(shell.openPath.mock.calls).toEqual([[inside]]);
+    expect(shell.showItemInFolder.mock.calls).toEqual([[notesDir]]);
+  });
+});
