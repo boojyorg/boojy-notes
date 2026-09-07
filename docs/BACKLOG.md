@@ -1,13 +1,15 @@
 # Boojy Notes — Backlog
 
 Direction, what is left to do and what is known to be broken, checked against master on
-2026-09-06. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
+2026-09-07. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
 daily-drive Boojy Notes, and let observed friction decide what deserves to exist next. Nothing
 is added because it sounds plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-06.
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-07,
+closing out the whole-repo review of 2026-09-06 (its fixes are in `CHANGELOG.md` Unreleased; the
+residue is here).
 
 ## Direction
 
@@ -32,6 +34,10 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   or share action) runs the same creation; there is no separate quick-note type.
 - A small interface can still carry power through search, context menus and shortcuts. The
   subtraction pass of 2026-09-05 (`CHANGELOG.md`, Removed) is the standard for what stays.
+- **The feature filter is three questions.** Does it make everyday writing easier (the Apple
+  Notes half)? Does it give more ownership of the files (the Obsidian half)? Does it make
+  editing more fluid (the Notion half)? A feature that answers none of them does not belong,
+  however plausible it sounds.
 
 ## Open decisions
 
@@ -72,11 +78,19 @@ found on the way gate it as well, without needing a line here.
 - [ ] **Copy pass on Quote and Checklist.** The rest of the subtraction pass landed on
   2026-09-05 (`CHANGELOG.md`, Removed).
 - [ ] **Preservation blockers** — the two first-edit mutations marked under Data safety below.
-- [ ] **Visual polish and a Windows smoke test.**
+- [ ] **Visual polish and a Windows smoke test.** Before Windows testers: a
+  `requestSingleInstanceLock` in `main.js` (a second launch opens a second instance today, which
+  matters more on Windows than on macOS).
 - [ ] **Publish the tested build.** Testers and the website only ever see the last *published*
-  release, never the daily-driver build, so a Beta that lives only in `/Applications` is not
-  released. `CHANGELOG.md` Unreleased holds the notes; the release runs the docs pass in
-  `AGENTS.md` and the draft-release steps in the CI rule.
+  release (v0.5.0), never the daily-driver build, so a Beta that lives only in `/Applications`
+  is not released. `CHANGELOG.md` holds the notes (Unreleased plus the two unpublished 0.6.x
+  sections); the release runs the docs pass in `AGENTS.md` and the draft-release steps in the
+  CI rule. Two decisions wait on it, deliberately deferred until a build is worth publishing:
+  **sign macOS releases** (five secrets, then re-measure the release job's cap; until then every
+  published macOS build is unsigned and Settings → Updates cannot update it, so the alternative
+  is to say so in the release notes), and the **release path** (pre-create the release before
+  the matrix and auto-publish when both jobs pass, retiring the manual draft merge; and whether
+  a tag may be cut from a commit that never passed CI).
 
 ## Beta: candidates
 
@@ -155,8 +169,10 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   creates a real note: the one inconsistency in the New Note workflow, to be resolved with the
   focus and empty-file questions above. Prior art: at v0.2.0 an empty note reached disk only
   when something was typed.
-- [ ] **A new folder's name is not selected** — the inline input autofocuses but does not select
-  "Untitled Folder", so typing appends (`Sidebar.jsx`); note rows do select.
+- [ ] **A folder's inline rename does not select the name** — New folder and a double-click
+  rename on a folder both open the input with the caret at the end, so typing appends
+  (`Sidebar.jsx`); note rows select the name Finder-style, and the UI rule records that as the
+  intent for both.
 - [ ] **No context menu on plain text** — the editor's right-click handles links only and Electron
   supplies no default menu, so cut, copy and paste have no menu on desktop (`EditorArea.jsx`).
 - [ ] **Rich paste is flattened** — paste reads `text/plain` only, so links and formatting from a
@@ -164,11 +180,26 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
   the third attempt.
 - [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
+- [ ] **Undo snapshots the open note whatever the commit touched** (`useHistory.js`
+  `pushHistory`): a sidebar rename of another note pushes a no-op entry, so Cmd+Z "does
+  nothing" once; deleting the open note and undoing within the flush debounce restores it in
+  memory while the flush trashes the file. Decision to make: undo scope is the open note's text
+  and structure only, skipping commits that do not change it and excluding delete (about ten
+  lines), or per-note entries.
+- [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
+  up to ~800 ms of keystrokes, the text-commit and write debounces.
+- [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`
+  has no left boundary, so `a#b` and `example.com/page#top` produce tags `b` and `top`.
+- **Judge live, not by reasoning:** Shift+Enter twice (`a\n\n` inside one block) reads back as
+  `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
+  after it has been felt.
 
 ### Data safety / reliability
 
 **First-edit mutations.** Fine on open; the first edit of an affected note rewrites third-party
-content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list; these two block Beta.
+content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already
+fail; tilde fences are not in it because their fixture round-trips byte-exact (the damage is
+on interaction). These two block Beta.
 
 - [ ] **Tilde fences (`~~~`) parse as paragraphs** — the fence lines round-trip byte-exact, but
   the content renders as live blocks, so interacting with it rewrites code, and content that
@@ -176,24 +207,52 @@ content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list
   save. The fence matcher in `markdown.js` is backtick-only.
 - [ ] **Table `:---` separators normalise to `---`** on first edit.
 
+**Undocumented normalisations** (decision pending: carry the raw bytes with the
+`indentStr`/`marker`/`numRaw`/`bare` pattern, or sanction each in the spec). None is in the
+spec's sanctioned list; each needs a preservation fixture either way. Re-probed on master on
+2026-09-07, every one still occurs on any save of the note:
+
+- [ ] Uppercase `- [X]` is written as `- [x]`.
+- [ ] Headings, dividers and table rows with 1–3 leading spaces are dedented; an indented table
+  body row (`  | 1 | 2 |`) also gains an empty leading cell.
+- [ ] A closing fence longer than its opener (four backticks closing a three-backtick fence) is
+  not recognised, so the rest of the file becomes code and the opener is rewritten.
+- [ ] Mixed line endings are healed to the dominant style (a code comment records this as
+  intended; the spec does not).
+- [ ] An unclosed fence or unclosed frontmatter gains a closer.
+- [ ] Trailing space after a fence's info string (```` ```js ````) is trimmed.
+- [ ] `[[Note|Note]]` collapses to `[[Note]]` on the first edit of its block (the DOM walker,
+  not the parser).
+
 **Lost edits and filesystem.**
 
 - [ ] **Concurrent flushes are not serialised** — blur, quit and the write-debounce timer can
-  each run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`). A flush now cancels the
-  pending timer, so what remains is a redundant write when two overlap, and a theoretical
-  mid-write kill if the quit handshake completes while a blur write is in flight (the atomic
-  rename keeps the last complete file).
+  each run `flush` at once (`useFileSystem.js`, `useQuitFlush.js`); a flush cancels the pending
+  timer, so the residue is a redundant write when two overlap and a theoretical mid-write kill
+  if the quit handshake completes while a blur write is in flight (the atomic rename keeps the
+  last complete file).
 - [ ] **Rename crash window** — a crash between unlink and index save re-IDs the note; a crash
   before unlink leaves a visible duplicate that needs manual cleanup.
-- [ ] **Double-close races** — `ipcMain.once` flush listeners accumulate on rapid Cmd+W then
-  Cmd+Q; no renderer-alive check before the flush IPC, so a crashed renderer burns the 2s cap.
+- [ ] **A crashed renderer burns the quit handshake's 2 s cap** — the flush listener now removes
+  itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
+  what is left is that a renderer that has already died still holds the quit for the cap.
 - [ ] **Orphaned `.*.tmp` files** after a crash followed by a rename.
-- [ ] **Numbered lists keep their parsed number after an in-app reorder** — dragging item 3
-  above item 1 saves `3. 1. 2.`; lossless on round-trip, wrong in any other renderer
-  (`markdown.js` `numCounter`).
+- [ ] **Numbered lists keep their parsed number after an in-app reorder or insertion** —
+  dragging item 3 above item 1 saves `3. 1. 2.`, and Enter inside a list can repeat a number;
+  lossless on round-trip, wrong in any other renderer (`markdown.js` `numCounter`).
 - [ ] **Wikilink rename does not update referrers** — silent link breakage.
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
+- [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a
+  new inode over the link, so the target file is left stale and the link is gone.
+- [ ] **The last-writer race under a synced folder** — `write-note` never compares the file's
+  mtime, so the app's own debounced write can land over an outside write the watcher has not yet
+  reported. Not reproduced; instrument with `BOOJY_TRACE` under iCloud or Drive before designing
+  anything (the conflict-copy rule in the UI rule covers only changes the watcher reports first).
+- [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes
+  the first write strip the whole frontmatter block; `resolve-attachment` still scans the v0.1
+  `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three
+  migrations (about 210 lines) once every tester has installed a post-0.5 build, not before.
 
 **A trailing space typed at the end of a line is saved as U+00A0** while the caret rests after
 it (found 2026-09-07 while fixing Enter on a tag suggestion). Chromium writes a space typed at
@@ -217,40 +276,72 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   a later pass.
 - [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`
   (`Sidebar.jsx`).
+- [ ] **Tab never leaves the editor** — `useKeyboardHandlers.js` prevents the default for every
+  block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
+  reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,
+  not in isolation.
+- **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
+  implemented six times (`ContextMenu`, `VaultMenu`, `WikilinkMenu`, `TagMenu`, `CalloutBlock`,
+  `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
+  three ways (`CodeBlock` keeps a hand-rolled clamp). One `useMenuKeyboard`/`useDismiss` pair
+  is worth it only because the accessibility pass touches every one of them anyway.
 
 ### Technical debt
 
 - **`useIsMobile` → `useIsTouch`** — the hook answers "is this a touch device", not "is the
   window narrow"; `useSidebarFits.ts` already owns the fit question.
-- **Playwright shells out to npm** — `playwright.config.js` runs `npm run build && npm run
-  preview`, so CI builds twice and the pnpm repo logs an unknown-config warning. Use pnpm.
 - **`tests/electron/markdown.test.js` is misfiled** — it tests `src/utils/markdown.js`; move it
-  beside `tests/utils/markdown.test.js` (no overlapping test names).
+  beside `tests/utils/markdown.test.js` and drop its round-trip block, which duplicates
+  `LOSSLESS_CASES` there (no overlapping test names otherwise).
 - **`ExportTab.jsx` renders Storage** — export was removed; rename to `StorageTab`.
-- **`ci.yml` push trigger never matches** — it watches `feature/**`, branches are `feat/…`;
-  the PR trigger covers everything. Fix the glob or drop the push trigger.
-- **`engines.node` says `>=18`** — Vitest 4 needs 20, Electron 42 needs 22.12, CI pins 22.
+- **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename), the
+  `boojy-att://` traversal guard, and a pending title at quit. No layer covers them today.
+- **Confirmed deletion never runs in CI** — both Trash journeys and the case-only rename skip
+  off macOS (`deletion.spec.ts`, `folders.spec.ts`) and CI is Ubuntu only. A macOS job for
+  `pnpm test:electron` (~5 min) is the fix; deferred, since the daily-driver build exercises
+  them by hand.
+- **CI hygiene not yet done**: no `concurrency` group (two pushes to one branch run twice), no
+  `permissions` block, and nothing is uploaded on failure, so a red E2E job has no trace or
+  report to read; the two Playwright configs also share one `playwright-report/`.
+- **Secret scanning and push protection are off** on this public repo (repository settings,
+  free). Turn both on.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
 - **`TagMenu` swallows the space that ends a tag** — `preventDefault` on space-dismiss.
-- **The UI rule's "Undo/redo are keyboard-only" line is wrong for touch** — the touch toolbar
-  (`MobileToolbar.jsx`) shows Undo and Redo at its fixed left edge. The rule should say
-  desktop. The rest of the touch layout's grammar (two screens, fixed-edge toolbar, long-press
-  FAB, bottom-sheet menu) is recorded nowhere in the rules either; the archived
-  `docs/private/archive/mobile-spec.md` header lists it. Write both up in
-  `.claude/rules/ui-chrome-and-theme.md` the next time a change touches the touch layout.
+- **The touch layout's grammar is recorded nowhere in the rules** (two screens, fixed-edge
+  toolbar with Undo and Redo, long-press FAB, bottom-sheet menu); the archived, local
+  `docs/private/archive/mobile-spec.md` header lists it. Write it into
+  `.claude/rules/ui-chrome-and-theme.md` the next time a change touches the touch layout. The
+  touch ··· menu (`mobile/EditorMoreMenu.jsx`) also carries its own delete-confirm copy beside
+  `utils/deletionPrompt.ts`, and `BoojyNotes.jsx` calls the raw `deleteNote` for it to avoid a
+  double prompt; fold it into the shared wording.
 - **`[perf]` warnings ship in production** — `console.warn('[perf] …')` timing lines remain in
   `EditorArea.jsx`, `useAppPersistence.js` and `useHistory.js`; gate them or remove them.
-- **A failed update check is swallowed** — `autoUpdater.checkForUpdates().catch(() => {})` in
-  `electron/settingsManager.js` hides the failure from the user; the other empty catches are
-  localStorage guards and are fine.
+- **Updater behaviour is undecided** — today `autoDownload` is on and every launch checks,
+  with a failed check swallowed (`autoUpdater.checkForUpdates().catch(() => {})` in
+  `electron/settingsManager.js`). The alternative is check-and-ask with a visible error. Moot
+  for release users until macOS builds are signed (release requirements); the other empty
+  catches are localStorage guards and are fine.
+- **Editor hook copies, for a quiet window with the Electron suite green**: the "text before and
+  after the caret" split helper exists six times and the block-update boilerplate about
+  eighteen times across the editor hooks (~150 lines on hot paths). Mechanical, but not during
+  Beta bug-fixing.
+- **Two dependencies to try removing locally first**: `vite-plugin-electron-renderer`, whose job
+  is Node shimming in a `nodeIntegration` renderer this app does not have, and the `accentColor`
+  prop threaded through 18 files when it is always `theme.ACCENT.primary` (worth it only if a
+  second accent ever appears).
+- **Small residue, tidy when touching the file**: `z-index: 999`/`9999` literals in
+  `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; the
+  crash screen's `boojy-error-backup` is written but nothing reads it back; a bad `%` in a
+  `boojy-att://` URL throws in `decodeURIComponent`; the UI rule's known colour leaks (plain
+  black alphas, per-theme callout and syntax colours) and Dark's first-paint flash.
 
 ## Future, after Beta
 
 Recorded so a preference survives; nothing here is scheduled, and nothing here is an
 instruction to start. Each line carries the direction taken and what is still open. The dated
 research behind these (checked 2026-09-06, with links and cost tables) is the archived
-discussion record in `docs/private/archive/`.
+discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only).
 
 ### Migration and portability
 
@@ -318,7 +409,8 @@ discussion record in `docs/private/archive/`.
   quota-bound, lost with site data), or cloud with offline storage (consistent across devices;
   needs accounts, sync, conflict recovery and a service). Cloud with offline capability was
   recommended; local-file behaviour is explicitly deferred. The spec keeps web outside the
-  product promise until then.
+  product promise until then. The ~200 lines of localStorage/IndexedDB note persistence stay
+  meanwhile: they are what lets `pnpm dev:web` survive a reload during visual iteration.
 - **Mobile shell** unchosen. One relationship to keep in view: the editor is `contentEditable`
   on the browser's Selection and Range APIs, so a shell that keeps the browser DOM (Capacitor
   and the like) can reuse it, and a shell that does not (full React Native, Flutter) means
@@ -326,7 +418,11 @@ discussion record in `docs/private/archive/`.
   selection, attachments, filesystem access and background sync need real-device evaluation. Drawer versus two-screen navigation was explored on 2026-04-06 and left
   undecided; the two-screen touch layout in `src/components/mobile` stands. The earlier
   Capacitor spec, mobile spec, navigation exploration and release strategy are archived in
-  `docs/private/archive/` as reference, not plan.
+  `docs/private/archive/` as reference, not plan. The touch layout itself (about 1,700 lines,
+  untested, plus 55 `isMobile` branches in the desktop files) has three options: keep it, flag
+  it off (`useIsMobile` returns `false`: one line, reversible, the cheap experiment), or delete
+  it (git keeps it). Undecided; resolve it with the shell decision, not with pre-optimisation of
+  the mobile-only work desktop pays for (`useNoteStats`, `useKeyboard`, undo-state churn).
 - **Accounts: email-only** when accounts are needed (codes or links; session length open).
   Local desktop use never requires one.
 - **Encryption undecided.** End-to-end (privacy; against it, recovery, new-device setup,
@@ -335,10 +431,9 @@ discussion record in `docs/private/archive/`.
   promise before the approach is chosen and verified.
 - **Free hosting.** When a quota is reached: local writing continues, nothing is deleted, the
   app distinguishes saved locally from synced. Still needed: account management, abuse
-  controls, history accounting, a sustainable hosting budget. The September 2026 research put
-  storage at about $0.015 per GB-month on R2 and the whole service at an illustrative $10–30 a
-  month for 100 users up to $250–600 for 10,000, on stated assumptions; measure a prototype
-  before setting any limit.
+  controls, history accounting, a sustainable hosting budget. The September 2026 research
+  (archived) found object storage cheap enough that a small free tier is plausible on stated
+  assumptions; measure a prototype before setting any limit.
 - **Deletion in the cloud.** A recoverable deleted state that needs no desktop Trash, plus a
   record of deletions so offline devices cannot resurrect notes.
 

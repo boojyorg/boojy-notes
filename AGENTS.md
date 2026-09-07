@@ -59,6 +59,7 @@ src/
 ├── services/           # getAPI(): the Electron or web API
 ├── utils/              # markdown.js (the converters), storage, search, platform, …
 ├── constants/          # themes.js (the only colour authority), slash commands, z-index
+├── styles/             # shared inline style fragments (buttons)
 ├── tokens/             # spacing, radius, typography, shadows
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
 electron/               # main process: IPC, file I/O, watcher, OS trash, folders
@@ -99,7 +100,8 @@ docs/private/           # gitignored personal notes
   http(s) link goes to the system browser. `config.json` and `settings.json` are written
   atomically, like notes.
 - **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative`
-  (`isNative === isElectron`). `ELECTRON_DISABLE=1` excludes Electron code from a build.
+  (`isNative === isElectron`) and `isElectronMac`. `ELECTRON_DISABLE=1` excludes Electron code
+  from a build.
 
 ## Editor gotchas
 
@@ -120,18 +122,25 @@ Each of these has caused a real bug. Read before touching the editor.
    from `useEditorContext()` is the first render's. Handlers read changing state through refs
    (`activeNoteRef`, `noteDataRef`, `blockRefs`), never a captured value. The same applies to
    any listener registered once (`useAppKeyboard`, the window-blur drag cancel).
-4. **Every desktop save echoes back through chokidar ~350ms later.** `electron/fileWatcher.js`
-   suppresses it with one resettable timer per path; the renderer's `blocksEqual` bail-out is
-   only the second line of defence. An echo that escapes re-parses the file with fresh block
-   IDs, every block remounts, the caret jumps to the top and the unsaved keystroke is lost.
-   Reproduce desktop-only bugs in the real Electron build (Playwright `_electron`, temp
-   `userData` and vault), not jsdom.
+4. **Every desktop save echoes back through chokidar, sometimes twice, up to ~3s later.**
+   `electron/fileWatcher.js` recognises an own write by its bytes: `write-note` hands the
+   watcher the text it wrote, and any later event whose file still holds exactly those bytes is
+   dropped as an echo, however late; a 1.5s timer per path is only the cheap first filter, and it
+   decides alone only for a path with no recorded bytes. Never replace the hash with a longer
+   timer (macOS sends a second metadata-only `change` 1.5–2.7s after a write). An echo that
+   escapes re-parses the file with fresh block IDs, every block remounts, the caret jumps to the
+   top and the unsaved keystroke is lost. The rules for a real outside change (never silently
+   overwritten; a conflicted copy when edits are pending) are in the UI rule. Reproduce
+   desktop-only bugs in the real Electron build (Playwright `_electron`, temp `userData` and
+   vault), not jsdom.
 
 ## Testing
 
 - Unit tests in `tests/` (Vitest, jsdom, Testing Library); E2E in `e2e/`. The preservation
   corpus in `tests/fixtures/preservation/` is byte-sensitive and protected by `.gitattributes`.
-- **Markdown has three contracts, one file each.** `tests/utils/markdown.test.js`: block →
+- **Markdown has three contracts, one file each** (plus `tests/electron/markdown.test.js`, an
+  older file over the same module that is due to move beside them; see the backlog).
+  `tests/utils/markdown.test.js`: block →
   markdown → block (what the app creates survives its own reader). `preservation.test.js`:
   markdown → blocks → markdown byte for byte (did we alter the source?).
   `markdownInterop.test.js`: what the Markdown *means* outside Boojy Notes, judged by an
@@ -142,6 +151,10 @@ Each of these has caused a real bug. Read before touching the editor.
 - Coverage floors in `vitest.config.js` sit just below actuals. Ratchet up; never lower to pass.
 - CI runs `test:coverage`, the web E2E and the Electron suite, not `pnpm test`. Desktop
   behaviour is only proven in a real Electron build; the web build cannot stand in for it.
+- **Three verification surfaces, each for one job.** `pnpm dev:web` is for fast iteration and
+  visual judgement; a visible real Electron build is the final manual acceptance of anything
+  desktop-only; `pnpm test:electron` is the automated proof. The installed daily-driver app is
+  rebuilt at coherent checkpoints, not per PR.
 - **The real-Electron suite (`e2e/electron/`, `pnpm test:electron`) is where cross-layer
   behaviour is proven**: it launches the built app against a temp vault and userData and asserts
   observable truth — editor text, the Markdown on disk, filenames, mtimes, state after a restart,

@@ -1,5 +1,11 @@
 # Changelog
 
+The last published release is **v0.5.0** (2026-06-12): it is what boojy.org serves and what
+the in-app updater sees. The v0.6.0 and v0.6.1 sections below were never tagged or published;
+they are the versions `package.json` carried in the local daily-driver builds installed from
+master on 2026-09-05 (the Settings footer reads 0.6.1 for that reason). The next tag publishes
+them together with Unreleased, after the release docs pass in `AGENTS.md`.
+
 ## Unreleased
 
 ### Internal
@@ -30,7 +36,7 @@
 - **Links open in your browser, never in a second window** — A web link (the boojy.org line in Settings, a link in a note opened with the middle button) opened a bare second app window; it now goes to the system browser, and nothing can navigate the app window away from the app. Attachment paths a note names are opened only when they lie inside the vault.
 - **A vault inside a hidden folder is watched** — A notes folder under a dot-directory such as `~/.notes` was never watched for outside changes, with no error; edits made in another app did not appear until a restart. They now appear as they do for any other folder.
 
-## v0.6.1 — 2026-09-05
+## v0.6.1 — 2026-09-05 (daily-driver build, unpublished)
 
 ### Improvements
 - **New application icon** — The macOS app icon is now the Notes mark on a light rounded square, replacing the placeholder gold circle on a dark tile. It is sized to Apple's icon grid (the rounded square at 824px on the 1024px canvas, corners transparent), so it sits in the Dock at the same size as every other app. The build input is `assets/boojy-notes-app-icon.png`, generated from the full-bleed source export beside it.
@@ -52,7 +58,7 @@
 - **The backlinks panel** — The "Linked from" list under a note, and the index behind it, are gone for now. Wikilinks themselves are unchanged: `[[` still autocompletes, clicking still opens or creates the note, and search finds every mention. The panel can return if daily use shows it earns its place; its one known bug (same-title notes were invisible to it) leaves with it.
 - **Web app residue** — The service worker, the web-app manifest and the home-screen icon tags are gone from the web build. The web build is a development and test surface for the desktop app, not an installable app; the manifest pointed at an icon that no longer existed and the theme colour was an old dark value.
 
-## v0.6.0 — 2026-09-05
+## v0.6.0 — 2026-09-05 (daily-driver build, unpublished)
 
 ### Bug Fixes
 - **Changing the notes folder no longer keeps the old vault's folders** — Switching to another vault in Settings merged its folders into the previous vault's list, so phantom folders lingered until a restart. The new vault's directories now replace them.
@@ -129,7 +135,7 @@
 - **Settings is one small pane** — The navigation sidebar, the Profile/sign-in section, the Editor section (spell check and language) and the UI Scale row are gone, along with the large in-settings logo. What remains: Appearance (theme, font size), plus Storage and Updates on desktop, closed by a quiet version line. Spell check stays on by default (the stored desktop preference still applies); UI scale lives on as the Cmd+Plus / Cmd+Minus / Cmd+0 shortcuts. The web sign-in nudges are gone with the rest of the cloud pitch — no cloud UI ships until the local-first app is stable.
 - **Calmer folder rows** — The permanent `>` disclosure chevrons are gone from the sidebar; the whole folder row toggles open/closed and the folder icon carries the state. Screen readers still hear expanded/collapsed.
 - **New "Notes" logo** — The wordmark is a single new "Notes" mark. The small status dot that used to sit between the letters — which doubled as the live sync indicator and the settings button — has been removed; with desktop now local-only by default it was near-permanently idle.
-- **Sort your notes by recency or name** — A small control on the sidebar's `Notes` heading switches every note list — loose notes and folder contents alike — between **Most recent** and **Alphabetical**. Most recent means the last time you touched a note, whether you opened it here or its file changed on disk, so a vault Boojy has never seen before is in a useful order the moment you point it at one, and an edit you made in another app counts. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
+- **Sort your notes by recency or name** — Every note list, loose notes and folder contents alike, follows one preference, **Most recent** or **Alphabetical**, chosen from the vault header's ··· menu and remembered. Most recent means most recently modified, by an edit made here or by its file changing on disk (opening a note never moves it; see the fix above), so a vault Boojy Notes has never seen before is in a useful order the moment you point it at one. Alphabetical is natural order, so `Week 2` comes before `Week 10`. The rule across the sidebar is now simply: dragging changes where a note lives, sorting changes how the list is shown. Folders are always alphabetical.
 
 ### Removed
 - **Hold-to-drag block reorder** — Pressing and holding a block's text for 400ms no longer starts
@@ -143,7 +149,7 @@
 - **Tabs and split view — one note at a time** — Opening a note now replaces the current one; there is no tab strip and no `Cmd+Shift+\` split. The whole pane/tab layer was deleted, not hidden: navigation state is a single active note, which is what makes the calmer chrome elsewhere in this release possible. Your last-open note is remembered across restarts, and old saved layouts migrate cleanly (if you had a split open, you land on the note from its active pane). Cmd-clicking a wikilink now simply opens that note. Quick Open and back/forward history are the planned follow-ups for fast switching.
 - **PDF and DOCX export** — Boojy Notes is a Markdown editor, so the dedicated document exporters, Electron menu commands, broken web menu entries and the `docx` dependency have been removed. Git retains the implementation if this non-core feature is reconsidered later; Markdown and folder import are unchanged.
 - **Recently Deleted and the app-level wordmark menu** — The private in-vault `.trash`, restore/purge UI and `Recently Deleted` surfaces are gone. Clicking the Notes wordmark now opens Settings directly; the separate About destination is gone because version and credit already live quietly inside Settings.
-- **Manual ordering, and folder dragging** — Notes and folders can no longer be dragged into a hand-arranged order. There were two competing ideas of "order" — a manual one saved to disk, and the new sort preference — and one had to go. Dragging a note still moves its file into a folder, because that is a real change to where the note lives. Folder rows are no longer draggable at all: dropping a folder onto another folder used to highlight the target, expand it, and then silently do nothing, so the affordance was promising something the app could not do. Genuine folder nesting can be built later as its own feature. Your existing `.boojy-meta.json` files are left untouched on disk — nothing reads or writes the ordering keys any more, so an old arrangement stays recoverable.
+- **Manual ordering** — Notes and folders can no longer be dragged into a hand-arranged order. There were two competing ideas of "order" — a manual one saved to disk, and the new sort preference — and one had to go. Dragging now means location only: a note into a folder or back to the root and, since folders became directories (above), a folder into another folder or back to the root. Your existing `.boojy-meta.json` files are left untouched on disk — nothing reads or writes the ordering keys any more, so an old arrangement stays recoverable.
 
 ### Internal
 - **Settled design experiments are now ordinary product styling** — The development-only visual
@@ -517,7 +523,7 @@
 ## v0.1.3 — 2026-03-12
 
 ### Features
-- **Cross-platform CI release workflow** — GitHub Actions workflow builds macOS and Windows installers on tag push (`v*`), with macOS code signing and notarization
+- **Cross-platform CI release workflow** — GitHub Actions workflow builds macOS and Windows installers on tag push (`v*`), with macOS code signing and notarization when the certificate secrets are set (they never have been, so every published macOS build is unsigned; see `.claude/rules/ci-build-deploy.md`)
 - **Auto-updater** — App checks for updates on startup via `electron-updater` and GitHub Releases; new "Updates" section in Settings with auto-update toggle, version display, download progress bar, and "Restart & Update" button
 
 ### Bug Fixes

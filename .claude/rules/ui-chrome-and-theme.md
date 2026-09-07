@@ -83,7 +83,9 @@ outside the accent scope; `UpdatesTab` no longer does.
 
 `src/components/Icons.jsx` wraps `lucide-react` behind the historic export names. Always
 `currentColor`. Don't hand-roll an SVG unless Lucide genuinely lacks it; a hand-drawn set at
-mixed sizes and strokes is what made the UI read as assembled.
+mixed sizes and strokes is what made the UI read as assembled. Known exceptions, not yet
+replaced: the hand-drawn arrows in `FindBar` and two inline SVGs in `CodeBlock` (one with a
+hardcoded green); swap them for Lucide when touching those files.
 
 - **Two size tiers:** 16px for repeated list glyphs (folder rows, search results, menu items),
   18px for navigation (the New note / Search glyphs and standalone controls). Mobile top-bar
@@ -123,6 +125,11 @@ mixed sizes and strokes is what made the UI read as assembled.
   profile and leaving the native traffic lights behind. `main.js` resets Chromium's zoom level
   to 0 on every `dom-ready` so a stale profile can't reintroduce it. If a dev window ever looks
   bigger than the installed app, that is page zoom; judge chrome geometry only after Cmd+0.
+- **Edit → Undo / Redo keep their menu roles, and Cmd+Z is the app's own undo.** Checked live
+  in the installed build on 2026-09-07: the keystroke reaches the renderer's `useAppKeyboard`
+  handler (one repaint per step), and the native menu item is a no-op in the editor. Wiring the
+  menu item to the app's undo is unscheduled; don't drop the roles on reasoning alone (Cut, Copy,
+  Paste and Select All must stay in any case).
 - **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
   web deletion is permanent behind confirmation. Folder deletion never touches a file that is not
   a note; the directory itself goes only once nothing is left in it (OS cruft such as `.DS_Store`
@@ -130,8 +137,9 @@ mixed sizes and strokes is what made the UI read as assembled.
   asks only when the action is more than one recoverable file:** a single note goes at once with
   a quiet toast; a folder with notes and a bulk selection confirm first, worded as `Move N notes
   to the Trash?` with the promise that non-note files stay and the folder goes only if emptied; a
-  folder with no notes asks nothing. The wording lives
-  in one place, `utils/deletionPrompt.ts`; don't add a second phrasing. No undo or recovery UI, by
+  folder with no notes asks nothing. The desktop wording lives
+  in one place, `utils/deletionPrompt.ts`; don't add a second phrasing (the touch ··· menu still
+  carries its own confirm copy, listed as debt in the backlog). No undo or recovery UI, by
   decision: the OS Trash is the recovery surface. The retired private `.trash` gets one
   conservative startup migration into the OS Trash: recognised notes are copied under
   collision-safe names before the source is removed, ambiguous items are left untouched and
@@ -193,7 +201,8 @@ mixed sizes and strokes is what made the UI read as assembled.
   share the profile.
 - **`syncGeneration` is editor plumbing, not cloud sync.** It tells uncontrolled blocks when to
   repaint from state. Don't remove it on the strength of its name.
-- Word count is mobile-only. Undo/redo are keyboard-only.
+- Word count is mobile-only. Undo/redo are keyboard-only on desktop; the touch toolbar carries
+  Undo and Redo buttons at its fixed left edge.
 - The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
   the left edge.
 
@@ -268,9 +277,10 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   container) because Chromium treats script focus as `:focus-visible`. Keyboard navigation
   still indicates normally. Single-note menu items carry glyphs; folder and bulk menus are
   text-only.
-- **Double-click renames inline**, notes and folders alike, with the same in-place input and
-  the name selected Finder-style. The ··· Rename falls back to the editor title only when the
-  sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
+- **Double-click renames inline**, notes and folders alike, with the same in-place input. A
+  note's name is selected Finder-style; the folder input only autofocuses with the caret at the
+  end, so typing appends (a known gap in the backlog; the intent is Finder-style for both). The
+  ··· Rename falls back to the editor title only when the sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
   second toggle rather than delaying single-click to disambiguate.
 
 ### The vault header and its one tree
@@ -414,6 +424,9 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
   itself) and repaints the editor's title field, caret preserved when the user is still in it.
   Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
+- **The name is a quiet file label, not a title.** A `#` heading in the body is body text: it
+  never names the file, and the filename is never written into the note as a heading. Decided
+  because altitude implies rank, and a filename cannot hold title rank.
 - **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
   own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
   other file on disk is a collision, indexed or not.
