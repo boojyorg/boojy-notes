@@ -541,6 +541,23 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   (backlog: blank lines around headings). A file with the tight form still opens as a divider and
   gains the blank on its first save; sanctioned in the spec.
 
+### Tables are ragged on disk and stay ragged
+
+- **A row holds exactly the cells its Markdown line holds** (2026-09-07). The parser neither
+  slices a row wider than the header nor pads a shorter one, and the serializer writes each
+  body row with its own cells; the separator row alone follows the header's width. Before
+  this, `| 1 | 2 | 3 |` under a two-column header was written back as `| 1 | 2 |` on any save
+  (review H9), and every short row was rewritten. A GFM reader ignores the extra cells and
+  pads the short rows itself, so the file's meaning outside is unchanged either way; the
+  bytes are what this rule protects.
+- **The grid is drawn as wide as the widest row** (`tableColumnCount` in
+  `utils/tableShape.ts`), header included, and a cell a row does not reach is drawn empty.
+  A row gains cells only when one is written into it (`withCell` pads that row up to the
+  written column and no further); adding a column appends one cell to every row, wide or
+  short, and a column drag moves what a short row has without leaving a hole (`moveCell`).
+  Don't reintroduce a pad-on-read or a slice-to-header anywhere; keep the table's shape
+  arithmetic in `tableShape.ts` rather than in the component or the hook.
+
 ### Dividers are selectable blocks
 
 - **A divider (or an image) is addressed as a whole, Notion-style** (`isSelectableBlock` in

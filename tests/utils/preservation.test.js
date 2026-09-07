@@ -52,7 +52,7 @@ const KNOWN_FAILURES = {
   // Two patterns found by the 2026-08-18 real-vault smoke test (209 files):
   "indented-fences.md": { roundtrip: true, edit: true }, // fence's own leading spaces dropped (serialised at col 0)
   "trailing-ws-list-lines.md": { roundtrip: true, edit: true }, // list/heading lines still trim trailing spaces (paragraphs don't)
-  "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten; ragged rows padded (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md)
+  "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md; ragged rows fixed 2026-09-07 — see table-ragged.md)
 };
 
 const fixtureNames = fs

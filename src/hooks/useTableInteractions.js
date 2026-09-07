@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTheme } from "./useTheme";
+import { moveCell, tableColumnCount } from "../utils/tableShape";
 
 export function useTableInteractions({
   block,
@@ -20,7 +21,9 @@ export function useTableInteractions({
     [],
   );
   const rows = block.rows || defaultRows;
-  const colCount = rows[0]?.length || 2;
+  // The widest row, not the header: rows are ragged and the grid is drawn to
+  // the widest one (utils/tableShape.ts).
+  const colCount = tableColumnCount(rows) || 2;
   const alignments = block.alignments || [];
 
   // Keep latest data in refs so drag handlers always see current values
@@ -366,12 +369,7 @@ export function useTableInteractions({
         } else if (d.type === "col" && d.insertAt !== null && d.fromIndex !== null) {
           if (d.insertAt !== d.fromIndex && d.insertAt !== d.fromIndex + 1) {
             const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
-            const newRows = curRows.map((row) => {
-              const nr = [...row];
-              const [movedC] = nr.splice(d.fromIndex, 1);
-              nr.splice(adj, 0, movedC);
-              return nr;
-            });
+            const newRows = curRows.map((row) => moveCell(row, d.fromIndex, adj));
             const newAligns = [...curAligns];
             const [movedA] = newAligns.splice(d.fromIndex, 1);
             newAligns.splice(adj, 0, movedA);
