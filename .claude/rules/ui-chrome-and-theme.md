@@ -173,6 +173,18 @@ mixed sizes and strokes is what made the UI read as assembled.
   No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
   covered: the app's own debounced write landing over an outside write before the watcher
   reports it (the last-writer race), which needs instrumenting under a sync provider first.
+- **A dirty mark is cleared only by a write of the version the note holds now** (2026-09-07).
+  `flush` in `useFileSystem` writes dirty notes one after another; after each write it clears
+  the note's mark only if the object written is still what state (`noteDataRef`) or the
+  keystroke ref (`latestNoteDataRef`) holds, and it reads each note as its own turn comes,
+  never from a snapshot taken before the loop. Before this, an edit that landed while the
+  note's own write, or the writes of notes ahead of it in the same flush, was in flight had
+  its mark cleared by the returning write, and the flush that edit had scheduled found
+  nothing to write: newer text on screen, older on disk, until blur or quit (the
+  `unflushedNotes` net) or the next edit to that note. A single write is ~10ms; a bulk move
+  widens it to seconds, which is how `write-in-flight.spec.ts` reproduces it (150 notes
+  dragged into a folder, a keystroke while they are still being written; it failed three of
+  three before the fix). The retry after the loop covers a kept mark with no timer pending.
 - **To see what the editor is doing, trace it, don't theorise.** `BOOJY_TRACE=/path/to/log
   node_modules/.bin/electron .` (after `pnpm build`; it uses the real profile and vault) appends
   one line per watcher event, save, external reload, keystroke target, caret move between blocks

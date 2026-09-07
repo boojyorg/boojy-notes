@@ -314,10 +314,12 @@ export function useFileSystem(
       writeTimer.current = null;
 
       if (extraDirtyIds) for (const id of extraDirtyIds) dirtyNotes.current.add(id);
-      const source = latestData || noteDataRef.current;
       const dirty = [...dirtyNotes.current];
       for (const noteId of dirty) {
-        const note = source[noteId];
+        // Read as this note's write begins, not once for the loop: state can
+        // move on while an earlier note in the list is being written, and a
+        // snapshot from before the loop would write the older version.
+        const note = (latestData || noteDataRef.current)[noteId];
         if (!note || note._draft) {
           dirtyNotes.current.delete(noteId);
           continue;
@@ -352,11 +354,20 @@ export function useFileSystem(
             continue;
           }
         }
-        dirtyNotes.current.delete(noteId);
-        // Persisted, and nothing typed since: the quit/blur net no longer needs
-        // it. A failed write above `continue`s before this line, so a note that
-        // did not reach disk stays in both sets and is retried.
+        // A dirty mark is cleared only by a write of the version the note
+        // holds now, in state or in the keystroke ref. An edit that landed
+        // while this write was in flight has already re-marked the note and
+        // scheduled the next flush; clearing here would have that flush find
+        // nothing to write, leaving the newer text on screen and the older on
+        // disk until quit or blur. A failed write `continue`s above, so a note
+        // that did not reach disk stays in both sets and is retried.
         const links = editorLinksRef.current;
+        const stillCurrent =
+          noteDataRef.current[noteId] === note ||
+          links?.latestNoteDataRef?.current?.[noteId] === note;
+        if (stillCurrent) dirtyNotes.current.delete(noteId);
+        else trace("write superseded", noteId, "kept dirty");
+        // Persisted, and nothing typed since: the quit/blur net no longer needs it.
         if (links?.unflushedNotes && links.latestNoteDataRef.current[noteId] === note) {
           links.unflushedNotes.current.delete(noteId);
         }

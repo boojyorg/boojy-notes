@@ -301,6 +301,126 @@ describe("useFileSystem — quit-flush safety set", () => {
   });
 });
 
+describe("useFileSystem — a note edited again while its own write is in flight", () => {
+  // The flush cleared a note's dirty mark after its write returned, whatever
+  // had happened in between. An edit that landed in state during the write
+  // re-marked the note and scheduled the next flush, which then found nothing
+  // to write: the newer text stayed on screen and the older on disk until quit
+  // or blur. The mark may only be cleared by a write of the version the note
+  // holds now.
+  const saved = { id: "r1", title: "Race", content: { title: "Race", blocks: [] } };
+  const edited = { id: "r1", title: "Race edited", content: { title: "Race edited", blocks: [] } };
+  const editedMore = {
+    id: "r1",
+    title: "Race edited more",
+    content: { title: "Race edited more", blocks: [] },
+  };
+  // Earlier tests in this file leave hooks mounted whose real-timer writes can
+  // land here; only this describe's notes are counted.
+  const writes = () => writeNote.mock.calls.map((c) => c[0]).filter((n) => /^Race/.test(n.title));
+
+  let mounted = null;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+
+  afterEach(() => {
+    mounted?.unmount();
+    mounted = null;
+    vi.useRealTimers();
+  });
+
+  async function renderEdited(initial, first) {
+    readAllNotes.mockResolvedValue(initial);
+    const unflushedNotes = { current: new Set(Object.keys(first)) };
+    const latestNoteDataRef = { current: first };
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const onError = vi.fn();
+    const links = { unflushedNotes, latestNoteDataRef };
+    const hook = renderHook(
+      ({ data }) =>
+        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, links),
+      { initialProps: { data: initial } },
+    );
+    mounted = hook;
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { ...initial } }));
+    vi.useFakeTimers();
+    await act(async () => hook.rerender({ data: first }));
+    // The first write is held open until the test releases it.
+    let release;
+    writeNote.mockImplementation((n) =>
+      n === edited && !release
+        ? new Promise((r) => {
+            release = r;
+          })
+        : Promise.resolve({}),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(writes()).toEqual([edited]);
+    return { ...hook, latestNoteDataRef, release: () => release({}) };
+  }
+
+  it("persists the newer text with the debounced flush that the edit scheduled", async () => {
+    const { rerender, latestNoteDataRef, release } = await renderEdited(
+      { r1: saved },
+      { r1: edited },
+    );
+
+    // The text commit lands in state while the write is still in flight.
+    latestNoteDataRef.current = { r1: editedMore };
+    await act(async () => rerender({ data: { r1: editedMore } }));
+    await act(async () => release());
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+
+    expect(writes()).toEqual([edited, editedMore]);
+    // Nothing left for the retry.
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(writes()).toEqual([edited, editedMore]);
+  });
+
+  it("writes a note later in the same flush from the state it has when its turn comes", async () => {
+    const two = { id: "r2", title: "Race two", content: { title: "Race two", blocks: [] } };
+    const twoEdited = {
+      id: "r2",
+      title: "Race two edited",
+      content: { title: "Race two edited", blocks: [] },
+    };
+    const twoMore = {
+      id: "r2",
+      title: "Race two more",
+      content: { title: "Race two more", blocks: [] },
+    };
+    const { rerender, latestNoteDataRef, release } = await renderEdited(
+      { r1: saved, r2: two },
+      { r1: edited, r2: twoEdited },
+    );
+
+    // r2 changes while r1 is being written; the loop must not write the
+    // snapshot it started from and then clear r2's mark.
+    latestNoteDataRef.current = { r1: edited, r2: twoMore };
+    await act(async () => rerender({ data: { r1: edited, r2: twoMore } }));
+    await act(async () => release());
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+
+    expect(writes()).toEqual([edited, twoMore]);
+  });
+
+  it("still clears the mark when the version written is the one the note holds", async () => {
+    const { release } = await renderEdited({ r1: saved }, { r1: edited });
+    await act(async () => release());
+    await act(async () => vi.advanceTimersByTimeAsync(5500));
+    expect(writes()).toEqual([edited]);
+  });
+});
+
 describe("useFileSystem — edited-note reporting for recency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
