@@ -1,4 +1,14 @@
-import { app, BrowserWindow, Menu, protocol, net, nativeTheme, ipcMain, dialog } from "electron";
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  protocol,
+  net,
+  nativeTheme,
+  ipcMain,
+  dialog,
+  shell,
+} from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -30,8 +40,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let mainWindow = null;
 let isQuitting = false;
 
+/**
+ * The live window, or null once it is closed (Cmd+W keeps the app running on
+ * macOS with no window). Every caller that sends to `webContents` checks the
+ * answer; sending to a destroyed window throws inside the watcher's and the
+ * updater's event handlers, which is an uncaught exception in the main process.
+ */
 function getMainWindow() {
-  return mainWindow;
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
 }
 
 // Test-only. The real-Electron suite (`pnpm test:electron`) runs the app with
@@ -41,6 +57,8 @@ function getMainWindow() {
 // the suite exists to exercise would stall behind Chromium's background
 // throttling. Never set outside the test harness.
 const hiddenForTests = process.env.BOOJY_TEST_HIDDEN === "1";
+
+const stripHash = (url) => url.split("#")[0];
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -96,6 +114,55 @@ function createWindow() {
     const timer = setTimeout(finish, 2000);
     ipcMain.once("flush-before-close-done", finish);
     win.webContents.send("app-will-close");
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
+  // The renderer never opens windows and never navigates. An `http(s)` link
+  // (the footer's boojy.org, a link block) goes to the system browser; a
+  // `window.open` of anything else is dropped. Without the handler Electron
+  // opened a second BrowserWindow with the preload attached. A navigation
+  // to any URL but the page's own (a file dropped outside the editor's
+  // handler navigates the window to that file) is refused; a reload of the
+  // same URL, which dev-server HMR and the View menu use, is not.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+  const contents = mainWindow.webContents;
+  contents.on("will-navigate", (event, url) => {
+    if (stripHash(url) !== stripHash(contents.getURL())) event.preventDefault();
+  });
+
+  // Spell check follows the stored setting; the context menu offers its
+  // suggestions. Both belong to the window, so a window made again after
+  // Cmd+W (the Dock click's `activate`) gets them too.
+  const settings = loadSettings();
+  const spellLangs = settings.spellCheckLanguages || ["en-US"];
+  mainWindow.webContents.session.setSpellCheckerLanguages(
+    settings.spellCheckEnabled !== false ? spellLangs : [],
+  );
+  mainWindow.webContents.on("context-menu", (event, params) => {
+    // Prevent native context menu — custom menus are handled in the renderer
+    event.preventDefault();
+    if (params.misspelledWord) {
+      const win = mainWindow;
+      const menu = Menu.buildFromTemplate([
+        ...params.dictionarySuggestions.map((s) => ({
+          label: s,
+          click: () => win?.webContents.replaceMisspelling(s),
+        })),
+        { type: "separator" },
+        {
+          label: "Add to Dictionary",
+          click: () =>
+            win?.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
+        },
+      ]);
+      menu.popup();
+    }
   });
 
   // Boojy Notes scales its own UI (Cmd+Plus/Minus/0 → `boojy-ui-scale`); the
@@ -293,36 +360,6 @@ app.whenReady().then(async () => {
       }
     }
   }
-
-  // Initialize spell check from saved settings
-  const settings = loadSettings();
-  const spellLangs = settings.spellCheckLanguages || ["en-US"];
-  if (settings.spellCheckEnabled !== false) {
-    mainWindow.webContents.session.setSpellCheckerLanguages(spellLangs);
-  } else {
-    mainWindow.webContents.session.setSpellCheckerLanguages([]);
-  }
-
-  // Context menu for spelling suggestions
-  mainWindow.webContents.on("context-menu", (event, params) => {
-    // Prevent native context menu — custom menus are handled in the renderer
-    event.preventDefault();
-    if (params.misspelledWord) {
-      const menu = Menu.buildFromTemplate([
-        ...params.dictionarySuggestions.map((s) => ({
-          label: s,
-          click: () => mainWindow.webContents.replaceMisspelling(s),
-        })),
-        { type: "separator" },
-        {
-          label: "Add to Dictionary",
-          click: () =>
-            mainWindow.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
-        },
-      ]);
-      menu.popup();
-    }
-  });
 
   restartWatcher();
 

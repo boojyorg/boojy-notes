@@ -141,12 +141,23 @@ async function launchElectron(userData: string) {
  */
 export async function launchApp(
   files: Record<string, string> = {},
-  { prepare }: { prepare?: (vault: Vault) => void } = {},
+  {
+    prepare,
+    vaultDir: vaultRel = "vault",
+    createVault = true,
+  }: {
+    prepare?: (vault: Vault) => void;
+    /** Where the vault sits under the temp root; a dot-segment makes a hidden parent. */
+    vaultDir?: string;
+    /** `false` points the config at a vault that does not exist, as an unmounted volume does. */
+    createVault?: boolean;
+  } = {},
 ): Promise<AppHandle> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-e2e-"));
-  const vaultDir = path.join(root, "vault");
+  const vaultDir = path.join(root, vaultRel);
   const userData = path.join(root, "userData");
-  fs.mkdirSync(vaultDir, { recursive: true });
+  if (createVault) fs.mkdirSync(vaultDir, { recursive: true });
+  else if (Object.keys(files).length > 0) throw new Error("createVault: false takes no files");
   fs.mkdirSync(userData, { recursive: true });
   const vault = makeVault(vaultDir);
   for (const [rel, content] of Object.entries(files)) vault.write(rel, content);
@@ -288,9 +299,12 @@ export async function renameRow(page: Page, title: string, newName: string) {
  * until the pill lifts, carry it over the folder row, release. Drag never
  * opens the note, so the editor is untouched afterwards.
  */
-export async function moveNoteToFolder(page: Page, title: string, folder: string) {
+export async function moveNoteToFolder(page: Page, title: string, folder: string | null) {
   const row = page.locator("[data-note-id]").filter({ hasText: title }).first();
-  const target = page.locator(`[data-folder-path="${folder}"]`).first();
+  const target =
+    folder === null
+      ? page.locator("[data-drop-root]").first()
+      : page.locator(`[data-folder-path="${folder}"]`).first();
   const from = await row.boundingBox();
   const to = await target.boundingBox();
   if (!from || !to) throw new Error(`moveNoteToFolder: row or folder "${folder}" not visible`);
@@ -325,10 +339,28 @@ export async function moveFolderTo(page: Page, folder: string, target: string | 
   await page.mouse.up();
 }
 
-/** Expand every collapsed folder row so each note row is on screen. */
+/**
+ * Expand every collapsed folder row so each note row is on screen, and wait
+ * for the rows to stop moving: expansion slides the rows below into place
+ * over ~300ms, and a drag started meanwhile picks up whichever row is under
+ * the pointer at that instant.
+ */
 export async function expandAllFolders(page: Page) {
   const collapsed = page.locator('[data-folder-path][aria-expanded="false"]');
   while ((await collapsed.count()) > 0) await collapsed.first().click();
+  const rowTops = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("[data-note-id], [data-folder-path]")].map((el) =>
+        Math.round(el.getBoundingClientRect().top),
+      ),
+    );
+  let before = await rowTops();
+  for (let i = 0; i < 20; i++) {
+    await sleep(100);
+    const after = await rowTops();
+    if (after.length === before.length && after.every((t, k) => t === before[k])) return;
+    before = after;
+  }
 }
 
 /** Titles of every note row on screen, in tree order, as the user reads them. */

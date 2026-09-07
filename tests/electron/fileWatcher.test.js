@@ -16,6 +16,7 @@ const {
   isWriteSuppressed,
   isOwnEcho,
   isOwnWriteEvent,
+  isIgnoredPath,
 } = await import("../../electron/fileWatcher.js");
 
 // The unlink suppression must be consumed by the event (or an explicit
@@ -243,5 +244,31 @@ describe("own-write event: bytes before the timer", () => {
     expect(isOwnWriteEvent(file)).toBe(true);
     vi.advanceTimersByTime(1500);
     expect(isOwnWriteEvent(file)).toBe(false);
+  });
+});
+
+// The ignore rule is judged on the path inside the vault. The old regex ran
+// on the absolute path, root included, so a vault under a dot-directory
+// (`~/.notes`) matched at its root and got no watcher and no error.
+describe("isIgnoredPath", () => {
+  const vault = path.join(os.homedir(), ".notes", "vault");
+
+  it("watches a vault that lives under a dot-directory", () => {
+    expect(isIgnoredPath(vault, vault)).toBe(false);
+    expect(isIgnoredPath(vault, path.join(vault, "Note.md"))).toBe(false);
+    expect(isIgnoredPath(vault, path.join(vault, "Work", "Plan.md"))).toBe(false);
+  });
+
+  it("skips dot-entries, the attachment store and the legacy index, at any depth", () => {
+    expect(isIgnoredPath(vault, path.join(vault, ".git", "HEAD"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, ".Note.md.tmp"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, "Work", ".hidden", "x.md"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, "attachments"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, "Work", "attachments", "a.png"))).toBe(true);
+    expect(isIgnoredPath(vault, path.join(vault, ".boojy-index.json"))).toBe(true);
+  });
+
+  it("does not judge a path outside the vault as hidden", () => {
+    expect(isIgnoredPath(vault, path.join(os.homedir(), ".notes"))).toBe(false);
   });
 });

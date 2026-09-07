@@ -3,11 +3,15 @@ import path from "node:path";
 import fs from "node:fs";
 import { app } from "electron";
 import { autoUpdater } from "electron-updater";
+import { writeFileAtomic } from "./atomicWrite.js";
 
 const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
 const SETTINGS_FILE = path.join(app.getPath("userData"), "settings.json");
 
 // ─── Config (vault path) ───
+// Both files are written atomically (temp file, fsync, rename): a config torn
+// by a crash mid-write parses as nothing, and the next launch would open the
+// default vault, which to the user reads as every note gone.
 
 function loadConfig() {
   try {
@@ -18,12 +22,28 @@ function loadConfig() {
 }
 
 function saveConfig(cfg) {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  writeFileAtomic(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 }
 
+/**
+ * The vault path. With no choice saved, the default vault under Documents is
+ * the app's own to make, and it is made here the first time it is asked for.
+ * A vault the user chose is never made: if it is missing (an unmounted
+ * volume, a folder moved in Finder) the app opens it empty and every write
+ * refuses, rather than quietly building an empty twin on the boot disk.
+ */
 function getNotesDir() {
   const cfg = loadConfig();
-  return cfg.notesDir || path.join(app.getPath("documents"), "Boojy", "Notes");
+  if (cfg.notesDir) return cfg.notesDir;
+  const fallback = path.join(app.getPath("documents"), "Boojy", "Notes");
+  if (!fs.existsSync(fallback)) {
+    try {
+      fs.mkdirSync(fallback, { recursive: true });
+    } catch {
+      /* reported by the first write, which refuses on a missing vault */
+    }
+  }
+  return fallback;
 }
 
 // ─── Settings ───
@@ -37,7 +57,7 @@ function loadSettings() {
 }
 
 function saveSettings(settings) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  writeFileAtomic(SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
 // ─── Auto-updater setup ───

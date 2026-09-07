@@ -23,6 +23,7 @@ import {
   expectTitlesMatchFiles,
   launchApp,
   moveFolderTo,
+  moveNoteToFolder,
   noteText,
   renameRow,
   sidebarNoteTitles,
@@ -214,6 +215,26 @@ test("deleting a folder removes the directory only once nothing is left in it", 
     expect(h.vault.exists("Work/budget.txt")).toBe(true);
     await expect(folderRow(h.page, "Work")).toBeVisible();
     expect(await sidebarNoteTitles(h.page)).toEqual([]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// Decision D8 (2026-09-07): a folder is a directory the user made, and only an
+// explicit folder removal takes one away. The write path used to remove the
+// emptied parent, so dragging the last note out of a folder deleted the folder.
+test("moving the last note out of a folder leaves the folder, on screen and on disk", async () => {
+  const h = await launchApp({ "Work/Only.md": "The only one.\n" });
+  try {
+    await expandAllFolders(h.page);
+    await moveNoteToFolder(h.page, "Only", null);
+    await expect.poll(() => h.vault.exists("Only.md")).toBe(true);
+    await sleep(SETTLE_MS);
+
+    expect(h.vault.exists("Work/Only.md")).toBe(false);
+    expect(fs.statSync(h.vault.file("Work")).isDirectory()).toBe(true);
+    await expect(folderRow(h.page, "Work")).toBeVisible();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

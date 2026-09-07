@@ -92,6 +92,13 @@ docs/private/           # gitignored personal notes
   hardcoded hex. Tokens live in `src/tokens/`. Roles, grammar and known leaks: UI rule.
 - **Icons are Lucide only**, via `src/components/Icons.jsx`, always `currentColor`. Size and
   stroke tiers: UI rule.
+- **Every path that crosses IPC stays inside the vault.** A handler that takes a filename or
+  path from the renderer resolves it through `insideVault()` (`electron/noteFileManager.js`)
+  or `resolveVaultDir()` (`electron/folders.ts`) and does nothing with one that escapes; the
+  renderer is trusted but a note's file block can name any path. The window never opens a
+  second window and never navigates (`main.js`: `setWindowOpenHandler`, `will-navigate`); an
+  http(s) link goes to the system browser. `config.json` and `settings.json` are written
+  atomically, like notes.
 - **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative`
   (`isNative === isElectron`). `ELECTRON_DISABLE=1` excludes Electron code from a build.
 

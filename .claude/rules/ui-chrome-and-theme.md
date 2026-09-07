@@ -379,6 +379,16 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - **Delete waits for the Trash.** The notes are removed from state, the debounced flush trashes
   them, and `afterNextFlush` then asks the main process to remove the directory, which it does
   only if nothing but OS cruft is left. A folder with no notes skips the flush and goes at once.
+- **A folder outlives its notes** (decision D8, 2026-09-07). Moving the last note out, or
+  deleting it, leaves the directory where it is; only Delete folder removes one. `write-note`
+  used to remove an emptied parent directory, so dragging the last note to the root deleted
+  the folder it came from. `folders.spec.ts` drags the last note out and expects the row.
+- **A chosen vault that is missing is never recreated** (2026-09-07). `getNotesDir` makes
+  only the default vault under Documents; a configured path that is not there (an unmounted
+  volume, a folder moved in Finder) opens empty, every write refuses with the ordinary
+  "Failed to save" toast, and nothing is written to the boot disk. Before this, `read-all-notes`
+  and the watcher each recreated it and new notes went quietly into the empty twin. No
+  "folder not found" surface yet; Settings → Storage is the way out. `vault-root.spec.ts`.
 
 ## A note's title is its filename
 
