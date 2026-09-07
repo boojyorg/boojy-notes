@@ -24,7 +24,7 @@ to use on a folder you care about. The full contract is in
 - Slash commands and typed Markdown shortcuts (`#`, `-`, `>` and a space, or a code fence)
 - Notes are `.md` files in a folder you choose, including an existing Obsidian vault
 - Wikilinks, tags, callouts and frontmatter understood without extra chrome
-- Folder tree sorted by most recent or by name, and a search palette (Cmd+K)
+- Folder tree and search, sorted by most recent or by name
 - One note open at a time
 - Light, Dark and System appearance
 
@@ -43,19 +43,21 @@ handy for tests, and its notes live in browser storage rather than on disk.
 
 ## Development
 
-| Script           | Description                           |
-| ---------------- | ------------------------------------- |
-| `dev`            | Vite dev server + Electron            |
-| `dev:web`        | Vite dev server (browser only)        |
-| `build`          | Production build (web)                |
-| `build:electron` | Production build + desktop installers |
-| `test`           | Unit tests (Vitest)                   |
-| `test:coverage`  | Unit tests with the CI coverage floor |
-| `test:e2e`       | Web end-to-end tests (Playwright)     |
-| `test:electron`  | Real desktop app against a temp vault |
+
+| Script                 | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `dev`                  | Vite dev server + Electron                                  |
+| `dev:web`              | Vite dev server (browser only)                              |
+| `build`                | Production build (web)                                      |
+| `build:electron`       | Production build + desktop installers                       |
+| `test`                 | Unit tests (Vitest)                                         |
+| `test:coverage`        | Unit tests with the CI coverage floor                       |
+| `test:e2e`             | Web end-to-end tests (Playwright)                           |
+| `test:electron`        | Real desktop app against a temp vault                       |
 | `test:electron:headed` | The few desktop tests that need real focus or the clipboard |
-| `check`          | Biome lint + format in one pass       |
-| `typecheck`      | TypeScript check (`tsc --noEmit`)     |
+| `check`                | Biome lint + format in one pass                             |
+| `typecheck`            | TypeScript check (`tsc --noEmit`)                           |
+
 
 All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`,
 `test:coverage`, `test:e2e` and `test:electron`, plus a critical-level dependency audit; `test`
@@ -72,18 +74,15 @@ feels complete enough for ordinary daily use that I no longer feel limited by mi
 features. It isn't there yet. I use it every day, and what I bump into decides what gets
 finished next.
 
-Beta is desktop-first: local files, no account, no sync. Web, mobile and a free sync service
-are future work, after the desktop release. The direction, what is being considered for Beta
-and what is deliberately not being built are in [docs/BACKLOG.md](docs/BACKLOG.md).
-
 Several things were built and then removed to keep the product small: cloud sync and sign-in,
 PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in
 [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
 
 ## Contributing
 
-Boojy Notes isn't currently accepting code contributions. Bug reports and feedback are
-welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+Boojy Notes is a personal project and isn't accepting code contributions or pull requests right now.
+Feedback and bug reports are welcome by email at [tyr@boojy.org](mailto:tyr@boojy.org).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
