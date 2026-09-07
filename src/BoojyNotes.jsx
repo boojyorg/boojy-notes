@@ -322,7 +322,7 @@ export default function BoojyNotes() {
   }, []);
   const getLinkContextRef = useRef(null);
 
-  const { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext } =
+  const { applyFormat, detectActiveFormats, reReadBlockFromDom, getLinkContext } =
     useInlineFormatting({
       blockRefs,
       editorRef,
@@ -368,6 +368,8 @@ export default function BoojyNotes() {
     handleEditorFocus,
     handleEditorPaste,
     handleEditorCopy,
+    handleEditorCut,
+    handleEditorBeforeInput,
     handleEditorDragOver,
     handleEditorDragLeave,
     handleEditorDrop,
@@ -393,10 +395,8 @@ export default function BoojyNotes() {
     deleteBlock,
     saveAndInsertImage,
     reReadBlockFromDom,
-    toggleInlineCode,
     applyFormat,
     mouseIsDown,
-    onOpenLinkEditor: openLinkEditor,
     updateBlockIndent,
     moveBlock,
     selectBlock: setSelectedBlockId,
@@ -888,6 +888,8 @@ export default function BoojyNotes() {
               handleEditorInput,
               handleEditorPaste,
               handleEditorCopy,
+              handleEditorCut,
+              handleEditorBeforeInput,
               startHandleDrag,
               handleEditorMouseDown,
               handleEditorMouseUp,

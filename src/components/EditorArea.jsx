@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import { Z } from "../constants/zIndex";
@@ -129,6 +129,8 @@ const EditorArea = memo(
       handleEditorInput,
       handleEditorPaste,
       handleEditorCopy,
+      handleEditorCut,
+      handleEditorBeforeInput,
       startHandleDrag,
       handleEditorMouseDown,
       handleEditorMouseUp,
@@ -162,6 +164,20 @@ const EditorArea = memo(
     const editorContainerRef = useRef(null);
     // Note column (padding + measure) — the drag handle positions against it.
     const columnRef = useRef(null);
+
+    // The guard against Chromium editing across block roots listens to the
+    // native `beforeinput`, the one event that says which roots an edit is
+    // about to touch; React's onBeforeInput is synthesised from other events
+    // and carries neither the input type nor the target range. The editor
+    // element remounts with the note (the column is keyed on it), so the
+    // listener follows it.
+    const hasNote = !!note;
+    useEffect(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      el.addEventListener("beforeinput", handleEditorBeforeInput);
+      return () => el.removeEventListener("beforeinput", handleEditorBeforeInput);
+    }, [activeNote, hasNote, editorRef, handleEditorBeforeInput]);
 
     const onNavigateToNote = useCallback(
       (target, create) => {
@@ -673,6 +689,7 @@ const EditorArea = memo(
                 onInput={handleEditorInput}
                 onPaste={handleEditorPaste}
                 onCopy={handleEditorCopy}
+                onCut={handleEditorCut}
                 onMouseMove={handleEditorMouseMove}
                 onMouseLeave={handleEditorMouseLeave}
                 onContextMenu={handleEditorContextMenu}

@@ -25,11 +25,13 @@ function landingAfter(blocks, index) {
   return i < blocks.length ? i : -1;
 }
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
-import { genBlockId } from "../../utils/storage";
+import {
+  LIST_TYPES,
+  SOFT_BREAK_TYPES,
+  markdownAfter,
+  markdownBefore,
+} from "../../utils/crossBlockEdit";
 import { filterSlashCommands } from "../../constants/data";
-
-/** Blocks whose Markdown may span lines, so Shift+Enter puts a soft break inside them. */
-const SOFT_BREAK_TYPES = new Set(["p", "bullet", "numbered", "checkbox", "blockquote"]);
 
 export function useKeyboardHandlers({
   noteDataRef,
@@ -45,10 +47,8 @@ export function useKeyboardHandlers({
   updateBlockText,
   insertBlockAfter,
   deleteBlock,
-  reReadBlockFromDom,
-  toggleInlineCode,
   applyFormat,
-  onOpenLinkEditor,
+  scopeOf,
   updateBlockIndent,
   moveBlock,
   selectBlock,
@@ -146,11 +146,7 @@ export function useKeyboardHandlers({
     if (e.key === "Enter") {
       e.preventDefault();
       const blockType = blocks[blockIndex].type;
-      const isList =
-        blockType === "bullet" ||
-        blockType === "checkbox" ||
-        blockType === "numbered" ||
-        blockType === "blockquote";
+      const isList = LIST_TYPES.has(blockType);
 
       if (isList && text.trim() === "") {
         // If indented, decrease indent instead of converting to paragraph
@@ -179,18 +175,8 @@ export function useKeyboardHandlers({
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
-      const preRange = document.createRange();
-      preRange.selectNodeContents(el);
-      preRange.setEnd(range.startContainer, range.startOffset);
-      const preDiv = document.createElement("div");
-      preDiv.appendChild(preRange.cloneContents());
-      const beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-      const postRange = document.createRange();
-      postRange.selectNodeContents(el);
-      postRange.setStart(range.endContainer, range.endOffset);
-      const postDiv = document.createElement("div");
-      postDiv.appendChild(postRange.cloneContents());
-      const afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
+      const beforeText = markdownBefore(el, range.startContainer, range.startOffset);
+      const afterText = markdownAfter(el, range.endContainer, range.endOffset);
       updateBlockText(noteId, blockIndex, beforeText);
       syncGeneration.current++;
       insertBlockAfter(noteId, blockIndex, isList ? blockType : "p", afterText, {
@@ -312,98 +298,6 @@ export function useKeyboardHandlers({
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks passed via shared object
   }, []);
 
-  // --- Cross-block key handler ---
-  const handleCrossBlockKeyDown = useCallback((e, startInfo, endInfo) => {
-    const noteId = activeNoteRef.current;
-    const blocks = noteDataRef.current[noteId].content.blocks;
-    const range = window.getSelection().getRangeAt(0);
-    const startEl = startInfo.el;
-    const endEl = endInfo.el;
-
-    const preRange = document.createRange();
-    preRange.selectNodeContents(startEl);
-    preRange.setEnd(range.startContainer, range.startOffset);
-    const preDiv = document.createElement("div");
-    preDiv.appendChild(preRange.cloneContents());
-    const beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-
-    const postRange = document.createRange();
-    postRange.selectNodeContents(endEl);
-    postRange.setStart(range.endContainer, range.endOffset);
-    const postDiv = document.createElement("div");
-    postDiv.appendChild(postRange.cloneContents());
-    const afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-
-    const startIdx = startInfo.blockIndex;
-    const endIdx = endInfo.blockIndex;
-    const startBlockId = blocks[startIdx].id;
-
-    if (e.key === "Backspace" || e.key === "Delete") {
-      e.preventDefault();
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks[startIdx] = { ...blks[startIdx], text: beforeText + afterText };
-        blks.splice(startIdx + 1, endIdx - startIdx);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-      syncGeneration.current++;
-      focusBlockId.current = startBlockId;
-      focusCursorPos.current = beforeText.length;
-      return;
-    }
-
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      const newBlockId = genBlockId();
-      const startType = blocks[startIdx].type;
-      const isList =
-        startType === "bullet" ||
-        startType === "checkbox" ||
-        startType === "numbered" ||
-        startType === "blockquote";
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks[startIdx] = { ...blks[startIdx], text: beforeText };
-        blks.splice(startIdx + 1, endIdx - startIdx);
-        const newBlock = { id: newBlockId, type: isList ? startType : "p", text: afterText };
-        if (startType === "checkbox") newBlock.checked = false;
-        blks.splice(startIdx + 1, 0, newBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-      syncGeneration.current++;
-      focusBlockId.current = newBlockId;
-      focusCursorPos.current = 0;
-      return;
-    }
-
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      e.preventDefault();
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks[startIdx] = { ...blks[startIdx], text: beforeText + e.key + afterText };
-        blks.splice(startIdx + 1, endIdx - startIdx);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-      syncGeneration.current++;
-      focusBlockId.current = startBlockId;
-      focusCursorPos.current = beforeText.length + e.key.length;
-      return;
-    }
-    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
-  }, []);
-
   // --- Editor wrapper keydown handler ---
   const handleEditorKeyDown = useCallback((e) => {
     // A key a menu has already consumed is not the editor's to handle. The
@@ -429,49 +323,34 @@ export function useKeyboardHandlers({
       return;
     }
     const range = sel.getRangeAt(0);
+    const getBlockAt = (i) => noteDataRef.current[currentNote]?.content?.blocks?.[i];
 
+    // Inline formatting goes through applyFormat, which knows which block
+    // roots the selection touches and formats each of them within itself.
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && e.key === "b") {
+    const format = !mod
+      ? null
+      : e.shiftKey
+        ? { S: "strikethrough", s: "strikethrough", H: "highlight", h: "highlight" }[e.key]
+        : { b: "bold", i: "italic", "`": "code", k: "link", K: "link" }[e.key];
+    if (format) {
       e.preventDefault();
-      document.execCommand("bold");
-      reReadBlockFromDom(sel);
-      return;
-    }
-    if (mod && e.key === "i") {
-      e.preventDefault();
-      document.execCommand("italic");
-      reReadBlockFromDom(sel);
-      return;
-    }
-    if (mod && e.key === "`") {
-      e.preventDefault();
-      toggleInlineCode(sel);
-      reReadBlockFromDom(sel);
-      return;
-    }
-    if (mod && e.shiftKey && (e.key === "S" || e.key === "s")) {
-      e.preventDefault();
-      applyFormat("strikethrough");
-      return;
-    }
-    if (mod && e.shiftKey && (e.key === "H" || e.key === "h")) {
-      e.preventDefault();
-      applyFormat("highlight");
-      return;
-    }
-    if (mod && (e.key === "k" || e.key === "K") && !e.shiftKey) {
-      e.preventDefault();
-      if (onOpenLinkEditor) onOpenLinkEditor();
+      applyFormat(format);
       return;
     }
 
-    if (!range.collapsed) {
-      const startInfo = getBlock(range.startContainer);
-      const endInfo = getBlock(range.endContainer);
-      if (startInfo && endInfo && startInfo.blockIndex !== endInfo.blockIndex) {
-        handleCrossBlockKeyDown(e, startInfo, endInfo);
-        return;
-      }
+    // Which block roots the selection touches decides who handles the key.
+    // Inside one text block: the handlers below. Inside a block that owns
+    // itself (a table cell, a callout field): that block, not the editor.
+    // Across roots, or with one end outside every root: nothing here. An
+    // edit key becomes a beforeinput that useCrossBlockEdit owns, and a
+    // navigation key collapses the selection natively; Tab is swallowed so
+    // focus does not leave the editor.
+    const scope = scopeOf(range);
+    if (scope.kind === "block" && !isEditableBlock(getBlockAt(scope.start.blockIndex))) return;
+    if (scope.kind === "cross" || (scope.kind === "outside" && !range.collapsed)) {
+      if (e.key === "Tab") e.preventDefault();
+      return;
     }
 
     const info = getBlock(sel.anchorNode);
@@ -510,5 +389,5 @@ export function useKeyboardHandlers({
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
-  return { handleBlockKeyDown, handleCrossBlockKeyDown, handleEditorKeyDown };
+  return { handleBlockKeyDown, handleEditorKeyDown };
 }

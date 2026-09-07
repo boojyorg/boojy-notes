@@ -539,6 +539,45 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
 
+## One edit, one block root
+
+The editor is a single contentEditable wrapping every block root, so Chromium is willing to
+merge, split or format across two React-owned roots; the next React commit then meets DOM it
+did not make and throws (the "Something went wrong" screen), or the screen and the file
+quietly part ways. The rule (2026-09-07): **an edit whose reach is not confined to one block
+root is the app's, made through state; Chromium never mutates across roots.**
+
+- **The seam is the native `beforeinput` on the editor root** (`useCrossBlockEdit`), because it
+  is the one event that says which roots an edit is about to touch (`getTargetRanges()`): a
+  forward Delete at the end of a block reports a range into the next block, and a Backspace
+  beside a code block reports a range that swallows it, neither visible at keydown. Every
+  native edit reaches it, whatever produced it (a key, Cut, a menu, autocorrect, a drop). A
+  target range inside one root is left to Chromium; anything else is cancelled and, where it
+  has a meaning in the block model (delete, typed text, Enter, Shift+Enter), made in state.
+  Formatting, history and composition across roots are refused. React's `onBeforeInput` is
+  synthesised from other events and cannot stand in for it.
+- **`execCommand` fires no `beforeinput`**, so every script mutation asks which roots the
+  selection touches first (`scopeOf`, the same resolver): inline formatting is applied to each
+  block within itself and each block alone is read back; Cut is copy plus the owned deletion;
+  a paste across blocks is the owned replacement; a link needs one text block. Don't add an
+  `execCommand`, `surroundContents` or `insertNode` on a selection whose scope has not been
+  checked.
+- **A block that owns its own field owns its edits.** A selection inside a table cell, a
+  callout or a code block's textarea is that block's; the editor's key, paste, cut and
+  re-read paths keep out (a block with no registered element is never read back into
+  state). A selection reaching from a text block into one of them is refused, nothing
+  changes; deleting the run is not attempted (backlog).
+- **A collapsed Delete or Backspace reaching into a neighbour** merges only with an adjacent
+  text block, selects an adjacent divider or image (the next key removes it), and refuses
+  anything else, so a code block or table beside the caret is never swallowed. Keydown's own
+  Backspace-at-start rules (indent, divider, step over) still run first and prevent the
+  default; the guard sees what escapes them.
+- Proven in `cross-block-ownership.spec.ts` (the real app) and the unit tests beside the two
+  modules. Known residue: an IME composition begun over a cross-block selection cannot be
+  cancelled (`insertCompositionText` is not cancelable); a text drag across blocks copies
+  rather than moves (`deleteByDrag` is refused so the text is never lost between the owned
+  delete and Chromium's insertion); Cmd+B across blocks toggles per block.
+
 ## Menus own their keys; the editor keeps the caret
 
 - **A key a menu has already consumed never reaches the editor** (2026-09-07).
@@ -655,8 +694,9 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   fallback sat it 8px low. It must not share `EditableBlock`'s `elRef`: that
   ref's repaint effect would replace the rule with a `<br>` (a parsed divider carries `text: ""`).
   `findNearestBlock` skips non-editable blocks so the mouse-up caret never lands in it.
-- Deliberately absent: a hover treatment on the rule, a block menu, Duplicate or Turn into, forward
-  Delete from the end of the block above (unhandled for every block).
+- Forward Delete at the end of the block above selects the divider first, as Backspace from
+  below does; the second Delete removes it (the block-root rule, above).
+- Deliberately absent: a hover treatment on the rule, a block menu, Duplicate or Turn into.
 
 ## Paste keeps the block you are in
 

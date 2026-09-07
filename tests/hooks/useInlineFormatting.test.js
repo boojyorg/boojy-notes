@@ -4,6 +4,21 @@ import { renderHook, act } from "@testing-library/react";
 
 vi.mock("../../src/utils/domHelpers", () => ({
   getBlockFromNode: vi.fn(),
+  isEditableBlock: (b) => b?.type === "p",
+  caretOffsetAt: vi.fn(() => 0),
+  caretRangeAt: vi.fn(() => null),
+}));
+
+// The scope of the selection is decided by rangeScope; these tests place the
+// selection straight in the editor element, so the scope is stubbed to the
+// one text block the fixture holds.
+const scopeMock = vi.fn(() => ({
+  kind: "block",
+  start: { blockIndex: 0, blockId: "b1" },
+  end: { blockIndex: 0, blockId: "b1" },
+}));
+vi.mock("../../src/utils/crossBlockEdit", () => ({
+  rangeScope: (...args) => scopeMock(...args),
 }));
 
 vi.mock("../../src/utils/inlineFormatting", () => ({

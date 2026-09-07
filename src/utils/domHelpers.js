@@ -173,22 +173,26 @@ export function getCaretOffset(el) {
   if (!el) return -1;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return -1;
-  const { anchorNode, anchorOffset } = sel;
-  if (!anchorNode || !el.contains(anchorNode)) return -1;
+  return caretOffsetAt(el, sel.anchorNode, sel.anchorOffset);
+}
+
+/** `getCaretOffset` for any point (`node`, `offset`) inside `el`, not just the caret. */
+export function caretOffsetAt(el, node, offset) {
+  if (!el || !node || !el.contains(node)) return -1;
   try {
     const range = document.createRange();
     range.setStart(el, 0);
-    range.setEnd(anchorNode, anchorOffset);
-    let offset = range.toString().replace(ANCHOR_RE, "").length;
+    range.setEnd(node, offset);
+    let pos = range.toString().replace(ANCHOR_RE, "").length;
     // placeCaret never counts the ↗ inside external links; neither do we.
     for (const icon of el.querySelectorAll(".external-link-icon")) {
-      if (range.intersectsNode(icon)) offset -= icon.textContent.length;
+      if (range.intersectsNode(icon)) pos -= icon.textContent.length;
     }
     // A soft-break <br> before the caret is one character of the text.
     for (const br of el.querySelectorAll("br")) {
-      if (!isTrailingBr(br, el) && range.comparePoint(br, 0) <= 0) offset++;
+      if (!isTrailingBr(br, el) && range.comparePoint(br, 0) <= 0) pos++;
     }
-    return Math.max(0, offset);
+    return Math.max(0, pos);
   } catch {
     return -1;
   }
@@ -207,12 +211,26 @@ export function getCaretOffset(el) {
  */
 export function placeCaret(el, pos = 0) {
   if (!el || !el.isConnected) return false;
+  let ancestor = el.parentElement;
+  while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
+  if (ancestor) ancestor.focus();
+  const range = caretRangeAt(el, pos);
+  if (!range) return false;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
+/**
+ * The collapsed range `placeCaret` would select for character offset `pos`
+ * inside `el`, or null when none can be made. Same arithmetic as
+ * `caretOffsetAt`, in reverse, so the two round-trip.
+ */
+export function caretRangeAt(el, pos = 0) {
+  if (!el) return null;
   try {
-    let ancestor = el.parentElement;
-    while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
-    if (ancestor) ancestor.focus();
     const range = document.createRange();
-    const sel = window.getSelection();
     if (el.childNodes.length === 0) {
       el.appendChild(document.createTextNode(""));
       range.setStart(el.firstChild, 0);
@@ -262,30 +280,20 @@ export function placeCaret(el, pos = 0) {
         } else {
           range.selectNodeContents(el);
           range.collapse(false);
+          return range;
         }
-        sel.removeAllRanges();
-        sel.addRange(range);
-        return true;
       }
     }
     range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    return true;
+    return range;
   } catch {
     try {
-      let ancestor = el.parentElement;
-      while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
-      if (ancestor) ancestor.focus();
       const range = document.createRange();
-      const sel = window.getSelection();
       range.setStart(el, 0);
       range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      return true;
+      return range;
     } catch {
-      return false;
+      return null;
     }
   }
 }

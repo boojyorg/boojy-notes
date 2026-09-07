@@ -74,15 +74,19 @@ describe("useKeyboardHandlers", () => {
       moveBlock: vi.fn(),
       selectBlock: vi.fn(),
       getBlock: vi.fn(),
+      scopeOf: vi.fn(() => ({
+        kind: "block",
+        start: { blockIndex: 0, blockId: "b1" },
+        end: { blockIndex: 0, blockId: "b1" },
+      })),
       executeSlashCommand: vi.fn(),
       handleBlockInput: vi.fn(),
     };
   });
 
-  it("returns the three handler functions", () => {
+  it("returns the two handler functions", () => {
     const { result } = renderHook(() => useKeyboardHandlers(deps));
     expect(result.current.handleBlockKeyDown).toBeInstanceOf(Function);
-    expect(result.current.handleCrossBlockKeyDown).toBeInstanceOf(Function);
     expect(result.current.handleEditorKeyDown).toBeInstanceOf(Function);
   });
 

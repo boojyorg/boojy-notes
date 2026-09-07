@@ -103,6 +103,22 @@ docs/private/           # gitignored personal notes
   (`isNative === isElectron`) and `isElectronMac`. `ELECTRON_DISABLE=1` excludes Electron code
   from a build.
 
+## Keep it small
+
+Boojy Notes is a small product and must stay one a single person can hold in their head.
+Optimise every change for the maintainability of the app that exists, not of one that might.
+
+- **Abstract only what is repeated now** and demonstrably better shared; no speculative
+  extensibility, no generalised editor framework, command bus or state layer for features
+  nobody has asked for.
+- **Prefer deleting a duplicate path to wrapping it.** A good fix usually removes a branch,
+  an owner or a way of doing the same thing; be suspicious of one that adds machinery.
+- **Enforce a correctness invariant at the existing ownership seam**, as close to where the
+  data is owned as possible, so the invalid path becomes impossible rather than guarded in
+  many places.
+- **Complexity is earned only by simplifying the product.** Implementation may grow where it
+  makes the user-facing model plainer; it may not grow to keep options open.
+
 ## Editor gotchas
 
 Each of these has caused a real bug. Read before touching the editor.
