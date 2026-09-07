@@ -4,7 +4,7 @@ import { useSettings } from "../../context/SettingsContext";
 import { Z } from "../../constants/zIndex";
 import { shadow } from "../../tokens/shadows";
 import { ChevronLeftIcon, MoreHorizontalIcon } from "../Icons";
-import boojyWordmark from "/assets/boojy-notes-wordmark.png";
+import Wordmark from "../Wordmark";
 
 export default function TopBarMobile({
   noteTitle,
@@ -102,7 +102,7 @@ export default function TopBarMobile({
             aria-label="Notes — open settings"
             title="Settings"
           >
-            <img src={boojyWordmark} alt="" style={{ height: 30 }} draggable="false" />
+            <Wordmark height={30} />
           </button>
 
           <div style={{ flex: 1 }} />
