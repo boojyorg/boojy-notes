@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, memo } from "react";
+import { useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";

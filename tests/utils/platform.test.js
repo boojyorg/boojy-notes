@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-let isElectron, isNative, isWeb, platform;
+let isElectron, isNative, isWeb;
 
 beforeEach(async () => {
   vi.resetModules();
@@ -10,7 +10,6 @@ beforeEach(async () => {
   isElectron = mod.isElectron;
   isNative = mod.isNative;
   isWeb = mod.isWeb;
-  platform = mod.platform;
 });
 
 describe("platform detection", () => {
@@ -24,9 +23,5 @@ describe("platform detection", () => {
 
   it("isWeb is true when not electron", () => {
     expect(isWeb).toBe(true);
-  });
-
-  it("platform string is 'web' when not electron", () => {
-    expect(platform).toBe("web");
   });
 });

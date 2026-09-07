@@ -1,5 +1,4 @@
 import { genNoteId, genBlockId } from "../utils/storage";
-import { isNative } from "../utils/platform";
 
 export function useNoteCrud({
   commitNoteData,

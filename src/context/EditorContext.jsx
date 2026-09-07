@@ -19,7 +19,7 @@ const EditorContext = createContext(null);
 export function EditorProvider({ value, children }) {
   // Memoize so the context reference is stable (prevents consumer re-renders)
   // All fields are refs or useCallback outputs — they don't change between renders
-  const stable = useMemo(() => value, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const stable = useMemo(() => value, []);
   return <EditorContext.Provider value={stable}>{children}</EditorContext.Provider>;
 }
 

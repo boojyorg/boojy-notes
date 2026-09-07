@@ -43,7 +43,6 @@ export function useWikilinkHandlers({
       .join("\0");
     lastTitlesKey.current = key;
     return key;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteData]);
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
 
@@ -62,10 +61,6 @@ export function useWikilinkHandlers({
     },
     [openNote, createNote, noteDataRef],
   );
-
-  // Cmd-click used to open the target in a split pane; with the single-active-note
-  // model it behaves exactly like a plain click.
-  const handleWikilinkCmdClick = handleWikilinkClick;
 
   // Wikilink autocomplete select handler
   const handleWikilinkSelect = useCallback(
@@ -124,7 +119,6 @@ export function useWikilinkHandlers({
   return {
     noteTitleSet,
     handleWikilinkClick,
-    handleWikilinkCmdClick,
     handleWikilinkSelect,
   };
 }

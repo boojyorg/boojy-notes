@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
 vi.mock("../../src/utils/inlineFormatting", () => ({
@@ -57,12 +57,6 @@ describe("useWikilinkHandlers", () => {
     result.current.handleWikilinkClick("Gamma");
     expect(createNote).toHaveBeenCalledWith(null, "Gamma");
     expect(openNote).not.toHaveBeenCalled();
-  });
-
-  it("cmd-click behaves exactly like a plain click (split view removed)", () => {
-    const { result, openNote } = setup();
-    result.current.handleWikilinkCmdClick("Beta");
-    expect(openNote).toHaveBeenCalledWith("n2");
   });
 
   it("select inserts the link, writes rendered HTML to the DOM, and queues the caret", () => {

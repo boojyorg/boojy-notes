@@ -87,7 +87,7 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "assets/**/*"
+      "assets/boojy-notes-app-icon.png"
     ],
     "npmRebuild": true,
     "win": {

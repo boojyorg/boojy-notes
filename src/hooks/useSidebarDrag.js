@@ -1,7 +1,5 @@
 import { useRef, useEffect } from "react";
 import { useTheme } from "./useTheme";
-import { isNative } from "../utils/platform";
-import { getAPI } from "../services/apiProvider";
 import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 
 const LIFT_MS = 120;
@@ -10,10 +8,8 @@ const SETTLE_MS = 200;
 export function useSidebarDrag({
   noteDataRef,
   setNoteData,
-  customFolders: _customFolders,
   sidebarScrollRef,
   accentColor,
-  chromeBg: _chromeBg,
   setDragTooltip,
   dragTooltipCount,
   selectedNotesRef,
@@ -136,15 +132,6 @@ export function useSidebarDrag({
       });
     });
 
-    // Escape handler to cancel drag
-    const escHandler = (e) => {
-      if (e.key === "Escape") {
-        cancelSidebarDrag();
-      }
-    };
-    window.addEventListener("keydown", escHandler);
-    sd.escHandler = escHandler;
-
     document.body.classList.add("block-dragging");
 
     const scrollEl = sidebarScrollRef.current;
@@ -198,7 +185,7 @@ export function useSidebarDrag({
     }
 
     // Containers only. A folder row means "move into this folder" across its whole
-    // height, and the Notes section (plus the empty space under the trees) means
+    // height, and the vault header (plus the empty space under the trees) means
     // "move to root". There are no above/below insertion zones any more: drag
     // changes a note's location, the sort preference decides display order.
     let target = null;
@@ -220,7 +207,7 @@ export function useSidebarDrag({
     }
 
     if (!target) {
-      // Explicit root target: the `Notes` section header.
+      // Explicit root target: the vault header.
       const rootEl = scrollEl.querySelector("[data-drop-root]");
       if (rootEl) {
         const rect = rootEl.getBoundingClientRect();
@@ -233,7 +220,7 @@ export function useSidebarDrag({
     if (!target) {
       // Implicit root target: anywhere in the scroller that isn't a folder row —
       // a root note row, or the empty space below every tree. Highlighting the
-      // `Notes` header (when there is one) is what makes this legible.
+      // vault header (when there is one) is what makes this legible.
       const rootEl = scrollEl.querySelector("[data-drop-root]");
       target = { type: "root", el: rootEl || null };
     }
@@ -313,10 +300,6 @@ export function useSidebarDrag({
   const cleanupSidebarDrag = () => {
     const sd = sidebarDrag.current;
     if (sd.cloneEl && sd.cloneEl.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
-    if (sd.escHandler) {
-      window.removeEventListener("keydown", sd.escHandler);
-      sd.escHandler = null;
-    }
     if (sd.scrollRAF) {
       cancelAnimationFrame(sd.scrollRAF);
       sd.scrollRAF = null;
@@ -433,7 +416,7 @@ export function useSidebarDrag({
     window.addEventListener("pointerup", onUp);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupSidebarDrag is stable (no deps), safe to omit
+  // Deps deliberately not exhaustive: cleanupSidebarDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupSidebarDrag(), []);
 
   return { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag };

@@ -81,7 +81,7 @@ export function useEditorFocusUX({
       cancelAnimationFrame(rafId);
       document.removeEventListener("selectionchange", debouncedSelChange);
     };
-  }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote]);
 
   // Typing at the end of a link: move the caret outside first. A native
   // listener, because React's onBeforeInput is synthesised from other events

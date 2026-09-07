@@ -13,7 +13,6 @@ const hBg = (el, c) => {
 const ContextMenu = memo(function ContextMenu({
   ctxMenu,
   setCtxMenu,
-  openNote,
   duplicateNote,
   deleteNote,
   deleteFolder,

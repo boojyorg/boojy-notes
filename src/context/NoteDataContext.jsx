@@ -40,7 +40,7 @@ export function NoteDataProvider({ children }) {
         }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const syncGeneration = useRef(0);
   const activeNoteRef = useRef(null);
@@ -56,7 +56,6 @@ export function NoteDataProvider({ children }) {
     remapNoteFolders,
     commitTextChange,
     pushHistory,
-    popHistory,
     noteDataRef,
     textOnlyEdit,
     textOnlyEditForSidebar,
@@ -81,14 +80,13 @@ export function NoteDataProvider({ children }) {
       remapNoteFolders,
       commitTextChange,
       pushHistory,
-      popHistory,
       noteDataRef,
       textOnlyEdit,
       textOnlyEditForSidebar,
       textOnlyEditForEditor,
       unflushedNotes,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs (noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded
+    // Deps deliberately not exhaustive: refs (noteDataRef, textOnlyEdit, etc.) are stable and intentionally excluded
     [
       canUndo,
       canRedo,
@@ -100,7 +98,6 @@ export function NoteDataProvider({ children }) {
       remapNoteFolders,
       commitTextChange,
       pushHistory,
-      popHistory,
     ],
   );
 

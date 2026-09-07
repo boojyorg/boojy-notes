@@ -6,7 +6,7 @@
 
 import type { Note } from "./notes";
 
-/** userData/settings.json — known keys plus whatever set-setting has stored. */
+/** userData/settings.json. */
 interface DesktopSettings {
   spellCheckEnabled?: boolean;
   spellCheckLanguages?: string[];
@@ -14,7 +14,7 @@ interface DesktopSettings {
   [key: string]: unknown;
 }
 
-/** Payloads of the update-status event and get-update-status. */
+/** Payload of the update-status event. */
 interface UpdateStatus {
   state: "idle" | "checking" | "available" | "up-to-date" | "downloading" | "downloaded" | "error";
   version?: string;
@@ -74,18 +74,9 @@ declare global {
       onAppWillClose: (callback: () => void) => Unsubscribe;
       flushBeforeCloseDone: () => void;
 
-      // Settings (each mutation returns the full settings object)
-      getSettings: () => Promise<DesktopSettings>;
-      setSetting: (key: string, value: unknown) => Promise<DesktopSettings>;
-      toggleSpellcheck: (opts: {
-        enabled: boolean;
-        languages?: string[];
-      }) => Promise<DesktopSettings>;
-
-      // Auto-update
+      // Auto-update (each mutation returns the full settings object)
       checkForUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;
-      getUpdateStatus: () => Promise<UpdateStatus>;
       setAutoUpdate: (enabled: boolean) => Promise<DesktopSettings>;
       getAutoUpdate: () => Promise<boolean>;
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => Unsubscribe;

@@ -37,6 +37,7 @@
       "correctness": {
         "useExhaustiveDependencies": "warn",
         "useHookAtTopLevel": "error",
+        "noUnusedImports": "error",
         "noUnusedVariables": "warn",
         "noUnusedFunctionParameters": "warn"
       },

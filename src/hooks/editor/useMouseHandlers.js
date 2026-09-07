@@ -50,12 +50,12 @@ export function useMouseHandlers({
       const el = blockRefs.current[first.id];
       if (el?.isConnected) placeCaret(el, 0);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs
+    // Deps deliberately not exhaustive: all deps are stable refs
   }, []);
 
   const handleEditorMouseDown = useCallback(() => {
     mouseIsDown.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mouseIsDown is a stable ref
+    // Deps deliberately not exhaustive: mouseIsDown is a stable ref
   }, []);
 
   const handleEditorFocus = useCallback(() => {
@@ -75,7 +75,7 @@ export function useMouseHandlers({
       const el = blockRefs.current[first.id];
       if (el?.isConnected) placeCaret(el, 0);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs
+    // Deps deliberately not exhaustive: all deps are stable refs
   }, []);
 
   return { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus };

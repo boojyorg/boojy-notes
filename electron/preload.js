@@ -53,15 +53,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   flushBeforeCloseDone: () => ipcRenderer.send("flush-before-close-done"),
 
-  // Settings
-  getSettings: () => ipcRenderer.invoke("get-settings"),
-  setSetting: (key, value) => ipcRenderer.invoke("set-setting", key, value),
-  toggleSpellcheck: (opts) => ipcRenderer.invoke("toggle-spellcheck", opts),
-
   // Auto-update
   checkForUpdate: () => ipcRenderer.invoke("check-for-update"),
   installUpdate: () => ipcRenderer.invoke("install-update"),
-  getUpdateStatus: () => ipcRenderer.invoke("get-update-status"),
   setAutoUpdate: (enabled) => ipcRenderer.invoke("set-auto-update", enabled),
   getAutoUpdate: () => ipcRenderer.invoke("get-auto-update"),
   onUpdateStatus: (callback) => {

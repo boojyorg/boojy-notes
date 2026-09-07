@@ -644,26 +644,15 @@ describe("useHistory", () => {
     });
   });
 
-  // ─── pushHistory / popHistory ─────────────────────────────────────
+  // ─── pushHistory ──────────────────────────────────────────────────
 
-  describe("pushHistory / popHistory", () => {
-    it("pushHistory adds an entry and popHistory removes it", async () => {
+  describe("pushHistory", () => {
+    it("pushHistory adds an entry", async () => {
       const { result } = setup();
 
       act(() => result.current.pushHistory());
       await act(() => flushMicrotasks());
       expect(result.current.canUndo).toBe(true);
-
-      act(() => result.current.popHistory());
-      expect(result.current.canUndo).toBe(false);
-    });
-
-    it("popHistory does nothing on empty stack", () => {
-      const { result } = setup();
-
-      // Should not throw
-      act(() => result.current.popHistory());
-      expect(result.current.canUndo).toBe(false);
     });
 
     it("pushHistory ignores call when no active note", async () => {

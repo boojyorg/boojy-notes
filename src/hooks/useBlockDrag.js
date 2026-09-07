@@ -398,7 +398,7 @@ export function useBlockDrag({
     window.addEventListener("pointerup", onUp);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanupBlockDrag is stable (no deps), safe to omit
+  // Deps deliberately not exhaustive: cleanupBlockDrag is stable (no deps), safe to omit
   useEffect(() => () => cleanupBlockDrag(), []);
 
   return { blockDrag, startHandleDrag, cancelBlockDrag };

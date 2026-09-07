@@ -3,31 +3,6 @@ export const genBlockId = (): string => `blk-${Date.now()}-${rand()}`;
 export const genNoteId = (): string => `note-${Date.now()}-${rand()}`;
 
 export const STORAGE_KEY = "boojy-notes-v1";
-const SCHEMA_VERSION_KEY = "boojy-schema-version";
-export const CURRENT_SCHEMA_VERSION = 1;
-
-// Migration registry: [fromVersion, migrationFn]
-const migrations: Array<[number, (data: Record<string, unknown>) => Record<string, unknown>]> = [
-  // Example: [1, (data) => { /* migrate from v1 to v2 */ return data; }]
-];
-
-export function migrateSchema(data: Record<string, unknown>): Record<string, unknown> {
-  let version = 0;
-  try {
-    version = parseInt(localStorage.getItem(SCHEMA_VERSION_KEY) || "0", 10) || 0;
-  } catch {}
-  let result = data;
-  for (const [fromVer, fn] of migrations) {
-    if (version <= fromVer) {
-      result = fn(result);
-    }
-  }
-  try {
-    localStorage.setItem(SCHEMA_VERSION_KEY, String(CURRENT_SCHEMA_VERSION));
-  } catch {}
-  return result;
-}
-
 // ─── IndexedDB fallback for large data ─────────────────────────────
 const IDB_NAME = "boojy-notes";
 const IDB_STORE = "data";
@@ -82,9 +57,7 @@ export async function loadFromIDB(): Promise<Record<string, unknown> | null> {
 export const loadFromStorage = (): Record<string, unknown> | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    let data = raw ? JSON.parse(raw) : null;
-    if (data) data = migrateSchema(data);
-    return data;
+    return raw ? JSON.parse(raw) : null;
   } catch (e) {
     console.warn("Failed to load from localStorage:", e);
     return null;

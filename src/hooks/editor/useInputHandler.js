@@ -182,7 +182,7 @@ export function useInputHandler({
         syncGeneration.current++;
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks passed via shared object
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks passed via shared object
   }, []);
 
   // --- Editor wrapper input handler ---
@@ -210,7 +210,7 @@ export function useInputHandler({
       return;
     }
     handleBlockInput(currentNote, info.blockIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   return { handleBlockInput, handleEditorInput };

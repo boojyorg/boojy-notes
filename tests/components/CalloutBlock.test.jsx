@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
-import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, cleanup } from "@testing-library/react";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -13,11 +12,17 @@ vi.mock("../../src/hooks/useTheme", () => ({
         hover: "#555",
       },
       callouts: {
-        note: { bg: "#3f4e74" },
-        info: { bg: "#446277" },
-        tip: { bg: "#4c5e43" },
-        warning: { bg: "#635242" },
-        danger: { bg: "#6b3d4f" },
+        note: { colour: "#7AA2F7", bg: "#3f4e74", border: "rgba(122,162,247,0.18)" },
+        info: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
+        tip: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
+        warning: { colour: "#E0AF68", bg: "#635242", border: "rgba(224,175,104,0.18)" },
+        danger: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
+        success: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
+        question: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
+        quote: { colour: "#9B9EB0", bg: "#4c4c5a", border: "rgba(155,158,176,0.18)" },
+        example: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
+        bug: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
+        abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
       },
     },
     isDark: true,
