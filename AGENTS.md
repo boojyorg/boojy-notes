@@ -45,7 +45,7 @@ pnpm test:electron    # real-Electron core journeys against a throwaway vault, w
 pnpm test:electron:headed  # the few *.headed.spec.ts that need real focus/clipboard/menus
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
-pnpm build:electron   # web build + desktop installers into dist/
+pnpm build:electron   # web build + desktop installers into release/
 ```
 
 ## Structure
