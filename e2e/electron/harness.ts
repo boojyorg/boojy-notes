@@ -24,7 +24,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { _electron, expect, type ElectronApplication, type Page } from "@playwright/test";
+import {
+  _electron,
+  expect,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -305,7 +311,7 @@ export async function moveNoteToFolder(page: Page, title: string, folder: string
     folder === null
       ? page.locator("[data-drop-root]").first()
       : page.locator(`[data-folder-path="${folder}"]`).first();
-  const from = await row.boundingBox();
+  const from = await settledRowBox(page, row, "data-note-id");
   const to = await target.boundingBox();
   if (!from || !to) throw new Error(`moveNoteToFolder: row or folder "${folder}" not visible`);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -315,6 +321,31 @@ export async function moveNoteToFolder(page: Page, title: string, folder: string
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
   await sleep(100);
   await page.mouse.up();
+}
+
+/**
+ * The row's box once the row is really under its own centre: expanding a
+ * folder slides the rows below into place over ~300ms, and a press during the
+ * slide lands on whichever row is passing under the pointer at that instant.
+ */
+async function settledRowBox(page: Page, row: Locator, attr: string) {
+  const expected = await row.getAttribute(attr);
+  for (let i = 0; i < 30; i++) {
+    const box = await row.boundingBox();
+    if (box) {
+      const under = await page.evaluate(
+        ([x, y, a]) => document.elementFromPoint(x, y)?.closest(`[${a}]`)?.getAttribute(a) ?? null,
+        [box.x + box.width / 2, box.y + box.height / 2, attr] as const,
+      );
+      if (under === expected) {
+        await sleep(100);
+        const again = await row.boundingBox();
+        if (again && again.y === box.y) return again;
+      }
+    }
+    await sleep(100);
+  }
+  return row.boundingBox();
 }
 
 /**
@@ -328,7 +359,7 @@ export async function moveFolderTo(page: Page, folder: string, target: string | 
     target === null
       ? page.locator("[data-drop-root]").first()
       : page.locator(`[data-folder-path="${target}"]`).first();
-  const from = await row.boundingBox();
+  const from = await settledRowBox(page, row, "data-folder-path");
   const to = await dest.boundingBox();
   if (!from || !to) throw new Error(`moveFolderTo: "${folder}" or its target is not visible`);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -348,6 +379,7 @@ export async function moveFolderTo(page: Page, folder: string, target: string | 
 export async function expandAllFolders(page: Page) {
   const collapsed = page.locator('[data-folder-path][aria-expanded="false"]');
   while ((await collapsed.count()) > 0) await collapsed.first().click();
+  await sleep(350);
   const rowTops = () =>
     page.evaluate(() =>
       [...document.querySelectorAll("[data-note-id], [data-folder-path]")].map((el) =>
