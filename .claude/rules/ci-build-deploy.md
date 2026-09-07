@@ -88,12 +88,28 @@ change needs; the incidents behind them are in git.
   Replace the source and re-run that; a full-bleed PNG handed straight to electron-builder
   renders about a quarter too large beside native icons.
 - **The daily-driver build is `pnpm build:electron` on master.** It writes
-  `dist/mac-arm64/Boojy Notes.app` and the DMG; electron-builder signs with whatever Developer
-  ID identity the keychain holds and builds unsigned without one. Quit the running app first (its
-  quit flush saves pending edits), replace `/Applications/Boojy Notes.app`, then check
-  `codesign --verify --deep --strict` and the version in Settings. The installed app never
-  self-updates, so rebuild after every product merge. `pnpm test:e2e` and the Electron suite
-  overwrite `dist/`, so build after testing. Distributed releases go through `release.yml` only.
+  `release/mac-arm64/Boojy Notes.app` and the DMG beside it; electron-builder signs with
+  whatever Developer ID identity the keychain holds and builds unsigned without one. Quit the
+  running app first (its quit flush saves pending edits), replace `/Applications/Boojy Notes.app`,
+  then check `codesign --verify --deep --strict` and the version in Settings. The installed app
+  never self-updates, so rebuild after every product merge. Distributed releases go through
+  `release.yml` only.
+- **Build input and output are separate directories** (2026-09-07). `dist/` (the renderer) and
+  `dist-electron/` (main and preload) are the packaged input; installers land in `release/`,
+  never in `dist/`. With both in `dist/`, the `files` glob `dist/**/*` packed the previous
+  build's own app and DMG into every new `app.asar` (345 MB, 5,800 entries; now 1.2 MB and 18),
+  and the DMG was 244 MB where 118 MB is the Electron floor. `build:electron` empties
+  `dist-electron/` first, because vite-plugin-electron never does and every removed feature's
+  chunks were shipping. `pnpm test:e2e` and the Electron suite rebuild `dist/`, which is
+  harmless now; the packaged app in `release/` is untouched.
+- **Every dependency is a devDependency, on purpose.** Vite bundles the renderer and the
+  main process alike; the built `main.js` requires only Node built-ins and `electron`, the
+  renderer nothing. electron-builder copies `dependencies` into the asar wholesale, so listing
+  `react`, `lucide-react`, `chokidar` or `electron-updater` there shipped 5,200 files nothing
+  read (29 MB). Proven 2026-09-07 by launching the packaged app from `release/` against a
+  throwaway vault: `app.isPackaged` true, the vault rendered, Settings → Updates completed the
+  GitHub check (`Up to date`) with no module or page errors. A new runtime import that Vite
+  cannot bundle (a native module) is the one reason to put something back in `dependencies`.
 
 ## Web deploy
 
