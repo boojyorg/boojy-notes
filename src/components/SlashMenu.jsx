@@ -10,6 +10,13 @@ import { SlashCommandIcon } from "./Icons";
 const ROW_PAD_Y = 7;
 const ICON_COL = 20;
 const MENU_WIDTH = 300;
+/**
+ * The typed-shortcut hint at the right of a row. Mono so `#`, `##`, `###` read
+ * as syntax rather than a smudge; muted, and it stays muted on the selected row,
+ * where only the glyph takes the accent. It is a footnote, never the choice.
+ */
+const HINT_FONT = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
+const HINT_SIZE = 12;
 
 export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand }) {
   const { theme } = useTheme();
@@ -109,6 +116,21 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                 <div style={{ fontSize: 13, fontWeight: 500, color: TEXT.primary, flex: 1 }}>
                   {cmd.label}
                 </div>
+                {cmd.hint ? (
+                  <span
+                    data-testid="slash-hint"
+                    aria-hidden="true"
+                    style={{
+                      fontFamily: HINT_FONT,
+                      fontSize: HINT_SIZE,
+                      color: TEXT.muted,
+                      flexShrink: 0,
+                      whiteSpace: "pre",
+                    }}
+                  >
+                    {cmd.hint}
+                  </span>
+                ) : null}
               </div>
             );
           })

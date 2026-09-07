@@ -11,7 +11,8 @@ describe("SLASH_COMMANDS", () => {
     for (const cmd of SLASH_COMMANDS) {
       expect(cmd).toHaveProperty("id");
       expect(cmd).toHaveProperty("label");
-      expect(cmd).toHaveProperty("desc");
+      expect(cmd).toHaveProperty("hint");
+      expect(typeof cmd.hint).toBe("string");
       expect(cmd).toHaveProperty("icon");
       expect(cmd).toHaveProperty("type");
       expect(typeof cmd.id).toBe("string");
@@ -52,7 +53,37 @@ describe("SLASH_COMMANDS", () => {
     expect(shown).toHaveLength(11);
     expect(shown).not.toContain("callout");
     expect(shown[0]).toBe("h1");
-    expect(shown[shown.length - 1]).toBe("divider");
+  });
+
+  it("orders the opening screen typed-shortcut blocks first, menu-only blocks last", () => {
+    const shown = filterSlashCommands("");
+    const hinted = shown.map((c) => c.hint !== "");
+    // Every hinted row precedes every blank one: no gaps in the hint column.
+    expect(hinted).toEqual([...hinted].sort((a, b) => Number(b) - Number(a)));
+    expect(shown.slice(-2).map((c) => c.id)).toEqual(["table", "image"]);
+  });
+
+  it("hints only what the input handler turns into the block", () => {
+    const hints = Object.fromEntries(SLASH_COMMANDS.map((c) => [c.id, c.hint]));
+    expect(hints).toMatchObject({
+      h1: "#",
+      h2: "##",
+      h3: "###",
+      bullet: "-",
+      numbered: "1.",
+      checkbox: "[]",
+      blockquote: ">",
+      code: "```",
+      divider: "---",
+    });
+    // No typed shortcut, so no hint: the menu is the route and the blank says so.
+    for (const id of ["table", "image", "callout", "file", "embed"]) expect(hints[id]).toBe("");
+  });
+
+  it("uses plain names, not markup terms", () => {
+    const labels = Object.fromEntries(SLASH_COMMANDS.map((c) => [c.id, c.label]));
+    expect(labels.blockquote).toBe("Quote");
+    expect(labels.checkbox).toBe("To-do list");
   });
 
   it("searches every command once anything is typed", () => {

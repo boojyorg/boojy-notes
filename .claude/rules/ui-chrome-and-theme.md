@@ -510,11 +510,21 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - **The tier rule lives in one place, `filterSlashCommands()`**, used by both the menu and the
   keyboard navigation. A second copy is how Enter inserts a different block than the one
   highlighted.
-- Order is the menu's only structure: headings, lists, then Table and Image (no typed shortcut,
-  so the menu is their route), then code and quote, Divider last because `---` is faster to
-  type. Most commands have typed shortcuts; weigh that before promoting anything.
-- Rows are a bare Lucide glyph and a label, muted at rest and accent when selected: no chip,
-  border or markdown-syntax column. The shadow is `theme.modalShadow`.
+- Order is the menu's only structure (2026-09-07): every block that also has a typed shortcut
+  first, roughly by reach (headings, lists, Quote, Code block, Divider), then Table and Image,
+  the two only the menu can make, at the foot. `data.test.js` guards the split.
+- **Each row carries its typed shortcut as a muted hint on the right** (`hint` in
+  `SLASH_COMMANDS`, 12px mono, `TEXT.muted`, muted on the selected row too; only the glyph takes
+  the accent). The hint is what `useInputHandler` turns into the block at the start of an empty
+  block (`#`, `-`, `[]`, `>`, `---`, three backticks), never the Markdown the block saves as:
+  the old `desc` column showed `| | |` and `![]()` and was removed as noise. Table, Image and
+  every tier-2 block have no typed shortcut and an empty hint; that blank is the message that
+  the menu is their route. Don't invent a shortcut to fill it (a leading `|` for tables is the
+  one candidate, unscheduled until daily-driving shows `/tab` being typed often).
+- Labels are plain words, not markup terms: Quote, not Blockquote; To-do list, not Checkbox
+  (the block is a list, and the row then reads with Bullet list and Numbered list). Rows are a
+  bare Lucide glyph, a label and the hint: no chip, border or group heading. The shadow is
+  `theme.modalShadow`.
 - Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
   viewport margin, flip to the other side on overflow, clamp last. Route every new popover
   through it rather than writing a fresh clamp.

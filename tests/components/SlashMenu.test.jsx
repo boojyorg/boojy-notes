@@ -52,6 +52,21 @@ describe("SlashMenu", () => {
     }
   });
 
+  it("shows the typed shortcut beside each block that has one, and nothing beside the rest", () => {
+    render(
+      <SlashMenu slashMenu={defaultMenu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
+    );
+    const hints = screen.getAllByTestId("slash-hint").map((el) => el.textContent);
+    expect(hints).toEqual(PRIMARY.filter((c) => c.hint).map((c) => c.hint));
+    // Table and Image have no typed shortcut: the row ends at the label.
+    for (const label of ["Table", "Image"]) {
+      const row = screen.getByRole("menuitem", { name: label });
+      expect(row.querySelector('[data-testid="slash-hint"]')).toBeNull();
+    }
+    // The hint is a footnote, not part of the row's name.
+    expect(screen.getByRole("menuitem", { name: "Heading 1" })).toBeInTheDocument();
+  });
+
   it("surfaces an advanced command once it is typed", () => {
     const menu = { ...defaultMenu, filter: "call" };
     render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);
