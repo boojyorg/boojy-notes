@@ -179,7 +179,7 @@ export function useSlashCommands({
     } else {
       refocusSlashBlock();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   return { executeSlashCommand };

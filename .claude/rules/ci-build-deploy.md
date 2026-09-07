@@ -101,7 +101,9 @@ change needs; the incidents behind them are in git.
   and the DMG was 244 MB where 118 MB is the Electron floor. `build:electron` empties
   `dist-electron/` first, because vite-plugin-electron never does and every removed feature's
   chunks were shipping. `pnpm test:e2e` and the Electron suite rebuild `dist/`, which is
-  harmless now; the packaged app in `release/` is untouched.
+  harmless now; the packaged app in `release/` is untouched. The `files` list takes only
+  `assets/boojy-notes-app-icon.png` from `assets/` (2026-09-07): the wordmarks are bundled by Vite
+  and the icon source is build-time input, so nothing else in that directory is read at runtime.
 - **Every dependency is a devDependency, on purpose.** Vite bundles the renderer and the
   main process alike; the built `main.js` requires only Node built-ins and `electron`, the
   renderer nothing. electron-builder copies `dependencies` into the asar wholesale, so listing

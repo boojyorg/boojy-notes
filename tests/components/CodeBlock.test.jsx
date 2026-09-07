@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
-import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent, screen, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 
 // Mock Prism to avoid loading real grammars
 vi.mock("prismjs", () => {

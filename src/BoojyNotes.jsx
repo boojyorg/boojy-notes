@@ -49,6 +49,7 @@ import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
+import { resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -290,7 +291,6 @@ export default function BoojyNotes() {
     insertBlockAfter,
     deleteBlock,
     updateBlockProperty,
-    insertFileBlock,
     saveAndInsertImage,
     flipCheck,
     registerBlockRef,
@@ -352,12 +352,8 @@ export default function BoojyNotes() {
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag } = useSidebarDrag({
     noteDataRef,
     setNoteData,
-    expanded,
-    setExpanded,
-    customFolders,
     sidebarScrollRef,
     accentColor,
-    chromeBg,
     setDragTooltip,
     dragTooltipCount,
     selectedNotesRef: multiSelectRef,
@@ -381,7 +377,6 @@ export default function BoojyNotes() {
     noteTitleSetRef,
     activeNote,
     commitNoteData,
-    commitTextChange,
     blockRefs,
     editorRef,
     focusBlockId,
@@ -397,12 +392,10 @@ export default function BoojyNotes() {
     insertBlockAfter,
     deleteBlock,
     saveAndInsertImage,
-    insertFileBlock,
     reReadBlockFromDom,
     toggleInlineCode,
     applyFormat,
     mouseIsDown,
-    setToolbarState,
     onOpenLinkEditor: openLinkEditor,
     updateBlockIndent,
     moveBlock,
@@ -436,7 +429,7 @@ export default function BoojyNotes() {
     setLightbox(null);
     const t = setTimeout(() => setEditorFadeIn(true), 30);
     return () => clearTimeout(t);
-  }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote]);
 
   useLayoutEffect(() => {
     const title = noteData[activeNote]?.content?.title;
@@ -448,7 +441,7 @@ export default function BoojyNotes() {
         titleRef.current.innerText = title;
       }
     }
-  }, [activeNote, syncGeneration.current]); // eslint-disable-line -- only on note switch + external sync, NOT every keystroke
+  }, [activeNote, syncGeneration.current]); // only on note switch + external sync, NOT every keystroke
 
   // A rename made elsewhere — the sidebar row, or the filename the write
   // actually produced — reaches the title field as long as the user is not in
@@ -510,7 +503,7 @@ export default function BoojyNotes() {
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onVisChange);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Floating-toolbar positioning + focus/caret placement
   useEditorFocusUX({
@@ -530,14 +523,14 @@ export default function BoojyNotes() {
     if (activeNote && !noteData[activeNote]) {
       setActiveNote(null);
     }
-  }, [fsLoading, noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fsLoading, noteData, activeNote]);
 
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote) return;
     if (isMobile) return; // On mobile, null activeNote = show sidebar
     createDraftNote();
-  }, [activeNote, fsLoading, isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote, fsLoading, isMobile]);
 
   useEffect(() => {
     if (!activeNote) return;
@@ -548,7 +541,7 @@ export default function BoojyNotes() {
     if (hasTitle || hasContent) {
       promoteDraft(activeNote);
     }
-  }, [noteData, activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteData, activeNote]);
 
   const prevActiveRef = useRef(null);
   useEffect(() => {
@@ -557,29 +550,28 @@ export default function BoojyNotes() {
     if (prevId && prevId !== activeNote && noteDataRef.current[prevId]?._draft) {
       discardDraft(prevId);
     }
-  }, [activeNote]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeNote]);
 
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
   const noteTitle = note?.title;
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
-  // Wikilink wiring (title set, click/cmd-click/select)
-  const { noteTitleSet, handleWikilinkClick, handleWikilinkCmdClick, handleWikilinkSelect } =
-    useWikilinkHandlers({
-      noteData,
-      noteDataRef,
-      textOnlyEdit,
-      openNote,
-      createNote,
-      wikilinkMenuRef,
-      setWikilinkMenu,
-      syncGeneration,
-      commitNoteData,
-      blockRefs,
-      focusBlockId,
-      focusCursorPos,
-    });
+  // Wikilink wiring (title set, click/select)
+  const { noteTitleSet, handleWikilinkClick, handleWikilinkSelect } = useWikilinkHandlers({
+    noteData,
+    noteDataRef,
+    textOnlyEdit,
+    openNote,
+    createNote,
+    wikilinkMenuRef,
+    setWikilinkMenu,
+    syncGeneration,
+    commitNoteData,
+    blockRefs,
+    focusBlockId,
+    focusCursorPos,
+  });
   noteTitleSetRef.current = noteTitleSet;
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
@@ -928,7 +920,6 @@ export default function BoojyNotes() {
               activeNote={activeNote}
               editorFadeIn={editorFadeIn}
               onWikilinkClick={handleWikilinkClick}
-              onWikilinkCmdClick={handleWikilinkCmdClick}
               onTagClick={handleTagClick}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}
@@ -996,7 +987,6 @@ export default function BoojyNotes() {
       <ContextMenu
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
-        openNote={openNote}
         duplicateNote={duplicateNote}
         deleteNote={confirmDeleteNote}
         deleteFolder={confirmDeleteFolder}
@@ -1078,7 +1068,7 @@ export default function BoojyNotes() {
 
       {lightbox && (
         <ImageLightbox
-          src={lightbox.src.startsWith("data:") ? lightbox.src : `boojy-att://${lightbox.src}`}
+          src={resolveAttachmentUrl(lightbox.src)}
           alt={lightbox.alt}
           onClose={() => setLightbox(null)}
         />

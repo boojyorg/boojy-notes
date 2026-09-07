@@ -422,7 +422,6 @@ export default memo(function CodeBlock({
           onCopy={handleCopy}
           onChangeLang={handleLangChange}
           onDelete={handleDeleteBlock}
-          onClose={closeCtxMenu}
         />
       )}
     </div>
@@ -430,7 +429,7 @@ export default memo(function CodeBlock({
 });
 
 /* ---- Context menu rendered as a portal ---- */
-function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete, onClose: _onClose }) {
+function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete }) {
   const [langSub, setLangSub] = useState(false);
   const menuRef = useRef(null);
   const subRef = useRef(null);

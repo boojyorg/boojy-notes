@@ -43,14 +43,14 @@ export function useDragDropHandlers({
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs
+    // Deps deliberately not exhaustive: all deps are stable refs
   }, []);
 
   const handleEditorDragLeave = useCallback((e) => {
     if (editorRef.current && !editorRef.current.contains(e.relatedTarget)) {
       editorRef.current.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- editorRef is a stable ref
+    // Deps deliberately not exhaustive: editorRef is a stable ref
   }, []);
 
   const handleEditorDrop = useCallback((e) => {
@@ -83,7 +83,7 @@ export function useDragDropHandlers({
     for (let i = 0; i < allFiles.length; i++) {
       saveAndInsertImage(currentNote, afterIndex + i, allFiles[i]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs
+    // Deps deliberately not exhaustive: all deps are stable refs
   }, []);
 
   return { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop };

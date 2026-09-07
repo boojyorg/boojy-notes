@@ -300,9 +300,6 @@ export default function MobileToolbar({
         return;
       }
 
-      const opts = {};
-      if (type === "code") opts.lang = "javascript";
-      if (type === "callout") opts.calloutType = "note";
       insertBlockAfter(activeNote, insertIdx, type, "");
       setPanel(null);
     },

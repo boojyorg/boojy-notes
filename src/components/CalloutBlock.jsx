@@ -22,79 +22,46 @@ import {
 const CALLOUT_TYPES = {
   note: {
     icon: Pencil,
-    colour: "#7AA2F7",
-    bg: "#3f4e74",
-    border: "rgba(122,162,247,0.18)",
     defaultTitle: "Note",
   },
   info: {
     icon: Info,
-    colour: "#89DDFF",
-    bg: "#446277",
-    border: "rgba(137,221,255,0.18)",
     defaultTitle: "Info",
   },
   tip: {
     icon: Lightbulb,
-    colour: "#9ECE6A",
-    bg: "#4c5e43",
-    border: "rgba(158,206,106,0.18)",
     defaultTitle: "Tip",
   },
   warning: {
     icon: AlertTriangle,
-    colour: "#E0AF68",
-    bg: "#635242",
-    border: "rgba(224,175,104,0.18)",
     defaultTitle: "Warning",
   },
   danger: {
     icon: ShieldAlert,
-    colour: "#F7768E",
-    bg: "#6b3d4f",
-    border: "rgba(247,118,142,0.18)",
     defaultTitle: "Danger",
   },
   success: {
     icon: CheckCircle2,
-    colour: "#9ECE6A",
-    bg: "#4c5e43",
-    border: "rgba(158,206,106,0.18)",
     defaultTitle: "Success",
   },
   question: {
     icon: HelpCircle,
-    colour: "#BB9AF7",
-    bg: "#564b74",
-    border: "rgba(187,154,247,0.18)",
     defaultTitle: "Question",
   },
   quote: {
     icon: Quote,
-    colour: "#9B9EB0",
-    bg: "#4c4c5a",
-    border: "rgba(155,158,176,0.18)",
     defaultTitle: "Quote",
   },
   example: {
     icon: ListChecks,
-    colour: "#BB9AF7",
-    bg: "#564b74",
-    border: "rgba(187,154,247,0.18)",
     defaultTitle: "Example",
   },
   bug: {
     icon: Bug,
-    colour: "#F7768E",
-    bg: "#6b3d4f",
-    border: "rgba(247,118,142,0.18)",
     defaultTitle: "Bug",
   },
   abstract: {
     icon: FileText,
-    colour: "#89DDFF",
-    bg: "#446277",
-    border: "rgba(137,221,255,0.18)",
     defaultTitle: "Abstract",
   },
 };
@@ -213,12 +180,10 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
                 transition: "background 0.1s",
               }}
             >
-              <Icon size={15} color={theme.callouts[key]?.colour || cfg.colour} strokeWidth={1.8} />
+              <Icon size={15} color={theme.callouts[key].colour} strokeWidth={1.8} />
               <span style={{ flex: 1, fontSize: 13, color: TEXT.primary }}>{cfg.defaultTitle}</span>
               {isActive && (
-                <span style={{ fontSize: 13, color: theme.callouts[key]?.colour || cfg.colour }}>
-                  &#10003;
-                </span>
+                <span style={{ fontSize: 13, color: theme.callouts[key].colour }}>&#10003;</span>
               )}
             </div>
           );
@@ -278,7 +243,7 @@ export default memo(function CalloutBlock({
 
   /* ─── Scroll restoration (runs after DOM sync, before paint) ─── */
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs every render to restore scroll position before paint
+  // Deps deliberately not exhaustive: intentionally runs every render to restore scroll position before paint
   useLayoutEffect(() => {
     if (!scrollRestoreRef.current) return;
     const { el, top } = scrollRestoreRef.current;
@@ -431,7 +396,7 @@ export default memo(function CalloutBlock({
     <div
       className="callout-block"
       style={{
-        background: theme.callouts[calloutType]?.bg || config.bg,
+        background: theme.callouts[calloutType].bg,
         borderRadius: 8,
         padding: "14px 18px",
         transition: "background 0.15s, border-color 0.15s",
@@ -464,11 +429,7 @@ export default memo(function CalloutBlock({
           }}
           className="callout-icon-btn"
         >
-          <Icon
-            size={17}
-            color={theme.callouts[calloutType]?.colour || config.colour}
-            strokeWidth={1.8}
-          />
+          <Icon size={17} color={theme.callouts[calloutType].colour} strokeWidth={1.8} />
         </div>
         <div
           ref={titleRef}
@@ -480,7 +441,7 @@ export default memo(function CalloutBlock({
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             flex: 1,
-            color: theme.callouts[calloutType]?.colour || config.colour,
+            color: theme.callouts[calloutType].colour,
             fontWeight: 600,
             fontSize: 14,
             outline: "none",

@@ -65,10 +65,7 @@ function saveSettings(settings) {
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
-let updateStatus = { state: "idle" };
-
 function sendUpdateStatus(status, getMainWindow) {
-  updateStatus = status;
   if (getMainWindow()) getMainWindow().webContents.send("update-status", status);
 }
 
@@ -117,31 +114,9 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     return dir;
   });
 
-  ipcMain.handle("get-settings", () => loadSettings());
-
-  ipcMain.handle("set-setting", (_event, key, value) => {
-    const settings = loadSettings();
-    settings[key] = value;
-    saveSettings(settings);
-    return settings;
-  });
-
   ipcMain.on("set-window-title", (_, title) => {
     const win = getMainWindow();
     if (win) win.setTitle(title);
-  });
-
-  ipcMain.handle("toggle-spellcheck", (_event, { enabled, languages }) => {
-    const settings = loadSettings();
-    settings.spellCheckEnabled = enabled;
-    if (languages) settings.spellCheckLanguages = languages;
-    saveSettings(settings);
-    const win = getMainWindow();
-    if (win) {
-      const langs = enabled ? languages || settings.spellCheckLanguages || ["en-US"] : [];
-      win.webContents.session.setSpellCheckerLanguages(langs);
-    }
-    return settings;
   });
 
   // ─── Auto-updater IPC ───
@@ -149,8 +124,6 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
   ipcMain.handle("check-for-update", () => {
     autoUpdater.checkForUpdates().catch(() => {});
   });
-
-  ipcMain.handle("get-update-status", () => updateStatus);
 
   ipcMain.handle("install-update", () => {
     autoUpdater.quitAndInstall();

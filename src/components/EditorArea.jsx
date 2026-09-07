@@ -115,7 +115,6 @@ const EditorArea = memo(
     setLightbox,
     openNote: openNoteProp,
     onEditorClick,
-    onWikilinkCmdClick,
   }) {
     const {
       editorRef,
@@ -720,13 +719,7 @@ const EditorArea = memo(
                   if (wikilink) {
                     e.preventDefault();
                     const target = wikilink.getAttribute("data-target");
-                    if (target) {
-                      if (e.metaKey && onWikilinkCmdClick) {
-                        onWikilinkCmdClick(target);
-                      } else if (onWikilinkClick) {
-                        onWikilinkClick(target);
-                      }
-                    }
+                    if (target && onWikilinkClick) onWikilinkClick(target);
                     return;
                   }
                 }}
@@ -849,7 +842,6 @@ const EditorArea = memo(
               <LinkContextMenu
                 position={linkCtxMenu.position}
                 linkType={linkCtxMenu.linkType}
-                url={linkCtxMenu.url}
                 onOpen={() => {
                   if (linkCtxMenu.linkType === "external") {
                     const api = getAPI();

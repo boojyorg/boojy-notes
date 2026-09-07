@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { blocksToMarkdown } from "../../utils/markdown";
+import { stripMarkdownFormatting } from "../../utils/inlineFormatting";
 import { isWeb } from "../../utils/platform";
 import BottomSheet from "./BottomSheet";
 
@@ -53,16 +54,6 @@ function Separator() {
   return <div style={{ height: 1, background: theme.BG.divider, margin: "4px 16px" }} />;
 }
 
-function stripMarkdown(text) {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`(.+?)`/g, "$1")
-    .replace(/~~(.+?)~~/g, "$1")
-    .replace(/==(.+?)==/g, "$1")
-    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, target, label) => label || target);
-}
-
 export default function EditorMoreMenu({
   open,
   onClose,
@@ -103,7 +94,7 @@ export default function EditorMoreMenu({
 
     const text =
       format === "plain"
-        ? blocks.map((b) => stripMarkdown(b.text || "")).join("\n")
+        ? blocks.map((b) => stripMarkdownFormatting(b.text || "")).join("\n")
         : blocksToMarkdown(blocks);
 
     const shareData = { title, text };

@@ -17,9 +17,7 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
-  ArrowDownAZ as LuArrowDownAZ,
   ChevronLeft as LuChevronLeft,
-  Clock3 as LuClock3,
   Code as LuCode,
   Copy as LuCopy,
   FileText as LuFileText,
@@ -86,9 +84,6 @@ export const NewNoteIcon = ({ size = ICON_INLINE }) => (
 export const NewFolderIcon = ({ size = ICON_INLINE }) => (
   <LuFolderPlus {...base} {...navBase} size={size} />
 );
-/** Sort trigger — glyph reflects the active mode. Section-header tier: 16px, nav stroke. */
-export const SortRecentIcon = () => <LuClock3 {...base} {...navBase} size={ICON_INLINE} />;
-export const SortAlphaIcon = () => <LuArrowDownAZ {...base} {...navBase} size={ICON_INLINE} />;
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
 /** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
  *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;

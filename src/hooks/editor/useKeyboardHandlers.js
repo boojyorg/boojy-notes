@@ -309,7 +309,7 @@ export function useKeyboardHandlers({
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks passed via shared object
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks passed via shared object
   }, []);
 
   // --- Cross-block key handler ---
@@ -401,7 +401,7 @@ export function useKeyboardHandlers({
       focusCursorPos.current = beforeText.length + e.key.length;
       return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   // --- Editor wrapper keydown handler ---
@@ -507,7 +507,7 @@ export function useKeyboardHandlers({
       return;
     }
     handleBlockKeyDown(currentNote, info.blockIndex, e);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   return { handleBlockKeyDown, handleCrossBlockKeyDown, handleEditorKeyDown };

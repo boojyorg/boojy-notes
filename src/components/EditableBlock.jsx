@@ -63,7 +63,7 @@ const EditableBlock = memo(
     onNavigateToNote,
   }) {
     const { theme } = useTheme();
-    const { BG, TEXT, ACCENT } = theme;
+    const { BG, TEXT } = theme;
     const elRef = useRef(null);
 
     // Set text on mount and force-resync on undo/redo (syncGen changes).
@@ -91,7 +91,7 @@ const EditableBlock = memo(
         el.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
       }
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
-    }, [syncGen, noteTitleSet]); // eslint-disable-line -- only mount + undo/redo, NOT on every keystroke
+    }, [syncGen, noteTitleSet]); // only mount + undo/redo, NOT on every keystroke
 
     useLayoutEffect(() => {
       if (elRef.current) registerRef(block.id, elRef.current);

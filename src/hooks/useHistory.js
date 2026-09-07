@@ -55,13 +55,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     });
   };
 
-  const popHistory = () => {
-    if (undoStack.current.length > 0) {
-      undoStack.current.pop();
-      setCanUndo(undoStack.current.length > 0);
-    }
-  };
-
   const commitNoteData = (updater) => applyCommit(updater, true);
 
   // Take a change of record that came from persistence rather than from the
@@ -292,7 +285,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     remapNoteFolders,
     commitTextChange,
     pushHistory,
-    popHistory,
     isUndoRedo,
     noteDataRef,
     hasPendingFlush,

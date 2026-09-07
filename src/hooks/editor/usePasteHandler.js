@@ -332,7 +332,7 @@ export function usePasteHandler({
     } else {
       document.execCommand("insertText", false, textData);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   const handleEditorCopy = useCallback((e) => {
@@ -442,7 +442,7 @@ export function usePasteHandler({
     if (copiedBlocks.length > 0) {
       e.clipboardData.setData("text/boojy-blocks", JSON.stringify(copiedBlocks));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- all deps are stable refs/callbacks
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
   return { handleEditorPaste, handleEditorCopy };

@@ -91,7 +91,7 @@ export function SidebarProvider({ children }) {
     const result = { derivedRootNotes: roots, folderNoteMap: map };
     prevSidebarResult.current = result;
     return result;
-  }, [noteData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteData]);
 
   const { allFolders, knownPaths } = useMemo(() => {
     const allPaths = new Set([...customFolders, ...Object.keys(folderNoteMap)]);
@@ -115,7 +115,6 @@ export function SidebarProvider({ children }) {
       naturalCompare(a.name, b.name),
     );
     return { folderTree: tree, sortedRootNotes: sortNotes(derivedRootNotes) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allFolders, folderNoteMap, derivedRootNotes, sortMode, sortSignal, noteDataRef]);
 
   const prevFilteredResult = useRef(null);

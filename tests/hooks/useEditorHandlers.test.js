@@ -9,9 +9,7 @@ import {
   paragraph,
   bullet,
   checkbox,
-  heading,
   numbered,
-  blockquote,
   resetBlockCounter,
 } from "../mocks/blocks.js";
 
@@ -111,7 +109,6 @@ function setup(blocks, noteId = "note-1") {
   const insertBlockAfter = vi.fn();
   const deleteBlock = vi.fn();
   const saveAndInsertImage = vi.fn();
-  const insertFileBlock = vi.fn();
   const reReadBlockFromDom = vi.fn();
   const toggleInlineCode = vi.fn();
   const applyFormat = vi.fn();
@@ -161,7 +158,6 @@ function setup(blocks, noteId = "note-1") {
     insertBlockAfter,
     deleteBlock,
     saveAndInsertImage,
-    insertFileBlock,
     reReadBlockFromDom,
     toggleInlineCode,
     applyFormat,

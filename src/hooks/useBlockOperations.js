@@ -309,7 +309,6 @@ export function useBlockOperations({
     insertBlockAfter,
     deleteBlock,
     updateBlockProperty,
-    insertFileBlock,
     saveAndInsertImage,
     flipCheck,
     registerBlockRef,

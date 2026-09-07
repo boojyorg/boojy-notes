@@ -159,7 +159,7 @@ export function useFileSystem(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; including it would re-run initial load
+    // Deps deliberately not exhaustive: onError is not stable; including it would re-run initial load
   }, [setNoteData, setCustomFolders, refreshFolders]);
 
   // ─── Detect local changes and debounce writes ───
@@ -294,7 +294,7 @@ export function useFileSystem(
       links.onExternalConflict?.({ noteId: external.id, title: external.title, copyId, copyTitle });
       return true;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs and stable setters only
+    // Deps deliberately not exhaustive: refs and stable setters only
     [ensureFolder],
   );
 
@@ -404,7 +404,7 @@ export function useFileSystem(
           console.error("useFileSystem: after-flush work failed", err);
         }
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
+      // Deps deliberately not exhaustive: onError is not stable
     },
     [keepBothVersions],
   );
@@ -492,7 +492,7 @@ export function useFileSystem(
         })
       : () => {};
 
-    const unsubDelete = window.electronAPI.onFileDeleted(({ filePath: _filePath }) => {
+    const unsubDelete = window.electronAPI.onFileDeleted(() => {
       // Re-read all notes and sync folders to remove stale entries
       (async () => {
         try {
@@ -520,7 +520,7 @@ export function useFileSystem(
       unsubDelete();
       unsubFolders();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
+    // Deps deliberately not exhaustive: onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
   }, [
     setNoteData,
     setCustomFolders,
@@ -556,7 +556,7 @@ export function useFileSystem(
       console.error("useFileSystem: changeNotesDir failed", err);
       onError?.("Failed to change notes directory");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onError is not stable
+    // Deps deliberately not exhaustive: onError is not stable
   }, [setNoteData, setCustomFolders, refreshFolders]);
 
   // ─── Folder operations (desktop): the disk answers, state follows ───

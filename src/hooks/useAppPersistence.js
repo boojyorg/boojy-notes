@@ -42,7 +42,7 @@ export function useAppPersistence({ activeNote, expanded, noteData, customFolder
         );
     }, 2000);
     return () => clearTimeout(timer);
-  }, [noteData, activeNote, expanded, customFolders]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [noteData, activeNote, expanded, customFolders]);
 
   // Safety net: flush noteData to localStorage on page unload (web only)
   const beforeunloadDataRef = useRef({ noteData, activeNote, expanded, customFolders });
