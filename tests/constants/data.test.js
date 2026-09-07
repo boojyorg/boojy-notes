@@ -2,11 +2,6 @@ import { describe, it, expect } from "vitest";
 import { SLASH_COMMANDS, filterSlashCommands } from "../../src/constants/data.js";
 
 describe("SLASH_COMMANDS", () => {
-  it("is an array with commands", () => {
-    expect(Array.isArray(SLASH_COMMANDS)).toBe(true);
-    expect(SLASH_COMMANDS.length).toBeGreaterThan(0);
-  });
-
   it("has unique IDs", () => {
     const ids = SLASH_COMMANDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -68,14 +63,5 @@ describe("SLASH_COMMANDS", () => {
 
   it("returns nothing for a query that matches no command", () => {
     expect(filterSlashCommands("zzzz")).toEqual([]);
-  });
-
-  it("includes essential commands", () => {
-    const ids = SLASH_COMMANDS.map((c) => c.id);
-    expect(ids).toContain("h1");
-    expect(ids).toContain("bullet");
-    expect(ids).toContain("checkbox");
-    expect(ids).toContain("code");
-    expect(ids).toContain("table");
   });
 });

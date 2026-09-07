@@ -39,11 +39,19 @@ test.describe("Boojy Notes", () => {
   test("keyboard shortcut Cmd+N creates new note", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("[data-editor]", { timeout: 10000 });
+    // Name the opening draft so it becomes a real note; until then Cmd+N has
+    // nothing to move away from and the empty title field proves nothing.
+    const title = page.locator("[data-title]").first();
+    await title.click();
+    await page.keyboard.type("First note");
+    const firstRow = page.locator('[role="treeitem"]').filter({ hasText: "First note" });
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
     const modifier = process.platform === "darwin" ? "Meta" : "Control";
     await page.keyboard.press(`${modifier}+n`);
-    // A new note should be created (title should be empty/focused)
-    const title = page.locator("[data-title]").first();
-    await expect(title).toBeVisible({ timeout: 5000 });
+    // A different note is open (the fresh one, not "First note") and the
+    // named note is still listed.
+    await expect(title).not.toHaveText("First note", { timeout: 5000 });
+    await expect(firstRow).toBeVisible();
   });
 
   test("clicking an inline #tag filters the sidebar search", async ({ page }) => {

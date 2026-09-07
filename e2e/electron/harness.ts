@@ -15,10 +15,10 @@
  * The app runs with its window hidden by default (`BOOJY_TEST_HIDDEN=1`, read
  * by the main process), so a routine run never steals focus. Playwright drives
  * the renderer over CDP, which needs no OS focus, and the main process turns
- * off background throttling so debounces run at full speed. A test that
- * genuinely needs the foreground — real OS focus, the system clipboard through
- * Cmd+V, native menus or dialogs — goes in a `*.headed.spec.ts` file and runs
- * through `pnpm test:electron:headed`, which sets `BOOJY_TEST_HEADED=1`.
+ * off background throttling so debounces run at full speed. To watch a run,
+ * set `BOOJY_TEST_HEADED=1` and the window is shown instead. Nothing in the
+ * suite needs real OS focus, the system clipboard or native menus; a spec that
+ * did would need its own project with a visible window, and would say so.
  */
 import fs from "node:fs";
 import os from "node:os";

@@ -14,7 +14,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "ELECTRON_DISABLE=1 npm run build && npm run preview -- --port 4173",
+    command: "ELECTRON_DISABLE=1 pnpm build && pnpm preview --port 4173",
     port: 4173,
     reuseExistingServer: !process.env.CI,
   },

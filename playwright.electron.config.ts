@@ -11,11 +11,10 @@ import { defineConfig } from "@playwright/test";
  * are the unit of distribution; tests inside a file still run in order.
  * Build first: `pnpm test:electron` does.
  *
- * Two projects. `hidden` (the default) runs the app with its window hidden so a
- * routine run never takes over the desktop. `headed` runs the few specs that
- * genuinely need the foreground (`*.headed.spec.ts`: real OS focus, the system
- * clipboard, native menus) with a visible window; opt in with
- * `pnpm test:electron:headed`.
+ * The app runs with its window hidden (harness.ts sets `BOOJY_TEST_HIDDEN=1`)
+ * so a routine run never takes over the desktop; `BOOJY_TEST_HEADED=1` shows
+ * the window for watching a run locally. No spec needs real OS focus, the
+ * clipboard or native menus, so there is no separate headed project.
  */
 export default defineConfig({
   testDir: "./e2e/electron",
@@ -28,8 +27,4 @@ export default defineConfig({
   reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
   timeout: 40_000,
   expect: { timeout: 5_000 },
-  projects: [
-    { name: "hidden", testIgnore: ["**/*.headed.spec.ts"] },
-    { name: "headed", testMatch: ["**/*.headed.spec.ts"] },
-  ],
 });
