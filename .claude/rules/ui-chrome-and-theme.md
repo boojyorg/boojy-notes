@@ -553,8 +553,12 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
 - **The grid is drawn as wide as the widest row** (`tableColumnCount` in
   `utils/tableShape.ts`), header included, and a cell a row does not reach is drawn empty.
   A row gains cells only when one is written into it (`withCell` pads that row up to the
-  written column and no further); adding a column appends one cell to every row, wide or
-  short, and a column drag moves what a short row has without leaving a hole (`moveCell`).
+  written column and no further). **An explicit column operation may pad a row to the
+  operated visual column, a passive open or save never pads anything**: adding or inserting a
+  column makes that column in every row, so a short row is padded up to it first
+  (`withColumnInserted`; `| Milk |` in a three-wide grid becomes `| Milk |  |  |  |` when
+  column four is added), and a column drag moves what a short row has without leaving a
+  hole (`moveCell`).
   Don't reintroduce a pad-on-read or a slice-to-header anywhere; keep the table's shape
   arithmetic in `tableShape.ts` rather than in the component or the hook.
 

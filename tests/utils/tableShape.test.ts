@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cellAt, moveCell, tableColumnCount, withCell } from "../../src/utils/tableShape";
+import {
+  cellAt,
+  moveCell,
+  tableColumnCount,
+  withCell,
+  withColumnInserted,
+} from "../../src/utils/tableShape";
 
 describe("tableShape — ragged rows stay ragged", () => {
   it("the column count is the widest row, header included or not", () => {
@@ -33,5 +39,22 @@ describe("tableShape — ragged rows stay ragged", () => {
     expect(moveCell(["a", "b"], 0, 2)).toEqual(["b", "", "a"]);
     expect(moveCell(["a"], 0, 2)).toEqual(["", "", "a"]);
     expect(moveCell(["a", "b", "c", "d"], 3, 1)).toEqual(["a", "d", "b", "c"]);
+  });
+
+  it("an inserted column lands in the asked-for column of every row, padding a short row to reach it", () => {
+    const rows = [["h1", "h2"], ["x"], ["1", "2", "3"]];
+    // Rightmost add on a three-wide grid: column 4 for every row.
+    expect(withColumnInserted(rows, 3, "Col 4")).toEqual([
+      ["h1", "h2", "", "Col 4"],
+      ["x", "", "", ""],
+      ["1", "2", "3", ""],
+    ]);
+    // Insert in the middle: a row that reaches it shifts, one that does not is padded to it.
+    expect(withColumnInserted(rows, 1, "New")).toEqual([
+      ["h1", "New", "h2"],
+      ["x", ""],
+      ["1", "", "2", "3"],
+    ]);
+    expect(rows[1]).toEqual(["x"]);
   });
 });
