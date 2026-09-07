@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
+import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
 import { Z } from "../constants/zIndex";
@@ -23,7 +24,10 @@ export default memo(function TableBlock({
     ["", ""],
     ["", ""],
   ];
-  const colCount = rows[0]?.length || 2;
+  // Rows are ragged (a row holds exactly the cells its Markdown line holds);
+  // the grid is drawn as wide as the widest row, and a row gains a cell only
+  // when one is written into it (utils/tableShape.ts).
+  const colCount = tableColumnCount(rows) || 2;
   const alignments = block.alignments || [];
 
   const {
@@ -68,9 +72,7 @@ export default memo(function TableBlock({
 
   const updateCell = useCallback(
     (rowIdx, colIdx, value) => {
-      const newRows = rows.map((r) => [...r]);
-      newRows[rowIdx][colIdx] = value;
-      onUpdateTableRows(noteId, blockIndex, newRows, alignments);
+      onUpdateTableRows(noteId, blockIndex, withCell(rows, rowIdx, colIdx, value), alignments);
     },
     [rows, noteId, blockIndex, onUpdateTableRows, alignments],
   );
@@ -127,7 +129,7 @@ export default memo(function TableBlock({
   const handleCellBlur = useCallback(
     (e, rowIdx, colIdx) => {
       const value = domNodeToMarkdown(e.target);
-      if (value !== rows[rowIdx][colIdx]) {
+      if (value !== cellAt(rows[rowIdx], colIdx)) {
         updateCell(rowIdx, colIdx, value);
       }
     },
@@ -144,16 +146,12 @@ export default memo(function TableBlock({
           .trim()
           .split("\n")
           .map((r) => r.split(delimiter).map((c) => c.trim()));
-        const newRows = rows.map((r) => [...r]);
+        let newRows = rows;
         pastedRows.forEach((pRow, ri) => {
           const targetRow = rowIdx + ri;
-          while (newRows.length <= targetRow) newRows.push(new Array(colCount).fill(""));
+          while (newRows.length <= targetRow) newRows = [...newRows, new Array(colCount).fill("")];
           pRow.forEach((val, ci) => {
-            const targetCol = colIdx + ci;
-            while (newRows[0].length <= targetCol) {
-              newRows.forEach((r) => r.push(""));
-            }
-            newRows[targetRow][targetCol] = val;
+            newRows = withCell(newRows, targetRow, colIdx + ci, val);
           });
         });
         onUpdateTableRows(noteId, blockIndex, newRows, alignments);
@@ -226,34 +224,36 @@ export default memo(function TableBlock({
         <table ref={tableRef} className="table-block">
           <thead>
             <tr>
-              {rows[0]?.map((cell, colIdx) => (
-                <th
-                  key={colIdx}
-                  scope="col"
-                  ref={(el) => {
-                    cellRefs.current[`0-${colIdx}`] = el;
-                  }}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) => handleCellBlur(e, 0, colIdx)}
-                  onKeyDown={(e) => handleCellKeyDown(e, 0, colIdx)}
-                  onFocus={clearSelection}
-                  onPaste={(e) => handleCellPaste(e, 0, colIdx)}
-                  onContextMenu={(e) => handleCellContextMenu(e, 0, colIdx)}
-                  dangerouslySetInnerHTML={{
-                    __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                  }}
-                  style={{
-                    fontWeight: 600,
-                    // Header cells carry no fill at rest — bold weight plus the border
-                    // grid is the whole signal. Only an active column selection tints.
-                    background: isColSelected(colIdx)
-                      ? `${accentColor || theme.ACCENT.primary}20`
-                      : "transparent",
-                    textAlign: alignments[colIdx] || "left",
-                  }}
-                />
-              ))}
+              {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
+                (cell, colIdx) => (
+                  <th
+                    key={colIdx}
+                    scope="col"
+                    ref={(el) => {
+                      cellRefs.current[`0-${colIdx}`] = el;
+                    }}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => handleCellBlur(e, 0, colIdx)}
+                    onKeyDown={(e) => handleCellKeyDown(e, 0, colIdx)}
+                    onFocus={clearSelection}
+                    onPaste={(e) => handleCellPaste(e, 0, colIdx)}
+                    onContextMenu={(e) => handleCellContextMenu(e, 0, colIdx)}
+                    dangerouslySetInnerHTML={{
+                      __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
+                    }}
+                    style={{
+                      fontWeight: 600,
+                      // Header cells carry no fill at rest — bold weight plus the border
+                      // grid is the whole signal. Only an active column selection tints.
+                      background: isColSelected(colIdx)
+                        ? `${accentColor || theme.ACCENT.primary}20`
+                        : "transparent",
+                      textAlign: alignments[colIdx] || "left",
+                    }}
+                  />
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -261,28 +261,30 @@ export default memo(function TableBlock({
               const rowIdx = rOffset + 1;
               return (
                 <tr key={rowIdx}>
-                  {row.map((cell, colIdx) => (
-                    <td
-                      key={colIdx}
-                      ref={(el) => {
-                        cellRefs.current[`${rowIdx}-${colIdx}`] = el;
-                      }}
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) => handleCellBlur(e, rowIdx, colIdx)}
-                      onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
-                      onFocus={clearSelection}
-                      onPaste={(e) => handleCellPaste(e, rowIdx, colIdx)}
-                      onContextMenu={(e) => handleCellContextMenu(e, rowIdx, colIdx)}
-                      dangerouslySetInnerHTML={{
-                        __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                      }}
-                      style={{
-                        textAlign: alignments[colIdx] || "left",
-                        ...cellHighlightStyle(rowIdx, colIdx),
-                      }}
-                    />
-                  ))}
+                  {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
+                    (cell, colIdx) => (
+                      <td
+                        key={colIdx}
+                        ref={(el) => {
+                          cellRefs.current[`${rowIdx}-${colIdx}`] = el;
+                        }}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => handleCellBlur(e, rowIdx, colIdx)}
+                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
+                        onFocus={clearSelection}
+                        onPaste={(e) => handleCellPaste(e, rowIdx, colIdx)}
+                        onContextMenu={(e) => handleCellContextMenu(e, rowIdx, colIdx)}
+                        dangerouslySetInnerHTML={{
+                          __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
+                        }}
+                        style={{
+                          textAlign: alignments[colIdx] || "left",
+                          ...cellHighlightStyle(rowIdx, colIdx),
+                        }}
+                      />
+                    ),
+                  )}
                 </tr>
               );
             })}

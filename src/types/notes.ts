@@ -72,6 +72,7 @@ interface EmbedBlock extends BlockBase {
 
 interface TableBlock extends BlockBase {
   type: "table";
+  /** Ragged: each row holds exactly the cells its Markdown line holds. */
   rows?: string[][];
   alignments?: string[];
 }

@@ -278,13 +278,12 @@ export function blocksToMarkdown(blocks) {
             return "---";
           });
           lines.push("| " + sep.join(" | ") + " |");
+          // Each body row is written with its own cells, one more or one fewer
+          // than the header included; padding or trimming a row to the header
+          // here is what used to drop a wide row's extra cells on every save.
           for (let r = 1; r < block.rows.length; r++) {
-            const row = block.rows[r];
-            const padded = [];
-            for (let c = 0; c < header.length; c++) {
-              padded.push(row[c] !== undefined ? esc(row[c]) : "");
-            }
-            lines.push("| " + padded.join(" | ") + " |");
+            const row = block.rows[r].length > 0 ? block.rows[r] : [""];
+            lines.push("| " + row.map((cell) => esc(cell ?? "")).join(" | ") + " |");
           }
         }
         break;
@@ -429,14 +428,15 @@ export function markdownToBlocks(md) {
         rows.push(parseTableRow(lines[i]));
         i++;
       }
+      // The separator row follows the header's width; every other row keeps
+      // exactly the cells its line holds. A row wider than the header used to
+      // be sliced to it and a shorter one padded, so the extra cells were gone
+      // on the next save and short rows were rewritten. The grid on screen is
+      // the widest row wide (utils/tableShape.ts); the file is never
+      // rectangularised by reading it.
       const colCount = rows[0].length;
-      // Normalize alignment array to match header column count
       while (alignments.length < colCount) alignments.push("left");
       if (alignments.length > colCount) alignments.length = colCount;
-      for (let r = 1; r < rows.length; r++) {
-        while (rows[r].length < colCount) rows[r].push("");
-        if (rows[r].length > colCount) rows[r] = rows[r].slice(0, colCount);
-      }
       blocks.push({
         id: `md-${++_parseBlockId}`,
         type: "table",

@@ -320,6 +320,45 @@ describe("table cells with literal pipes (preservation fix, 2026-08)", () => {
   });
 });
 
+describe("ragged tables keep every cell (review H9, 2026-09-07)", () => {
+  // A row with more cells than the header lost the extra cells on any save
+  // (rows were sliced to the header's width on parse), and a short row was
+  // padded to it. Now a row holds exactly the cells its line holds.
+  const ragged = "| Name | Qty |\n| --- | --- |\n| Tea | 2 | extra |\n| Milk |\n| Bread | 1 |\n";
+
+  it("parses a wide row with all its cells and a short row with only its own", () => {
+    const [table] = markdownToBlocks(ragged);
+    expect(table.type).toBe("table");
+    expect(table.rows).toEqual([["Name", "Qty"], ["Tea", "2", "extra"], ["Milk"], ["Bread", "1"]]);
+    expect(table.alignments).toEqual(["left", "left"]);
+  });
+
+  it("writes every row back with its own cells, wide or short", () => {
+    expect(blocksToMarkdown(markdownToBlocks(ragged))).toBe(ragged);
+  });
+
+  it("a header narrower than its body keeps every body cell", () => {
+    const md = "| Only |\n| --- |\n| one | two | three |\n";
+    const [table] = markdownToBlocks(md);
+    expect(table.rows).toEqual([["Only"], ["one", "two", "three"]]);
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("a ragged table built in memory round-trips block → markdown → block", () => {
+    const blocks = [
+      {
+        type: "table",
+        rows: [["A", "B"], ["1", "2", "3"], ["x"]],
+        alignments: ["left", "right"],
+        text: "",
+      },
+    ];
+    const [out] = markdownToBlocks(blocksToMarkdown(blocks));
+    expect(out.rows).toEqual(blocks[0].rows);
+    expect(out.alignments).toEqual(blocks[0].alignments);
+  });
+});
+
 describe("paragraph whitespace preservation (preservation fix, 2026-08)", () => {
   // Paragraph text used to be stored trimmed, which flattened 4-space
   // indented code blocks to prose and stripped markdown hard breaks
