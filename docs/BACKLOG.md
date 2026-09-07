@@ -21,11 +21,9 @@ more than any feature nobody else has. That is a product hypothesis, not validat
 - **Beta is desktop-first**: local files, no account, no sync. Web, mobile, accounts and cloud
   come after desktop; their sequence is undecided. Personal tools only; collaboration is
   excluded.
-- **Everything is free, including cloud sync and storage when they exist.** Limits, if any,
-  reflect hosted resources (file size, total storage, retained history); no quota is chosen.
-  Sustainable hosting is unresolved and is measured on a prototype before any public limit.
-  The suite-level decision is in the suite root's `VISION.md`: Boojy Cloud returns free-only
-  if it returns. There is no paid tier, planned or as a fallback.
+- **Boojy Notes and every editing feature are free.** Local use never needs an account. The
+  suite position on hosted storage lives in the suite root's `VISION.md` §7; nothing in this
+  backlog assumes any particular Cloud outcome.
 - **Obsidian compatibility and Notion-first import are complementary.** Existing Markdown
   folders, Obsidian vaults included, open as they are (the spec's support levels). Notion is
   the first migration priority; Apple Notes follows.
@@ -355,5 +353,5 @@ discussion record in `docs/private/archive/`.
 ## Not doing
 
 No AI features or agents; no collaboration; no calendar; no Inbox; no daily-note feature; no
-templates; no tabs or split view; no separate quick-note workflow; no paid tier. The spec
+templates; no tabs or split view; no separate quick-note workflow. The spec
 additionally excludes layouts and blocks that cannot round-trip to readable Markdown.
