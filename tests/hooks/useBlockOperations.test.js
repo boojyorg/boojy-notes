@@ -1,12 +1,13 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useBlockOperations } from "../../src/hooks/useBlockOperations.js";
 import {
   makeNoteData,
   paragraph,
+  bullet,
   checkbox as makeCheckbox,
   resetBlockCounter,
 } from "../mocks/blocks.js";
@@ -44,9 +45,25 @@ function setup(initialBlocks) {
     getNoteData: () => noteData,
     commitNoteData,
     commitTextChange,
+    blockRefs,
     focusBlockId,
     focusCursorPos,
   };
+}
+
+/** Mount `text` as the block's element and put a collapsed caret at `offset` in it. */
+function mountWithCaret(blockRefs, blockId, text, offset) {
+  const el = document.createElement("div");
+  el.textContent = text;
+  document.body.appendChild(el);
+  blockRefs.current[blockId] = el;
+  const range = document.createRange();
+  range.setStart(el.firstChild, offset);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return el;
 }
 
 describe("useBlockOperations", () => {
@@ -174,6 +191,74 @@ describe("useBlockOperations", () => {
       });
 
       expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual(["a", "b"]);
+    });
+  });
+
+  /**
+   * Tab and Shift+Tab re-indent a list item. The caret was sent to offset 0
+   * afterwards (the focus effect's default), so the next characters landed in
+   * front of the text (review 2026-09-06, H2). Re-indenting changes the box,
+   * not the text: the caret stays on its character.
+   */
+  describe("updateBlockIndent", () => {
+    afterEach(() => {
+      document.body.innerHTML = "";
+      window.getSelection().removeAllRanges();
+    });
+
+    it("keeps the caret at its offset through an indent and an outdent", () => {
+      const blocks = [bullet("item one"), bullet("item two")];
+      const { result, noteId, getNoteData, blockRefs, focusBlockId, focusCursorPos } =
+        setup(blocks);
+      mountWithCaret(blockRefs, blocks[1].id, "item two", 5);
+
+      act(() => {
+        result.current.updateBlockIndent(noteId, 1, 1);
+      });
+      expect(getNoteData()[noteId].content.blocks[1].indent).toBe(1);
+      expect(focusBlockId.current).toBe(blocks[1].id);
+      expect(focusCursorPos.current).toBe(5);
+
+      // The caret is still where it was; the outdent reads it again.
+      focusBlockId.current = null;
+      focusCursorPos.current = null;
+      act(() => {
+        result.current.updateBlockIndent(noteId, 1, -1);
+      });
+      expect(getNoteData()[noteId].content.blocks[1].indent).toBe(0);
+      expect(focusCursorPos.current).toBe(5);
+    });
+
+    it("keeps a caret at the very end at the end", () => {
+      const blocks = [bullet("item two")];
+      const { result, noteId, blockRefs, focusCursorPos } = setup(blocks);
+      mountWithCaret(blockRefs, blocks[0].id, "item two", "item two".length);
+      act(() => {
+        result.current.updateBlockIndent(noteId, 0, 1);
+      });
+      expect(focusCursorPos.current).toBe("item two".length);
+    });
+
+    it("leaves the caret position to its caller when the caret is not in the block", () => {
+      const blocks = [bullet("item two")];
+      const { result, noteId, focusBlockId, focusCursorPos } = setup(blocks);
+      window.getSelection().removeAllRanges();
+      act(() => {
+        result.current.updateBlockIndent(noteId, 0, 1);
+      });
+      expect(focusBlockId.current).toBe(blocks[0].id);
+      expect(focusCursorPos.current).toBeNull();
+    });
+
+    it("clamps the indent to 0..6 and clears a preserved raw indent prefix", () => {
+      const blocks = [{ ...bullet("deep"), indent: 6, indentStr: "\t\t\t\t\t\t" }];
+      const { result, noteId, getNoteData } = setup(blocks);
+      act(() => {
+        result.current.updateBlockIndent(noteId, 0, 1);
+      });
+      const block = getNoteData()[noteId].content.blocks[0];
+      expect(block.indent).toBe(6);
+      expect(block.indentStr).toBeUndefined();
     });
   });
 

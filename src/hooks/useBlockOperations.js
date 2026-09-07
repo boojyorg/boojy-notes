@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { genBlockId } from "../utils/storage";
-// isNative removed — no longer used in this module
+import { getCaretOffset } from "../utils/domHelpers";
 import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
@@ -276,12 +276,19 @@ export function useBlockOperations({
 
   const updateBlockIndent = (noteId, blockIndex, delta) => {
     let blockId = null;
+    let caret = -1;
     commitNoteData((prev) => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
       const block = blocks[blockIndex];
       blockId = block.id;
+      // Re-indenting changes the block's box, not its text, so the caret stays
+      // on the same character. Read it from the DOM here, before the state
+      // changes (the updater runs synchronously): the focus effect defaults to
+      // offset 0, which sent the next keystroke to the front of the item
+      // (review 2026-09-06, H2). -1 when the caret is not in this block.
+      caret = getCaretOffset(blockRefs.current[block.id]);
       const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
       // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
       // file) — after an in-app indent change it no longer matches, and a
@@ -291,7 +298,10 @@ export function useBlockOperations({
       next[noteId] = n;
       return next;
     });
-    if (blockId) focusBlockId.current = blockId;
+    if (blockId) {
+      focusBlockId.current = blockId;
+      if (caret >= 0) focusCursorPos.current = caret;
+    }
   };
 
   return {

@@ -469,6 +469,39 @@ renders it fixed at the viewport's top-left. Both use the exported `ChromeButton
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
 
+## Menus own their keys; the editor keeps the caret
+
+- **A key a menu has already consumed never reaches the editor** (2026-09-07).
+  `handleEditorKeyDown` returns on `defaultPrevented`. The tag and wikilink menus take Enter,
+  the arrows and Escape in a capture-phase `window` listener and prevent the default; before
+  the guard the editor's own Enter handler still ran on the DOM text and split the block under
+  a tag suggestion instead of completing it. One rule for every menu, in place of the
+  wikilink-only guard it retired. Don't add a per-menu special case.
+- **A completion made from a native listener commits structurally and repaints the block
+  itself** (`handleTagSelect`, `handleWikilinkSelect`). The debounced text commit leaves React
+  state behind, and the menu's own close re-renders the editor, whose `syncGen` repaint then
+  paints that stale text back over the block (disk `#review`, screen `#rev`). `commitNoteData`
+  publishes at once; the direct `innerHTML` write is the paint (editor gotcha 2). One undo
+  entry per completion.
+- **The caret after a completed tag is parked on a `CARET_ANCHOR` past the ending space.**
+  The space that ends the tag is the block's last character, and under `white-space: normal` a
+  trailing space collapses: a caret placed in it has no width, and Chromium moved the next
+  character into the tag span (`#reviewd`). Typed on the anchor, text lands after the space and
+  outside the tag, and the walkers drop the anchor as they do after a link. The tag handler
+  queues nothing for the focus effect when it painted the block itself, because a repaint and
+  re-placement from state would put the caret back in the collapsed space. Probed and rejected
+  (2026-09-07): a non-breaking space after or inside the span reached the file as U+00A0, and
+  `pre-wrap` would change how every run of spaces renders.
+- **Tab and Shift+Tab keep the caret on its character.** `updateBlockIndent` reads
+  `getCaretOffset` inside the commit, before state changes; the focus effect's default of
+  offset 0 put the next keystroke in front of the item. Re-indenting changes the box, not the
+  text, so the offset is always valid.
+- **The click's caret rescue never takes focus back** (`useMouseHandlers`). A frame after a
+  click or a focus, the editor puts the caret in the nearest block when the selection landed
+  outside any. If something the click opened holds focus by then (a tag click opens the search
+  palette), the rescue steps aside: the palette's field was focused for one frame and Escape
+  and the arrows then went to the editor. Focus resting on the body still gets the rescue.
+
 ## The paragraph model
 
 Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).

@@ -41,7 +41,6 @@ export function useKeyboardHandlers({
   focusCursorPos,
   slashMenuRef,
   setSlashMenu,
-  wikilinkMenuRef,
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
@@ -96,14 +95,6 @@ export function useKeyboardHandlers({
       if (e.key === "Escape") {
         e.preventDefault();
         setSlashMenu(null);
-        return;
-      }
-    }
-
-    // Wikilink menu — prevent Enter from inserting a newline (WikilinkMenu handles it via window listener)
-    if (wikilinkMenuRef.current && wikilinkMenuRef.current.blockIndex === blockIndex) {
-      if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Escape") {
-        e.preventDefault();
         return;
       }
     }
@@ -415,6 +406,13 @@ export function useKeyboardHandlers({
 
   // --- Editor wrapper keydown handler ---
   const handleEditorKeyDown = useCallback((e) => {
+    // A key a menu has already consumed is not the editor's to handle. The
+    // tag and wikilink menus take Enter, the arrows and Escape in a
+    // capture-phase window listener and prevent the default; without this
+    // the editor's own Enter handler still ran on the DOM text and split the
+    // block instead of completing the tag (review 2026-09-06, H3). One rule
+    // for every menu, in place of a per-menu guard.
+    if (e.defaultPrevented) return;
     const currentNote = activeNoteRef.current;
     const sel = window.getSelection();
     if (!sel.rangeCount) {
