@@ -13,33 +13,40 @@ export const SCALE_OPTIONS = [50, 67, 80, 90, 100, 110, 120, 133, 150, 170, 200]
  * sit in front of every new user forever. Nothing is removed by tiering.
  *
  * ORDER is the only structure this menu has (no group labels at eleven rows), so
- * it is deliberate: headings, then lists, then Table and Image — the two with no
- * typed-markdown shortcut in `useInputHandler.js`, which makes the menu their only
- * comfortable route — then code and quote, with Divider last because `---` is
- * quicker to type than the menu is to open.
+ * it is deliberate: the Markdown blocks roughly by how often they are reached
+ * for (headings, lists, quote, code, divider), then Table and Image, whose
+ * triggers are Boojy's own rather than Markdown, at the foot.
  *
- * `icon` names a Lucide glyph (mapped in Icons.jsx); `desc` records the markdown
- * the block round-trips to. The menu no longer renders `desc` — it stayed a busy
- * second column — but it documents the syntax next to the command it belongs to.
+ * `hint` is the typed shortcut `useInputHandler.js` recognises at the start of an
+ * empty block, shown muted at the right of the row: what you could have typed
+ * instead of opening the menu, the way Notion's menu shows it. Nine are plain
+ * Markdown. Two are this app's own quick keys, in the menu's three-of-a-symbol
+ * grammar (`---`, three backticks, `|||`) and the box rhyme (`[]` a task, `![]`
+ * a picture); they run the same command as the row. A hint is NEVER the Markdown
+ * the block saves as (`| | |`, `![]()`, `> [!]`, `![[]]`): none of those is what
+ * you type to make the block, and as a column they read as noise. A tier-2 block
+ * has no typed trigger and an empty hint.
+ *
+ * `icon` names a Lucide glyph (mapped in Icons.jsx).
  */
 /** @type {SlashCommand[]} */
 export const SLASH_COMMANDS = [
-  { id: "h1", label: "Heading 1", desc: "#", icon: "heading-1", type: "h1" },
-  { id: "h2", label: "Heading 2", desc: "##", icon: "heading-2", type: "h2" },
-  { id: "h3", label: "Heading 3", desc: "###", icon: "heading-3", type: "h3" },
-  { id: "bullet", label: "Bullet list", desc: "-", icon: "list", type: "bullet" },
-  { id: "numbered", label: "Numbered list", desc: "1.", icon: "list-ordered", type: "numbered" },
-  { id: "checkbox", label: "Checkbox", desc: "[]", icon: "square-check", type: "checkbox" },
-  { id: "table", label: "Table", desc: "| | |", icon: "table", type: "table" },
-  { id: "image", label: "Image", desc: "![]()", icon: "image", type: "image" },
-  { id: "code", label: "Code block", desc: "```", icon: "code", type: "code" },
-  { id: "blockquote", label: "Blockquote", desc: ">", icon: "text-quote", type: "blockquote" },
-  { id: "divider", label: "Divider", desc: "---", icon: "minus", type: "spacer" },
+  { id: "h1", label: "Heading 1", hint: "#", icon: "heading-1", type: "h1" },
+  { id: "h2", label: "Heading 2", hint: "##", icon: "heading-2", type: "h2" },
+  { id: "h3", label: "Heading 3", hint: "###", icon: "heading-3", type: "h3" },
+  { id: "bullet", label: "Bullet list", hint: "-", icon: "list", type: "bullet" },
+  { id: "numbered", label: "Numbered list", hint: "1.", icon: "list-ordered", type: "numbered" },
+  { id: "checkbox", label: "To-do list", hint: "[]", icon: "square-check", type: "checkbox" },
+  { id: "blockquote", label: "Quote", hint: ">", icon: "text-quote", type: "blockquote" },
+  { id: "code", label: "Code block", hint: "```", icon: "code", type: "code" },
+  { id: "divider", label: "Divider", hint: "---", icon: "minus", type: "spacer" },
+  { id: "table", label: "Table", hint: "|||", icon: "table", type: "table" },
+  { id: "image", label: "Image", hint: "![]", icon: "image", type: "image" },
   // ── Tier 2: found by typing, never shown on the opening screen ──────────
   {
     id: "callout",
     label: "Callout",
-    desc: "> [!]",
+    hint: "",
     icon: "info",
     type: "callout",
     calloutType: "note",
@@ -48,7 +55,7 @@ export const SLASH_COMMANDS = [
   {
     id: "file",
     label: "File attachment",
-    desc: "",
+    hint: "",
     icon: "paperclip",
     type: "file",
     advanced: true,
@@ -56,7 +63,7 @@ export const SLASH_COMMANDS = [
   {
     id: "embed",
     label: "Embed note",
-    desc: "![[]]",
+    hint: "",
     icon: "link",
     type: "embed",
     advanced: true,

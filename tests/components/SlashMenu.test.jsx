@@ -52,6 +52,27 @@ describe("SlashMenu", () => {
     }
   });
 
+  it("shows the typed shortcut beside each block that has one, and nothing beside the rest", () => {
+    render(
+      <SlashMenu slashMenu={defaultMenu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />,
+    );
+    const hints = screen.getAllByTestId("slash-hint").map((el) => el.textContent);
+    expect(hints).toEqual(PRIMARY.map((c) => c.hint));
+    // The hint is a footnote, not part of the row's name.
+    expect(screen.getByRole("menuitem", { name: "Heading 1" })).toBeInTheDocument();
+    cleanup();
+    // A tier-2 block has no typed trigger: the row ends at the label.
+    render(
+      <SlashMenu
+        slashMenu={{ ...defaultMenu, filter: "call" }}
+        setSlashMenu={vi.fn()}
+        executeSlashCommand={vi.fn()}
+      />,
+    );
+    const callout = screen.getByRole("menuitem", { name: "Callout" });
+    expect(callout.querySelector('[data-testid="slash-hint"]')).toBeNull();
+  });
+
   it("surfaces an advanced command once it is typed", () => {
     const menu = { ...defaultMenu, filter: "call" };
     render(<SlashMenu slashMenu={menu} setSlashMenu={vi.fn()} executeSlashCommand={vi.fn()} />);

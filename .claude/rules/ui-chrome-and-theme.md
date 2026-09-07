@@ -91,7 +91,8 @@ hardcoded green); swap them for Lucide when touching those files.
   18px for navigation (the New note / Search glyphs and standalone controls). Mobile top-bar
   controls are 20px.
 - **Two stroke tiers:** 1.5 for content (Lucide's default 2 reads busy at 16px among prose),
-  2 for navigation chrome (`ICON_STROKE_NAV`), which balances against 14px labels.
+  2 for navigation chrome (`ICON_STROKE_NAV`), which balances against 14px labels. The slash
+  menu's glyphs take the navigation stroke at 16px (see the slash menu section).
 - Control hit boxes are 32px (`CHROME_BTN`). Don't flatten the tiers in either direction:
   rendered weight is `stroke × size / 24`, so equal strokes at equal sizes keeps the ink even.
 - Icons inherit `color`; a wrapper that sets none needs one.
@@ -510,11 +511,27 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - **The tier rule lives in one place, `filterSlashCommands()`**, used by both the menu and the
   keyboard navigation. A second copy is how Enter inserts a different block than the one
   highlighted.
-- Order is the menu's only structure: headings, lists, then Table and Image (no typed shortcut,
-  so the menu is their route), then code and quote, Divider last because `---` is faster to
-  type. Most commands have typed shortcuts; weigh that before promoting anything.
-- Rows are a bare Lucide glyph and a label, muted at rest and accent when selected: no chip,
-  border or markdown-syntax column. The shadow is `theme.modalShadow`.
+- Order is the menu's only structure (2026-09-07): the Markdown blocks first, roughly by reach
+  (headings, lists, Quote, Code block, Divider), then Table and Image, whose triggers are the
+  app's own, at the foot. `data.test.js` guards the split.
+- **Each row carries its typed shortcut as a muted hint on the right** (`hint` in
+  `SLASH_COMMANDS`, 12px mono, `TEXT.muted`, muted on the selected row too; only the glyph takes
+  the accent). The hint is what `useInputHandler` turns into the block at the start of an empty
+  block, never the Markdown the block saves as: the old `desc` column showed `| | |` and
+  `![]()` and was removed as noise. Nine hints are plain Markdown (`#`, `-`, `[]`, `>`, `---`,
+  three backticks). **Two are Boojy's own quick keys**, decided 2026-09-07 because no editor
+  has a typed table or image trigger and Tyr wants the menu to be optional: `|||` makes the
+  menu's two-by-two table at once (the three-of-a-symbol grammar of `---` and the backticks;
+  a hand-typed table never starts with three pipes, an empty first cell is `| |`), and `![]`
+  plus a space opens the menu's image picker (the box rhyme with `[]`; it waits for the space
+  so `![alt](url)` can still be typed through it). Both run the menu's own command through
+  `executeSlashCommand`, handed into the input handler, so there is one table shape and one
+  picker path. Tier-2 blocks have no trigger and an empty hint.
+- Labels are plain words, not markup terms: Quote, not Blockquote; To-do list, not Checkbox
+  (the block is a list, and the row then reads with Bullet list and Numbered list). Rows are a
+  Lucide glyph at the navigation stroke (2, at 16px: the glyph is the row's identity beside a
+  500-weight label and the mono hint, and 1.5 read thin against both, judged live 2026-09-07),
+  a label and the hint: no chip, border or group heading. The shadow is `theme.modalShadow`.
 - Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
   viewport margin, flip to the other side on overflow, clamp last. Route every new popover
   through it rather than writing a fresh clamp.

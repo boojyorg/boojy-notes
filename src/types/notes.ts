@@ -134,7 +134,8 @@ export interface SearchIndexEntry {
 export interface SlashCommand {
   id: string;
   label: string;
-  desc: string;
+  /** The typed Markdown shortcut that makes this block; empty when there is none. */
+  hint: string;
   /** Lucide glyph name, resolved by SlashCommandIcon in Icons.jsx. */
   icon: string;
   type: string;
