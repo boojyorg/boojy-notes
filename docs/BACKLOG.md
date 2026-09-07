@@ -205,6 +205,15 @@ content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` is the full list
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
 
+**A trailing space typed at the end of a line is saved as U+00A0** while the caret rests after
+it (found 2026-09-07 while fixing Enter on a tag suggestion). Chromium writes a space typed at
+the end of a line as a non-breaking space so it renders, and turns it back into a plain space
+once a character follows; a save that lands in between reads the DOM verbatim and writes
+`Notes\u00A0`. The walkers keep U+00A0 on purpose (a file's own non-breaking spaces must
+survive an edit), so the fix is narrower than a global normalisation: probably a block-final
+U+00A0 read as a space at commit time, weighed against a file that genuinely ends a block with
+one. Nothing is lost on screen; the byte is wrong only until the next keystroke in that block.
+
 ### Accessibility
 
 E2E axe only catches critical violations on the initial screen. Known gaps below that:

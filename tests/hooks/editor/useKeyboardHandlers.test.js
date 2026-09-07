@@ -389,4 +389,58 @@ describe("useKeyboardHandlers", () => {
       expect(placeCaret).toHaveBeenCalledWith(deps.blockRefs.current.b1, 5);
     });
   });
+
+  /**
+   * The tag and wikilink menus take Enter, the arrows and Escape in a
+   * capture-phase window listener and prevent the default. Enter on a tag
+   * suggestion still reached the editor's handler, which split the block on
+   * the DOM text instead of completing the tag (review 2026-09-06, H3). One
+   * rule for every menu: a key something else has consumed is not the editor's.
+   */
+  describe("a key a menu has already consumed", () => {
+    function caretAtEndOf(el, text) {
+      el.textContent = text;
+      document.body.appendChild(el);
+      const range = document.createRange();
+      range.setStart(el.firstChild, text.length);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    const enter = (consumed) => {
+      const e = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      if (consumed) e.preventDefault();
+      return e;
+    };
+
+    afterEach(() => {
+      document.body.innerHTML = "";
+      window.getSelection().removeAllRanges();
+    });
+
+    it("handleEditorKeyDown does nothing on a consumed Enter, and splits the block on the same key unconsumed", () => {
+      deps.getBlock.mockImplementation(() => ({ blockIndex: 0, blockId: "b1" }));
+      caretAtEndOf(deps.blockRefs.current.b1, "Hello");
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+
+      result.current.handleEditorKeyDown(enter(true));
+      expect(deps.commitNoteData).not.toHaveBeenCalled();
+      expect(deps.insertBlockAfter).not.toHaveBeenCalled();
+      expect(placeCaret).not.toHaveBeenCalled();
+      expect(deps.focusBlockId.current).toBeNull();
+
+      result.current.handleEditorKeyDown(enter(false));
+      expect(deps.commitNoteData.mock.calls.length + deps.insertBlockAfter.mock.calls.length).toBe(
+        1,
+      );
+    });
+
+    it("with no selection at all, a consumed key does not even park the caret", () => {
+      window.getSelection().removeAllRanges();
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleEditorKeyDown(enter(true));
+      expect(placeCaret).not.toHaveBeenCalled();
+    });
+  });
 });
