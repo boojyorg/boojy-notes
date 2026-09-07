@@ -1,6 +1,12 @@
 import { useCallback, useRef } from "react";
-import { getBlockFromNode } from "../utils/domHelpers";
+import {
+  caretOffsetAt,
+  caretRangeAt,
+  getBlockFromNode,
+  isEditableBlock,
+} from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
+import { rangeScope } from "../utils/crossBlockEdit";
 
 /** No inline format active — what the toolbars show when there is no selection. */
 export const EMPTY_FORMATS = {
@@ -30,7 +36,9 @@ export function useInlineFormatting({
       if (!sel.rangeCount) return;
       const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
       const info = getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current);
-      if (!info) return;
+      // A block with no registered element owns its own text (a table cell,
+      // a callout field); the editor never reads it back.
+      if (!info?.el) return;
       const text = domNodeToMarkdown(info.el)
         .replace(/[\n\r]+$/, "")
         .replace(/^[\n\r]+/, "");
@@ -133,9 +141,26 @@ export function useInlineFormatting({
   );
   const toggleHighlight = useCallback((sel) => toggleWrappingTag(sel, "MARK"), [toggleWrappingTag]);
 
+  /**
+   * Which block roots a range touches, when the app may format there: the
+   * scope for one text block or a run of them, null for a selection outside
+   * every block or inside a block that owns its own field.
+   */
+  const textBlockScope = (range) => {
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
+    const scope = rangeScope(range, editorRef.current, blocks, blockRefs.current);
+    if (scope.kind === "outside") return null;
+    if (scope.kind === "block" && !isEditableBlock(blocks[scope.start.blockIndex])) return null;
+    return scope;
+  };
+
   const getLinkContext = useCallback(() => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return null;
+    // A link lives inside one text block: no editor for a selection that
+    // spans blocks, sits outside every block, or is in a block that owns its
+    // own field.
+    if (!textBlockScope(sel.getRangeAt(0))) return null;
     let node = sel.anchorNode;
     let linkEl = null;
     while (node && node !== editorRef.current) {
@@ -184,24 +209,57 @@ export function useInlineFormatting({
     (format) => {
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
-      if (format === "bold") {
-        document.execCommand("bold");
-      } else if (format === "italic") {
-        document.execCommand("italic");
-      } else if (format === "code") {
-        toggleInlineCode(sel);
-      } else if (format === "strikethrough") {
-        toggleStrikethrough(sel);
-      } else if (format === "highlight") {
-        toggleHighlight(sel);
-      } else if (format === "link") {
+      if (format === "link") {
         // Open link editor popover instead of using prompt()
-        if (onOpenLinkEditor) {
-          onOpenLinkEditor();
-          return; // Don't dismiss toolbar yet — popover will handle it
+        onOpenLinkEditor?.();
+        return; // Don't dismiss toolbar yet — popover will handle it
+      }
+      const range = sel.getRangeAt(0);
+      const scope = textBlockScope(range);
+      if (!scope) return;
+      const run = () => {
+        if (format === "bold") document.execCommand("bold");
+        else if (format === "italic") document.execCommand("italic");
+        else if (format === "code") toggleInlineCode(sel);
+        else if (format === "strikethrough") toggleStrikethrough(sel);
+        else if (format === "highlight") toggleHighlight(sel);
+        reReadBlockFromDom(sel);
+      };
+      if (scope.kind === "block") {
+        run();
+      } else {
+        // Across blocks, each block is formatted within itself: the format
+        // is applied to the part of the selection inside each root and that
+        // root alone is read back, so Chromium never wraps two roots in one
+        // element. The selection is then restored as the one run it was.
+        const { startContainer, startOffset, endContainer, endOffset } = range;
+        const startEl = scope.start.el;
+        const endEl = scope.end.el;
+        const startPos = caretOffsetAt(startEl, startContainer, startOffset);
+        const endPos = caretOffsetAt(endEl, endContainer, endOffset);
+        const blocks = noteDataRef.current[activeNoteRef.current].content.blocks;
+        for (let i = scope.start.blockIndex; i <= scope.end.blockIndex; i++) {
+          const el = isEditableBlock(blocks[i]) ? blockRefs.current[blocks[i].id] : null;
+          if (!el) continue;
+          const part = document.createRange();
+          part.selectNodeContents(el);
+          if (i === scope.start.blockIndex) part.setStart(startContainer, startOffset);
+          if (i === scope.end.blockIndex) part.setEnd(endContainer, endOffset);
+          if (part.collapsed) continue;
+          sel.removeAllRanges();
+          sel.addRange(part);
+          run();
+        }
+        const from = caretRangeAt(startEl, startPos);
+        const to = caretRangeAt(endEl, endPos);
+        if (from && to) {
+          const whole = document.createRange();
+          whole.setStart(from.startContainer, from.startOffset);
+          whole.setEnd(to.startContainer, to.startOffset);
+          sel.removeAllRanges();
+          sel.addRange(whole);
         }
       }
-      reReadBlockFromDom(sel);
       setToolbarState(null);
     },
     [

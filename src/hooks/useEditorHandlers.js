@@ -6,6 +6,7 @@ import { useKeyboardHandlers } from "./editor/useKeyboardHandlers";
 import { usePasteHandler } from "./editor/usePasteHandler";
 import { useDragDropHandlers } from "./editor/useDragDropHandlers";
 import { useMouseHandlers } from "./editor/useMouseHandlers";
+import { useCrossBlockEdit } from "./editor/useCrossBlockEdit";
 
 export function useEditorHandlers({
   noteDataRef,
@@ -28,10 +29,8 @@ export function useEditorHandlers({
   deleteBlock,
   saveAndInsertImage,
   reReadBlockFromDom,
-  toggleInlineCode,
   applyFormat,
   mouseIsDown,
-  onOpenLinkEditor,
   updateBlockIndent,
   moveBlock,
   selectBlock,
@@ -60,6 +59,12 @@ export function useEditorHandlers({
     getBlock,
   };
 
+  // The one owner of every edit that reaches across block roots; the key,
+  // paste and cut handlers ask it which roots a selection touches.
+  const { scopeOf, ownEdit, handleEditorBeforeInput } = useCrossBlockEdit({
+    ...shared,
+    selectBlock,
+  });
   const { executeSlashCommand } = useSlashCommands({ ...shared, insertBlockAfter, onError });
   const { handleBlockInput, handleEditorInput } = useInputHandler({
     ...shared,
@@ -81,20 +86,20 @@ export function useEditorHandlers({
     updateBlockText,
     insertBlockAfter,
     deleteBlock,
-    reReadBlockFromDom,
-    toggleInlineCode,
     applyFormat,
-    onOpenLinkEditor,
+    scopeOf,
     updateBlockIndent,
     moveBlock,
     selectBlock,
     executeSlashCommand,
     handleBlockInput,
   });
-  const { handleEditorPaste, handleEditorCopy } = usePasteHandler({
+  const { handleEditorPaste, handleEditorCopy, handleEditorCut } = usePasteHandler({
     ...shared,
     saveAndInsertImage,
     reReadBlockFromDom,
+    scopeOf,
+    ownEdit,
   });
   const { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop } = useDragDropHandlers({
     ...shared,
@@ -113,6 +118,8 @@ export function useEditorHandlers({
     handleEditorFocus,
     handleEditorPaste,
     handleEditorCopy,
+    handleEditorCut,
+    handleEditorBeforeInput,
     handleEditorDragOver,
     handleEditorDragLeave,
     handleEditorDrop,

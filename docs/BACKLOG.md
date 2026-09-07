@@ -190,6 +190,13 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`
   has no left boundary, so `a#b` and `example.com/page#top` produce tags `b` and `top`.
+- [ ] **Edits across a block boundary that the app refuses rather than makes** (the block-root
+  rule in the UI rule, 2026-09-07): a selection reaching from a text block into a table, callout
+  or code block, then Backspace or typing, changes nothing (deleting the run is not attempted);
+  a text drag across blocks copies rather than moves; Cmd+B across blocks toggles each block on
+  its own; an IME composition begun over a selection spanning blocks cannot be intercepted
+  (`insertCompositionText` is not cancelable). None loses data; each is a decision to make
+  once it has been felt.
 - **Judge live, not by reasoning:** Shift+Enter twice (`a\n\n` inside one block) reads back as
   `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
   after it has been felt.

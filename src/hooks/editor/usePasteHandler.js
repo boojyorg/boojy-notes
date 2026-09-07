@@ -8,6 +8,7 @@ import {
 } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
 import { markdownToBlocks } from "../../utils/markdown";
+import { markdownAfter, markdownBefore } from "../../utils/crossBlockEdit";
 import {
   buildPastedBlocks,
   isStructuredMarkdownLine,
@@ -27,6 +28,8 @@ export function usePasteHandler({
   saveAndInsertImage,
   reReadBlockFromDom,
   getBlock,
+  scopeOf,
+  ownEdit,
 }) {
   /**
    * Paint a destination block that survived the paste with the same id and
@@ -45,51 +48,55 @@ export function usePasteHandler({
 
   const handleEditorPaste = useCallback((e) => {
     const currentNote = activeNoteRef.current;
+    const blocks = noteDataRef.current[currentNote]?.content?.blocks || [];
+    const sel = window.getSelection();
+    const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+    const scope = range ? scopeOf(range) : null;
+    const ownsItself = (point) => !!point && !isEditableBlock(blocks[point.blockIndex]);
+    // A block that owns its own field (a code block's textarea, a table
+    // cell, a callout) keeps its native paste; the editor keeps out.
+    if (scope?.kind === "block" && ownsItself(scope.start)) return;
+
     const files = e.clipboardData?.files;
     if (files?.length > 0) {
-      // Check if cursor is inside a code block — don't handle file paste there
-      const sel = window.getSelection();
-      const info = sel?.rangeCount ? getBlock(sel.anchorNode) : null;
-      const blocks = noteDataRef.current[currentNote]?.content?.blocks || [];
-      if (info && blocks[info.blockIndex]?.type === "code") {
-        // Let code block handle its own paste
-        return;
-      }
-
+      const afterIndex = scope?.start ? scope.start.blockIndex : blocks.length - 1;
       const allFiles = Array.from(files);
       const imageFile = allFiles.find((f) => f.type.startsWith("image/"));
+      e.preventDefault();
       if (imageFile) {
-        e.preventDefault();
-        const afterIndex = info ? info.blockIndex : blocks.length - 1;
         saveAndInsertImage(currentNote, afterIndex, imageFile);
         return;
       }
-      // Non-image file paste
-      if (allFiles.length > 0) {
-        e.preventDefault();
-        const afterIndex = info ? info.blockIndex : blocks.length - 1;
-        for (const file of allFiles) {
-          saveAndInsertImage(currentNote, afterIndex, file);
-        }
-        return;
+      for (const file of allFiles) {
+        saveAndInsertImage(currentNote, afterIndex, file);
       }
+      return;
     }
+
+    // Text lands in one text block, or in a run of them, or nowhere. With no
+    // caret in any block, or a selection reaching outside every block, there
+    // is nothing to paste into; a selection reaching from a text block into
+    // a block that owns itself is refused. Neither is left to Chromium.
+    e.preventDefault();
+    if (!scope || scope.kind === "outside") return;
+    const crossing = scope.kind === "cross";
+    if (ownsItself(scope.start) || ownsItself(scope.end)) return;
 
     // One terminal line ending is incidental (copying a whole line brings its
     // break along); strip it so a one-line copy pastes inline.
     const textData = stripIncidentalLineEnding(e.clipboardData.getData("text/plain"));
 
-    // Smart paste: URL over selected text → create markdown link
+    // Smart paste: URL over selected text → create markdown link. Across
+    // blocks a link cannot span the selection, so the URL replaces it.
     if (/^https?:\/\/\S+$/.test(textData.trim())) {
-      e.preventDefault();
-      const sel = window.getSelection();
-      if (!sel.rangeCount) return;
       const url = textData.trim();
-
+      if (crossing) {
+        ownEdit(scope, { kind: "insertText", text: url }, range);
+        return;
+      }
       if (!sel.isCollapsed) {
         // Selection exists: wrap selected text as [text](url)
         const selectedText = sel.toString();
-        const range = sel.getRangeAt(0);
         range.deleteContents();
         const a = document.createElement("a");
         a.href = url;
@@ -108,7 +115,6 @@ export function usePasteHandler({
         sel.addRange(range);
       } else {
         // No selection: insert bare URL as link
-        const range = sel.getRangeAt(0);
         const a = document.createElement("a");
         a.href = url;
         a.className = "external-link bare-url";
@@ -129,6 +135,15 @@ export function usePasteHandler({
       return;
     }
 
+    // Where a block-level paste lands: the start block keeps its Markdown
+    // before the selection, the end block its Markdown after, and every
+    // block between goes with the selection.
+    const startIdx = scope.start.blockIndex;
+    const deleteCount = scope.end.blockIndex - startIdx;
+    const beforeText = markdownBefore(scope.start.el, range.startContainer, range.startOffset);
+    const afterText = markdownAfter(scope.end.el, range.endContainer, range.endOffset);
+    const currentBlock = blocks[startIdx];
+
     // Check for internal block-level paste
     const boojyData = e.clipboardData.getData("text/boojy-blocks");
     if (boojyData) {
@@ -141,56 +156,6 @@ export function usePasteHandler({
 
       const hasFullBlock = pastedBlocks?.some((b) => b.fullBlock);
       if (pastedBlocks?.length > 0 && hasFullBlock) {
-        e.preventDefault();
-        const sel = window.getSelection();
-        if (!sel.rangeCount) return;
-        const range = sel.getRangeAt(0);
-
-        // Get cursor position and before/after text
-        let startIdx, deleteCount, beforeText, afterText;
-
-        if (!range.collapsed) {
-          const startInfo = getBlock(range.startContainer);
-          const endInfo = getBlock(range.endContainer);
-          if (!startInfo || !endInfo) return;
-          startIdx = startInfo.blockIndex;
-          deleteCount = endInfo.blockIndex - startIdx;
-
-          const preR = document.createRange();
-          preR.selectNodeContents(startInfo.el);
-          preR.setEnd(range.startContainer, range.startOffset);
-          const preDiv = document.createElement("div");
-          preDiv.appendChild(preR.cloneContents());
-          beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-
-          const postR = document.createRange();
-          postR.selectNodeContents(endInfo.el);
-          postR.setStart(range.endContainer, range.endOffset);
-          const postDiv = document.createElement("div");
-          postDiv.appendChild(postR.cloneContents());
-          afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-        } else {
-          const info = getBlock(sel.anchorNode);
-          if (!info) return;
-          startIdx = info.blockIndex;
-          deleteCount = 0;
-
-          const preR = document.createRange();
-          preR.selectNodeContents(info.el);
-          preR.setEnd(range.startContainer, range.startOffset);
-          const preDiv = document.createElement("div");
-          preDiv.appendChild(preR.cloneContents());
-          beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-
-          const postR = document.createRange();
-          postR.selectNodeContents(info.el);
-          postR.setStart(range.endContainer, range.endOffset);
-          const postDiv = document.createElement("div");
-          postDiv.appendChild(postR.cloneContents());
-          afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-        }
-
-        const currentBlock = noteDataRef.current[currentNote].content.blocks[startIdx];
         const {
           blocks: newBlocks,
           focusId,
@@ -230,63 +195,10 @@ export function usePasteHandler({
     // Multi-line external paste, or a single structured Markdown line landing
     // in an empty block: parse as markdown blocks. A single line anywhere else
     // pastes inline below.
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const caretInEmptyBlock = () => {
-      const info = getBlock(sel.anchorNode);
-      return !!info && info.el.textContent.trim() === "";
-    };
+    const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
-      e.preventDefault();
       const pastedBlocks = markdownToBlocks(textData);
       if (!pastedBlocks.length) return;
-
-      const range = sel.getRangeAt(0);
-
-      let startIdx, deleteCount, beforeText, afterText;
-
-      if (!range.collapsed) {
-        const startInfo = getBlock(range.startContainer);
-        const endInfo = getBlock(range.endContainer);
-        if (!startInfo || !endInfo) return;
-        startIdx = startInfo.blockIndex;
-        deleteCount = endInfo.blockIndex - startIdx;
-
-        const preR = document.createRange();
-        preR.selectNodeContents(startInfo.el);
-        preR.setEnd(range.startContainer, range.startOffset);
-        const preDiv = document.createElement("div");
-        preDiv.appendChild(preR.cloneContents());
-        beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-
-        const postR = document.createRange();
-        postR.selectNodeContents(endInfo.el);
-        postR.setStart(range.endContainer, range.endOffset);
-        const postDiv = document.createElement("div");
-        postDiv.appendChild(postR.cloneContents());
-        afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-      } else {
-        const info = getBlock(sel.anchorNode);
-        if (!info) return;
-        startIdx = info.blockIndex;
-        deleteCount = 0;
-
-        const preR = document.createRange();
-        preR.selectNodeContents(info.el);
-        preR.setEnd(range.startContainer, range.startOffset);
-        const preDiv = document.createElement("div");
-        preDiv.appendChild(preR.cloneContents());
-        beforeText = htmlToInlineMarkdown(sanitizeInlineHtml(preDiv.innerHTML));
-
-        const postR = document.createRange();
-        postR.selectNodeContents(info.el);
-        postR.setStart(range.endContainer, range.endOffset);
-        const postDiv = document.createElement("div");
-        postDiv.appendChild(postR.cloneContents());
-        afterText = htmlToInlineMarkdown(sanitizeInlineHtml(postDiv.innerHTML));
-      }
-
-      const currentBlock = noteDataRef.current[currentNote].content.blocks[startIdx];
       const {
         blocks: newBlocks,
         focusId,
@@ -323,9 +235,14 @@ export function usePasteHandler({
       return;
     }
 
-    // Single-line external paste: insert inline
-    e.preventDefault();
+    // Single-line external paste: inline, Chromium's own insertion within the
+    // block; across blocks the app makes the replacement.
     const htmlData = e.clipboardData.getData("text/html");
+    if (crossing) {
+      const text = htmlData ? htmlToInlineMarkdown(sanitizeInlineHtml(htmlData)) : textData;
+      ownEdit(scope, { kind: "insertText", text }, range);
+      return;
+    }
     if (htmlData) {
       const sanitized = sanitizeInlineHtml(htmlData);
       document.execCommand("insertHTML", false, sanitized);
@@ -364,7 +281,7 @@ export function usePasteHandler({
 
     const startIdx = startInfo.blockIndex;
     let endIdx = endInfo.blockIndex;
-    if (endIdx > startIdx) {
+    if (endIdx > startIdx && endInfo.el) {
       // A triple-click (and some drags) ends at the very start of the next
       // block without selecting any of it; that block is not part of the copy.
       const tail = document.createRange();
@@ -445,5 +362,26 @@ export function usePasteHandler({
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
-  return { handleEditorPaste, handleEditorCopy };
+  /**
+   * Cut is copy plus the app's own deletion. The copy has to cancel the
+   * event to own the clipboard, which cancels Chromium's deletion with it;
+   * the removal is then made in state, within one block or across several,
+   * so it is never Chromium's to make across roots. A block that owns its
+   * field (a table cell, a callout) keeps its native cut.
+   */
+  const handleEditorCut = useCallback((e) => {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const scope = scopeOf(range);
+    const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks || [];
+    if (scope.kind === "block" && !isEditableBlock(blocks[scope.start.blockIndex])) return;
+    e.preventDefault();
+    if (scope.kind === "outside") return;
+    handleEditorCopy(e);
+    ownEdit(scope, { kind: "delete" }, range);
+    // Deps deliberately not exhaustive: all deps are stable refs/callbacks
+  }, []);
+
+  return { handleEditorPaste, handleEditorCopy, handleEditorCut };
 }
