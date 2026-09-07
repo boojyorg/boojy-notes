@@ -5,8 +5,11 @@
  * extra cells of a wide row were sliced off on parse, so any save wrote the
  * row back without them, and a short row was padded to the header.
  *
- * On screen the grid is as wide as the widest row; adding a column through
- * the table's own control appends a cell to every row, the wide one included.
+ * On screen the grid is as wide as the widest row. Adding a column through
+ * the table's own control makes the next visual column in every row: a row
+ * shorter than the grid is padded up to it, so the new cell is column four
+ * for `| Milk |` as much as for the wide row. Only an explicit column
+ * operation pads; a passive open and save keeps every row's width.
  */
 import { expect, test } from "@playwright/test";
 import { END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
@@ -63,7 +66,7 @@ test("a wide row keeps its extra cells and a short row stays short through an ed
   }
 });
 
-test("adding a column appends a cell to every row, the already-wide row included", async () => {
+test("adding a column makes the next visual column in every row, padding a short row up to it", async () => {
   const h = await launchApp({ "Ragged.md": source });
   try {
     await h.openNote("Ragged");
@@ -79,11 +82,12 @@ test("adding a column appends a cell to every row, the already-wide row included
       [
         "Intro line.",
         "",
-        "| Name | Qty | Col 4 |",
-        "| --- | --- | --- |",
+        // The header is a short row too: it is padded to column four like the rest.
+        "| Name | Qty |  | Col 4 |",
+        "| --- | --- | --- | --- |",
         "| Tea | 2 | extra |  |",
-        "| Milk |  |",
-        "| Bread | 1 |  |",
+        "| Milk |  |  |  |",
+        "| Bread | 1 |  |  |",
         "",
       ].join("\n"),
     );

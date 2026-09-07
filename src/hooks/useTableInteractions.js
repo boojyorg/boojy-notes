@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTheme } from "./useTheme";
-import { moveCell, tableColumnCount } from "../utils/tableShape";
+import { moveCell, tableColumnCount, withColumnInserted } from "../utils/tableShape";
 
 export function useTableInteractions({
   block,
@@ -123,11 +123,7 @@ export function useTableInteractions({
   const insertColumn = useCallback((index, position) => {
     const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
     const insertAt = position === "left" ? index : index + 1;
-    const newRows = r.map((row, i) => {
-      const newRow = [...row];
-      newRow.splice(insertAt, 0, i === 0 ? `Col ${cc + 1}` : "");
-      return newRow;
-    });
+    const newRows = withColumnInserted(r, insertAt, `Col ${cc + 1}`);
     const newAligns = [...a];
     newAligns.splice(insertAt, 0, "left");
     updateRef.current(n, b, newRows, newAligns);
@@ -614,7 +610,9 @@ export function useTableInteractions({
       noteId: n,
       blockIndex: b,
     } = dataRef.current;
-    const newRows = curRows.map((r, i) => [...r, i === 0 ? `Col ${cc + 1}` : ""]);
+    // Column cc + 1 for every row: a short row is padded up to the new column
+    // so the cell lands where the user asked, not in a gap it did not reach.
+    const newRows = withColumnInserted(curRows, cc, `Col ${cc + 1}`);
     updateRef.current(n, b, newRows, [...a, "left"]);
   }, []);
 
@@ -661,13 +659,10 @@ export function useTableInteractions({
           noteId: n,
           blockIndex: b,
         } = dataRef.current;
-        const newRows = curRows.map((r, ri) => {
-          const nr = [...r];
-          for (let j = 0; j < c.count; j++) {
-            nr.push(ri === 0 ? `Col ${cc + j + 1}` : "");
-          }
-          return nr;
-        });
+        let newRows = curRows;
+        for (let j = 0; j < c.count; j++) {
+          newRows = withColumnInserted(newRows, cc + j, `Col ${cc + j + 1}`);
+        }
         const newAligns = [...a];
         for (let j = 0; j < c.count; j++) newAligns.push("left");
         updateRef.current(n, b, newRows, newAligns);

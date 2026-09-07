@@ -48,3 +48,20 @@ export function moveCell(row: string[], from: number, to: number): string[] {
   while (next.length > row.length && next[next.length - 1] === "") next.pop();
   return next;
 }
+
+/**
+ * A copy of `rows` with one column inserted at a visual column, the way the
+ * table's own controls add one. An explicit column operation may pad a row:
+ * a row shorter than `at` is padded up to it first, so the new cell lands in
+ * the column the user asked for in every row, wide rows and short rows
+ * alike. Nothing here runs on a passive open or save; those keep every
+ * row's width exactly.
+ */
+export function withColumnInserted(rows: string[][], at: number, headerLabel: string): string[][] {
+  return rows.map((row, r) => {
+    const next = [...row];
+    while (next.length < at) next.push("");
+    next.splice(at, 0, r === 0 ? headerLabel : "");
+    return next;
+  });
+}
