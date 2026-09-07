@@ -8,6 +8,13 @@ change needs; the incidents behind them are in git.
 - Pushing a `v*` tag runs `release.yml`: a macOS and a Windows job, each running
   `pnpm build:electron` and uploading through electron-builder's GitHub publisher. macOS
   signs and notarises only if the certificate secrets are set; otherwise it builds unsigned.
+  **None of them is set (2026-09-07)**: the workflow reads `MACOS_CERTIFICATE`,
+  `MACOS_CERTIFICATE_PWD`, `APPLE_ID`, `APPLE_APP_PASSWORD` and `APPLE_TEAM_ID`, the repo holds
+  only the Cloudflare hook, and every published macOS build so far (v0.5.0 included) is
+  unsigned. electron-updater refuses to update an unsigned macOS app and the error is
+  swallowed, so Settings → Updates does nothing for release users until signing is on. Setting
+  the secrets is the whole fix (`docs/private/code-signing.md`, local); it is deliberately
+  unscheduled until a build is worth publishing.
 - **Releases land as drafts, and the matrix creates two of them** on the same tag (DMG in one,
   EXE in the other). A draft is invisible to "latest release" lookups, so the website version
   text and the auto-updater keep resolving to the last *published* release. After every tag
@@ -98,8 +105,8 @@ change needs; the incidents behind them are in git.
   whatever Developer ID identity the keychain holds and builds unsigned without one. Quit the
   running app first (its quit flush saves pending edits), replace `/Applications/Boojy Notes.app`,
   then check `codesign --verify --deep --strict` and the version in Settings. The installed app
-  never self-updates, so rebuild after every product merge. Distributed releases go through
-  `release.yml` only.
+  never self-updates, so rebuild at coherent checkpoints (a batch of merges worth judging live),
+  not per PR. Distributed releases go through `release.yml` only.
 - **Build input and output are separate directories** (2026-09-07). `dist/` (the renderer) and
   `dist-electron/` (main and preload) are the packaged input; installers land in `release/`,
   never in `dist/`. With both in `dist/`, the `files` glob `dist/**/*` packed the previous

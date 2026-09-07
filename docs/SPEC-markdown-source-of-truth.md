@@ -47,8 +47,9 @@ its own. An empty item takes no lazy continuation line.
 This is enforced at **block design time**, on **every platform**, by an automated test:
 
 - `tests/utils/markdown.test.js` — runs `markdownToBlocks(blocksToMarkdown(b))` for one
-  representative of every block type and asserts deep-equality. (Mirrored from the Electron
-  side by `tests/electron/markdown.test.js`.)
+  representative of every block type and asserts deep-equality. (`tests/electron/markdown.test.js`
+  is an older second file over the same module; its round-trip block duplicates this one and is
+  due to fold in, per the backlog.)
 - Any new block type, or any change to a serializer/parser, that breaks the round-trip turns
   this test **red**. That red is the gate. **Do not lower it; fix the block.**
 
@@ -132,6 +133,14 @@ test rather than letting it pass as if lossless:
   `tests/utils/markdownInterop.test.js`.
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
+
+Byte changes are a separate matter from round-trip losses. Beyond the two sanctioned rewrites
+above (the blank before a tight `---`, the `-` the app writes for an empty marker), the app
+still normalises a handful of unusual inputs on save: the preservation suite's `KNOWN_FAILURES`
+and the list under *Data safety* in `docs/BACKLOG.md` are the honest record. None of those is
+sanctioned by this spec; each is either fixed by carrying the raw bytes (the
+`indentStr`/`marker`/`numRaw`/`bare` pattern) or, by an explicit decision, added to this
+section.
 
 ---
 
