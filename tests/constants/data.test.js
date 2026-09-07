@@ -55,11 +55,9 @@ describe("SLASH_COMMANDS", () => {
     expect(shown[0]).toBe("h1");
   });
 
-  it("orders the opening screen typed-shortcut blocks first, menu-only blocks last", () => {
+  it("orders the Markdown blocks first and the app's own triggers, Table and Image, last", () => {
     const shown = filterSlashCommands("");
-    const hinted = shown.map((c) => c.hint !== "");
-    // Every hinted row precedes every blank one: no gaps in the hint column.
-    expect(hinted).toEqual([...hinted].sort((a, b) => Number(b) - Number(a)));
+    expect(shown.every((c) => c.hint !== "")).toBe(true);
     expect(shown.slice(-2).map((c) => c.id)).toEqual(["table", "image"]);
   });
 
@@ -75,9 +73,11 @@ describe("SLASH_COMMANDS", () => {
       blockquote: ">",
       code: "```",
       divider: "---",
+      table: "|||",
+      image: "![]",
     });
-    // No typed shortcut, so no hint: the menu is the route and the blank says so.
-    for (const id of ["table", "image", "callout", "file", "embed"]) expect(hints[id]).toBe("");
+    // No typed trigger, so no hint.
+    for (const id of ["callout", "file", "embed"]) expect(hints[id]).toBe("");
   });
 
   it("uses plain names, not markup terms", () => {

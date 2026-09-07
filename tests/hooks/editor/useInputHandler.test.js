@@ -58,6 +58,7 @@ describe("useInputHandler", () => {
       updateBlockText: vi.fn(),
       insertBlockAfter: vi.fn(),
       getBlock: vi.fn(),
+      executeSlashCommand: vi.fn(),
     };
   });
 
@@ -128,6 +129,46 @@ describe("useInputHandler", () => {
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
     expect(deps.commitNoteData).toHaveBeenCalled();
+  });
+
+  it("||| runs the menu's Table command at once, like ---", () => {
+    mockEl.textContent = "|||";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).toHaveBeenCalledWith(
+      "note-1",
+      0,
+      expect.objectContaining({ id: "table", type: "table" }),
+    );
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
+  });
+
+  it("a hand-typed table row is not a trigger", () => {
+    for (const text of ["| ", "| a |", "||"]) {
+      mockEl.textContent = text;
+      const { result } = renderHook(() => useInputHandler(deps));
+      result.current.handleBlockInput("note-1", 0);
+    }
+    expect(deps.executeSlashCommand).not.toHaveBeenCalled();
+  });
+
+  it("![] followed by a space runs the menu's Image command", () => {
+    mockEl.textContent = "![] ";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).toHaveBeenCalledWith(
+      "note-1",
+      0,
+      expect.objectContaining({ id: "image", type: "image" }),
+    );
+  });
+
+  it("![] without the space waits, so ![alt](url) can still be typed through it", () => {
+    mockEl.textContent = "![]";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
   it("opens slash menu when text is /", () => {

@@ -130,7 +130,12 @@ const SLASH_GLYPHS = {
   link: LuLink,
 };
 
+/**
+ * Navigation stroke, not content: the row's glyph is the block's identity beside a
+ * 13px/500 label and a mono hint, and at 1.5 it read thin against both (judged
+ * live 2026-09-07). Same tier as the sidebar's chrome, same 16px as its rows.
+ */
 export const SlashCommandIcon = ({ name, size = ICON_INLINE }) => {
   const Glyph = SLASH_GLYPHS[name];
-  return Glyph ? <Glyph {...base} size={size} /> : null;
+  return Glyph ? <Glyph {...navBase} size={size} /> : null;
 };

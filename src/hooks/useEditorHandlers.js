@@ -71,6 +71,7 @@ export function useEditorHandlers({
     setTagMenu,
     updateBlockText,
     insertBlockAfter,
+    executeSlashCommand,
   });
   const { handleEditorKeyDown } = useKeyboardHandlers({
     ...shared,

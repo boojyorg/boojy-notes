@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { cleanOrphanNodes, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown } from "../../utils/inlineFormatting";
 import { genBlockId } from "../../utils/storage";
+import { SLASH_COMMANDS } from "../../constants/data";
 
 // Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
 const S = "[\\s\\u00a0]";
@@ -16,6 +17,18 @@ const MD_PATTERNS = [
   { regex: new RegExp(`^>${S}$`), type: "blockquote" },
   { regex: /^---$/, type: "spacer" },
   { regex: /^```/, type: "code" },
+];
+
+/**
+ * Typed triggers for the two blocks the menu makes through its own path (a table
+ * needs a shape, an image a picker), so they run the menu's command rather than
+ * a second copy of it. `|||` fires at once, like `---`: no hand-typed table ever
+ * starts with three pipes (an empty first cell is `| |`). `![]` waits for the
+ * space so `![alt](url)`, matched below, can still be typed through it.
+ */
+const MENU_TRIGGERS = [
+  { regex: /^\|\|\|$/, id: "table" },
+  { regex: new RegExp(`^!\\[\\]${S}$`), id: "image" },
 ];
 
 export function useInputHandler({
@@ -36,6 +49,7 @@ export function useInputHandler({
   updateBlockText,
   insertBlockAfter,
   getBlock,
+  executeSlashCommand,
 }) {
   // --- Block input handler ---
   const handleBlockInput = useCallback((noteId, blockIndex) => {
@@ -93,6 +107,14 @@ export function useInputHandler({
           focusBlockId.current = currentBlock.id;
           focusCursorPos.current = 0;
         }
+        return;
+      }
+    }
+
+    for (const trig of MENU_TRIGGERS) {
+      if (trig.regex.test(text)) {
+        const command = SLASH_COMMANDS.find((c) => c.id === trig.id);
+        if (command) executeSlashCommand(noteId, blockIndex, command);
         return;
       }
     }
