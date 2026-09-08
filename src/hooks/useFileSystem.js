@@ -33,12 +33,15 @@ export function conflictCopyTitle(title, date = new Date()) {
 }
 
 /**
- * @param editorLinks Optional `{ unflushedNotes, latestNoteDataRef, activeNoteRef,
- *   applyExternalNote, adoptNoteData, onExternalConflict, onNotesEdited,
- *   onTitleResolved, remapNoteFolders }`.
- *   `applyExternalNote(note)` (useHistory) is the one path for a note as the
- *   disk now holds it: it updates the history ref and state together, so a
- *   pending text commit for another note can no longer republish a stale copy.
+ * @param editorLinks `{ unflushedNotes, latestNoteDataRef, activeNoteRef,
+ *   applyExternalNote, adoptNoteData, replaceNoteData, remapNoteFolders,
+ *   onExternalConflict, onNotesEdited, onTitleResolved }`. This hook never
+ *   sets note state itself: every change of record from disk goes through
+ *   useHistory, which keeps its keystroke ref and React state together.
+ *   `applyExternalNote(note)` is the path for one note as the disk now holds
+ *   it, `replaceNoteData(map)` for the whole vault (the initial load, a vault
+ *   switch, the rebuild after an outside delete); a pending text commit can
+ *   then neither republish a stale copy over them nor be lost under them.
  *   `activeNoteRef` says which note is being edited. An outside change to any
  *   other note, or to the open note with nothing pending, is taken at once.
  *   One to the open note while edits are pending (`unflushedNotes` or the
@@ -72,17 +75,10 @@ export function conflictCopyTitle(title, date = new Date()) {
  *   check, a debounced write of the state's copy (up to 300ms behind the
  *   editor) would clear the net and an immediate quit would drop the tail.
  *   `remapNoteFolders(remap)` (useHistory) moves every note's `folder` field
- *   through `remap` in the live data and in every undo snapshot after a
- *   directory rename; it returns whether anything changed.
+ *   through `remap` in the live data after a directory rename; it returns
+ *   whether anything changed.
  */
-export function useFileSystem(
-  noteData,
-  setNoteData,
-  setCustomFolders,
-  syncGeneration,
-  onError,
-  editorLinks = null,
-) {
+export function useFileSystem(noteData, setCustomFolders, syncGeneration, onError, editorLinks) {
   const [notesDir, setNotesDir] = useState(null);
   const [loading, setLoading] = useState(isNative);
 
@@ -104,6 +100,16 @@ export function useFileSystem(
   onErrorRef.current = onError;
   const notesDirRef = useRef(notesDir);
   notesDirRef.current = notesDir;
+  const editorLinksRef = useRef(editorLinks);
+  editorLinksRef.current = editorLinks;
+  // The vault as the disk holds it replaces note state wholesale. The next
+  // render's dirty scan is skipped, so nothing taken from disk is written
+  // back; a caller that folds in local work (the delete rebuild) marks that
+  // work dirty itself.
+  const takeFromDisk = useCallback((next) => {
+    isExternalUpdate.current = true;
+    editorLinksRef.current.replaceNoteData(next);
+  }, []);
   // Work to run once the next flush has finished: after pending writes and
   // Trash moves. Removing a folder's directory waits on this, so it can only
   // happen after the notes inside it have left.
@@ -140,8 +146,7 @@ export function useFileSystem(
         if (cancelled) return;
 
         if (Object.keys(diskNotes).length > 0) {
-          isExternalUpdate.current = true;
-          setNoteData(diskNotes);
+          takeFromDisk(diskNotes);
           // The restored session renders its active note before this load
           // finishes; bump syncGeneration (like onFileChanged does) so the
           // title-sync layout effects re-run once the data is actually here
@@ -160,7 +165,7 @@ export function useFileSystem(
       cancelled = true;
     };
     // Deps deliberately not exhaustive: onError is not stable; including it would re-run initial load
-  }, [setNoteData, setCustomFolders, refreshFolders]);
+  }, [takeFromDisk, setCustomFolders, refreshFolders]);
 
   // ─── Detect local changes and debounce writes ───
   useEffect(() => {
@@ -367,6 +372,13 @@ export function useFileSystem(
           links?.latestNoteDataRef?.current?.[noteId] === note;
         if (stillCurrent) dirtyNotes.current.delete(noteId);
         else trace("write superseded", noteId, "kept dirty");
+        // The version written is now accounted for. When it was the keystroke
+        // ref's (a blur, quit or vault-switch flush ahead of the text commit),
+        // the commit that publishes the same object later is not a change
+        // and must not mark the note dirty again: the rewrite it scheduled
+        // could land after a vault switch, in the wrong vault.
+        if (prevNoteData.current && prevNoteData.current[noteId] !== note)
+          prevNoteData.current = { ...prevNoteData.current, [noteId]: note };
         // Persisted, and nothing typed since: the quit/blur net no longer needs it.
         if (links?.unflushedNotes && links.latestNoteDataRef.current[noteId] === note) {
           links.unflushedNotes.current.delete(noteId);
@@ -411,8 +423,6 @@ export function useFileSystem(
 
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  const editorLinksRef = useRef(editorLinks);
-  editorLinksRef.current = editorLinks;
 
   // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
   useEffect(() => {
@@ -425,15 +435,9 @@ export function useFileSystem(
     const applyExternal = (external) => {
       const links = editorLinksRef.current;
       dirtyNotes.current.delete(external.id);
-      if (links?.applyExternalNote) {
-        externalIds.current.add(external.id);
-        links.applyExternalNote(external);
-      } else {
-        isExternalUpdate.current = true;
-        setNoteData((prev) => ({ ...prev, [external.id]: external }));
-      }
-      const active = links?.activeNoteRef ? links.activeNoteRef.current : external.id;
-      if (syncGeneration && active === external.id) syncGeneration.current++;
+      externalIds.current.add(external.id);
+      links.applyExternalNote(external);
+      if (syncGeneration && links.activeNoteRef.current === external.id) syncGeneration.current++;
       ensureFolder(external.folder);
     };
 
@@ -497,17 +501,32 @@ export function useFileSystem(
       (async () => {
         try {
           const diskNotes = await window.electronAPI.readAllNotes();
-          isExternalUpdate.current = true;
-          setNoteData((prev) => {
-            // Disk is the base, but notes that only exist in memory must
-            // survive the rebuild: drafts, and dirty notes whose debounced
-            // write hasn't landed yet (their flush is still scheduled).
-            const unpersisted = {};
-            for (const [id, n] of Object.entries(prev)) {
-              if (n._draft || dirtyNotes.current.has(id)) unpersisted[id] = n;
+          // Disk is the base, but what exists only here survives the rebuild:
+          // drafts, and every note with edits not yet written, whether its
+          // write is scheduled (dirty) or its keystrokes are still inside
+          // the text commit (unflushed). Those are taken from the keystroke
+          // ref, the newest version, and marked dirty, so the ordinary flush
+          // writes them; a note deleted outside while its edits were unsaved
+          // is therefore written back rather than lost. A note the user has
+          // deleted here whose Trash move is still pending stays deleted.
+          const links = editorLinksRef.current;
+          const latest = links.latestNoteDataRef.current;
+          const next = { ...diskNotes };
+          for (const id of deletedNotes.current) delete next[id];
+          const kept = [];
+          for (const [id, n] of Object.entries(noteDataRef.current)) {
+            if (n._draft) next[id] = n;
+            else if (dirtyNotes.current.has(id) || links.unflushedNotes.current.has(id)) {
+              next[id] = latest[id] ?? n;
+              kept.push(id);
             }
-            return { ...diskNotes, ...unpersisted };
-          });
+          }
+          takeFromDisk(next);
+          if (kept.length > 0) {
+            for (const id of kept) dirtyNotes.current.add(id);
+            clearTimeout(writeTimer.current);
+            writeTimer.current = setTimeout(() => flushRef.current(), WRITE_DEBOUNCE_MS);
+          }
           await syncFoldersFromDisk();
         } catch (err) {
           console.error("useFileSystem: re-read after delete failed", err);
@@ -522,7 +541,7 @@ export function useFileSystem(
     };
     // Deps deliberately not exhaustive: onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
   }, [
-    setNoteData,
+    takeFromDisk,
     setCustomFolders,
     syncGeneration,
     refreshFolders,
@@ -539,16 +558,29 @@ export function useFileSystem(
   }, []);
 
   // ─── Change notes directory (Electron only) ───
+  // The main process switches the vault inside the picker call, and every
+  // write resolves the vault live, so the old vault's pending edits are
+  // written before the picker opens (the picker is modal: nothing can be
+  // typed while it is up) and the old notes leave state before anything
+  // else can run. Nothing of the old vault is ever written into the new one;
+  // what could not be written before the switch is left behind, as at quit.
   const changeNotesDir = useCallback(async () => {
     if (!isElectron) return;
     try {
+      const links = editorLinksRef.current;
+      await flushRef.current(links.latestNoteDataRef.current, [...links.unflushedNotes.current]);
       const newDir = await window.electronAPI.chooseNotesDir();
       if (!newDir) return; // user cancelled
+      takeFromDisk({});
+      dirtyNotes.current.clear();
+      deletedNotes.current.clear();
+      conflicted.current.clear();
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
       setNotesDir(newDir);
 
       const diskNotes = await window.electronAPI.readAllNotes();
-      isExternalUpdate.current = true;
-      setNoteData(diskNotes);
+      takeFromDisk(diskNotes);
       if (syncGeneration) syncGeneration.current++;
       // The new vault's directories replace the old vault's, never merge with them.
       await refreshFolders();
@@ -557,7 +589,7 @@ export function useFileSystem(
       onError?.("Failed to change notes directory");
     }
     // Deps deliberately not exhaustive: onError is not stable
-  }, [setNoteData, setCustomFolders, refreshFolders]);
+  }, [takeFromDisk, refreshFolders]);
 
   // ─── Folder operations (desktop): the disk answers, state follows ───
   // Each call returns the vault-relative path the directory actually got, the
@@ -593,24 +625,12 @@ export function useFileSystem(
           (n) => n.folder && remap(n.folder) !== n.folder,
         );
         if (affected) {
-          // Not a local edit: the next state change must not mark anything dirty.
+          // Not a local edit: the next state change must not mark anything
+          // dirty. If the history ref already agreed (nothing to change), no
+          // render is coming to consume the flag; clear it or the next real
+          // edit would be mistaken for an external one and never reach disk.
           isExternalUpdate.current = true;
-          const remapper = editorLinksRef.current?.remapNoteFolders;
-          if (remapper) {
-            // If the history ref already agreed (nothing to change), no render
-            // is coming to consume the flag; clear it or the next real edit
-            // would be mistaken for an external one and never reach disk.
-            if (!remapper(remap)) isExternalUpdate.current = false;
-          } else {
-            setNoteData((prev) => {
-              const next = {};
-              for (const [id, n] of Object.entries(prev)) {
-                next[id] =
-                  n.folder && remap(n.folder) !== n.folder ? { ...n, folder: remap(n.folder) } : n;
-              }
-              return next;
-            });
-          }
+          if (!editorLinksRef.current.remapNoteFolders(remap)) isExternalUpdate.current = false;
         }
         setCustomFolders((prev) => prev.map(remap));
         return finalPath;
@@ -644,7 +664,7 @@ export function useFileSystem(
         if (dir) getAPI().showItemInFolder(`${dir}/${relPath}`);
       },
     };
-  }, [setNoteData, setCustomFolders, afterNextFlush]);
+  }, [setCustomFolders, afterNextFlush]);
 
   return {
     isElectron,

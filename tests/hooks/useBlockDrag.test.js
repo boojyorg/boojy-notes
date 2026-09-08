@@ -28,8 +28,7 @@ function setup(overrides = {}) {
   const deps = {
     noteDataRef,
     activeNoteRef,
-    setNoteData: overrides.setNoteData || vi.fn(),
-    pushHistory: overrides.pushHistory || vi.fn(),
+    commitNoteData: overrides.commitNoteData || vi.fn(),
     blockRefs,
     editorRef,
     editorScrollRef,
@@ -138,7 +137,7 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     });
     const bd = result.current.blockDrag.current;
     expect(bd.active).toBe(false);
-    expect(deps.pushHistory).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
     expect(bd.moveHandler).toBe(null);
     expect(bd.upHandler).toBe(null);
     expect(document.body.classList.contains("block-dragging")).toBe(false);
@@ -177,14 +176,14 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     expect(src.dataset.dragSlot).toBeUndefined();
     expect(src.style.opacity).toBe("");
     // nothing written, no history yet
-    expect(deps.setNoteData).not.toHaveBeenCalled();
-    expect(deps.pushHistory).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
   it("moving the pointer does NOT reorder; it only moves the marker", () => {
-    const setNoteData = vi.fn();
+    const commitNoteData = vi.fn();
     const { deps, blockRefs } = setup({
-      setNoteData,
+      commitNoteData,
       blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3")],
     });
     mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
@@ -193,7 +192,7 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     act(() => {
       move(10, 400); // below every block → boundary after b3
     });
-    expect(setNoteData).not.toHaveBeenCalled();
+    expect(commitNoteData).not.toHaveBeenCalled();
     expect(result.current.blockDrag.current.targetIndex).toBe(3);
     // b3 spans 180–210; with no block after, the marker sits EDGE_GAP below it
     expect(markerCentre()).toBe(214);
@@ -244,9 +243,9 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
 
   it("release commits once: one history entry, one write to the drag's note only", () => {
     vi.useFakeTimers();
-    const setNoteData = vi.fn();
+    const commitNoteData = vi.fn();
     const { deps, blockRefs, noteDataRef } = setup({
-      setNoteData,
+      commitNoteData,
       extraNotes: { n2: { id: "n2", content: { blocks: [makeBlock("x1")] } } },
     });
     mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
@@ -257,9 +256,10 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
       up();
     });
     expect(suppressNextClick).toHaveBeenCalledTimes(1);
-    expect(deps.pushHistory).toHaveBeenCalledTimes(1);
-    expect(setNoteData).toHaveBeenCalledTimes(1);
-    const next = setNoteData.mock.calls[0][0](noteDataRef.current);
+    // One commit: the history entry and the state change are one call, so a
+    // drop inside the text-commit window keeps the pending text too.
+    expect(commitNoteData).toHaveBeenCalledTimes(1);
+    const next = commitNoteData.mock.calls[0][0](noteDataRef.current);
     expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["b2", "b1"]);
     expect(next.n2).toBe(noteDataRef.current.n2);
     act(() => {
@@ -275,8 +275,8 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
 
   it("dropping back in the same place writes nothing and pushes no history", () => {
     vi.useFakeTimers();
-    const setNoteData = vi.fn();
-    const { deps, blockRefs } = setup({ setNoteData });
+    const commitNoteData = vi.fn();
+    const { deps, blockRefs } = setup({ commitNoteData });
     mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
     const { result } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1", { x: 10, y: 105 });
@@ -284,8 +284,8 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
       move(10, 112); // still over b1
       up();
     });
-    expect(setNoteData).not.toHaveBeenCalled();
-    expect(deps.pushHistory).not.toHaveBeenCalled();
+    expect(commitNoteData).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -294,8 +294,8 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
 
   it("releasing outside the editor's scroll area cancels: marker hidden, nothing written", () => {
     vi.useFakeTimers();
-    const setNoteData = vi.fn();
-    const { deps, blockRefs, editorScrollRef } = setup({ setNoteData });
+    const commitNoteData = vi.fn();
+    const { deps, blockRefs, editorScrollRef } = setup({ commitNoteData });
     editorScrollRef.current.getBoundingClientRect = () => ({
       left: 40,
       right: 600,
@@ -315,15 +315,15 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     act(() => {
       up();
     });
-    expect(setNoteData).not.toHaveBeenCalled();
-    expect(deps.pushHistory).not.toHaveBeenCalled();
+    expect(commitNoteData).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
   it("cancel (Escape / blur) tears down without writing — there is nothing to restore", () => {
     vi.useFakeTimers();
-    const setNoteData = vi.fn();
+    const commitNoteData = vi.fn();
     const { deps, blockRefs, activeNoteRef } = setup({
-      setNoteData,
+      commitNoteData,
       extraNotes: { n2: { id: "n2", content: { blocks: [makeBlock("x1")] } } },
     });
     mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
@@ -337,8 +337,8 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     act(() => {
       result.current.cancelBlockDrag();
     });
-    expect(setNoteData).not.toHaveBeenCalled();
-    expect(deps.pushHistory).not.toHaveBeenCalled();
+    expect(commitNoteData).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
     expect(result.current.blockDrag.current.active).toBe(false);
     act(() => {
       vi.advanceTimersByTime(200);
@@ -348,8 +348,8 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
   });
 
   it("a drop after the drag's note was deleted leaves state untouched", () => {
-    const setNoteData = vi.fn();
-    const { deps, blockRefs } = setup({ setNoteData });
+    const commitNoteData = vi.fn();
+    const { deps, blockRefs } = setup({ commitNoteData });
     mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
     const { result } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1");
@@ -357,7 +357,7 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
       move(10, 400);
       up();
     });
-    const updater = setNoteData.mock.calls.at(-1)[0];
+    const updater = commitNoteData.mock.calls.at(-1)[0];
     const prev = { other: { id: "other", content: { blocks: [] } } };
     expect(updater(prev)).toBe(prev);
   });

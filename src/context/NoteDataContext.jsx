@@ -23,6 +23,27 @@ export function NoteDataProvider({ children }) {
     return {};
   });
 
+  const syncGeneration = useRef(0);
+  const activeNoteRef = useRef(null);
+
+  const {
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    commitNoteData,
+    adoptNoteData,
+    applyExternalNote,
+    remapNoteFolders,
+    replaceNoteData,
+    commitTextChange,
+    noteDataRef,
+    textOnlyEdit,
+    textOnlyEditForSidebar,
+    textOnlyEditForEditor,
+    unflushedNotes,
+  } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
+
   // Fallback: if localStorage was empty, try IndexedDB (async)
   useEffect(() => {
     if (isNative) return;
@@ -36,38 +57,24 @@ export function NoteDataProvider({ children }) {
           }
         }
         if (Object.keys(validated).length > 0) {
-          setNoteData(validated);
+          replaceNoteData(validated);
         }
       }
     });
   }, []);
 
-  const syncGeneration = useRef(0);
-  const activeNoteRef = useRef(null);
-
-  const {
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    commitNoteData,
-    adoptNoteData,
-    applyExternalNote,
-    remapNoteFolders,
-    commitTextChange,
-    pushHistory,
-    noteDataRef,
-    textOnlyEdit,
-    textOnlyEditForSidebar,
-    textOnlyEditForEditor,
-    unflushedNotes,
-  } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
-
   const dataValue = useMemo(() => ({ noteData }), [noteData]);
 
+  // Every change to note state goes through useHistory, which keeps its
+  // keystroke ref and React state together: commitNoteData (a user edit, an
+  // undo entry), adoptNoteData (a change of record: a filename, a location),
+  // applyExternalNote (one note from disk), remapNoteFolders (a directory
+  // rename), replaceNoteData (the whole vault from disk) and commitTextChange
+  // (typing). The raw setter is not exposed: a change made with it while a
+  // text commit was pending was reverted when the commit fired, and it left
+  // no undo entry.
   const actionsValue = useMemo(
     () => ({
-      setNoteData,
       syncGeneration,
       activeNoteRef,
       canUndo,
@@ -78,8 +85,8 @@ export function NoteDataProvider({ children }) {
       adoptNoteData,
       applyExternalNote,
       remapNoteFolders,
+      replaceNoteData,
       commitTextChange,
-      pushHistory,
       noteDataRef,
       textOnlyEdit,
       textOnlyEditForSidebar,
@@ -96,8 +103,8 @@ export function NoteDataProvider({ children }) {
       adoptNoteData,
       applyExternalNote,
       remapNoteFolders,
+      replaceNoteData,
       commitTextChange,
-      pushHistory,
     ],
   );
 

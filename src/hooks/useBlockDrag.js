@@ -37,8 +37,7 @@ const EDGE_GAP = 4;
 export function useBlockDrag({
   noteDataRef,
   activeNoteRef,
-  setNoteData,
-  pushHistory,
+  commitNoteData,
   blockRefs,
   editorRef,
   editorScrollRef,
@@ -330,10 +329,11 @@ export function useBlockDrag({
       const next = reorderBlocks([...blocks], bd.blockIds, bd.targetIndex);
       const changed = next.some((b, i) => b.id !== blocks[i].id);
       // One history entry per drop that actually changed the order; dropping
-      // a block back where it was writes nothing.
+      // a block back where it was writes nothing. The commit applies on top
+      // of any text still inside the commit debounce, so a drop right after
+      // a keystroke keeps both.
       if (changed) {
-        pushHistory();
-        setNoteData((prev) => {
+        commitNoteData((prev) => {
           // The note may have been deleted mid-drag; never conjure it back.
           if (!prev[noteId]) return prev;
           const out = { ...prev };
