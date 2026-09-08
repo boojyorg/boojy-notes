@@ -683,7 +683,7 @@ smell.
 
 | Action | For | Undo entry |
 | --- | --- | --- |
-| `commitTextChange` | typing (debounced publish); ends a draft at its first character | one per 500 ms burst |
+| `commitTextChange` | typing (debounced publish), into a paragraph or a special block's own field; ends a draft at its first character | one per 500 ms burst |
 | `commitNoteData` | a user edit: a block, a checkbox, a rename, a new or deleted note, a block drop | yes |
 | `adoptNoteData` | a change of record: the filename a write produced, a move between folders (drag, Move to) | no |
 | `applyExternalNote` | one note as the disk holds it: an outside edit, a conflict copy | drops the note's entries |
@@ -770,6 +770,61 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   paragraph became a heading and the rule vanished. A blank *after* a divider stays an empty row
   (backlog: blank lines around headings). A file with the tight form still opens as a divider and
   gains the blank on its first save; sanctioned in the spec.
+
+### A special block's field is a real field
+
+A table cell, a callout's title or body and a code block's textarea are the block's own
+fields: the editor keeps out of them (above), and each behaves like a paragraph's
+contentEditable rather than like a form control bolted on. The rule (2026-09-08, review
+§1.3, §1.4, §3.1, §3.2, §3.4, §3.8): **what the field holds is what state holds, at the text
+grain, and the file never holds a byte sequence the block's syntax cannot.** Four parts, one
+hook for the paint half (`useOwnedField`), the ordinary text action for the commit half.
+
+- **Read with the editor's reader, commit on every input through `commitTextChange`.** A
+  cell and a callout body are read back with `domNodeToMarkdown`, the textarea by its value;
+  a callout title is plain text. `updateBlockText` serves the code textarea and the callout
+  body as it serves a paragraph; `updateCalloutTitle` and `updateTableCell` are the same
+  action for the other two fields. So the keystroke ref runs ahead of state, undo takes a
+  500 ms burst rather than a character, and the editor skips its render (the comparator
+  ignores code text; it repaints a code block's language and a callout's type and title).
+  Before this, the callout committed `innerText` on blur, which stripped every `**bold**`,
+  `[[link]]` and backtick from a body on the first click in and out; the table committed on
+  blur alone; the code block committed every keystroke as a structural change, one undo
+  entry per character and a render of every block.
+- **A field is painted only when it does not already hold the latest committed text, and
+  the keystroke ref decides, never the render** (`useOwnedField`: `latest()` reads the block
+  from `noteDataRef` by id). A text commit publishes in a transition, which React may finish
+  after the next keystroke, so a render can carry a text one keystroke behind the field;
+  judged against that text the cell was repainted and the keystroke lost (`Tea leavs`, seen
+  in the real app while writing the spec). Painted: on mount, when a row is inserted above a
+  cell, when a type change renames a callout, and, forced, on a `syncGen` bump, the one case
+  where the same text must still be repainted. Never on a render that merely caught up with
+  the keystrokes. The code block's textarea is uncontrolled and its highlight overlay is
+  painted from the input handler; a controlled `value` held the field to the state the
+  commit debounce is behind, and the render path once stripped the fence's blank first and
+  last lines, which made Enter at the end of the block a no-op (the newline was written and
+  stripped back) and lost a fence's own blank lines at the first keystroke.
+- **A structural operation on the block is a function of the block as the ref holds it.**
+  `updateTableRows(noteId, blockIndex, reshape)` applies `reshape(rows, alignments)` inside
+  the commit, so a cell edit still pending is inside the rows it reshapes. Before this, every
+  row and column operation computed new rows from the rendered ones and wrote them, and text
+  typed into a cell was gone the moment the cell's own context menu inserted a row (the menu
+  keeps focus in the cell, so it never blurred). `useTableInteractions` reads `dataRef` for
+  geometry and focus only, never for the rows an operation writes.
+- **The serializer enforces the syntax.** A row is one line: a newline inside a cell is
+  written as `<br>`, the line break GitHub and Obsidian read in a cell, and `parseTableRow`
+  maps that exact form back (`<br/>` and `<br />` stay the text they are, so their bytes
+  hold; `table-line-breaks.md` in the preservation corpus). A newline in a callout title is
+  written as a space. Written raw, a cell's newline broke the row and every row below it
+  into a paragraph on the next open. In the cell, Enter moves down a row (a new one after the
+  last) and Shift+Enter is the browser's line break; in the callout title, Enter and
+  Shift+Enter both move to the body.
+- Proven in `special-block-fields.spec.ts` (the real app: the cell line break through a
+  restart, the callout click-through and edit, Enter at the end of a fence with undo by burst,
+  the pending cell edit through a menu row insert) and the unit tests beside the three
+  components, the hook, the serializer and the comparator. Not changed here: slash insertion
+  still lands the caret in the paragraph after a new table, code block or callout (review
+  §1.5); Cmd+Z inside a code block's textarea reaches the app's undo as any Cmd+Z does.
 
 ### Tables are ragged on disk and stay ragged
 

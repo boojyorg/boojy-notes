@@ -254,7 +254,9 @@ export function blocksToMarkdown(blocks) {
       case "callout": {
         const cType = block.calloutTypeRaw || block.calloutType || "note";
         const fold = block.calloutFold || "";
-        const title = block.title || "";
+        // The title is the rest of the marker line: a newline in it would
+        // end the callout, so one is written as a space.
+        const title = (block.title || "").replace(/\n/g, " ");
         lines.push(`> [!${cType}]${fold} ${title}`.trimEnd());
         if (block.text) {
           for (const bodyLine of block.text.split("\n")) {
@@ -266,8 +268,13 @@ export function blocksToMarkdown(blocks) {
       case "table": {
         if (block.rows && block.rows.length > 0) {
           // A literal pipe inside a cell must be written escaped, or the next
-          // parse splits the cell apart (content-destroying)
-          const esc = (cell) => cell.replace(/\|/g, "\\|");
+          // parse splits the cell apart (content-destroying). A row is one
+          // line: a newline inside a cell (Shift+Enter, a multi-line paste)
+          // is written as `<br>`, the line break GitHub and Obsidian read in
+          // a cell; written raw it broke the row and every row below it into
+          // a paragraph (review 2026-09-07, §3.1). parseTableRow maps that
+          // exact form back, so the bytes round-trip.
+          const esc = (cell) => cell.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
           const header = block.rows[0];
           lines.push("| " + header.map(esc).join(" | ") + " |");
           const aligns = block.alignments || [];
@@ -616,8 +623,10 @@ export function parseTableRow(line) {
     }
   }
   if (!(closedByPipe && cur === "")) cells.push(cur);
-  // After the scan a cell can only contain `\|` if it was an escaped pipe
-  return cells.map((cell) => cell.trim().replace(/\\\|/g, "|"));
+  // After the scan a cell can only contain `\|` if it was an escaped pipe.
+  // `<br>` is the one form the serializer writes for a newline inside a cell;
+  // `<br/>` and `<br />` are left as the text they are, so their bytes hold.
+  return cells.map((cell) => cell.trim().replace(/\\\|/g, "|").replace(/<br>/g, "\n"));
 }
 
 export function parseFrontmatterYaml(yamlStr) {

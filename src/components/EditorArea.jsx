@@ -144,9 +144,11 @@ const EditorArea = memo(
       deleteBlock,
       registerBlockRef,
       insertBlockAfter,
-      updateCodeText,
+      updateBlockText,
       updateCodeLang,
       updateCallout,
+      updateCalloutTitle,
+      updateTableCell,
       updateTableRows,
       updateBlockProperty,
       detectActiveFormats,
@@ -774,9 +776,11 @@ const EditorArea = memo(
                           syncGen={syncGeneration.current}
                           accentColor={accentColor}
                           numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
-                          onUpdateCode={updateCodeText}
+                          onUpdateText={updateBlockText}
                           onUpdateLang={updateCodeLang}
                           onUpdateCallout={updateCallout}
+                          onUpdateCalloutTitle={updateCalloutTitle}
+                          onUpdateTableCell={updateTableCell}
                           onUpdateTableRows={updateTableRows}
                           noteTitleSet={noteTitleSet}
                           onBlockNav={handleBlockNav}

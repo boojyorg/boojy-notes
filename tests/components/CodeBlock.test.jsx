@@ -38,6 +38,7 @@ describe("CodeBlock", () => {
     block: { id: "b1", type: "code", text: 'console.log("hello");', lang: "javascript" },
     noteId: "note-1",
     blockIndex: 0,
+    syncGen: 1,
     onUpdateCode: vi.fn(),
     onUpdateLang: vi.fn(),
     onBlockNav: vi.fn(),
@@ -143,13 +144,74 @@ describe("CodeBlock", () => {
     expect(defaultProps.onDelete).toHaveBeenCalledWith(0);
   });
 
-  it("strips leading/trailing newlines from block text", () => {
-    const props = {
-      ...defaultProps,
-      block: { ...defaultProps.block, text: "\n\nhello\n\n" },
-    };
-    const { container } = render(<CodeBlock {...props} />);
-    const textarea = container.querySelector("textarea.code-textarea");
-    expect(textarea.value).toBe("hello");
+  // The textarea is the block's own field (useOwnedField): it holds the
+  // fence's text exactly, commits what it holds on every input, and is
+  // painted from state only when it does not already hold it.
+  describe("the textarea is the block's own field (review 2026-09-07, §1.3, §1.4)", () => {
+    const withText = (text) => ({ ...defaultProps, block: { ...defaultProps.block, text } });
+
+    it("keeps a fence's blank first and last lines", () => {
+      const { container } = render(<CodeBlock {...withText("\n\nhello\n\n")} />);
+      expect(container.querySelector("textarea").value).toBe("\n\nhello\n\n");
+    });
+
+    it("Enter at the end of the block adds a line that survives the render that follows", () => {
+      const props = withText("a");
+      const { container, rerender } = render(<CodeBlock {...props} />);
+      const ta = container.querySelector("textarea");
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = 1;
+      fireEvent.keyDown(ta, { key: "Enter" });
+      expect(props.onUpdateCode).toHaveBeenCalledWith("note-1", 0, "a\n");
+      expect(ta.value).toBe("a\n");
+      // State catches up with the keystroke; the field already holds it.
+      rerender(<CodeBlock {...withText("a\n")} />);
+      expect(ta.value).toBe("a\n");
+      expect(ta.selectionStart).toBe(2);
+    });
+
+    it("is not reset by a render whose state is behind the field", () => {
+      const props = withText("a");
+      const { container, rerender } = render(<CodeBlock {...props} />);
+      const ta = container.querySelector("textarea");
+      fireEvent.change(ta, { target: { value: "abc" } });
+      expect(props.onUpdateCode).toHaveBeenLastCalledWith("note-1", 0, "abc");
+      // A render for something else while the text commit is still pending.
+      rerender(<CodeBlock {...withText("a")} lang="" />);
+      expect(ta.value).toBe("abc");
+    });
+
+    it("a render one keystroke behind the field does not reset it (the ref decides)", () => {
+      const block = { ...defaultProps.block, text: "ab" };
+      const noteDataRef = { current: { "note-1": { content: { blocks: [block] } } } };
+      const { container, rerender } = render(
+        <CodeBlock {...defaultProps} block={block} noteDataRef={noteDataRef} />,
+      );
+      const ta = container.querySelector("textarea");
+      ta.value = "abcd";
+      noteDataRef.current["note-1"].content.blocks = [{ ...block, text: "abcd" }];
+      rerender(
+        <CodeBlock {...defaultProps} block={{ ...block, text: "abc" }} noteDataRef={noteDataRef} />,
+      );
+      expect(ta.value).toBe("abcd");
+    });
+
+    it("paints a text the field does not hold, and repaints on a sync-generation bump", () => {
+      const { container, rerender } = render(<CodeBlock {...withText("a")} />);
+      const ta = container.querySelector("textarea");
+      rerender(<CodeBlock {...withText("undone")} />);
+      expect(ta.value).toBe("undone");
+      // Same text, new generation (undo restored the same bytes): painted anyway.
+      ta.value = "typed past it";
+      rerender(<CodeBlock {...withText("undone")} syncGen={2} />);
+      expect(ta.value).toBe("undone");
+    });
+
+    it("keeps the highlight overlay in step with what is typed", () => {
+      const { container } = render(<CodeBlock {...withText("a")} />);
+      const ta = container.querySelector("textarea");
+      fireEvent.change(ta, { target: { value: "a\nb" } });
+      expect(container.querySelectorAll(".code-overlay .code-line")).toHaveLength(2);
+    });
   });
 });

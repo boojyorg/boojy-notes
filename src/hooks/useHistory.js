@@ -183,9 +183,16 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // the rebuild after an outside delete. Decided from React state instead,
   // 300 ms later, the draft was discarded or skipped with its text
   // (review 2026-09-07, §2.6). A draft is always the active note.
+  // Text is text wherever it is typed: a paragraph, a code block, a callout's
+  // title or body, a table cell.
   const hasText = (n) =>
     (n?.title || "").trim() !== "" ||
-    !!n?.content?.blocks?.some((b) => (b.text || "").trim() !== "");
+    !!n?.content?.blocks?.some(
+      (b) =>
+        (b.text || "").trim() !== "" ||
+        (b.title || "").trim() !== "" ||
+        !!b.rows?.some((row) => row.some((cell) => (cell || "").trim() !== "")),
+    );
   const endDraftIfText = () => {
     const id = activeNoteRef.current;
     const n = noteDataRef.current[id];

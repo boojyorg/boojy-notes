@@ -103,40 +103,64 @@ export function useTableInteractions({
   );
 
   /* ── CRUD operations ──────────────────────────────────── */
-  const insertRow = useCallback((index, position) => {
-    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const emptyRow = new Array(cc).fill("");
-    const newRows = r.map((row) => [...row]);
-    const insertAt = position === "above" ? index : index + 1;
-    newRows.splice(insertAt, 0, emptyRow);
-    updateRef.current(n, b, newRows, a);
+  // Every operation reshapes the rows as the keystroke ref holds them
+  // (`onUpdateTableRows(noteId, blockIndex, reshape)`), so a cell edit still
+  // pending in a focused cell is inside the rows it reshapes; computed from
+  // the rendered rows, the operation dropped it (review 2026-09-07, §3.4).
+  // `dataRef` serves geometry and focus, never the rows an operation writes.
+  const reshape = useCallback((fn) => {
+    const { noteId: n, blockIndex: b } = dataRef.current;
+    updateRef.current(n, b, fn);
   }, []);
+  const widthOf = (r) => tableColumnCount(r) || 2;
 
-  const deleteRowAt = useCallback((index) => {
-    if (index === 0) return;
-    const { rows: r, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const newRows = r.filter((_, i) => i !== index);
-    updateRef.current(n, b, newRows, a);
-    setSelectedRow(null);
-  }, []);
+  const insertRow = useCallback(
+    (index, position) => {
+      reshape((r) => {
+        const newRows = r.map((row) => [...row]);
+        const insertAt = position === "above" ? index : index + 1;
+        newRows.splice(insertAt, 0, new Array(widthOf(r)).fill(""));
+        return { rows: newRows };
+      });
+    },
+    [reshape],
+  );
 
-  const insertColumn = useCallback((index, position) => {
-    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    const insertAt = position === "left" ? index : index + 1;
-    const newRows = withColumnInserted(r, insertAt, `Col ${cc + 1}`);
-    const newAligns = [...a];
-    newAligns.splice(insertAt, 0, "left");
-    updateRef.current(n, b, newRows, newAligns);
-  }, []);
+  const deleteRowAt = useCallback(
+    (index) => {
+      if (index === 0) return;
+      reshape((r) => ({ rows: r.filter((_, i) => i !== index) }));
+      setSelectedRow(null);
+    },
+    [reshape],
+  );
 
-  const deleteColumnAt = useCallback((index) => {
-    const { rows: r, colCount: cc, alignments: a, noteId: n, blockIndex: b } = dataRef.current;
-    if (cc <= 1) return;
-    const newRows = r.map((row) => row.filter((_, i) => i !== index));
-    const newAligns = a.filter((_, i) => i !== index);
-    updateRef.current(n, b, newRows, newAligns);
-    setSelectedCol(null);
-  }, []);
+  const insertColumn = useCallback(
+    (index, position) => {
+      reshape((r, a) => {
+        const insertAt = position === "left" ? index : index + 1;
+        const newAligns = [...a];
+        newAligns.splice(insertAt, 0, "left");
+        return {
+          rows: withColumnInserted(r, insertAt, `Col ${widthOf(r) + 1}`),
+          alignments: newAligns,
+        };
+      });
+    },
+    [reshape],
+  );
+
+  const deleteColumnAt = useCallback(
+    (index) => {
+      if (dataRef.current.colCount <= 1) return;
+      reshape((r, a) => ({
+        rows: r.map((row) => row.filter((_, i) => i !== index)),
+        alignments: a.filter((_, i) => i !== index),
+      }));
+      setSelectedCol(null);
+    },
+    [reshape],
+  );
 
   /* ── Keyboard ─────────────────────────────────────────── */
   const handleKeyDown = useCallback(
@@ -352,24 +376,29 @@ export function useTableInteractions({
           return;
         }
 
-        // Perform reorder using latest data from ref
-        const { rows: curRows, alignments: curAligns, noteId: n, blockIndex: b } = dataRef.current;
+        // Perform the reorder on the rows as the ref holds them
         if (d.type === "row" && d.insertAt !== null && d.fromIndex !== null) {
           if (d.insertAt !== d.fromIndex && d.insertAt !== d.fromIndex + 1) {
-            const newRows = curRows.map((r) => [...r]);
-            const [moved] = newRows.splice(d.fromIndex, 1);
-            const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
-            newRows.splice(adj, 0, moved);
-            updateRef.current(n, b, newRows, curAligns);
+            reshape((curRows) => {
+              const newRows = curRows.map((r) => [...r]);
+              const [moved] = newRows.splice(d.fromIndex, 1);
+              const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
+              newRows.splice(adj, 0, moved);
+              return { rows: newRows };
+            });
           }
         } else if (d.type === "col" && d.insertAt !== null && d.fromIndex !== null) {
           if (d.insertAt !== d.fromIndex && d.insertAt !== d.fromIndex + 1) {
-            const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
-            const newRows = curRows.map((row) => moveCell(row, d.fromIndex, adj));
-            const newAligns = [...curAligns];
-            const [movedA] = newAligns.splice(d.fromIndex, 1);
-            newAligns.splice(adj, 0, movedA);
-            updateRef.current(n, b, newRows, newAligns);
+            reshape((curRows, curAligns) => {
+              const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
+              const newAligns = [...curAligns];
+              const [movedA] = newAligns.splice(d.fromIndex, 1);
+              newAligns.splice(adj, 0, movedA);
+              return {
+                rows: curRows.map((row) => moveCell(row, d.fromIndex, adj)),
+                alignments: newAligns,
+              };
+            });
           }
         }
 
@@ -480,7 +509,7 @@ export function useTableInteractions({
         d.lineEl = line;
       }, 400);
     },
-    [tableRef, accent, getRowAtY, getColAtX, cleanupDrag],
+    [tableRef, accent, getRowAtY, getColAtX, cleanupDrag, reshape],
   );
 
   const handleLeftZonePointerDown = useCallback(
@@ -517,21 +546,12 @@ export function useTableInteractions({
       createRef.current.handled = false;
       return;
     }
-    const {
-      rows: curRows,
-      colCount: cc,
-      alignments: a,
-      noteId: n,
-      blockIndex: b,
-    } = dataRef.current;
-    const emptyRow = new Array(cc).fill("");
-    const newRows = [...curRows.map((r) => [...r]), emptyRow];
-    updateRef.current(n, b, newRows, a);
-    const newIdx = curRows.length;
+    reshape((curRows) => ({ rows: [...curRows, new Array(widthOf(curRows)).fill("")] }));
+    const newIdx = dataRef.current.rows.length;
     setTimeout(() => {
       cellRefs.current?.[`${newIdx}-0`]?.focus();
     }, 50);
-  }, [cellRefs]);
+  }, [cellRefs, reshape]);
 
   const handleBottomZonePointerDown = useCallback(
     (e) => {
@@ -570,19 +590,14 @@ export function useTableInteractions({
         if (c.moved && c.count > 0) {
           // Drag → add N rows
           c.handled = true;
-          const {
-            rows: curRows,
-            colCount: cc,
-            alignments: a,
-            noteId: n,
-            blockIndex: b,
-          } = dataRef.current;
-          const emptyRow = new Array(cc).fill("");
-          const newRows = [...curRows.map((r) => [...r])];
-          for (let i = 0; i < c.count; i++) newRows.push([...emptyRow]);
-          updateRef.current(n, b, newRows, a);
+          const newIdx = dataRef.current.rows.length;
+          reshape((curRows) => {
+            const newRows = [...curRows];
+            for (let i = 0; i < c.count; i++) newRows.push(new Array(widthOf(curRows)).fill(""));
+            return { rows: newRows };
+          });
           setTimeout(() => {
-            cellRefs.current?.[`${curRows.length}-0`]?.focus();
+            cellRefs.current?.[`${newIdx}-0`]?.focus();
           }, 50);
         }
         // Simple click is handled by onClick
@@ -595,7 +610,7 @@ export function useTableInteractions({
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
-    [cellRefs],
+    [cellRefs, reshape],
   );
 
   const handleRightZoneClick = useCallback(() => {
@@ -603,18 +618,16 @@ export function useTableInteractions({
       createRef.current.handled = false;
       return;
     }
-    const {
-      rows: curRows,
-      colCount: cc,
-      alignments: a,
-      noteId: n,
-      blockIndex: b,
-    } = dataRef.current;
     // Column cc + 1 for every row: a short row is padded up to the new column
     // so the cell lands where the user asked, not in a gap it did not reach.
-    const newRows = withColumnInserted(curRows, cc, `Col ${cc + 1}`);
-    updateRef.current(n, b, newRows, [...a, "left"]);
-  }, []);
+    reshape((curRows, a) => {
+      const cc = widthOf(curRows);
+      return {
+        rows: withColumnInserted(curRows, cc, `Col ${cc + 1}`),
+        alignments: [...a, "left"],
+      };
+    });
+  }, [reshape]);
 
   const handleRightZonePointerDown = useCallback((e) => {
     const c = createRef.current;
@@ -652,20 +665,16 @@ export function useTableInteractions({
       if (c.moved && c.count > 0) {
         // Drag → add N columns
         c.handled = true;
-        const {
-          rows: curRows,
-          colCount: cc,
-          alignments: a,
-          noteId: n,
-          blockIndex: b,
-        } = dataRef.current;
-        let newRows = curRows;
-        for (let j = 0; j < c.count; j++) {
-          newRows = withColumnInserted(newRows, cc + j, `Col ${cc + j + 1}`);
-        }
-        const newAligns = [...a];
-        for (let j = 0; j < c.count; j++) newAligns.push("left");
-        updateRef.current(n, b, newRows, newAligns);
+        reshape((curRows, a) => {
+          const cc = widthOf(curRows);
+          let newRows = curRows;
+          for (let j = 0; j < c.count; j++) {
+            newRows = withColumnInserted(newRows, cc + j, `Col ${cc + j + 1}`);
+          }
+          const newAligns = [...a];
+          for (let j = 0; j < c.count; j++) newAligns.push("left");
+          return { rows: newRows, alignments: newAligns };
+        });
       }
       // Simple click is handled by onClick
 

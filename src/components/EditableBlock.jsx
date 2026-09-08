@@ -45,9 +45,11 @@ const EditableBlock = memo(
     syncGen,
     accentColor,
     numberedIndex,
-    onUpdateCode,
+    onUpdateText,
     onUpdateLang,
     onUpdateCallout,
+    onUpdateCalloutTitle,
+    onUpdateTableCell,
     onUpdateTableRows,
     noteTitleSet,
     onBlockNav,
@@ -175,7 +177,9 @@ const EditableBlock = memo(
             block={block}
             noteId={noteId}
             blockIndex={blockIndex}
-            onUpdateCode={onUpdateCode}
+            syncGen={syncGen}
+            noteDataRef={noteDataRef}
+            onUpdateCode={onUpdateText}
             onUpdateLang={onUpdateLang}
             onBlockNav={onBlockNav}
             onDelete={(idx) => onDeleteBlock(noteId, idx)}
@@ -211,7 +215,12 @@ const EditableBlock = memo(
             block={block}
             noteId={noteId}
             blockIndex={blockIndex}
+            syncGen={syncGen}
+            noteDataRef={noteDataRef}
+            noteTitleSet={noteTitleSet}
             onUpdateCallout={onUpdateCallout}
+            onUpdateText={onUpdateText}
+            onUpdateTitle={onUpdateCalloutTitle}
             onBlockNav={onBlockNav}
             onDelete={(idx) => onDeleteBlock(noteId, idx)}
           />
@@ -232,6 +241,9 @@ const EditableBlock = memo(
             block={block}
             noteId={noteId}
             blockIndex={blockIndex}
+            syncGen={syncGen}
+            noteDataRef={noteDataRef}
+            onUpdateTableCell={onUpdateTableCell}
             onUpdateTableRows={onUpdateTableRows}
             noteTitleSet={noteTitleSet}
             accentColor={accentColor}

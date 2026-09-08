@@ -383,6 +383,38 @@ describe("useHistory", () => {
       expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
     });
 
+    it("a character typed into a table cell or a callout title ends a draft too", () => {
+      const { result, activeNoteRef } = setup();
+      const draft = {
+        id: "d1",
+        title: "",
+        folder: null,
+        content: {
+          title: "",
+          blocks: [
+            { id: "t", type: "table", rows: [["", ""]], alignments: [], text: "" },
+            { id: "c", type: "callout", calloutType: "note", title: "", text: "" },
+          ],
+        },
+        _draft: true,
+      };
+      act(() => result.current.commitNoteData((prev) => ({ ...prev, d1: draft })));
+      activeNoteRef.current = "d1";
+      const typeInto = (patch) =>
+        act(() =>
+          result.current.commitTextChange((prev) => {
+            const blocks = prev.d1.content.blocks.map((b) => (b.id === patch.id ? patch : b));
+            return { ...prev, d1: { ...prev.d1, content: { ...prev.d1.content, blocks } } };
+          }),
+        );
+      typeInto({ id: "c", type: "callout", calloutType: "note", title: "T", text: "" });
+      expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
+
+      act(() => result.current.commitNoteData((prev) => ({ ...prev, d1: draft })));
+      typeInto({ id: "t", type: "table", rows: [["x", ""]], alignments: [], text: "" });
+      expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
+    });
+
     it("a title alone ends a draft too", () => {
       const { result, activeNoteRef } = setup();
       const draft = {

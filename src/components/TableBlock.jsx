@@ -1,15 +1,77 @@
-import { useRef, useCallback, memo } from "react";
+import { useRef, useCallback, useLayoutEffect, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
+import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
 import { Z } from "../constants/zIndex";
 
+/**
+ * One cell. The browser's while typed into: it commits what it holds on
+ * every input at the text grain, and state paints it only when it does not
+ * already hold state's text (useOwnedField), which is how a row inserted
+ * above it repaints it and a render that merely caught up with the
+ * keystrokes does not.
+ */
+function TableCell({
+  tag: Tag,
+  rowIdx,
+  colIdx,
+  text,
+  syncGen,
+  latestRows,
+  noteTitleSet,
+  cellRefs,
+  onInput,
+  onKeyDown,
+  onFocus,
+  onPaste,
+  onContextMenu,
+  style,
+}) {
+  const ref = useRef(null);
+  useOwnedField(ref, {
+    text,
+    syncGen,
+    latest: () => {
+      const rows = latestRows();
+      return rows && cellAt(rows[rowIdx], colIdx);
+    },
+    read: domNodeToMarkdown,
+    paint: (el, t) => {
+      const caret = getCaretOffset(el);
+      el.innerHTML = inlineMarkdownToHtml(t, noteTitleSet);
+      if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
+    },
+  });
+  return (
+    <Tag
+      ref={(el) => {
+        ref.current = el;
+        cellRefs.current[`${rowIdx}-${colIdx}`] = el;
+      }}
+      scope={Tag === "th" ? "col" : undefined}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={(e) => onInput(e, rowIdx, colIdx)}
+      onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
+      onFocus={onFocus}
+      onPaste={(e) => onPaste(e, rowIdx, colIdx)}
+      onContextMenu={(e) => onContextMenu(e, rowIdx, colIdx)}
+      style={style}
+    />
+  );
+}
+
 export default memo(function TableBlock({
   block,
   noteId,
   blockIndex,
+  syncGen,
+  noteDataRef,
+  onUpdateTableCell,
   onUpdateTableRows,
   noteTitleSet,
   accentColor,
@@ -29,6 +91,11 @@ export default memo(function TableBlock({
   // when one is written into it (utils/tableShape.ts).
   const colCount = tableColumnCount(rows) || 2;
   const alignments = block.alignments || [];
+  // The rows as the keystroke ref holds them: what a cell is judged against.
+  const latestRows = useCallback(
+    () => latestBlock(noteDataRef, noteId, block)?.rows,
+    [noteDataRef, noteId, block],
+  );
 
   const {
     selectedRow,
@@ -68,29 +135,53 @@ export default memo(function TableBlock({
     cellRefs,
   });
 
-  /* ── Cell editing (preserved from original) ────────────── */
+  /* ── Cell editing ─────────────────────────────────────── */
 
-  const updateCell = useCallback(
-    (rowIdx, colIdx, value) => {
-      onUpdateTableRows(noteId, blockIndex, withCell(rows, rowIdx, colIdx, value), alignments);
+  // Every structural change is a function of the rows the keystroke ref
+  // holds (`onUpdateTableRows(noteId, blockIndex, reshape)`), so a cell
+  // edit still pending is inside it; the rendered `rows` are for geometry
+  // and focus only.
+  const handleCellInput = useCallback(
+    (e, rowIdx, colIdx) => {
+      onUpdateTableCell(noteId, blockIndex, rowIdx, colIdx, domNodeToMarkdown(e.currentTarget));
     },
-    [rows, noteId, blockIndex, onUpdateTableRows, alignments],
+    [noteId, blockIndex, onUpdateTableCell],
   );
 
   const addRow = useCallback(() => {
-    const newRows = [...rows.map((r) => [...r]), new Array(colCount).fill("")];
-    onUpdateTableRows(noteId, blockIndex, newRows, alignments);
-  }, [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments]);
+    onUpdateTableRows(noteId, blockIndex, (cur) => ({
+      rows: [...cur, new Array(tableColumnCount(cur) || 2).fill("")],
+    }));
+  }, [noteId, blockIndex, onUpdateTableRows]);
 
   const setAlignment = useCallback(
     (colIdx, align) => {
-      const newAligns = [...alignments];
-      while (newAligns.length <= colIdx) newAligns.push("left");
-      newAligns[colIdx] = align;
-      onUpdateTableRows(noteId, blockIndex, rows, newAligns);
+      onUpdateTableRows(noteId, blockIndex, (cur, aligns) => {
+        const newAligns = [...aligns];
+        while (newAligns.length <= colIdx) newAligns.push("left");
+        newAligns[colIdx] = align;
+        return { rows: cur, alignments: newAligns };
+      });
     },
-    [alignments, rows, noteId, blockIndex, onUpdateTableRows],
+    [noteId, blockIndex, onUpdateTableRows],
   );
+
+  const focusCell = useCallback(
+    (rowIdx, colIdx) => cellRefs.current[`${rowIdx}-${colIdx}`]?.focus(),
+    [],
+  );
+  // A cell that does not exist yet (the row Enter or Tab has just added) is
+  // focused as soon as it has rendered, not after a timer a fast typist
+  // could beat.
+  const focusOnRender = useRef(null);
+  useLayoutEffect(() => {
+    if (!focusOnRender.current) return;
+    const { row, col } = focusOnRender.current;
+    if (cellRefs.current[`${row}-${col}`]) {
+      focusOnRender.current = null;
+      focusCell(row, col);
+    }
+  });
 
   const handleCellKeyDown = useCallback(
     (e, rowIdx, colIdx) => {
@@ -100,40 +191,32 @@ export default memo(function TableBlock({
         const nextRow = rowIdx + (nextCol >= colCount ? 1 : 0);
         const targetCol = nextCol >= colCount ? 0 : nextCol;
         if (nextRow < rows.length) {
-          cellRefs.current[`${nextRow}-${targetCol}`]?.focus();
+          focusCell(nextRow, targetCol);
         } else {
           addRow();
-          setTimeout(() => {
-            cellRefs.current[`${rows.length}-0`]?.focus();
-          }, 50);
+          focusOnRender.current = { row: rows.length, col: 0 };
         }
       } else if (e.key === "Tab" && e.shiftKey) {
         e.preventDefault();
         const prevCol = colIdx - 1;
         const prevRow = rowIdx + (prevCol < 0 ? -1 : 0);
         const targetCol = prevCol < 0 ? colCount - 1 : prevCol;
-        if (prevRow >= 0) {
-          cellRefs.current[`${prevRow}-${targetCol}`]?.focus();
-        }
-      } else if (e.key === "Enter" && rowIdx === rows.length - 1) {
+        if (prevRow >= 0) focusCell(prevRow, targetCol);
+      } else if (e.key === "Enter" && !e.shiftKey) {
+        // A row is one line: Enter moves down a row (a new one after the
+        // last), never into a second line of the cell. Shift+Enter is the
+        // browser's line break, which the file holds as `<br>` (review
+        // 2026-09-07, §3.1).
         e.preventDefault();
-        addRow();
-        setTimeout(() => {
-          cellRefs.current[`${rows.length}-${colIdx}`]?.focus();
-        }, 50);
+        if (rowIdx < rows.length - 1) {
+          focusCell(rowIdx + 1, colIdx);
+        } else {
+          addRow();
+          focusOnRender.current = { row: rows.length, col: colIdx };
+        }
       }
     },
-    [rows, colCount, addRow],
-  );
-
-  const handleCellBlur = useCallback(
-    (e, rowIdx, colIdx) => {
-      const value = domNodeToMarkdown(e.target);
-      if (value !== cellAt(rows[rowIdx], colIdx)) {
-        updateCell(rowIdx, colIdx, value);
-      }
-    },
-    [rows, updateCell],
+    [rows, colCount, addRow, focusCell],
   );
 
   const handleCellPaste = useCallback(
@@ -146,18 +229,21 @@ export default memo(function TableBlock({
           .trim()
           .split("\n")
           .map((r) => r.split(delimiter).map((c) => c.trim()));
-        let newRows = rows;
-        pastedRows.forEach((pRow, ri) => {
-          const targetRow = rowIdx + ri;
-          while (newRows.length <= targetRow) newRows = [...newRows, new Array(colCount).fill("")];
-          pRow.forEach((val, ci) => {
-            newRows = withCell(newRows, targetRow, colIdx + ci, val);
+        onUpdateTableRows(noteId, blockIndex, (cur) => {
+          const width = tableColumnCount(cur) || 2;
+          let newRows = cur;
+          pastedRows.forEach((pRow, ri) => {
+            const targetRow = rowIdx + ri;
+            while (newRows.length <= targetRow) newRows = [...newRows, new Array(width).fill("")];
+            pRow.forEach((val, ci) => {
+              newRows = withCell(newRows, targetRow, colIdx + ci, val);
+            });
           });
+          return { rows: newRows };
         });
-        onUpdateTableRows(noteId, blockIndex, newRows, alignments);
       }
     },
-    [rows, colCount, noteId, blockIndex, onUpdateTableRows, alignments],
+    [noteId, blockIndex, onUpdateTableRows],
   );
 
   /* ── Selection highlight helper ───────────────────────── */
@@ -226,22 +312,21 @@ export default memo(function TableBlock({
             <tr>
               {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
                 (cell, colIdx) => (
-                  <th
+                  <TableCell
                     key={colIdx}
-                    scope="col"
-                    ref={(el) => {
-                      cellRefs.current[`0-${colIdx}`] = el;
-                    }}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onBlur={(e) => handleCellBlur(e, 0, colIdx)}
-                    onKeyDown={(e) => handleCellKeyDown(e, 0, colIdx)}
+                    tag="th"
+                    rowIdx={0}
+                    colIdx={colIdx}
+                    text={cell}
+                    syncGen={syncGen}
+                    latestRows={latestRows}
+                    noteTitleSet={noteTitleSet}
+                    cellRefs={cellRefs}
+                    onInput={handleCellInput}
+                    onKeyDown={handleCellKeyDown}
                     onFocus={clearSelection}
-                    onPaste={(e) => handleCellPaste(e, 0, colIdx)}
-                    onContextMenu={(e) => handleCellContextMenu(e, 0, colIdx)}
-                    dangerouslySetInnerHTML={{
-                      __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                    }}
+                    onPaste={handleCellPaste}
+                    onContextMenu={handleCellContextMenu}
                     style={{
                       fontWeight: 600,
                       // Header cells carry no fill at rest — bold weight plus the border
@@ -263,21 +348,21 @@ export default memo(function TableBlock({
                 <tr key={rowIdx}>
                   {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
                     (cell, colIdx) => (
-                      <td
+                      <TableCell
                         key={colIdx}
-                        ref={(el) => {
-                          cellRefs.current[`${rowIdx}-${colIdx}`] = el;
-                        }}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={(e) => handleCellBlur(e, rowIdx, colIdx)}
-                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
+                        tag="td"
+                        rowIdx={rowIdx}
+                        colIdx={colIdx}
+                        text={cell}
+                        syncGen={syncGen}
+                        latestRows={latestRows}
+                        noteTitleSet={noteTitleSet}
+                        cellRefs={cellRefs}
+                        onInput={handleCellInput}
+                        onKeyDown={handleCellKeyDown}
                         onFocus={clearSelection}
-                        onPaste={(e) => handleCellPaste(e, rowIdx, colIdx)}
-                        onContextMenu={(e) => handleCellContextMenu(e, rowIdx, colIdx)}
-                        dangerouslySetInnerHTML={{
-                          __html: inlineMarkdownToHtml(cell || "", noteTitleSet),
-                        }}
+                        onPaste={handleCellPaste}
+                        onContextMenu={handleCellContextMenu}
                         style={{
                           textAlign: alignments[colIdx] || "left",
                           ...cellHighlightStyle(rowIdx, colIdx),
