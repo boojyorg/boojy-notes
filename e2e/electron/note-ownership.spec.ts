@@ -16,7 +16,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   END_OF_LINE,
   MOD,
@@ -29,6 +29,11 @@ import {
   sleep,
   waitForFile,
 } from "./harness";
+
+/** Force the renderer to produce one compositor frame, so pending animation-frame callbacks run. */
+async function pumpFrame(page: Page) {
+  await page.screenshot({ type: "jpeg", quality: 10 }).catch(() => {});
+}
 
 test("undo after moving the open note into a folder undoes the typing and leaves the file where it was moved", async () => {
   const h = await launchApp({
@@ -84,14 +89,20 @@ test("a block dropped right after a keystroke keeps both the typed text and the 
     const third = await blocks.nth(2).boundingBox();
     const first = await blocks.nth(0).boundingBox();
     if (!third || !first) throw new Error("blocks not visible");
-    await h.page.mouse.move(third.x + 40, third.y + third.height / 2);
-    // The grip follows the pointer on an animation frame; the one showing for
-    // the clicked block is not the one to press (on a slow runner it was).
+    // The grip follows the pointer on an animation frame, and the hidden test
+    // window on the Linux runner produces no frames on its own (the grip
+    // stayed on the clicked block there for 30 s); a screenshot request
+    // forces one. The grip already showing for the clicked block is not the
+    // one to press.
     const thirdId = await blocks.nth(2).getAttribute("data-block-id");
     const grip = h.page.locator(
       `[data-testid="block-drag-handle"][data-target-block="${thirdId}"]`,
     );
-    await grip.waitFor();
+    for (let i = 0; i < 20 && (await grip.count()) === 0; i++) {
+      await h.page.mouse.move(third.x + 40 + (i % 2), third.y + third.height / 2);
+      await pumpFrame(h.page);
+    }
+    await grip.waitFor({ timeout: 2_000 });
     const gripBox = await grip.boundingBox();
     if (!gripBox) throw new Error("grip not visible");
     const gx = gripBox.x + gripBox.width / 2;
@@ -102,6 +113,7 @@ test("a block dropped right after a keystroke keeps both the typed text and the 
     await h.page.mouse.move(gx, gy - 8, { steps: 2 });
     await h.page.waitForFunction(() => document.body.classList.contains("block-dragging"), null, {
       timeout: 2_000,
+      polling: 50,
     });
     await h.page.mouse.move(gx, first.y + 2, { steps: 4 });
     await sleep(50);
