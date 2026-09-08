@@ -79,7 +79,9 @@ docs/private/           # gitignored personal notes
   before planning a feature.
 - **A persisted note's title is its filename.** The write reports the basename the file actually
   got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once;
-  nothing in the UI re-implements filename rules. Details and the caret rule: UI rule.
+  nothing in the UI re-implements filename rules. Only a name the app makes is sanitised; a name
+  the disk already holds (a Finder-made folder, a note that was already there) is kept exactly.
+  Details and the caret rule: UI rule.
 - **The editor is a custom, uncontrolled `contentEditable`.** No ProseMirror, TipTap or editor
   library. Text lives as markdown in `block.text` and is rendered through
   `inlineMarkdownToHtml()` into `innerHTML`.

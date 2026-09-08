@@ -378,7 +378,17 @@ export async function moveFolderTo(page: Page, folder: string, target: string | 
  */
 export async function expandAllFolders(page: Page) {
   const collapsed = page.locator('[data-folder-path][aria-expanded="false"]');
-  while ((await collapsed.count()) > 0) await collapsed.first().click();
+  for (let i = 0; (await collapsed.count()) > 0; i++) {
+    if (i >= 20) {
+      const left = await collapsed.evaluateAll((els) =>
+        els.map((el) => el.getAttribute("data-folder-path")),
+      );
+      throw new Error(
+        `expandAllFolders: still collapsed after ${i} clicks: ${JSON.stringify(left)}`,
+      );
+    }
+    await collapsed.first().click();
+  }
   await sleep(350);
   const rowTops = () =>
     page.evaluate(() =>

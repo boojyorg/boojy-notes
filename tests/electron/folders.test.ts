@@ -182,6 +182,30 @@ describe("rename-folder — one directory rename carries every file with it", ()
     expect(readAllFolders(notesDir)).toEqual(["Clients", "Clients-2"]);
   });
 
+  // Review 2026-09-07 §2.3: a move keeps the name the disk holds; only a new
+  // name is the app's to sanitise. Before this the last segment was sanitised
+  // on every call, so dragging a Finder-made `Work: Client` into Archive
+  // renamed it to `Work_ Client` on the way.
+  it.skipIf(process.platform === "win32")(
+    "moves a folder under the name the disk holds, and sanitises only a new name",
+    () => {
+      mkdir("Work: Client");
+      write("Work: Client/Why?.md");
+      mkdir("Archive");
+      readAllNotes(notesDir);
+
+      expect(renameFolder(notesDir, "Work: Client", "Archive/Work: Client")).toEqual({
+        path: "Archive/Work: Client",
+      });
+      expect(exists("Archive/Work: Client/Why?.md")).toBe(true);
+      expect(renameFolder(notesDir, "Archive/Work: Client", "Work: Client")).toEqual({
+        path: "Work: Client",
+      });
+      expect(renameFolder(notesDir, "Work: Client", "Work: Old")).toEqual({ path: "Work_ Old" });
+      expect(readAllFolders(notesDir)).toEqual(["Archive", "Work_ Old"]);
+    },
+  );
+
   it("renames onto a visible name when asked for a hidden or reserved one", () => {
     mkdir("Work");
     write("Work/Note.md");
