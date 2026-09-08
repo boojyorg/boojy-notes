@@ -852,6 +852,123 @@ describe("useFileSystem — outside edits", () => {
   });
 });
 
+// A note renamed or moved outside the app is the same note under a new name
+// or folder. The main process followed its inode and re-pointed the index
+// (relocateNote); the renderer adopts the name and folder as a change of
+// record and leaves the text alone, so pending edits go out at the new path.
+// Before this (review 2026-09-07, §2.9) the rename arrived as a delete, the
+// rebuild kept the note because edits were pending, and the flush recreated
+// the old file, or the old folder, beside the renamed one.
+describe("useFileSystem — a note renamed or moved outside", () => {
+  const p = (text) => ({ id: `b-${text.length}`, type: "p", text });
+  const alpha = {
+    id: "n1",
+    title: "Alpha",
+    folder: null,
+    content: { title: "Alpha", blocks: [p("Alpha body.")] },
+  };
+  const alphaTyped = { ...alpha, content: { title: "Alpha", blocks: [p("Alpha body. two")] } };
+  const movedOnDisk = {
+    ...alpha,
+    title: "Renamed",
+    folder: "New",
+    content: { title: "Renamed", blocks: [p("Alpha body.")] },
+    lastModified: 5,
+    _filePath: "/notes/New/Renamed.md",
+  };
+
+  let fileMoved;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+      onFileMoved: vi.fn((handler) => {
+        fileMoved = handler;
+        return () => {};
+      }),
+    };
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function renderWith({ latest = { n1: alpha }, unflushed = [] } = {}) {
+    readAllNotes.mockResolvedValue({ n1: alpha });
+    writeNote.mockResolvedValue({});
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const links = makeLinks(setNoteData, {
+      unflushedNotes: { current: new Set(unflushed) },
+      latestNoteDataRef: { current: latest },
+      activeNoteRef: { current: "n1" },
+      onNotesEdited: vi.fn(),
+      // adoptNoteData applies the updater to the keystroke ref, as useHistory does.
+      adoptNoteData: vi.fn((updater) => {
+        links.latestNoteDataRef.current = updater(links.latestNoteDataRef.current);
+      }),
+    });
+    const hook = renderHook(
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, vi.fn(), links),
+      { initialProps: { data: { n1: alpha } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: alpha } }));
+    setNoteData.mockClear();
+    return { ...hook, links, setNoteData, setCustomFolders };
+  }
+
+  it("pending edits follow the note to its new name and folder: the text is kept, the mark is kept, one write lands there", async () => {
+    const { rerender, links } = await renderWith({ latest: { n1: alphaTyped }, unflushed: ["n1"] });
+    vi.useFakeTimers();
+    // The keystroke is inside the text commit (unflushed, ahead of state)
+    // when the file is renamed in Finder.
+    await act(async () => fileMoved(movedOnDisk));
+
+    expect(links.adoptNoteData).toHaveBeenCalledTimes(1);
+    const adopted = links.latestNoteDataRef.current.n1;
+    expect(adopted.title).toBe("Renamed");
+    expect(adopted.folder).toBe("New");
+    expect(adopted.content.title).toBe("Renamed");
+    expect(adopted.content.blocks).toBe(alphaTyped.content.blocks);
+    expect(links.applyExternalNote).not.toHaveBeenCalled();
+
+    // The commit publishes the adopted object; the scan marks it dirty and
+    // the flush writes it once, under the name the disk holds.
+    await act(async () => rerender({ data: { n1: adopted } }));
+    expect(links.onNotesEdited).toHaveBeenCalledExactlyOnceWith(["n1"]);
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(adopted);
+  });
+
+  it("a note with nothing pending takes the new name and is not rewritten or stamped", async () => {
+    const { rerender, links, setCustomFolders } = await renderWith();
+    vi.useFakeTimers();
+    await act(async () => fileMoved(movedOnDisk));
+
+    const adopted = links.latestNoteDataRef.current.n1;
+    expect(adopted.title).toBe("Renamed");
+    expect(adopted.folder).toBe("New");
+    // The new folder joins the sidebar's list at once.
+    expect(setCustomFolders).toHaveBeenCalled();
+
+    await act(async () => rerender({ data: { n1: adopted } }));
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(writeNote).not.toHaveBeenCalled();
+    expect(links.onNotesEdited).not.toHaveBeenCalled();
+  });
+
+  it("a note the renderer does not hold is taken as the disk holds it", async () => {
+    const { links } = await renderWith();
+    const stranger = { ...movedOnDisk, id: "n9" };
+    await act(async () => fileMoved(stranger));
+    const { _filePath, ...expected } = stranger;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expected);
+    expect(links.adoptNoteData).not.toHaveBeenCalled();
+  });
+});
+
 describe("useFileSystem — a blur or quit while the conflict copy is being written", () => {
   const p = (text) => ({ id: `b-${text.length}-${Math.random()}`, type: "p", text });
   const alpha = {

@@ -197,11 +197,99 @@ function getIdIndex() {
   return _idIndex;
 }
 
+// ─── A note's file across an outside rename ───
+// The index maps an id to a path, and a rename made outside the app (Finder,
+// `mv`, Obsidian) leaves that path empty; read as a delete, the renderer
+// rebuilt from disk, kept the note because edits to it were pending, and the
+// next write made a fresh file under the old name beside the renamed one
+// (review 2026-09-07, §2.9). The disk's own identity for a file is its inode:
+// a rename or move within the volume keeps it, and nothing else in the vault
+// has it. It is recorded here for every note the app reads or writes, with
+// the hash of the bytes it read or wrote, in memory only: pending edits never
+// outlive the session, so nothing needs to survive one. The record is
+// consulted in exactly one place, `relocateNote`, when an indexed path is
+// reported gone.
+const _identity = new Map(); // id → { dev, ino, hash }
+const hashOf = (text) => crypto.createHash("sha1").update(text).digest("hex");
+
+function recordIdentity(id, stat, raw) {
+  _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: hashOf(raw) });
+}
+
+/** Every note file under the vault, skipping what the vault walk skips. */
+function walkNoteFiles(dir, visit) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || entry.name === "attachments") continue;
+    if (entry.isDirectory()) walkNoteFiles(path.join(dir, entry.name), visit);
+    else if (entry.name.endsWith(".md")) visit(path.join(dir, entry.name));
+  }
+}
+
+/**
+ * Where the note indexed at `filePath`, now reported gone, has moved to: the
+ * file elsewhere in the vault that holds its inode. Null when the path is not
+ * an indexed note's, the file is still there, or nothing in the vault holds
+ * the inode (a real delete, or a move done as copy and delete, which the
+ * caller treats as the delete it looks like). On a match the index follows,
+ * and the note is parsed at its new path. `sameBytes` says whether the file
+ * still holds exactly the bytes the app last read or wrote, so the watcher
+ * can take the `add` the rename produces for the nothing-new it is. Another
+ * note indexed at the new path (`mv -f` over it) has lost its file to this
+ * one; its entry is dropped and its id returned as `displaced`.
+ */
+function relocateNote(filePath, notesDir) {
+  const relPath = path.relative(notesDir, filePath);
+  let id = null;
+  for (const [noteId, p] of Object.entries(_idIndex)) {
+    if (p === relPath) {
+      id = noteId;
+      break;
+    }
+  }
+  const identity = id ? _identity.get(id) : undefined;
+  if (!identity || fs.existsSync(filePath)) return null;
+
+  let newPath = null;
+  walkNoteFiles(notesDir, (candidate) => {
+    if (newPath) return;
+    try {
+      const s = fs.statSync(candidate);
+      if (s.dev === identity.dev && s.ino === identity.ino) newPath = candidate;
+    } catch {
+      /* gone between readdir and stat */
+    }
+  });
+  if (!newPath) return null;
+
+  const newRelPath = path.relative(notesDir, newPath);
+  let displaced = null;
+  for (const [other, p] of Object.entries(_idIndex)) {
+    if (p === newRelPath && other !== id) {
+      displaced = other;
+      delete _idIndex[other];
+      _identity.delete(other);
+    }
+  }
+  let raw;
+  try {
+    raw = fs.readFileSync(newPath, "utf-8");
+  } catch {
+    return null;
+  }
+  const sameBytes = hashOf(raw) === identity.hash;
+  _idIndex[id] = newRelPath;
+  const note = parseNoteFile(newPath, notesDir);
+  if (!note) return null;
+  saveIndex(notesDir);
+  return { note, raw, sameBytes, displaced };
+}
+
 // ─── Parse a single note file ───
 
 function parseNoteFile(filePath, notesDir) {
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
+    const stat = fs.statSync(filePath);
     const relPath = path.relative(notesDir, filePath);
     const relDir = path.relative(notesDir, path.dirname(filePath));
     // `/`-separated on every OS: the renderer joins and splits folder paths on it.
@@ -233,6 +321,7 @@ function parseNoteFile(filePath, notesDir) {
 
     // Update index
     _idIndex[id] = relPath;
+    recordIdentity(id, stat, raw);
 
     const blocks = markdownToBlocks(body);
 
@@ -251,8 +340,8 @@ function parseNoteFile(filePath, notesDir) {
       // whose notes all predate Boojy's own last-opened timestamps — and what
       // lets an edit made in another app count as recent activity. Declared in
       // types/notes.ts and read by search.js as a tiebreak since long before
-      // anything populated it. One extra stat on a file already being read.
-      lastModified: Math.round(fs.statSync(filePath).mtimeMs),
+      // anything populated it. One stat on a file already being read.
+      lastModified: Math.round(stat.mtimeMs),
       _filePath: filePath,
     };
   } catch {
@@ -268,24 +357,17 @@ function readAllNotes(notesDir) {
 
   loadIndex(notesDir);
 
-  function walk(dir) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".") || entry.name === "attachments") continue;
-      if (entry.isDirectory()) {
-        walk(path.join(dir, entry.name));
-      } else if (entry.name.endsWith(".md")) {
-        const filePath = path.join(dir, entry.name);
-        const note = parseNoteFile(filePath, notesDir);
-        if (note) notes[note.id] = note;
-      }
-    }
-  }
-
-  walk(notesDir);
+  walkNoteFiles(notesDir, (filePath) => {
+    const note = parseNoteFile(filePath, notesDir);
+    if (note) notes[note.id] = note;
+  });
 
   // Clean stale index entries
   for (const [id, relPath] of Object.entries(_idIndex)) {
-    if (!fs.existsSync(path.join(notesDir, relPath))) delete _idIndex[id];
+    if (!fs.existsSync(path.join(notesDir, relPath))) {
+      delete _idIndex[id];
+      _identity.delete(id);
+    }
   }
 
   saveIndex(notesDir);
@@ -379,6 +461,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // basename is the note's title; `readAllNotes` reads it back as such.
     const realPath = path.join(path.dirname(finalPath), realBasename(finalPath));
     _idIndex[note.id] = path.relative(notesDir, realPath);
+    // The atomic write made a new inode; the note's identity is that file now.
+    recordIdentity(note.id, fs.statSync(realPath), bodyMd);
     saveIndex(notesDir);
 
     trace(
@@ -526,6 +610,8 @@ export {
   ensureUniqueFilePath,
   resolveWritePath,
   noteToFilePath,
+  hashOf,
+  relocateNote,
   getIdIndex,
   setIndexDir,
   indexPath,

@@ -150,7 +150,10 @@ Each of these has caused a real bug. Read before touching the editor.
    late; the claim ends at the first event showing other bytes there or the file gone, so a
    later return to those bytes (a revert, a Put Back from the Trash) is a real change. An unlink
    the app causes (a Trash move, a rename's old path) is claimed once and consumed by that
-   unlink. Never replace the bytes with a timer (macOS sends a second metadata-only `change`
+   unlink. An unlink nobody claimed is asked one more question before it is a delete: whether
+   the file's inode is now elsewhere in the vault (`relocateNote`), in which case it is an
+   outside rename or move and the note follows it, pending edits and all, as `file-moved`.
+   Never replace the bytes with a timer (macOS sends a second metadata-only `change`
    1.5–2.7s after a write). An echo that escapes re-parses the file with fresh block IDs, every
    block remounts, the caret jumps to the top and the unsaved keystroke is lost. The rules for a
    real outside change (never silently overwritten; a conflicted copy when edits are pending)

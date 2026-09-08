@@ -69,6 +69,8 @@ declare global {
       traceEnabled: boolean;
       trace: (line: string) => void;
       onFileDeleted: (callback: (data: { filePath: string }) => void) => Unsubscribe;
+      /** A note renamed or moved outside the app, as the disk now holds it. */
+      onFileMoved: (callback: (note: Note) => void) => Unsubscribe;
 
       // Quit/close flush handshake
       onAppWillClose: (callback: () => void) => Unsubscribe;
