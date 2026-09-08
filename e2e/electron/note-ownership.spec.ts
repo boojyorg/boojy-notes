@@ -87,11 +87,22 @@ test("a block dropped right after a keystroke keeps both the typed text and the 
     await h.page.mouse.move(third.x + 40, third.y + third.height / 2);
     const grip = h.page.getByTestId("block-drag-handle");
     await grip.waitFor();
+    expect(await grip.getAttribute("data-target-block")).toBe(
+      await blocks.nth(2).getAttribute("data-block-id"),
+    );
     const gripBox = await grip.boundingBox();
     if (!gripBox) throw new Error("grip not visible");
-    await h.page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
+    const gx = gripBox.x + gripBox.width / 2;
+    const gy = gripBox.y + gripBox.height / 2;
+    await h.page.mouse.move(gx, gy);
     await h.page.mouse.down();
-    await h.page.mouse.move(gripBox.x + gripBox.width / 2, first.y + 2, { steps: 4 });
+    // The drag lifts on the first real movement; carry only once it has.
+    await h.page.mouse.move(gx, gy - 8, { steps: 2 });
+    await h.page.waitForFunction(() => document.body.classList.contains("block-dragging"), null, {
+      timeout: 2_000,
+    });
+    await h.page.mouse.move(gx, first.y + 2, { steps: 4 });
+    await sleep(50);
     await h.page.mouse.up();
 
     // Before: the drop was a raw state write, and the pending text commit
