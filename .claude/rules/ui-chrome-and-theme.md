@@ -396,8 +396,9 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   new vault's directories replace the old vault's. Web keeps folders in memory (`useNoteCrud`'s
   fallback); nothing on web makes a directory.
 - **The main process is the only place that knows a folder's final name**, `electron/folders.ts`,
-  the same rule as `write-note` for a note's basename: the last segment is sanitised and
-  de-duplicated (`-2`), a leading dot and the reserved name `attachments` become `_…` because
+  the same rule as `write-note` for a note's basename: a *new* last segment is sanitised and
+  de-duplicated (`-2`), a moved folder keeps the name the disk holds (see "A name the app makes is
+  sanitised" under the title rule), a leading dot and the reserved name `attachments` become `_…` because
   the walk would skip the directory and hide every note in it (2026-09-06), a case-only rename
   is a rename, a path can never escape the vault, and
   every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
@@ -441,6 +442,19 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
   itself) and repaints the editor's title field, caret preserved when the user is still in it.
   Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
+- **A name the app makes is sanitised; a name the disk holds is kept** (2026-09-08, review
+  §2.3). `noteToFilePath` sanitises the title only when it differs from the basename the note's
+  own file already has (the index entry), so `Why?.md` stays `Why?.md` on every save and only a
+  title the user typed is rewritten. It never touches the folder: a note's `folder` is always a
+  path the disk holds (the folder walk, or a folder operation's answer), so it is only checked to
+  lie inside the vault (`insideVault`; a write outside refuses). `renameFolder` follows the same
+  split: the last segment is sanitised only when it differs from the old name, so a drag keeps a
+  Finder-made `Work: Client` as it is, and only a rename is the app's to spell. Before this every
+  save mapped the title and every folder segment through the sanitiser, so the first edit of a
+  note in `Work: Client` wrote `Work_ Client/Plan.md`, unlinked the original and left the renderer
+  holding `folder: "Work: Client"`; a `Draft ` folder and a `Why?.md` went the same way.
+  `disk-names.spec.ts` proves the save, the move into such a folder, the folder drag and a
+  restart in the real app.
 - **The name is a quiet file label, not a title.** A `#` heading in the body is body text: it
   never names the file, and the filename is never written into the note as a heading. Decided
   because altitude implies rank, and a filename cannot hold title rank.

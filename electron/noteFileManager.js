@@ -28,13 +28,24 @@ function sanitizeFilename(name) {
   return sanitized;
 }
 
-function noteToFilePath(note, notesDir) {
-  const sanitized = sanitizeFilename(note.title || "Untitled") + ".md";
-  if (note.folder) {
-    const folderParts = note.folder.split("/").map(sanitizeFilename);
-    return path.join(notesDir, ...folderParts, sanitized);
-  }
-  return path.join(notesDir, sanitized);
+/**
+ * Where a note's file goes: the directory its `folder` names and a basename
+ * from its title. A name the app makes is sanitised; a name the disk already
+ * holds is kept as read. The folder is always a name the disk holds (the
+ * renderer only ever has one from the folder walk or from a folder operation's
+ * answer), so it is checked to lie inside the vault and never rewritten: a
+ * Finder-made `Work: Client` is the directory the note goes in, not a
+ * sanitised twin beside it. The title is the note's own file's basename when
+ * it still reads so (`existingRelPath`, the index entry): `Why?.md` stays
+ * `Why?.md` on every save. Any other title is one the user typed, and is
+ * sanitised.
+ */
+function noteToFilePath(note, notesDir, existingRelPath = null) {
+  const dir = note.folder ? insideVault(notesDir, note.folder) : path.resolve(notesDir);
+  if (!dir) throw new Error(`The folder is not inside the vault: ${note.folder}`);
+  const ownName = existingRelPath ? path.basename(existingRelPath, ".md") : null;
+  const name = note.title === ownName ? ownName : sanitizeFilename(note.title || "Untitled");
+  return path.join(dir, `${name}.md`);
 }
 
 /**
@@ -295,16 +306,20 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
 
   // Writes the note and answers with the path and basename the file actually
-  // got. The requested title may not survive the filesystem — a namesake
+  // got. A requested title may not survive the filesystem — a namesake
   // forces a `-2` suffix, characters a filename cannot hold become `_`, edges
   // are trimmed, a blank name becomes `Untitled` — and the renderer adopts the
-  // returned `title` so what the user sees is what a restart will read. This
+  // returned `title` so what the user sees is what a restart will read. A
+  // name the disk already holds is never rewritten (`noteToFilePath`). This
   // handler is the one place that knows the final name; nothing in the UI
   // second-guesses it.
   ipcMain.handle("write-note", (_event, note) => {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
-    const targetPath = noteToFilePath(note, notesDir);
+    // The note's own file, if it has one (a title or folder change is a rename away from it).
+    const existingRelPath = _idIndex[note.id];
+    const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
+    const targetPath = noteToFilePath(note, notesDir, existingRelPath);
     const traceStart = Date.now();
     trace(
       "M",
@@ -313,10 +328,6 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       "blocks",
       note.content?.blocks?.length ?? 0,
     );
-
-    // Check if this note already exists at a different path (title/folder rename)
-    const existingRelPath = _idIndex[note.id];
-    const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
 
     const { finalPath, sameFile } = resolveWritePath(targetPath, existingPath);
 

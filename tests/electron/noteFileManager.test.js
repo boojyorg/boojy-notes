@@ -290,6 +290,68 @@ describe("write-note — the returned title is the basename on disk", () => {
     ).toEqual(["_", "_.", "_archive", "_env", "v1.2 notes"]);
   });
 
+  // Review 2026-09-07 §2.3. A name the app makes is sanitised; a name the disk
+  // already holds is kept. Before this every folder segment and the title went
+  // through the sanitiser on every save, so a note in a Finder-made
+  // `Work: Client` was written to a new `Work_ Client` and the original
+  // unlinked, while the renderer kept `folder: "Work: Client"`; a pre-existing
+  // `Why?.md` became `Why_.md` on its first edit. Names the sanitiser rewrites
+  // are not creatable on Windows, so these run where the disk can hold them.
+  const finderNames = it.skipIf(process.platform === "win32");
+
+  finderNames("keeps a note where the disk holds it, however the sanitiser would spell it", () => {
+    fs.mkdirSync(path.join(notesDir, "Work: Client"));
+    fs.mkdirSync(path.join(notesDir, "Draft "));
+    fs.writeFileSync(path.join(notesDir, "Work: Client", "Why?.md"), "theirs", "utf-8");
+    fs.writeFileSync(path.join(notesDir, "Draft ", "Plan.md"), "plan", "utf-8");
+    const byTitle = Object.fromEntries(
+      Object.values(readAllNotes(notesDir)).map((n) => [n.title, n]),
+    );
+    expect(byTitle["Why?"].folder).toBe("Work: Client");
+
+    const saved = writeNote(note(byTitle["Why?"].id, "Why?", "Work: Client", "edited"));
+    writeNote(note(byTitle.Plan.id, "Plan", "Draft ", "edited"));
+
+    expect(saved).toEqual({
+      filePath: path.join(notesDir, "Work: Client", "Why?.md"),
+      title: "Why?",
+    });
+    expect(fs.readFileSync(path.join(notesDir, "Work: Client", "Why?.md"), "utf-8")).toBe("edited");
+    expect(fs.readFileSync(path.join(notesDir, "Draft ", "Plan.md"), "utf-8")).toBe("edited");
+    expect(fs.readdirSync(notesDir).sort()).toEqual(["Draft ", "Work: Client"]);
+    expect(fs.readdirSync(path.join(notesDir, "Work: Client"))).toEqual(["Why?.md"]);
+  });
+
+  finderNames(
+    "files a note into a folder as the disk spells it, and still sanitises a new title",
+    () => {
+      fs.mkdirSync(path.join(notesDir, "Work: Client"));
+      fs.writeFileSync(path.join(notesDir, "Plan.md"), "plan", "utf-8");
+      const id = Object.values(readAllNotes(notesDir))[0].id;
+
+      // Moved into a folder that came from the folder walk: the directory is
+      // the one the user made, not a sanitised twin beside it.
+      const moved = writeNote(note(id, "Plan", "Work: Client", "plan"));
+      expect(moved.filePath).toBe(path.join(notesDir, "Work: Client", "Plan.md"));
+      expect(fs.existsSync(path.join(notesDir, "Plan.md"))).toBe(false);
+
+      // A title the user typed is a name the app makes: sanitised, as ever.
+      const renamed = writeNote(note(id, "Plan: v2?", "Work: Client", "plan"));
+      expect(renamed.title).toBe("Plan_ v2_");
+      expect(fs.readdirSync(path.join(notesDir, "Work: Client"))).toEqual(["Plan_ v2_.md"]);
+      expect(fs.readdirSync(notesDir)).toEqual(["Work: Client"]);
+    },
+  );
+
+  it("refuses a folder that is not inside the vault, and writes nothing", () => {
+    expect(() => writeNote(note("n-escape", "Plan", "../outside"))).toThrow(/inside the vault/);
+    expect(() => writeNote(note("n-abs", "Plan", path.dirname(notesDir)))).toThrow(
+      /inside the vault/,
+    );
+    expect(fs.readdirSync(notesDir)).toEqual([]);
+    expect(fs.existsSync(path.join(path.dirname(notesDir), "outside"))).toBe(false);
+  });
+
   it("never overwrites a file it did not index", () => {
     // A file that appeared on disk between vault walks (no watcher in tests).
     fs.writeFileSync(path.join(notesDir, "Draft.md"), "someone else's", "utf-8");

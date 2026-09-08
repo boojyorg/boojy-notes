@@ -129,11 +129,16 @@ function sanitizeFolderName(name: string): string {
   return safe === "attachments" ? `_${safe}` : safe;
 }
 
-/** Split a requested path into an existing parent (absolute) and a sanitised last segment. */
+/**
+ * Split a requested path into an existing parent (absolute) and its last
+ * segment as asked for. The parent is a name the disk holds, so it is only
+ * checked to be inside the vault; the caller decides whether the last segment
+ * is a name the app makes (sanitised) or one the disk already holds (kept).
+ */
 function splitTarget(notesDir: string, rel: string): { parentAbs: string; name: string } {
   if (typeof rel !== "string") throw new Error("Folder path must be a string");
   const parts = rel.split("/");
-  const name = sanitizeFolderName(parts.pop() ?? "");
+  const name = parts.pop() ?? "";
   const parentRel = parts.join("/");
   const parentAbs = parentRel ? resolveVaultDir(notesDir, parentRel) : path.resolve(notesDir);
   if (!parentAbs || !isDirectory(parentAbs)) throw new Error("The parent folder does not exist");
@@ -147,7 +152,7 @@ function splitTarget(notesDir: string, rel: string): { parentAbs: string; name: 
  */
 export function createFolder(notesDir: string, requestedRel: string): { path: string } {
   const { parentAbs, name } = splitTarget(notesDir, requestedRel);
-  const finalAbs = ensureUniqueDirPath(path.join(parentAbs, name));
+  const finalAbs = ensureUniqueDirPath(path.join(parentAbs, sanitizeFolderName(name)));
   fs.mkdirSync(finalAbs);
   return { path: realRelPath(notesDir, finalAbs) };
 }
@@ -156,8 +161,11 @@ export function createFolder(notesDir: string, requestedRel: string): { path: st
  * Rename or move a directory as one operation, so every file in it travels
  * together, notes and otherwise. `newRel` is the full requested path: a new
  * name in the same parent renames, a new parent moves. A folder can never be
- * moved into itself. The note index is rewritten for every note under the old
- * path so IDs survive the move. Answers with the path the disk holds.
+ * moved into itself. A new name is the app's to sanitise; a move keeps the
+ * name the disk holds, however the sanitiser would spell it (a Finder-made
+ * `Work: Client` dragged into Archive is still `Work: Client`). The note index
+ * is rewritten for every note under the old path so IDs survive the move.
+ * Answers with the path the disk holds.
  */
 export function renameFolder(
   notesDir: string,
@@ -168,7 +176,10 @@ export function renameFolder(
   const oldAbs = resolveVaultDir(notesDir, oldRel);
   if (!oldAbs || !isDirectory(oldAbs)) throw new Error("The folder does not exist");
   const { parentAbs, name } = splitTarget(notesDir, newRel);
-  const targetAbs = path.join(parentAbs, name);
+  const targetAbs = path.join(
+    parentAbs,
+    name === path.basename(oldAbs) ? name : sanitizeFolderName(name),
+  );
   if (targetAbs === oldAbs) return { path: realRelPath(notesDir, oldAbs) };
   if (targetAbs.startsWith(oldAbs + path.sep))
     throw new Error("A folder cannot be moved into itself");
