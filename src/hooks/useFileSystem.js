@@ -219,14 +219,20 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     }
   }, [noteData]);
 
-  // ─── A conflict whose copy could not be written ───
-  // Once the open note has been found changed on disk while edits to it were
-  // pending, the local version must never again be written under the note's
-  // own name; that would put it over the outside edit. Until the copy has been
-  // written, the note is remembered here with the disk version it conflicts
-  // with, and every flush (the debounce, the retry, blur, quit) writes it as
-  // the copy instead. The entry clears only when a copy write succeeds.
+  // ─── A conflict whose copy has not yet been written ───
+  // From the moment the open note is found changed on disk while edits to it
+  // are pending, the local version must never again be written under the
+  // note's own name; that would put it over the outside edit. The note is
+  // remembered here with the disk version it conflicts with, before the copy's
+  // write begins and not only once it has failed, and every flush (the
+  // debounce, the retry, blur, quit) writes it as the copy instead; a flush
+  // that lands while the copy is being written waits for that write rather
+  // than starting a second one (`copyInFlight`). The entry clears only when a
+  // copy write succeeds. Before this the entry was made on failure alone and
+  // a blur or quit inside the copy's ~10 ms write re-marked the note from the
+  // quit/blur net and wrote the local version over the outside edit.
   const conflicted = useRef(new Map());
+  const copyInFlight = useRef(new Map());
 
   const scheduleRetry = () => {
     if (retryTimer.current !== null) return;
@@ -253,51 +259,61 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // flush can write it under its own name, the failure is shown once, and the
   // ordinary retry keeps trying the copy. Returns whether the copy was written.
   const keepBothVersions = useCallback(
-    async (external, local) => {
-      const api = getAPI();
-      const copyId = genNoteId();
-      const requestedTitle = conflictCopyTitle(local.title);
-      const snapshot = (source, title) => ({
-        ...source,
-        id: copyId,
-        title,
-        content: { ...source.content, title, blocks: source.content?.blocks || [] },
-        lastModified: Date.now(),
-      });
-      let written;
-      try {
-        written = await api.writeNote(snapshot(local, requestedTitle));
-      } catch (err) {
-        console.error("useFileSystem: conflict copy write failed", external.id, err);
-        conflicted.current.set(external.id, external);
-        dirtyNotes.current.add(external.id);
-        if (!reportedWriteFailures.current.has(external.id)) {
-          reportedWriteFailures.current.add(external.id);
-          onErrorRef.current?.(
-            `"${external.title}" changed outside Boojy Notes and your edits could not be saved as a copy. They are still here, unsaved; Boojy Notes will keep trying.`,
-          );
+    (external, local) => {
+      const id = external.id;
+      // Conflicted from now: the newest disk version is what the note adopts
+      // once the copy is written, whether this call or one in flight writes it.
+      conflicted.current.set(id, external);
+      const inFlight = copyInFlight.current.get(id);
+      if (inFlight) return inFlight;
+      const run = (async () => {
+        const api = getAPI();
+        const copyId = genNoteId();
+        const requestedTitle = conflictCopyTitle(local.title);
+        const snapshot = (source, title) => ({
+          ...source,
+          id: copyId,
+          title,
+          content: { ...source.content, title, blocks: source.content?.blocks || [] },
+          lastModified: Date.now(),
+        });
+        let written;
+        try {
+          written = await api.writeNote(snapshot(local, requestedTitle));
+        } catch (err) {
+          console.error("useFileSystem: conflict copy write failed", id, err);
+          dirtyNotes.current.add(id);
+          if (!reportedWriteFailures.current.has(id)) {
+            reportedWriteFailures.current.add(id);
+            onErrorRef.current?.(
+              `"${external.title}" changed outside Boojy Notes and your edits could not be saved as a copy. They are still here, unsaved; Boojy Notes will keep trying.`,
+            );
+          }
+          scheduleRetry();
+          return false;
         }
-        scheduleRetry();
-        return false;
-      }
-      trace("conflict copy written", external.id, "→", copyId, JSON.stringify(written?.title));
-      conflicted.current.delete(external.id);
-      reportedWriteFailures.current.delete(external.id);
-      // The links object is rebuilt on every render; read it after the await.
-      const links = editorLinksRef.current;
-      const copyTitle = typeof written?.title === "string" ? written.title : requestedTitle;
-      // Keystrokes typed during the write are in the latest local version;
-      // the copy adopts it and the ordinary flush writes the copy once more.
-      const latest = links.latestNoteDataRef?.current?.[external.id] || local;
-      const copy = snapshot(latest, copyTitle);
-      dirtyNotes.current.delete(external.id);
-      externalIds.current.add(external.id);
-      links.applyExternalNote(external);
-      links.adoptNoteData((prev) => ({ ...prev, [copyId]: copy }));
-      if (syncGeneration) syncGeneration.current++;
-      ensureFolder(external.folder);
-      links.onExternalConflict?.({ noteId: external.id, title: external.title, copyId, copyTitle });
-      return true;
+        trace("conflict copy written", id, "→", copyId, JSON.stringify(written?.title));
+        const disk = conflicted.current.get(id) ?? external;
+        conflicted.current.delete(id);
+        reportedWriteFailures.current.delete(id);
+        // The links object is rebuilt on every render; read it after the await.
+        const links = editorLinksRef.current;
+        const copyTitle = typeof written?.title === "string" ? written.title : requestedTitle;
+        // Keystrokes typed during the write are in the latest local version;
+        // the copy adopts it and the ordinary flush writes the copy once more.
+        const latest = links.latestNoteDataRef?.current?.[id] || local;
+        const copy = snapshot(latest, copyTitle);
+        dirtyNotes.current.delete(id);
+        externalIds.current.add(id);
+        links.applyExternalNote(disk);
+        links.adoptNoteData((prev) => ({ ...prev, [copyId]: copy }));
+        if (syncGeneration) syncGeneration.current++;
+        ensureFolder(disk.folder);
+        links.onExternalConflict?.({ noteId: id, title: disk.title, copyId, copyTitle });
+        return true;
+      })();
+      copyInFlight.current.set(id, run);
+      return run.finally(() => copyInFlight.current.delete(id));
     },
     // Deps deliberately not exhaustive: refs and stable setters only
     [ensureFolder],

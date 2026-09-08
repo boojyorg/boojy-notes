@@ -271,7 +271,6 @@ export default function BoojyNotes() {
     deleteFolder,
     createFolder,
     createDraftNote,
-    promoteDraft,
     discardDraft,
   } = useNoteCrud({
     commitNoteData,
@@ -531,17 +530,9 @@ export default function BoojyNotes() {
     createDraftNote();
   }, [activeNote, fsLoading, isMobile]);
 
-  useEffect(() => {
-    if (!activeNote) return;
-    const n = noteData[activeNote];
-    if (!n?._draft) return;
-    const hasTitle = n.title.trim() !== "";
-    const hasContent = n.content?.blocks?.some((b) => (b.text || "").trim() !== "");
-    if (hasTitle || hasContent) {
-      promoteDraft(activeNote);
-    }
-  }, [noteData, activeNote]);
-
+  // A draft ends at the keystroke that first gives it text (useHistory's
+  // commitTextChange), never here on state: read 300 ms late, the discard
+  // below and the quit flush saw a draft and lost the text.
   const prevActiveRef = useRef(null);
   useEffect(() => {
     const prevId = prevActiveRef.current;

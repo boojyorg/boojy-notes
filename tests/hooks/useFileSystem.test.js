@@ -852,6 +852,95 @@ describe("useFileSystem — outside edits", () => {
   });
 });
 
+describe("useFileSystem — a blur or quit while the conflict copy is being written", () => {
+  const p = (text) => ({ id: `b-${text.length}-${Math.random()}`, type: "p", text });
+  const alpha = {
+    id: "n1",
+    title: "Alpha",
+    folder: null,
+    content: { title: "Alpha", blocks: [p("Alpha body.")] },
+  };
+  const alphaOutside = {
+    ...alpha,
+    content: { title: "Alpha", blocks: [p("Alpha body.\nTheirs.")] },
+    lastModified: 5,
+    _filePath: "/notes/Alpha.md",
+  };
+  const alphaMine = { ...alpha, content: { title: "Alpha", blocks: [p("Alpha body. mine")] } };
+
+  let fileChanged;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn((handler) => {
+        fileChanged = handler;
+        return () => {};
+      }),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+
+  it("waits for the copy and never writes the local version under the note's own name, nor a second copy", async () => {
+    // Regression (review 2026-09-07, §2.9): the note was remembered as
+    // conflicted only once the copy's write had *failed*, and its dirty mark
+    // was dropped when the write began while the quit/blur net still named
+    // it. A blur or quit inside the copy's write therefore re-marked it and
+    // wrote the local version over the outside edit.
+    let finishCopy;
+    const copyWrite = new Promise((resolve) => {
+      finishCopy = () =>
+        resolve({
+          filePath: "/notes/Alpha (conflicted copy).md",
+          title: "Alpha (conflicted copy)",
+        });
+    });
+    writeNote.mockImplementation((note) =>
+      /conflicted copy/.test(note.title) ? copyWrite : Promise.resolve({}),
+    );
+    readAllNotes.mockResolvedValue({ n1: alpha });
+    const setNoteData = vi.fn();
+    const onError = vi.fn();
+    const links = makeLinks(setNoteData, {
+      unflushedNotes: { current: new Set(["n1"]) },
+      latestNoteDataRef: { current: { n1: alphaMine } },
+      activeNoteRef: { current: "n1" },
+      onExternalConflict: vi.fn(),
+    });
+    const hook = renderHook(
+      ({ data }) => useFileSystem(data, vi.fn(), { current: 0 }, onError, links),
+      { initialProps: { data: { n1: alpha } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: alpha } }));
+
+    await act(async () => fileChanged(alphaOutside));
+    expect(writeNote).toHaveBeenCalledTimes(1);
+
+    // Blur / quit while the copy's write is in flight. The copy is released
+    // whatever the assertions find, so a failure cannot leave the hook's flush
+    // pending into the next test.
+    const flushed = hook.result.current.flushToDisk({ n1: alphaMine }, ["n1"]);
+    try {
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(writeNote).toHaveBeenCalledTimes(1);
+      expect(writeNote).not.toHaveBeenCalledWith(alphaMine);
+    } finally {
+      finishCopy();
+    }
+    await act(async () => {
+      await flushed;
+    });
+    expect(writeNote).toHaveBeenCalledTimes(1);
+    const { _filePath, ...expectedExternal } = alphaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
+    expect(links.adoptNoteData).toHaveBeenCalledTimes(1);
+    expect(links.onExternalConflict).toHaveBeenCalledTimes(1);
+    expect(onError).not.toHaveBeenCalled();
+  });
+});
+
 describe("useFileSystem — changing the vault", () => {
   const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
   const typed = { ...saved, title: "Saved, typed" };
