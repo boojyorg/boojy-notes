@@ -170,6 +170,31 @@ hardcoded green); swap them for Lucide when touching those files.
   residue is an outside change under that folder inside the window of the user's own rename of
   it. `watcher-ownership.spec.ts` proves the revert, the delete inside the old window and both
   restores in the real app.
+- **A note renamed or moved outside the app is the same note, pending edits included**
+  (2026-09-08, review §2.9). The disk's own identity for a file is its inode: a rename or move
+  within the volume keeps it and nothing else in the vault has it. `noteFileManager` records it,
+  with the hash of the bytes read or written, for every note it parses or writes (`_identity`,
+  in memory only: pending edits never outlive a session), and consults it in one place,
+  `relocateNote`, when the watcher reports an unlink of an indexed path that no claim explains.
+  Found elsewhere in the vault, the index entry follows, the watcher sends `file-moved` with the
+  note as the disk now holds it, and `useFileSystem` adopts the title and folder as a change of
+  record (`adoptNoteData`, the path the filename a write produced takes) and leaves the text
+  alone: a note with edits pending keeps its dirty mark and the ordinary flush writes them at
+  the new path (`write-note` already knows it); one with nothing pending is not rewritten,
+  stamped or moved in the sort. The `add` the rename produces is claimed as the bytes it holds
+  when they are still the ones the app last read or wrote, so it is dropped as the nothing-new it
+  is; a file that also changed is delivered as the change it is (a conflict copy if edits are
+  pending, as any outside edit). Before this the unlink was a delete, the rebuild kept the note
+  because edits were pending, the flush found no index entry and `write-note` recreated the old
+  file, or the old folder, beside the renamed one, holding the pending edit while the renamed
+  file kept the old text. Identity that cannot be established stays the delete it looks like:
+  nothing in the vault holds the inode (a real delete, a move done as copy and delete, a move
+  across volumes, a sync client that recreates files), and the standing rebuild writes the
+  pending edits back under the old name, which loses nothing. A file moved *over* another note
+  (`mv -f`) belongs to the note whose inode it holds; the note it displaced is reported deleted.
+  Not a content match: bytes are compared only to decide whether the add carries news, never to
+  decide identity. `external-rename.spec.ts` proves the rename after a save, the rename before
+  the session's first save, the folder move and the clean rename in the real app.
 - **An outside edit is never silently overwritten** (2026-09-06). The watcher asks the bytes,
   not the clock: a claimed hash that differs is a real change however soon after the app's
   own save it lands, one that matches is an echo however late, and a path with no claim is

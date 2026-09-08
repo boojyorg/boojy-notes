@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { watch } from "chokidar";
-import { parseNoteFile, saveIndex } from "./noteFileManager.js";
+import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
 import { trace, traceEnabled } from "./trace.js";
 
 let watcher = null;
@@ -32,7 +31,6 @@ let watcher = null;
 //   residue is an outside change under a folder inside that window of the
 //   user's own rename or removal of it.
 const ownBytes = new Map();
-const hashOf = (text) => createHash("sha1").update(text).digest("hex");
 const UNLINK_CLAIM_FALLBACK_MS = 60_000;
 const ownUnlinks = new Map();
 const TREE_CLAIM_MS = 1500;
@@ -114,10 +112,37 @@ function startWatcher(getNotesDir, getMainWindow) {
   watcher.on("change", onWriteEvent);
   watcher.on("add", onWriteEvent);
 
+  // A rename or move made outside the app arrives as an unlink of the old
+  // path (and, later, an add of the new one). Before it is reported as a
+  // delete, the index is asked whether the file it held there is elsewhere in
+  // the vault (`relocateNote`: the inode says). If so the note has moved, the
+  // renderer is told where, and the add to come is nothing new when the file
+  // still holds the bytes the app last read or wrote there: it is claimed as
+  // those bytes are, so it is dropped as an echo; a file that also changed
+  // is delivered as the change it is. A note that lost its file to the move
+  // (`mv -f` over it) is reported deleted.
   watcher.on("unlink", (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (isOwnUnlinkEvent(filePath)) return;
-    getMainWindow()?.webContents.send("file-deleted", { filePath });
+    const win = getMainWindow();
+    const notesDir = getNotesDir();
+    const moved = relocateNote(filePath, notesDir);
+    if (!moved) {
+      win?.webContents.send("file-deleted", { filePath });
+      return;
+    }
+    if (moved.sameBytes) claimWrite(moved.note._filePath, moved.raw);
+    trace(
+      "M",
+      "send file-moved",
+      path.relative(notesDir, filePath),
+      "→",
+      path.relative(notesDir, moved.note._filePath),
+      moved.sameBytes ? "same bytes" : "changed too",
+      moved.displaced ? `displaced ${moved.displaced}` : "",
+    );
+    win?.webContents.send("file-moved", moved.note);
+    if (moved.displaced) win?.webContents.send("file-deleted", { filePath: moved.note._filePath });
   });
 
   // Folders are directories: one made or removed outside the app changes the

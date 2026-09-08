@@ -44,6 +44,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("file-deleted", handler);
   },
 
+  // A note renamed or moved outside the app: the same note, as the disk now
+  // holds it (its new title and folder).
+  onFileMoved: (callback) => {
+    const handler = (_event, note) => callback(note);
+    ipcRenderer.on("file-moved", handler);
+    return () => ipcRenderer.removeListener("file-moved", handler);
+  },
+
   // Quit/close flush handshake: main holds the window close until the renderer
   // has flushed pending edits to disk (or main's 2s timeout fires)
   onAppWillClose: (callback) => {

@@ -469,3 +469,157 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     expect(shell.showItemInFolder.mock.calls).toEqual([[notesDir]]);
   });
 });
+
+// A rename or move made outside the app leaves the indexed path empty. Read
+// as a delete, the renderer kept the note because edits were pending and the
+// next write recreated the old path beside the renamed file (review
+// 2026-09-07, §2.9). The disk's own identity for a file is its inode; it is
+// recorded for every note read or written this session and consulted when an
+// indexed path is reported gone. Identity that cannot be established (a copy
+// and delete, a real delete) stays the delete it looks like.
+describe("relocateNote — an outside rename or move is the same note", () => {
+  let relocateNote;
+  let getIdIndex;
+  let writeNote;
+
+  beforeEach(async () => {
+    const electron = await import("electron");
+    const mod = await import("../../electron/noteFileManager.js");
+    relocateNote = mod.relocateNote;
+    getIdIndex = mod.getIdIndex;
+    mod.registerNoteFileIPC(
+      () => null,
+      () => notesDir,
+      { claimWrite: () => {}, claimUnlink: () => {}, releaseUnlinkClaim: () => {} },
+    );
+    const handler = electron.ipcMain.handle.mock.calls.findLast(([c]) => c === "write-note")[1];
+    writeNote = (note) => handler(null, note);
+  });
+
+  const idOf = (rel) => Object.entries(getIdIndex()).find(([, p]) => p === rel)?.[0];
+
+  it("follows a rename in the same folder: the index re-points, the note keeps its id and gets the new title", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("Alpha.md");
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Renamed.md"));
+
+    const moved = relocateNote(path.join(notesDir, "Alpha.md"), notesDir);
+
+    expect(moved?.note.id).toBe(id);
+    expect(moved.note.title).toBe("Renamed");
+    expect(moved.note.folder).toBeNull();
+    expect(moved.sameBytes).toBe(true);
+    expect(moved.displaced).toBeNull();
+    expect(getIdIndex()).toEqual({ [id]: "Renamed.md" });
+    // Persisted, so a restart reads the moved file under the same id.
+    expect(JSON.parse(fs.readFileSync(indexPath(notesDir), "utf-8"))).toEqual({
+      [id]: "Renamed.md",
+    });
+  });
+
+  it("follows a move into another folder, and a whole folder moved with the note in it", () => {
+    fs.mkdirSync(path.join(notesDir, "Old"));
+    fs.writeFileSync(path.join(notesDir, "Old", "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    const id = idOf(path.join("Old", "Alpha.md"));
+
+    fs.renameSync(path.join(notesDir, "Old"), path.join(notesDir, "New"));
+    const moved = relocateNote(path.join(notesDir, "Old", "Alpha.md"), notesDir);
+    expect(moved?.note.id).toBe(id);
+    expect(moved.note.folder).toBe("New");
+    expect(getIdIndex()[id]).toBe(path.join("New", "Alpha.md"));
+
+    fs.mkdirSync(path.join(notesDir, "Archive"));
+    fs.renameSync(
+      path.join(notesDir, "New", "Alpha.md"),
+      path.join(notesDir, "Archive", "Alpha.md"),
+    );
+    const again = relocateNote(path.join(notesDir, "New", "Alpha.md"), notesDir);
+    expect(again?.note.id).toBe(id);
+    expect(again.note.folder).toBe("Archive");
+    expect(getIdIndex()[id]).toBe(path.join("Archive", "Alpha.md"));
+  });
+
+  it("knows the file the app itself wrote last: a rename after the app's own save is followed, and the next write lands at the new path", () => {
+    readAllNotes(notesDir);
+    const note = {
+      id: "n1",
+      title: "Alpha",
+      folder: null,
+      content: { title: "Alpha", blocks: [{ id: "b", type: "p", text: "Alpha body. one" }] },
+    };
+    writeNote(note);
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Renamed.md"));
+
+    const moved = relocateNote(path.join(notesDir, "Alpha.md"), notesDir);
+    expect(moved?.note.id).toBe("n1");
+    expect(moved.sameBytes).toBe(true);
+
+    // The pending text goes out under the name the disk holds; nothing is
+    // made at the old path.
+    const written = writeNote({
+      ...note,
+      title: "Renamed",
+      content: { title: "Renamed", blocks: [{ id: "b", type: "p", text: "Alpha body. one two" }] },
+    });
+    expect(written.title).toBe("Renamed");
+    expect(fs.existsSync(path.join(notesDir, "Alpha.md"))).toBe(false);
+    expect(fs.readFileSync(path.join(notesDir, "Renamed.md"), "utf-8")).toBe("Alpha body. one two");
+  });
+
+  it("says when the moved file also changed, so the add it produces is delivered as the change it is", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Renamed.md"));
+    fs.writeFileSync(path.join(notesDir, "Renamed.md"), "Alpha body.\nEdited outside.\n");
+
+    const moved = relocateNote(path.join(notesDir, "Alpha.md"), notesDir);
+    expect(moved?.note.title).toBe("Renamed");
+    expect(moved.sameBytes).toBe(false);
+  });
+
+  it("is a delete when nothing in the vault holds the inode: a real delete, or a copy and delete", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    fs.writeFileSync(path.join(notesDir, "Beta.md"), "Beta body.\n");
+    readAllNotes(notesDir);
+    const id = idOf("Alpha.md");
+
+    fs.copyFileSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Copied.md"));
+    fs.unlinkSync(path.join(notesDir, "Alpha.md"));
+
+    expect(relocateNote(path.join(notesDir, "Alpha.md"), notesDir)).toBeNull();
+    expect(getIdIndex()[id]).toBe("Alpha.md"); // the caller's rebuild cleans it
+  });
+
+  it("is nothing for a path that is not an indexed note's, or a file that is still there", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    expect(relocateNote(path.join(notesDir, "Alpha.md"), notesDir)).toBeNull();
+    expect(relocateNote(path.join(notesDir, "Never.md"), notesDir)).toBeNull();
+  });
+
+  it("gives the file to the note whose inode it holds when it was moved over another note (`mv -f`), and reports the other displaced", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    fs.writeFileSync(path.join(notesDir, "Beta.md"), "Beta body.\n");
+    readAllNotes(notesDir);
+    const alpha = idOf("Alpha.md");
+    const beta = idOf("Beta.md");
+    fs.renameSync(path.join(notesDir, "Alpha.md"), path.join(notesDir, "Beta.md"));
+
+    const moved = relocateNote(path.join(notesDir, "Alpha.md"), notesDir);
+    expect(moved?.note.id).toBe(alpha);
+    expect(moved.note.title).toBe("Beta");
+    expect(moved.displaced).toBe(beta);
+    expect(getIdIndex()).toEqual({ [alpha]: "Beta.md" });
+  });
+
+  it("forgets a note's identity once the vault walk finds its file gone, so a reused inode is never taken for it", () => {
+    fs.writeFileSync(path.join(notesDir, "Alpha.md"), "Alpha body.\n");
+    readAllNotes(notesDir);
+    fs.unlinkSync(path.join(notesDir, "Alpha.md"));
+    readAllNotes(notesDir); // the rebuild after a delete: the stale entry goes
+    fs.writeFileSync(path.join(notesDir, "Later.md"), "Alpha body.\n");
+    expect(relocateNote(path.join(notesDir, "Alpha.md"), notesDir)).toBeNull();
+  });
+});

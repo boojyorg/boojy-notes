@@ -495,6 +495,55 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       applyExternal(external);
     });
 
+    // A note renamed or moved outside the app is the same note under a new
+    // name or folder: the main process followed its inode and re-pointed the
+    // index, so the next write already lands at the new path. The name and
+    // folder are adopted as a change of record (no history entry, the path
+    // the filename a write produced takes), the text stays whatever it is
+    // here, pending keystrokes included. Edits pending for the note keep
+    // their dirty mark and go out at the new path with the ordinary flush; a
+    // note with nothing pending is not rewritten for a rename the app did
+    // not make (`externalIds`: the scan leaves it clean), so no mtime moves
+    // and nothing is stamped as edited here. Before this the rename was a
+    // delete, the rebuild kept the note because edits were pending, and the
+    // flush recreated the old file, or the old folder, beside the new one.
+    const unsubMove = window.electronAPI.onFileMoved
+      ? window.electronAPI.onFileMoved((note) => {
+          if (!note?.id) return;
+          const { _filePath, ...external } = note;
+          const id = external.id;
+          const links = editorLinksRef.current;
+          const local = links?.latestNoteDataRef?.current?.[id] ?? noteDataRef.current[id];
+          if (!local) {
+            applyExternal(external);
+            return;
+          }
+          const pending = dirtyNotes.current.has(id) || !!links?.unflushedNotes?.current?.has(id);
+          trace(
+            "file-moved recv",
+            id,
+            JSON.stringify(external.title),
+            external.folder ?? "/",
+            pending ? "pending edits follow" : "nothing pending",
+          );
+          if (!pending) externalIds.current.add(id);
+          links.adoptNoteData((prev) => {
+            const n = prev[id];
+            if (!n) return prev;
+            return {
+              ...prev,
+              [id]: {
+                ...n,
+                title: external.title,
+                folder: external.folder ?? null,
+                content: { ...n.content, title: external.title },
+              },
+            };
+          });
+          ensureFolder(external.folder);
+        })
+      : () => {};
+
     // The folder list is re-read whenever the disk may have changed it.
     const syncFoldersFromDisk = async () => {
       try {
@@ -552,6 +601,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
 
     return () => {
       unsubChange();
+      unsubMove();
       unsubDelete();
       unsubFolders();
     };
