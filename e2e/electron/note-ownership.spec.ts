@@ -85,11 +85,13 @@ test("a block dropped right after a keystroke keeps both the typed text and the 
     const first = await blocks.nth(0).boundingBox();
     if (!third || !first) throw new Error("blocks not visible");
     await h.page.mouse.move(third.x + 40, third.y + third.height / 2);
-    const grip = h.page.getByTestId("block-drag-handle");
-    await grip.waitFor();
-    expect(await grip.getAttribute("data-target-block")).toBe(
-      await blocks.nth(2).getAttribute("data-block-id"),
+    // The grip follows the pointer on an animation frame; the one showing for
+    // the clicked block is not the one to press (on a slow runner it was).
+    const thirdId = await blocks.nth(2).getAttribute("data-block-id");
+    const grip = h.page.locator(
+      `[data-testid="block-drag-handle"][data-target-block="${thirdId}"]`,
     );
+    await grip.waitFor();
     const gripBox = await grip.boundingBox();
     if (!gripBox) throw new Error("grip not visible");
     const gx = gripBox.x + gripBox.width / 2;
