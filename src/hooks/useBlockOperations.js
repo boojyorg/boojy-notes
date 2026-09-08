@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { genBlockId } from "../utils/storage";
 import { getCaretOffset } from "../utils/domHelpers";
+import { withCell } from "../utils/tableShape";
 import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
@@ -11,17 +12,34 @@ export function useBlockOperations({
   focusCursorPos,
   onError,
 }) {
-  const updateBlockText = (noteId, blockIndex, newText) => {
+  // The text grain: what the user types into a block's own field. A
+  // paragraph's contentEditable, a code block's textarea, a callout's title
+  // or body and a table cell all commit here, on every input, so the
+  // keystroke ref runs ahead of state, undo coalesces a burst, and the
+  // editor skips its render. `patch` is a function of the block as the ref
+  // holds it.
+  const typeIntoBlock = (noteId, blockIndex, patch) => {
     commitTextChange((prev) => {
       const next = { ...prev };
       const n = { ...next[noteId] };
       const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
+      blocks[blockIndex] = { ...blocks[blockIndex], ...patch(blocks[blockIndex]) };
       n.content = { ...n.content, blocks };
       next[noteId] = n;
       return next;
     });
   };
+
+  const updateBlockText = (noteId, blockIndex, newText) =>
+    typeIntoBlock(noteId, blockIndex, () => ({ text: newText }));
+
+  const updateCalloutTitle = (noteId, blockIndex, title) =>
+    typeIntoBlock(noteId, blockIndex, () => ({ title }));
+
+  const updateTableCell = (noteId, blockIndex, rowIdx, colIdx, value) =>
+    typeIntoBlock(noteId, blockIndex, (block) => ({
+      rows: withCell(block.rows || [], rowIdx, colIdx, value),
+    }));
 
   const insertBlockAfter = (noteId, afterIndex, type = "p", text = "", opts = {}) => {
     const newBlock = { id: genBlockId(), type, text };
@@ -170,22 +188,7 @@ export function useBlockOperations({
     [blockRefs],
   );
 
-  // --- Code block operations ---
-  const updateCodeText = useCallback(
-    (noteId, blockIndex, newText) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blocks = [...n.content.blocks];
-        blocks[blockIndex] = { ...blocks[blockIndex], text: newText };
-        n.content = { ...n.content, blocks };
-        next[noteId] = n;
-        return next;
-      });
-    },
-    [commitNoteData],
-  );
-
+  // --- Code block operations (the text goes through updateBlockText) ---
   const updateCodeLang = useCallback(
     (noteId, blockIndex, lang) => {
       commitNoteData((prev) => {
@@ -218,13 +221,22 @@ export function useBlockOperations({
   );
 
   // --- Table operations ---
+  // A structural change to a table (a row or column added, removed or
+  // moved, an alignment, a CSV paste) is a function of the rows as the ref
+  // holds them, so a cell edit still pending in the ref is inside the rows
+  // it reshapes; computed from the rendered rows instead, the operation
+  // wrote the rows as they were before the keystrokes and the typed text
+  // was gone (review 2026-09-07, §3.4). `reshape(rows, alignments)` returns
+  // `{ rows, alignments? }`; alignments left out are kept.
   const updateTableRows = useCallback(
-    (noteId, blockIndex, rows, alignments) => {
+    (noteId, blockIndex, reshape) => {
       commitNoteData((prev) => {
         const next = { ...prev };
         const n = { ...next[noteId] };
         const blocks = [...n.content.blocks];
-        const updated = { ...blocks[blockIndex], rows };
+        const block = blocks[blockIndex];
+        const { rows, alignments } = reshape(block.rows || [], block.alignments || []);
+        const updated = { ...block, rows };
         if (alignments !== undefined) updated.alignments = alignments;
         blocks[blockIndex] = updated;
         n.content = { ...n.content, blocks };
@@ -312,9 +324,10 @@ export function useBlockOperations({
     saveAndInsertImage,
     flipCheck,
     registerBlockRef,
-    updateCodeText,
     updateCodeLang,
     updateCallout,
+    updateCalloutTitle,
+    updateTableCell,
     updateTableRows,
     updateBlockIndent,
     moveBlock,

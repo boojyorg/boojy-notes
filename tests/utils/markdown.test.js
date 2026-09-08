@@ -705,3 +705,51 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     }
   });
 });
+
+describe("a special block's Markdown is never structurally invalid (review 2026-09-07, §3.1)", () => {
+  // A table row is one line. A newline that reached a cell (Shift+Enter, a
+  // multi-line paste) was written raw, the row broke across two lines, and
+  // every reader, this one included, took the rest of the table for a
+  // paragraph. A line break inside a cell is `<br>`, as GitHub and Obsidian
+  // read it; the parser maps that exact form back, so the bytes round-trip.
+
+  it("writes a newline inside a cell as <br> and reads it back", () => {
+    const blocks = [
+      {
+        type: "table",
+        rows: [
+          ["A", "B"],
+          ["one\ntwo", "x"],
+          ["three", "y"],
+        ],
+        alignments: ["left", "left"],
+        text: "",
+      },
+    ];
+    const md = blocksToMarkdown(blocks);
+    expect(md).toBe("| A | B |\n| --- | --- |\n| one<br>two | x |\n| three | y |");
+    const [out, ...rest] = markdownToBlocks(md);
+    expect(rest).toEqual([]);
+    expect(out.rows).toEqual(blocks[0].rows);
+  });
+
+  it("keeps a <br/> or <br /> in a cell as the literal text it is", () => {
+    const md = "| A |\n| --- |\n| one<br/>two |\n| one<br />two |\n";
+    const [table] = markdownToBlocks(md);
+    expect(table.rows).toEqual([["A"], ["one<br/>two"], ["one<br />two"]]);
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("writes a newline in a callout title as a space", () => {
+    const blocks = [
+      {
+        type: "callout",
+        calloutType: "note",
+        calloutTypeRaw: "note",
+        title: "one\ntwo",
+        text: "body",
+      },
+    ];
+    expect(blocksToMarkdown(blocks)).toBe("> [!note] one two\n> body");
+  });
+});

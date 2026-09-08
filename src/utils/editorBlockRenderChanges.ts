@@ -9,11 +9,17 @@ interface EditorRenderBlock {
   lang?: string;
   rows?: string[][];
   alignments?: string[];
+  calloutType?: string;
+  title?: string;
 }
 
 /**
- * Detect block properties that React must paint itself. Plain text is omitted
- * because the uncontrolled contentEditable DOM already owns it while typing.
+ * Detect block properties that React must paint itself. Text is omitted
+ * because the field it is typed into already holds it: a paragraph's
+ * contentEditable, and equally a code block's textarea, which paints its
+ * own highlight overlay as it is typed into. What React paints is the
+ * structure around a field: a table's rows, a code block's language, a
+ * callout's type and the title that follows a type change.
  */
 export function haveEditorBlockRenderChanges(
   previous: readonly EditorRenderBlock[] | undefined,
@@ -35,9 +41,14 @@ export function haveEditorBlockRenderChanges(
       return true;
     }
 
+    if (previousBlock.type === "code" && previousBlock.lang !== nextBlock.lang) {
+      return true;
+    }
+
     if (
-      previousBlock.type === "code" &&
-      (previousBlock.text !== nextBlock.text || previousBlock.lang !== nextBlock.lang)
+      previousBlock.type === "callout" &&
+      (previousBlock.calloutType !== nextBlock.calloutType ||
+        previousBlock.title !== nextBlock.title)
     ) {
       return true;
     }

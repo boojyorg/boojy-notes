@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
+import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -56,10 +57,28 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function highlight(text, langKey) {
+  const resolved = resolveGrammar(langKey);
+  if (resolved) {
+    return Prism.highlight(text, resolved.grammar, resolved.name);
+  }
+  return escapeHtml(text);
+}
+
+// The highlight overlay: each line wrapped in a span.
+function overlayHtml(text, langKey) {
+  return highlight(text, langKey)
+    .split("\n")
+    .map((lineHtml) => `<span class="code-line">${lineHtml}</span>`)
+    .join("");
+}
+
 export default memo(function CodeBlock({
   block,
   noteId,
   blockIndex,
+  syncGen,
+  noteDataRef,
   onUpdateCode,
   onUpdateLang,
   onBlockNav,
@@ -71,18 +90,16 @@ export default memo(function CodeBlock({
   const [langDropdown, setLangDropdown] = useState(false);
   const textareaRef = useRef(null);
   const overlayRef = useRef(null);
+  const overlayCodeRef = useRef(null);
   const langDropdownRef = useRef(null);
 
-  const code = (block.text || "").replace(/^\n+|\n+$/g, "");
+  // The fence's text exactly as the file holds it, blank first and last
+  // lines included. Stripping them here made Enter at the end of the block
+  // a no-op (the newline was written to state and stripped back by the next
+  // render) and lost a fence's own blank lines at the first keystroke
+  // (review 2026-09-07, §1.3).
+  const code = block.text || "";
   const lang = block.lang || "";
-
-  const highlight = useCallback((text, langKey) => {
-    const resolved = resolveGrammar(langKey);
-    if (resolved) {
-      return Prism.highlight(text, resolved.grammar, resolved.name);
-    }
-    return escapeHtml(text);
-  }, []);
 
   // Sync overlay scroll with textarea
   const syncScroll = useCallback(() => {
@@ -100,23 +117,59 @@ export default memo(function CodeBlock({
     ta.style.height = ta.scrollHeight + "px";
   }, []);
 
-  useEffect(() => {
-    autoResize();
-  }, [code, autoResize]);
+  const paintOverlay = useCallback(
+    (text) => {
+      if (overlayCodeRef.current) overlayCodeRef.current.innerHTML = overlayHtml(text, lang);
+    },
+    [lang],
+  );
 
-  // Handle input changes
-  const handleInput = useCallback(
-    (e) => {
-      onUpdateCode(noteId, blockIndex, e.target.value);
+  // The textarea is uncontrolled: it is the browser's while the user types
+  // into it, and it commits what it holds on every input at the text grain
+  // (useOwnedField). A controlled value would have held it to the state
+  // the commit debounce is still behind.
+  useOwnedField(textareaRef, {
+    text: code,
+    syncGen,
+    latest: () => latestBlock(noteDataRef, noteId, block)?.text || "",
+    read: (el) => el.value,
+    paint: (el, text) => {
+      const focused = document.activeElement === el;
+      const at = focused ? Math.min(el.selectionStart, text.length) : 0;
+      el.value = text;
+      if (focused) el.selectionStart = el.selectionEnd = at;
+      paintOverlay(text);
       autoResize();
       syncScroll();
     },
-    [noteId, blockIndex, onUpdateCode, autoResize, syncScroll],
+  });
+
+  // A language change re-highlights what the field holds.
+  useLayoutEffect(() => {
+    if (textareaRef.current) paintOverlay(textareaRef.current.value);
+  }, [paintOverlay]);
+
+  // What the field holds now goes to state, the overlay and the box.
+  const commit = useCallback(
+    (value) => {
+      onUpdateCode(noteId, blockIndex, value);
+      paintOverlay(value);
+      autoResize();
+      syncScroll();
+    },
+    [noteId, blockIndex, onUpdateCode, paintOverlay, autoResize, syncScroll],
   );
+
+  const handleInput = useCallback((e) => commit(e.target.value), [commit]);
 
   // Keyboard handling
   const handleKeyDown = useCallback(
     (e) => {
+      // Undo and redo are the app's, at the text grain the field commits at
+      // (useAppKeyboard, on the window); held here they were the textarea's
+      // own, one character at a time and blind to state.
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && (e.key === "z" || e.key === "y")) return;
       e.stopPropagation(); // Prevent parent editor from intercepting
       const ta = textareaRef.current;
       if (!ta) return;
@@ -144,8 +197,7 @@ export default memo(function CodeBlock({
           ta.selectionStart = firstLineStart;
           ta.selectionEnd = firstLineStart + indented.length;
         }
-        onUpdateCode(noteId, blockIndex, ta.value);
-        autoResize();
+        commit(ta.value);
         return;
       }
 
@@ -163,8 +215,7 @@ export default memo(function CodeBlock({
         ta.value = newVal;
         ta.selectionStart = firstLineStart;
         ta.selectionEnd = firstLineStart + dedented.length;
-        onUpdateCode(noteId, blockIndex, ta.value);
-        autoResize();
+        commit(ta.value);
         return;
       }
 
@@ -182,8 +233,7 @@ export default memo(function CodeBlock({
         const newVal = val.substring(0, start) + insert + val.substring(end);
         ta.value = newVal;
         ta.selectionStart = ta.selectionEnd = start + insert.length;
-        onUpdateCode(noteId, blockIndex, newVal);
-        autoResize();
+        commit(newVal);
         return;
       }
 
@@ -225,7 +275,7 @@ export default memo(function CodeBlock({
         return;
       }
     },
-    [noteId, blockIndex, onUpdateCode, onBlockNav, onDelete, autoResize],
+    [blockIndex, commit, onBlockNav, onDelete],
   );
 
   // Copy to clipboard
@@ -236,7 +286,7 @@ export default memo(function CodeBlock({
         e.stopPropagation();
       }
       try {
-        await navigator.clipboard.writeText(code);
+        await navigator.clipboard.writeText(textareaRef.current?.value ?? code);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       } catch {}
@@ -310,16 +360,6 @@ export default memo(function CodeBlock({
 
   const displayLabel = LANG_DISPLAY[lang] || (lang && !["", "plain"].includes(lang) ? lang : "");
 
-  const highlightedHtml = highlight(code, lang);
-
-  // Post-process: wrap each line in a span
-  const overlayHtml = highlightedHtml
-    .split("\n")
-    .map((lineHtml) => {
-      return `<span class="code-line">${lineHtml}</span>`;
-    })
-    .join("");
-
   return (
     <div
       className="code-block"
@@ -333,7 +373,6 @@ export default memo(function CodeBlock({
         <textarea
           ref={textareaRef}
           className="code-textarea"
-          value={code}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           onScroll={syncScroll}
@@ -343,7 +382,7 @@ export default memo(function CodeBlock({
           autoCapitalize="off"
         />
         <pre ref={overlayRef} className="code-overlay" aria-hidden="true">
-          <code dangerouslySetInnerHTML={{ __html: overlayHtml }} />
+          <code ref={overlayCodeRef} />
         </pre>
       </div>
 

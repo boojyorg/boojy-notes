@@ -31,6 +31,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 
 vi.mock("../../src/utils/inlineFormatting", () => ({
   inlineMarkdownToHtml: (md) => md || "",
+  domNodeToMarkdown: (el) => el?.textContent || "",
 }));
 
 vi.mock("lucide-react", () => {
@@ -67,7 +68,10 @@ describe("CalloutBlock", () => {
     },
     noteId: "note-1",
     blockIndex: 0,
+    syncGen: 1,
     onUpdateCallout: vi.fn(),
+    onUpdateText: vi.fn(),
+    onUpdateTitle: vi.fn(),
     onBlockNav: vi.fn(),
     onDelete: vi.fn(),
   };

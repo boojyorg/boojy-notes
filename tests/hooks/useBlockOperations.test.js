@@ -9,6 +9,7 @@ import {
   paragraph,
   bullet,
   checkbox as makeCheckbox,
+  codeBlock,
   resetBlockCounter,
 } from "../mocks/blocks.js";
 
@@ -278,6 +279,96 @@ describe("useBlockOperations", () => {
       });
 
       expect(getNoteData()[noteId].content.blocks[0].checked).toBe(false);
+    });
+  });
+
+  // A special block's field (a table cell, a callout's title or body, a code
+  // block's textarea) is typed into at the text grain, like a paragraph:
+  // through commitTextChange, so the keystroke ref runs ahead of state and
+  // undo coalesces a burst. A structural operation on the block is a
+  // function of the block as the ref holds it, so a cell edit pending in
+  // the ref is inside the rows the operation reshapes (review 2026-09-07,
+  // §1.4 and §3.4).
+  describe("special-block fields", () => {
+    const table = () => ({
+      id: "tbl",
+      type: "table",
+      rows: [
+        ["A", "B"],
+        ["1", "2"],
+      ],
+      alignments: ["left", "left"],
+      text: "",
+    });
+
+    it("updateTableCell writes one cell at the text grain", () => {
+      const { result, noteId, getNoteData, commitTextChange, commitNoteData } = setup([table()]);
+      act(() => {
+        result.current.updateTableCell(noteId, 0, 1, 0, "typed");
+      });
+      expect(getNoteData()[noteId].content.blocks[0].rows).toEqual([
+        ["A", "B"],
+        ["typed", "2"],
+      ]);
+      expect(commitTextChange).toHaveBeenCalledTimes(1);
+      expect(commitNoteData).not.toHaveBeenCalled();
+    });
+
+    it("updateTableRows reshapes the rows the ref holds, a pending cell edit included", () => {
+      const { result, noteId, getNoteData, commitNoteData } = setup([table()]);
+      act(() => {
+        result.current.updateTableCell(noteId, 0, 1, 0, "typed");
+        // Insert a row above row 1, computed from whatever the rows are now.
+        result.current.updateTableRows(noteId, 0, (rows, alignments) => ({
+          rows: [rows[0], ["", ""], ...rows.slice(1)],
+          alignments,
+        }));
+      });
+      expect(getNoteData()[noteId].content.blocks[0].rows).toEqual([
+        ["A", "B"],
+        ["", ""],
+        ["typed", "2"],
+      ]);
+      expect(commitNoteData).toHaveBeenCalledTimes(1);
+    });
+
+    it("updateTableRows leaves the alignments alone when the updater returns none", () => {
+      const { result, noteId, getNoteData } = setup([table()]);
+      act(() => {
+        result.current.updateTableRows(noteId, 0, (rows) => ({ rows: rows.slice(0, 1) }));
+      });
+      const block = getNoteData()[noteId].content.blocks[0];
+      expect(block.rows).toEqual([["A", "B"]]);
+      expect(block.alignments).toEqual(["left", "left"]);
+    });
+
+    it("updateCalloutTitle writes the title at the text grain", () => {
+      const callout = { id: "c", type: "callout", calloutType: "note", title: "Note", text: "b" };
+      const { result, noteId, getNoteData, commitTextChange, commitNoteData } = setup([callout]);
+      act(() => {
+        result.current.updateCalloutTitle(noteId, 0, "Renamed");
+      });
+      expect(getNoteData()[noteId].content.blocks[0]).toMatchObject({
+        title: "Renamed",
+        text: "b",
+      });
+      expect(commitTextChange).toHaveBeenCalledTimes(1);
+      expect(commitNoteData).not.toHaveBeenCalled();
+    });
+
+    it("updateBlockText serves a code block's textarea and a callout's body alike", () => {
+      const { result, noteId, getNoteData, commitTextChange } = setup([
+        codeBlock("a", "js"),
+        { id: "c", type: "callout", calloutType: "note", title: "Note", text: "b" },
+      ]);
+      act(() => {
+        result.current.updateBlockText(noteId, 0, "a\n");
+        result.current.updateBlockText(noteId, 1, "**b**");
+      });
+      const blocks = getNoteData()[noteId].content.blocks;
+      expect(blocks[0]).toMatchObject({ type: "code", text: "a\n", lang: "js" });
+      expect(blocks[1]).toMatchObject({ type: "callout", text: "**b**" });
+      expect(commitTextChange).toHaveBeenCalledTimes(2);
     });
   });
 });

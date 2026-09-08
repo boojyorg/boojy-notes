@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
+import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { Z } from "../constants/zIndex";
-import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
+import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
+import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import {
   Pencil,
   Info,
@@ -199,7 +201,12 @@ export default memo(function CalloutBlock({
   block,
   noteId,
   blockIndex,
+  syncGen,
+  noteTitleSet,
+  noteDataRef,
   onUpdateCallout,
+  onUpdateText,
+  onUpdateTitle,
   onBlockNav,
   onDelete,
 }) {
@@ -221,25 +228,51 @@ export default memo(function CalloutBlock({
     if (scrollEl) scrollRestoreRef.current = { el: scrollEl, top: scrollEl.scrollTop };
   }, []);
 
-  /* ─── Sync contentEditable from block data ─── */
+  /* ─── The two fields ─── */
 
-  useLayoutEffect(() => {
-    if (titleRef.current) {
-      const titleText = block.title || "";
-      if (titleRef.current.textContent !== titleText) {
-        titleRef.current.textContent = titleText;
-      }
-    }
-  }, [block.title]);
+  // Both are the browser's while typed into and commit on every input at
+  // the text grain; state paints them only when they do not already hold
+  // its text (useOwnedField). The title is plain text: a newline cannot
+  // live in the marker line, so Enter and Shift+Enter move to the body.
+  // The body is inline Markdown, read back with the editor's own reader;
+  // read as innerText it lost every `**bold**`, `[[link]]` and backtick on
+  // the first click in and out (review 2026-09-07, §3.2).
+  const title = block.title || "";
+  const text = block.text || "";
 
-  useLayoutEffect(() => {
-    if (bodyRef.current) {
-      const html = block.text ? inlineMarkdownToHtml(block.text) : "";
-      if (bodyRef.current.innerHTML !== html) {
-        bodyRef.current.innerHTML = html || "<br>";
-      }
-    }
-  }, [block.text]);
+  const latest = () => latestBlock(noteDataRef, noteId, block);
+
+  useOwnedField(titleRef, {
+    text: title,
+    syncGen,
+    latest: () => latest()?.title || "",
+    read: (el) => el.textContent || "",
+    paint: (el, t) => {
+      const caret = getCaretOffset(el);
+      el.textContent = t;
+      if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
+    },
+  });
+
+  useOwnedField(bodyRef, {
+    text,
+    syncGen,
+    latest: () => latest()?.text || "",
+    read: domNodeToMarkdown,
+    paint: (el, t) => {
+      const caret = getCaretOffset(el);
+      el.innerHTML = t ? inlineMarkdownToHtml(t, noteTitleSet) : "<br>";
+      if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
+    },
+  });
+
+  const handleTitleInput = useCallback(() => {
+    onUpdateTitle(noteId, blockIndex, titleRef.current?.textContent || "");
+  }, [noteId, blockIndex, onUpdateTitle]);
+
+  const handleBodyInput = useCallback(() => {
+    onUpdateText(noteId, blockIndex, domNodeToMarkdown(bodyRef.current));
+  }, [noteId, blockIndex, onUpdateText]);
 
   /* ─── Scroll restoration (runs after DOM sync, before paint) ─── */
 
@@ -253,24 +286,6 @@ export default memo(function CalloutBlock({
       setIconRect(iconBtnRef.current.getBoundingClientRect());
     }
   });
-
-  /* ─── Commit helpers ─── */
-
-  const commitTitle = useCallback(() => {
-    if (!titleRef.current) return;
-    const val = titleRef.current.textContent || "";
-    if (val !== (block.title || "")) {
-      onUpdateCallout(noteId, blockIndex, { title: val });
-    }
-  }, [noteId, blockIndex, block.title, onUpdateCallout]);
-
-  const commitBody = useCallback(() => {
-    if (!bodyRef.current) return;
-    const val = bodyRef.current.innerText || "";
-    if (val !== (block.text || "")) {
-      onUpdateCallout(noteId, blockIndex, { text: val });
-    }
-  }, [noteId, blockIndex, block.text, onUpdateCallout]);
 
   /* ─── Type picker ─── */
 
@@ -306,13 +321,12 @@ export default memo(function CalloutBlock({
     (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        commitTitle();
         bodyRef.current?.focus();
         return;
       }
       if (e.key === "Backspace") {
         const titleEmpty = !titleRef.current?.textContent;
-        const bodyEmpty = !bodyRef.current?.innerText?.trim();
+        const bodyEmpty = !domNodeToMarkdown(bodyRef.current).trim();
         if (titleEmpty && bodyEmpty && onDelete) {
           e.preventDefault();
           onDelete(blockIndex);
@@ -321,18 +335,16 @@ export default memo(function CalloutBlock({
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        commitTitle();
         onBlockNav?.(blockIndex, "prev");
         return;
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        commitTitle();
         onBlockNav?.(blockIndex, "next");
         return;
       }
     },
-    [blockIndex, commitTitle, onBlockNav, onDelete],
+    [blockIndex, onBlockNav, onDelete],
   );
 
   /* ─── Keyboard: body ─── */
@@ -340,10 +352,9 @@ export default memo(function CalloutBlock({
   const handleBodyKeyDown = useCallback(
     (e) => {
       if (e.key === "Backspace") {
-        const bodyEmpty = !bodyRef.current?.innerText?.trim();
+        const bodyEmpty = !domNodeToMarkdown(bodyRef.current).trim();
         if (bodyEmpty) {
           e.preventDefault();
-          commitBody();
           titleRef.current?.focus();
           return;
         }
@@ -357,7 +368,6 @@ export default memo(function CalloutBlock({
           const containerRect = bodyRef.current.getBoundingClientRect();
           if (rect.top - containerRect.top < 4) {
             e.preventDefault();
-            commitBody();
             titleRef.current?.focus();
             return;
           }
@@ -372,7 +382,6 @@ export default memo(function CalloutBlock({
           const containerRect = bodyRef.current.getBoundingClientRect();
           if (containerRect.bottom - rect.bottom < 4) {
             e.preventDefault();
-            commitBody();
             onBlockNav?.(blockIndex, "next");
             return;
           }
@@ -380,12 +389,11 @@ export default memo(function CalloutBlock({
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        commitBody();
         onBlockNav?.(blockIndex, "next");
         return;
       }
     },
-    [blockIndex, commitBody, onBlockNav],
+    [blockIndex, onBlockNav],
   );
 
   /* ─── Render ─── */
@@ -436,7 +444,7 @@ export default memo(function CalloutBlock({
           contentEditable
           suppressContentEditableWarning
           data-placeholder={config.defaultTitle}
-          onBlur={commitTitle}
+          onInput={handleTitleInput}
           onKeyDown={handleTitleKeyDown}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
@@ -458,7 +466,7 @@ export default memo(function CalloutBlock({
         contentEditable
         suppressContentEditableWarning
         data-placeholder="Type callout content..."
-        onBlur={commitBody}
+        onInput={handleBodyInput}
         onKeyDown={handleBodyKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
