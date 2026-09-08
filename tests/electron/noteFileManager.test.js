@@ -165,7 +165,7 @@ describe("pick-file IPC — oversized files", () => {
     registerNoteFileIPC(
       () => ({}),
       () => notesDir,
-      vi.fn(),
+      { claimWrite: () => {}, claimUnlink: () => {}, releaseUnlinkClaim: () => {} },
     );
     const handler = ipcMain.handle.mock.calls.find(([channel]) => channel === "pick-file")[1];
 
@@ -217,7 +217,7 @@ describe("write-note — the returned title is the basename on disk", () => {
       registerNoteFileIPC(
         () => null,
         () => notesDir,
-        () => {},
+        { claimWrite: () => {}, claimUnlink: () => {}, releaseUnlinkClaim: () => {} },
       );
       registered = true;
     }
@@ -328,7 +328,7 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     registerNoteFileIPC(
       () => null,
       () => notesDir,
-      () => {},
+      { claimWrite: () => {}, claimUnlink: () => {}, releaseUnlinkClaim: () => {} },
     );
     // The most recent registration wins; earlier ones closed over other vaults.
     handlers = Object.fromEntries(

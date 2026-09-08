@@ -283,7 +283,13 @@ function readAllNotes(notesDir) {
 
 // ─── Register IPC handlers ───
 
-function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
+/**
+ * `watcher` tells the file watcher what this module does to the vault, so
+ * the events those operations cause are recognised as the app's own:
+ * `claimWrite(path, body)` after a write, `claimUnlink(path)` before an
+ * unlink or rename-away the app makes (`releaseUnlinkClaim` when it fails).
+ */
+function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("get-notes-dir", () => getNotesDir());
 
   ipcMain.handle("read-all-notes", () => readAllNotes(getNotesDir()));
@@ -320,18 +326,27 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     // A case-only rename of the note's own file: move the directory entry
     // first, so the new casing is what the volume records (writing over the
     // old entry would keep its name), and skip the old-file removal below,
-    // which would delete the file just written.
+    // which would delete the file just written. chokidar reports the move as
+    // an unlink of the old name and an add of the new (probed 2026-09-08);
+    // the add is the write's own echo, the unlink is claimed here.
     if (sameFile) {
-      suppressWatcher(existingPath);
-      fs.renameSync(existingPath, finalPath);
+      watcher.claimUnlink(existingPath);
+      try {
+        fs.renameSync(existingPath, finalPath);
+      } catch (error) {
+        watcher.releaseUnlinkClaim(existingPath);
+        throw error;
+      }
     }
 
     // Serialize — just markdown body, no frontmatter; restore the file's
     // original line-ending style (content.eol is set by parseNoteFile)
     const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
-    suppressWatcher(finalPath, bodyMd);
     writeFileAtomic(finalPath, bodyMd);
+    // Claimed after the write: a claim describes bytes that are on disk. The
+    // handler is synchronous, so no watcher event can arrive in between.
+    watcher.claimWrite(finalPath, bodyMd);
 
     // On rename, remove the old file only after the new one is safely on disk —
     // a crash in between leaves a duplicate (recoverable), never a missing note.
@@ -340,11 +355,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher) {
     // (decision D8, 2026-09-07). Until then the emptied parent was removed
     // here, so moving the last note out of a folder deleted the folder.
     if (existingPath && existingPath !== finalPath && !sameFile) {
-      suppressWatcher(existingPath);
+      watcher.claimUnlink(existingPath);
       try {
         fs.unlinkSync(existingPath);
       } catch {
-        // old file already gone
+        // Already gone, so no unlink of the app's is coming; a later one is real.
+        watcher.releaseUnlinkClaim(existingPath);
       }
     }
 

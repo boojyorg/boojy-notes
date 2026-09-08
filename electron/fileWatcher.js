@@ -6,38 +6,39 @@ import { parseNoteFile, saveIndex } from "./noteFileManager.js";
 import { trace, traceEnabled } from "./trace.js";
 
 let watcher = null;
-// Our own writes echo back through chokidar ~350ms later (awaitWriteFinish).
-// Each write is suppressed for a window measured from the LATEST write to
-// that path: one timer per path, reset on every write. The old version kept
-// one timer per WRITE on a shared Set, so the first write's timer expired and
-// un-suppressed a path a later write still depended on — any two saves
-// 1.15–1.5s apart let the second echo through, and the renderer then rebuilt
-// the note from disk (caret to the top, keystrokes since the write lost).
-const WRITE_SUPPRESS_MS = 1500;
-const ignoredPaths = new Map();
-// The timer alone is not enough: macOS delivers a second `change` for one
-// write 1.5–2.7s later (measured 2026-09-05 from a trace of the daily driver),
-// after any sane window, and the renderer then rebuilt the note from disk
-// mid-typing. So each own write also records a hash of the bytes it wrote,
-// and an event whose file still holds exactly those bytes is an echo whatever
-// the clock says. An outside edit that leaves the same bytes is a no-op anyway.
-const ownContentHash = new Map();
+
+// The app drops only an event it can identify as the consequence of its own
+// filesystem operation; nothing is dropped on the clock alone. Three claims,
+// one per kind of own operation, each held until the event that explains it:
+//
+// - `ownBytes`: a hash of the app's last write to a path. A change or add
+//   whose file holds exactly those bytes is an echo of that write, whenever
+//   it arrives (macOS sends a second, metadata-only `change` 1.5–2.7s after a
+//   write, past any window a timer could hold). The claim ends at the first
+//   event that shows the file has left the app's hands: a change to other
+//   bytes, or the file going away. From then on those same bytes are a real
+//   change again (a revert in git or Obsidian, a Put Back from the Trash).
+//   Until 2026-09-08 the claim was never dropped, so such a change was taken
+//   for an echo and the next save wrote over it.
+// - `ownUnlinks`: paths the app is removing itself (a Trash move, the old
+//   path of a rename), each consumed by the one unlink it produces. Not a
+//   timer: shell.trashItem() latency is OS-mediated and unbounded. The
+//   timeout is only a leak guard for an unlink chokidar never delivers.
+// - `ownTrees`: a directory the app is renaming or removing, which chokidar
+//   reports as one event per entry underneath. The renderer already knows the
+//   outcome from the IPC answer, so everything under the old and the new
+//   directory is dropped for a short window; one that escapes re-reads what
+//   is already true. This is the one clock-decided suppression left, and its
+//   residue is an outside change under a folder inside that window of the
+//   user's own rename or removal of it.
+const ownBytes = new Map();
 const hashOf = (text) => createHash("sha1").update(text).digest("hex");
-// Trace only: when each path was last armed, so an escaping echo can be timed.
-const lastSuppressAt = new Map();
-// Unlink suppression is consumed by the event itself, not a fixed timer:
-// shell.trashItem() latency is OS-mediated and unbounded (cloud sync, AV
-// scans), so a timer that expires before the unlink arrives would let our own
-// delete masquerade as an external one. The timeout is only a leak guard for
-// an unlink chokidar never delivers — by then the event is long stale.
-const UNLINK_SUPPRESS_FALLBACK_MS = 60_000;
-const ignoredUnlinks = new Map();
-// A folder rename or removal is one filesystem operation that chokidar reports
-// as one event per file underneath. The renderer already knows the outcome
-// from the IPC answer, so every event under the old and new directory is
-// suppressed for the same window a write is; one that escapes (a huge folder
-// still being scanned) is harmless, because it re-reads what is already true.
-const ignoredTrees = new Map();
+const UNLINK_CLAIM_FALLBACK_MS = 60_000;
+const ownUnlinks = new Map();
+const TREE_CLAIM_MS = 1500;
+const ownTrees = new Map();
+// Trace only: when each path was last claimed, so an escaping echo can be timed.
+const lastClaimAt = new Map();
 // Directory add/unlink events are coalesced into one `folders-changed` so a
 // folder pasted in Finder with twenty subfolders triggers one re-read.
 const FOLDERS_CHANGED_DEBOUNCE_MS = 300;
@@ -52,9 +53,12 @@ function startWatcher(getNotesDir, getMainWindow) {
   const notesDir = getNotesDir();
 
   if (watcher) watcher.close();
-  // Pending suppressions belong to the previous watch session; carrying one
-  // across a restart could swallow a real external delete at the same path.
-  for (const filePath of [...ignoredUnlinks.keys()]) releaseUnlinkSuppression(filePath);
+  // Every claim belongs to the previous watch session; carried across a
+  // restart, one could swallow a real outside event at the same path.
+  for (const filePath of [...ownUnlinks.keys()]) releaseUnlinkClaim(filePath);
+  for (const timer of ownTrees.values()) clearTimeout(timer);
+  ownTrees.clear();
+  ownBytes.clear();
 
   watcher = watch(notesDir, {
     ignoreInitial: true,
@@ -64,7 +68,7 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   if (traceEnabled) {
     watcher.on("all", (event, filePath) => {
-      const armed = lastSuppressAt.get(filePath);
+      const claimed = lastClaimAt.get(filePath);
       let stat = "";
       try {
         const s = fs.statSync(filePath);
@@ -77,14 +81,20 @@ function startWatcher(getNotesDir, getMainWindow) {
         "fs",
         event,
         path.relative(notesDir, filePath),
-        isWriteSuppressed(filePath) ? "SUPPRESSED" : "PASS",
-        armed === undefined ? "never-written-by-us" : `${Date.now() - armed}ms after own write`,
+        ownBytes.has(filePath)
+          ? "own-bytes-claimed"
+          : ownUnlinks.has(filePath)
+            ? "own-unlink-claimed"
+            : isUnderOwnTree(filePath)
+              ? "own-tree"
+              : "unclaimed",
+        claimed === undefined ? "never-claimed" : `${Date.now() - claimed}ms after claim`,
         stat,
       );
     });
   }
 
-  watcher.on("change", (filePath) => {
+  const onWriteEvent = (filePath) => {
     if (!filePath.endsWith(".md")) return;
     if (isOwnWriteEvent(filePath)) return;
     const notesDir = getNotesDir();
@@ -100,30 +110,20 @@ function startWatcher(getNotesDir, getMainWindow) {
       );
       getMainWindow().webContents.send("file-changed", note);
     }
-  });
-
-  watcher.on("add", (filePath) => {
-    if (!filePath.endsWith(".md")) return;
-    if (isOwnWriteEvent(filePath)) return;
-    const notesDir = getNotesDir();
-    const note = parseNoteFile(filePath, notesDir);
-    if (note && getMainWindow()) {
-      saveIndex(notesDir);
-      getMainWindow().webContents.send("file-changed", note);
-    }
-  });
+  };
+  watcher.on("change", onWriteEvent);
+  watcher.on("add", onWriteEvent);
 
   watcher.on("unlink", (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (releaseUnlinkSuppression(filePath)) return;
-    if (isWriteSuppressed(filePath)) return;
+    if (isOwnUnlinkEvent(filePath)) return;
     getMainWindow()?.webContents.send("file-deleted", { filePath });
   });
 
   // Folders are directories: one made or removed outside the app changes the
   // sidebar. The renderer re-reads the folder list; it carries no payload.
   const onDirEvent = (dirPath) => {
-    if (isWriteSuppressed(dirPath)) return;
+    if (isUnderOwnTree(dirPath)) return;
     clearTimeout(foldersChangedTimer);
     foldersChangedTimer = setTimeout(() => {
       foldersChangedTimer = null;
@@ -150,50 +150,82 @@ function isIgnoredPath(notesDir, filePath) {
 }
 
 /**
- * Suppress watcher events for a file we are about to write. Re-arming a path
- * that is already suppressed extends its window from now — it never shortens it.
- * With `body`, the bytes being written are remembered so a late echo is still
- * recognised after the window (see `isOwnEcho`).
+ * Claim a write the app has just made: `body` is the text now on disk at
+ * `filePath`. Every later change or add whose file still holds exactly these
+ * bytes is that write's echo (see `isOwnWriteEvent`); the claim ends at the
+ * first event showing anything else there.
  */
-function suppressWatcher(filePath, body) {
-  if (typeof body === "string") ownContentHash.set(filePath, hashOf(body));
+function claimWrite(filePath, body) {
+  ownBytes.set(filePath, hashOf(body));
   if (traceEnabled) {
-    lastSuppressAt.set(filePath, Date.now());
-    trace(
-      "M",
-      "suppress",
-      path.basename(filePath),
-      `${WRITE_SUPPRESS_MS}ms`,
-      body === undefined ? "" : "+hash",
-    );
+    lastClaimAt.set(filePath, Date.now());
+    trace("M", "claim write", path.basename(filePath), `${body.length}b`);
   }
-  clearTimeout(ignoredPaths.get(filePath));
-  ignoredPaths.set(
-    filePath,
-    setTimeout(() => ignoredPaths.delete(filePath), WRITE_SUPPRESS_MS),
-  );
 }
 
 /**
- * Suppress every event under a directory we are about to rename or remove,
- * including the event for the directory itself. Same window as a write.
+ * Claim the unlink the app is about to cause at `filePath` (a Trash move, the
+ * old path of a rename). Consumed by that unlink when it arrives, or given
+ * back with `releaseUnlinkClaim` when the operation fails and none is coming.
+ * The file's bytes are no longer the app's either: whatever appears at the
+ * path next is a real add, its bytes notwithstanding.
  */
-function suppressWatcherTree(dirPath) {
-  clearTimeout(ignoredTrees.get(dirPath));
-  ignoredTrees.set(
-    dirPath,
-    setTimeout(() => ignoredTrees.delete(dirPath), WRITE_SUPPRESS_MS),
-  );
+function claimUnlink(filePath) {
+  ownBytes.delete(filePath);
+  releaseUnlinkClaim(filePath);
+  if (traceEnabled) lastClaimAt.set(filePath, Date.now());
+  const timer = setTimeout(() => ownUnlinks.delete(filePath), UNLINK_CLAIM_FALLBACK_MS);
+  if (typeof timer.unref === "function") timer.unref();
+  ownUnlinks.set(filePath, timer);
+}
+
+/** Give back an unlink claim. Returns true if one was pending. */
+function releaseUnlinkClaim(filePath) {
+  const timer = ownUnlinks.get(filePath);
+  if (timer === undefined) return false;
+  clearTimeout(timer);
+  ownUnlinks.delete(filePath);
+  return true;
 }
 
 /**
- * What the recorded bytes say about a change to the file: `true` when it
- * still holds exactly our last write (an echo), `false` when it holds
- * something else (a real change), `null` when nothing was recorded for the
+ * Claim every event under a directory the app is about to rename or remove,
+ * the event for the directory itself included, for a short window. The
+ * app's writes under it are no longer its own at those paths.
+ */
+function claimTree(dirPath) {
+  for (const filePath of [...ownBytes.keys()]) {
+    if (isUnder(filePath, dirPath)) ownBytes.delete(filePath);
+  }
+  clearTimeout(ownTrees.get(dirPath));
+  ownTrees.set(
+    dirPath,
+    setTimeout(() => ownTrees.delete(dirPath), TREE_CLAIM_MS),
+  );
+}
+
+function isUnder(filePath, dirPath) {
+  return (
+    filePath === dirPath ||
+    filePath.startsWith(`${dirPath}/`) ||
+    filePath.startsWith(`${dirPath}\\`)
+  );
+}
+
+/** Whether a path is under a directory the app is renaming or removing. */
+function isUnderOwnTree(filePath) {
+  for (const dir of ownTrees.keys()) if (isUnder(filePath, dir)) return true;
+  return false;
+}
+
+/**
+ * What the claimed bytes say about a change to the file: `true` when it
+ * still holds exactly the app's last write (an echo), `false` when it holds
+ * something else (a real change), `null` when nothing is claimed for the
  * path or the file cannot be read, so the bytes cannot decide.
  */
-function ownEchoVerdict(filePath) {
-  const expected = ownContentHash.get(filePath);
+function ownBytesVerdict(filePath) {
+  const expected = ownBytes.get(filePath);
   if (expected === undefined) return null;
   let current;
   try {
@@ -207,79 +239,61 @@ function ownEchoVerdict(filePath) {
       "M",
       "echo-check",
       path.basename(filePath),
-      echo ? "ECHO (own bytes, ignored)" : "differs → real change",
+      echo ? "ECHO (own bytes, ignored)" : "differs → real change, claim dropped",
     );
   return echo;
 }
 
-/** Whether the file holds exactly the bytes of our last write to it: a late echo, not an edit. */
-function isOwnEcho(filePath) {
-  return ownEchoVerdict(filePath) === true;
-}
-
 /**
  * Whether a change or add event is the app's own write coming back, and so
- * must not reach the renderer. The bytes decide whenever a write was recorded
- * for the path: equal is an echo however late it arrives, different is a real
- * change however soon, so an outside edit that lands inside the timer window
- * is never dropped on the clock alone (one made about a second after a save
- * was, and the next keystroke then overwrote it). The timer decides only for a
- * path with no recorded bytes: the old path of a rename, or a path under a
- * directory being renamed or removed.
+ * must not reach the renderer. The bytes decide whenever a write is claimed
+ * for the path: equal is an echo however late it arrives; different is a
+ * real change however soon, and ends the claim, because the file now holds a
+ * version the app did not write and a later return to its bytes is a change
+ * too. A path with no claim is the app's only under a directory it is
+ * renaming or removing.
  */
 function isOwnWriteEvent(filePath) {
-  const verdict = ownEchoVerdict(filePath);
-  if (verdict !== null) return verdict;
-  return isWriteSuppressed(filePath);
-}
-
-/** Whether a path is inside its own-write suppression window, or under a suppressed tree. */
-function isWriteSuppressed(filePath) {
-  if (ignoredPaths.has(filePath)) return true;
-  for (const dir of ignoredTrees.keys()) {
-    if (filePath === dir || filePath.startsWith(`${dir}/`) || filePath.startsWith(`${dir}\\`))
-      return true;
+  const verdict = ownBytesVerdict(filePath);
+  if (verdict === true) return true;
+  if (verdict === false) {
+    ownBytes.delete(filePath);
+    return false;
   }
-  return false;
+  return isUnderOwnTree(filePath);
 }
 
 /**
- * Suppress the next `unlink` event for a file we are about to trash ourselves.
- * Cleared by the event's arrival (or releaseUnlinkSuppression on failure), so
- * it holds however long the OS trash operation takes.
+ * Whether an unlink is one the app caused: the one it claimed for the path,
+ * or one under a directory it is renaming or removing. Any other unlink is
+ * real, however soon after the app's own save of that file it lands; the
+ * app's own writes never unlink the path they write. Either way the file is
+ * gone, so the app's bytes are no longer at the path: whatever appears there
+ * next, a Put Back from the Trash with the very same bytes included, is a
+ * real add.
  */
-function suppressNextUnlink(filePath) {
-  releaseUnlinkSuppression(filePath);
-  const timer = setTimeout(() => ignoredUnlinks.delete(filePath), UNLINK_SUPPRESS_FALLBACK_MS);
-  if (typeof timer.unref === "function") timer.unref();
-  ignoredUnlinks.set(filePath, timer);
-}
-
-/** Remove a pending unlink suppression. Returns true if one was consumed. */
-function releaseUnlinkSuppression(filePath) {
-  const timer = ignoredUnlinks.get(filePath);
-  if (timer === undefined) return false;
-  clearTimeout(timer);
-  ignoredUnlinks.delete(filePath);
-  return true;
+function isOwnUnlinkEvent(filePath) {
+  ownBytes.delete(filePath);
+  if (releaseUnlinkClaim(filePath)) return true;
+  return isUnderOwnTree(filePath);
 }
 
 /**
  * Close the file watcher (call on app quit).
  */
 function closeWatcher() {
-  if (watcher) watcher.close();
+  return watcher ? watcher.close() : Promise.resolve();
 }
 
 export {
   isIgnoredPath,
   startWatcher,
-  suppressWatcher,
-  suppressWatcherTree,
-  isWriteSuppressed,
-  isOwnEcho,
+  claimWrite,
+  claimUnlink,
+  releaseUnlinkClaim,
+  claimTree,
+  isUnderOwnTree,
   isOwnWriteEvent,
-  suppressNextUnlink,
-  releaseUnlinkSuppression,
+  isOwnUnlinkEvent,
   closeWatcher,
 };
