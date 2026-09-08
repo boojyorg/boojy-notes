@@ -7,7 +7,7 @@ const SETTLE_MS = 200;
 
 export function useSidebarDrag({
   noteDataRef,
-  setNoteData,
+  adoptNoteData,
   sidebarScrollRef,
   accentColor,
   setDragTooltip,
@@ -245,10 +245,12 @@ export function useSidebarDrag({
     if (sd.type === "note") {
       // The only remaining outcome: move the note's real file. `folder: null`
       // is root; anything else is that folder. write-note relocates the .md on
-      // disk (new file written before the old one is unlinked).
+      // disk (new file written before the old one is unlinked). A location is
+      // a change of record, not an edit: no undo entry, and undo never moves
+      // a file back.
       const targetFolder = target.type === "folder" ? target.id : null;
       const ids = sd.draggedIds && sd.draggedIds.length > 0 ? sd.draggedIds : [sd.id];
-      setNoteData((prev) => {
+      adoptNoteData((prev) => {
         let changed = false;
         const next = { ...prev };
         for (const noteId of ids) {

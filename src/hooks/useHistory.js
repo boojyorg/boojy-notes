@@ -21,6 +21,22 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // Only sync ref from state when no pending flush (avoid overwriting batched updates)
   if (!hasPendingFlush.current) noteDataRef.current = noteData;
 
+  // A structural change supersedes the text commit pending for the active
+  // note: the ref already holds that text, the change is applied on top of
+  // it, and both go out together. Left to fire, the timer would publish the
+  // ref as it was and revert the change (the sidebar move, the block drop and
+  // the vault rebuild all did exactly that while they used the raw setter).
+  const cancelPendingText = () => {
+    if (textFlushTimer.current) {
+      clearTimeout(textFlushTimer.current);
+      textFlushTimer.current = null;
+    }
+    hasPendingFlush.current = false;
+    textOnlyEdit.current = false;
+    textOnlyEditForSidebar.current = false;
+    textOnlyEditForEditor.current = false;
+  };
+
   const cloneNote = (n) => {
     if (!n?.content?.blocks) return { ...n };
     return {
@@ -67,22 +83,19 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const adoptNoteData = (updater) => applyCommit(updater, false);
 
   // A folder rename or move on disk changes where notes live without any of
-  // them being edited. The `folder` field follows in the live data AND in every
-  // undo/redo snapshot, so a later undo of a text edit cannot restore a stale
-  // folder path and quietly move that file back into a recreated old directory.
-  // Not an edit: no history entry, nothing joins the quit-flush net, and the
-  // caller (useFileSystem) tells its dirty detection to ignore the update.
-  // Returns whether anything changed, so the caller knows whether a render
-  // (and its external-update bookkeeping) is coming.
+  // them being edited. The `folder` field follows in the live data; undo
+  // never restores a folder (restoreSnapshot keeps the live one), so the
+  // snapshots need no rewriting. Not an edit: no history entry, nothing joins
+  // the quit-flush net, and the caller (useFileSystem) tells its dirty
+  // detection to ignore the update. Returns whether anything changed, so the
+  // caller knows whether a render (and its external-update bookkeeping) is
+  // coming.
   const remapNoteFolders = (remap) => {
     const move = (n) => {
       if (!n?.folder) return n;
       const folder = remap(n.folder);
       return folder === n.folder ? n : { ...n, folder };
     };
-    for (const stack of [undoStack.current, redoStack.current]) {
-      for (const entry of stack) if (entry.snapshot) entry.snapshot = move(entry.snapshot);
-    }
     const before = noteDataRef.current;
     let changed = false;
     const next = {};
@@ -91,19 +104,33 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       if (next[id] !== n) changed = true;
     }
     if (!changed) return false;
-    // Same discipline as applyCommit: a pending text flush must not fire
-    // afterwards and write the pre-remap data back over this.
-    if (textFlushTimer.current) {
-      clearTimeout(textFlushTimer.current);
-      textFlushTimer.current = null;
-      hasPendingFlush.current = false;
-    }
-    textOnlyEdit.current = false;
-    textOnlyEditForSidebar.current = false;
-    textOnlyEditForEditor.current = false;
+    cancelPendingText();
     noteDataRef.current = next;
     setNoteData(next);
     return true;
+  };
+
+  // Take the vault as the disk now holds it: the initial load, a vault
+  // switch, the rebuild after an outside delete. `next` is the whole id→note
+  // map that replaces the current one; the caller has already folded in any
+  // note that exists only in memory (a draft, edits not yet written), taken
+  // from `noteDataRef` so pending text travels with it. The ref and state
+  // take it together, and a text commit still pending is cancelled: its
+  // text is either in `next` or deliberately left behind, and letting it
+  // fire would republish the map this call replaces. History and the
+  // quit-flush net keep only the notes that still exist; an undo entry for a
+  // note that is gone would otherwise write it into whatever vault is open.
+  const replaceNoteData = (next) => {
+    cancelPendingText();
+    const keep = (e) => e.noteId in next;
+    undoStack.current = undoStack.current.filter(keep);
+    redoStack.current = redoStack.current.filter(keep);
+    setCanUndo(undoStack.current.length > 0);
+    setCanRedo(redoStack.current.length > 0);
+    for (const id of unflushedNotes.current) if (!(id in next)) unflushedNotes.current.delete(id);
+    trace("replaceNoteData", Object.keys(next).length);
+    noteDataRef.current = next;
+    setNoteData(next);
   };
 
   // Take a note as the disk now holds it: an edit made in another program,
@@ -119,14 +146,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // quit-flush net; the note is already on disk.
   const applyExternalNote = (note) => {
     const id = note.id;
-    if (id === activeNoteRef.current && textFlushTimer.current) {
-      clearTimeout(textFlushTimer.current);
-      textFlushTimer.current = null;
-      hasPendingFlush.current = false;
-      textOnlyEdit.current = false;
-      textOnlyEditForSidebar.current = false;
-      textOnlyEditForEditor.current = false;
-    }
+    if (id === activeNoteRef.current && textFlushTimer.current) cancelPendingText();
     undoStack.current = undoStack.current.filter((e) => e.noteId !== id);
     redoStack.current = redoStack.current.filter((e) => e.noteId !== id);
     setCanUndo(undoStack.current.length > 0);
@@ -139,15 +159,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
 
   const applyCommit = (updater, recordHistory) => {
     if (recordHistory && !isUndoRedo.current) pushHistory();
-    textOnlyEdit.current = false;
-    textOnlyEditForSidebar.current = false;
-    textOnlyEditForEditor.current = false;
-    // Cancel any pending text flush to prevent it from overwriting this structural change
-    if (textFlushTimer.current) {
-      clearTimeout(textFlushTimer.current);
-      textFlushTimer.current = null;
-      hasPendingFlush.current = false;
-    }
+    cancelPendingText();
     // Apply updater to ref so it reflects both pending text changes AND this structural change
     const before = noteDataRef.current;
     noteDataRef.current = updater(before);
@@ -211,23 +223,23 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
 
   // Restore a snapshot as the note's current state, for undo and redo.
   //
-  // Two things here are load-bearing. First, a text commit may still be
-  // pending in `textFlushTimer`; left alone it would fire after the restore and
-  // write the pre-undo text back over it, and while it is pending the
-  // "text-only edit" flags tell the editor to skip its next render — which
-  // would skip painting the restored text. Cancel the commit and clear the
-  // flags before restoring. Second, `noteDataRef` only syncs from state when no
-  // flush is pending, so write the restored data to the ref directly (as
-  // commitNoteData does) rather than leaving it stale until the next render.
+  // History is the editor's: a snapshot restores what the editor shows, the
+  // title and the blocks, and never where the file lives. The live `folder`
+  // is kept, so undoing the typing that followed a move (a drag, Move to, a
+  // folder rename) cannot carry the old folder back into state and have the
+  // next write relocate the file. The caller has established the note still
+  // exists: a snapshot never conjures a note that was deleted or belongs to a
+  // vault no longer open.
+  //
+  // Two more things here are load-bearing. A text commit may still be
+  // pending in `textFlushTimer`; left alone it would fire after the restore
+  // and write the pre-undo text back over it, and while it is pending the
+  // "text-only edit" flags tell the editor to skip its next render, which
+  // would skip painting the restored text. And `noteDataRef` only syncs from
+  // state when no flush is pending, so the restored data goes to the ref
+  // directly, as every commit does.
   const restoreSnapshot = (noteId, snapshot) => {
-    if (textFlushTimer.current) {
-      clearTimeout(textFlushTimer.current);
-      textFlushTimer.current = null;
-    }
-    hasPendingFlush.current = false;
-    textOnlyEdit.current = false;
-    textOnlyEditForSidebar.current = false;
-    textOnlyEditForEditor.current = false;
+    cancelPendingText();
     // Typing that resumes after an undo starts a fresh history entry.
     if (historyTimer.current) {
       clearTimeout(historyTimer.current);
@@ -236,41 +248,50 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     isUndoRedo.current = true;
     syncGeneration.current++;
     trace("restoreSnapshot (undo/redo)", noteId);
-    noteDataRef.current = { ...noteDataRef.current, [noteId]: snapshot };
+    const live = noteDataRef.current[noteId];
+    noteDataRef.current = {
+      ...noteDataRef.current,
+      [noteId]: { ...snapshot, folder: live.folder ?? null },
+    };
     setNoteData(noteDataRef.current);
     isUndoRedo.current = false;
   };
 
+  // The newest entry whose note still exists. Entries for a note that was
+  // deleted (or left behind by a vault switch, though replaceNoteData drops
+  // those) are discarded on the way: history never brings a note back, and
+  // the OS Trash is the recovery surface.
+  const takeLive = (stack) => {
+    while (stack.length > 0) {
+      const entry = stack.pop();
+      if (noteDataRef.current[entry.noteId]) return entry;
+    }
+    return null;
+  };
+
   const undo = () => {
-    if (undoStack.current.length === 0) return;
-    const entry = undoStack.current.pop();
-    const currentNote = noteDataRef.current[entry.noteId];
-    // Save current state to redo stack (may be null if note was deleted)
-    redoStack.current.push({
-      noteId: entry.noteId,
-      snapshot: currentNote ? cloneNote(currentNote) : null,
-    });
-    restoreSnapshot(entry.noteId, entry.snapshot);
+    const entry = takeLive(undoStack.current);
+    if (entry) {
+      redoStack.current.push({
+        noteId: entry.noteId,
+        snapshot: cloneNote(noteDataRef.current[entry.noteId]),
+      });
+      restoreSnapshot(entry.noteId, entry.snapshot);
+    }
     setCanUndo(undoStack.current.length > 0);
-    setCanRedo(true);
+    setCanRedo(redoStack.current.length > 0);
   };
 
   const redo = () => {
-    if (redoStack.current.length === 0) return;
-    const entry = redoStack.current.pop();
-    if (!entry.snapshot) {
-      // The note was deleted when undo saved this entry — nothing to redo to
-      setCanRedo(redoStack.current.length > 0);
-      return;
+    const entry = takeLive(redoStack.current);
+    if (entry) {
+      undoStack.current.push({
+        noteId: entry.noteId,
+        snapshot: cloneNote(noteDataRef.current[entry.noteId]),
+      });
+      restoreSnapshot(entry.noteId, entry.snapshot);
     }
-    const currentNote = noteDataRef.current[entry.noteId];
-    // Save current state to undo stack (may be null if note was deleted)
-    undoStack.current.push({
-      noteId: entry.noteId,
-      snapshot: currentNote ? cloneNote(currentNote) : null,
-    });
-    restoreSnapshot(entry.noteId, entry.snapshot);
-    setCanUndo(true);
+    setCanUndo(undoStack.current.length > 0);
     setCanRedo(redoStack.current.length > 0);
   };
 
@@ -283,6 +304,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     adoptNoteData,
     applyExternalNote,
     remapNoteFolders,
+    replaceNoteData,
     commitTextChange,
     pushHistory,
     isUndoRedo,

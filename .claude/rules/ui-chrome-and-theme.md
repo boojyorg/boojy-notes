@@ -393,10 +393,11 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
   files travel together. Pending edits under the folder are flushed first, or a late write would
   land at the old path. The note index is rewritten under the old prefix so IDs (and the open
-  note) survive; the notes' `folder` fields then follow through `remapNoteFolders` (useHistory),
-  which also rewrites every undo snapshot, so a later undo of a text edit cannot restore a stale
-  path and move one file back into a recreated old directory. Not an edit: nothing becomes dirty,
-  no file is rewritten, no mtime moves, and the rename itself is not undoable. The watcher is
+  note) survive; the notes' `folder` fields then follow through `remapNoteFolders` (useHistory).
+  Undo never restores a folder (see "One owner for note state"), so no snapshot is rewritten and
+  a later undo of a text edit cannot move a file back into a recreated old directory. Not an
+  edit: nothing becomes dirty, no file is rewritten, no mtime moves, and the rename itself is not
+  undoable. The watcher is
   suppressed under both directories for the write window (`suppressWatcherTree`); an event that
   escapes re-reads what is already true.
 - **Delete waits for the Trash.** The notes are removed from state, the debounced flush trashes
@@ -610,6 +611,53 @@ root is the app's, made through state; Chromium never mutates across roots.**
   outside any. If something the click opened holds focus by then (a tag click opens the search
   palette), the rescue steps aside: the palette's field was focused for one frame and Escape
   and the arrows then went to the editor. Focus resting on the body still gets the rescue.
+
+## One owner for note state
+
+Note state has two copies by design: React state, and `useHistory`'s keystroke ref, which runs
+ahead of state for the 300 ms text-commit debounce and is then published over it. The ref stops
+syncing from state while a commit is pending, so a change written to state alone in that window
+was reverted when the commit fired, and left no undo entry. The rule (2026-09-08): **every
+change to note state goes through a `useHistory` action, which applies it to the ref and state
+together; the raw setter is not exposed.** Six actions, one per kind of change; a seventh is a
+smell.
+
+| Action | For | Undo entry |
+| --- | --- | --- |
+| `commitTextChange` | typing (debounced publish) | one per 500 ms burst |
+| `commitNoteData` | a user edit: a block, a checkbox, a rename, a new or deleted note, a block drop | yes |
+| `adoptNoteData` | a change of record: the filename a write produced, a move between folders (drag, Move to) | no |
+| `applyExternalNote` | one note as the disk holds it: an outside edit, a conflict copy | drops the note's entries |
+| `remapNoteFolders` | a directory rename or move | no |
+| `replaceNoteData` | the whole vault as the disk holds it: the initial load, a vault switch, the rebuild after an outside delete | keeps entries for notes that still exist |
+
+- **History is the editor's.** A snapshot restores the title and the blocks and keeps the live
+  `folder`, so undoing the typing that followed a move never writes the file back to its old
+  place; a move is therefore not itself undoable, like a move in Finder is not undoable from
+  inside a document. Undo never conjures a note: entries for a note that is gone (deleted here,
+  or left in another vault) are discarded on the way to the next live one, and a vault switch
+  drops them outright. The OS Trash is the recovery surface.
+- **The rebuild after an outside delete keeps what exists only here**, taken from the keystroke
+  ref: drafts, and every note with edits not yet written, whether its write is scheduled or its
+  keystrokes are still inside the text commit. Those are marked dirty and written; a note
+  deleted outside while its edits were unsaved comes back as a file rather than being lost, and
+  a clean one goes. A note the user has deleted whose Trash move is still pending stays deleted.
+  Before this, the rebuild inside a pending commit put the deleted note back, dropped
+  keystrokes, and rewrote every note in the vault.
+- **A vault switch flushes, empties, then switches.** `changeNotesDir` writes the old vault's
+  pending edits (the keystroke ref's version) before the picker opens, and the picker is modal;
+  once a folder is chosen the old notes leave state (`replaceNoteData({})`) and the dirty,
+  deleted, conflicted and retry bookkeeping is cleared before the new vault is read, so nothing
+  of the old vault can be written into the new one. What could not be written before the switch
+  is left behind, as at quit.
+- **A version that has been written is not written again.** The flush records the object it
+  wrote as the last version accounted for (`prevNoteData` in `useFileSystem`), so the text
+  commit that later publishes that same object marks nothing dirty. Before this, a blur or quit
+  flush was followed by a second identical write when the commit fired, and after a vault
+  switch that second write would have landed in the new vault.
+- Proven in `note-ownership.spec.ts` (the real app: undo after a move, a block drop inside the
+  commit window, an outside delete while typing, a vault switch with pending edits) and the
+  unit tests beside `useHistory` and `useFileSystem`.
 
 ## The paragraph model
 

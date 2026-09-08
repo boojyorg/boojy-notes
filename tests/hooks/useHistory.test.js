@@ -1,6 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useHistory } from "../../src/hooks/useHistory.js";
@@ -9,26 +10,30 @@ import { buildPastedBlocks } from "../../src/utils/pasteBlocks";
 
 const NOTE_ID = "note-1";
 
+// The hook is rendered the way NoteDataProvider renders it: over a real
+// useState, so the `noteData` it receives is always the state its setter
+// produced. (A fixed prop would be re-synced into the ref on every render the
+// hook's own state changes cause, wiping notes that only the setter knew.)
+// `setNoteData` is a spy over the real setter for call-count assertions.
 function setup(initialBlocks = [paragraph("hello")]) {
   let noteData = makeNoteData(NOTE_ID, initialBlocks);
-  const setNoteData = vi.fn((updaterOrValue) => {
-    if (typeof updaterOrValue === "function") {
-      noteData = updaterOrValue(noteData);
-    } else {
-      noteData = updaterOrValue;
-    }
-  });
+  const setNoteData = vi.fn();
   const syncGeneration = { current: 0 };
   const activeNoteRef = { current: NOTE_ID };
 
-  const { result, rerender } = renderHook(
-    ({ nd }) => useHistory(nd, setNoteData, syncGeneration, activeNoteRef),
-    { initialProps: { nd: noteData } },
-  );
+  const { result } = renderHook(() => {
+    const [nd, setNd] = useState(noteData);
+    noteData = nd;
+    const set = (updaterOrValue) => {
+      setNoteData(updaterOrValue);
+      noteData = typeof updaterOrValue === "function" ? updaterOrValue(noteData) : updaterOrValue;
+      setNd(noteData);
+    };
+    return useHistory(nd, set, syncGeneration, activeNoteRef);
+  });
 
   return {
     result,
-    rerender: () => rerender({ nd: noteData }),
     getNoteData: () => noteData,
     setNoteData,
     syncGeneration,
@@ -781,6 +786,164 @@ describe("applyExternalNote", () => {
     expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("from disk");
     expect(getNoteData()[OTHER].title).toBe("Other");
     expect(result.current.canUndo).toBe(false);
+    vi.useRealTimers();
+  });
+});
+
+// ─── One owner: history is the editor's, and never conjures or moves a note ───
+describe("history ownership", () => {
+  const OTHER = "note-2";
+  const other = {
+    id: OTHER,
+    title: "Other",
+    content: { title: "Other", blocks: [paragraph("o")] },
+  };
+
+  it("undo restores the title and blocks but keeps the live folder, so undoing typing after a move never moves the file back", async () => {
+    const { result, getNoteData } = setup();
+    act(() => {
+      result.current.commitNoteData((prev) => ({
+        ...prev,
+        [NOTE_ID]: {
+          ...prev[NOTE_ID],
+          content: { ...prev[NOTE_ID].content, blocks: [paragraph("hello typed")] },
+        },
+      }));
+    });
+    await act(() => flushMicrotasks());
+    // A drag into a folder: a change of record, no entry of its own.
+    act(() => {
+      result.current.adoptNoteData((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], folder: "Work" },
+      }));
+    });
+    expect(getNoteData()[NOTE_ID].folder).toBe("Work");
+
+    act(() => result.current.undo());
+    expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("hello");
+    expect(getNoteData()[NOTE_ID].folder).toBe("Work");
+    expect(result.current.noteDataRef.current[NOTE_ID].folder).toBe("Work");
+
+    act(() => result.current.redo());
+    expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("hello typed");
+    expect(getNoteData()[NOTE_ID].folder).toBe("Work");
+  });
+
+  it("undo after a folder rename keeps the renamed folder without any snapshot rewriting", async () => {
+    const { result, getNoteData } = setup();
+    act(() => {
+      result.current.adoptNoteData((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], folder: "Old" },
+      }));
+    });
+    act(() => {
+      result.current.commitNoteData((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], title: "Renamed" },
+      }));
+    });
+    await act(() => flushMicrotasks());
+    let changed;
+    act(() => {
+      changed = result.current.remapNoteFolders((f) => (f === "Old" ? "New" : f));
+    });
+    expect(changed).toBe(true);
+    expect(getNoteData()[NOTE_ID].folder).toBe("New");
+
+    act(() => result.current.undo());
+    expect(getNoteData()[NOTE_ID].title).not.toBe("Renamed");
+    expect(getNoteData()[NOTE_ID].folder).toBe("New");
+  });
+
+  it("undo never brings a deleted note back: its entries are discarded and the next live entry is taken", async () => {
+    const { result, getNoteData, activeNoteRef } = setup();
+    // The other note is made, edited and deleted while it is the open one, as
+    // deleteNote does: two entries whose snapshots hold it.
+    activeNoteRef.current = OTHER;
+    act(() => {
+      result.current.commitNoteData((prev) => ({ ...prev, [OTHER]: other }));
+    });
+    await act(() => flushMicrotasks());
+    act(() => {
+      result.current.commitNoteData((prev) => ({
+        ...prev,
+        [OTHER]: { ...prev[OTHER], title: "Other, edited" },
+      }));
+    });
+    await act(() => flushMicrotasks());
+    act(() => {
+      result.current.commitNoteData((prev) => {
+        const next = { ...prev };
+        delete next[OTHER];
+        return next;
+      });
+    });
+    await act(() => flushMicrotasks());
+    // Then an edit to the first note, so its entry is the newest.
+    activeNoteRef.current = NOTE_ID;
+    act(() => {
+      result.current.commitNoteData((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], title: "First, edited" },
+      }));
+    });
+    await act(() => flushMicrotasks());
+
+    act(() => result.current.undo());
+    expect(getNoteData()[NOTE_ID].title).not.toBe("First, edited");
+    expect(getNoteData()[OTHER]).toBeUndefined();
+    // The remaining entries all belong to the deleted note (before this, the
+    // first of them put it back in state and the next flush wrote it to a
+    // fresh file); undo consumes them without conjuring it, and the stack is
+    // then empty.
+    act(() => result.current.undo());
+    expect(getNoteData()[OTHER]).toBeUndefined();
+    expect(result.current.noteDataRef.current[OTHER]).toBeUndefined();
+    expect(result.current.canUndo).toBe(false);
+    act(() => result.current.redo());
+    expect(getNoteData()[NOTE_ID].title).toBe("First, edited");
+  });
+
+  it("replaceNoteData takes the whole vault: pending text is superseded, and history and the quit net keep only notes that still exist", async () => {
+    vi.useFakeTimers();
+    const { result, getNoteData } = setup();
+    act(() => {
+      result.current.commitNoteData((prev) => ({ ...prev, [OTHER]: other }));
+    });
+    await act(async () => {});
+    // Typing in the active note: the commit is pending.
+    act(() => {
+      result.current.commitTextChange((prev) => ({
+        ...prev,
+        [NOTE_ID]: { ...prev[NOTE_ID], content: { blocks: [paragraph("typed")] } },
+      }));
+    });
+    await act(async () => {});
+    expect(result.current.hasPendingFlush.current).toBe(true);
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(true);
+
+    // A vault switch: a different vault, where only the other note's id exists.
+    const disk = { [OTHER]: { ...other, title: "Other, on disk" } };
+    act(() => {
+      result.current.replaceNoteData(disk);
+    });
+    expect(getNoteData()).toBe(disk);
+    expect(result.current.noteDataRef.current).toBe(disk);
+    expect(result.current.hasPendingFlush.current).toBe(false);
+    expect(result.current.textOnlyEditForEditor.current).toBe(false);
+    expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(false);
+    // The pending commit does not fire and put the old vault's note back.
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(getNoteData()).toBe(disk);
+    // Undo cannot write the old vault's note into this one.
+    expect(result.current.canUndo).toBe(false);
+    act(() => result.current.undo());
+    expect(getNoteData()).toBe(disk);
     vi.useRealTimers();
   });
 });

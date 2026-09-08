@@ -24,6 +24,24 @@ vi.mock("../../src/services/apiProvider", () => ({
 
 import { conflictCopyTitle, persistedEquals, useFileSystem } from "../../src/hooks/useFileSystem";
 
+/**
+ * The useHistory actions and refs useFileSystem is wired to in BoojyNotes,
+ * over the test's `setNoteData` spy: the whole-vault replacement reaches the
+ * spy with the map, so a test can read what disk data was taken.
+ */
+function makeLinks(setNoteData, overrides = {}) {
+  return {
+    unflushedNotes: { current: new Set() },
+    latestNoteDataRef: { current: {} },
+    activeNoteRef: { current: null },
+    replaceNoteData: (next) => setNoteData(next),
+    applyExternalNote: vi.fn(),
+    adoptNoteData: vi.fn(),
+    remapNoteFolders: vi.fn(() => false),
+    ...overrides,
+  };
+}
+
 describe("useFileSystem — initial load", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,15 +55,16 @@ describe("useFileSystem — initial load", () => {
     vi.useRealTimers();
   });
 
-  function renderFS({ noteData = {}, syncGeneration = { current: 0 } } = {}) {
+  function renderFS({ noteData = {}, syncGeneration = { current: 0 }, links: extra } = {}) {
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
     const onError = vi.fn();
+    const links = makeLinks(setNoteData, extra);
     const result = renderHook(
-      ({ data }) => useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, onError, links),
       { initialProps: { data: noteData } },
     );
-    return { ...result, setNoteData, setCustomFolders, syncGeneration, onError };
+    return { ...result, setNoteData, setCustomFolders, syncGeneration, onError, links };
   }
 
   it("bumps syncGeneration when disk notes arrive, so restored notes re-sync their DOM", async () => {
@@ -121,13 +140,20 @@ describe("useFileSystem — initial load", () => {
     );
   });
 
-  it("keeps an unflushed dirty note when a file-deleted event rebuilds state from disk", async () => {
-    // The delete-triggered rebuild replaces state with disk content; a note
-    // edited within the write-debounce window exists only in memory and must
-    // survive, or a slow OS-trash move could silently discard it.
+  it("rebuilds from disk after an outside delete through replaceNoteData: unsaved edits survive from the keystroke ref and are written, a clean deleted note goes", async () => {
+    // The rebuild replaces state with disk content. What exists only here
+    // must survive it: a note whose write is scheduled (dirty), and one whose
+    // keystrokes are still inside the text commit (unflushed, ahead of
+    // state), taken from the keystroke ref. Before this, the raw setter was
+    // used, and a text commit pending at that moment republished the stale
+    // ref: the deleted note came back, and every rebuilt object was marked
+    // dirty and rewritten.
     const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+    const gone = { id: "n3", title: "Gone", content: { title: "Gone", blocks: [] } };
     const edited = { id: "n2", title: "Edited", content: { title: "Edited", blocks: [] } };
-    readAllNotes.mockResolvedValue({ n1: saved });
+    const typed = { ...edited, title: "Edited, typed" };
+    readAllNotes.mockResolvedValue({ n1: saved, n3: gone });
+    writeNote.mockResolvedValue({});
     let fileDeletedHandler;
     window.electronAPI.onFileDeleted = vi.fn((handler) => {
       fileDeletedHandler = handler;
@@ -135,25 +161,38 @@ describe("useFileSystem — initial load", () => {
     });
     // The delete handler reads disk via window.electronAPI, not the api provider.
     window.electronAPI.readAllNotes = vi.fn(async () => ({ n1: saved }));
-    const { result, rerender, setNoteData } = renderFS({ noteData: { n1: saved } });
+    const latestNoteDataRef = { current: { n1: saved, n2: edited, n3: gone } };
+    const unflushedNotes = { current: new Set() };
+    const { result, rerender, setNoteData } = renderFS({
+      noteData: { n1: saved, n3: gone },
+      links: { latestNoteDataRef, unflushedNotes },
+    });
 
     await waitFor(() => expect(result.current.loading).toBe(false));
-    // First rerender consumes the initial load's external-update flag (the
-    // mocked setNoteData never re-renders with disk data on its own)…
-    await act(async () => rerender({ data: { n1: saved } }));
-    // …then editing n2 marks it dirty; its debounced write has not fired yet.
-    await act(async () => rerender({ data: { n1: saved, n2: edited } }));
+    await act(async () => rerender({ data: { n1: saved, n3: gone } }));
+    // Editing n2 marks it dirty; its debounced write has not fired yet.
+    vi.useFakeTimers();
+    await act(async () => rerender({ data: { n1: saved, n2: edited, n3: gone } }));
+    // Then a keystroke: the ref is ahead of state and the commit is pending.
+    latestNoteDataRef.current = { n1: saved, n2: typed, n3: gone };
+    unflushedNotes.current.add("n2");
 
     setNoteData.mockClear();
     await act(async () => {
-      fileDeletedHandler({ filePath: "/notes/Other.md" });
+      fileDeletedHandler({ filePath: "/notes/Gone.md" });
     });
-    await waitFor(() => expect(setNoteData).toHaveBeenCalled());
+    await act(async () => vi.advanceTimersByTimeAsync(0));
 
-    const updater = setNoteData.mock.calls[0][0];
-    const rebuilt = updater({ n1: saved, n2: edited });
-    expect(rebuilt.n2).toBe(edited);
+    expect(setNoteData).toHaveBeenCalledTimes(1);
+    const rebuilt = setNoteData.mock.calls[0][0];
+    expect(rebuilt).toEqual({ n1: saved, n2: typed });
+    expect(rebuilt.n2).toBe(typed);
     expect(rebuilt.n1).toBe(saved);
+
+    // The kept note is written, with the typed text; nothing from disk is.
+    await act(async () => rerender({ data: rebuilt }));
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(typed);
   });
 
   it("keeps a failed write dirty and retries it automatically", async () => {
@@ -235,10 +274,9 @@ describe("useFileSystem — quit-flush safety set", () => {
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
     const syncGeneration = { current: 0 };
-    const quitSafety = { unflushedNotes, latestNoteDataRef };
+    const quitSafety = makeLinks(setNoteData, { unflushedNotes, latestNoteDataRef });
     const hook = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, quitSafety),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, onError, quitSafety),
       { initialProps: { data: { n1: saved } } },
     );
     await waitFor(() => expect(hook.result.current.loading).toBe(false));
@@ -342,10 +380,9 @@ describe("useFileSystem — a note edited again while its own write is in flight
     const setCustomFolders = vi.fn();
     const syncGeneration = { current: 0 };
     const onError = vi.fn();
-    const links = { unflushedNotes, latestNoteDataRef };
+    const links = makeLinks(setNoteData, { unflushedNotes, latestNoteDataRef });
     const hook = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, links),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, onError, links),
       { initialProps: { data: initial } },
     );
     mounted = hook;
@@ -438,10 +475,9 @@ describe("useFileSystem — edited-note reporting for recency", () => {
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
     const syncGeneration = { current: 0 };
-    const links = { onNotesEdited };
+    const links = makeLinks(setNoteData, { onNotesEdited });
     const { result, rerender } = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), links),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, vi.fn(), links),
       { initialProps: { data: {} } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -478,15 +514,15 @@ describe("useFileSystem — the title follows the filename the write produced", 
     vi.useRealTimers();
   });
 
-  async function renderMoved(links) {
+  async function renderMoved(extra) {
     readAllNotes.mockResolvedValue({ n1: saved });
     // Stable setters, as in the quit-flush tests: the initial-load effect keys on them.
     const setNoteData = vi.fn();
     const setCustomFolders = vi.fn();
     const syncGeneration = { current: 0 };
+    const links = makeLinks(setNoteData, extra);
     const hook = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, vi.fn(), links),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, vi.fn(), links),
       { initialProps: { data: { n1: saved } } },
     );
     await waitFor(() => expect(hook.result.current.loading).toBe(false));
@@ -632,18 +668,15 @@ describe("useFileSystem — outside edits", () => {
     const setCustomFolders = vi.fn();
     const onError = vi.fn();
     const syncGeneration = { current: 0 };
-    const links = {
+    const links = makeLinks(setNoteData, {
       unflushedNotes: { current: new Set(unflushed) },
       latestNoteDataRef: { current: latest },
       activeNoteRef: { current: active },
-      applyExternalNote: vi.fn(),
-      adoptNoteData: vi.fn(),
       onExternalConflict: vi.fn(),
       onNotesEdited: vi.fn(),
-    };
+    });
     const hook = renderHook(
-      ({ data }) =>
-        useFileSystem(data, setNoteData, setCustomFolders, syncGeneration, onError, links),
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, onError, links),
       { initialProps: { data: { n1: alpha, n2: beta } } },
     );
     await waitFor(() => expect(hook.result.current.loading).toBe(false));
@@ -816,5 +849,137 @@ describe("useFileSystem — outside edits", () => {
     expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
     expect(links.onExternalConflict).toHaveBeenCalledTimes(1);
     expect(flushed().every((n) => /conflicted copy/.test(n.title))).toBe(true);
+  });
+});
+
+describe("useFileSystem — changing the vault", () => {
+  const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+  const typed = { ...saved, title: "Saved, typed" };
+  const theirs = { id: "m1", title: "Theirs", content: { title: "Theirs", blocks: [] } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function mount({ latest = { n1: saved }, unflushed = [] } = {}) {
+    readAllNotes.mockResolvedValue({ n1: saved });
+    const order = [];
+    writeNote.mockImplementation(async (n) => {
+      order.push(`write ${n.title}`);
+      return {};
+    });
+    window.electronAPI.chooseNotesDir = vi.fn(async () => {
+      order.push("choose");
+      return "/new";
+    });
+    window.electronAPI.readAllNotes = vi.fn(async () => ({ m1: theirs }));
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const onError = vi.fn();
+    const links = makeLinks(setNoteData, {
+      latestNoteDataRef: { current: latest },
+      unflushedNotes: { current: new Set(unflushed) },
+    });
+    links.replaceNoteData = vi.fn((next) => {
+      order.push(`replace ${Object.keys(next).join(",") || "(empty)"}`);
+      setNoteData(next);
+    });
+    const hook = renderHook(
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, onError, links),
+      { initialProps: { data: { n1: saved } } },
+    );
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    await act(async () => hook.rerender({ data: { n1: saved } }));
+    order.length = 0;
+    links.replaceNoteData.mockClear();
+    return { ...hook, order, links, onError };
+  }
+
+  it("writes the old vault's unsaved edits before the picker opens, empties state before anything else can run, then takes the new vault", async () => {
+    const { result, order, rerender, onError } = await mount({
+      latest: { n1: typed },
+      unflushed: ["n1"],
+    });
+    await act(async () => result.current.changeNotesDir());
+
+    expect(order).toEqual(["write Saved, typed", "choose", "replace (empty)", "replace m1"]);
+    expect(result.current.notesDir).toBe("/new");
+    expect(onError).not.toHaveBeenCalled();
+
+    // The text commit that was pending publishes the version already
+    // written; that is not a change, so nothing is written into the new vault.
+    vi.useFakeTimers();
+    writeNote.mockClear();
+    await act(async () => rerender({ data: { m1: theirs } }));
+    await act(async () => vi.advanceTimersByTimeAsync(600));
+    expect(writeNote).not.toHaveBeenCalled();
+  });
+
+  it("a cancelled picker changes nothing", async () => {
+    const { result, order, links } = await mount();
+    window.electronAPI.chooseNotesDir = vi.fn(async () => null);
+    await act(async () => result.current.changeNotesDir());
+    expect(order).toEqual([]);
+    expect(links.replaceNoteData).not.toHaveBeenCalled();
+    expect(result.current.notesDir).toBe("/notes");
+  });
+});
+
+describe("useFileSystem — a written version is accounted for", () => {
+  const saved = { id: "n1", title: "Saved", content: { title: "Saved", blocks: [] } };
+  const typed = { ...saved, title: "Saved, typed" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.electronAPI = {
+      onFileChanged: vi.fn(() => () => {}),
+      onFileDeleted: vi.fn(() => () => {}),
+    };
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a blur/quit flush of the keystroke ref's version is not written again when the text commit publishes that same object", async () => {
+    readAllNotes.mockResolvedValue({ n1: saved });
+    writeNote.mockResolvedValue({});
+    const setNoteData = vi.fn();
+    const setCustomFolders = vi.fn();
+    const syncGeneration = { current: 0 };
+    const latestNoteDataRef = { current: { n1: typed } };
+    const unflushedNotes = { current: new Set(["n1"]) };
+    const links = makeLinks(setNoteData, { latestNoteDataRef, unflushedNotes });
+    const { result, rerender } = renderHook(
+      ({ data }) => useFileSystem(data, setCustomFolders, syncGeneration, vi.fn(), links),
+      { initialProps: { data: { n1: saved } } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => rerender({ data: { n1: saved } }));
+
+    // Blur: the ref is ahead of state and is written.
+    await act(async () => result.current.flushToDisk(latestNoteDataRef.current, ["n1"]));
+    expect(writeNote).toHaveBeenCalledExactlyOnceWith(typed);
+
+    // The commit publishes the object just written: no second write.
+    vi.useFakeTimers();
+    await act(async () => rerender({ data: { n1: typed } }));
+    await act(async () => vi.advanceTimersByTimeAsync(600));
+    expect(writeNote).toHaveBeenCalledTimes(1);
+
+    // A later keystroke is a new object and is written.
+    const more = { ...typed, title: "Saved, typed more" };
+    latestNoteDataRef.current = { n1: more };
+    await act(async () => rerender({ data: { n1: more } }));
+    await act(async () => vi.advanceTimersByTimeAsync(600));
+    expect(writeNote).toHaveBeenCalledTimes(2);
+    expect(writeNote).toHaveBeenLastCalledWith(more);
   });
 });

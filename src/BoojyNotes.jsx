@@ -62,7 +62,6 @@ export default function BoojyNotes() {
   // ── Contexts ───────────────────────────────────────────────────────
   const { noteData } = useNoteData();
   const {
-    setNoteData,
     syncGeneration,
     activeNoteRef,
     undo,
@@ -71,8 +70,8 @@ export default function BoojyNotes() {
     adoptNoteData,
     applyExternalNote,
     remapNoteFolders,
+    replaceNoteData,
     commitTextChange,
-    pushHistory,
     noteDataRef,
     textOnlyEdit,
     textOnlyEditForEditor,
@@ -198,12 +197,13 @@ export default function BoojyNotes() {
     changeNotesDir,
     flushToDisk,
     folderOps,
-  } = useFileSystem(noteData, setNoteData, setCustomFolders, syncGeneration, showToast, {
+  } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
     latestNoteDataRef: noteDataRef,
     activeNoteRef,
     applyExternalNote,
     adoptNoteData,
+    replaceNoteData,
     onExternalConflict,
     onNotesEdited: markEdited,
     onTitleResolved,
@@ -337,8 +337,7 @@ export default function BoojyNotes() {
   const { blockDrag, startHandleDrag, cancelBlockDrag } = useBlockDrag({
     noteDataRef,
     activeNoteRef,
-    setNoteData,
-    pushHistory,
+    commitNoteData,
     blockRefs,
     editorRef,
     editorScrollRef,
@@ -351,7 +350,7 @@ export default function BoojyNotes() {
   const noteTitleSetRef = useRef(null);
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag } = useSidebarDrag({
     noteDataRef,
-    setNoteData,
+    adoptNoteData,
     sidebarScrollRef,
     accentColor,
     setDragTooltip,
@@ -647,9 +646,11 @@ export default function BoojyNotes() {
     [deleteNote, clearSelection, askBeforeDeleting],
   );
 
+  // A location is a change of record, adopted without an undo entry; undo
+  // never moves a file (see restoreSnapshot in useHistory).
   const bulkMoveNotes = useCallback(
     (ids, folder) => {
-      setNoteData((prev) => {
+      adoptNoteData((prev) => {
         const next = { ...prev };
         for (const id of ids) {
           if (next[id]) next[id] = { ...next[id], folder: folder || null };
@@ -658,7 +659,7 @@ export default function BoojyNotes() {
       });
       clearSelection();
     },
-    [setNoteData, clearSelection],
+    [adoptNoteData, clearSelection],
   );
 
   // ── Render ──────────────────────────────────────────────────────────

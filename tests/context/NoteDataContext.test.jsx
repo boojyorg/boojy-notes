@@ -4,7 +4,8 @@ import { renderHook, act } from "@testing-library/react";
 
 // Mock useHistory to avoid pulling in the full history machinery
 vi.mock("../../src/hooks/useHistory", () => ({
-  useHistory: () => ({
+  useHistory: (_noteData, setNoteData) => ({
+    replaceNoteData: setNoteData,
     canUndo: false,
     canRedo: false,
     undo: vi.fn(),
@@ -99,8 +100,8 @@ describe("NoteDataContext", () => {
     });
   });
 
-  describe("setNoteData", () => {
-    it("updates noteData via actions context", async () => {
+  describe("replaceNoteData", () => {
+    it("replaces noteData via actions context; the raw setter is not exposed", async () => {
       const { NoteDataProvider, useNoteData, useNoteDataActions } = await importFresh();
       const { result } = renderHook(
         () => ({ data: useNoteData(), actions: useNoteDataActions() }),
@@ -114,10 +115,11 @@ describe("NoteDataContext", () => {
       };
 
       act(() => {
-        result.current.actions.setNoteData({ "note-new": newNote });
+        result.current.actions.replaceNoteData({ "note-new": newNote });
       });
 
       expect(result.current.data.noteData).toEqual({ "note-new": newNote });
+      expect(result.current.actions).not.toHaveProperty("setNoteData");
     });
   });
 
@@ -129,12 +131,12 @@ describe("NoteDataContext", () => {
       expect(result.current).not.toHaveProperty("setNoteData");
     });
 
-    it("useNoteDataActions returns actions with setNoteData", async () => {
+    it("useNoteDataActions returns the useHistory actions", async () => {
       const { NoteDataProvider, useNoteDataActions } = await importFresh();
       const { result } = renderHook(() => useNoteDataActions(), {
         wrapper: NoteDataProvider,
       });
-      expect(result.current).toHaveProperty("setNoteData");
+      expect(result.current).toHaveProperty("replaceNoteData");
       expect(result.current).toHaveProperty("commitNoteData");
       expect(result.current).toHaveProperty("undo");
       expect(result.current).toHaveProperty("redo");
