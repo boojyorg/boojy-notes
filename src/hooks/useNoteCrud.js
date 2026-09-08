@@ -227,15 +227,6 @@ export function useNoteCrud({
     return id;
   };
 
-  const promoteDraft = (noteId) => {
-    commitNoteData((prev) => {
-      const note = prev[noteId];
-      if (!note?._draft) return prev;
-      const { _draft, ...clean } = note;
-      return { ...prev, [noteId]: clean };
-    });
-  };
-
   const discardDraft = (noteId) => {
     commitNoteData((prev) => {
       if (!prev[noteId]?._draft) return prev;
@@ -255,7 +246,6 @@ export function useNoteCrud({
     deleteFolder,
     createFolder,
     createDraftNote,
-    promoteDraft,
     discardDraft,
   };
 }

@@ -188,10 +188,15 @@ hardcoded green); swap them for Lucide when touching those files.
   the disk version adopted, the copy adopted (dirty, so the ordinary flush rewrites it with
   any keystrokes typed during the write), and the editor moved to the copy with the caret's
   block and offset carried through the focus refs. A failed copy replaces nothing and says so
-  once, and the note is remembered as conflicted (`conflicted` in `useFileSystem`): from then
-  on every flush, the debounce, the 5 s retry, blur and quit alike, writes it as the copy and
-  never under its own name, until a copy write succeeds. **Once a conflict has been detected,
-  the local version never goes over the outside edit's path.** The one residual: if the copy
+  once. The note is remembered as conflicted (`conflicted` in `useFileSystem`) from the moment
+  the conflict is seen, before the copy's write begins and not only once it has failed
+  (2026-09-08, review §2.9): from then on every flush, the debounce, the 5 s retry, blur and
+  quit alike, writes it as the copy and never under its own name, until a copy write succeeds,
+  and a flush that lands while the copy is being written waits for that write (`copyInFlight`)
+  instead of starting a second copy. Before this the entry was made on failure alone, and a blur
+  or quit inside the copy's ~10 ms write re-marked the note from the quit/blur net and wrote the
+  local version over the outside edit. **Once a conflict has been detected, the local version
+  never goes over the outside edit's path.** The one residual: if the copy
   still cannot be written inside the 2 s the main process holds a quit, the local version is
   lost with the quit, as any unsaved work is; it is never resolved by overwriting the file.
   No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
@@ -653,7 +658,7 @@ smell.
 
 | Action | For | Undo entry |
 | --- | --- | --- |
-| `commitTextChange` | typing (debounced publish) | one per 500 ms burst |
+| `commitTextChange` | typing (debounced publish); ends a draft at its first character | one per 500 ms burst |
 | `commitNoteData` | a user edit: a block, a checkbox, a rename, a new or deleted note, a block drop | yes |
 | `adoptNoteData` | a change of record: the filename a write produced, a move between folders (drag, Move to) | no |
 | `applyExternalNote` | one note as the disk holds it: an outside edit, a conflict copy | drops the note's entries |
@@ -666,6 +671,20 @@ smell.
   inside a document. Undo never conjures a note: entries for a note that is gone (deleted here,
   or left in another vault) are discarded on the way to the next live one, and a vault switch
   drops them outright. The OS Trash is the recovery surface.
+- **A draft is a note that has never held text, and it ends in the ref at the keystroke that
+  first gives it a title or a character of body** (2026-09-08, review §2.6). `commitTextChange`
+  strips `_draft` from the active note as soon as it has text, so everything that reads the ref
+  inside the commit window sees a note: the switch that discards a draft (`discardDraft`), the
+  quit and blur flush that skips one, the rebuild after an outside delete. Before this an effect
+  on React state promoted the draft up to 300 ms after the keystroke, and one character typed
+  then a click on another note, or Cmd+Q, deleted it with no undo. Only the *last* keystroke of
+  a burst is inside that window (a second keystroke publishes the first at once), which is why
+  the review traced it and nobody hit it typing a sentence. Undo keeps the live draft state as
+  it keeps the live folder: undoing a written note's first character never makes it a draft
+  again for the next switch to discard while its file stays on disk. There is no `promoteDraft`;
+  `createDraftNote` and `discardDraft` are the whole lifecycle, and a draft with no text is still
+  never written or trashed. `pending-edits-lifecycle.spec.ts` proves the name, the body and the
+  quit in the real app.
 - **The rebuild after an outside delete keeps what exists only here**, taken from the keystroke
   ref: drafts, and every note with edits not yet written, whether its write is scheduled or its
   keystrokes are still inside the text commit. Those are marked dirty and written; a note

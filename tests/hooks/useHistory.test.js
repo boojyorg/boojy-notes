@@ -325,6 +325,84 @@ describe("useHistory", () => {
       expect(result.current.unflushedNotes.current.has(NOTE_ID)).toBe(true);
     });
 
+    it("ends a draft in the ref at the keystroke that first gives it text, so a switch or a quit inside the commit window sees a note", () => {
+      // Regression (review 2026-09-07, §2.6): the draft was promoted by an
+      // effect on React state, 300 ms after the keystroke; the switch's
+      // discard and the quit flush read the ref before then and saw a draft.
+      const { result, activeNoteRef } = setup();
+      const draft = {
+        id: "d1",
+        title: "",
+        folder: null,
+        content: { title: "", blocks: [{ id: "b1", type: "p", text: "" }] },
+        _draft: true,
+      };
+      act(() => result.current.commitNoteData((prev) => ({ ...prev, d1: draft })));
+      activeNoteRef.current = "d1";
+
+      const typed = (text) => (prev) => ({
+        ...prev,
+        d1: {
+          ...prev.d1,
+          content: { ...prev.d1.content, blocks: [{ id: "b1", type: "p", text }] },
+        },
+      });
+      // Whitespace alone is not text: the draft stays a draft.
+      act(() => result.current.commitTextChange(typed("  ")));
+      expect(result.current.noteDataRef.current.d1._draft).toBe(true);
+
+      act(() => result.current.commitTextChange(typed("Kept")));
+      expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
+      expect(result.current.noteDataRef.current.d1.content.blocks[0].text).toBe("Kept");
+      expect(result.current.unflushedNotes.current.has("d1")).toBe(true);
+    });
+
+    it("undo keeps a note a note: the snapshot of the empty draft does not make it a draft again", async () => {
+      const { result, activeNoteRef } = setup();
+      const draft = {
+        id: "d1",
+        title: "",
+        folder: null,
+        content: { title: "", blocks: [{ id: "b1", type: "p", text: "" }] },
+        _draft: true,
+      };
+      act(() => result.current.commitNoteData((prev) => ({ ...prev, d1: draft })));
+      activeNoteRef.current = "d1";
+      act(() =>
+        result.current.commitTextChange((prev) => ({
+          ...prev,
+          d1: {
+            ...prev.d1,
+            content: { ...prev.d1.content, blocks: [{ id: "b1", type: "p", text: "Kept" }] },
+          },
+        })),
+      );
+      await flushMicrotasks();
+      act(() => result.current.undo());
+      expect(result.current.noteDataRef.current.d1.content.blocks[0].text).toBe("");
+      expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
+    });
+
+    it("a title alone ends a draft too", () => {
+      const { result, activeNoteRef } = setup();
+      const draft = {
+        id: "d1",
+        title: "",
+        folder: null,
+        content: { title: "", blocks: [{ id: "b1", type: "p", text: "" }] },
+        _draft: true,
+      };
+      act(() => result.current.commitNoteData((prev) => ({ ...prev, d1: draft })));
+      activeNoteRef.current = "d1";
+      act(() =>
+        result.current.commitTextChange((prev) => ({
+          ...prev,
+          d1: { ...prev.d1, title: "Named", content: { ...prev.d1.content, title: "Named" } },
+        })),
+      );
+      expect(result.current.noteDataRef.current.d1._draft).toBeUndefined();
+    });
+
     it("updates noteDataRef immediately", () => {
       const { result } = setup();
 

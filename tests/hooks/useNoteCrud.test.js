@@ -422,20 +422,6 @@ describe("useNoteCrud", () => {
     });
   });
 
-  describe("promoteDraft", () => {
-    it("removes the _draft flag", () => {
-      const draftNote = { ...makeNote("d1", ""), _draft: true };
-      const { result, getNoteData } = setup({ d1: draftNote });
-
-      act(() => {
-        result.current.promoteDraft("d1");
-      });
-
-      const data = getNoteData();
-      expect(data.d1._draft).toBeUndefined();
-    });
-  });
-
   describe("discardDraft", () => {
     it("removes draft note from noteData", () => {
       const draftNote = { ...makeNote("d1", "Draft"), _draft: true };

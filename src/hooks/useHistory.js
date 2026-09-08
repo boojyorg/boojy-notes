@@ -176,6 +176,24 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     setNoteData(noteDataRef.current);
   };
 
+  // A draft is a note that has never held text. It ends at the keystroke
+  // that first gives it a title or a character of body, and it ends in the
+  // ref, so that everything reading the ref inside the commit window sees a
+  // note: the switch that discards a draft, the quit flush that skips one,
+  // the rebuild after an outside delete. Decided from React state instead,
+  // 300 ms later, the draft was discarded or skipped with its text
+  // (review 2026-09-07, §2.6). A draft is always the active note.
+  const hasText = (n) =>
+    (n?.title || "").trim() !== "" ||
+    !!n?.content?.blocks?.some((b) => (b.text || "").trim() !== "");
+  const endDraftIfText = () => {
+    const id = activeNoteRef.current;
+    const n = noteDataRef.current[id];
+    if (!n?._draft || !hasText(n)) return;
+    const { _draft, ...note } = n;
+    noteDataRef.current = { ...noteDataRef.current, [id]: note };
+  };
+
   const commitTextChange = (updater) => {
     // Flush any pending debounced text change first so it cannot overwrite this one
     if (hasPendingFlush.current && textFlushTimer.current) {
@@ -198,6 +216,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
 
     // Apply to ref immediately (for reads by other handlers)
     noteDataRef.current = updater(noteDataRef.current);
+    endDraftIfText();
     hasPendingFlush.current = true;
     textOnlyEdit.current = true;
     textOnlyEditForSidebar.current = true;
@@ -227,9 +246,12 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // title and the blocks, and never where the file lives. The live `folder`
   // is kept, so undoing the typing that followed a move (a drag, Move to, a
   // folder rename) cannot carry the old folder back into state and have the
-  // next write relocate the file. The caller has established the note still
-  // exists: a snapshot never conjures a note that was deleted or belongs to a
-  // vault no longer open.
+  // next write relocate the file. The live draft state is kept for the same
+  // reason: a note that has been written is a file, and undoing its first
+  // keystroke must not make it a draft again, which the next switch would
+  // discard while the file stays on disk. The caller has established the
+  // note still exists: a snapshot never conjures a note that was deleted or
+  // belongs to a vault no longer open.
   //
   // Two more things here are load-bearing. A text commit may still be
   // pending in `textFlushTimer`; left alone it would fire after the restore
@@ -249,9 +271,11 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     syncGeneration.current++;
     trace("restoreSnapshot (undo/redo)", noteId);
     const live = noteDataRef.current[noteId];
+    const { _draft, ...restored } = snapshot;
+    if (live._draft) restored._draft = true;
     noteDataRef.current = {
       ...noteDataRef.current,
-      [noteId]: { ...snapshot, folder: live.folder ?? null },
+      [noteId]: { ...restored, folder: live.folder ?? null },
     };
     setNoteData(noteDataRef.current);
     isUndoRedo.current = false;
