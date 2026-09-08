@@ -17,10 +17,10 @@ import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
 import {
   startWatcher,
-  suppressWatcher,
-  suppressWatcherTree,
-  suppressNextUnlink,
-  releaseUnlinkSuppression,
+  claimWrite,
+  claimUnlink,
+  releaseUnlinkClaim,
+  claimTree,
   closeWatcher,
 } from "./fileWatcher.js";
 import {
@@ -188,18 +188,15 @@ function restartWatcher() {
   startWatcher(getNotesDir, getMainWindow);
 }
 
-registerNoteFileIPC(getMainWindow, getNotesDir, suppressWatcher);
+registerNoteFileIPC(getMainWindow, getNotesDir, { claimWrite, claimUnlink, releaseUnlinkClaim });
 // Diagnostic trace (electron/trace.js): the renderer asks once whether it is
 // on, then sends its lines here to be stamped on the same clock as main's.
 ipcMain.on("trace-enabled", (event) => {
   event.returnValue = traceEnabled;
 });
 ipcMain.on("trace", (_event, line) => trace("R", line));
-registerOSTrashIPC(getNotesDir, {
-  suppressUnlink: suppressNextUnlink,
-  releaseUnlink: releaseUnlinkSuppression,
-});
-registerFolderIPC(getNotesDir, { suppressTree: suppressWatcherTree });
+registerOSTrashIPC(getNotesDir, { suppressUnlink: claimUnlink, releaseUnlink: releaseUnlinkClaim });
+registerFolderIPC(getNotesDir, { suppressTree: claimTree });
 registerSettingsIPC(getMainWindow, restartWatcher);
 setupAutoUpdater(getMainWindow);
 

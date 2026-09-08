@@ -23,12 +23,10 @@ const { registerNoteFileIPC, loadIndex, setIndexDir, indexPath } = await import(
 
 let notesDir;
 let indexDir;
-const suppressWatcher = vi.fn();
-
 registerNoteFileIPC(
   () => null,
   () => notesDir,
-  suppressWatcher,
+  { claimWrite: vi.fn(), claimUnlink: vi.fn(), releaseUnlinkClaim: vi.fn() },
 );
 
 const writeNote = (note) => handlers["write-note"](null, note);

@@ -142,14 +142,17 @@ Each of these has caused a real bug. Read before touching the editor.
    (`activeNoteRef`, `noteDataRef`, `blockRefs`), never a captured value. The same applies to
    any listener registered once (`useAppKeyboard`, the window-blur drag cancel).
 4. **Every desktop save echoes back through chokidar, sometimes twice, up to ~3s later.**
-   `electron/fileWatcher.js` recognises an own write by its bytes: `write-note` hands the
-   watcher the text it wrote, and any later event whose file still holds exactly those bytes is
-   dropped as an echo, however late; a 1.5s timer per path is only the cheap first filter, and it
-   decides alone only for a path with no recorded bytes. Never replace the hash with a longer
-   timer (macOS sends a second metadata-only `change` 1.5–2.7s after a write). An echo that
-   escapes re-parses the file with fresh block IDs, every block remounts, the caret jumps to the
-   top and the unsaved keystroke is lost. The rules for a real outside change (never silently
-   overwritten; a conflicted copy when edits are pending) are in the UI rule. Reproduce
+   `electron/fileWatcher.js` drops only an event it can identify as the consequence of the
+   app's own operation, never one on the clock alone: `write-note` claims the bytes it wrote,
+   and any later event whose file still holds exactly those bytes is that write's echo, however
+   late; the claim ends at the first event showing other bytes there or the file gone, so a
+   later return to those bytes (a revert, a Put Back from the Trash) is a real change. An unlink
+   the app causes (a Trash move, a rename's old path) is claimed once and consumed by that
+   unlink. Never replace the bytes with a timer (macOS sends a second metadata-only `change`
+   1.5–2.7s after a write). An echo that escapes re-parses the file with fresh block IDs, every
+   block remounts, the caret jumps to the top and the unsaved keystroke is lost. The rules for a
+   real outside change (never silently overwritten; a conflicted copy when edits are pending)
+   are in the UI rule. Reproduce
    desktop-only bugs in the real Electron build (Playwright `_electron`, temp `userData` and
    vault), not jsdom.
 

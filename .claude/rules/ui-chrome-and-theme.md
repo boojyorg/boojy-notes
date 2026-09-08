@@ -147,18 +147,33 @@ hardcoded green); swap them for Lucide when touching those files.
   reported once per distinct problem set, OS cruft is ignored. Deleting a note that never
   reached disk is a benign no-op, and the watcher's unlink suppression is event-consumed rather
   than timed so a slow trash move can't fire a spurious `file-deleted`.
-- **An own write is recognised by its bytes, not by the clock.** `write-note` hands
-  `suppressWatcher(path, body)` the text it is writing; the watcher hashes it, and any later
-  `change`/`add` whose file still holds exactly those bytes is dropped as an echo
-  (`isOwnEcho`), however late. The 1.5s timer stays as the cheap first filter. macOS sends a
-  second `change` for one write 1.5–2.7s later (same mtime and size, only ctime moved: metadata
-  settling), which no fixed window can cover; before the hash check every one of them rebuilt
-  the note from disk mid-typing, caret to the first block, keystrokes since the save lost. Don't
-  replace the hash with a longer timer.
-- **An outside edit is never silently overwritten** (2026-09-06). The watcher asks the bytes
-  before the clock: a recorded hash that differs is a real change however soon after the
-  app's own save it lands, one that matches is an echo however late, and the timer decides
-  only for a path with no recorded bytes (the old path of a rename, a renamed directory).
+- **The watcher drops only an event it can trace to the app's own operation** (2026-09-08).
+  Three claims, one per kind of operation, each held until the event that explains it; nothing
+  about a note file is decided on the clock alone. `write-note` hands `claimWrite(path, body)`
+  the text it has just written; the watcher hashes it, and any later `change`/`add` whose file
+  still holds exactly those bytes is dropped as that write's echo, however late. The claim ends
+  at the first event showing other bytes there (the change is delivered) or the file gone (any
+  unlink), so an outside change *back* to those bytes (`git checkout`, Undo in Obsidian, a sync
+  restore) and a note put back from the Trash with the bytes the app last wrote are real and
+  shown; before this the claim lived forever, both were dropped, and the next save wrote the
+  outside version over the revert. An unlink the app causes itself (a Trash move, the old path
+  of a rename, the old name of a case-only rename, which chokidar reports as unlink plus add) is
+  claimed once with `claimUnlink` and consumed by the one unlink it produces; an unclaimed unlink
+  is a real delete however soon after the app's own save it lands, because the app's writes
+  never unlink the path they write (before this a 1.5 s per-path timer dropped it). macOS sends
+  a second `change` for one write 1.5–2.7s later (same mtime and size, only ctime moved:
+  metadata settling), which no fixed window can cover; before the hash check every one of them
+  rebuilt the note from disk mid-typing, caret to the first block, keystrokes since the save
+  lost. Don't replace the bytes with a timer. The one clock-decided suppression left is a folder
+  rename or removal (`claimTree`, 1.5 s over the old and the new directory, which also ends the
+  bytes claims under the old one): an event that escapes re-reads what is already true, and the
+  residue is an outside change under that folder inside the window of the user's own rename of
+  it. `watcher-ownership.spec.ts` proves the revert, the delete inside the old window and both
+  restores in the real app.
+- **An outside edit is never silently overwritten** (2026-09-06). The watcher asks the bytes,
+  not the clock: a claimed hash that differs is a real change however soon after the app's
+  own save it lands, one that matches is an echo however late, and a path with no claim is
+  the app's only under a directory it is renaming or removing.
   In the renderer every note that arrives from disk goes through one path,
   `applyExternalNote` (useHistory), which updates the history ref and state together; the
   raw setter is not used for it, because a text commit pending for another note republished
@@ -397,9 +412,9 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   Undo never restores a folder (see "One owner for note state"), so no snapshot is rewritten and
   a later undo of a text edit cannot move a file back into a recreated old directory. Not an
   edit: nothing becomes dirty, no file is rewritten, no mtime moves, and the rename itself is not
-  undoable. The watcher is
-  suppressed under both directories for the write window (`suppressWatcherTree`); an event that
-  escapes re-reads what is already true.
+  undoable. The watcher claims
+  both directories for a short window (`claimTree`); an event that escapes re-reads what is
+  already true.
 - **Delete waits for the Trash.** The notes are removed from state, the debounced flush trashes
   them, and `afterNextFlush` then asks the main process to remove the directory, which it does
   only if nothing but OS cruft is left. A folder with no notes skips the flush and goes at once.

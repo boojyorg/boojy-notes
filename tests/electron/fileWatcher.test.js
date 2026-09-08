@@ -9,21 +9,29 @@ vi.mock("electron", () => ({
 }));
 
 const {
-  suppressNextUnlink,
-  releaseUnlinkSuppression,
-  suppressWatcher,
-  suppressWatcherTree,
-  isWriteSuppressed,
-  isOwnEcho,
+  claimWrite,
+  claimUnlink,
+  releaseUnlinkClaim,
+  claimTree,
+  isUnderOwnTree,
   isOwnWriteEvent,
+  isOwnUnlinkEvent,
   isIgnoredPath,
+  startWatcher,
+  closeWatcher,
 } = await import("../../electron/fileWatcher.js");
 
-// The unlink suppression must be consumed by the event (or an explicit
-// release), NOT a short fixed timer — shell.trashItem() latency is unbounded,
-// and an expired suppression would let our own delete masquerade as an
-// external one and trigger the renderer's full-state rebuild.
-describe("unlink suppression", () => {
+// The rule (2026-09-08): the app drops only an event it can identify as the
+// consequence of its own operation. A write is claimed by its bytes until
+// the first event that shows the file has left the app's hands; an unlink
+// the app causes is claimed once and consumed by that unlink; nothing about
+// a note file is decided on the clock alone.
+
+// An unlink claim is consumed by the event (or an explicit release), NOT a
+// short fixed timer — shell.trashItem() latency is unbounded, and an expired
+// claim would let our own delete masquerade as an external one and trigger
+// the renderer's full-state rebuild.
+describe("unlink claim", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -32,120 +40,44 @@ describe("unlink suppression", () => {
     vi.useRealTimers();
   });
 
-  it("holds until explicitly released, well past the old 1500ms write-suppression window", () => {
-    suppressNextUnlink("/notes/Slow.md");
+  it("holds until the unlink consumes it, however long the Trash move takes", () => {
+    claimUnlink("/notes/Slow.md");
 
     vi.advanceTimersByTime(30_000);
 
-    expect(releaseUnlinkSuppression("/notes/Slow.md")).toBe(true);
+    expect(isOwnUnlinkEvent("/notes/Slow.md")).toBe(true);
   });
 
   it("is consumed exactly once", () => {
-    suppressNextUnlink("/notes/Note.md");
+    claimUnlink("/notes/Note.md");
 
-    expect(releaseUnlinkSuppression("/notes/Note.md")).toBe(true);
-    expect(releaseUnlinkSuppression("/notes/Note.md")).toBe(false);
+    expect(isOwnUnlinkEvent("/notes/Note.md")).toBe(true);
+    expect(isOwnUnlinkEvent("/notes/Note.md")).toBe(false);
+  });
+
+  it("can be given back when the operation fails and no unlink is coming", () => {
+    claimUnlink("/notes/Note.md");
+
+    expect(releaseUnlinkClaim("/notes/Note.md")).toBe(true);
+    expect(releaseUnlinkClaim("/notes/Note.md")).toBe(false);
+    expect(isOwnUnlinkEvent("/notes/Note.md")).toBe(false);
   });
 
   it("expires via the leak-guard fallback if no unlink ever arrives", () => {
-    suppressNextUnlink("/notes/Never-deleted.md");
+    claimUnlink("/notes/Never-deleted.md");
 
     vi.advanceTimersByTime(60_000);
 
-    expect(releaseUnlinkSuppression("/notes/Never-deleted.md")).toBe(false);
+    expect(isOwnUnlinkEvent("/notes/Never-deleted.md")).toBe(false);
   });
 });
 
-// Write suppression is one resettable timer per PATH, not one timer per write.
-// With per-write timers on a shared set, the first write's timer expired and
-// un-suppressed a path a later write still relied on: two saves 1.15–1.5s apart
-// let the second echo through, and the renderer rebuilt the note from disk —
-// caret to the top of the note, keystrokes since the write lost (2026-09-03).
-describe("write suppression", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("expires 1500ms after a lone write", () => {
-    suppressWatcher("/notes/Note.md");
-
-    vi.advanceTimersByTime(1499);
-    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
-
-    vi.advanceTimersByTime(1);
-    expect(isWriteSuppressed("/notes/Note.md")).toBe(false);
-  });
-
-  it("keeps a path suppressed for the full window after the LATEST write", () => {
-    suppressWatcher("/notes/Note.md");
-    vi.advanceTimersByTime(1300);
-    suppressWatcher("/notes/Note.md");
-
-    // The first write's window would have ended here; the echo of the second
-    // write lands ~350ms after it, i.e. right inside this gap
-    vi.advanceTimersByTime(350);
-    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
-
-    vi.advanceTimersByTime(1149);
-    expect(isWriteSuppressed("/notes/Note.md")).toBe(true);
-    vi.advanceTimersByTime(1);
-    expect(isWriteSuppressed("/notes/Note.md")).toBe(false);
-  });
-
-  it("tracks paths independently", () => {
-    suppressWatcher("/notes/A.md");
-    vi.advanceTimersByTime(1000);
-    suppressWatcher("/notes/B.md");
-    vi.advanceTimersByTime(600);
-
-    expect(isWriteSuppressed("/notes/A.md")).toBe(false);
-    expect(isWriteSuppressed("/notes/B.md")).toBe(true);
-  });
-});
-
-// A folder rename or removal is one operation the app already knows the
-// outcome of, reported by chokidar as one event per file underneath. The whole
-// subtree is suppressed for the write window, the directory itself included.
-describe("subtree suppression", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("covers the directory and everything under it, and nothing beside it", () => {
-    suppressWatcherTree("/notes/Work");
-
-    expect(isWriteSuppressed("/notes/Work")).toBe(true);
-    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(true);
-    expect(isWriteSuppressed("/notes/Work/Deep/Note.md")).toBe(true);
-    expect(isWriteSuppressed("/notes/Workshop/Note.md")).toBe(false);
-    expect(isWriteSuppressed("/notes/Other.md")).toBe(false);
-  });
-
-  it("expires with the write window", () => {
-    suppressWatcherTree("/notes/Work");
-    vi.advanceTimersByTime(1499);
-    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(true);
-    vi.advanceTimersByTime(1);
-    expect(isWriteSuppressed("/notes/Work/Note.md")).toBe(false);
-  });
-});
-
-// The timer is not the whole story. macOS delivers a second `change` for one
-// of our writes 1.5–2.7s later — the file's mtime and size are those of our
-// write, only the inode change time has moved (metadata, not content) — which
-// is past any window the timer could reasonably hold. Traced live on the
-// daily driver 2026-09-05: every such event rebuilt the note from disk
-// mid-typing. A write therefore also records the bytes it wrote, and an event
-// whose file still holds exactly those bytes is an echo whenever it arrives.
-describe("own-write echo by content", () => {
+// A write's echo is recognised by its bytes, never by a timer. macOS delivers
+// a second `change` for one write 1.5–2.7s later — the file's mtime and size
+// are those of the write, only the inode change time has moved — past any
+// window a timer could hold (traced live on the daily driver 2026-09-05: every
+// such event rebuilt the note from disk mid-typing).
+describe("own-bytes claim", () => {
   let dir;
   beforeEach(() => {
     vi.useFakeTimers();
@@ -156,56 +88,97 @@ describe("own-write echo by content", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it("recognises the written bytes long after the timer window", () => {
+  it("recognises the written bytes however late the echo arrives", () => {
     const file = path.join(dir, "Note.md");
-    suppressWatcher(file, "hello\n");
     fs.writeFileSync(file, "hello\n");
+    claimWrite(file, "hello\n");
 
+    expect(isOwnWriteEvent(file)).toBe(true);
     vi.advanceTimersByTime(10_000);
-
-    expect(isWriteSuppressed(file)).toBe(false);
-    expect(isOwnEcho(file)).toBe(true);
+    expect(isOwnWriteEvent(file)).toBe(true);
   });
 
-  it("lets a real outside edit through", () => {
+  it("lets an outside edit through however soon after the write it lands", () => {
     const file = path.join(dir, "Note.md");
-    suppressWatcher(file, "hello\n");
-    fs.writeFileSync(file, "hello from another editor\n");
+    fs.writeFileSync(file, "ours\n");
+    claimWrite(file, "ours\n");
+    vi.advanceTimersByTime(200);
+    fs.writeFileSync(file, "theirs\n");
 
-    vi.advanceTimersByTime(10_000);
-
-    expect(isOwnEcho(file)).toBe(false);
+    expect(isOwnWriteEvent(file)).toBe(false);
   });
 
   it("compares against the LATEST write, so a late echo of an older write is still ours", () => {
     const file = path.join(dir, "Note.md");
-    suppressWatcher(file, "first\n");
     fs.writeFileSync(file, "first\n");
-    suppressWatcher(file, "second\n");
+    claimWrite(file, "first\n");
     fs.writeFileSync(file, "second\n");
+    claimWrite(file, "second\n");
 
     vi.advanceTimersByTime(10_000);
 
-    expect(isOwnEcho(file)).toBe(true);
+    expect(isOwnWriteEvent(file)).toBe(true);
   });
 
-  it("is never an echo for a file we have not written, or one that is gone", () => {
+  it("is never an echo for a file the app has not written, or one that is gone", () => {
     const file = path.join(dir, "Foreign.md");
     fs.writeFileSync(file, "theirs\n");
-    expect(isOwnEcho(file)).toBe(false);
+    expect(isOwnWriteEvent(file)).toBe(false);
 
     const missing = path.join(dir, "Gone.md");
-    suppressWatcher(missing, "was here\n");
-    expect(isOwnEcho(missing)).toBe(false);
+    claimWrite(missing, "was here\n");
+    expect(isOwnWriteEvent(missing)).toBe(false);
+  });
+
+  // Review 2026-09-07 §2.2: the claim was never dropped, so after an outside
+  // edit had been delivered, an outside change BACK to the app's bytes (git
+  // checkout, Undo in Obsidian, a sync restore) was taken for an echo and
+  // the renderer's next save wrote the outside edit over the user's revert.
+  it("ends at a delivered outside change: a return to the app's bytes is a real change", () => {
+    const file = path.join(dir, "Note.md");
+    fs.writeFileSync(file, "v1\n");
+    claimWrite(file, "v1\n");
+
+    fs.writeFileSync(file, "v2\n");
+    expect(isOwnWriteEvent(file)).toBe(false);
+
+    fs.writeFileSync(file, "v1\n");
+    expect(isOwnWriteEvent(file)).toBe(false);
+  });
+
+  // §2.2, the `add` case: delete a note, Put Back from the Trash with the
+  // same bytes, and it never reappeared until relaunch.
+  it("ends at the app's own unlink claim: the same bytes put back are a real add", () => {
+    const file = path.join(dir, "Note.md");
+    fs.writeFileSync(file, "keep\n");
+    claimWrite(file, "keep\n");
+
+    claimUnlink(file);
+    fs.unlinkSync(file);
+    expect(isOwnUnlinkEvent(file)).toBe(true);
+
+    fs.writeFileSync(file, "keep\n");
+    expect(isOwnWriteEvent(file)).toBe(false);
+  });
+
+  it("ends at an outside unlink: the same bytes restored are a real add", () => {
+    const file = path.join(dir, "Note.md");
+    fs.writeFileSync(file, "keep\n");
+    claimWrite(file, "keep\n");
+
+    fs.unlinkSync(file);
+    expect(isOwnUnlinkEvent(file)).toBe(false);
+
+    fs.writeFileSync(file, "keep\n");
+    expect(isOwnWriteEvent(file)).toBe(false);
   });
 });
 
-// What reaches the renderer is decided by the bytes first and the timer only
-// for a path with no recorded bytes. The old order asked the timer first, so an
-// outside edit landing inside the 1.5s window was dropped whatever it held
-// (traced 2026-09-06: an edit ~1s after a save never appeared, and the next
-// keystroke wrote the stale note back over it).
-describe("own-write event: bytes before the timer", () => {
+// Review 2026-09-07 §2.9: the unlink branch was the one place that still
+// decided on the clock alone, so a real outside delete inside 1.5 s of the
+// app's own save of that file was ignored. The app's own writes never unlink
+// the path they write, so an unclaimed unlink is real whenever it lands.
+describe("outside unlink", () => {
   let dir;
   beforeEach(() => {
     vi.useFakeTimers();
@@ -216,34 +189,93 @@ describe("own-write event: bytes before the timer", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it("passes an outside edit made inside the write window when the bytes differ", () => {
+  it("is real right after the app's own write of the same file", () => {
     const file = path.join(dir, "Note.md");
-    suppressWatcher(file, "ours\n");
     fs.writeFileSync(file, "ours\n");
-    vi.advanceTimersByTime(700);
-    fs.writeFileSync(file, "theirs\n");
+    claimWrite(file, "ours\n");
+    vi.advanceTimersByTime(100);
+    fs.unlinkSync(file);
 
-    expect(isWriteSuppressed(file)).toBe(true);
-    expect(isOwnWriteEvent(file)).toBe(false);
+    expect(isOwnUnlinkEvent(file)).toBe(false);
+  });
+});
+
+// A folder rename or removal is one operation the app already knows the
+// outcome of, reported by chokidar as one event per entry underneath. The
+// whole subtree is claimed for a short window, the directory itself included.
+describe("tree claim", () => {
+  let dir;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-watcher-"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it("drops an echo of our own bytes inside the window and long after it", () => {
-    const file = path.join(dir, "Note.md");
-    suppressWatcher(file, "ours\n");
-    fs.writeFileSync(file, "ours\n");
+  it("covers the directory and everything under it, and nothing beside it", () => {
+    claimTree("/notes/Work");
 
-    expect(isOwnWriteEvent(file)).toBe(true);
-    vi.advanceTimersByTime(10_000);
-    expect(isOwnWriteEvent(file)).toBe(true);
+    expect(isUnderOwnTree("/notes/Work")).toBe(true);
+    expect(isOwnWriteEvent("/notes/Work/Note.md")).toBe(true);
+    expect(isOwnUnlinkEvent("/notes/Work/Deep/Note.md")).toBe(true);
+    expect(isOwnWriteEvent("/notes/Workshop/Note.md")).toBe(false);
+    expect(isOwnUnlinkEvent("/notes/Other.md")).toBe(false);
   });
 
-  it("falls back to the timer for a path with no recorded bytes, such as the old path of a rename", () => {
-    const file = path.join(dir, "Old.md");
-    suppressWatcher(file);
+  it("expires with its window", () => {
+    claimTree("/notes/Work");
+    vi.advanceTimersByTime(1499);
+    expect(isUnderOwnTree("/notes/Work/Note.md")).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(isUnderOwnTree("/notes/Work/Note.md")).toBe(false);
+  });
 
-    expect(isOwnWriteEvent(file)).toBe(true);
+  it("ends the app's bytes claims under it: a file restored at the old path later is a real add", () => {
+    const work = path.join(dir, "Work");
+    const file = path.join(work, "Note.md");
+    fs.mkdirSync(work);
+    fs.writeFileSync(file, "keep\n");
+    claimWrite(file, "keep\n");
+
+    claimTree(work);
+    fs.renameSync(work, path.join(dir, "Done"));
     vi.advanceTimersByTime(1500);
+
+    fs.mkdirSync(work);
+    fs.writeFileSync(file, "keep\n");
     expect(isOwnWriteEvent(file)).toBe(false);
+  });
+});
+
+// A restarted watcher (a vault change) owns nothing: a claim carried across
+// could swallow a real outside event at the same path.
+describe("startWatcher", () => {
+  let dir;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-watcher-"));
+  });
+  afterEach(async () => {
+    await closeWatcher();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("drops every claim of the previous session", () => {
+    const file = path.join(dir, "Note.md");
+    fs.writeFileSync(file, "ours\n");
+    claimWrite(file, "ours\n");
+    claimUnlink(path.join(dir, "Gone.md"));
+    claimTree(path.join(dir, "Work"));
+
+    startWatcher(
+      () => dir,
+      () => null,
+    );
+
+    expect(isOwnWriteEvent(file)).toBe(false);
+    expect(isOwnUnlinkEvent(path.join(dir, "Gone.md"))).toBe(false);
+    expect(isUnderOwnTree(path.join(dir, "Work", "Note.md"))).toBe(false);
   });
 });
 
