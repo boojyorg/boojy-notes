@@ -13,7 +13,11 @@
  *  - a U+200B the file holds is kept, while the editor's own caret anchor
  *    (the same character, after a link) never reaches the file: the anchor is
  *    a marked element, not a bare character;
- *  - whitespace-only emphasis and a ↗ inside a link's text survive an edit.
+ *  - whitespace-only emphasis and a ↗ inside a link's text survive an edit;
+ *  - a URL in angle brackets, one ending in `&` and one inside a link's text
+ *    survive an edit: the bare-URL pass once ran over the escaped HTML, so
+ *    `<https://example.com>` grew a `;` on every edit and a URL inside a
+ *    link's text was linked again inside the anchor and read back as two.
  */
 import { expect, test } from "@playwright/test";
 import { END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
@@ -119,6 +123,33 @@ test("whitespace-only emphasis and a ↗ in link text survive an edit", async ()
       await sleep(SETTLE_MS);
       expect(h.vault.read(`${name}.md`)).toBe(`${before}!\n`);
     }
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a URL in angle brackets, one ending in &, and one inside a link's text survive an edit", async () => {
+  const before =
+    "see <https://example.com> then https://x.com/?a& then [see https://a.com here](https://b.com) end";
+  const h = await launchApp({ "Urls.md": `${before}\n` });
+  try {
+    await h.openNote("Urls");
+    const block = h.page.locator("[data-block-id]").first();
+    // Three links, one each: the brackets are text, the link's text holds its URL as text.
+    expect(
+      await block.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href"))),
+    ).toEqual(["https://example.com", "https://x.com/?a&", "https://b.com"]);
+    await expect(block).toHaveText(
+      "see <https://example.com↗> then https://x.com/?a&↗ then see https://a.com here↗ end",
+    );
+    // The block's centre is a link; click its first word, not the link.
+    await block.click({ position: { x: 6, y: 10 } });
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type("!");
+    await waitForFile(h.vault.file("Urls.md"), (t) => t.includes("!"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Urls.md")).toBe(`${before}!\n`);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

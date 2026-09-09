@@ -573,6 +573,18 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   checks it is still current before showing anything. Never hang data off a timer handle; it is a
   number in the browser and the assignment throws in strict mode.
 
+- **A bare URL is linked in prose only, read as written** (2026-09-09, review §3.5). The
+  autolink pass takes the rendered HTML a piece at a time (a whole link, code span or wikilink,
+  any other tag, a run of prose) and links only inside prose, decoded back to characters first,
+  so `&gt;` is the `>` it stands for and ends the URL, and `&amp;` is `&`. Before this the regex
+  ran over the escaped HTML: `<https://example.com>` linked `https://example.com&gt` and grew a
+  `;` on every edit, a URL ending in `&` did the same, a URL inside a link's text was linked a
+  second time inside the anchor and read back as two links, and one in a `[[wikilink]]` target
+  rewrote the span's own attribute. The brackets of `<url>` are shown as the text they are:
+  there is no angle-bracket autolink feature, and none is needed for the bytes to hold.
+  `domRoundTrip.test.js` carries the cases; `inline-preservation.spec.ts` the edit in the real
+  app.
+
 ## The slash menu is tiered
 
 - `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps Callout, File
@@ -878,6 +890,28 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   paragraph became a heading and the rule vanished. A blank *after* a divider stays an empty row
   (backlog: blank lines around headings). A file with the tight form still opens as a divider and
   gains the blank on its first save; sanctioned in the spec.
+
+- **A soft-break line that would start a block is written with its marker escaped**
+  (2026-09-09, review §3.5). A paragraph's text, or a list item's continuation, can hold a line
+  that every reader, this parser included, takes for the start of another block: Shift+Enter
+  then `# bar`, `- bar`, `1. two`, `---`, a fence, `> q`, a table row, an image line; a
+  multi-line paste or Find → Replace can make one too. Written raw, `foo\n# bar` came back as
+  a paragraph and a heading, `foo\n---` as a setext heading, and a soft-broken fence swallowed
+  the rest of the note. The serializer (`readsBackAsText` in `markdown.js`) asks its own parser
+  which lines would open a block and writes those with the marker's first punctuation character
+  backslash-escaped (`\# bar`, `\- bar`, `1\. two`, `\---`), the CommonMark escape every
+  reader renders as the character. Nothing is escaped that the parser already reads as text
+  (`#### four`, `1) x`, an escaped line the file holds), so an authored file is never rewritten
+  by reading it, and the app's own output reads back as the one block that was typed. The
+  escape is shown as written after a reopen (`\# bar`), as any backslash escape is, while the
+  screen before the reopen shows `# bar`; that visible difference is the one product question
+  left here (hiding backslashes was rejected on 2026-09-06, and the parser never unescapes).
+  A heading's syntax has no soft break, so a newline in one (two plain lines pasted into it;
+  Shift+Enter there is already refused) is written as a space, as a callout title's is, and the
+  paste joins the lines with a space so the screen matches the file. `paragraph-model.spec.ts`
+  proves the typed case through a restart; `markdown.test.js`, `markdownInterop.test.js` (the
+  escaped form means one paragraph to markdown-it) and the `tight-markers.md` fixture hold the
+  rule.
 
 ### A special block's field is a real field
 

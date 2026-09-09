@@ -134,6 +134,45 @@ describe("inlineMarkdownToHtml", () => {
     expect(aCount).toBe(1);
   });
 
+  // The bare-URL pass reads prose as written and never enters an element the
+  // passes before it built (review 2026-09-07 §3.5). Run over the escaped
+  // HTML it linked `https://example.com&gt` out of `<https://example.com>`,
+  // linked a URL inside a link's text a second time, and rewrote a wikilink's
+  // own data-target attribute.
+  it("links the URL inside <https://…>, and the angle brackets stay text", () => {
+    const result = inlineMarkdownToHtml("see <https://example.com> now");
+    expect(result).toBe(
+      'see &lt;<a href="https://example.com" class="external-link bare-url" data-url="https://example.com">https://example.com<span class="external-link-icon" contenteditable="false">\u2197</span></a>&gt; now',
+    );
+  });
+
+  it("a URL ending in & keeps the & and nothing more", () => {
+    const result = inlineMarkdownToHtml("https://x.com/?a&");
+    expect(result).toContain('href="https://x.com/?a&amp;"');
+    expect(result).toContain(">https://x.com/?a&amp;<span");
+  });
+
+  it("never links a URL inside a link's text, a code span or a wikilink", () => {
+    const link = inlineMarkdownToHtml("[see https://a.com here](https://b.com)");
+    expect(link.match(/<a /g)).toHaveLength(1);
+    expect(link).toContain(">see https://a.com here<span");
+    const code = inlineMarkdownToHtml("`see https://x.com`");
+    expect(code).toBe("<code>see https://x.com</code>");
+    const wiki = inlineMarkdownToHtml("[[see https://x.com]]");
+    expect(wiki).toBe(
+      '<span class="wikilink" data-target="see https://x.com">see https://x.com</span>',
+    );
+  });
+
+  it("links a URL in prose whatever precedes it, and inside emphasis", () => {
+    expect(inlineMarkdownToHtml('"https://x.com"')).toMatch(
+      /^"<a href="https:\/\/x\.com".*<\/a>"$/,
+    );
+    expect(inlineMarkdownToHtml("**https://x.com**")).toMatch(
+      /^<strong><a href="https:\/\/x\.com".*<\/a><\/strong>$/,
+    );
+  });
+
   it("handles italic inside bold correctly", () => {
     // **bold *italic* bold** — italic inside bold should not break bold
     const result = inlineMarkdownToHtml("**bold *italic* bold**");

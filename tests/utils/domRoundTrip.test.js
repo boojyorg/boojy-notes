@@ -25,15 +25,18 @@ import { isEditableBlock } from "../../src/utils/domHelpers.js";
 // live element; sanitizeInlineHtml + htmlToInlineMarkdown on serialised HTML
 // for a copy, an Enter split or a paste). Anything that road changes is a
 // byte the app rewrites on the first edit of that block, invisible to the
-// converter-only suite. The 2026-09-07 review found four such bytes (§3.5):
-// a zero-width space the file held, whitespace-only emphasis, a ↗ in a link's
-// text and an explicit [url](url).
+// converter-only suite. The 2026-09-07 review found four such bytes on the
+// DOM seam (§3.5: a zero-width space the file held, whitespace-only
+// emphasis, a ↗ in a link's text, an explicit [url](url)) and one class in
+// the renderer itself (the bare-URL pass ran over the escaped HTML, so
+// `<https://example.com>` grew a `;` on every edit and a URL inside a link's
+// text was linked a second time inside the anchor).
 //
 // The contract: for every text block of every preservation fixture, and for
 // the inline cases below, both read-back paths return block.text unchanged.
 // A change the renderer itself makes (an inline parse that mis-reads the
-// Markdown) fails here too and is marked it.fails with its cause: that is the
-// Markdown class, not the DOM seam, and is the honest record until fixed.
+// Markdown) fails here too; if one is ever found again, mark it it.fails with
+// its cause rather than dropping the case.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FIXTURES_DIR = path.join(
@@ -93,6 +96,25 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     // §3.5: [url](url) collapsed to a bare URL, which is not a link in CommonMark.
     "[https://example.com](https://example.com)",
     "bare https://example.com autolink",
+    // §3.5: the bare-URL pass ran over the escaped HTML. `<https://example.com>`
+    // linked `https://example.com&gt` and grew a `;` on every edit; a URL ending
+    // in `&` did the same; a URL in a link's text was linked inside the anchor
+    // and read back as two links; one in a wikilink target rewrote the span's
+    // own attribute. The pass now reads prose as written and never enters a
+    // link, a code span or a wikilink.
+    "<https://example.com>",
+    "see <https://example.com> now",
+    "https://x.com/?a&",
+    "https://x.com/?a=1&b=2 and https://x.com/?c&",
+    "[see https://a.com here](https://b.com)",
+    "[https://a.com](https://b.com)",
+    "[[see https://x.com]]",
+    "[[Note|https://x.com]]",
+    "`see https://x.com` and https://y.com",
+    '**https://x.com** and "https://x.com" and (https://x.com)',
+    // The serializer's own escape of a soft-break line that would start a
+    // block (`foo\n# bar` is written `foo\n\# bar`) is shown as written.
+    "foo\n\\# bar\n1\\. two\n\\- three\n\\---",
     // Ordinary inline Markdown, so a regression in the common case shows here first.
     "**bold**, *italic*, ***both***, `code`, ~~gone~~, ==lit==",
     "[[Welcome]] and [[Welcome|alias]] and #tag",
@@ -104,21 +126,5 @@ describe("inline bytes that only the DOM road could corrupt", () => {
   ];
   for (const text of cases) {
     it(JSON.stringify(text), () => expectRoundTrip(text));
-  }
-});
-
-describe("inline Markdown the renderer mis-reads (the Markdown class, not the DOM seam)", () => {
-  // Each of these is corrupted by inlineMarkdownToHtml's parse, before any
-  // DOM is involved; the DOM read-back is faithful to what was rendered. Kept
-  // as it.fails so the fix turns them red: remove the marker then.
-  const cases = [
-    // An autolink `<https://…>` is escaped to &lt;…&gt; and the bare-URL pass
-    // then links `https://example.com&gt`, growing a `;` on every edit.
-    "<https://example.com>",
-    // A bare URL inside a link's text is autolinked inside the anchor.
-    "[see https://a.com here](https://b.com)",
-  ];
-  for (const text of cases) {
-    it.fails(JSON.stringify(text), () => expectRoundTrip(text));
   }
 });

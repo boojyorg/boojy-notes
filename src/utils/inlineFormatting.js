@@ -3,10 +3,49 @@
 
 import { CARET_ANCHOR_CLASS } from "./domHelpers";
 
+/** Step 1 of the renderer, for prose that has been read back to characters. */
+const escapeHtml = (text) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/** The three entities step 1 of the renderer makes, back to their characters. */
+const unescapeHtml = (html) =>
+  html.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+/**
+ * The rendered HTML, one piece at a time: a whole link, code span or wikilink
+ * (with everything inside it), any other tag, or a run of prose between tags.
+ * Every `<` in the string is a tag's, because the text's own were escaped first.
+ */
+const PROSE_OR_ELEMENT_RE =
+  /<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
+
+/**
+ * A bare URL in prose: `http(s)://` and everything up to whitespace or `<`,
+ * not ending in punctuation that more often closes the sentence than belongs
+ * to the address (so `<https://example.com>` links `https://example.com` and
+ * shows the brackets as the text they are).
+ */
+const BARE_URL_RE = /https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"}>]/g;
+
+/** A run of escaped prose with each bare URL made the editor's own autolink. */
+function autolinkProse(escaped) {
+  if (!escaped.includes("://")) return escaped;
+  const text = unescapeHtml(escaped);
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(BARE_URL_RE)) {
+    const url = escapeHtml(m[0]);
+    const attr = url.replace(/"/g, "&quot;");
+    out += `${escapeHtml(text.slice(last, m.index))}<a href="${attr}" class="external-link bare-url" data-url="${attr}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
+    last = m.index + m[0].length;
+  }
+  return out + escapeHtml(text.slice(last));
+}
+
 /**
  * Convert inline markdown tokens to HTML for rendering.
  * Process order: escape HTML → code → bold+italic → bold → italic →
- *                strikethrough → highlight → wikilinks → markdown links → bare URLs → tags
+ *                strikethrough → highlight → wikilinks → markdown links →
+ *                bare URLs (in prose only, on the text as written) → tags
  */
 export function inlineMarkdownToHtml(md, noteTitles) {
   if (!md) return "";
@@ -64,11 +103,18 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `<a href="${safe}" class="external-link" data-url="${safe}">${text}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
   });
 
-  // 10. Auto-link bare URLs (https://... not already inside an <a> tag or href)
-  s = s.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"}>])/g, (_, pre, url) => {
-    const safe = escAttr(url);
-    return `${pre}<a href="${safe}" class="external-link bare-url" data-url="${safe}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
-  });
+  // 10. Bare URLs, in prose only. The pass reads the text as written, never
+  // the HTML the passes above have built: an entity is the character it
+  // stands for (`&gt;` is `>`, which ends a URL; `&amp;` is `&`, which may end
+  // one), and a URL inside a link's text, a code span or a wikilink is that
+  // element's text, never a second link. Before this the regex ran over the
+  // escaped HTML: `<https://example.com>` linked `https://example.com&gt` and
+  // grew a `;` on every edit, a URL ending in `&` did the same, a URL in a
+  // link's text was linked inside the anchor and read back as two links, and
+  // one in a wikilink target rewrote the span's own attribute.
+  s = s.replace(PROSE_OR_ELEMENT_RE, (piece) =>
+    piece.startsWith("<") ? piece : autolinkProse(piece),
+  );
 
   // 11. Tags (#tag but not # at line start which is heading)
   s = s.replace(

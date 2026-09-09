@@ -156,7 +156,50 @@ export function applyEol(md, eol) {
  * block with `bare` set, and written back without the space until text is
  * typed, so the file's bytes are its own.
  */
-const afterMarker = (block) => (block.bare && !block.text ? "" : ` ${block.text || ""}`);
+const afterMarker = (block, text = block.text || "") => (block.bare && !text ? "" : ` ${text}`);
+
+// ─── What the serializer writes, its parser reads back as the same block ───
+// A paragraph or list item holds soft breaks (Shift+Enter, a multi-line
+// paste), so its text can hold a line that, written as it is, every reader
+// including this parser takes for the start of another block: `foo\n# bar`
+// is a paragraph and a heading, `foo\n- bar` a paragraph and a list,
+// `foo\n---` a setext heading, a soft-broken fence swallows the rest of the
+// note. The user wrote one block; the file must mean one block. Such a line
+// is written with its marker's first punctuation character backslash-escaped
+// (`\# bar`, `\- bar`, `1\. two`, `\---`), the CommonMark escape every
+// reader renders as the character itself. The parser is the judge of which
+// lines need it, so a line it reads as text (`#### four`, `1) x`, an already
+// escaped `\# x`) is written as it is, and a file that holds `foo\n# bar`
+// is read as the paragraph and heading it means and written back unchanged.
+// A heading has no soft break in its syntax, so a newline in one (a paste)
+// is written as a space, as a callout title's is.
+
+/** A line that could open a block: the cheap test before the parser is asked. */
+const MARKER_START = /^[ \t]*[-*+#>`|!\d]/;
+/** The first ASCII punctuation character of a line, where the escape goes. */
+const FIRST_PUNCTUATION = /[!-/:-@[-`{-~]/;
+
+/**
+ * `text` with each line from `fromLine` on that the parser would read as the
+ * start of another block escaped so it reads as this block's text.
+ * @param {string} text
+ * @param {number} fromLine
+ */
+function readsBackAsText(text, fromLine) {
+  const lines = text.split("\n");
+  for (let i = fromLine; i < lines.length; i++) {
+    if (!MARKER_START.test(lines[i])) continue;
+    const [first] = markdownToBlocks(lines.slice(i).join("\n"));
+    if (first.type !== "p") lines[i] = lines[i].replace(FIRST_PUNCTUATION, "\\$&");
+  }
+  return lines.join("\n");
+}
+/** A paragraph's every line reads as text. */
+const paragraphText = (block) => readsBackAsText(block.text || "", 0);
+/** A list item's first line follows its marker; its continuation lines read as text. */
+const itemText = (block) => readsBackAsText(block.text || "", 1);
+/** A heading is one line: a newline in its text is written as a space. */
+const headingText = (block) => (block.text || "").replace(/\n/g, " ");
 
 export function blocksToMarkdown(blocks) {
   const lines = [];
@@ -186,22 +229,28 @@ export function blocksToMarkdown(blocks) {
     }
     switch (block.type) {
       case "h1":
-        lines.push(`#${afterMarker(block)}`);
+        lines.push(`#${afterMarker(block, headingText(block))}`);
         break;
       case "h2":
-        lines.push(`##${afterMarker(block)}`);
+        lines.push(`##${afterMarker(block, headingText(block))}`);
         break;
       case "h3":
-        lines.push(`###${afterMarker(block)}`);
+        lines.push(`###${afterMarker(block, headingText(block))}`);
         break;
       case "bullet":
-        lines.push(`${listIndent(block)}${block.marker || "-"}${afterMarker(block)}`);
+        lines.push(
+          `${listIndent(block)}${block.marker || "-"}${afterMarker(block, itemText(block))}`,
+        );
         break;
       case "numbered":
-        lines.push(`${listIndent(block)}${block.numRaw ?? numCounter}.${afterMarker(block)}`);
+        lines.push(
+          `${listIndent(block)}${block.numRaw ?? numCounter}.${afterMarker(block, itemText(block))}`,
+        );
         break;
       case "checkbox":
-        lines.push(`${listIndent(block)}- [${block.checked ? "x" : " "}]${afterMarker(block)}`);
+        lines.push(
+          `${listIndent(block)}- [${block.checked ? "x" : " "}]${afterMarker(block, itemText(block))}`,
+        );
         break;
       case "spacer":
         lines.push("---");
@@ -301,7 +350,7 @@ export function blocksToMarkdown(blocks) {
         break;
       }
       default:
-        lines.push(block.text || "");
+        lines.push(paragraphText(block));
         break;
     }
     endOfBlock[i] = lines.length;

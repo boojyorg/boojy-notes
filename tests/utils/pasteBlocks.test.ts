@@ -20,6 +20,25 @@ const emptyCheckbox: Block = { id: "dest", type: "checkbox", text: "", checked: 
 
 describe("buildPastedBlocks", () => {
   describe("plain text keeps the destination block", () => {
+    it("two plain lines pasted into a heading join with a space: a heading has no soft break", () => {
+      const heading: Block = { id: "dest", type: "h2", text: "Title" };
+      const r = buildPastedBlocks(heading, pasted("one\ntwo"), "Title", "", genId);
+      expect(r.blocks).toEqual([{ id: "dest", type: "h2", text: "Titleone two" }]);
+      const empty = buildPastedBlocks({ ...heading, text: "" }, pasted("one\ntwo"), "", "", genId);
+      expect(empty.blocks).toEqual([{ id: "dest", type: "h2", text: "one two" }]);
+    });
+
+    it("the same lines pasted into a paragraph or list item keep their soft break", () => {
+      const para: Block = { id: "dest", type: "p", text: "" };
+      expect(buildPastedBlocks(para, pasted("one\ntwo"), "", "", genId).blocks).toEqual([
+        { id: "dest", type: "p", text: "one\ntwo" },
+      ]);
+      const item: Block = { id: "dest", type: "bullet", text: "x" };
+      expect(buildPastedBlocks(item, pasted("one\ntwo"), "x", "", genId).blocks).toEqual([
+        { id: "dest", type: "bullet", text: "xone\ntwo" },
+      ]);
+    });
+
     it("empty unchecked checkbox + plain text stays an unchecked checkbox", () => {
       const r = buildPastedBlocks(emptyCheckbox, pasted("Buy milk"), "", "", genId);
       expect(r.blocks).toEqual([

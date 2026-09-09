@@ -32,6 +32,14 @@ const blockShapes = (page: import("@playwright/test").Page) =>
       .filter((t) => t.trim() !== ""),
   );
 
+/** The type of every block on screen, as the block roots carry it. */
+const blockTypes = (page: import("@playwright/test").Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
+      b.getAttribute("data-block-type"),
+    ),
+  );
+
 test("Enter writes a blank line between paragraphs; Shift+Enter keeps lines in one paragraph", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha." });
   try {
@@ -176,6 +184,41 @@ test("soft break, paragraph break and empty row are three distinct pitches", asy
     expect(at("After the quote.").top - at("quoted").bottom).toBeGreaterThanOrEqual(
       paragraphGap - 1,
     );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a soft-break line that begins like a heading, a list or a rule stays in its paragraph, on disk and after a restart", async () => {
+  // Review 2026-09-07 §3.5: written raw, `Intro line.\n# not a heading` came
+  // back from disk as a paragraph and a heading, `- not a list` as a list and
+  // `---` made the line above a setext heading. The serializer now writes the
+  // marker escaped, which every Markdown reader shows as the character, and
+  // the file reads back as the one paragraph that was typed.
+  const h = await launchApp({ "Soft.md": "Intro line." });
+  try {
+    await h.openNote("Soft");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    for (const line of ["# not a heading", "- not a list", "1. not an item", "---"]) {
+      await h.page.keyboard.press("Shift+Enter");
+      await h.page.keyboard.type(line);
+    }
+    await waitForFile(h.vault.file("Soft.md"), (t) => t.endsWith("---"));
+    await sleep(SETTLE_MS);
+    const written = "Intro line.\n\\# not a heading\n\\- not a list\n1\\. not an item\n\\---";
+    expect(h.vault.read("Soft.md")).toBe(written);
+    expect(await blockShapes(h.page)).toEqual([
+      "Intro line.\n# not a heading\n- not a list\n1. not an item\n---",
+    ]);
+
+    await h.restart();
+    // One paragraph still; the escapes the file holds are shown as written.
+    expect(await blockTypes(h.page)).toEqual(["p"]);
+    expect(await blockShapes(h.page)).toEqual([written]);
+    expect(h.vault.read("Soft.md")).toBe(written);
+    expectNoTempFiles(h.vault);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
