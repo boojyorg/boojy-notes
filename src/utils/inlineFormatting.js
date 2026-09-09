@@ -1,6 +1,8 @@
 // Inline markdown ↔ HTML conversion utilities.
 // Stores formatting as markdown tokens in block.text, renders as HTML via innerHTML.
 
+import { CARET_ANCHOR_CLASS } from "./domHelpers";
+
 /**
  * Convert inline markdown tokens to HTML for rendering.
  * Process order: escape HTML → code → bold+italic → bold → italic →
@@ -88,8 +90,10 @@ export function inlineMarkdownToHtml(md, noteTitles) {
 }
 
 /**
- * Convert DOM HTML back to inline markdown string.
- * Uses DOMParser to walk the tree recursively.
+ * Convert serialised HTML back to inline markdown. The one walker below
+ * reads a parsed string (the copy, Enter-split and paste paths) and the live
+ * block element (`domNodeToMarkdown`, every keystroke) alike; two walkers
+ * once read the same DOM differently.
  */
 export function htmlToInlineMarkdown(html) {
   if (!html) return "";
@@ -101,56 +105,75 @@ export function htmlToInlineMarkdown(html) {
   return walkNode(doc.body);
 }
 
-// The zero-width space placeCaret parks the caret on after a link is editor
-// scaffolding, never note text (domHelpers CARET_ANCHOR).
+/**
+ * Convert a live DOM element's childNodes directly to inline markdown, with
+ * no DOMParser and no innerHTML serialisation. Use this on the hot path
+ * (every keystroke) where `el` is already in the document.
+ */
+export function domNodeToMarkdown(element) {
+  if (!element) return "";
+  return walkNode(element);
+}
+
+// The caret anchor placeCaret parks the caret on after a link
+// (domHelpers CARET_ANCHOR): a `<span class="caret-anchor">` around one
+// zero-width space. The element is what marks the space as scaffolding; a
+// U+200B anywhere else is the note's own byte and is read back as written.
 const CARET_ANCHOR_RE = /\u200B/g;
 
+/**
+ * The DOM → Markdown walk. Text is read verbatim. A formatting element wraps
+ * whatever it holds, a space included (`<em> </em>` is `* *`, the bytes the
+ * renderer made it from); only one holding nothing at all, the residue of
+ * toggling a format off, is dropped. A link is the bare URL only when it is
+ * the editor's own autolink (`bare-url`) and its text still is its URL, so
+ * an explicit `[url](url)` from the file stays one. The ↗ icon is its own
+ * `contenteditable="false"` span and is skipped as that; a ↗ in a link's
+ * text is text.
+ */
 function walkNode(node) {
   let result = "";
   for (const child of node.childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      result += child.textContent.replace(CARET_ANCHOR_RE, "");
+      result += child.textContent;
     } else if (child.nodeType === Node.ELEMENT_NODE) {
       const tag = child.nodeName;
       const inner = walkNode(child);
 
       if (tag === "STRONG" || tag === "B") {
-        result += `**${inner}**`;
+        if (inner) result += `**${inner}**`;
       } else if (tag === "EM" || tag === "I") {
-        result += `*${inner}*`;
+        if (inner) result += `*${inner}*`;
       } else if (tag === "CODE") {
-        result += `\`${inner}\``;
+        if (inner) result += `\`${inner}\``;
       } else if (tag === "DEL" || tag === "S") {
-        result += `~~${inner}~~`;
+        if (inner) result += `~~${inner}~~`;
       } else if (tag === "MARK") {
-        result += `==${inner}==`;
+        if (inner) result += `==${inner}==`;
       } else if (tag === "A") {
         const href = child.getAttribute("href") || "";
-        // Strip the ↗ icon character from link text for comparison
-        const linkText = inner.replace(/\u2197/g, "");
-        // If the link text equals the URL, just emit the bare URL
-        if (linkText === href) {
-          result += linkText;
+        if (child.classList.contains("bare-url") && inner === href) {
+          result += inner;
         } else {
-          result += `[${linkText}](${href})`;
+          result += `[${inner}](${href})`;
         }
       } else if (tag === "SPAN") {
         // External link icon — decorative, skip
         if (child.classList.contains("external-link-icon")) {
           continue;
         }
-        // Wikilink spans
-        if (child.classList.contains("wikilink")) {
+        if (child.classList.contains(CARET_ANCHOR_CLASS)) {
+          // The anchor's zero-width space is scaffolding; text typed on it is prose.
+          result += inner.replace(CARET_ANCHOR_RE, "");
+        } else if (child.classList.contains("wikilink")) {
           const target = child.getAttribute("data-target") || inner;
           if (target === inner) {
             result += `[[${inner}]]`;
           } else {
             result += `[[${target}|${inner}]]`;
           }
-        } else if (child.classList.contains("inline-tag")) {
-          // Tag spans — just pass through the text (already has #)
-          result += inner;
         } else {
+          // Tag spans and anything else: the text, which for a tag already has its #.
           result += inner;
         }
       } else if (tag === "BR") {
@@ -159,10 +182,9 @@ function walkNode(node) {
         if (child.nextSibling) result += "\n";
       } else if (tag === "DIV") {
         // Browser sometimes wraps lines in <div>; treat as line break
-        const divContent = walkNode(child);
-        if (divContent) {
+        if (inner) {
           if (result && !result.endsWith("\n")) result += "\n";
-          result += divContent;
+          result += inner;
         }
       } else {
         // Unknown element — recurse children, strip the tag
@@ -187,39 +209,60 @@ const ALLOWED_TAGS = new Set([
   "SPAN",
 ]);
 
+const BLOCK_TAGS = new Set(["DIV", "P", "LI", "H1", "H2", "H3", "H4", "H5", "H6"]);
+
 /**
  * Sanitize HTML: strip all tags except formatting tags.
  * Normalizes <b> → <strong>, <i> → <em>.
  * Strips empty formatting tags.
+ * Block elements (a rich paste's paragraphs) are unwrapped to a line break
+ * between them; the result is always inline content, never a wrapper element
+ * (a returned `<div>` once landed inside `<strong>` and split the line).
  */
 export function sanitizeInlineHtml(html) {
   if (!html) return "";
-
-  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
-  const cleaned = sanitizeNode(doc.body);
-  return cleaned.innerHTML;
+  const container = document.createElement("div");
+  container.appendChild(sanitizeInlineFragment(html));
+  return container.innerHTML;
 }
 
-function sanitizeNode(sourceNode) {
+/**
+ * `sanitizeInlineHtml` as nodes, for inserting into the live DOM. The paste
+ * handler inserts this itself rather than through `execCommand("insertHTML")`,
+ * which rewrote the space beside the insertion into a non-breaking space
+ * that reached the file as U+00A0.
+ */
+export function sanitizeInlineFragment(html) {
   const frag = document.createDocumentFragment();
+  if (!html) return frag;
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+  sanitizeInto(frag, doc.body, false);
+  return frag;
+}
 
+/**
+ * Append the sanitised children of `sourceNode` to `target`. Inside a caret
+ * anchor (`inAnchor`) the zero-width space is scaffolding and is dropped, so a
+ * copy or an Enter-split never carries it into Markdown.
+ */
+function sanitizeInto(target, sourceNode, inAnchor) {
   for (const child of sourceNode.childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      frag.appendChild(document.createTextNode(child.textContent));
+      const text = inAnchor ? child.textContent.replace(CARET_ANCHOR_RE, "") : child.textContent;
+      if (text) target.appendChild(document.createTextNode(text));
     } else if (child.nodeType === Node.ELEMENT_NODE) {
       const tag = child.nodeName;
 
-      if (ALLOWED_TAGS.has(tag)) {
+      if (tag === "BR") {
+        target.appendChild(document.createElement("br"));
+      } else if (tag === "SPAN" && child.classList.contains(CARET_ANCHOR_CLASS)) {
+        sanitizeInto(target, child, true);
+      } else if (ALLOWED_TAGS.has(tag)) {
         // Normalize <b> → <strong>, <i> → <em>, <s> → <del>
         let newTag = tag;
         if (tag === "B") newTag = "STRONG";
         if (tag === "I") newTag = "EM";
         if (tag === "S") newTag = "DEL";
-
-        if (tag === "BR") {
-          frag.appendChild(document.createElement("br"));
-          continue;
-        }
 
         const el = document.createElement(newTag);
 
@@ -247,117 +290,29 @@ function sanitizeNode(sourceNode) {
           }
         }
 
-        // Recurse into children
-        const innerFrag = sanitizeNode(child);
-        el.appendChild(innerFrag);
+        sanitizeInto(el, child, inAnchor);
 
-        // Skip empty formatting tags (leftover from toggling off)
-        if (el.textContent.trim() === "" && tag !== "BR") {
-          continue;
-        }
-
-        frag.appendChild(el);
-      } else if (
-        tag === "DIV" ||
-        tag === "P" ||
-        tag === "LI" ||
-        tag === "H1" ||
-        tag === "H2" ||
-        tag === "H3" ||
-        tag === "H4" ||
-        tag === "H5" ||
-        tag === "H6"
-      ) {
+        // An empty formatting tag (leftover from toggling off) is nothing;
+        // one holding only a space wraps that space, as the walker writes it
+        // (`<em> </em>` is the file's own `* *` on the Enter-split and copy paths).
+        if (el.textContent === "") continue;
+        target.appendChild(el);
+      } else if (BLOCK_TAGS.has(tag)) {
         // Unwrap block elements, but preserve separation as line breaks
-        const innerFrag = sanitizeNode(child);
-        if (innerFrag.textContent.trim()) {
-          if (frag.childNodes.length > 0 && frag.lastChild?.nodeName !== "BR") {
-            frag.appendChild(document.createElement("br"));
+        const inner = document.createDocumentFragment();
+        sanitizeInto(inner, child, inAnchor);
+        if (inner.textContent.trim()) {
+          if (target.childNodes.length > 0 && target.lastChild?.nodeName !== "BR") {
+            target.appendChild(document.createElement("br"));
           }
-          frag.appendChild(innerFrag);
+          target.appendChild(inner);
         }
       } else {
         // Unknown tag: recurse children only (strip the tag)
-        const innerFrag = sanitizeNode(child);
-        frag.appendChild(innerFrag);
+        sanitizeInto(target, child, inAnchor);
       }
     }
   }
-
-  // Wrap in a container to get innerHTML
-  const container = document.createElement("div");
-  container.appendChild(frag);
-  return container;
-}
-
-/**
- * Convert a live DOM element's childNodes directly to inline markdown.
- * Merges sanitizeInlineHtml + htmlToInlineMarkdown into a single walk —
- * no DOMParser, no innerHTML serialisation. Use this on the hot path
- * (every keystroke) where `el` is already in the document.
- */
-export function domNodeToMarkdown(element) {
-  if (!element) return "";
-  return walkLiveNode(element);
-}
-
-function walkLiveNode(node) {
-  let result = "";
-  for (const child of node.childNodes) {
-    if (child.nodeType === Node.TEXT_NODE) {
-      result += child.textContent.replace(CARET_ANCHOR_RE, "");
-    } else if (child.nodeType === Node.ELEMENT_NODE) {
-      const tag = child.nodeName;
-      const inner = walkLiveNode(child);
-
-      if (tag === "STRONG" || tag === "B") {
-        if (inner.trim()) result += `**${inner}**`;
-      } else if (tag === "EM" || tag === "I") {
-        if (inner.trim()) result += `*${inner}*`;
-      } else if (tag === "CODE") {
-        if (inner.trim()) result += `\`${inner}\``;
-      } else if (tag === "DEL" || tag === "S") {
-        if (inner.trim()) result += `~~${inner}~~`;
-      } else if (tag === "MARK") {
-        if (inner.trim()) result += `==${inner}==`;
-      } else if (tag === "A") {
-        const href = child.getAttribute("href") || "";
-        const linkText = inner.replace(/\u2197/g, "");
-        if (linkText === href) {
-          result += linkText;
-        } else {
-          result += `[${linkText}](${href})`;
-        }
-      } else if (tag === "SPAN") {
-        if (child.classList.contains("external-link-icon")) {
-          continue;
-        }
-        if (child.classList.contains("wikilink")) {
-          const target = child.getAttribute("data-target") || inner;
-          if (target === inner) {
-            result += `[[${inner}]]`;
-          } else {
-            result += `[[${target}|${inner}]]`;
-          }
-        } else if (child.classList.contains("inline-tag")) {
-          result += inner;
-        } else {
-          result += inner;
-        }
-      } else if (tag === "BR") {
-        if (child.nextSibling) result += "\n";
-      } else if (tag === "DIV") {
-        const divContent = walkLiveNode(child);
-        if (divContent) {
-          if (result && !result.endsWith("\n")) result += "\n";
-          result += divContent;
-        }
-      } else {
-        result += inner;
-      }
-    }
-  }
-  return result;
 }
 
 /**

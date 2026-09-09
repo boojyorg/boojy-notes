@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { CARET_ANCHOR } from "../utils/domHelpers";
+import { makeCaretAnchor } from "../utils/domHelpers";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 
 /**
@@ -67,8 +67,8 @@ export function useTagHandlers({
         // under `white-space: normal` a trailing space collapses: a caret
         // placed in it has no width and Chromium moved the next character
         // into the tag span (`#reviewd`). So the caret is parked on an anchor
-        // after the space, the zero-width scaffolding placeCaret uses after a
-        // link: text typed there lands after the space, outside the tag, and
+        // after the space, the marked zero-width scaffolding placeCaret uses
+        // after a link: text typed there lands after the space, outside the tag, and
         // the walkers drop the anchor. Probed in the real app (2026-09-07): a
         // non-breaking space instead, after or inside the span, reached the
         // file as U+00A0. Nothing is queued for the focus effect when the
@@ -77,10 +77,11 @@ export function useTagHandlers({
         // syncGen bump are the fallback when it was not.
         const el = blockRefs?.current?.[blocks[blockIndex].id];
         if (el) {
-          el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSetRef?.current) + CARET_ANCHOR;
-          const last = el.lastChild;
+          el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSetRef?.current);
+          const anchor = makeCaretAnchor();
+          el.appendChild(anchor);
           const range = document.createRange();
-          range.setStart(last, last.textContent.length);
+          range.setStart(anchor.firstChild, 1);
           range.collapse(true);
           const sel = window.getSelection();
           sel.removeAllRanges();

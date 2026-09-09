@@ -175,8 +175,9 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   intent for both.
 - [ ] **No context menu on plain text** — the editor's right-click handles links only and Electron
   supplies no default menu, so cut, copy and paste have no menu on desktop (`EditorArea.jsx`).
-- [ ] **Rich paste is flattened** — paste reads `text/plain` only, so links and formatting from a
-  browser or another app are dropped (`usePasteHandler.js`).
+- [ ] **A multi-line rich paste is flattened** — a single line pasted from a browser or another
+  app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
+  `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).
 - [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
   the third attempt.
 - [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
@@ -217,6 +218,13 @@ on interaction). These two block Beta.
   matches a normalising construct (tables, `- [X]`, `[!NOTE]`, bare `>`) is rewritten on any
   save. The fence matcher in `markdown.js` is backtick-only.
 - [ ] **Table `:---` separators normalise to `---`** on first edit.
+- [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
+  end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
+  keystroke; a save that lands in a pause after the space writes the non-breaking byte
+  (`hello world\u00A0`, probed in the real app 2026-09-09; the next character rewrites it as a
+  space). A trailing U+00A0 the file itself holds is indistinguishable from it at read-back,
+  which is why no normalisation was added with the inline-preservation fix; `pre-wrap` was
+  rejected earlier for changing how every run of spaces renders.
 
 **Undocumented normalisations** (decision pending: carry the raw bytes with the
 `indentStr`/`marker`/`numRaw`/`bare` pattern, or sanction each in the spec). None is in the

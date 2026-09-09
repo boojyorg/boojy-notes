@@ -171,11 +171,16 @@ Each of these has caused a real bug. Read before touching the editor.
 
 - Unit tests in `tests/` (Vitest, jsdom, Testing Library); E2E in `e2e/`. The preservation
   corpus in `tests/fixtures/preservation/` is byte-sensitive and protected by `.gitattributes`.
-- **Markdown has three contracts, one file each** (plus `tests/electron/markdown.test.js`, an
+- **Markdown has four contracts, one file each** (plus `tests/electron/markdown.test.js`, an
   older file over the same module that is due to move beside them; see the backlog).
   `tests/utils/markdown.test.js`: block →
   markdown → block (what the app creates survives its own reader). `preservation.test.js`:
   markdown → blocks → markdown byte for byte (did we alter the source?).
+  `domRoundTrip.test.js`: every text block of that corpus rendered to HTML, painted into a
+  DOM and read back by both DOM→Markdown paths (the live walker; sanitise plus walk for a
+  copy, an Enter split or a paste), byte for byte: the road a block's bytes take on its first
+  edit, which the converter suites never travel. `inline-preservation.spec.ts` proves the same
+  road in real Chromium.
   `markdownInterop.test.js`: what the Markdown *means* outside Boojy Notes, judged by an
   independent CommonMark parser (`markdown-it`, dev only) against `tests/fixtures/interop/`,
   each fixture paired with a reviewed `.meaning.txt` outline. `src/utils/markdown.js` is never

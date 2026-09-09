@@ -18,6 +18,7 @@ import {
   placeCaret,
   caretLength,
   isEditableBlock,
+  linkText,
   titleFieldText,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
@@ -893,7 +894,7 @@ const EditorArea = memo(
                   setLinkPopover({
                     existingLink: linkCtxMenu.linkType === "external" ? linkCtxMenu.element : null,
                     url: linkCtxMenu.url,
-                    text: linkCtxMenu.element.textContent?.replace(/\u2197/g, "") || "",
+                    text: linkText(linkCtxMenu.element),
                     position: pos,
                     savedRange: range,
                   });

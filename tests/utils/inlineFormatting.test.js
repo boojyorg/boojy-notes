@@ -304,10 +304,17 @@ describe("htmlToInlineMarkdown", () => {
     expect(htmlToInlineMarkdown(html)).toBe("[Click](https://example.com)");
   });
 
-  it("converts bare URL link", () => {
+  it("converts the editor's own autolink back to the bare URL", () => {
     const html =
-      '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
+      '<a href="https://example.com" class="external-link bare-url">https://example.com<span class="external-link-icon">\u2197</span></a>';
     expect(htmlToInlineMarkdown(html)).toBe("https://example.com");
+  });
+
+  it("keeps an explicit [url](url) link, which only looks like an autolink", () => {
+    // Notion exports bookmarks in this form; a bare URL is not a link in
+    // strict CommonMark, so collapsing it changed the file's meaning.
+    const html = inlineMarkdownToHtml("[https://example.com](https://example.com)");
+    expect(htmlToInlineMarkdown(html)).toBe("[https://example.com](https://example.com)");
   });
 });
 
@@ -345,8 +352,29 @@ describe("sanitizeInlineHtml", () => {
     expect(result).not.toContain("<font>");
   });
 
-  it("strips empty formatting tags", () => {
-    expect(sanitizeInlineHtml("<strong>  </strong>")).toBe("");
+  it("strips empty formatting tags and keeps whitespace-only ones", () => {
+    expect(sanitizeInlineHtml("<strong></strong>")).toBe("");
+    // The space is text the file holds (`a ** ** b`); dropping the element
+    // dropped it with the format on every Enter split and copy.
+    expect(sanitizeInlineHtml("a<strong> </strong>b")).toBe("a<strong> </strong>b");
+  });
+
+  it("returns inline content, never a wrapper, for a rich single-line paste", () => {
+    // sanitizeNode once returned a <div> that its callers appended as a
+    // child, so `<b>bold</b>` came out as `<strong><div>bold</div></strong>`
+    // and insertHTML split the line into blocks (review 2026-09-07 §3.6).
+    const html = 'start <b>bold</b> and <a href="https://x.com">link</a> end';
+    expect(sanitizeInlineHtml(html)).toBe(
+      'start <strong>bold</strong> and <a href="https://x.com">link</a> end',
+    );
+    expect(sanitizeInlineHtml("<div><b>bold</b></div><div>two</div>")).toBe(
+      "<strong>bold</strong><br>two",
+    );
+  });
+
+  it("drops the caret anchor's zero-width space and keeps text typed on it", () => {
+    const html = `see <a href="https://x.y">l</a><span class="caret-anchor">\u200Bx</span> after`;
+    expect(sanitizeInlineHtml(html)).toBe('see <a href="https://x.y">l</a>x after');
   });
 });
 
@@ -411,10 +439,15 @@ describe("domNodeToMarkdown", () => {
     expect(domNodeToMarkdown(makeEl(html))).toBe("[Click](https://example.com)");
   });
 
-  it("converts bare URL link to plain URL", () => {
+  it("converts the editor's own autolink to the plain URL", () => {
     const html =
-      '<a href="https://example.com">https://example.com<span class="external-link-icon">\u2197</span></a>';
+      '<a href="https://example.com" class="external-link bare-url">https://example.com<span class="external-link-icon">\u2197</span></a>';
     expect(domNodeToMarkdown(makeEl(html))).toBe("https://example.com");
+  });
+
+  it("keeps a ↗ typed into a link's text; only the icon span is decoration", () => {
+    const html = inlineMarkdownToHtml("go [north ↗](https://x.com) now");
+    expect(domNodeToMarkdown(makeEl(html))).toBe("go [north ↗](https://x.com) now");
   });
 
   it("skips external-link-icon spans", () => {
@@ -427,8 +460,11 @@ describe("domNodeToMarkdown", () => {
     expect(domNodeToMarkdown(makeEl(html))).toBe("#mytag");
   });
 
-  it("skips empty formatting elements", () => {
-    expect(domNodeToMarkdown(makeEl("<strong>  </strong>"))).toBe("");
+  it("skips empty formatting elements but writes whitespace-only ones", () => {
+    expect(domNodeToMarkdown(makeEl("<strong></strong>"))).toBe("");
+    // `a * * b` renders as <em> </em>; reading it back as `a  b` deleted bytes.
+    expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml("a * * b")))).toBe("a * * b");
+    expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml("x `  ` y")))).toBe("x `  ` y");
   });
 
   it("handles nested formatting", () => {
@@ -455,19 +491,33 @@ describe("domNodeToMarkdown", () => {
   });
 });
 
-describe("caret anchors never reach Markdown", () => {
-  // placeCaret parks the caret on a zero-width space after a link (domHelpers
-  // CARET_ANCHOR); it is editor scaffolding and both converters drop it.
-  it("htmlToInlineMarkdown drops the zero-width space after a link", () => {
-    expect(
-      htmlToInlineMarkdown('see <span class="wikilink" data-target="Beta">Beta</span>\u200B after'),
-    ).toBe("see [[Beta]] after");
+describe("caret anchors never reach Markdown, and the file's own zero-width spaces always do", () => {
+  // placeCaret parks the caret on a zero-width space after a link, inside a
+  // `caret-anchor` span (domHelpers CARET_ANCHOR). The span is what marks it
+  // as editor scaffolding; a U+200B outside one is a byte the file holds
+  // (escapes-unicode.md in the preservation corpus) and was being deleted on
+  // the first edit of its block.
+  const anchored =
+    '<span class="wikilink" data-target="Beta">Beta</span><span class="caret-anchor">\u200B</span>';
+
+  it("htmlToInlineMarkdown drops the anchor after a link", () => {
+    expect(htmlToInlineMarkdown(`see ${anchored} after`)).toBe("see [[Beta]] after");
   });
 
-  it("domNodeToMarkdown drops it from a live element", () => {
+  it("domNodeToMarkdown drops it from a live element, and reads text typed on it", () => {
     const el = document.createElement("p");
-    el.innerHTML = 'see <span class="wikilink" data-target="Beta">Beta</span>\u200B after';
+    el.innerHTML = `see ${anchored} after`;
     expect(domNodeToMarkdown(el)).toBe("see [[Beta]] after");
+    el.innerHTML = `see <span class="wikilink" data-target="Beta">Beta</span><span class="caret-anchor">\u200B, and</span> after`;
+    expect(domNodeToMarkdown(el)).toBe("see [[Beta]], and after");
+  });
+
+  it("keeps a zero-width space that is the note's own, in both walkers", () => {
+    const md = "zero-width\u200Bspace and <b>\u200B</b>";
+    const el = document.createElement("p");
+    el.innerHTML = inlineMarkdownToHtml(md);
+    expect(domNodeToMarkdown(el)).toBe(md);
+    expect(htmlToInlineMarkdown(el.innerHTML)).toBe(md);
   });
 });
 

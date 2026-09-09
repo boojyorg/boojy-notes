@@ -77,17 +77,54 @@ export function titleFieldText(el) {
 }
 
 /**
- * The zero-width space that holds the caret just outside a link. Chromium
- * canonicalises a caret at the edge of an inline element to *inside* it, so
- * text typed after a rendered `[[wikilink]]` or `<a>` went into the link and
- * rewrote its alias; a boundary between a link and a following text node is
- * canonicalised the same way. A zero-width space is the one anchor Chromium
- * honours. It is transient DOM: both DOM→Markdown walkers drop it, the caret
- * arithmetic here ignores it, and the next repaint from state wipes it.
+ * The caret anchor: a `<span class="caret-anchor">` holding one zero-width
+ * space, placed just after a link (or a completed tag) for the caret to rest
+ * on. Chromium canonicalises a caret at the edge of an inline element to
+ * *inside* it, so text typed after a rendered `[[wikilink]]` or `<a>` went into
+ * the link and rewrote its alias; a boundary between a link and a following
+ * text node is canonicalised the same way. A zero-width space is the one
+ * anchor Chromium honours, and the element around it is what tells the
+ * scaffolding from note text: a file's own U+200B is content and is kept,
+ * the anchor's is dropped by the DOM→Markdown walker and the sanitiser,
+ * ignored by the caret arithmetic here, and wiped by the next repaint from
+ * state. Text typed on
+ * the anchor lands inside the span, which the walkers read as prose.
  */
 export const CARET_ANCHOR = "\u200B";
+export const CARET_ANCHOR_CLASS = "caret-anchor";
 const ANCHOR_RE = /\u200B/g;
 const LINK_SELECTOR = "a, .wikilink";
+
+/** A fresh anchor element, its zero-width space inside. */
+export function makeCaretAnchor() {
+  const span = document.createElement("span");
+  span.className = CARET_ANCHOR_CLASS;
+  span.appendChild(document.createTextNode(CARET_ANCHOR));
+  return span;
+}
+
+/** Whether `node` is a caret anchor element. */
+export const isCaretAnchor = (node) =>
+  node?.nodeType === Node.ELEMENT_NODE && node.classList.contains(CARET_ANCHOR_CLASS);
+
+/** Whether `textNode` sits inside a caret anchor, where its U+200B is scaffolding. */
+const inAnchor = (textNode) => !!textNode.parentElement?.closest(`.${CARET_ANCHOR_CLASS}`);
+
+/** A text node's characters as the block's text counts them. */
+const visibleText = (textNode) =>
+  inAnchor(textNode) ? textNode.data.replace(ANCHOR_RE, "") : textNode.data;
+
+/**
+ * A link's own text: what `[text](url)` holds between the brackets, the
+ * decorative ↗ icon left out. A ↗ typed into the text is text.
+ */
+export function linkText(link) {
+  let s = "";
+  for (const n of link.childNodes)
+    if (!(n.nodeType === Node.ELEMENT_NODE && n.classList.contains("external-link-icon")))
+      s += n.textContent;
+  return s;
+}
 
 const isIcon = (textNode) => textNode.parentElement?.classList?.contains("external-link-icon");
 
@@ -112,7 +149,7 @@ export function caretLength(el) {
   let node;
   while ((node = walker.nextNode())) {
     if (node.nodeType === Node.TEXT_NODE) {
-      if (!isIcon(node)) n += node.data.replace(ANCHOR_RE, "").length;
+      if (!isIcon(node)) n += visibleText(node).length;
     } else if (isBr(node) && !isTrailingBr(node, el)) {
       n++;
     }
@@ -142,17 +179,21 @@ function isLastTextIn(link, textNode) {
  * there, else inserting one. A caret placed here stays outside the link.
  */
 function anchorAfterLink(range, link) {
-  const next = link.nextSibling;
-  if (next?.nodeType === Node.TEXT_NODE && next.data.startsWith(CARET_ANCHOR)) {
-    range.setStart(next, 1);
-    return;
+  let anchor = link.nextSibling;
+  if (!isCaretAnchor(anchor)) {
+    anchor = makeCaretAnchor();
+    link.after(anchor);
   }
-  const anchor = document.createTextNode(CARET_ANCHOR);
-  link.after(anchor);
-  range.setStart(anchor, 1);
+  let text = anchor.firstChild;
+  if (text?.nodeType !== Node.TEXT_NODE || !text.data.startsWith(CARET_ANCHOR)) {
+    // The zero-width space was deleted out from under the span; put it back.
+    text = document.createTextNode(CARET_ANCHOR);
+    anchor.prepend(text);
+  }
+  range.setStart(text, 1);
 }
 
-/** Raw index in `data` of the `visible`-th character, anchors not counted. */
+/** Raw index in an anchor's `data` of the `visible`-th character, its U+200B not counted. */
 function rawIndex(data, visible) {
   let seen = 0;
   for (let i = 0; i < data.length; i++) {
@@ -183,10 +224,19 @@ export function caretOffsetAt(el, node, offset) {
     const range = document.createRange();
     range.setStart(el, 0);
     range.setEnd(node, offset);
-    let pos = range.toString().replace(ANCHOR_RE, "").length;
+    let pos = range.toString().length;
     // placeCaret never counts the ↗ inside external links; neither do we.
     for (const icon of el.querySelectorAll(".external-link-icon")) {
       if (range.intersectsNode(icon)) pos -= icon.textContent.length;
+    }
+    // Nor an anchor's zero-width space that lies before the caret.
+    for (const anchor of el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`)) {
+      for (const text of anchor.childNodes) {
+        if (text.nodeType !== Node.TEXT_NODE) continue;
+        for (let i = 0; i < text.data.length; i++) {
+          if (text.data[i] === CARET_ANCHOR && range.comparePoint(text, i + 1) <= 0) pos--;
+        }
+      }
     }
     // A soft-break <br> before the caret is one character of the text.
     for (const br of el.querySelectorAll("br")) {
@@ -259,13 +309,14 @@ export function caretRangeAt(el, pos = 0) {
         }
         // Skip decorative icon text nodes (↗ inside links)
         if (isIcon(textNode)) continue;
-        const visibleLength = textNode.data.replace(ANCHOR_RE, "").length;
+        const visibleLength = visibleText(textNode).length;
         if (remaining <= visibleLength) {
           const link = enclosingLink(textNode, el);
           if (remaining === visibleLength && link && isLastTextIn(link, textNode)) {
             anchorAfterLink(range, link);
           } else {
-            range.setStart(textNode, rawIndex(textNode.data, remaining));
+            const raw = inAnchor(textNode) ? rawIndex(textNode.data, remaining) : remaining;
+            range.setStart(textNode, raw);
           }
           placed = true;
           break;
