@@ -4,6 +4,12 @@ import { genBlockId } from "../../utils/storage";
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
+// The special blocks with a field of their own (a textarea, a title, a
+// cell). Chosen from the menu, one of these owns the next keystroke: the
+// focus effect finds its first field (`ownedField`). Every other special
+// block has nothing to type into, so the paragraph after it takes the caret.
+const OWNS_CARET = new Set(["code", "callout", "table"]);
+
 export function useSlashCommands({
   noteDataRef,
   blockRefs,
@@ -31,12 +37,14 @@ export function useSlashCommands({
     };
 
     // Replace the slash block with `special` followed by a fresh empty
-    // paragraph, and put the caret at the start of that paragraph. This is
-    // the one state operation every "insert a special block" command ends in.
+    // paragraph, and put the caret in the block that can take it: the
+    // special block's own field when it has one, else the start of the
+    // paragraph. This is the one state operation every "insert a special
+    // block" command ends in.
     const replaceWithSpecialBlock = (special) => {
       const paraBlock = { id: genBlockId(), type: "p", text: "" };
       updateBlocks((blks) => blks.splice(blockIndex, 1, special, paraBlock));
-      focusBlockId.current = paraBlock.id;
+      focusBlockId.current = OWNS_CARET.has(special.type) ? special.id : paraBlock.id;
       focusCursorPos.current = 0;
     };
 

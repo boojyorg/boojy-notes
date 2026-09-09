@@ -52,17 +52,19 @@ beforeEach(() => {
   api = null;
 });
 
-// Every "special block" command must leave: [special, fresh paragraph], the
-// slash block's DOM cleared to <br>, and the caret at 0 in the new paragraph.
-function expectSpecialThenParagraph(t, special, paraId) {
+// Every "special block" command must leave: [special, fresh paragraph] and
+// the slash block's DOM cleared to <br>. The caret goes to the block the user
+// chose when it has a field of its own (`ownsCaret`: code, callout, table),
+// otherwise to the start of the new paragraph.
+function expectSpecialThenParagraph(t, special, paraId, { ownsCaret = false } = {}) {
   expect(t.blocks()).toEqual([special, PARA(paraId)]);
   expect(t.element.innerHTML).toBe("<br>");
-  expect(t.focusBlockId.current).toBe(paraId);
+  expect(t.focusBlockId.current).toBe(ownsCaret ? special.id : paraId);
   expect(t.focusCursorPos.current).toBe(0);
 }
 
 describe("useSlashCommands — special blocks", () => {
-  it("Table: a blank 2x2 table and a following paragraph", async () => {
+  it("Table: a blank 2x2 table and a following paragraph; the table takes the caret", async () => {
     const t = setup();
     await t.run({ type: "table" });
     expectSpecialThenParagraph(
@@ -77,22 +79,26 @@ describe("useSlashCommands — special blocks", () => {
         ],
       },
       "new-1",
+      { ownsCaret: true },
     );
   });
 
-  it("Code: an empty code block with no language, then a paragraph", async () => {
+  it("Code: an empty code block with no language, then a paragraph; the code block takes the caret", async () => {
     const t = setup();
     await t.run({ type: "code" });
-    expectSpecialThenParagraph(t, { id: "block-1", type: "code", text: "", lang: "" }, "new-1");
+    expectSpecialThenParagraph(t, { id: "block-1", type: "code", text: "", lang: "" }, "new-1", {
+      ownsCaret: true,
+    });
   });
 
-  it("Callout: keeps the requested callout type, defaulting to note", async () => {
+  it("Callout: keeps the requested callout type, defaulting to note; the callout takes the caret", async () => {
     const t = setup();
     await t.run({ type: "callout", calloutType: "warning" });
     expectSpecialThenParagraph(
       t,
       { id: "block-1", type: "callout", text: "", calloutType: "warning", title: "" },
       "new-1",
+      { ownsCaret: true },
     );
 
     const u = setup();
@@ -100,7 +106,7 @@ describe("useSlashCommands — special blocks", () => {
     expect(u.blocks()[0]).toMatchObject({ type: "callout", calloutType: "note", title: "" });
   });
 
-  it("Embed: an empty embed with no target or heading, then a paragraph", async () => {
+  it("Embed: an empty embed with no target or heading; the paragraph after takes the caret", async () => {
     const t = setup();
     await t.run({ type: "embed" });
     expectSpecialThenParagraph(
