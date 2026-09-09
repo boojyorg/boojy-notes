@@ -913,112 +913,109 @@ const Sidebar = memo(function Sidebar({
                 ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
                 : `Showing 20 of ${searchResults.totalCount}`}
             </div>
-            {searchResults.groups.map((group) => (
-              <div key={group.folderId || "_root"}>
-                {group.folderName && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: TEXT.muted,
-                      padding: "8px 14px 2px",
-                      fontWeight: 500,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ flexShrink: 0 }}>{group.folderName}</span>
-                    <div style={{ flex: 1, height: 1, background: BG.divider }} />
-                  </div>
-                )}
-                {group.results.map((result) => {
-                  const isActive = result._globalIndex === activeResultIndex;
-                  return (
-                    <button
-                      key={result.noteId}
-                      data-search-index={result._globalIndex}
-                      onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
+            {searchResults.results.map((result, i) => {
+              const isActive = i === activeResultIndex;
+              const folderPath = result.folder ? result.folder.split("/").join(" / ") : null;
+              return (
+                <button
+                  key={result.noteId}
+                  data-search-index={i}
+                  aria-current={isActive || undefined}
+                  onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
+                  style={{
+                    width: "calc(100% - 8px)",
+                    marginLeft: 5,
+                    marginRight: 3,
+                    border: "none",
+                    outline: "none",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                    cursor: "pointer",
+                    background: isActive ? `${accentColor}15` : "transparent",
+                    borderRadius: 6,
+                    padding: "5px 10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    textAlign: "left",
+                    fontFamily: "inherit",
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) hBg(e.currentTarget, BG.hover);
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) hBg(e.currentTarget, "transparent");
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <FileIcon active={isActive} />
+                    <span
                       style={{
-                        width: "calc(100% - 8px)",
-                        marginLeft: 5,
-                        marginRight: 3,
-                        border: "none",
-                        outline: "none",
-                        appearance: "none",
-                        WebkitAppearance: "none",
-                        cursor: "pointer",
-                        background: isActive ? `${accentColor}15` : "transparent",
-                        borderRadius: 6,
-                        padding: "5px 10px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        textAlign: "left",
-                        fontFamily: "inherit",
-                        transition: "background 0.12s",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) hBg(e.currentTarget, BG.hover);
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) hBg(e.currentTarget, "transparent");
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                        fontSize: 14,
+                        fontWeight: isActive ? 600 : 400,
+                        color: isActive ? TEXT.primary : TEXT.secondary,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <FileIcon active={isActive} />
-                        <span
-                          style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            flex: 1,
-                            fontSize: 14,
-                            fontWeight: isActive ? 600 : 400,
-                            color: isActive ? TEXT.primary : TEXT.secondary,
-                          }}
-                        >
-                          {result.matchIn === "title"
-                            ? renderHighlightedTitle(
-                                result.title,
-                                result.matchStart,
-                                result.matchEnd,
-                                accentColor,
-                              )
-                            : result.title}
-                        </span>
-                      </div>
-                      {result.snippet ? (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: TEXT.muted,
-                            paddingLeft: 19,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            lineHeight: "16px",
-                          }}
-                        >
-                          {renderSnippet(result.snippet, accentColor)}
-                        </div>
-                      ) : result.matchIn === "title" ? (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: TEXT.muted,
-                            paddingLeft: 19,
-                            fontStyle: "italic",
-                            lineHeight: "16px",
-                          }}
-                        >
-                          title match
-                        </div>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+                      {result.matchIn === "title"
+                        ? renderHighlightedTitle(
+                            result.title,
+                            result.matchStart,
+                            result.matchEnd,
+                            accentColor,
+                          )
+                        : result.title}
+                    </span>
+                    {folderPath && (
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          maxWidth: "45%",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: 11,
+                          color: TEXT.muted,
+                        }}
+                      >
+                        {folderPath}
+                      </span>
+                    )}
+                  </div>
+                  {result.snippet ? (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: TEXT.muted,
+                        paddingLeft: 19,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        lineHeight: "16px",
+                      }}
+                    >
+                      {renderSnippet(result.snippet, accentColor)}
+                    </div>
+                  ) : result.matchIn === "title" ? (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: TEXT.muted,
+                        paddingLeft: 19,
+                        fontStyle: "italic",
+                        lineHeight: "16px",
+                      }}
+                    >
+                      title match
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
           </>
         ) : isMobile && searchMode && searchResults.results.length === 0 ? (
           tagSuggestions && tagSuggestions.length > 0 ? (

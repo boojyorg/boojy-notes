@@ -5,7 +5,6 @@ import {
   buildPlainText,
   extractSnippet,
   findMatchBlock,
-  groupByFolder,
   buildSearchIndex,
 } from "../../src/utils/search.js";
 
@@ -187,42 +186,5 @@ describe("searchNotes", () => {
     const { results } = searchNotes("Python", index);
     // Title exact match should score highest
     expect(results[0].noteId).toBe("n2");
-  });
-});
-
-// --- groupByFolder ---
-
-describe("groupByFolder", () => {
-  it("groups root and folder results", () => {
-    const results = [
-      { noteId: "1", folder: null },
-      { noteId: "2", folder: "Work" },
-      { noteId: "3", folder: "Work" },
-      { noteId: "4", folder: "Personal" },
-    ];
-    const groups = groupByFolder(results);
-    expect(groups).toHaveLength(3); // root, Personal, Work
-    expect(groups[0].folderName).toBeNull();
-    expect(groups[0].results).toHaveLength(1);
-  });
-
-  it("sorts folders alphabetically", () => {
-    const results = [
-      { noteId: "1", folder: "Zebra" },
-      { noteId: "2", folder: "Alpha" },
-    ];
-    const groups = groupByFolder(results);
-    expect(groups[0].folderName).toBe("Alpha");
-    expect(groups[1].folderName).toBe("Zebra");
-  });
-
-  it("assigns global indices", () => {
-    const results = [
-      { noteId: "1", folder: null },
-      { noteId: "2", folder: null },
-    ];
-    const groups = groupByFolder(results);
-    expect(groups[0].results[0]._globalIndex).toBe(0);
-    expect(groups[0].results[1]._globalIndex).toBe(1);
   });
 });

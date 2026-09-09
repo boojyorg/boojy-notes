@@ -25,6 +25,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
 }));
 
 import SearchPalette from "../../src/components/SearchPalette";
+import { buildSearchIndex, searchNotes } from "../../src/utils/search";
 
 const bodyHit = {
   noteId: "n2",
@@ -35,7 +36,6 @@ const bodyHit = {
   matchEnd: 5,
   snippet: { text: "…compare with the boojy sidebar…", highlightStart: 18, highlightEnd: 23 },
   matchBlockId: "b7",
-  _globalIndex: 1,
 };
 const titleHit = {
   noteId: "n1",
@@ -46,7 +46,6 @@ const titleHit = {
   matchEnd: 5,
   snippet: { text: "also in the body: boojy", highlightStart: 18, highlightEnd: 23 },
   matchBlockId: "b1",
-  _globalIndex: 0,
 };
 
 const state: { noteData: Record<string, unknown>; sidebar: Record<string, unknown> } = {
@@ -62,7 +61,7 @@ function setup(over: Record<string, unknown> = {}) {
     search: "",
     setSearch: vi.fn(),
     searchMode: false,
-    searchResults: { results: [], totalCount: 0, groups: [] },
+    searchResults: { results: [], totalCount: 0 },
     activeResultIndex: 0,
     navigateResults: vi.fn(),
     getActiveResult: () => null,
@@ -97,7 +96,7 @@ describe("SearchPalette", () => {
     const { container, getByText, queryByText } = setup({
       search: "boojy",
       searchMode: true,
-      searchResults: { results: [titleHit, bodyHit], totalCount: 2, groups: [] },
+      searchResults: { results: [titleHit, bodyHit], totalCount: 2 },
     });
     const rows = container.querySelectorAll("[data-search-index]");
     expect(rows).toHaveLength(2);
@@ -115,7 +114,7 @@ describe("SearchPalette", () => {
     const { getByLabelText, onOpenResult, onClose } = setup({
       search: "boojy",
       searchMode: true,
-      searchResults: { results: [titleHit, bodyHit], totalCount: 2, groups: [] },
+      searchResults: { results: [titleHit, bodyHit], totalCount: 2 },
       activeResultIndex: 1,
       getActiveResult: () => bodyHit,
     });
@@ -124,12 +123,56 @@ describe("SearchPalette", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("highlights the row Enter opens, whatever folder each hit is in (review §4.3)", () => {
+    // Real results: a title hit inside a folder outscores a body hit at the
+    // root. Before this each result was stamped with its position in a
+    // folder-grouped order (root first) that the palette highlighted while
+    // Enter read score order; the row drawn first was not the row opened.
+    const noteData = {
+      root: {
+        id: "root",
+        title: "Notes",
+        folder: null,
+        content: { blocks: [{ id: "b1", type: "p", text: "The plan is simple." }] },
+      },
+      work: {
+        id: "work",
+        title: "Plan",
+        folder: "Work",
+        content: { blocks: [{ id: "b2", type: "p", text: "Plan body." }] },
+      },
+    };
+    const raw = searchNotes("plan", buildSearchIndex(noteData));
+    expect(raw.results.map((r) => r.title)).toEqual(["Plan", "Notes"]);
+    const searchResults = { results: raw.results, totalCount: raw.totalCount };
+    for (const activeResultIndex of [0, 1]) {
+      const onOpen = setup({
+        search: "plan",
+        searchMode: true,
+        searchResults,
+        activeResultIndex,
+        getActiveResult: () => raw.results[activeResultIndex],
+      });
+      const rows = onOpen.container.querySelectorAll("[data-search-index]");
+      expect([...rows].map((r) => r.getAttribute("data-search-index"))).toEqual(["0", "1"]);
+      const current = onOpen.container.querySelectorAll('[data-search-index][aria-current="true"]');
+      expect(current).toHaveLength(1);
+      expect(current[0]).toBe(rows[activeResultIndex]);
+      fireEvent.keyDown(onOpen.getByLabelText("Search notes"), { key: "Enter" });
+      expect(onOpen.onOpenResult).toHaveBeenCalledWith(
+        raw.results[activeResultIndex].noteId,
+        expect.anything(),
+      );
+      cleanup();
+    }
+  });
+
   it("moves the highlight with the arrows and opens a clicked row", () => {
     const navigateResults = vi.fn();
     const { getByLabelText, getByText, onOpenResult } = setup({
       search: "boojy",
       searchMode: true,
-      searchResults: { results: [titleHit, bodyHit], totalCount: 2, groups: [] },
+      searchResults: { results: [titleHit, bodyHit], totalCount: 2 },
       navigateResults,
     });
     fireEvent.keyDown(getByLabelText("Search notes"), { key: "ArrowDown" });
@@ -152,7 +195,7 @@ describe("SearchPalette", () => {
 
   it("says when nothing matches, and offers tags for a #", () => {
     const setSearch = vi.fn();
-    const empty = { results: [], totalCount: 0, groups: [] };
+    const empty = { results: [], totalCount: 0 };
     const none = setup({ search: "zzz", searchMode: true, searchResults: empty });
     expect(none.getByText(/No results for/)).toBeInTheDocument();
     cleanup();

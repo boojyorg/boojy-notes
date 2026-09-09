@@ -10,7 +10,6 @@ vi.mock("../../src/utils/search", () => ({
   updateIndexEntry: vi.fn(),
   removeIndexEntry: vi.fn(),
   searchNotes: vi.fn(() => ({ results: [], totalCount: 0 })),
-  groupByFolder: vi.fn(() => []),
 }));
 
 import {
@@ -18,7 +17,6 @@ import {
   updateIndexEntry,
   removeIndexEntry,
   searchNotes,
-  groupByFolder,
 } from "../../src/utils/search";
 
 function makeNoteData(...ids) {
@@ -46,7 +44,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   buildSearchIndex.mockReturnValue(new Map());
   searchNotes.mockReturnValue({ results: [], totalCount: 0 });
-  groupByFolder.mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -58,7 +55,6 @@ describe("useSearch", () => {
   it("returns matching results from searchNotes", () => {
     const mockResults = [{ id: "note-1", title: "Hello World", snippet: "Hello World" }];
     searchNotes.mockReturnValue({ results: mockResults, totalCount: 1 });
-    groupByFolder.mockReturnValue([{ folder: null, notes: mockResults }]);
 
     const noteData = makeNoteData("note-1");
     const { result } = setup(noteData);
@@ -132,7 +128,6 @@ describe("useSearch", () => {
   it("clearSearch resets searchMode, results, and activeResultIndex", () => {
     const mockResults = [{ id: "note-1" }, { id: "note-2" }];
     searchNotes.mockReturnValue({ results: mockResults, totalCount: 2 });
-    groupByFolder.mockReturnValue([]);
 
     const noteData = makeNoteData("note-1", "note-2");
     const { result } = setup(noteData);

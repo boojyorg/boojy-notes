@@ -1,11 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import {
-  buildSearchIndex,
-  updateIndexEntry,
-  removeIndexEntry,
-  searchNotes,
-  groupByFolder,
-} from "../utils/search";
+import { buildSearchIndex, updateIndexEntry, removeIndexEntry, searchNotes } from "../utils/search";
 
 export function useSearch(noteData) {
   const searchIndexRef = useRef(new Map());
@@ -14,7 +8,10 @@ export function useSearch(noteData) {
   const lastQueryRef = useRef("");
 
   const [searchMode, setSearchMode] = useState(false);
-  const [searchResults, setSearchResults] = useState({ results: [], totalCount: 0, groups: [] });
+  const [searchResults, setSearchResults] = useState({ results: [], totalCount: 0 });
+  // Position in `results`, the one order every face draws and Enter reads
+  // (review 2026-09-07 §4.3: a second, folder-grouped order once stamped each
+  // result with an index the palette highlighted while Enter read this one).
   const [activeResultIndex, setActiveResultIndex] = useState(0);
 
   // Build / update index when noteData changes
@@ -56,8 +53,7 @@ export function useSearch(noteData) {
     // If search is active, re-run with current query
     if (lastQueryRef.current) {
       const raw = searchNotes(lastQueryRef.current, searchIndexRef.current);
-      const groups = groupByFolder(raw.results);
-      setSearchResults({ results: raw.results, totalCount: raw.totalCount, groups });
+      setSearchResults({ results: raw.results, totalCount: raw.totalCount });
     }
   }, [noteData]);
 
@@ -66,16 +62,15 @@ export function useSearch(noteData) {
     if (!query || !query.trim()) {
       lastQueryRef.current = "";
       setSearchMode(false);
-      setSearchResults({ results: [], totalCount: 0, groups: [] });
+      setSearchResults({ results: [], totalCount: 0 });
       setActiveResultIndex(0);
       return;
     }
     debounceRef.current = setTimeout(() => {
       lastQueryRef.current = query.trim();
       const raw = searchNotes(query.trim(), searchIndexRef.current);
-      const groups = groupByFolder(raw.results);
       setSearchMode(true);
-      setSearchResults({ results: raw.results, totalCount: raw.totalCount, groups });
+      setSearchResults({ results: raw.results, totalCount: raw.totalCount });
       setActiveResultIndex(0);
     }, 150);
   }, []);
@@ -84,7 +79,7 @@ export function useSearch(noteData) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     lastQueryRef.current = "";
     setSearchMode(false);
-    setSearchResults({ results: [], totalCount: 0, groups: [] });
+    setSearchResults({ results: [], totalCount: 0 });
     setActiveResultIndex(0);
   }, []);
 
