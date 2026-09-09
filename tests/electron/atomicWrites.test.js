@@ -120,3 +120,72 @@ describe("write-note — crash-safe writes", () => {
     expect(index["note-1-aaaa"]).toBe("A.md");
   });
 });
+
+// The permission bits are the file's own (`chmod 600` on a private note, a
+// vault shared read-only with a group), and the atomic rename lands a fresh
+// temp file over the target. Proved on master 2026-09-09: 0600 became 0644 on
+// the first save. Windows has no permission bits to keep, only a read-only flag.
+describe.skipIf(process.platform === "win32")("write-note — the file's permission bits", () => {
+  const modeOf = (p) => fs.statSync(p).mode & 0o777;
+  const referenceMode = () => {
+    const ref = path.join(indexDir, "reference");
+    fs.writeFileSync(ref, "");
+    return modeOf(ref);
+  };
+
+  it("keeps the mode an existing note has across a save", () => {
+    const { filePath } = writeNote({
+      id: "note-1-aaaa",
+      title: "Private",
+      content: { blocks: [{ type: "p", text: "one" }] },
+    });
+    fs.chmodSync(filePath, 0o600);
+
+    writeNote({
+      id: "note-1-aaaa",
+      title: "Private",
+      content: { blocks: [{ type: "p", text: "two" }] },
+    });
+
+    expect(fs.readFileSync(filePath, "utf-8")).toBe("two");
+    expect(modeOf(filePath).toString(8)).toBe("600");
+  });
+
+  it("carries the mode to the new name when the note is renamed", () => {
+    const { filePath } = writeNote({
+      id: "note-1-aaaa",
+      title: "Private",
+      content: { blocks: [{ type: "p", text: "one" }] },
+    });
+    fs.chmodSync(filePath, 0o600);
+
+    const renamed = writeNote({
+      id: "note-1-aaaa",
+      title: "Still private",
+      content: { blocks: [{ type: "p", text: "one" }] },
+    });
+
+    expect(path.basename(renamed.filePath)).toBe("Still private.md");
+    expect(modeOf(renamed.filePath).toString(8)).toBe("600");
+    expect(fs.existsSync(filePath)).toBe(false);
+  });
+
+  it("gives a new note the mode any newly created file gets, whatever the vault holds", () => {
+    // A private sibling, and a temp file left by a crash under the name the
+    // write will use, are the two things a new file could pick a mode up from.
+    fs.writeFileSync(path.join(notesDir, "Other.md"), "");
+    fs.chmodSync(path.join(notesDir, "Other.md"), 0o600);
+    fs.writeFileSync(path.join(notesDir, ".Fresh.md.tmp"), "stale");
+    fs.chmodSync(path.join(notesDir, ".Fresh.md.tmp"), 0o600);
+
+    const { filePath } = writeNote({
+      id: "note-2-bbbb",
+      title: "Fresh",
+      content: { blocks: [{ type: "p", text: "new" }] },
+    });
+
+    expect(fs.readFileSync(filePath, "utf-8")).toBe("new");
+    expect(modeOf(filePath).toString(8)).toBe(referenceMode().toString(8));
+    expect(modeOf(path.join(notesDir, "Other.md")).toString(8)).toBe("600");
+  });
+});

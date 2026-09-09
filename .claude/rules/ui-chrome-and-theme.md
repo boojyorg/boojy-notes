@@ -525,6 +525,15 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - The editor title repaints from state when the field is not focused (a sidebar rename of the
   open note); while focused the field is ahead of state and is never repainted from it.
 - No inline "a note with this name already exists" validation, by decision; correctness first.
+- **A save keeps the file's permission bits** (2026-09-09, review §2.8). `writeFileAtomic` gives
+  the temp file the nine permission bits of the file it replaces before the rename, and
+  `write-note` names the old file as the source when a rename moves a note away from it, so a
+  `chmod 600` note is `0600` after every save and under its new name. A file with nothing to
+  replace is made from the umask alone, and a stale `.name.tmp` from a crash is removed first
+  rather than reopened (it handed its own mode to the new file). Birthtime, Finder tags and
+  other xattrs are still lost on every save, as is a symlinked `.md`; one design decision,
+  deferred in the backlog. Don't fix any of them by writing in place without a decision on the
+  backup strategy. `file-mode.spec.ts` proves the edit, the rename and the new note.
 
 ## Block drag: the gutter handle, never the text
 
