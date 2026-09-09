@@ -436,7 +436,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // original line-ending style (content.eol is set by parseNoteFile)
     const bodyMd = applyEol(blocksToMarkdown(note.content?.blocks || []), note.content?.eol);
 
-    writeFileAtomic(finalPath, bodyMd);
+    // A rename away from the note's file keeps that file's permission bits;
+    // every other write keeps the target's own (or makes a file the ordinary way).
+    writeFileAtomic(finalPath, bodyMd, existingPath && !sameFile ? existingPath : finalPath);
     // Claimed after the write: a claim describes bytes that are on disk. The
     // handler is synchronous, so no watcher event can arrive in between.
     watcher.claimWrite(finalPath, bodyMd);
