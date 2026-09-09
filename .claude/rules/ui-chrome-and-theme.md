@@ -732,6 +732,47 @@ smell.
   commit window, an outside delete while typing, a vault switch with pending edits) and the
   unit tests beside `useHistory` and `useFileSystem`.
 
+### The DOM is painted from the ref, and a programmatic edit is read back like a keystroke
+
+The live DOM has a second owner while the user types: the browser. React state is behind it
+by the text-commit debounce, and a render can be a keystroke behind the DOM in two ordinary
+ways: the next keystroke publishes the previous one synchronously, and the debounced commit
+publishes in a transition that React may finish after another keystroke. The rule
+(2026-09-09, review §1.1, §1.15, §3.3): **a text block is painted only on a signal, from the
+block as the keystroke ref holds it, never from the render; and a programmatic change to a
+block's text either edits the live DOM and is read back as a keystroke is, or commits with a
+sync-generation bump and lets the block paint itself.**
+
+- **The signals are mount, a `syncGen` bump and a title-set change**, the deps of
+  `EditableBlock`'s repaint effect; a keystroke is never one. The effect reads the block from
+  `noteDataRef` (`latestBlock`, by id), remembers the caret offset and puts the caret back,
+  clamped. Before this it painted the render's `block.text`: the character typed after a
+  `[x](url)` was lost when the link's styling pass bumped the generation and the next
+  keystroke's render carried the text without it (§1.1), and in dev, StrictMode's double
+  invocation of the consume-once `textOnlyEdit` flag recomputed the title set mid-burst and
+  painted the previous keystroke over the field (§1.15). The special blocks' fields follow the
+  same rule through `useOwnedField`.
+- **A bump alone paints nothing; a commit that publishes at once does, from anywhere.** The
+  wikilink completion used to write the block's HTML by hand on the belief that a bump from
+  WikilinkMenu's native listener never repainted; `wikilink.spec.ts` proves it does, and the
+  hand paint is gone. The tag completion still paints by hand, for the caret alone: the
+  repaint puts the caret back at its offset, which for a completed tag is inside the collapsed
+  trailing space, so the handler parks it on the anchor itself.
+- **A text-only commit never repaints, by design**, so a programmatic edit of a block's text
+  goes through the DOM: edit the text on screen, then `domNodeToMarkdown` → `updateBlockText`,
+  exactly as a keystroke is read back (formatting, the link popover, and now Find → Replace).
+  Replace edits the matched text node itself, so the nth *visible* match is the one replaced
+  (the Markdown-index arithmetic it replaced counted a match inside a link's URL), the
+  replacement is text and never a pattern (`$&` was interpreted), and only text blocks are
+  edited: a match inside a table cell, callout or code block is found and highlighted but left
+  alone. Before this Replace rewrote the Markdown in state alone: the file changed, the screen
+  did not, and the next keystroke wrote the old text back over it (§3.3).
+- Proven in `repaint-ownership.spec.ts` (the real app: Replace then typing, Replace All over a
+  link, typing past a fresh Markdown link) and the unit tests beside `EditableBlock` and
+  `FindBar`. Not changed here: the consume-once `textOnlyEdit` flags still exist and still
+  have no margin against a second reader; with the paint taken from the ref, a spurious
+  recompute now costs a repaint, never a keystroke.
+
 ## The paragraph model
 
 Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).

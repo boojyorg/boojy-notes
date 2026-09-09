@@ -60,9 +60,10 @@ export function useTagHandlers({
           next[noteId] = n;
           return next;
         });
-        // Enter arrives from TagMenu's *native* window listener, so the block
-        // is painted here, the way the wikilink menu and useInputHandler do
-        // it. The space that ends the tag is the block's last character, and
+        // The block is painted here for the caret, not for the paint: the
+        // commit's render would repaint it from the ref, but the repaint puts
+        // the caret back at its offset, which is inside the collapsed space.
+        // The space that ends the tag is the block's last character, and
         // under `white-space: normal` a trailing space collapses: a caret
         // placed in it has no width and Chromium moved the next character
         // into the tag span (`#reviewd`). So the caret is parked on an anchor

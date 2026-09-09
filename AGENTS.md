@@ -132,13 +132,19 @@ Each of these has caused a real bug. Read before touching the editor.
    (`commitTextChange`). Anything that must respond to the current keystroke (the empty-block
    placeholder, for one) reads the DOM, not state. An "empty" block holds a `<br>` for the
    caret, so it is never `:empty`; use `:has(> br:only-child)`.
-2. **The `syncGen` re-sync only fires from React events.** `EditableBlock` repaints
-   `innerHTML` from `block.text` when `syncGen` changes, but only if the editor re-renders,
-   which it is optimised not to do for text edits. Bumping `syncGeneration.current` works from
-   React synthetic handlers and not from a native `window` listener. To mutate a block from a
-   native listener, set `el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet)` directly (the
-   `useInputHandler` pattern) plus `commitNoteData`. When a DOM-sync fix "should work" but
-   doesn't, add a `console.log` in the layout effect and observe; don't theorise about timing.
+2. **A text block is painted from the keystroke ref, never from the render, and only on a
+   signal.** `EditableBlock` repaints `innerHTML` on mount, when `syncGen` changes (undo, a
+   paste, an outside change) and when the title set changes, and it paints the block as
+   `noteDataRef` holds it, because a render can be a keystroke behind the DOM and painting
+   the render's text lost the keystroke. A bump alone renders nothing: pair it with a commit
+   that publishes at once (`commitNoteData`), from a React handler or a native listener alike
+   (proven in the real app, 2026-09-09). A text-only commit (`commitTextChange`) never repaints,
+   by design, so a programmatic *text* edit edits the live DOM and reads the block back the way
+   a keystroke is (`domNodeToMarkdown` → `updateBlockText`: formatting, the link popover,
+   Find → Replace); one that changes a block's *type* clears the element itself before the
+   commit (`useInputHandler`), because the effect does not re-run for a type change. When a
+   DOM-sync fix "should work" but doesn't, add a `console.log` in the layout effect and
+   observe; don't theorise about timing.
 3. **`EditorContext` is frozen at mount.** Its value is memoised with `[]`, so every handler
    from `useEditorContext()` is the first render's. Handlers read changing state through refs
    (`activeNoteRef`, `noteDataRef`, `blockRefs`), never a captured value. The same applies to

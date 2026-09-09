@@ -655,7 +655,7 @@ const EditorArea = memo(
                   blocks={note.content.blocks}
                   blockRefs={blockRefs}
                   noteId={activeNote}
-                  commitTextChange={commitTextChange}
+                  updateBlockText={updateBlockText}
                   initialShowReplace={findBarReplace}
                   onClose={() => {
                     setFindBarOpen(false);

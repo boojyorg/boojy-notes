@@ -1,14 +1,38 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
+import { isEditableBlock } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 
+/** Put `replacement` where `range` is, on screen. */
+function replaceRange(range, replacement) {
+  range.deleteContents();
+  if (replacement) range.insertNode(document.createTextNode(replacement));
+}
+
+/**
+ * Find and replace inside the open note.
+ *
+ * Find walks the text nodes on screen and highlights them (the CSS Custom
+ * Highlight API). Replace edits those same text nodes, in place, and the block
+ * is then read back from what is on screen, exactly as a keystroke is: the
+ * live DOM is what the user is looking at, and reading it back keeps state and
+ * screen the same note. Before this, Replace rewrote the block's Markdown in
+ * state alone, which the editor never repaints for a text-only change, so the
+ * file changed, the paragraph did not, and the next keystroke in it read the
+ * old text back over the replacement (review 2026-09-07, §3.3). Editing the
+ * visible text also means the nth visible match is the one replaced (the
+ * Markdown-index arithmetic it replaces counted a match inside a link's URL),
+ * and the replacement is text, never a pattern. Only a text block is edited
+ * (a table cell, a callout and a code block own their fields); a match in one
+ * of those is found and highlighted but left alone by Replace.
+ */
 export default function FindBar({
   editorRef,
   blocks,
   blockRefs,
   noteId,
-  commitTextChange,
+  updateBlockText,
   initialShowReplace,
   onClose,
 }) {
@@ -30,9 +54,10 @@ export default function FindBar({
     inputRef.current?.focus();
   }, []);
 
-  // Find matches using CSS Custom Highlight API
+  // Find matches using CSS Custom Highlight API. `active` is the match to
+  // land on, clamped: a replace keeps the user's place in the list.
   const findMatches = useCallback(
-    (term) => {
+    (term, active = 0) => {
       if (typeof CSS === "undefined" || !CSS.highlights) {
         // Fallback: no highlight API
         setMatches([]);
@@ -66,15 +91,15 @@ export default function FindBar({
         }
       }
 
+      const idx = Math.max(0, Math.min(active, ranges.length - 1));
       setMatches(ranges);
-      setActiveMatchIndex(0);
+      setActiveMatchIndex(idx);
 
       if (ranges.length > 0) {
         const highlight = new Highlight(...ranges);
         CSS.highlights.set("find-matches", highlight);
-        const active = new Highlight(ranges[0]);
-        CSS.highlights.set("find-active", active);
-        ranges[0].startContainer.parentElement?.scrollIntoView({
+        CSS.highlights.set("find-active", new Highlight(ranges[idx]));
+        ranges[idx].startContainer.parentElement?.scrollIntoView({
           behavior: "smooth",
           block: "center",
         });
@@ -119,89 +144,61 @@ export default function FindBar({
     setActiveMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
   }, [matches]);
 
+  // The text block a match sits in, with its registered element, or null when
+  // the match is inside a block that owns its own field (a table cell, a
+  // callout, a code block) or one that is no longer in the note.
+  const blockOf = useCallback(
+    (range) => {
+      const blockId = range.startContainer.parentElement
+        ?.closest("[data-block-id]")
+        ?.getAttribute("data-block-id");
+      const blockIndex = blocks.findIndex((b) => b.id === blockId);
+      if (blockIndex === -1 || !isEditableBlock(blocks[blockIndex])) return null;
+      const el = blockRefs.current[blockId];
+      if (!el?.contains(range.startContainer)) return null;
+      return { blockIndex, el };
+    },
+    [blocks, blockRefs],
+  );
+
+  // Read a block back from what is on screen, as a keystroke is.
+  const readBack = useCallback(
+    (blockIndex, el) => {
+      el.normalize();
+      const text = domNodeToMarkdown(el)
+        .replace(/[\n\r]+$/, "")
+        .replace(/^[\n\r]+/, "");
+      updateBlockText(noteId, blockIndex, text);
+    },
+    [noteId, updateBlockText],
+  );
+
   const handleReplace = useCallback(() => {
     if (matches.length === 0 || !searchTerm) return;
     const idx = Math.min(activeMatchIndex, matches.length - 1);
-    const range = matches[idx];
-    // Find which block this match is in
-    const blockEl = range.startContainer.parentElement?.closest("[data-block-id]");
-    if (!blockEl) return;
-    const blockId = blockEl.getAttribute("data-block-id");
-    const blockIndex = blocks.findIndex((b) => b.id === blockId);
-    if (blockIndex === -1) return;
-
-    const el = blockRefs.current[blockId];
-    if (!el) return;
-
-    // Read current text, replace the match
-    const currentText = domNodeToMarkdown(el);
-    const lowerText = currentText.toLowerCase();
-    const lowerTerm = searchTerm.toLowerCase();
-
-    // Find the nth occurrence in this block
-    let count = 0;
-    let charIdx = -1;
-    for (let i = 0; i < matches.length; i++) {
-      if (i === idx) break;
-      const mBlockEl = matches[i].startContainer.parentElement?.closest("[data-block-id]");
-      if (mBlockEl?.getAttribute("data-block-id") === blockId) count++;
-    }
-    let searchFrom = 0;
-    for (let c = 0; c <= count; c++) {
-      charIdx = lowerText.indexOf(lowerTerm, searchFrom);
-      if (charIdx === -1) break;
-      searchFrom = charIdx + 1;
-    }
-
-    if (charIdx === -1) return;
-
-    const newText =
-      currentText.slice(0, charIdx) + replaceTerm + currentText.slice(charIdx + searchTerm.length);
-
-    commitTextChange((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blks = [...n.content.blocks];
-      blks[blockIndex] = { ...blks[blockIndex], text: newText };
-      n.content = { ...n.content, blocks: blks };
-      next[noteId] = n;
-      return next;
-    });
-
-    // Re-search after a tick
-    setTimeout(() => findMatches(searchTerm), 50);
-  }, [
-    matches,
-    activeMatchIndex,
-    searchTerm,
-    replaceTerm,
-    blocks,
-    blockRefs,
-    noteId,
-    commitTextChange,
-    findMatches,
-  ]);
+    const target = blockOf(matches[idx]);
+    if (!target) return;
+    replaceRange(matches[idx], replaceTerm);
+    readBack(target.blockIndex, target.el);
+    // The screen already holds the replacement; find again in it, staying on
+    // the match that now sits where the replaced one was.
+    findMatches(searchTerm, idx);
+  }, [matches, activeMatchIndex, searchTerm, replaceTerm, blockOf, findMatches, readBack]);
 
   const handleReplaceAll = useCallback(() => {
     if (matches.length === 0 || !searchTerm) return;
-
-    commitTextChange((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blks = [...n.content.blocks];
-      for (let i = 0; i < blks.length; i++) {
-        if (blks[i].text && blks[i].text.toLowerCase().includes(searchTerm.toLowerCase())) {
-          const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-          blks[i] = { ...blks[i], text: blks[i].text.replace(regex, replaceTerm) };
-        }
-      }
-      n.content = { ...n.content, blocks: blks };
-      next[noteId] = n;
-      return next;
-    });
-
-    setTimeout(() => findMatches(searchTerm), 50);
-  }, [matches, searchTerm, replaceTerm, noteId, commitTextChange, findMatches]);
+    const touched = new Map();
+    // Ranges are live: editing one adjusts the others in the same text node,
+    // so document order is safe.
+    for (const range of matches) {
+      const target = blockOf(range);
+      if (!target) continue;
+      replaceRange(range, replaceTerm);
+      touched.set(target.blockIndex, target.el);
+    }
+    for (const [blockIndex, el] of touched) readBack(blockIndex, el);
+    findMatches(searchTerm);
+  }, [matches, searchTerm, replaceTerm, blockOf, findMatches, readBack]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {

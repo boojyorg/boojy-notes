@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
+import { latestBlock } from "../hooks/useOwnedField";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -68,13 +69,25 @@ const EditableBlock = memo(
     const { BG, TEXT } = theme;
     const elRef = useRef(null);
 
-    // Set text on mount and force-resync on undo/redo (syncGen changes).
-    // Replacing innerHTML collapses a caret that was inside this block to its
-    // start, so an undo would leave the user typing at the front of the line;
-    // remember the offset first and put the caret back, clamped to the new text.
+    // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
+    // an outside change) and when the title set changes (a wikilink may have
+    // become broken or whole), never on a keystroke: the browser owns the DOM
+    // while the user types. The text painted is the block as the keystroke
+    // ref holds it, never as this render holds it. The ref runs ahead of
+    // React state by the text-commit debounce, and a render can carry a text
+    // one keystroke behind the DOM: the render the next keystroke publishes
+    // the previous one with, and a transition render that finishes after a
+    // keystroke. Painted from the render, that lag went over the DOM and the
+    // keystroke was lost: the character typed after a `[x](url)` whose
+    // styling pass bumped the generation (review 2026-09-07, §1.1), and the
+    // characters typed after a title edit in dev, where StrictMode's double
+    // invocation recomputed the title set mid-burst (§1.15). Replacing
+    // innerHTML collapses a caret inside the block to its start, so the
+    // offset is remembered first and the caret put back, clamped to the text.
     useLayoutEffect(() => {
       const el = elRef.current;
       if (!el || block.text === undefined) return;
+      const text = (latestBlock(noteDataRef, noteId, block) ?? block).text ?? "";
       const caret = getCaretOffset(el);
       trace(
         "block repaint",
@@ -85,15 +98,15 @@ const EditableBlock = memo(
         "syncGen",
         syncGen,
         "len",
-        (block.text || "").length,
+        text.length,
       );
-      if (block.text === "") {
+      if (text === "") {
         el.innerHTML = "<br>";
       } else {
-        el.innerHTML = inlineMarkdownToHtml(block.text, noteTitleSet);
+        el.innerHTML = inlineMarkdownToHtml(text, noteTitleSet);
       }
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
-    }, [syncGen, noteTitleSet]); // only mount + undo/redo, NOT on every keystroke
+    }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke
 
     useLayoutEffect(() => {
       if (elRef.current) registerRef(block.id, elRef.current);

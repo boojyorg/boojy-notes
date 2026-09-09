@@ -190,6 +190,10 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`
   has no left boundary, so `a#b` and `example.com/page#top` produce tags `b` and `top`.
+- [ ] **Find counts a code block's matches twice** (the textarea and its highlight overlay,
+  `FindBar.jsx`), and Replace leaves a match inside a table cell, a callout or a code block
+  alone, since those blocks own their fields; replacing inside them is a decision to make once
+  it has been felt.
 - [ ] **Edits across a block boundary that the app refuses rather than makes** (the block-root
   rule in the UI rule, 2026-09-07): a selection reaching from a text block into a table, callout
   or code block, then Backspace or typing, changes nothing (deleting the run is not attempted);

@@ -59,7 +59,7 @@ describe("useWikilinkHandlers", () => {
     expect(openNote).not.toHaveBeenCalled();
   });
 
-  it("select inserts the link, writes rendered HTML to the DOM, and queues the caret", () => {
+  it("select inserts the link with a bump, leaves the DOM to the block's own repaint, and queues the caret", () => {
     const el = document.createElement("div");
     document.body.appendChild(el);
     const noteData = {
@@ -86,8 +86,9 @@ describe("useWikilinkHandlers", () => {
     expect(next.n1.content.blocks[0].text).toBe("see [[Beta]]");
     expect(syncGeneration.current).toBe(1);
 
-    // DOM written directly (native-listener path) + caret queued
-    expect(el.innerHTML).toBe("RENDERED:see [[Beta]]");
+    // The block paints itself from the ref on the bump; the handler writes
+    // nothing to the DOM. The caret is queued after the link.
+    expect(el.innerHTML).toBe("");
     expect(focusBlockId.current).toBe("b1");
     expect(focusCursorPos.current).toBe("see [[Beta]]".length);
     expect(setWikilinkMenu).toHaveBeenCalledWith(null);
