@@ -82,6 +82,8 @@ export function useEditorHandlers({
     ...shared,
     slashMenuRef,
     setSlashMenu,
+    tagMenuRef,
+    setTagMenu,
     wikilinkMenuRef,
     updateBlockText,
     insertBlockAfter,

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 
 /**
@@ -8,12 +9,27 @@ import { Z } from "../constants/zIndex";
  * Resolves the pending requestConfirm() promise with true (confirm) or false (cancel).
  *
  * confirm shape: { title, message, confirmLabel?, cancelLabel?, danger? }
+ *
+ * Enter activates the focused button, natively (review 2026-09-07, §4.1): a
+ * destructive dialog opens with Cancel focused, so Enter cancels until the
+ * user Tabs to the other button; a plain one opens on Confirm. Before this a
+ * window listener confirmed on any Enter, whatever held focus, so the
+ * "safer" default was no protection at all. The dialog takes only Escape.
+ * Focus is placed once per dialog and Tab stays inside it.
  */
 export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel }) {
   const { theme } = useTheme();
+  const dialogRef = useRef(null);
   const cancelRef = useRef(null);
   const confirmRef = useRef(null);
   const danger = confirm?.danger;
+  // The callbacks are fresh arrows every render; read through a ref so the
+  // effect below runs once per dialog rather than refocusing the default
+  // button on every app re-render (a toast expiring undid a Tab).
+  const handlers = useRef({ onConfirm, onCancel });
+  handlers.current = { onConfirm, onCancel };
+
+  useFocusTrap(dialogRef, !!confirm);
 
   useEffect(() => {
     if (!confirm) return;
@@ -23,15 +39,12 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
     const onKey = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onCancel();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        onConfirm();
+        handlers.current.onCancel();
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [confirm, danger, onConfirm, onCancel]);
+  }, [confirm, danger]);
 
   if (!confirm) return null;
 
@@ -55,6 +68,7 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
       onClick={onCancel}
     >
       <div
+        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={confirm.title || "Confirm"}

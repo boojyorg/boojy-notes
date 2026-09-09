@@ -78,7 +78,7 @@ export default function BoojyNotes() {
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { settingsOpen, setSettingsOpen, uiScale, setUiScale } = useSettings();
+  const { uiScale, setUiScale } = useSettings();
 
   const {
     sidebarWidth,
@@ -402,7 +402,7 @@ export default function BoojyNotes() {
     onError: showToast,
   });
   // Search-result navigation (clear multi-select on search; scroll + highlight on open)
-  // The desktop search palette (Cmd+K). Closing clears the shared search
+  // The desktop search palette (Cmd+P). Closing clears the shared search
   // state so the sidebar tree, filtered behind the scrim, comes back whole.
   const [searchOpen, setSearchOpen] = useState(false);
   const openSearch = useCallback(() => {
@@ -460,7 +460,6 @@ export default function BoojyNotes() {
     activeNote,
     noteData,
     uiScale,
-    settingsOpen,
     overlayOpen,
     blockDrag,
     sidebarDrag,
@@ -468,7 +467,6 @@ export default function BoojyNotes() {
     undo,
     redo,
     createNote,
-    setSettingsOpen,
     revealSidebar,
     openSearch,
     closeOverlay,

@@ -78,7 +78,7 @@ describe("ConfirmDialog", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("Escape cancels and Enter confirms", () => {
+  it("Escape cancels", () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -91,8 +91,49 @@ describe("ConfirmDialog", () => {
     );
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
-    fireEvent.keyDown(window, { key: "Enter" });
-    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  // Enter activates the focused button, natively; the dialog never takes the
+  // key itself (review 2026-09-07, §4.1: Enter confirmed with Cancel focused).
+  it("Enter is left to the focused button: a danger dialog opens on Cancel, a plain one on Confirm", () => {
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <ConfirmDialog
+        confirm={baseConfirm}
+        accentColor="#abc"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByText("Cancel"));
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    document.activeElement.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    rerender(
+      <ConfirmDialog
+        confirm={{ title: "Rename?", confirmLabel: "Rename" }}
+        accentColor="#abc"
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByText("Rename"));
+  });
+
+  it("a re-render with fresh callbacks does not move focus back to the default button", () => {
+    const confirm = baseConfirm;
+    const { rerender } = render(
+      <ConfirmDialog confirm={confirm} accentColor="#abc" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    screen.getByText("Delete").focus();
+    // The app re-renders (a toast expiring) and hands the dialog new arrows.
+    rerender(
+      <ConfirmDialog confirm={confirm} accentColor="#abc" onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expect(document.activeElement).toBe(screen.getByText("Delete"));
   });
 
   it("falls back to default labels when none are given", () => {

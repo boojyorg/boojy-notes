@@ -43,6 +43,8 @@ export function useKeyboardHandlers({
   focusCursorPos,
   slashMenuRef,
   setSlashMenu,
+  tagMenuRef,
+  setTagMenu,
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
@@ -145,6 +147,11 @@ export function useKeyboardHandlers({
     // Enter — split block
     if (e.key === "Enter") {
       e.preventDefault();
+      // The tag menu belongs to the `#…` token under the caret. It leaves
+      // Enter to the editor when the tag is already complete, and the caret
+      // is about to leave the block; without this the menu stayed open over
+      // the old block and its next Enter completed into it.
+      if (tagMenuRef?.current) setTagMenu(null);
       const blockType = blocks[blockIndex].type;
       const isList = LIST_TYPES.has(blockType);
 

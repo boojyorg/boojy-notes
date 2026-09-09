@@ -53,7 +53,7 @@ const ContextMenu = memo(function ContextMenu({
   const handleKeyDown = useCallback(
     (e) => {
       const items = itemsRef.current;
-      if (!items.length) return;
+      if (!items.length || e.defaultPrevented) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex((i) => (i + 1) % items.length);
@@ -74,10 +74,14 @@ const ContextMenu = memo(function ContextMenu({
     [activeIndex, setCtxMenu],
   );
 
+  // On the document, not the window: the app shell's shortcut handler is a
+  // window listener registered at startup, so a window listener added when
+  // the menu opens would run after it and its preventDefault would come too
+  // late (Escape here also closed the overlay sidebar beneath the menu).
   useEffect(() => {
     if (!ctxMenu) return;
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [ctxMenu, handleKeyDown]);
 
   if (!ctxMenu) return null;

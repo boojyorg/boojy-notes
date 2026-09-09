@@ -446,12 +446,19 @@ const Sidebar = memo(function Sidebar({
               renameNote(nId, e.target.value);
               setRenamingNote(null);
             }}
+            // The field owns Enter and Escape: prevented, so the app shell
+            // never treats them as its own (Escape also closed an overlay
+            // sidebar under the field).
             onKeyDown={(e) => {
               if (e.key === "Enter") {
+                e.preventDefault();
                 renameNote(nId, e.target.value);
                 setRenamingNote(null);
               }
-              if (e.key === "Escape") setRenamingNote(null);
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setRenamingNote(null);
+              }
             }}
             style={{
               background: BG.darkest,
@@ -613,11 +620,13 @@ const Sidebar = memo(function Sidebar({
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
+                  e.preventDefault();
                   e.currentTarget.dataset.committed = "1";
                   renameFolder(folderPath, e.currentTarget.value.trim());
                   setRenamingFolder(null);
                 }
                 if (e.key === "Escape") {
+                  e.preventDefault();
                   e.currentTarget.dataset.committed = "1";
                   setRenamingFolder(null);
                 }
@@ -822,7 +831,7 @@ const Sidebar = memo(function Sidebar({
           </button>
           {/* Window-level controls live in the chrome row with the traffic
               lights: Search and the panel toggle. The vault header below is
-              the first content line. Search opens the palette (Cmd+K); the
+              the first content line. Search opens the palette (Cmd+P); the
               panel itself never shows a field or results on desktop. */}
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <ChromeButton onClick={onOpenSearch} title="Search">

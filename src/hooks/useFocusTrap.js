@@ -7,6 +7,16 @@ const FOCUSABLE_SELECTOR =
  * Traps keyboard focus within a container element while `isOpen` is true.
  * Restores focus to the previously-focused element on close.
  *
+ * Focus follows the closest active surface (review 2026-09-07, §4.1, §4.2):
+ * a surface that has already placed its own focus keeps it (the confirm
+ * dialog's default button, the palette's autofocused field), and a closing
+ * surface hands focus back only while it still holds it. Before this, the
+ * context menu's Rename opened the sidebar's rename field, and the menu's
+ * cleanup then put focus back on the row's ··· a frame later: the field
+ * blurred, committed the unchanged name and unmounted, so Rename from a menu
+ * never worked; the same cleanup took focus off the confirm dialog's Cancel
+ * button the moment a menu's Delete opened it.
+ *
  * @param {React.RefObject<HTMLElement>} containerRef - ref to the trap container
  * @param {boolean} isOpen - whether the trap is active
  * @param {"first" | "container"} [initialFocus] - "container" parks initial
@@ -27,8 +37,10 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
     const container = containerRef.current;
     if (!container) return;
 
-    // Focus the first focusable element inside the container
+    // Focus the first focusable element inside the container, unless the
+    // surface has already put focus somewhere inside itself.
     const focusFirst = () => {
+      if (container.contains(document.activeElement)) return;
       if (initialFocus === "container") {
         container.focus();
         return;
@@ -82,9 +94,15 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
       cancelAnimationFrame(raf);
       container.removeEventListener("keydown", handleKeyDown);
 
-      // Restore focus to the element that was focused before the trap
-      if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
-        previousFocusRef.current.focus();
+      // Restore focus to the element that was focused before the trap, but
+      // only if the trap still holds it: focus inside the container, or on
+      // the body because the container has just left the DOM. Focus that
+      // another surface has taken meanwhile is that surface's.
+      const active = document.activeElement;
+      const stillHeld = !active || active === document.body || container.contains(active);
+      const previous = previousFocusRef.current;
+      if (stillHeld && previous && typeof previous.focus === "function") {
+        previous.focus();
       }
     };
   }, [isOpen, containerRef, initialFocus]);
