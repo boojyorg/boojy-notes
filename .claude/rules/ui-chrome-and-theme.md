@@ -665,6 +665,21 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - Selection is keyboard-first: opening and filtering reset to the first row, and rows take the
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
+- **The block you chose owns the next keystroke when it has a field of its own** (2026-09-09,
+  review §1.5). Code block focuses its textarea, Callout its title, Table its first cell; Divider,
+  Image, File and Embed have nothing to type into, so the paragraph opened under them takes the
+  caret as before. One rule, in two places: `replaceWithSpecialBlock` (`useSlashCommands`)
+  queues the special block's own id in `focusBlockId` for those three types (`OWNS_CARET`), and
+  the focus effect (`useEditorFocusUX`), finding no text root registered for that id (the three
+  never register one; their fields are their own), focuses the block's first field through
+  `ownedField` in `domHelpers`: the wrapper by `data-block-id`, then its first `textarea` or
+  `contenteditable="true"`. `handleBlockNav` (Escape and the arrows out of a code block or
+  callout) uses the same helper in place of its old code-only textarea query, so it now enters
+  a neighbouring callout or table as well. Before this every special block put the caret in the
+  paragraph after it, and the two lines of code typed after choosing Code block were two
+  paragraphs under an empty fence. No focus API was added to the blocks; the DOM they already
+  render is the handle. `slash-focus.spec.ts` proves the three, and the divider's paragraph-after,
+  in the real app.
 
 ## One edit, one block root
 
@@ -1009,9 +1024,9 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
 - Proven in `special-block-fields.spec.ts` (the real app: the cell line break through a
   restart, the callout click-through and edit, Enter at the end of a fence with undo by burst,
   the pending cell edit through a menu row insert) and the unit tests beside the three
-  components, the hook, the serializer and the comparator. Not changed here: slash insertion
-  still lands the caret in the paragraph after a new table, code block or callout (review
-  §1.5); Cmd+Z inside a code block's textarea reaches the app's undo as any Cmd+Z does.
+  components, the hook, the serializer and the comparator. Not changed here: Cmd+Z inside a
+  code block's textarea reaches the app's undo as any Cmd+Z does. (Slash insertion into these
+  three lands in the block's own field since 2026-09-09; see the slash menu section.)
 
 ### Tables are ragged on disk and stay ragged
 

@@ -489,6 +489,20 @@ export function suppressNextClick(ttl = 200) {
 }
 
 /**
+ * The field a special block owns, for the caret: a code block's textarea, a
+ * callout's title (its first field), a table's first cell. Found by the
+ * block's wrapper, because a code block, callout or table registers no text
+ * root in the block ref map (its fields are its own; see useOwnedField).
+ * Null for a text block, for a block with no field (divider, image, file,
+ * embed) and for a block that is not on screen.
+ */
+export function ownedField(editorEl, blockId) {
+  const wrapper = editorEl?.querySelector?.(`[data-block-id="${blockId}"]`);
+  if (!wrapper || wrapper.getAttribute("contenteditable") !== "false") return null;
+  return wrapper.querySelector("textarea, [contenteditable='true']");
+}
+
+/**
  * Check if a block type is editable (has text content).
  */
 export function isEditableBlock(b) {

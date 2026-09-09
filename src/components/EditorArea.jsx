@@ -18,6 +18,7 @@ import {
   placeCaret,
   caretLength,
   isEditableBlock,
+  ownedField,
   linkText,
   titleFieldText,
 } from "../utils/domHelpers";
@@ -308,16 +309,12 @@ const EditorArea = memo(
         }
         if (targetIndex >= blocks.length) return;
         const target = blocks[targetIndex];
-        if (target.type === "code") {
-          // Focus the textarea inside the code block
-          const wrapper = editorRef.current?.querySelector(`[data-block-id="${target.id}"]`);
-          const ta = wrapper?.querySelector("textarea");
-          if (ta) ta.focus();
+        const el = blockRefs.current[target.id];
+        if (el) {
+          placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
         } else {
-          const el = blockRefs.current[target.id];
-          if (el) {
-            placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
-          }
+          // A code block, callout or table: its own first field takes focus.
+          ownedField(editorRef.current, target.id)?.focus();
         }
       },
       [activeNote, noteDataRef, blockRefs, editorRef, titleRef],

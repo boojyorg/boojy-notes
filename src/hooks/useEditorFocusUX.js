@@ -4,6 +4,7 @@ import {
   caretOutOfLinkStart,
   cleanOrphanNodes,
   getBlockFromNode,
+  ownedField,
   placeCaret,
 } from "../utils/domHelpers";
 
@@ -19,7 +20,10 @@ import {
  *      movement and deletion are never touched.
  *   3. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
  *      places the caret in that block, re-asserts it after the next frame if the DOM
- *      moved, and scrolls the block into view if it landed near the bottom.
+ *      moved, and scrolls the block into view if it landed near the bottom. A block
+ *      with no text root (a code block, callout or table) has its own first field
+ *      focused instead (`ownedField`), so the block the slash menu made owns the
+ *      next keystroke (review 2026-09-07, §1.5).
  *
  * Extracted from BoojyNotes. The layout effect intentionally has no dependency
  * array (runs every render) — preserved verbatim.
@@ -106,8 +110,14 @@ export function useEditorFocusUX({
       const targetPos = focusCursorPos.current ?? 0;
       focusBlockId.current = null;
       focusCursorPos.current = null;
-      const el = blockRefs.current[targetId];
-      placeCaret(el, targetPos);
+      // A text block takes the caret at the offset; a block whose fields are
+      // its own (no text root registered) takes focus in its first field.
+      const focusTarget = () => {
+        const el = blockRefs.current[targetId];
+        if (el) placeCaret(el, targetPos);
+        else ownedField(editorRef.current, targetId)?.focus();
+      };
+      focusTarget();
       requestAnimationFrame(() => {
         const sel = window.getSelection();
         const blocks = noteDataRef.current[activeNote]?.content?.blocks;
@@ -116,13 +126,12 @@ export function useEditorFocusUX({
           getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)
         )
           return;
-        const freshEl = blockRefs.current[targetId];
-        if (freshEl) placeCaret(freshEl, targetPos);
+        focusTarget();
       });
       setTimeout(() => {
         const scrollEl = editorScrollRef.current;
         if (!scrollEl) return;
-        const blockEl = blockRefs.current[targetId];
+        const blockEl = blockRefs.current[targetId] ?? ownedField(editorRef.current, targetId);
         if (!blockEl) return;
         const blockRect = blockEl.getBoundingClientRect();
         const scrollRect = scrollEl.getBoundingClientRect();

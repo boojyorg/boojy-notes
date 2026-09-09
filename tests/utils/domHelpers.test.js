@@ -12,6 +12,7 @@ import {
   linkText,
   placeCaret,
   titleFieldText,
+  ownedField,
 } from "../../src/utils/domHelpers.js";
 
 function editable(html) {
@@ -467,5 +468,29 @@ describe("soft breaks: a <br> is one caret position, the newline it stands for",
     expect(node).toBe(el);
     expect(offset).toBe(2); // between the two <br>s: the empty second line
     expect(getCaretOffset(el)).toBe("one\n".length);
+  });
+});
+
+describe("ownedField", () => {
+  it("resolves a special block's first field by its wrapper, never a text root", () => {
+    const editor = document.createElement("div");
+    editor.innerHTML =
+      '<div data-block-id="p1" data-block-type="p">text</div>' +
+      '<div data-block-id="c1" data-block-type="code" contenteditable="false">' +
+      '<textarea class="code-textarea"></textarea></div>' +
+      '<div data-block-id="k1" data-block-type="callout" contenteditable="false">' +
+      '<div role="button"></div><div class="callout-title" contenteditable="true"></div>' +
+      '<div class="callout-body" contenteditable="true"></div></div>' +
+      '<div data-block-id="t1" data-block-type="table" contenteditable="false">' +
+      '<table><thead><tr><th contenteditable="true"></th><th contenteditable="true"></th></tr></thead>' +
+      '<tbody><tr><td contenteditable="true"></td></tr></tbody></table></div>' +
+      '<div data-block-id="s1" data-block-type="spacer" contenteditable="false"><hr></div>';
+    expect(ownedField(editor, "c1")).toBe(editor.querySelector("textarea"));
+    expect(ownedField(editor, "k1")).toBe(editor.querySelector(".callout-title"));
+    expect(ownedField(editor, "t1")).toBe(editor.querySelector("th"));
+    expect(ownedField(editor, "s1")).toBeNull();
+    expect(ownedField(editor, "p1")).toBeNull();
+    expect(ownedField(editor, "missing")).toBeNull();
+    expect(ownedField(null, "c1")).toBeNull();
   });
 });
