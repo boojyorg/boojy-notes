@@ -1,4 +1,5 @@
 import type { Block, BlockType } from "../types/notes";
+import { SOFT_BREAK_TYPES } from "./crossBlockEdit";
 import { markdownToBlocks } from "./markdown";
 
 /**
@@ -14,7 +15,10 @@ import { markdownToBlocks } from "./markdown";
  * 2. A plain paragraph is text, not structure. Its text merges into the
  *    destination at the caret, so pasting a sentence into a checkbox, bullet
  *    or heading keeps it a checkbox, bullet or heading, with its checked state,
- *    indent and any other metadata intact.
+ *    indent and any other metadata intact. Into a block whose syntax has no
+ *    soft break (a heading), the paragraph's lines are joined with a space,
+ *    as Shift+Enter there is refused: written raw, the newline split the
+ *    heading into a heading and a paragraph on the next open.
  * 3. A structured first block pasted into a populated destination becomes its
  *    own block. At the start of the destination it goes in front of it; in the
  *    middle it splits the destination text around itself.
@@ -67,6 +71,12 @@ export function isPlainPastedBlock(block: PastedBlock): boolean {
   return block.type === "p";
 }
 
+/** Plain pasted text as the destination block can hold it (rule 2). */
+function plainTextFor(destination: Block, text: string | undefined): string {
+  const t = text ?? "";
+  return SOFT_BREAK_TYPES.has(destination.type) ? t : t.replace(/\n/g, " ");
+}
+
 /**
  * Whether one line of clipboard text is itself a structured text block in
  * Markdown (a heading, list item, checkbox or quote). Such a line takes over
@@ -113,13 +123,13 @@ export function buildPastedBlocks(
     // Rule 1 and 2: an empty destination keeps its type for plain text and
     // yields it to structure.
     if (destinationIsText && isPlainPastedBlock(first)) {
-      blocks.push({ ...currentBlock, text: first.text ?? "" });
+      blocks.push({ ...currentBlock, text: plainTextFor(currentBlock, first.text) });
     } else {
       blocks.push(materialise(first, currentBlock.id));
     }
   } else if (destinationIsText && isPlainPastedBlock(first)) {
     // Rule 2: plain text merges at the caret.
-    blocks.push({ ...currentBlock, text: beforeText + (first.text ?? "") });
+    blocks.push({ ...currentBlock, text: beforeText + plainTextFor(currentBlock, first.text) });
   } else if (!hasBefore) {
     // Rule 3, caret at the start: the pasted blocks go in front, and the
     // destination keeps its whole text.

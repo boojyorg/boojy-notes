@@ -1,0 +1,3 @@
+paragraph "One paragraph on screen, written with its markers escaped.\n# not a heading\n- not a list\n1. not an ordered list\n--- not a setext underline\n``` not a fence\n> not a quote\n| a | not a table\n!alt not an image"
+paragraph "A heading written from two pasted lines."
+h1 "a b"

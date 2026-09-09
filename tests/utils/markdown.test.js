@@ -753,3 +753,91 @@ describe("a special block's Markdown is never structurally invalid (review 2026-
     expect(blocksToMarkdown(blocks)).toBe("> [!note] one two\n> body");
   });
 });
+
+describe("the serializer never writes a line its own parser reads as another block", () => {
+  // A paragraph or list item holds soft breaks (Shift+Enter, a multi-line
+  // paste), so its text can hold a line that reads as the start of another
+  // block. Written raw, `foo\n# bar` came back from disk as a paragraph and a
+  // heading, `foo\n- bar` as a paragraph and a list, `foo\n---` as a setext
+  // heading, and a soft-broken fence swallowed the rest of the note. The line
+  // is written with the marker's first punctuation escaped, the CommonMark
+  // escape every reader shows as the character, and reads back as text.
+  const p = (text) => ({ type: "p", text });
+  const bullet = (text) => ({ type: "bullet", text });
+
+  const cases = [
+    ["foo\n# bar", "foo\n\\# bar"],
+    ["foo\n## bar", "foo\n\\## bar"],
+    ["foo\n- bar", "foo\n\\- bar"],
+    ["foo\n* bar", "foo\n\\* bar"],
+    ["foo\n+ bar", "foo\n\\+ bar"],
+    ["foo\n- [ ] task", "foo\n\\- [ ] task"],
+    ["foo\n1. two", "foo\n1\\. two"],
+    ["foo\n12. twelve", "foo\n12\\. twelve"],
+    ["foo\n---", "foo\n\\---"],
+    ["foo\n```\nnot code", "foo\n\\```\nnot code"],
+    ["foo\n> not a quote", "foo\n\\> not a quote"],
+    ["foo\n| a |\n|---|", "foo\n\\| a |\n|---|"],
+    ["foo\n![alt](x.png)", "foo\n\\![alt](x.png)"],
+    ["foo\n![[Embed]]", "foo\n\\![[Embed]]"],
+    ["foo\n  - indented", "foo\n  \\- indented"],
+    // The first line too: a paragraph can come to hold one (Find → Replace).
+    ["# first", "\\# first"],
+    ["- first\nsecond", "\\- first\nsecond"],
+  ];
+  for (const [text, written] of cases) {
+    it(`paragraph ${JSON.stringify(text)} is written ${JSON.stringify(written)} and reads back as itself`, () => {
+      expect(blocksToMarkdown([p(text)])).toBe(written);
+      expect(stripIds(markdownToBlocks(written))).toEqual([p(written)]);
+    });
+  }
+
+  it("a list item's continuation lines follow the same rule; its first line has its marker", () => {
+    expect(blocksToMarkdown([bullet("item\n# not a heading")])).toBe("- item\n\\# not a heading");
+    expect(blocksToMarkdown([bullet("item\n- not a sibling")])).toBe("- item\n\\- not a sibling");
+    expect(stripIds(markdownToBlocks("- item\n\\- not a sibling"))).toEqual([
+      bullet("item\n\\- not a sibling"),
+    ]);
+    expect(blocksToMarkdown([{ type: "numbered", text: "one\n2. two", num: 1 }])).toBe(
+      "1. one\n2\\. two",
+    );
+    expect(blocksToMarkdown([{ type: "checkbox", text: "a\n- [ ] b", checked: false }])).toBe(
+      "- [ ] a\n\\- [ ] b",
+    );
+  });
+
+  it("a line the parser reads as text is written as it is: nothing is escaped twice", () => {
+    for (const text of [
+      "foo\n#### four hashes is text here",
+      "foo\n\\# already escaped",
+      "foo\n1\\. already escaped",
+      "foo\n1) not a list marker",
+      "foo\n-- not a marker",
+      "foo\n#tag at line start",
+      "foo\n| a |\n| b |",
+      "foo\n===\nnot a setext heading here",
+      "2024 was a year",
+      "foo\n\nbar",
+    ]) {
+      expect(blocksToMarkdown([p(text)]), JSON.stringify(text)).toBe(text);
+    }
+  });
+
+  it("a file that holds a paragraph and a heading tight is that, and is written back unchanged", () => {
+    const md = "foo\n# bar\n- item\n\\# escaped in the file\n";
+    expect(stripIds(markdownToBlocks(md))).toEqual([
+      p("foo"),
+      { type: "h1", text: "bar" },
+      bullet("item\n\\# escaped in the file"),
+      p(""),
+    ]);
+    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+  });
+
+  it("a heading has no soft break: a newline in its text is written as a space", () => {
+    expect(blocksToMarkdown([{ type: "h1", text: "a\nb" }])).toBe("# a b");
+    expect(blocksToMarkdown([{ type: "h2", text: "a\nb" }])).toBe("## a b");
+    expect(blocksToMarkdown([{ type: "h3", text: "a\nb" }])).toBe("### a b");
+    expect(stripIds(markdownToBlocks("# a b"))).toEqual([{ type: "h1", text: "a b" }]);
+  });
+});

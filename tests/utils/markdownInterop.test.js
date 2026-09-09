@@ -267,7 +267,35 @@ describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
     ).toBe('blockquote\n  paragraph "quoted"\nparagraph "After the quote."\n');
   });
 
-  // ── What already means the right thing ────────────────────────────────────
+  // ── A soft-break line that would start a block ───────────────────────────
+  // Shift+Enter then `# bar` is one paragraph on screen. Written raw the file
+  // means a paragraph and a heading; written with the marker escaped it means
+  // the one paragraph the user wrote, here and in every reader.
+  it("a paragraph whose soft-break line starts with a marker is one paragraph outside", () => {
+    expect(authored([paragraph("foo\n# bar\n- baz\n1. qux\n---")])).toBe(
+      'paragraph "foo\\n# bar\\n- baz\\n1. qux\\n---"\n',
+    );
+    expect(blocksToMarkdown([paragraph("foo\n# bar")])).toBe("foo\n\\# bar");
+  });
+
+  it("a list item whose continuation line starts with a marker is one item outside", () => {
+    expect(authored([bullet("item\n# not a heading\n- not a sibling")])).toBe(
+      'bullet list\n  item\n    paragraph "item\\n# not a heading\\n- not a sibling"\n',
+    );
+  });
+
+  it("a soft-broken fence stays prose and swallows nothing", () => {
+    expect(authored([paragraph("foo\n```\nstill prose"), paragraph("After.")])).toBe(
+      'paragraph "foo\\n```\\nstill prose"\nparagraph "After."\n',
+    );
+  });
+
+  it("a heading with a newline in its text is one heading outside", () => {
+    expect(authored([heading(1, "a\nb"), paragraph("After.")])).toBe(
+      'h1 "a b"\nparagraph "After."\n',
+    );
+  });
+
   it("an empty paragraph block between two paragraphs separates them", () => {
     expect(authored([paragraph("First."), paragraph(""), paragraph("Second.")])).toBe(
       'paragraph "First."\nparagraph "Second."\n',

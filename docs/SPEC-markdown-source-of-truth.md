@@ -29,9 +29,12 @@ editor, in `cat`, in anything that reads text.
 A paragraph block holds every adjacent plain line of the paragraph, joined by soft breaks; a list
 item holds its lazy continuation lines; one blank line between such a block and the paragraph or
 divider after it is the separator and not a block, and every further blank line is an empty
-paragraph block. Enter starts a paragraph, Shift+Enter a soft break. Nothing is recorded that the
-file does not say, and reading a file never rewrites it. The exact rules live in the UI rule's
-paragraph-model section.
+paragraph block. Enter starts a paragraph, Shift+Enter a soft break. A soft-break line that would
+start another block to a Markdown reader (`# bar`, `- bar`, `1. two`, `---`, a fence) is written
+with its marker backslash-escaped (`\# bar`), so the file means the one block that was typed; a
+file that holds the tight form is read as the blocks it means and written back unchanged. Nothing
+is recorded that the file does not say, and reading a file never rewrites it. The exact rules live
+in the UI rule's paragraph-model section.
 
 An empty list item or heading is the block its marker says: `- `, `1. `, `- [ ] `, `# ` (what
 the app writes for one left empty) and the bare `-`, `1.`, `- [ ]`, `#` other editors write all
@@ -120,6 +123,9 @@ test rather than letting it pass as if lossless:
   (`![alt](url)`, `format: "md"` on the block) keep their syntax and alt text losslessly.
 - **First-position `spacer`** — a leading `---` is always frontmatter, so a `spacer` must
   never be the first block.
+- **A newline in a heading** — an ATX heading is one line, so `h1` text `a\nb` is written
+  `# a b` and reads back as `a b`. The editor refuses Shift+Enter in a heading and joins pasted
+  lines with a space, so the loss is asserted, never met.
 - **A `---` tight under a paragraph line** — `hello` / `---` is a setext heading underline to
   every conventional reader, and a divider to Boojy Notes, which has always read it so. The
   first save writes the separator blank before the `---`, so the file comes to mean what the
