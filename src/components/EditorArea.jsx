@@ -532,14 +532,20 @@ const EditorArea = memo(
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
+              // The fade is opacity alone. No transform, ever: a transformed
+              // element is the containing block for every `position: fixed`
+              // descendant, and the link, code, image and file menus and the
+              // table's create badge open fixed at the pointer's clientX/Y. The
+              // 4px lift this used to carry offset them by the column's own
+              // left edge and scroll, for the fade's 200ms and, because it
+              // ended at translateY(0), for ever after (review 2026-09-07 §3.9).
               opacity: editorFadeIn ? 1 : 0,
-              transform: editorFadeIn ? "translateY(0)" : "translateY(4px)",
               // Padding and margin ease too, so crossing the width at which the
               // sidebar leaves the layout reads as the column breathing out
               // rather than the page re-laying-out under you. `.sidebar-dragging`
               // kills all transitions, so dragging the divider stays 1:1.
               transition:
-                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease, transform 0.2s ease",
+                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease",
               position: "relative",
               zIndex: Z.BASE,
             }}

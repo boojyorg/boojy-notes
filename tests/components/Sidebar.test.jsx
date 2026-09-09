@@ -75,7 +75,6 @@ let _sidebarOverrides = {};
 
 const emptySearchResults = {
   results: [],
-  groups: [],
   totalCount: 0,
 };
 
@@ -97,7 +96,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
     setRenamingNote: _sidebarOverrides.setRenamingNote ?? vi.fn(),
     searchMode: _sidebarOverrides.searchMode ?? false,
     searchResults: _sidebarOverrides.searchResults ?? emptySearchResults,
-    activeResultIndex: 0,
+    activeResultIndex: _sidebarOverrides.activeResultIndex ?? 0,
     navigateResults: vi.fn(),
     clearSearch: vi.fn(),
     getActiveResult: () => null,
@@ -323,46 +322,37 @@ describe("Sidebar", () => {
     }
   });
 
-  it("shows search results when in searchMode with results", () => {
+  it("draws search results in list order, folder beside the title, the active one marked", () => {
+    // Two rows in the order the list holds them (a folder hit first): no
+    // folder grouping reorders them, and the highlight is by position.
+    const row = (noteId, title, folder) => ({
+      noteId,
+      title,
+      folder,
+      matchIn: "title",
+      matchStart: 0,
+      matchEnd: 6,
+      snippet: null,
+    });
     const searchResults = {
-      results: [
-        {
-          noteId: "n1",
-          title: "Result Note",
-          matchIn: "title",
-          matchStart: 0,
-          matchEnd: 6,
-          snippet: null,
-          _globalIndex: 0,
-        },
-      ],
-      groups: [
-        {
-          folderId: null,
-          folderName: null,
-          results: [
-            {
-              noteId: "n1",
-              title: "Result Note",
-              matchIn: "title",
-              matchStart: 0,
-              matchEnd: 6,
-              snippet: null,
-              _globalIndex: 0,
-            },
-          ],
-        },
-      ],
-      totalCount: 1,
+      results: [row("n2", "Result Plan", "Uni/COMP336"), row("n1", "Result Note", null)],
+      totalCount: 2,
     };
     const { container, getByText } = renderSidebar({
       isMobile: true,
       searchMode: true,
       search: "Result",
       searchResults,
+      activeResultIndex: 1,
     });
-    expect(getByText("1 result")).toBeInTheDocument();
-    expect(container.textContent).toContain("Result Note");
+    expect(getByText("2 results")).toBeInTheDocument();
+    const rows = container.querySelectorAll("[data-search-index]");
+    expect([...rows].map((r) => r.getAttribute("data-search-index"))).toEqual(["0", "1"]);
+    expect(rows[0].textContent).toContain("Result Plan");
+    expect(rows[0].textContent).toContain("Uni / COMP336");
+    expect(rows[1].textContent).toContain("Result Note");
+    expect(rows[1].getAttribute("aria-current")).toBe("true");
+    expect(rows[0].getAttribute("aria-current")).toBeNull();
   });
 
   it("renders no Trash/Recently Deleted section", () => {
@@ -409,7 +399,7 @@ describe("Sidebar", () => {
     const { getByText, queryByText } = renderSidebar({
       searchMode: true,
       search: "xyz",
-      searchResults: { results: [], groups: [], totalCount: 0 },
+      searchResults: { results: [], totalCount: 0 },
     });
     expect(getByText("My Vault")).toBeInTheDocument();
     expect(queryByText(/No results for/)).not.toBeInTheDocument();
@@ -545,7 +535,7 @@ describe("Sidebar", () => {
       isMobile: true,
       searchMode: true,
       search: "xyz",
-      searchResults: { results: [], groups: [], totalCount: 0 },
+      searchResults: { results: [], totalCount: 0 },
     });
     expect(getByText(/No results for/)).toBeInTheDocument();
     expect(getByText(/Try searching with #tags/)).toBeInTheDocument();
@@ -628,14 +618,7 @@ describe("Sidebar tag chips", () => {
     n2: { title: "B", content: { blocks: [{ text: "#work again" }] } },
   };
   const oneResult = {
-    results: [{ noteId: "n1", title: "A", matchIn: "title", snippet: null, _globalIndex: 0 }],
-    groups: [
-      {
-        folderId: null,
-        folderName: null,
-        results: [{ noteId: "n1", title: "A", matchIn: "title", snippet: null, _globalIndex: 0 }],
-      },
-    ],
+    results: [{ noteId: "n1", title: "A", matchIn: "title", snippet: null }],
     totalCount: 1,
   };
 

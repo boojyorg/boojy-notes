@@ -36,7 +36,6 @@ interface Result {
   matchEnd: number;
   snippet: Snippet | null;
   matchBlockId: string | null;
-  _globalIndex: number;
 }
 
 const PALETTE_WIDTH = 560;
@@ -212,14 +211,15 @@ export default function SearchPalette({ onOpenResult, onClose }: SearchPalettePr
                 No results for &ldquo;{search}&rdquo;
               </div>
             )}
-            {results.map((r) => {
-              const active = r._globalIndex === activeResultIndex;
+            {results.map((r, i) => {
+              const active = i === activeResultIndex;
               const folderPath = r.folder ? r.folder.split("/").join(" / ") : null;
               return (
                 <button
                   type="button"
                   key={r.noteId}
-                  data-search-index={r._globalIndex}
+                  data-search-index={i}
+                  aria-current={active || undefined}
                   onClick={() => open(r)}
                   onMouseEnter={(e) => {
                     if (!active) e.currentTarget.style.background = BG.surface;

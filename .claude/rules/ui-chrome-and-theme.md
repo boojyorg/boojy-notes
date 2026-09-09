@@ -379,6 +379,16 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   did. The sidebar tree filters behind the scrim while you type; closing clears it. The mobile
   layout keeps its field and inline results (`isMobile`-gated in `Sidebar.jsx`); the chips and
   highlighters they share live in `SearchParts.tsx`. Cmd+F in-note find is separate (`FindBar`).
+- **One order: the result list as `searchNotes` returns it, score then recency** (2026-09-09,
+  review §4.3). Both faces draw `searchResults.results` in that order, `activeResultIndex` is a
+  position in it, `getActiveResult` reads it, and the highlighted row carries `aria-current`.
+  Before this a second, folder-grouped order (root first, folders alphabetically) stamped every
+  result with its position in *that* order (`_globalIndex`), the palette highlighted by the
+  stamp while Enter read the position, and any hit inside a folder put the highlight on one row
+  and opened another; the arrows walked the list out of order. The grouping is gone
+  (`groupByFolder`, `searchResults.groups`); the mobile face now draws the flat list with the
+  folder path muted after the title, as the palette does. Don't reintroduce a display order that
+  is not the array's, on either face. `search-active-row.spec.ts` proves it in the real app.
 
 ## Note order is a preference, not a stored arrangement
 
@@ -643,6 +653,15 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 - Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
   viewport margin, flip to the other side on overflow, clamp last. Route every new popover
   through it rather than writing a fresh clamp.
+- **The editor column never carries a transform** (2026-09-09, review §3.9). The link, code
+  block, image and file context menus and the table's create badge are `position: fixed` at
+  the pointer's `clientX`/`clientY` and render inside the column; a transformed ancestor is the
+  containing block for a fixed descendant, so the column's fade-in, which lifted it 4px and
+  ended at `translateY(0)`, opened every one of them offset by the column's own left edge and
+  scroll (284px right at the default width, and moving with the page). The fade is opacity
+  alone now. `TableContextMenu` and the callout picker portal to `body` and were never affected.
+  Restoring a lift means portalling those five surfaces first. `editor-menus.spec.ts` measures
+  the link, code and image menus against the pointer in a scrolled note in the real app.
 - Selection is keyboard-first: opening and filtering reset to the first row, and rows take the
   selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
   stationary pointer.
