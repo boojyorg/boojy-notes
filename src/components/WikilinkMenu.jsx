@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 
 export default function WikilinkMenu({ position, filter, noteData, onSelect, onDismiss }) {
@@ -8,8 +7,9 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
   const { BG, TEXT, ACCENT } = theme;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
+  // A suggestion menu under the caret never takes focus: the block keeps it,
+  // and the menu takes only the keys it owns from the listener below.
   const menuRef = useRef(null);
-  useFocusTrap(menuRef, !!position);
 
   const noteTitles = useMemo(() => {
     if (!noteData) return [];

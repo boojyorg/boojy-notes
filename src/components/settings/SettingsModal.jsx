@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
@@ -21,6 +21,21 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
   const modalRef = useRef(null);
 
   useFocusTrap(modalRef, settingsOpen);
+
+  // Settings closes itself on Escape, as every other surface does; the app
+  // shell's handler never needs to know it is open. On the document, so it
+  // runs before the shell's window listener, and only for an Escape nothing
+  // above it has taken.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      setSettingsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [settingsOpen, setSettingsOpen]);
 
   if (!settingsOpen) return null;
 

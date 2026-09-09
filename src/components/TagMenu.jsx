@@ -1,16 +1,31 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 import { extractAllTags } from "../utils/tags";
 
+/**
+ * Tag autocomplete under the `#…` being typed.
+ *
+ * The menu pops up under a word, unasked, so it owns a key only while it is
+ * offering something (review 2026-09-07, §1.2). It never takes focus; the
+ * block keeps it. It listens only while it has rows, so an empty match (a new
+ * tag) leaves every key to the editor. Enter accepts the highlighted tag only
+ * when that is a completion: the user has moved the highlight, or the
+ * highlighted tag differs from what is typed. A tag typed in full is
+ * complete already, and Enter after it is the editor's Enter. Space is never
+ * touched: it ends the tag in the text, and the input handler closes the menu
+ * because the caret is no longer inside a `#…` token. Before this the menu
+ * prevented the space (`#alpha` + ` beta` became `#alphabeta`) and took Enter
+ * even with nothing on screen.
+ */
 export default function TagMenu({ position, filter, noteData, onSelect, onDismiss }) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
+  // Whether the user has moved the highlight with the arrows since typing.
+  const [chosen, setChosen] = useState(false);
   const menuRef = useRef(null);
-  useFocusTrap(menuRef, !!position);
 
   const allTags = useMemo(() => {
     if (!noteData) return [];
@@ -28,33 +43,37 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   useEffect(() => {
     setSelectedIndex(0);
+    setChosen(false);
   }, [filter]);
 
+  const shown = !!position && filtered.length > 0;
+
   useEffect(() => {
+    if (!shown) return;
     const handler = (e) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        setChosen(true);
         setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        setChosen(true);
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
+        const pick = filtered[selectedIndex]?.tag;
+        if (!pick || (!chosen && pick.toLowerCase() === filter.toLowerCase())) return;
         e.preventDefault();
-        if (filtered.length > 0) {
-          onSelect(filtered[selectedIndex]?.tag || filter);
-        } else {
-          onSelect(filter);
-        }
-      } else if (e.key === "Escape" || e.key === " ") {
+        onSelect(pick);
+      } else if (e.key === "Escape") {
         e.preventDefault();
         onDismiss();
       }
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [filtered, selectedIndex, filter, onSelect, onDismiss]);
+  }, [shown, filtered, selectedIndex, chosen, filter, onSelect, onDismiss]);
 
-  if (!position || filtered.length === 0) return null;
+  if (!shown) return null;
 
   return (
     <div

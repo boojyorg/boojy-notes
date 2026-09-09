@@ -318,7 +318,6 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   free). Turn both on.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
-- **`TagMenu` swallows the space that ends a tag** — `preventDefault` on space-dismiss.
 - **The touch layout's grammar is recorded nowhere in the rules** (two screens, fixed-edge
   toolbar with Undo and Redo, long-press FAB, bottom-sheet menu); the archived, local
   `docs/private/archive/mobile-spec.md` header lists it. Write it into

@@ -327,7 +327,8 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   note's name is selected Finder-style; the folder input only autofocuses with the caret at the
   end, so typing appends (a known gap in the backlog; the intent is Finder-style for both). The
   ··· Rename falls back to the editor title only when the sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
-  second toggle rather than delaying single-click to disambiguate.
+  second toggle rather than delaying single-click to disambiguate. Rename from a menu depends
+  on the closing menu leaving focus with the field (see "Keys and focus").
 
 ### The vault header and its one tree
 
@@ -359,8 +360,11 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 
 ## Search is a palette, not a panel
 
-- **On desktop, search is `SearchPalette.tsx`**: Cmd+K (the convention) or Cmd+P (the habit
-  this app taught before), the chrome row's Search glyph, or a click on an inline `#tag`. A
+- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the chrome row's Search glyph, or a
+  click on an inline `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
+  2026-09-09; before this both fired and the palette opened over the link popover). Boojy
+  Notes has Search, not a command palette: the popup exists only to find and open notes, and
+  nothing unrelated goes into it. A
   560px dialog in the top third of the window over a dimmed scrim, results growing downward.
   Search only: no commands, no recent list, nothing before you type. Escape, Enter or a click
   outside closes it; closing clears the query.
@@ -670,6 +674,63 @@ root is the app's, made through state; Chromium never mutates across roots.**
   outside any. If something the click opened holds focus by then (a tag click opens the search
   palette), the rescue steps aside: the palette's field was focused for one frame and Escape
   and the arrows then went to the editor. Focus resting on the body still gets the rescue.
+
+## Keys and focus: the closest active surface owns them
+
+One keypress acts on the surface the user is looking at and on nothing beneath it (review
+2026-09-07, §1.2, §1.6, §1.13, §4.1, §4.2, §4.6). The convention uses only what the platform
+already gives: `preventDefault`, the active element, and the focus trap.
+
+- **A surface that takes a key prevents its default; one that reads a key checks
+  `defaultPrevented` first.** The app shell's shortcuts (`useAppKeyboard`) are the last
+  listener, a bubble-phase window listener registered at startup, and they act only on a key
+  nobody above has claimed. A surface therefore never listens on the window in the bubble
+  phase: a listener added when it opens runs *after* the shell's and its preventDefault comes
+  too late (ContextMenu and VaultMenu moved to the document on 2026-09-09; before that Escape in
+  either also closed the overlay sidebar under it). Element handlers, document listeners and
+  capture listeners all run before the shell.
+- **An open modal dialog, or a menu that holds focus, owns every key beneath it.**
+  `focusOwner()` asks the DOM: any `[aria-modal="true"]` present, or the active element inside a
+  `[role="menu"]`, and no shell shortcut runs (Cmd+N over Settings made a note behind it; Cmd+K
+  opened the palette above it). A dialog owns the keys from the moment it exists, not from the
+  frame later when its trap places focus: a Cmd+N inside that frame made a note. Each
+  such surface closes itself on Escape, Settings included; the shell knows nothing about which
+  one is open. Escape's order is: an active block or sidebar drag, then whatever surface has
+  taken it, then the overlay sidebar.
+- **A native text field outside the editor owns its editing keys.** Cmd+Z, Cmd+Shift+Z and
+  Cmd+Y in the palette's field, a rename field or the find bar are the browser's own undo
+  there, not the note's (typing in the palette and pressing Cmd+Z used to take a word out of
+  the note behind it). The title field and a code block's textarea are inside the editor, so
+  the note's undo stays theirs.
+- **Enter activates the focused button, natively.** `ConfirmDialog` takes only Escape. The
+  desktop Trash prompt opens on its action (a move to the Trash is recoverable); a permanent
+  web deletion opens on Cancel, and that choice now protects: before this a window listener
+  confirmed on any Enter. Focus is placed once per dialog (the callbacks are read through a
+  ref), Tab stays inside it.
+- **A closing surface hands focus back only while it still holds it** (`useFocusTrap`
+  cleanup: active element inside the container, or on the body because the container has just
+  left the DOM). Focus another surface has taken meanwhile is that surface's. This is what
+  makes Rename from the ··· or context menu work: the menu closes and the rename field mounts
+  and autofocuses in the same commit, and the menu's cleanup used to put focus back on the row
+  a frame later, so the field blurred, committed the unchanged name and unmounted. The same
+  cleanup took focus off the confirm dialog's button when a menu's Delete opened it. A surface
+  that has already placed its own focus keeps it: the trap's first-item focus skips when focus
+  is already inside.
+- **A suggestion menu under the caret never takes focus and owns a key only while it is
+  offering a completion.** The tag menu listens only while it has rows, never touches Space
+  (the space ends the tag in the text and the input handler closes the menu), and takes Enter
+  only when accepting is a completion: the user has moved the highlight, or the highlighted tag
+  differs from what is typed. `#alpha` typed in full, or `#brandnew` with no match, leaves
+  Enter to the editor, and the editor's Enter closes the menu as the caret leaves the block.
+  Before this the menu ate the space (`#alpha` + ` beta` was `#alphabeta`) and took Enter with
+  nothing on screen. The wikilink menu keeps completing on Enter: an unclosed `[[` has no other
+  meaning for it. The slash menu is opened on purpose and keeps its keys.
+- Proven in `key-ownership.spec.ts` (the real app: the confirm's buttons, Cmd+Z in the palette
+  and a rename field, Escape over the overlay sidebar, Cmd+N and Cmd+P over Settings, Cmd+K
+  against Cmd+P, the typed tag, Rename from the row menu) and the unit tests beside
+  `useAppKeyboard`, `useFocusTrap`, `ConfirmDialog` and `TagMenu`. Not changed: Shift+Arrow
+  selection at a block's edges, ArrowUp into the title, the table's row-selection keys, and
+  the link popover's position on a collapsed caret (review §1.13, §3.11, §1.6 residue).
 
 ## One owner for note state
 

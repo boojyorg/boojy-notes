@@ -32,7 +32,7 @@ function setup(overrides = {}) {
 }
 
 describe("useTagHandlers", () => {
-  it("handleTagClick sets the sidebar search to #tag and opens the palette the way Cmd+K does", () => {
+  it("handleTagClick sets the sidebar search to #tag and opens the palette the way Cmd+P does", () => {
     const openSearch = vi.fn();
     const { result, setSearch } = setup({ openSearch });
     result.current.handleTagClick("work");

@@ -14,9 +14,12 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
+  // Escape with focus outside the field (the user clicked back into the
+  // note). The field's own Escape is handled on the field: its keydown stops
+  // propagating at React's root, so a document listener never sees it.
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.defaultPrevented) {
         e.preventDefault();
         onDismiss();
       }
@@ -69,7 +72,12 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
           if (e.key === "Enter") {
             e.preventDefault();
             handleSubmit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onDismiss();
           }
+          // The editor's own keydown handler is an ancestor; the field's keys
+          // are the field's.
           e.stopPropagation();
         }}
         placeholder="https://..."

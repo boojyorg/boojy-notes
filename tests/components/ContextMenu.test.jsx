@@ -128,7 +128,7 @@ describe("ContextMenu", () => {
     const props = baseProps();
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
     render(<ContextMenu {...props} />);
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 

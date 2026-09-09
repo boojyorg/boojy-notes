@@ -10,7 +10,7 @@ import { SearchIcon } from "./Icons";
 import { TagChips, renderHighlightedTitle, renderSnippet, type Snippet } from "./SearchParts";
 
 /**
- * The desktop search, as a palette (Cmd+K / Cmd+P): a field over a dimmed
+ * The desktop search, as a palette (Cmd+P): a field over a dimmed
  * window, results beneath it. Search only, nothing else lives here. Title hits
  * come first with the match in the accent; a body hit shows one muted line of
  * context under the title. Every row carries its folder, muted, on the right.

@@ -84,11 +84,38 @@ describe("TagMenu", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("with no match, Enter keeps what was typed as the tag", () => {
+  // A menu that pops up under a word owns a key only while it is offering a
+  // completion (review 2026-09-07, §1.2).
+  it("with no match, nothing shows and Enter is the editor's", () => {
     const { onSelect, container } = setup("zzz");
     expect(container.querySelector('[role="listbox"]')).toBeNull();
-    pressInEditor("Enter");
-    expect(onSelect).toHaveBeenCalledWith("zzz");
+    const event = pressInEditor("Enter");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("Enter after a tag typed in full is the editor's, whatever the case", () => {
+    const { onSelect, getAllByRole } = setup("Review");
+    expect(getAllByRole("option").map((o) => o.textContent)).toEqual(["#review2"]);
+    const event = pressInEditor("Enter");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("Enter accepts a tag typed in full once the user has moved the highlight to it", () => {
+    const { onSelect } = setup("review");
+    pressInEditor("ArrowDown");
+    const event = pressInEditor("Enter");
+    expect(onSelect).toHaveBeenCalledWith("review");
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("Space is never the menu's: it ends the tag in the text", () => {
+    const { onSelect, onDismiss } = setup();
+    const event = pressInEditor(" ");
+    expect(event.defaultPrevented).toBe(false);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 
   it("renders nothing without a position", () => {

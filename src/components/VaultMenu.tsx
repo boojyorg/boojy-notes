@@ -120,6 +120,7 @@ export default function VaultMenu({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const pos = interactive.indexOf(activeIndex);
@@ -137,9 +138,12 @@ export default function VaultMenu({
     [activeIndex, interactive, items, onClose],
   );
 
+  // On the document, as ContextMenu: a window listener added on open would
+  // run after the app shell's startup window listener, too late to claim
+  // Escape from it.
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
   return (

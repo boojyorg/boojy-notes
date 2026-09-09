@@ -82,7 +82,7 @@ test("Enter on a tag suggestion completes the tag in place and splits nothing", 
   }
 });
 
-test("a tag click opens the search palette with focus, Escape closes it, and the keys navigate as after Cmd+K", async () => {
+test("a tag click opens the search palette with focus, Escape closes it, and the keys navigate as after Cmd+P", async () => {
   const h = await launchApp({
     "Alpha.md": "Tagged #review here\n",
     "Beta.md": "Beta has #review too\n",
@@ -100,11 +100,11 @@ test("a tag click opens the search palette with focus, Escape closes it, and the
     await h.page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
-    // Which note ArrowDown + Enter opens after Cmd+K with the same query.
+    // Which note ArrowDown + Enter opens after Cmd+P with the same query.
     // Results follow the search's own debounce; the keys wait for them, as a
     // user does, in both paths.
     const rows = dialog.locator("[data-search-index]");
-    await h.page.keyboard.press(`${MOD}+k`);
+    await h.page.keyboard.press(`${MOD}+p`);
     await expect(field).toBeFocused();
     await h.page.keyboard.type("#review");
     await expect(rows).toHaveCount(2);
