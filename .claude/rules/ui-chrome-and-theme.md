@@ -499,6 +499,19 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   filling it in would land in front of whatever is typed next; it resolves on the next write, or
   when the note is next opened. The emptied field's own `<br>` reads as "\n"; `titleFieldText()`
   is the one reading of the field, shared by the input handler and the adoption hook.
+- **Whitespace the filename trimmed stays under the caret** (2026-09-09, review §2.7). The
+  filename is adopted into state whatever the field holds; while the field is focused, only
+  the characters the filesystem *changed* are painted, at their own offsets, and the field's
+  own trailing whitespace is kept (leading whitespace goes with the paint and the caret shifts
+  with it). Before this the resolved name was painted whole and the caret clamped onto its end,
+  so `Meeting ` written as `Meeting.md` became `Meetingnotes` when `notes` was typed next; the
+  trim is the one rule of `sanitizeFilename` that shortens a name, every other replacement is
+  one character for one. Chromium holds a typed trailing space as U+00A0, which JS `trim()`
+  and the sanitiser's strip alike, so the field's text and the written title agree byte for
+  byte. The field catches up with the name in full the next time it is painted from state (a
+  note switch, or a resolution that lands while it is not focused); until then an invisible
+  trailing space may sit in it, by design. `title-is-filename.spec.ts` proves the space, and a
+  sanitised character beside it, in the real app.
 - The editor title repaints from state when the field is not focused (a sidebar rename of the
   open note); while focused the field is ahead of state and is never repainted from it.
 - No inline "a note with this name already exists" validation, by decision; correctness first.
@@ -561,6 +574,19 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   link (the anchor is one arrow step, then the link's text) and after the Backspace that
   removes the anchor, so neither could ever reach the link's last character. Nothing about
   where the caret may rest changed; only where typed text goes.
+- **The start of a link is the end's mirror** (2026-09-09, review §3.7). A block that opens
+  with a link has no text before it for Chromium to prefer, so Home, or a click at the link's
+  left edge, rests the caret at offset 0 of the link's own text, and `placeCaret(el, 0)` (Enter
+  from the title, an arrow key arriving from the block above) set the range on the block's
+  first child, the link span itself; `Y` typed there was saved as `[[Review note|YReview
+  note]]`. Offset 0 of such a block now rests on an anchor *before* the link (`anchorBeforeLink`,
+  reached from `caretRangeAt` through `leadingLink`), and the same `beforeinput` listener runs
+  `caretOutOfLinkStart` beside the end case: a collapsed caret at offset 0 of a link's first
+  text node moves onto that anchor before the text lands. Same limits as the end: insertions
+  only, a caret one step into the link edits the alias, and neither edge of an alias can be
+  typed onto from outside (the end could not before either). The anchor is the same marked
+  span, dropped by the walkers wherever it sits. `wikilink.spec.ts` proves Home and Enter from
+  the title in the real app.
 - Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
   typing at the end of bold text extends it, as in every editor.
 - **A backslash escape is shown as written** (`\*not italic\*` reads exactly so on screen, never

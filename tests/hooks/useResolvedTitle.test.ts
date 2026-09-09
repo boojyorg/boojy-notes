@@ -34,6 +34,15 @@ function setup(
   return { resolve: result.current, el, adoptNoteData, noteDataRef };
 }
 
+function placeAt(el: HTMLElement, offset: number) {
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.setStart(el.firstChild as Text, offset);
+  range.collapse(true);
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
 beforeEach(() => {
   document.body.innerHTML = "";
 });
@@ -102,6 +111,59 @@ describe("useResolvedTitle", () => {
     expect(el.textContent).toBe("Notes_ ab");
     expect(document.activeElement).toBe(el);
     expect(window.getSelection()?.anchorOffset).toBe(7);
+  });
+
+  // Review 2026-09-07, §2.7: `Meeting ` written as `Meeting.md` was painted
+  // back as `Meeting` with the caret clamped onto the end, and `notes` typed
+  // next made `Meetingnotes`. The name is adopted; the field keeps the space.
+  it("leaves a trailing space under the caret alone and adopts the trimmed name", () => {
+    const written = note("Meeting ");
+    const { resolve, el, noteDataRef } = setup(written);
+    el.focus();
+    placeAt(el, "Meeting ".length);
+
+    resolve("n1", written, "Meeting");
+
+    expect(noteDataRef.current.n1.title).toBe("Meeting");
+    expect(noteDataRef.current.n1.content.title).toBe("Meeting");
+    expect(el.textContent).toBe("Meeting ");
+    expect(window.getSelection()?.anchorOffset).toBe("Meeting ".length);
+  });
+
+  it("keeps the trailing space when it also paints a sanitised character", () => {
+    const written = note("a/b ");
+    const { resolve, el, noteDataRef } = setup(written);
+    el.focus();
+    placeAt(el, "a/b ".length);
+
+    resolve("n1", written, "a_b");
+
+    expect(noteDataRef.current.n1.title).toBe("a_b");
+    expect(el.textContent).toBe("a_b ");
+    expect(window.getSelection()?.anchorOffset).toBe("a_b ".length);
+  });
+
+  it("paints leading whitespace away and moves the caret with it", () => {
+    const written = note("  Padded  ");
+    const { resolve, el, noteDataRef } = setup(written);
+    el.focus();
+    placeAt(el, "  Padded  ".length);
+
+    resolve("n1", written, "Padded");
+
+    expect(noteDataRef.current.n1.title).toBe("Padded");
+    expect(el.textContent).toBe("Padded  ");
+    expect(window.getSelection()?.anchorOffset).toBe("Padded  ".length);
+  });
+
+  it("paints the whole name once the field is left", () => {
+    const written = note("Meeting ");
+    const { resolve, el, noteDataRef } = setup(written);
+
+    resolve("n1", written, "Meeting");
+
+    expect(noteDataRef.current.n1.title).toBe("Meeting");
+    expect(el.textContent).toBe("Meeting");
   });
 
   it("does not repaint a focused field the user has typed into since the write", () => {

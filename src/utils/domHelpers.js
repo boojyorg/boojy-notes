@@ -174,6 +174,29 @@ function isLastTextIn(link, textNode) {
   return last === textNode;
 }
 
+/** Whether `textNode` is the first real text (icons aside) inside `link`. */
+function isFirstTextIn(link, textNode) {
+  const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walker.nextNode())) if (!isIcon(n)) return n === textNode;
+  return false;
+}
+
+/**
+ * The link a caret at offset 0 of `el` would land inside: the one holding
+ * the block's first character. An empty anchor before it is scaffolding and
+ * does not count; text typed on one does, and is prose outside any link.
+ */
+function leadingLink(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walker.nextNode())) {
+    if (isIcon(n) || (inAnchor(n) && visibleText(n).length === 0)) continue;
+    return enclosingLink(n, el);
+  }
+  return null;
+}
+
 /**
  * Move `range` to just after `link`, on a caret anchor: reusing one already
  * there, else inserting one. A caret placed here stays outside the link.
@@ -184,13 +207,32 @@ function anchorAfterLink(range, link) {
     anchor = makeCaretAnchor();
     link.after(anchor);
   }
+  range.setStart(anchorSpace(anchor), 1);
+}
+
+/**
+ * The mirror at the link's start: move `range` to just before `link`, on a
+ * caret anchor. Chromium canonicalises a caret at offset 0 of a block's
+ * first text node to inside the link that holds it, where a typed character
+ * became the alias's first; after the anchor's zero-width space it stays put.
+ */
+function anchorBeforeLink(range, link) {
+  let anchor = link.previousSibling;
+  if (!isCaretAnchor(anchor)) {
+    anchor = makeCaretAnchor();
+    link.before(anchor);
+  }
+  range.setStart(anchorSpace(anchor), 1);
+}
+
+/** The anchor's zero-width-space text node, put back if it was deleted out from under the span. */
+function anchorSpace(anchor) {
   let text = anchor.firstChild;
   if (text?.nodeType !== Node.TEXT_NODE || !text.data.startsWith(CARET_ANCHOR)) {
-    // The zero-width space was deleted out from under the span; put it back.
     text = document.createTextNode(CARET_ANCHOR);
     anchor.prepend(text);
   }
-  range.setStart(text, 1);
+  return text;
 }
 
 /** Raw index in an anchor's `data` of the `visible`-th character, its U+200B not counted. */
@@ -255,9 +297,10 @@ export function caretOffsetAt(el, node, offset) {
  * empty element, a CARET_ANCHOR after a link).
  *
  * A position at the very end of a link's text is placed just *after* the
- * link, on an anchor, so that typing there continues as prose. Other inline
- * formatting (bold, italic) keeps the browser's own behaviour: typing at the
- * end of bold text extends the bold, as in every editor.
+ * link, on an anchor, so that typing there continues as prose; offset 0 of a
+ * block that begins with a link is placed just *before* it, the same way.
+ * Other inline formatting (bold, italic) keeps the browser's own behaviour:
+ * typing at the end of bold text extends the bold, as in every editor.
  */
 export function placeCaret(el, pos = 0) {
   if (!el || !el.isConnected) return false;
@@ -287,7 +330,9 @@ export function caretRangeAt(el, pos = 0) {
     } else if (el.childNodes.length === 1 && el.firstChild.nodeName === "BR") {
       range.setStart(el, 0);
     } else if (pos === 0) {
-      range.setStart(el.firstChild, 0);
+      const link = leadingLink(el);
+      if (link) anchorBeforeLink(range, link);
+      else range.setStart(el.firstChild, 0);
     } else {
       let remaining = pos;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
@@ -361,18 +406,47 @@ export function caretRangeAt(el, pos = 0) {
  * is prose rather than a rewritten alias.
  */
 export function caretOutOfLinkEnd(root) {
-  if (!root) return false;
+  const caret = collapsedTextCaret(root);
+  if (!caret || caret.offset !== caret.node.data.length) return false;
+  const link = enclosingLink(caret.node, root);
+  if (!link || !isLastTextIn(link, caret.node)) return false;
+  return selectAnchor(anchorAfterLink, link);
+}
+
+/**
+ * The mirror of `caretOutOfLinkEnd` at a link's start: a collapsed caret at
+ * offset 0 of a link's first text node (Home, or a click at the link's left
+ * edge, when the link opens the block) is moved onto the anchor before the
+ * link, so the insertion lands in front of it as prose rather than as the
+ * first character of its alias. Called from the same `beforeinput` listener,
+ * with the same limits: insertions only, a caret anywhere past the link's
+ * first character is alias editing and is left alone.
+ */
+export function caretOutOfLinkStart(root) {
+  const caret = collapsedTextCaret(root);
+  if (!caret || caret.offset !== 0) return false;
+  const link = enclosingLink(caret.node, root);
+  if (!link || !isFirstTextIn(link, caret.node)) return false;
+  return selectAnchor(anchorBeforeLink, link);
+}
+
+/** The collapsed caret inside `root`, when it rests in a text node that is not a link's icon. */
+function collapsedTextCaret(root) {
+  if (!root) return null;
   const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
-  const { anchorNode, anchorOffset } = sel;
-  if (anchorNode?.nodeType !== Node.TEXT_NODE || !root.contains(anchorNode)) return false;
-  if (isIcon(anchorNode) || anchorOffset !== anchorNode.data.length) return false;
-  const link = enclosingLink(anchorNode, root);
-  if (!link || !isLastTextIn(link, anchorNode)) return false;
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
+  const { anchorNode: node, anchorOffset: offset } = sel;
+  if (node?.nodeType !== Node.TEXT_NODE || !root.contains(node) || isIcon(node)) return null;
+  return { node, offset };
+}
+
+/** Select the anchor `place` makes beside `link`; whether the caret moved. */
+function selectAnchor(place, link) {
   try {
     const range = document.createRange();
-    anchorAfterLink(range, link);
+    place(range, link);
     range.collapse(true);
+    const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
     return true;

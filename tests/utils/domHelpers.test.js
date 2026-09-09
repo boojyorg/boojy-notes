@@ -7,6 +7,7 @@ import {
   CARET_ANCHOR_CLASS,
   caretLength,
   caretOutOfLinkEnd,
+  caretOutOfLinkStart,
   getCaretOffset,
   linkText,
   placeCaret,
@@ -283,6 +284,145 @@ describe("caretOutOfLinkEnd — a browser-placed caret at the end of a link move
     document.body.insertAdjacentHTML("beforeend", '<div id="elsewhere"></div>');
     expect(caretOutOfLinkEnd(document.getElementById("elsewhere"))).toBe(false);
     expect(anchorAt()).toEqual({ node: linkText, offset: "Welcome".length });
+  });
+});
+
+describe("placeCaret — offset 0 of a block that opens with a link lands before it", () => {
+  // The mirror of the end case (review 2026-09-07, §3.7). `placeCaret(el, 0)`
+  // set the range on the block's first child, the link span itself, and the
+  // next keystroke became the alias's first character. Offset 0 now rests on
+  // an anchor before the link, as the end of a link rests on one after it.
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+
+  it("anchors before a wikilink that opens the block", () => {
+    const el = editable('<span class="wikilink" data-target="Welcome">Welcome</span> first');
+    expect(placeCaret(el, 0)).toBe(true);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.parentElement.className).toBe(CARET_ANCHOR_CLASS);
+    expect(node.parentElement).toBe(el.firstChild);
+    expect(node.parentElement.nextSibling.className).toBe("wikilink");
+    expect(getCaretOffset(el)).toBe(0);
+    expect(el.querySelector(".wikilink").textContent).toBe("Welcome");
+  });
+
+  it("anchors before an external link that opens the block, and reuses the anchor", () => {
+    const el = editable('<a href="https://x.y">site</a> now');
+    placeCaret(el, 0);
+    placeCaret(el, 0);
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(1);
+    expect(anchorAt().node).toBe(el.firstChild.firstChild);
+    expect(anchorAt().offset).toBe(1);
+    expect(getCaretOffset(el)).toBe(0);
+  });
+
+  it("round-trips every offset across a leading link and its anchor", () => {
+    const el = editable('<span class="wikilink" data-target="Welcome">Welcome</span> first');
+    for (let pos = 0; pos <= "Welcome first".length; pos++) {
+      placeCaret(el, pos);
+      expect(getCaretOffset(el), `offset ${pos}`).toBe(pos);
+    }
+  });
+
+  it("counts text typed on the leading anchor as the block's first characters", () => {
+    const el = editable(
+      `${anchorHtml("Y")}<span class="wikilink" data-target="Welcome">Welcome</span> first`,
+    );
+    expect(caretLength(el)).toBe("YWelcome first".length);
+    placeCaret(el, 0);
+    // Offset 0 is now in front of the typed text, not on a second anchor.
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(1);
+    expect(getCaretOffset(el)).toBe(0);
+    placeCaret(el, 1);
+    expect(getCaretOffset(el)).toBe(1);
+  });
+
+  it("puts a plain block's caret at its first character as before", () => {
+    const el = editable("See <strong>bold</strong>");
+    placeCaret(el, 0);
+    expect(anchorAt()).toEqual({ node: el.firstChild, offset: 0 });
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(0);
+  });
+});
+
+describe("caretOutOfLinkStart — a browser-placed caret at the start of a link moves outside", () => {
+  // Home on a block that opens with a link leaves Chromium's caret at offset
+  // 0 of the link's own text node. Called from beforeinput beside
+  // caretOutOfLinkEnd, this moves it onto the anchor placeCaret would have
+  // used, so the insertion lands in front of the link.
+  const root = () => document.querySelector("[contenteditable]");
+  const setCaret = (node, offset) => {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+
+  it("moves a caret at the start of a wikilink that opens the block onto an anchor before it", () => {
+    const el = editable('<span class="wikilink" data-target="Welcome">Welcome</span> first');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    setCaret(linkText, 0);
+    expect(caretOutOfLinkStart(root())).toBe(true);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.parentElement.className).toBe(CARET_ANCHOR_CLASS);
+    expect(node.parentElement.nextSibling.className).toBe("wikilink");
+    expect(getCaretOffset(el)).toBe(0);
+    expect(el.querySelector(".wikilink").textContent).toBe("Welcome");
+  });
+
+  it("reuses an anchor already before the link rather than stacking another", () => {
+    const el = editable(`${anchorHtml()}<a href="https://x.y">site</a> now`);
+    setCaret(el.querySelector("a").firstChild, 0);
+    expect(caretOutOfLinkStart(root())).toBe(true);
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(1);
+    expect(anchorAt().node).toBe(el.firstChild.firstChild);
+    expect(el.textContent).toBe(`${CARET_ANCHOR}site now`);
+  });
+
+  it("leaves a caret past the link's first character alone, so alias editing still works", () => {
+    const el = editable('<span class="wikilink" data-target="Welcome">Welcome</span> first');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    for (const offset of [1, 3, "Welcome".length - 1]) {
+      setCaret(linkText, offset);
+      expect(caretOutOfLinkStart(root())).toBe(false);
+      expect(anchorAt()).toEqual({ node: linkText, offset });
+    }
+    expect(el.textContent).toBe("Welcome first");
+  });
+
+  it("leaves a caret at offset 0 outside any link alone", () => {
+    const el = editable('<strong>bold</strong> and <a href="https://x.y">site</a>');
+    const bold = el.querySelector("strong").firstChild;
+    setCaret(bold, 0);
+    expect(caretOutOfLinkStart(root())).toBe(false);
+    expect(anchorAt()).toEqual({ node: bold, offset: 0 });
+    setCaret(el.firstChild.nextSibling, 0);
+    expect(caretOutOfLinkStart(root())).toBe(false);
+    expect(el.textContent).toBe("bold and site");
+  });
+
+  it("is the end case's mirror: the end of a link is the end case's, not this one's", () => {
+    const el = editable('<span class="wikilink" data-target="Welcome">Welcome</span> first');
+    const linkText = el.querySelector(".wikilink").firstChild;
+    setCaret(linkText, "Welcome".length);
+    expect(caretOutOfLinkStart(root())).toBe(false);
+    expect(caretOutOfLinkEnd(root())).toBe(true);
+    setCaret(linkText, 0);
+    expect(caretOutOfLinkEnd(root())).toBe(false);
+    expect(caretOutOfLinkStart(root())).toBe(true);
+    expect(el.textContent).toBe(`${CARET_ANCHOR}Welcome${CARET_ANCHOR} first`);
   });
 });
 

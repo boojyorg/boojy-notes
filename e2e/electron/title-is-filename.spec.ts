@@ -108,7 +108,10 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
 
     // Leading and trailing whitespace is not part of a filename either. Typed
     // in the editor's title field, which (unlike the sidebar rename) trims
-    // nothing itself and stays focused while the write resolves.
+    // nothing itself and stays focused while the write resolves: the sidebar
+    // shows the real name at once, the leading spaces are painted away, and
+    // the trailing ones stay under the caret so typing on can continue (the
+    // trailing-space test below).
     await h.page.getByRole("textbox", { name: "Note title" }).click();
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.type("  Padded  ");
@@ -116,7 +119,8 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
       label: "renamed file under its trimmed name",
     });
     await expectTitlesMatchFiles(h.page, h.vault);
-    await expect.poll(() => editorTitle(h.page)).toBe("Padded");
+    // (Chromium holds a typed trailing space as U+00A0; `\s` covers both.)
+    await expect.poll(() => editorTitle(h.page)).toMatch(/^Padded\s\s$/);
 
     // A change of letter case alone renames the file too (on a
     // case-insensitive volume that is the note's own file under a new name).
@@ -151,6 +155,64 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
     await h.restart();
     await expectTitlesMatchFiles(h.page, h.vault);
     expect(mdFiles(h.vault)).toEqual(["Other.md", "Untitled.md"]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+/**
+ * Review 2026-09-07, §2.7. A trailing space typed into the title is not part
+ * of a filename, so the write lands `Meeting.md`; the field then took that
+ * name back while the caret was still in it, the space under the caret went
+ * with it, and `notes` typed next gave `Meetingnotes`. A resolution that is
+ * whitespace at the edges alone is adopted into state (the sidebar and the
+ * next write use the real name) and the focused field is left as typed.
+ */
+test("a trailing space typed into the title survives the write resolving under the caret", async () => {
+  const h = await launchApp({ "Plain.md": "Body.\n" });
+  try {
+    await h.openNote("Plain");
+    await h.page.getByRole("textbox", { name: "Note title" }).click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.type("Meeting ");
+    await waitForFile(h.vault.file("Meeting.md"), (t) => t === "Body.\n", {
+      label: "renamed file under its trimmed name",
+    });
+    await expectTitlesMatchFiles(h.page, h.vault);
+    await sleep(SETTLE_MS);
+
+    await h.page.keyboard.type("notes");
+    await waitForFile(h.vault.file("Meeting notes.md"), (t) => t === "Body.\n", {
+      label: "renamed file under the full name",
+    });
+    await sleep(SETTLE_MS);
+    expect(mdFiles(h.vault)).toEqual(["Meeting notes.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+    expect(await editorTitle(h.page)).toBe("Meeting notes");
+    expectNoTempFiles(h.vault);
+
+    // A character the filesystem rewrites is painted in place, and the
+    // trailing space beside it still survives.
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.type("a/b ");
+    await waitForFile(h.vault.file("a_b.md"), (t) => t === "Body.\n", {
+      label: "renamed file under its sanitised name",
+    });
+    await sleep(SETTLE_MS);
+    await h.page.keyboard.type("notes");
+    await waitForFile(h.vault.file("a_b notes.md"), (t) => t === "Body.\n", {
+      label: "renamed file under the full sanitised name",
+    });
+    await sleep(SETTLE_MS);
+    expect(mdFiles(h.vault)).toEqual(["a_b notes.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+    expect(await editorTitle(h.page)).toBe("a_b notes");
+
+    await h.restart();
+    await h.openNote("a_b notes");
+    expect(await editorTitle(h.page)).toBe("a_b notes");
+    expect(mdFiles(h.vault)).toEqual(["a_b notes.md"]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
