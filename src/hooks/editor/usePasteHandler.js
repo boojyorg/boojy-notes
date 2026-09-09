@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { isEditableBlock, placeCaret } from "../../utils/domHelpers";
 import {
+  sanitizeInlineFragment,
   sanitizeInlineHtml,
   htmlToInlineMarkdown,
   inlineMarkdownToHtml,
@@ -235,20 +236,33 @@ export function usePasteHandler({
       return;
     }
 
-    // Single-line external paste: inline, Chromium's own insertion within the
-    // block; across blocks the app makes the replacement.
+    // Single-line external paste: inline. Across blocks the app makes the
+    // replacement; within one, plain text is Chromium's own insertion and
+    // rich text is the app's, the sanitised nodes put in at the caret and the
+    // block read back as after a keystroke. `execCommand("insertHTML")` split
+    // the line into blocks when the sanitiser returned a wrapper, and rewrote
+    // the space beside the insertion into a non-breaking space that reached
+    // the file as U+00A0.
     const htmlData = e.clipboardData.getData("text/html");
     if (crossing) {
       const text = htmlData ? htmlToInlineMarkdown(sanitizeInlineHtml(htmlData)) : textData;
       ownEdit(scope, { kind: "insertText", text }, range);
       return;
     }
-    if (htmlData) {
-      const sanitized = sanitizeInlineHtml(htmlData);
-      document.execCommand("insertHTML", false, sanitized);
-    } else {
+    if (!htmlData) {
       document.execCommand("insertText", false, textData);
+      return;
     }
+    const frag = sanitizeInlineFragment(htmlData);
+    const last = frag.lastChild;
+    if (!last) return;
+    range.deleteContents();
+    range.insertNode(frag);
+    range.setStartAfter(last);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    reReadBlockFromDom();
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 

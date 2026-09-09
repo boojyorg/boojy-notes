@@ -52,11 +52,12 @@ describe("useTagHandlers", () => {
     result.current.handleTagSelect("work");
     expect(el.querySelector(".inline-tag")?.textContent).toBe("#work");
     // A plain space ends the tag (the bytes on disk), and the caret is parked
-    // on the zero-width anchor after it, which the walkers drop.
+    // on the marked zero-width anchor after it, which the walkers drop.
     expect(el.textContent).toBe("hello #work \u200B");
+    expect(el.lastChild.className).toBe("caret-anchor");
     const sel = window.getSelection();
-    expect(sel.anchorNode).toBe(el.lastChild);
-    expect(sel.anchorOffset).toBe(el.lastChild.textContent.length);
+    expect(sel.anchorNode).toBe(el.lastChild.firstChild);
+    expect(sel.anchorOffset).toBe(1);
     // Painted and placed here, so nothing is queued for the focus effect.
     expect(syncGeneration.current).toBe(0);
     expect(focusBlockId.current).toBeNull();

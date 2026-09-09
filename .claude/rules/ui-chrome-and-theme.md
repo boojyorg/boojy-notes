@@ -537,13 +537,19 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
 
 ## Links: the caret stays outside, the tooltip waits for a rest
 
-- **A caret at the end of a link's text is placed just after the link, on a zero-width space**
-  (`CARET_ANCHOR` in `utils/domHelpers.js`, applied inside `placeCaret`). Chromium canonicalises a
-  caret at a link's edge, or at the boundary before following text, to *inside* the link, and the
-  next keystroke then rewrote a `[[wikilink]]`'s alias; the zero-width space is the one anchor it
-  honours (probed in the real app; an empty text node is not). The anchor is scaffolding: both
-  DOM→Markdown walkers drop it, `getCaretOffset` and `placeCaret` don't count it, and a repaint
-  from state wipes it. Don't add a second caret placement path that bypasses `placeCaret`.
+- **A caret at the end of a link's text is placed just after the link, on a zero-width space
+  inside a `caret-anchor` span** (`CARET_ANCHOR`, `makeCaretAnchor` in `utils/domHelpers.js`,
+  applied inside `placeCaret`). Chromium canonicalises a caret at a link's edge, or at the
+  boundary before following text, to *inside* the link, and the next keystroke then rewrote a
+  `[[wikilink]]`'s alias; the zero-width space is the one anchor it honours (probed in the real
+  app; an empty text node is not). **The span is what marks it as scaffolding** (2026-09-09,
+  review §3.5): the one DOM→Markdown walker drops the U+200B inside a `caret-anchor` and reads
+  text typed on it (which lands inside the span) as prose, the sanitiser does the same on the
+  copy and Enter-split paths, the caret arithmetic skips only that character, and a repaint from
+  state wipes it. A U+200B anywhere else is a byte the file holds (`escapes-unicode.md` in the
+  preservation corpus) and is kept; before this the walkers stripped every U+200B, so the file's
+  own was deleted on the first edit of its block. Don't add a second caret placement path that
+  bypasses `placeCaret`, and never strip the character by value again.
 - **The browser's own caret is caught at the keystroke, not at the move** (2026-09-06). End, a
   click past a link or on its right edge, and ArrowRight all leave Chromium's caret at the last
   offset of the link's text node, inside the span, which `placeCaret` never sees; `See
@@ -656,7 +662,7 @@ root is the app's, made through state; Chromium never mutates across roots.**
   paints that stale text back over the block (disk `#review`, screen `#rev`). `commitNoteData`
   publishes at once; the direct `innerHTML` write is the paint (editor gotcha 2). One undo
   entry per completion.
-- **The caret after a completed tag is parked on a `CARET_ANCHOR` past the ending space.**
+- **The caret after a completed tag is parked on a caret anchor past the ending space.**
   The space that ends the tag is the block's last character, and under `white-space: normal` a
   trailing space collapses: a caret placed in it has no width, and Chromium moved the next
   character into the tag span (`#reviewd`). Typed on the anchor, text lands after the space and
@@ -998,6 +1004,31 @@ external multi-line paste paths; single lines paste inline.
 - **A paste that keeps a block's id and type must repaint that element directly**
   (`repaintKeptBlock`). The editor skips React renders for text-only changes, so a state-only
   write reaches disk but never the page, and the next keystroke writes the stale page back over it.
+- **A rich single-line paste is the app's own insertion** (2026-09-09, review §3.6): the
+  clipboard's HTML is sanitised to inline nodes (`sanitizeInlineFragment`: formatting, links,
+  wikilinks, `<br>`; block elements unwrapped to line breaks; never a wrapper element) and put
+  in at the caret with `insertNode`, then the block is read back as after a keystroke. Before
+  this the sanitiser returned a `<div>` that its callers appended as a child, so `<b>bold</b>`
+  became `<strong><div>bold</div></strong>`, `execCommand("insertHTML")` split the paragraph into
+  blocks and everything after the pasted word was lost from the file; and `insertHTML` rewrote
+  the space beside the insertion into a non-breaking space that reached the file as U+00A0.
+  Plain text still goes through `insertText`, as typing does.
+- **The DOM read-back is verbatim; only marked scaffolding is dropped** (2026-09-09, review
+  §3.5). One walker (`walkNode` in `inlineFormatting.js`) serves the live element and serialised
+  HTML alike. Text is read as it is. A formatting element wraps whatever it holds, a space
+  included (`a * * b` renders as `<em> </em>` and reads back as `a * * b`); only one holding
+  nothing, the residue of toggling a format off, is dropped, in the walker and the sanitiser
+  alike. A link is the bare URL only when it is the editor's own autolink (`bare-url` class) and
+  its text still is its URL, so an explicit `[url](url)` (Notion's bookmark form) stays one. The
+  ↗ icon is skipped as the `external-link-icon` span it is; a ↗ typed into link text is text
+  (`linkText` in `domHelpers` reads a link's text without the icon for the popover). The
+  contract is `tests/utils/domRoundTrip.test.js` and `inline-preservation.spec.ts` in the real
+  app. Known residue, the Markdown class rather than the DOM seam: the inline renderer mis-reads
+  `<https://…>` autolinks (the escaped `&gt;` is linked) and autolinks a bare URL inside a
+  link's text, both `it.fails` in the contract; a soft-break line starting with `#`, `-`, `---`
+  or a fence is written as such and re-read as block structure (the serialiser, not the DOM);
+  and a typed trailing space Chromium holds as `&nbsp;` reaches the file as U+00A0 when the
+  save lands before the next keystroke (backlog, Data safety).
 
 ## Narrow desktop is still desktop
 

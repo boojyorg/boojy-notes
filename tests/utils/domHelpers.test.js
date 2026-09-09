@@ -4,9 +4,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   CARET_ANCHOR,
+  CARET_ANCHOR_CLASS,
   caretLength,
   caretOutOfLinkEnd,
   getCaretOffset,
+  linkText,
   placeCaret,
   titleFieldText,
 } from "../../src/utils/domHelpers.js";
@@ -15,6 +17,18 @@ function editable(html) {
   document.body.innerHTML = `<div contenteditable="true"><p id="b">${html}</p></div>`;
   return document.getElementById("b");
 }
+
+/** The anchor as the editor makes it, with `typed` text landed on it. */
+const anchorHtml = (typed = "") =>
+  `<span class="${CARET_ANCHOR_CLASS}">${CARET_ANCHOR}${typed}</span>`;
+
+describe("linkText", () => {
+  it("is the link's text without its ↗ icon, a typed ↗ included", () => {
+    document.body.innerHTML =
+      '<a id="l" href="https://x.y">north ↗<span class="external-link-icon" contenteditable="false">↗</span></a>';
+    expect(linkText(document.getElementById("l"))).toBe("north ↗");
+  });
+});
 
 describe("getCaretOffset", () => {
   beforeEach(() => {
@@ -75,7 +89,9 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
   // Chromium canonicalises a caret at a link's edge to inside the link, so the
   // next keystroke extended the link (a completed [[wikilink]] became
   // `[[Beta|Beta after]]` on disk). The only anchor Chromium honours there is
-  // a zero-width space after the link; it is dropped on the way to Markdown.
+  // a zero-width space after the link. It sits in a `caret-anchor` span, which
+  // is what marks it as scaffolding: the walkers drop that one and keep a
+  // U+200B the file itself holds.
   const anchorAt = () => {
     const sel = window.getSelection();
     return { node: sel.anchorNode, offset: sel.anchorOffset };
@@ -88,9 +104,11 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     expect(node.nodeType).toBe(Node.TEXT_NODE);
     expect(node.data).toBe(CARET_ANCHOR);
     expect(offset).toBe(1);
-    expect(node.previousSibling.className).toBe("wikilink");
+    expect(node.parentElement.className).toBe(CARET_ANCHOR_CLASS);
+    expect(node.parentElement.previousSibling.className).toBe("wikilink");
     // The anchor is not note text.
     expect(getCaretOffset(el)).toBe("see Beta".length);
+    expect(caretLength(el)).toBe("see Beta".length);
   });
 
   it("anchors after a link that is followed by text", () => {
@@ -99,19 +117,41 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     const { node, offset } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(offset).toBe(1);
-    expect(node.nextSibling.data).toBe(" after");
+    expect(node.parentElement.nextSibling.data).toBe(" after");
     // Placing there again reuses the anchor rather than stacking another.
     placeCaret(el, "see link".length);
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(1);
     expect(el.textContent).toBe(`see link${CARET_ANCHOR} after`);
   });
 
   it("does not count anchors when placing later in the text", () => {
-    const el = editable(`see <a href="https://x.y">link</a>${CARET_ANCHOR} after`);
+    const el = editable(`see <a href="https://x.y">link</a>${anchorHtml()} after`);
     placeCaret(el, "see link af".length);
     const { node, offset } = anchorAt();
-    expect(node.data).toBe(`${CARET_ANCHOR} after`);
-    expect(offset).toBe(" af".length + 1);
+    expect(node.data).toBe(" after");
+    expect(offset).toBe(" af".length);
     expect(getCaretOffset(el)).toBe("see link af".length);
+  });
+
+  it("counts text typed on the anchor, and the anchor's space alone is skipped", () => {
+    // Typing on the anchor lands inside its span: "\u200Bxy" after the link.
+    const el = editable(`see <a href="https://x.y">link</a>${anchorHtml("xy")} after`);
+    expect(caretLength(el)).toBe("see linkxy after".length);
+    placeCaret(el, "see linkx".length);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(`${CARET_ANCHOR}xy`);
+    expect(offset).toBe(2);
+    expect(getCaretOffset(el)).toBe("see linkx".length);
+  });
+
+  it("counts a zero-width space that is the note's own as a character", () => {
+    // A U+200B in the file (escapes-unicode.md in the preservation corpus) is
+    // text, not scaffolding: it is one caret position, like any character.
+    const el = editable("zero-width\u200Bspace");
+    expect(caretLength(el)).toBe("zero-width\u200Bspace".length);
+    placeCaret(el, "zero-width\u200Bs".length);
+    expect(anchorAt().offset).toBe("zero-width\u200Bs".length);
+    expect(getCaretOffset(el)).toBe("zero-width\u200Bs".length);
   });
 
   it("still lets bold and other formatting be extended", () => {
@@ -127,7 +167,7 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     placeCaret(el, 999);
     const { node } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
-    expect(node.previousSibling.className).toBe("wikilink");
+    expect(node.parentElement.previousSibling.className).toBe("wikilink");
   });
 });
 
@@ -158,7 +198,8 @@ describe("caretOutOfLinkEnd — a browser-placed caret at the end of a link move
     const { node, offset } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(offset).toBe(1);
-    expect(node.previousSibling.className).toBe("wikilink");
+    expect(node.parentElement.className).toBe(CARET_ANCHOR_CLASS);
+    expect(node.parentElement.previousSibling.className).toBe("wikilink");
     // Same Markdown position, just outside the link; the anchor is not text.
     expect(getCaretOffset(el)).toBe("See Welcome".length);
     expect(el.querySelector(".wikilink").textContent).toBe("Welcome");
@@ -172,16 +213,28 @@ describe("caretOutOfLinkEnd — a browser-placed caret at the end of a link move
     const { node, offset } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(offset).toBe(1);
-    expect(node.nextSibling.data).toBe(" now");
+    expect(node.parentElement.nextSibling.data).toBe(" now");
     expect(el.textContent).toBe(`See site${CARET_ANCHOR} now`);
   });
 
   it("reuses an anchor already after the link rather than stacking another", () => {
-    const el = editable(`See <a href="https://x.y">site</a>${CARET_ANCHOR} now`);
+    const el = editable(`See <a href="https://x.y">site</a>${anchorHtml()} now`);
     setCaret(el.querySelector("a").firstChild, "site".length);
     expect(caretOutOfLinkEnd(root())).toBe(true);
     expect(el.textContent).toBe(`See site${CARET_ANCHOR} now`);
-    expect(anchorAt().node).toBe(el.querySelector("a").nextSibling);
+    expect(anchorAt().node).toBe(el.querySelector("a").nextSibling.firstChild);
+  });
+
+  it("puts the zero-width space back into an anchor it was deleted from", () => {
+    // Backspace on the anchor removes its character and can leave the span.
+    const el = editable(
+      `See <a href="https://x.y">site</a><span class="${CARET_ANCHOR_CLASS}"></span> now`,
+    );
+    setCaret(el.querySelector("a").firstChild, "site".length);
+    expect(caretOutOfLinkEnd(root())).toBe(true);
+    expect(el.querySelectorAll(`.${CARET_ANCHOR_CLASS}`).length).toBe(1);
+    expect(anchorAt().node.data).toBe(CARET_ANCHOR);
+    expect(anchorAt().offset).toBe(1);
   });
 
   it("leaves a caret inside a link alone, so alias editing still works", () => {
