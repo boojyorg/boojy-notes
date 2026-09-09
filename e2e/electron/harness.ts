@@ -40,6 +40,7 @@ const isMac = process.platform === "darwin";
 export const MOD = isMac ? "Meta" : "Control";
 /** Moves the caret to the end of the current line. */
 export const END_OF_LINE = isMac ? "Meta+ArrowRight" : "End";
+export const START_OF_LINE = isMac ? "Meta+ArrowLeft" : "Home";
 
 /**
  * Longest quiet period after which every in-app debounce has fired: the 300ms

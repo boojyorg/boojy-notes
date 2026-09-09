@@ -18,6 +18,7 @@ import {
   type AppHandle,
   END_OF_LINE,
   SETTLE_MS,
+  START_OF_LINE,
   launchApp,
   noteText,
   sleep,
@@ -171,6 +172,70 @@ test("typing inside a wikilink still edits its alias", async () => {
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe("See [[Welcome|WelcoXme]] now\n");
     expect(await wikilinkSpans(h.page)).toEqual([["WelcoXme", "Welcome"]]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+/**
+ * The mirror at the link's start (review 2026-09-07, §3.7). Home, or a
+ * click at a link's left edge, leaves Chromium's caret at offset 0 of the
+ * link's own text node when nothing precedes the link, and the editor's own
+ * caret placement at offset 0 (Enter from the title, arriving by arrow key)
+ * set the range on the block's first child, the link span itself. Typing `Y`
+ * then wrote `[[Review note|YReview note]]`. The rule at the end of a link
+ * now holds at its start too: text typed there is prose before the link.
+ */
+test("Home on a line starting with a wikilink, then typing, continues outside the link", async () => {
+  const h = await launchApp({ "Alpha.md": "[[Welcome]] first\n", "Welcome.md": "Hi\n" });
+  try {
+    await h.openNote("Alpha");
+    const block = h.page.locator("[data-block-id]").first();
+    const box = await block.boundingBox();
+    if (!box) throw new Error("block not visible");
+    await h.page.mouse.click(box.x + box.width - 10, box.y + box.height / 2);
+    await h.page.keyboard.press(START_OF_LINE);
+    await h.page.keyboard.type("Y");
+
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("Y"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Y[[Welcome]] first\n");
+    expect(await noteText(h.page)).toBe("YWelcome first");
+    expect(await wikilinkSpans(h.page)).toEqual([["Welcome", "Welcome"]]);
+
+    // One step into the link, and typing edits the alias as before.
+    await h.page.keyboard.press("ArrowRight");
+    await h.page.keyboard.type("X");
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("X"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Y[[Welcome|WXelcome]] first\n");
+    expect(await wikilinkSpans(h.page)).toEqual([["WXelcome", "Welcome"]]);
+    expect(h.pageErrors).toEqual([]);
+
+    await h.restart();
+    await h.openNote("Alpha");
+    expect(await noteText(h.page)).toBe("YWXelcome first");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Enter from the title into a block starting with a wikilink, then typing, continues outside the link", async () => {
+  const h = await launchApp({ "Alpha.md": "[[Welcome]] first\n", "Welcome.md": "Hi\n" });
+  try {
+    await h.openNote("Alpha");
+    // The editor places this caret itself, at offset 0 of the first block.
+    await h.page.getByRole("textbox", { name: "Note title" }).click();
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("Y");
+
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("Y"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Y[[Welcome]] first\n");
+    expect(await noteText(h.page)).toBe("YWelcome first");
+    expect(await wikilinkSpans(h.page)).toEqual([["Welcome", "Welcome"]]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

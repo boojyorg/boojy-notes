@@ -28,6 +28,15 @@ interface ResolvedTitleDeps {
  * and a blank title left under the caret keeps its placeholder rather than
  * filling in `Untitled` in front of whatever is typed next; it resolves on
  * the next write, or at the latest when the note is next opened.
+ *
+ * While the caret is in the field, whitespace the filename trimmed from the
+ * end stays in the field: `Meeting ` written as `Meeting.md` used to be
+ * painted back as `Meeting` with the caret clamped onto the end, and `notes`
+ * typed next made `Meetingnotes`. The name is adopted; only the characters
+ * the filesystem changed are painted, at their own offsets, so what is typed
+ * next lands where it would have. Leading whitespace goes with the paint (the
+ * caret shifts with it, nothing after it moves), and the field catches up
+ * with the name in full the next time it is painted from state.
  */
 export function useResolvedTitle({
   titleRef,
@@ -57,10 +66,19 @@ export function useResolvedTitle({
       });
 
       if (!el) return;
-      const offset = focused ? getCaretOffset(el) : -1;
-      el.textContent = finalTitle;
-      if (focused)
-        placeCaret(el, offset < 0 ? finalTitle.length : Math.min(offset, finalTitle.length));
+      if (!focused) {
+        el.textContent = finalTitle;
+        return;
+      }
+      const leading = written.title.length - written.title.trimStart().length;
+      const painted = finalTitle + written.title.slice(written.title.trimEnd().length);
+      if (painted === titleFieldText(el)) return;
+      const offset = getCaretOffset(el);
+      el.textContent = painted;
+      placeCaret(
+        el,
+        offset < 0 ? painted.length : Math.max(0, Math.min(offset - leading, painted.length)),
+      );
     },
     [titleRef, activeNoteRef, noteDataRef, adoptNoteData],
   );

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import {
   caretOutOfLinkEnd,
+  caretOutOfLinkStart,
   cleanOrphanNodes,
   getBlockFromNode,
   placeCaret,
@@ -12,8 +13,10 @@ import {
  *      (rAF-debounced; clears the toolbar when the selection leaves the editor).
  *   2. beforeinput → a caret Chromium left at the end of a link's text (End, a click,
  *      ArrowRight) is moved onto the anchor after the link before the text lands, so
- *      typing continues as prose rather than rewriting the link's alias. Only insertions
- *      outside an IME composition; caret movement and deletion are never touched.
+ *      typing continues as prose rather than rewriting the link's alias; one left at the
+ *      start of a link's text (Home on a block that opens with a link) is moved onto the
+ *      anchor before it, the same way. Only insertions outside an IME composition; caret
+ *      movement and deletion are never touched.
  *   3. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
  *      places the caret in that block, re-asserts it after the next frame if the DOM
  *      moved, and scrolls the block into view if it landed near the bottom.
@@ -89,7 +92,7 @@ export function useEditorFocusUX({
   useEffect(() => {
     const onBeforeInput = (e) => {
       if (e.isComposing || !e.inputType?.startsWith("insert")) return;
-      caretOutOfLinkEnd(editorRef.current);
+      caretOutOfLinkEnd(editorRef.current) || caretOutOfLinkStart(editorRef.current);
     };
     document.addEventListener("beforeinput", onBeforeInput);
     return () => document.removeEventListener("beforeinput", onBeforeInput);
