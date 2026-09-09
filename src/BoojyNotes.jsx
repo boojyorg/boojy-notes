@@ -559,7 +559,6 @@ export default function BoojyNotes() {
     setWikilinkMenu,
     syncGeneration,
     commitNoteData,
-    blockRefs,
     focusBlockId,
     focusCursorPos,
   });

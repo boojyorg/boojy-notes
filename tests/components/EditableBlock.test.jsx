@@ -99,6 +99,35 @@ describe("EditableBlock", () => {
     expect(getCaretOffset(el)).toBe(5);
   });
 
+  // Regression (review 2026-09-07, §1.1 and §1.15): a repaint painted the
+  // text this render carried, which is one keystroke behind the DOM whenever
+  // the render was published by the next keystroke or a transition finished
+  // after one; the keystroke was painted over. The block is painted from the
+  // keystroke ref, which holds it.
+  it("a repaint paints the block as the keystroke ref holds it, never as the render does", () => {
+    const block = paragraph("Hel");
+    const noteDataRef = {
+      current: { "note-1": { content: { blocks: [{ ...block, text: "Hello" }] } } },
+    };
+    const { container, rerender } = renderBlock(block, { noteDataRef });
+    const el = container.querySelector(`[data-block-id="${block.id}"]`);
+    // The keystroke the render is behind: on screen and in the ref.
+    el.textContent = "Hello";
+    placeCaret(el, 5);
+
+    // A title-set change repaints (a wikilink may have broken), mid-burst.
+    rerender(
+      <EditableBlock {...baseProps(block, { noteDataRef })} noteTitleSet={new Set(["x"])} />,
+    );
+    expect(el.textContent).toBe("Hello");
+    expect(getCaretOffset(el)).toBe(5);
+
+    // So does a sync-generation bump.
+    rerender(<EditableBlock {...baseProps(block, { noteDataRef })} syncGen={2} />);
+    expect(el.textContent).toBe("Hello");
+    expect(getCaretOffset(el)).toBe(5);
+  });
+
   it("renders paragraph block with data-block-id", () => {
     const block = paragraph("hello");
     const { container } = renderBlock(block);

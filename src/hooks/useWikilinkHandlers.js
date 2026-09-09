@@ -1,6 +1,4 @@
 import { useCallback, useMemo, useRef } from "react";
-import { placeCaret } from "../utils/domHelpers";
-import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 
 /**
  * Wikilink wiring for the editor:
@@ -8,12 +6,14 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
  *   - click / Cmd-click navigation, and autocomplete insertion.
  * (The backlink index and the panel under the note were removed 2026-09-05.)
  *
- * Extracted from BoojyNotes. Two subtleties are preserved verbatim:
- *   1. `noteTitlesKey` short-circuits on `textOnlyEdit` so plain typing doesn't
- *      rebuild the title set every keystroke.
- *   2. `handleWikilinkSelect` writes the rendered HTML to the block DOM directly
- *      because it fires from WikilinkMenu's *native* keydown listener, where React
- *      won't re-render the text-optimised editor (so the syncGen resync never runs).
+ * Extracted from BoojyNotes. `noteTitlesKey` short-circuits on `textOnlyEdit`
+ * so plain typing doesn't rebuild the title set every keystroke.
+ * `handleWikilinkSelect` used to write the rendered HTML to the block itself,
+ * on the belief that a sync-generation bump from WikilinkMenu's *native*
+ * keydown listener never repainted; proven false in the real app on
+ * 2026-09-09 (`wikilink.spec.ts`), and the block now paints itself from the
+ * keystroke ref like every other programmatic change (the UI rule, "One
+ * owner for note state").
  */
 export function useWikilinkHandlers({
   noteData,
@@ -25,7 +25,6 @@ export function useWikilinkHandlers({
   setWikilinkMenu,
   syncGeneration,
   commitNoteData,
-  blockRefs,
   focusBlockId,
   focusCursorPos,
 }) {
@@ -85,19 +84,11 @@ export function useWikilinkHandlers({
           next[noteId] = n;
           return next;
         });
-        // This handler fires from WikilinkMenu's *native* keydown listener, where
-        // React won't re-render the (text-optimised) editor — so the syncGen
-        // DOM-resync effect never runs and the link would stay invisible. Write
-        // the rendered HTML to the block directly (same approach useInputHandler
-        // uses for markdown conversions) and put the caret after the link —
-        // through placeCaret, which anchors it *outside* the link so the next
-        // keystroke is prose, not part of the alias. The queued focus below
-        // re-places it the same way after the re-render repaints the block.
-        const el = blockRefs.current[blocks[blockIndex].id];
-        if (el) {
-          el.innerHTML = inlineMarkdownToHtml(newText, noteTitleSet);
-          placeCaret(el, el.textContent.length);
-        }
+        // The commit renders the editor at once, the bump has the block repaint
+        // itself from the keystroke ref, and the queued focus puts the caret
+        // after the link through placeCaret, which anchors it *outside* the link
+        // so the next keystroke is prose, not part of the alias. From a native
+        // listener (WikilinkMenu's window keydown) as from a React one.
         focusBlockId.current = blocks[blockIndex].id;
         focusCursorPos.current = newText.length;
       }
@@ -111,8 +102,6 @@ export function useWikilinkHandlers({
       focusCursorPos,
       setWikilinkMenu,
       wikilinkMenuRef,
-      blockRefs,
-      noteTitleSet,
     ],
   );
 
