@@ -242,26 +242,25 @@ const EditableBlock = memo(
     }
 
     if (block.type === "table") {
+      // The table renders its own root (data-block-id, registered for the
+      // gutter grip and the selection band), the way the divider does.
       return (
-        <div
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ userSelect: "none" }}
-        >
-          <TableBlock
-            block={block}
-            noteId={noteId}
-            blockIndex={blockIndex}
-            syncGen={syncGen}
-            noteDataRef={noteDataRef}
-            onUpdateTableCell={onUpdateTableCell}
-            onUpdateTableRows={onUpdateTableRows}
-            noteTitleSet={noteTitleSet}
-            accentColor={accentColor}
-          />
-        </div>
+        <TableBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          syncGen={syncGen}
+          noteDataRef={noteDataRef}
+          onUpdateTableCell={onUpdateTableCell}
+          onUpdateTableRows={onUpdateTableRows}
+          noteTitleSet={noteTitleSet}
+          accentColor={accentColor}
+          isSelected={isBlockSelected}
+          onSelect={() => onBlockSelect(block.id)}
+          onBlockNav={onBlockNav}
+          onDelete={() => onDeleteBlock(noteId, blockIndex)}
+          registerRef={registerRef}
+        />
       );
     }
 

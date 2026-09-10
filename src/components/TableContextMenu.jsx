@@ -54,6 +54,13 @@ function Separator() {
   );
 }
 
+/**
+ * The cell's right-click menu: rows and columns around the clicked cell,
+ * alignment for a header or a selected column, and, last, the whole table.
+ * Delete table is the discoverable path to what Escape then Backspace also
+ * does (the table is addressed as a whole; see TableBlock). Labels are
+ * sentence case, as the rest of the app's menus are.
+ */
 export default function TableContextMenu({
   position,
   context,
@@ -64,6 +71,7 @@ export default function TableContextMenu({
   onInsertColumn,
   onDeleteColumn,
   onSetAlignment,
+  onDeleteTable,
   onDismiss,
 }) {
   const { theme } = useTheme();
@@ -95,7 +103,7 @@ export default function TableContextMenu({
     items.push(
       <MenuItem
         key="row-above"
-        label="Insert Row Above"
+        label="Insert row above"
         onClick={() => {
           onInsertRow(rowIndex, "above");
           onDismiss();
@@ -105,7 +113,7 @@ export default function TableContextMenu({
     items.push(
       <MenuItem
         key="row-below"
-        label="Insert Row Below"
+        label="Insert row below"
         onClick={() => {
           onInsertRow(rowIndex, "below");
           onDismiss();
@@ -116,13 +124,10 @@ export default function TableContextMenu({
 
   // Column operations
   if (type === "column" || type === "cell" || type === "header") {
-    if (items.length > 0 && type === "cell") {
-      // No separator needed before column ops in cell context
-    }
     items.push(
       <MenuItem
         key="col-left"
-        label="Insert Column Left"
+        label="Insert column left"
         onClick={() => {
           onInsertColumn(colIndex, "left");
           onDismiss();
@@ -132,7 +137,7 @@ export default function TableContextMenu({
     items.push(
       <MenuItem
         key="col-right"
-        label="Insert Column Right"
+        label="Insert column right"
         onClick={() => {
           onInsertColumn(colIndex, "right");
           onDismiss();
@@ -141,7 +146,43 @@ export default function TableContextMenu({
     );
   }
 
-  // Separator before delete options
+  // Alignment options for column/header context
+  if ((type === "column" || type === "header") && onSetAlignment) {
+    const currentAlign = alignments?.[colIndex] || "left";
+    items.push(<Separator key="sep-align" />);
+    items.push(
+      <MenuItem
+        key="align-left"
+        label={`Align left${currentAlign === "left" ? "  \u2713" : ""}`}
+        onClick={() => {
+          onSetAlignment(colIndex, "left");
+          onDismiss();
+        }}
+      />,
+    );
+    items.push(
+      <MenuItem
+        key="align-center"
+        label={`Align centre${currentAlign === "center" ? "  \u2713" : ""}`}
+        onClick={() => {
+          onSetAlignment(colIndex, "center");
+          onDismiss();
+        }}
+      />,
+    );
+    items.push(
+      <MenuItem
+        key="align-right"
+        label={`Align right${currentAlign === "right" ? "  \u2713" : ""}`}
+        onClick={() => {
+          onSetAlignment(colIndex, "right");
+          onDismiss();
+        }}
+      />,
+    );
+  }
+
+  // Separator before the deletions
   if (items.length > 0) {
     items.push(<Separator key="sep" />);
   }
@@ -151,7 +192,7 @@ export default function TableContextMenu({
     items.push(
       <MenuItem
         key="del-row"
-        label="Delete Row"
+        label="Delete row"
         danger
         onClick={() => {
           onDeleteRow(rowIndex);
@@ -166,7 +207,7 @@ export default function TableContextMenu({
     items.push(
       <MenuItem
         key="del-col"
-        label="Delete Column"
+        label="Delete column"
         danger
         onClick={() => {
           onDeleteColumn(colIndex);
@@ -176,37 +217,16 @@ export default function TableContextMenu({
     );
   }
 
-  // Alignment options for column/header context
-  if ((type === "column" || type === "header") && onSetAlignment) {
-    const currentAlign = (alignments && alignments[colIndex]) || "left";
-    items.push(<Separator key="sep-align" />);
+  // The whole table, last, in every context
+  if (onDeleteTable) {
     items.push(
       <MenuItem
-        key="align-left"
-        label={`Align Left${currentAlign === "left" ? "  \u2713" : ""}`}
+        key="del-table"
+        label="Delete table"
+        danger
         onClick={() => {
-          onSetAlignment(colIndex, "left");
           onDismiss();
-        }}
-      />,
-    );
-    items.push(
-      <MenuItem
-        key="align-center"
-        label={`Align Center${currentAlign === "center" ? "  \u2713" : ""}`}
-        onClick={() => {
-          onSetAlignment(colIndex, "center");
-          onDismiss();
-        }}
-      />,
-    );
-    items.push(
-      <MenuItem
-        key="align-right"
-        label={`Align Right${currentAlign === "right" ? "  \u2713" : ""}`}
-        onClick={() => {
-          onSetAlignment(colIndex, "right");
-          onDismiss();
+          onDeleteTable();
         }}
       />,
     );

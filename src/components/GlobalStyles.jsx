@@ -463,18 +463,18 @@ export default function GlobalStyles() {
           pointer-events: none;
         }
         .callout-body p { margin: 0; }
-        /* Table block styles */
+        /* Table block styles. The grid sizes to its content (Obsidian's
+           model; Markdown holds no column width), with a minimum cell width
+           so an empty table reads as a small grid, capped at the column by the
+           scroller it sits in. No focus ring on a cell: the caret is the
+           signal, as in a paragraph (2026-09-10). */
         .table-outer {
           position: relative;
           outline: none;
         }
-        .table-block-wrapper {
-          overflow-x: auto;
-          border-radius: 8px;
-          border: 1px solid ${theme.BG.divider};
-        }
         .table-block {
-          width: 100%;
+          width: auto;
+          table-layout: auto;
           border-collapse: collapse;
           font-size: 14px;
         }
@@ -483,7 +483,8 @@ export default function GlobalStyles() {
           padding: 8px 12px;
           text-align: left;
           outline: none;
-          min-width: 80px;
+          min-width: 120px;
+          overflow-wrap: anywhere;
         }
         .table-block th {
           background: transparent;
@@ -494,17 +495,32 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.primary};
           background: transparent;
         }
-        .table-block td:focus, .table-block th:focus {
-          box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}50;
-        }
         /* Edge zones */
         .table-left-zone { cursor: grab; }
         .table-left-zone:active { cursor: grabbing; }
         .table-top-zone { cursor: grab; }
         .table-top-zone:active { cursor: grabbing; }
-        /* Add row/column bars */
-        .table-bottom-zone:hover, .table-right-zone:hover {
-          background: ${theme.ACCENT.primary}0A;
+        /* The add-row and add-column bars: hidden at rest, revealed while the
+           table is hovered or a cell has focus (reveal is CSS, never a JS
+           hover state). A hairline in the divider ink with a Plus in the
+           muted ink, primary when the bar itself is hovered. */
+        .table-add-bar {
+          opacity: 0;
+          transition: opacity 150ms;
+          color: ${theme.TEXT.muted};
+        }
+        .table-outer:hover .table-add-bar,
+        .table-outer:focus-within .table-add-bar {
+          opacity: 1;
+        }
+        .table-add-bar:hover { color: ${theme.TEXT.primary}; }
+        .table-add-line { background: ${theme.BG.divider}; pointer-events: none; }
+        .table-add-plus {
+          position: relative;
+          display: flex;
+          padding: 2px;
+          border-radius: 4px;
+          background: ${theme.BG.editor};
         }
         /* Preview rows */
         .table-preview-row td {

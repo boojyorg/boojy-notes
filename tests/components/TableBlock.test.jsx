@@ -81,6 +81,7 @@ import TableBlock from "../../src/components/TableBlock.jsx";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const defaultBlock = {
+  id: "t1",
   rows: [
     ["Header A", "Header B"],
     ["Cell 1", "Cell 2"],
@@ -296,6 +297,131 @@ describe("TableBlock", () => {
     const { container } = render(<TableBlock {...baseProps()} />);
     expect(container.querySelector(".table-bottom-zone")).toBeInTheDocument();
     expect(container.querySelector(".table-right-zone")).toBeInTheDocument();
+  });
+
+  describe("a block addressed as a whole (2026-09-10)", () => {
+    it("renders its own root, registered for the gutter grip, with the band when selected", () => {
+      const registerRef = vi.fn();
+      const { container, rerender } = render(
+        <TableBlock {...baseProps()} registerRef={registerRef} isSelected={false} />,
+      );
+      const root = container.querySelector('[data-block-type="table"]');
+      expect(root).toBe(container.querySelector(".table-outer"));
+      expect(root.getAttribute("contenteditable")).toBe("false");
+      expect(root.dataset.blockId).toBe("t1");
+      expect(registerRef).toHaveBeenCalledWith("t1", root);
+      expect(container.querySelector("[data-selected]")).toBeNull();
+      expect(container.querySelector(".table-scroller").style.boxShadow).toBe("none");
+
+      rerender(<TableBlock {...baseProps()} registerRef={registerRef} isSelected={true} />);
+      expect(container.querySelector('[data-selected="true"]')).toBe(root);
+      // The divider's band behind the cells (the theme mock carries no name,
+      // so the Light alpha, 10%), reaching past the grid by its reach.
+      expect(container.querySelector(".table-scroller").style.background).toBe(
+        "rgba(164, 202, 206, 0.1)",
+      );
+      expect(container.querySelector(".table-scroller").style.boxShadow).toBe(
+        "0 0 0 4px rgba(164, 202, 206, 0.1)",
+      );
+    });
+
+    it("Escape in a cell selects the whole table and hands focus to the editor root", () => {
+      const onSelect = vi.fn();
+      document.body.innerHTML = '<div id="root" contenteditable="true"></div>';
+      const { container } = render(<TableBlock {...baseProps()} onSelect={onSelect} />, {
+        container: document.getElementById("root"),
+      });
+      const cell = container.querySelector("td");
+      cell.focus();
+      fireEvent.keyDown(cell, { key: "Escape" });
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(document.getElementById("root"));
+    });
+
+    it("the arrows walk the grid and leave it at its edges; Shift+Arrow stays the browser's", () => {
+      const onBlockNav = vi.fn();
+      const props = baseProps();
+      props.block = {
+        rows: [
+          ["A", "B"],
+          ["1", "2"],
+        ],
+        alignments: [],
+      };
+      const { container } = render(
+        <TableBlock {...props} blockIndex={3} onBlockNav={onBlockNav} />,
+      );
+      const cells = container.querySelectorAll("th, td");
+      const caretIn = (cell, offset) => {
+        const text = cell.firstChild;
+        const range = document.createRange();
+        range.setStart(text, offset);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      };
+      const active = () => [...cells].indexOf(document.activeElement.closest("th, td"));
+
+      // jsdom draws nothing: a caret has no rect, which reads as a one-line cell.
+      caretIn(cells[0], 1); // "A|"
+      fireEvent.keyDown(cells[0], { key: "ArrowRight" });
+      expect(active()).toBe(1);
+      caretIn(cells[1], 1); // "B|": wraps to the next row's first cell
+      fireEvent.keyDown(cells[1], { key: "ArrowRight" });
+      expect(active()).toBe(2);
+      caretIn(cells[2], 0); // "|1": back to the header's last cell
+      fireEvent.keyDown(cells[2], { key: "ArrowLeft" });
+      expect(active()).toBe(1);
+      caretIn(cells[1], 0); // a caret inside the text moves nothing between cells
+      fireEvent.keyDown(cells[1], { key: "ArrowRight" });
+      expect(active()).toBe(1);
+      caretIn(cells[1], 1);
+      fireEvent.keyDown(cells[1], { key: "ArrowRight", shiftKey: true });
+      expect(active()).toBe(1);
+      // Cmd+Arrow (END_OF_LINE on a Mac) and Alt+Arrow are the browser's
+      // line and word jumps inside the cell, never a hop to the next cell.
+      fireEvent.keyDown(cells[1], { key: "ArrowRight", metaKey: true });
+      fireEvent.keyDown(cells[1], { key: "ArrowRight", ctrlKey: true });
+      fireEvent.keyDown(cells[1], { key: "ArrowRight", altKey: true });
+      expect(active()).toBe(1);
+      expect(onBlockNav).not.toHaveBeenCalled();
+
+      // Down from the last row and up from the header leave the table.
+      caretIn(cells[3], 1);
+      fireEvent.keyDown(cells[3], { key: "ArrowDown" });
+      expect(onBlockNav).toHaveBeenLastCalledWith(3, "next");
+      caretIn(cells[0], 1);
+      fireEvent.keyDown(cells[0], { key: "ArrowUp" });
+      expect(onBlockNav).toHaveBeenLastCalledWith(3, "prev");
+      // Left from the first cell and Right from the last leave it too.
+      caretIn(cells[0], 0);
+      fireEvent.keyDown(cells[0], { key: "ArrowLeft" });
+      expect(onBlockNav).toHaveBeenLastCalledWith(3, "prev");
+      caretIn(cells[3], 1);
+      fireEvent.keyDown(cells[3], { key: "ArrowRight" });
+      expect(onBlockNav).toHaveBeenLastCalledWith(3, "next");
+      expect(onBlockNav).toHaveBeenCalledTimes(4);
+      // Down inside the grid moves a row; up from it moves back.
+      caretIn(cells[0], 1);
+      fireEvent.keyDown(cells[0], { key: "ArrowDown" });
+      expect(active()).toBe(2);
+      caretIn(cells[2], 1);
+      fireEvent.keyDown(cells[2], { key: "ArrowUp" });
+      expect(active()).toBe(0);
+    });
+
+    it("the add bars are marked for the CSS reveal, with no JS hover state", () => {
+      const { container } = render(<TableBlock {...baseProps()} />);
+      const bars = container.querySelectorAll(".table-add-bar");
+      expect(bars).toHaveLength(2);
+      expect(bars[0].getAttribute("aria-label")).toBe("Add column");
+      expect(bars[1].getAttribute("aria-label")).toBe("Add row");
+      for (const bar of bars) {
+        expect(bar.querySelector("svg")).toBeInTheDocument();
+        expect(bar.style.opacity).toBe("");
+      }
+    });
   });
 
   it("renders a 3x3 table correctly", () => {

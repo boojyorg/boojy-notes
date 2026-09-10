@@ -148,12 +148,19 @@ export function useEditorFocusUX({
       const targetPos = focusCursorPos.current ?? 0;
       focusBlockId.current = null;
       focusCursorPos.current = null;
-      // A text block takes the caret at the offset; a block whose fields are
-      // its own (no text root registered) takes focus in its first field.
+      // A block whose fields are its own (a code block, a callout, a table)
+      // takes focus in its first field; a text block takes the caret at the
+      // offset. The field is asked first because a table's root is in the
+      // ref map too, for the gutter grip, and a caret placed on that root
+      // landed nowhere (2026-09-10).
       const focusTarget = () => {
+        const field = ownedField(editorRef.current, targetId);
+        if (field) {
+          field.focus();
+          return;
+        }
         const el = blockRefs.current[targetId];
         if (el) placeCaret(el, targetPos);
-        else ownedField(editorRef.current, targetId)?.focus();
       };
       focusTarget();
       requestAnimationFrame(() => {

@@ -9,6 +9,8 @@ import {
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   getCaretOffset,
+  isEditableBlock,
+  isSelectableBlock,
   linkText,
   placeCaret,
   titleFieldText,
@@ -492,5 +494,27 @@ describe("ownedField", () => {
     expect(ownedField(editor, "p1")).toBeNull();
     expect(ownedField(editor, "missing")).toBeNull();
     expect(ownedField(null, "c1")).toBeNull();
+    // Arriving from below: a table's last row, first cell; every other block
+    // has one field to enter whichever way the caret comes.
+    expect(ownedField(editor, "t1", "end")).toBe(editor.querySelector("tbody td"));
+    expect(ownedField(editor, "c1", "end")).toBe(editor.querySelector("textarea"));
+    expect(ownedField(editor, "k1", "end")).toBe(editor.querySelector(".callout-title"));
+  });
+});
+
+describe("isSelectableBlock / isEditableBlock", () => {
+  it("a divider, an image and a table are addressed as a whole; code, callout and file are not", () => {
+    for (const type of ["spacer", "image", "table"]) {
+      expect(isSelectableBlock({ type })).toBe(true);
+      expect(isEditableBlock({ type })).toBe(false);
+    }
+    for (const type of ["code", "callout", "file", "frontmatter"]) {
+      expect(isSelectableBlock({ type })).toBe(false);
+      expect(isEditableBlock({ type })).toBe(false);
+    }
+    for (const type of ["p", "h1", "bullet", "numbered", "checkbox", "blockquote"]) {
+      expect(isSelectableBlock({ type })).toBe(false);
+      expect(isEditableBlock({ type })).toBe(true);
+    }
   });
 });

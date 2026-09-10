@@ -50,18 +50,20 @@ export function moveCell(row: string[], from: number, to: number): string[] {
 }
 
 /**
- * A copy of `rows` with one column inserted at a visual column, the way the
- * table's own controls add one. An explicit column operation may pad a row:
- * a row shorter than `at` is padded up to it first, so the new cell lands in
- * the column the user asked for in every row, wide rows and short rows
- * alike. Nothing here runs on a passive open or save; those keep every
- * row's width exactly.
+ * A copy of `rows` with one empty column inserted at a visual column, the way
+ * the table's own controls add one. An explicit column operation may pad a
+ * row: a row shorter than `at` is padded up to it first, so the new cell
+ * lands in the column the user asked for in every row, wide rows and short
+ * rows alike. Nothing here runs on a passive open or save; those keep every
+ * row's width exactly. The header cell is empty too (2026-09-10): the `Col N`
+ * label it used to carry reached the file as text the user never typed, and
+ * Obsidian and Notion add an empty column.
  */
-export function withColumnInserted(rows: string[][], at: number, headerLabel: string): string[][] {
-  return rows.map((row, r) => {
+export function withColumnInserted(rows: string[][], at: number): string[][] {
+  return rows.map((row) => {
     const next = [...row];
     while (next.length < at) next.push("");
-    next.splice(at, 0, r === 0 ? headerLabel : "");
+    next.splice(at, 0, "");
     return next;
   });
 }
