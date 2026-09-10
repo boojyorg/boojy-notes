@@ -167,7 +167,7 @@ const afterMarker = (block, text = block.text || "") => (block.bare && !text ? "
 // is written as a space, as a callout title's is.
 
 /** A line that could open a block: the cheap test before the parser is asked. */
-const MARKER_START = /^[ \t]*[-*+#>`|!\d]/;
+const MARKER_START = /^[ \t]*[-*+#>`~|!\d]/;
 /** The first ASCII punctuation character of a line, where the escape goes. */
 const FIRST_PUNCTUATION = /[!-/:-@[-`{-~]/;
 
@@ -192,6 +192,13 @@ const paragraphText = (block) => readsBackAsText(block.text || "", 0);
 const itemText = (block) => readsBackAsText(block.text || "", 1);
 /** A heading is one line: a newline in its text is written as a space. */
 const headingText = (block) => (block.text || "").replace(/\n/g, " ");
+
+/** The app's default fence; imported spelling is retained separately when different. */
+function defaultCodeFence(text) {
+  const runs = text.match(/`{3,}/g);
+  const longestRun = runs ? Math.max(...runs.map((run) => run.length)) : 0;
+  return "`".repeat(Math.max(3, longestRun + 1));
+}
 
 export function blocksToMarkdown(blocks) {
   const lines = [];
@@ -271,14 +278,41 @@ export function blocksToMarkdown(blocks) {
       case "code": {
         const lang = block.lang || "";
         const text = block.text || "";
-        // The fence must be longer than the longest backtick run in the content,
-        // or a run of equal length would close the block early on re-parse
-        const runs = text.match(/`{3,}/g);
-        const longestRun = runs ? Math.max(...runs.map((r) => r.length)) : 0;
-        const fence = "`".repeat(Math.max(3, longestRun + 1));
-        lines.push(fence + lang);
-        lines.push(text);
-        lines.push(fence);
+        const source = block.fenceSource;
+        const opening = source?.open.match(/^(\s*)(`{3,}|~{3,})(.*)$/s);
+        if (opening) {
+          const char = opening[2][0];
+          // Only a closing-looking line can end an imported fence. Grow it
+          // if an intentional content edit adds one; keep its character and
+          // every other part of the authored boundary unchanged.
+          const closingLine = new RegExp(`^\\s*(${char}{3,})\\s*$`);
+          const longest = text
+            .split("\n")
+            .reduce(
+              (length, line) => Math.max(length, line.match(closingLine)?.[1].length || 0),
+              0,
+            );
+          const fence = char.repeat(Math.max(opening[2].length, longest + 1));
+          const info = opening[3].trim() === lang ? opening[3] : lang;
+          lines.push(opening[1] + fence + info);
+          if (text || !source.empty) lines.push(text);
+          if (source.close !== null) {
+            lines.push(
+              source.close.replace(new RegExp(`${char}{3,}`), (old) =>
+                char.repeat(Math.max(old.length, fence.length)),
+              ),
+            );
+          } else if (i < blocks.length - 1) {
+            // Adding a block after an unclosed fence intentionally ends it;
+            // otherwise a reopen would swallow that new block as code.
+            lines.push(fence);
+          }
+        } else {
+          const fence = defaultCodeFence(text);
+          lines.push(fence + lang);
+          lines.push(text);
+          lines.push(fence);
+        }
         break;
       }
       case "blockquote": {
@@ -382,24 +416,31 @@ export function markdownToBlocks(md) {
       continue;
     }
 
-    // 2. Code fence (supports variable-length fences: ```, ````, etc.)
-    const fenceMatch = line.match(/^(`{3,})/);
+    // 2. Fenced code: matching character, closing run at least as long as
+    // the opener. Everything between the boundaries stays literal text.
+    const fenceMatch = line.match(/^(`{3,}|~{3,})/);
     if (fenceMatch) {
       const fence = fenceMatch[1];
       const lang = line.slice(fence.length).trim();
-      const closingPattern = new RegExp("^" + "`".repeat(fence.length) + "\\s*$");
+      const closingPattern = new RegExp(`^${fence[0]}{${fence.length},}\\s*$`);
       const codeLines = [];
       i++;
       while (i < lines.length && !closingPattern.test(lines[i].trim())) {
         codeLines.push(lines[i]);
         i++;
       }
-      if (i < lines.length) i++;
+      const close = i < lines.length ? lines[i++] : null;
+      const text = codeLines.join("\n");
+      const canonicalFence = defaultCodeFence(text);
+      const source = raw !== canonicalFence + lang || close !== canonicalFence || !codeLines.length;
       blocks.push({
         id: `md-${++_parseBlockId}`,
         type: "code",
         lang: lang,
-        text: codeLines.join("\n"),
+        text,
+        ...(source
+          ? { fenceSource: { open: raw, close, ...(!codeLines.length ? { empty: true } : {}) } }
+          : {}),
       });
       continue;
     }

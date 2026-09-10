@@ -80,7 +80,7 @@ found on the way gate it as well, without needing a line here.
 
 - [ ] **Copy pass on Quote and Checklist.** The rest of the subtraction pass landed on
   2026-09-05 (`CHANGELOG.md`, Removed).
-- [ ] **Preservation blockers** — the two first-edit mutations marked under Data safety below.
+- [ ] **Preservation blocker** — the table-alignment mutation marked under Data safety below.
 - [ ] **Visual polish and a Windows smoke test.** Before Windows testers: a
   `requestSingleInstanceLock` in `main.js` (a second launch opens a second instance today, which
   matters more on Windows than on macOS).
@@ -251,9 +251,7 @@ from a correctness defect. Existing preservation blockers retain their status un
   targets are a separate future item below.
 - **Code: literal handling and delimiter support.** Formatting inside a code span can render
   as active emphasis; multi-backtick spans need correct delimiter handling. Indented code is
-  not recognised as code. Keep contents literal through reading, editing and writing. Tilde
-  fences and closing-fence preservation already have items under Data safety; do not duplicate
-  or downgrade them here.
+  not recognised as code. Keep contents literal through reading, editing and writing.
 - **Missing rendering: imported underscore emphasis.** `_italic_` and `__bold__` are CommonMark,
   and typing them converts (saved in the star form, 2026-09-10), but the renderer and writer
   speak only `*`. Rendering imported underscores must not cause the first edit to rewrite
@@ -263,16 +261,10 @@ from a correctness defect. Existing preservation blockers retain their status un
 
 ### Data safety / reliability
 
-**First-edit mutations.** Fine on open; the first edit of an affected note rewrites third-party
-content. `KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already
-fail; tilde fences are not in it because their fixture round-trips byte-exact (the damage is
-on interaction). These two block Beta.
+**First-edit mutations.** The first edit of an affected note can rewrite third-party content.
+`KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already fail.
 
-- [ ] **Tilde fences (`~~~`) parse as paragraphs** — the fence lines round-trip byte-exact, but
-  the content renders as live blocks, so interacting with it rewrites code, and content that
-  matches a normalising construct (tables, `- [X]`, `[!NOTE]`, bare `>`) is rewritten on any
-  save. The fence matcher in `markdown.js` is backtick-only.
-- [ ] **Table `:---` separators normalise to `---`** on first edit.
+- [ ] **Table `:---` separators normalise to `---`** on first edit. This blocks Beta.
 - [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
   keystroke; a save that lands in a pause after the space writes the non-breaking byte
@@ -289,12 +281,9 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 - [ ] Uppercase `- [X]` is written as `- [x]`.
 - [ ] Headings, dividers and table rows with 1–3 leading spaces are dedented; an indented table
   body row (`  | 1 | 2 |`) also gains an empty leading cell.
-- [ ] A closing fence longer than its opener (four backticks closing a three-backtick fence) is
-  not recognised, so the rest of the file becomes code and the opener is rewritten.
 - [ ] Mixed line endings are healed to the dominant style (a code comment records this as
   intended; the spec does not).
-- [ ] An unclosed fence or unclosed frontmatter gains a closer.
-- [ ] Trailing space after a fence's info string (```` ```js ````) is trimmed.
+- [ ] Unclosed frontmatter gains a closer.
 - [ ] `[[Note|Note]]` collapses to `[[Note]]` on the first edit of its block (the DOM walker,
   not the parser).
 

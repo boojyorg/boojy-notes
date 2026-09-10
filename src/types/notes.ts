@@ -45,6 +45,8 @@ interface CheckboxBlock extends BlockBase {
 interface CodeBlock extends BlockBase {
   type: "code";
   lang?: string;
+  /** Authored boundaries when they differ from the app's generated fence. */
+  fenceSource?: { open: string; close: string | null; empty?: boolean };
 }
 
 interface CalloutBlock extends BlockBase {

@@ -157,6 +157,22 @@ const fixtures = fs
   .sort();
 
 describe("interop — the conventional meaning of Markdown written elsewhere", () => {
+  it("tilde-fenced Markdown stays literal code after saving and editing", () => {
+    const body = "# literal heading\n- [X] literal task\n```js\nconst x = 1;\n```";
+    const source = `~~~markdown\n${body}\n~~~\n`;
+    const expected = `code lang=markdown ${JSON.stringify(`${body}\n`)}\n`;
+    expect(meaningOf(source)).toBe(expected);
+    expect(meaningOf(saveCycle(source))).toBe(expected);
+
+    const blocks = markdownToBlocks(source);
+    blocks[0].text += "\n~~~\nstill code";
+    const saved = blocksToMarkdown(blocks);
+    expect(meaningOf(saved)).toBe(
+      `code lang=markdown ${JSON.stringify(`${body}\n~~~\nstill code\n`)}\n`,
+    );
+    expect(meaningOf(saveCycle(saved))).toBe(meaningOf(saved));
+  });
+
   for (const name of fixtures) {
     const source = fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
     const meaningFile = path.join(FIXTURES_DIR, name.replace(/\.md$/, ".meaning.txt"));

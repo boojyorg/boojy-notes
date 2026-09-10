@@ -1158,6 +1158,19 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   code block's textarea reaches the app's undo as any Cmd+Z does. (Slash insertion into these
   three lands in the block's own field since 2026-09-09; see the slash menu section.)
 
+### Fenced code keeps its authored boundaries
+
+Backtick and tilde fences open one code block; its entire body is literal textarea text.
+A closer uses the same character and at least the opener's length. `fenceSource` on the code
+block retains non-default opening and closing lines, including whitespace and an absent
+closer, and distinguishes an empty body from one blank line. The parser and serializer own
+this spelling; the editor does not interpret or normalise code contents. New blocks use
+backticks. An intentional body edit that introduces a closing-looking line grows the fence
+just enough to keep that line code; changing the language changes the info string. An unclosed
+import stays unclosed at EOF, but adding a block after it writes a closer so the new block
+cannot be swallowed on reopen. Preservation and interop tests cover the boundaries;
+`tilde-fences.spec.ts` proves outside and inside edits, Undo/Redo and restart against disk.
+
 ### Tables are ragged on disk and stay ragged
 
 - **A row holds exactly the cells its Markdown line holds** (2026-09-07). The parser neither
