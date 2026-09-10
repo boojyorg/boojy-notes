@@ -1204,15 +1204,19 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   still for the empty state. Before this `.table-block { width: 100% }` filled the column
   (606px of 608 for an empty table). `overflow-wrap: anywhere` keeps a long unbroken word from
   forcing a column. The header is bold with no fill; **no focus ring on a cell**: the caret is
-  the signal, as in a paragraph (the 2px accent inset was removed the same day).
-- **The add-row and add-column bars are hairlines with a Plus at the grid's own bottom and right
-  edges**, 20px hit boxes (`ADD_BAR`), revealed in CSS while the table is hovered or a cell has
-  focus (`.table-outer:hover`, `:focus-within`; never a JS hover state) and hidden at rest, so a
-  new table, whose first cell is focused, shows both at once and a long note stays calm. The
-  line is `BG.divider`, the Plus `TEXT.muted` and `TEXT.primary` when the bar itself is hovered
-  (Lucide `PlusIcon` at 14px on the content stroke). Click adds one row or column; drag adds
-  several with the counter badge (`useTableInteractions`). Before this the bars were 28px
-  boxed strips that faded in only once the pointer was already on them.
+  the signal, as in a paragraph (the 2px accent inset was removed the same day). **One grid,
+  one thickness, square corners**: the cells' collapsed 1px borders are the whole grid, outer
+  edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
+  radius (judged against Obsidian's grid, 2026-09-10).
+- **The add-row and add-column boxes are Obsidian's**: a bordered box the grid's height past
+  its right edge and its width under its bottom edge (28px, `ADD_BAR`), sharing the grid's own
+  border line (no left or top border of its own), a Lucide `PlusIcon` at 16px centred, in
+  `TEXT.muted` and `TEXT.primary` on hover. Shown in CSS only while the pointer is on the box
+  itself, past that edge (`.table-add-bar:hover`; never a JS hover state); a table at rest,
+  hovered over its cells or being typed in shows none. Click adds one row or column; drag adds
+  several with the counter badge (`useTableInteractions`). A reveal on table hover or cell
+  focus was built and rejected the same day: the boxes read as chrome on every table you
+  touched.
 - **A new column is empty.** `withColumnInserted` writes `""` into every row, the header
   included; the `Col N` label it used to write reached the file as text nobody typed.
 - **The row and column strips left of and above the grid stay invisible** (24px, click selects,

@@ -50,7 +50,9 @@ test("a typed ||| makes a small grid whose bars show while a cell has focus; Esc
     await expect(table(h).locator("th").first()).toBeFocused();
 
     // Content-sized: an empty 2×2 is a small grid at the column's left, not
-    // the column's width; both add bars are revealed while a cell has focus.
+    // the column's width; the focused cell wears no ring; the add boxes are
+    // there past the right and bottom edges (their reveal is the box's own
+    // CSS hover, not something a hidden window can be asked about).
     const widths = await h.page.evaluate(() => {
       const width = (sel: string) =>
         document.querySelector(sel)?.getBoundingClientRect().width ?? -1;
@@ -58,14 +60,14 @@ test("a typed ||| makes a small grid whose bars show while a cell has focus; Esc
       return {
         table: width("table.table-block"),
         column: width("[data-block-type='p']"),
-        revealed: document.querySelector(".table-outer")?.matches(":focus-within") ?? null,
+        cellFocused: document.querySelector(".table-outer")?.matches(":focus-within") ?? null,
         bars: document.querySelectorAll(".table-outer .table-add-bar").length,
         ring: th ? getComputedStyle(th).boxShadow : null,
       };
     });
     expect(widths.table).toBeGreaterThan(0);
     expect(widths.table).toBeLessThan(widths.column / 2);
-    expect(widths.revealed).toBe(true);
+    expect(widths.cellFocused).toBe(true);
     expect(widths.bars).toBe(2);
     expect(widths.ring).toBe("none");
 

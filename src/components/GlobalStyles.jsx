@@ -478,6 +478,10 @@ export default function GlobalStyles() {
           border-collapse: collapse;
           font-size: 14px;
         }
+        /* One grid, one thickness: the cells' collapsed 1px borders are the
+           whole grid, outer edge included (no border on the scroller, which
+           doubled the edge), and no rounded corners (2026-09-10, judged
+           against Obsidian's). */
         .table-block th, .table-block td {
           border: 1px solid ${theme.BG.divider};
           padding: 8px 12px;
@@ -500,27 +504,19 @@ export default function GlobalStyles() {
         .table-left-zone:active { cursor: grabbing; }
         .table-top-zone { cursor: grab; }
         .table-top-zone:active { cursor: grabbing; }
-        /* The add-row and add-column bars: hidden at rest, revealed while the
-           table is hovered or a cell has focus (reveal is CSS, never a JS
-           hover state). A hairline in the divider ink with a Plus in the
-           muted ink, primary when the bar itself is hovered. */
+        /* The add-row and add-column boxes, Obsidian's: a bordered box the
+           grid's height at its right edge and its width under its bottom
+           edge, sharing the grid's own border line, with a Plus centred.
+           Hidden at rest and shown only while the pointer is past that edge,
+           on the box itself (reveal is CSS, never a JS hover state). */
         .table-add-bar {
           opacity: 0;
-          transition: opacity 150ms;
+          transition: opacity 120ms;
           color: ${theme.TEXT.muted};
         }
-        .table-outer:hover .table-add-bar,
-        .table-outer:focus-within .table-add-bar {
+        .table-add-bar:hover {
           opacity: 1;
-        }
-        .table-add-bar:hover { color: ${theme.TEXT.primary}; }
-        .table-add-line { background: ${theme.BG.divider}; pointer-events: none; }
-        .table-add-plus {
-          position: relative;
-          display: flex;
-          padding: 2px;
-          border-radius: 4px;
-          background: ${theme.BG.editor};
+          color: ${theme.TEXT.primary};
         }
         /* Preview rows */
         .table-preview-row td {

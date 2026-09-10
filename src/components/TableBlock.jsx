@@ -10,8 +10,8 @@ import TableContextMenu from "./TableContextMenu";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
-/** The add-row and add-column bars' thickness: a generous hit box for a hairline. */
-export const ADD_BAR = 20;
+/** The add-row and add-column boxes' thickness. */
+export const ADD_BAR = 28;
 /** The invisible row and column strips left of and above the grid. */
 const EDGE_ZONE = 24;
 
@@ -107,13 +107,13 @@ function caretOnLine(el, edge) {
  * it; it must not share EditableBlock's `elRef`, whose repaint effect would
  * paint the block's empty `text` over the grid.
  *
- * The add-row and add-column bars are hairlines with a Plus at the grid's own
- * bottom and right edges, revealed in CSS while the table is hovered or a cell
- * has focus (`.table-outer:hover`, `:focus-within`), so a new table, whose
- * first cell is focused, shows both at once and a table at rest shows none.
- * Click adds one; drag adds several (useTableInteractions). The row and column
- * strips left of and above the grid stay invisible (click selects, hold to
- * drag); judged after this pass (2026-09-10).
+ * The add-row and add-column boxes are Obsidian's: a bordered box the grid's
+ * height at its right edge and its width under its bottom edge, a Plus centred,
+ * shown in CSS only while the pointer is past that edge, on the box itself
+ * (`.table-add-bar:hover`); a table at rest, hovered or being typed in shows
+ * none. Click adds one; drag adds several (useTableInteractions). The row and
+ * column strips left of and above the grid stay invisible (click selects, hold
+ * to drag); judged after this pass (2026-09-10).
  */
 export default memo(function TableBlock({
   block,
@@ -421,8 +421,8 @@ export default memo(function TableBlock({
           className="table-scroller"
           style={{
             overflowX: "auto",
-            borderRadius: 8,
-            border: `1px solid ${theme.BG.divider}`,
+            // The cells' collapsed borders are the whole grid, outer edge
+            // included; nothing here draws a second edge or a rounded corner.
             // The selection band: the tint behind the cells, reaching past
             // the grid by the divider's reach.
             background: band || "transparent",
@@ -515,7 +515,8 @@ export default memo(function TableBlock({
           </table>
         </div>
 
-        {/* Add-column bar — a hairline with a Plus down the grid's right edge */}
+        {/* Add-column box — the grid's height, past its right edge, sharing
+            the grid's border line (no left border of its own) */}
         <div
           className="table-add-bar table-right-zone"
           role="button"
@@ -530,21 +531,18 @@ export default memo(function TableBlock({
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
+            border: `1px solid ${theme.BG.divider}`,
+            borderLeft: "none",
           }}
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
         >
-          <span
-            className="table-add-line"
-            style={{ position: "absolute", left: "50%", top: 6, bottom: 6, width: 1 }}
-          />
-          <span className="table-add-plus">
-            <PlusIcon size={14} />
-          </span>
+          <PlusIcon size={16} />
         </div>
       </div>
 
-      {/* Add-row bar — a hairline with a Plus along the grid's bottom edge */}
+      {/* Add-row box — the grid's width, under its bottom edge, sharing the
+          grid's border line (no top border of its own) */}
       <div
         className="table-add-bar table-bottom-zone"
         role="button"
@@ -556,17 +554,13 @@ export default memo(function TableBlock({
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
+          border: `1px solid ${theme.BG.divider}`,
+          borderTop: "none",
         }}
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
       >
-        <span
-          className="table-add-line"
-          style={{ position: "absolute", top: "50%", left: 6, right: 6, height: 1 }}
-        />
-        <span className="table-add-plus">
-          <PlusIcon size={14} />
-        </span>
+        <PlusIcon size={16} />
       </div>
 
       {/* Counter badge during drag-to-create */}
