@@ -1195,15 +1195,21 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
 
 ### The table is a compact grid you can enter and leave
 
-- **Content-sized, Obsidian's model** (2026-09-10). The grid is as wide as its content, with a
-  120px minimum per cell so an empty 2×2 reads as a small grid (about 240px) at the column's
-  left, capped at the column (`width: fit-content; max-width: 100%` on the root) and scrolling
-  sideways inside its own scroller past it (`.table-scroller`, `overflow-x: auto`; the page
-  never scrolls). Markdown holds no column width, so Notion's fixed, resizable columns are out
-  by the spec; the cost is that the grid reflows as you type, which the minimum width keeps
-  still for the empty state. Before this `.table-block { width: 100% }` filled the column
-  (606px of 608 for an empty table). `overflow-wrap: anywhere` keeps a long unbroken word from
-  forcing a column. The header is bold with no fill; **no focus ring on a cell**: the caret is
+- **Content-sized, Obsidian's model, and it shrinks before it scrolls** (2026-09-10). The grid
+  is as wide as its content at the column's left, capped at the column (`width: fit-content;
+  max-width: 100%` on the root). Past the column, auto layout shares the width between the
+  columns in proportion to their content and wraps text, the way Chrome's tabs shrink, down to
+  a **72px floor per cell** (about six characters); only past that does the grid scroll
+  sideways inside its own scroller (`.table-scroller`, `overflow-x: auto`, the app's own pill
+  scrollbar; the page never scrolls). The **240px minimum is the table's** (`min-width` on
+  `.table-block`), so an empty 2×2 still reads as a small grid while eight empty columns fit
+  a 608px column. A 120px per-cell minimum was the first cut and made six columns scroll at
+  once. Markdown holds no column width, so Notion's fixed, resizable columns are out by the
+  spec; the costs are that the grid reflows as you type, and that at the floor a word longer
+  than the cell breaks mid-word (`overflow-wrap: anywhere`, kept so a long URL cannot force a
+  column; `break-word` would trade that the other way). Before this `.table-block { width:
+  100% }` filled the column (606px of 608 for an empty table). The header is bold with no
+  fill; **no focus ring on a cell**: the caret is
   the signal, as in a paragraph (the 2px accent inset was removed the same day). **One grid,
   one thickness, square corners**: the cells' collapsed 1px borders are the whole grid, outer
   edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
@@ -1231,10 +1237,13 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   labels in the app face, a Lucide glyph per item at the navigation stroke (the arrow-to-line
   family for the four inserts, where the direction is the meaning and the "between" glyphs blur
   at 16px; Trash for the three deletes, red with their labels), and `useMenuPosition`. It opens
-  **under the clicked cell, left edges aligned, 4px gap, flipping above when there is no room**,
-  not at the pointer: every item acts on that cell's row or column, and anchored to the cell
-  the menu reads as attached to the table rather than floating where the click landed (the
-  pointer is inside the cell anyway). It portals to `body`, which is why `body` now carries the
+  **under the table, in line with the clicked column: 4px under the grid's bottom edge, left
+  edge on the cell's, flipping above the whole grid when there is no room**, not at the pointer
+  and not under the cell (from a header cell that covered the very column it was about to act
+  on; judged live 2026-09-10): every item acts on that column or the clicked row, and the menu
+  reads as attached to the table rather than floating where the click landed. On a very tall
+  table it can sit a way below the pointer; accepted for the short tables notes hold. It
+  portals to `body`, which is why `body` now carries the
   app font: portalled to a font-less body it rendered in the browser's serif. It ends with
   **Delete table** in every context, the discoverable path to what Escape then Backspace also
   does (`deleteWholeBlock`, so the caret lands under where the table was). The header row

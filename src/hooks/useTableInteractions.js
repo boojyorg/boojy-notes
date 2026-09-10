@@ -59,15 +59,19 @@ export function useTableInteractions({
       } else {
         type = "cell";
       }
-      // The menu is anchored to the clicked cell, not the pointer: it opens
-      // under the cell, left edges aligned (TableContextMenu).
-      const r = e.currentTarget.getBoundingClientRect();
+      // The menu opens under the table, in line with the clicked column: the
+      // scroller's top and bottom for the vertical anchor (the grid plus its
+      // horizontal scrollbar when it has one, so the menu never covers a row
+      // or the bar, and flips above the whole grid when there is no room
+      // below), the cell's left and right for the horizontal (TableContextMenu).
+      const cell = e.currentTarget.getBoundingClientRect();
+      const grid = tableRef.current?.parentElement?.getBoundingClientRect() ?? cell;
       setContextMenu({
-        anchor: { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
+        anchor: { top: grid.top, bottom: grid.bottom, left: cell.left, right: cell.right },
         context: { type, rowIndex: rowIdx, colIndex: colIdx },
       });
     },
-    [selectedRow, selectedCol],
+    [selectedRow, selectedCol, tableRef],
   );
 
   /* ── Row / Column helpers ──────────────────────────────── */

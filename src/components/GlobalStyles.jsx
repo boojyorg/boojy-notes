@@ -478,8 +478,17 @@ export default function GlobalStyles() {
           position: relative;
           outline: none;
         }
+        /* Shrink before you scroll, the way Chrome's tabs do: auto layout
+           shares the column's width between the columns in proportion to
+           their content and wraps text, down to a 72px floor per cell (about
+           six characters); only past that does the scroller take over. The
+           240px minimum is the table's, not the cells', so an empty 2×2 still
+           reads as a small grid while eight empty columns fit the column. A
+           120px per-cell minimum made six columns scroll at once
+           (2026-09-10). */
         .table-block {
           width: auto;
+          min-width: 240px;
           table-layout: auto;
           border-collapse: collapse;
           font-size: 14px;
@@ -493,7 +502,7 @@ export default function GlobalStyles() {
           padding: 8px 12px;
           text-align: left;
           outline: none;
-          min-width: 120px;
+          min-width: 72px;
           overflow-wrap: anywhere;
         }
         .table-block th {

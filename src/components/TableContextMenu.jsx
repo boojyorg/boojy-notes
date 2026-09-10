@@ -28,10 +28,15 @@ const hBg = (el, c) => {
  * labels in the app face, a Lucide glyph per item (the arrow-to-line family
  * for the inserts, where the direction is the meaning; Trash for the deletes,
  * red with their labels), and the shared viewport-aware placement. It is
- * **anchored to the clicked cell, not the pointer**: it opens under the cell,
- * left edges aligned, and flips above it when there is no room, because every
- * item acts on that cell's row or column and the menu then reads as attached
- * to the table rather than floating where the click happened to land. Labels
+ * **anchored under the table, in line with the clicked column**, not at the
+ * pointer: the anchor is the grid's top and bottom with the cell's left and
+ * right (useTableInteractions), so it opens 4px under the grid with its left
+ * edge on the column's, never covers a row (from a header cell, "under the
+ * cell" hid the very column it was about to act on), and flips above the
+ * whole grid when there is no room below. Every item acts on that column or
+ * the clicked row, and the menu reads as attached to the table rather than
+ * floating where the click happened to land; on a very tall table it can sit
+ * a way below the pointer, accepted for the short tables notes hold. Labels
  * are sentence case. No alignment items, by decision: a file's `:---:` still
  * renders and round-trips, but the app offers no control for it.
  */
