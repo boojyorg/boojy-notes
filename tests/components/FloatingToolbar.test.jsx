@@ -35,6 +35,7 @@ vi.mock("../../src/utils/platform", () => ({ isMac: true }));
 import FloatingToolbar, {
   FORMATS,
   TOOLTIP_REST_MS,
+  chipWouldClip,
   shortcutLabel,
 } from "../../src/components/FloatingToolbar.jsx";
 
@@ -130,6 +131,8 @@ describe("FloatingToolbar", () => {
   it("shows a button's name and shortcut after the pointer rests on it", () => {
     vi.useFakeTimers();
     const { getByRole, queryByTestId, getByTestId } = shown();
+    // jsdom lays nothing out; give the toolbar room above so the chip goes there.
+    getByRole("toolbar").getBoundingClientRect = () => ({ top: 200 });
     const bold = getByRole("button", { name: "Strikethrough" });
     fireEvent.mouseEnter(bold);
     expect(queryByTestId("format-tooltip")).toBeNull();
@@ -156,14 +159,58 @@ describe("FloatingToolbar", () => {
     expect(getByTestId("format-tooltip").textContent).toBe("Italic⌘I");
   });
 
-  it("puts the tip below the toolbar when the toolbar is near the top of the column", () => {
+  // The chip goes below only when it would clip at the top of the scroll
+  // container; the toolbar's own position says nothing about that (the title
+  // sits above a note's first line, so there is room there).
+  it("puts the tip below only when there is no room above in the scroller", () => {
     vi.useFakeTimers();
-    const { getByRole, getByTestId } = shown({ position: { top: -40, left: 100 } });
+    const scroller = document.createElement("div");
+    scroller.className = "editor-scroll";
+    scroller.getBoundingClientRect = () => ({ top: 100 });
+    document.body.appendChild(scroller);
+    const {
+      getByRole,
+      getByTestId,
+      getByRole: q,
+    } = render(
+      <FloatingToolbar
+        position={{ top: -40, left: 100 }}
+        activeFormats={defaultFormats}
+        onFormat={vi.fn()}
+      />,
+      { container: scroller },
+    );
+    const bar = q("toolbar");
+    // Toolbar well below the scroller's top: room above, chip above.
+    bar.getBoundingClientRect = () => ({ top: 160 });
+    fireEvent.mouseEnter(getByRole("button", { name: "Link" }));
+    act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
+    expect(getByTestId("format-tooltip").style.bottom).toBe("calc(100% + 6px)");
+    fireEvent.mouseLeave(getByRole("button", { name: "Link" }));
+    // Toolbar at the scroller's top: the chip would clip, so it goes below.
+    bar.getBoundingClientRect = () => ({ top: 110 });
     fireEvent.mouseEnter(getByRole("button", { name: "Link" }));
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
     const tip = getByTestId("format-tooltip");
     expect(tip.style.top).toBe("calc(100% + 6px)");
     expect(tip.style.bottom).toBe("");
+    scroller.remove();
+  });
+
+  it("chipWouldClip measures against the scroll container, or the viewport without one", () => {
+    const scroller = document.createElement("div");
+    scroller.className = "editor-scroll";
+    scroller.getBoundingClientRect = () => ({ top: 50 });
+    const bar = document.createElement("div");
+    scroller.appendChild(bar);
+    bar.getBoundingClientRect = () => ({ top: 80 });
+    expect(chipWouldClip(bar)).toBe(true);
+    bar.getBoundingClientRect = () => ({ top: 90 });
+    expect(chipWouldClip(bar)).toBe(false);
+    const loose = document.createElement("div");
+    loose.getBoundingClientRect = () => ({ top: 20 });
+    expect(chipWouldClip(loose)).toBe(true);
+    expect(chipWouldClip(null)).toBe(false);
   });
 
   it("drops a pending tip when the toolbar hides", () => {

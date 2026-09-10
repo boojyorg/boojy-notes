@@ -699,9 +699,13 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   state object at the same position so the pressed states re-read and nothing unmounts. The
   document `mouseup` listener ignores a mouse-up on the toolbar for the same reason.
 - **Resting on a button for `TOOLTIP_REST_MS` (400 ms) shows its name and shortcut** in a chip
-  above it (below, when the toolbar sits within 32px of the column's top, where the chip would
-  clip in the scroller), `aria-hidden`, the link tooltip's recipe with the shortcut in mono
-  muted ink. `FORMATS` in `FloatingToolbar.jsx` is the one place a shortcut is shown to the
+  above it, `aria-hidden`, the app's own chip (elevated ground, divider border; an inverted
+  Notion-style chip was offered and declined 2026-09-10) at 12px/500 with the shortcut in the
+  UI face a step lighter (the link tooltip's 11px mono is for long URLs; in mono `⌘B` read as
+  code). It goes below only when it would clip: `chipWouldClip` measures the toolbar's top less
+  the chip's room against the `.editor-scroll` container's top at the moment the chip shows.
+  A rule on the toolbar's own position flipped it for the first lines of every note, where the
+  title above leaves room, and put the chip over the selected text. `FORMATS` in `FloatingToolbar.jsx` is the one place a shortcut is shown to the
   user and must match the map in `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac
   and `Ctrl+Shift+S` elsewhere (`isMac` in `utils/platform.js`, not the Electron-gated
   `isElectronMac`). Chrome buttons keep the native `title`; they can adopt the chip if it earns

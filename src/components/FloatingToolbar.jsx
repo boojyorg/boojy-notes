@@ -8,9 +8,15 @@ import { isMac } from "../utils/platform";
 export const TOOLTIP_REST_MS = 400;
 /** Button box. The 32px control tier read chunky hovering over a line of text (judged 2026-09-10). */
 const BTN = 28;
-/** Space the tooltip needs above the toolbar; nearer the column's top it flips below. */
-const TOOLTIP_CLEARANCE = 32;
-const HINT_FONT = "'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
+/**
+ * Room the chip needs above the toolbar (its height plus the 6px gap). The chip
+ * goes below only when that room would fall above the top of the scroll
+ * container, which is the first visible line of a scrolled note: measured,
+ * because a rule on the toolbar's own position fired for the first lines of
+ * every note (the title sits above them, so there was room) and put the chip
+ * over the selected text (2026-09-10).
+ */
+const CHIP_ROOM = 36;
 
 /**
  * The strip's order, names and shortcuts. The shortcuts are the map in
@@ -32,6 +38,15 @@ export function shortcutLabel({ key, shift }, mac = isMac) {
   return `Ctrl+${shift ? "Shift+" : ""}${key}`;
 }
 
+/** Whether a chip above `bar` would fall above the top of the scroll container it lives in. */
+export function chipWouldClip(bar) {
+  if (!bar) return false;
+  const top = bar.getBoundingClientRect().top;
+  const scroller = bar.closest(".editor-scroll");
+  const limit = scroller ? scroller.getBoundingClientRect().top : 0;
+  return top - CHIP_ROOM < limit;
+}
+
 function Tooltip({ label, shortcut, below }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
@@ -48,12 +63,17 @@ function Tooltip({ label, shortcut, below }) {
         display: "flex",
         alignItems: "baseline",
         gap: 8,
-        padding: "3px 8px",
-        borderRadius: 4,
+        padding: "4px 8px",
+        borderRadius: 5,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
         color: TEXT.primary,
-        fontSize: 11,
+        // A control's label, read at a glance: 12px/500, a step above the link
+        // tooltip's 11px, which shows long URLs and wants to be quiet. The
+        // shortcut sits in the UI face on the same baseline; in mono `⌘B` read
+        // as a code snippet.
+        fontSize: 12,
+        fontWeight: 500,
         lineHeight: "16px",
         whiteSpace: "nowrap",
         pointerEvents: "none",
@@ -62,7 +82,7 @@ function Tooltip({ label, shortcut, below }) {
       }}
     >
       <span>{label}</span>
-      <span style={{ color: TEXT.muted, fontFamily: HINT_FONT }}>{shortcut}</span>
+      <span style={{ color: TEXT.muted, fontWeight: 400 }}>{shortcut}</span>
     </div>
   );
 }
@@ -124,7 +144,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
 const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats, onFormat }) {
   const { theme } = useTheme();
   const { BG } = theme;
+  // The button whose chip shows, and whether it goes below (no room above).
   const [tip, setTip] = useState(null);
+  const [tipBelow, setTipBelow] = useState(false);
+  const barRef = useRef(null);
   // The pending rest, as an object so a late timer can check it is still current.
   const pending = useRef(null);
   const cancelRest = useCallback(() => {
@@ -136,6 +159,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
     const rest = { id, timer: null };
     rest.timer = setTimeout(() => {
       if (pending.current !== rest) return;
+      setTipBelow(chipWouldClip(barRef.current));
       setTip(id);
     }, TOOLTIP_REST_MS);
     pending.current = rest;
@@ -154,9 +178,9 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   }, [position, cancelRest]);
 
   if (!position) return null;
-  const tipBelow = position.top < TOOLTIP_CLEARANCE;
   return (
     <div
+      ref={barRef}
       role="toolbar"
       aria-label="Text formatting"
       style={{
