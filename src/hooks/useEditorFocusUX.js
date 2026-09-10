@@ -75,21 +75,36 @@ export function useEditorFocusUX({
       };
     };
     let timer = null;
+    // Whether the toolbar is on screen. Once shown it holds its position until
+    // it hides: it is a control strip the pointer is heading for, not a label
+    // of the selection. Re-measured on every change, a pressed Bold (wider
+    // glyphs) or Highlight shifted the selection's centre and the strip slid a
+    // few pixels under the pointer (2026-09-10); a selection extended by
+    // keyboard stays under the strip placed over where it began.
+    let shown = false;
     const cancel = () => {
       if (timer) clearTimeout(timer);
       timer = null;
     };
+    const hide = () => {
+      cancel();
+      shown = false;
+      setToolbarState(null);
+    };
     const show = () => {
       cancel();
-      setToolbarState(measure());
+      const next = measure();
+      shown = !!next;
+      setToolbarState(next);
     };
     const onSelChange = () => {
-      cancel();
       // Nothing to show (collapsed, outside the editor): hide at once.
       if (!measure()) {
-        setToolbarState(null);
+        hide();
         return;
       }
+      if (shown) return;
+      cancel();
       // The button is down: the selection is still being made. Mouse-up shows it.
       if (mouseIsDown?.current) return;
       timer = setTimeout(show, TOOLBAR_REST_MS);
@@ -101,6 +116,7 @@ export function useEditorFocusUX({
       // A click on the toolbar itself is a format being applied; applyFormat
       // decides what the toolbar does next, not this listener.
       if (e.target?.closest?.('[role="toolbar"]')) return;
+      if (shown) return;
       show();
     };
     document.addEventListener("selectionchange", onSelChange);

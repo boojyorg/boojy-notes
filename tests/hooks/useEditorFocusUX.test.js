@@ -171,6 +171,36 @@ describe("useEditorFocusUX", () => {
       editor.remove();
     });
 
+    it("holds its position once shown, until the selection collapses", () => {
+      const editor = editorWithSelection(0, 5);
+      const deps = baseDeps({ editorRef: { current: editor } });
+      renderHook(() => useEditorFocusUX(deps));
+      document.dispatchEvent(new Event("selectionchange"));
+      vi.advanceTimersByTime(TOOLBAR_REST_MS);
+      expect(deps.setToolbarState).toHaveBeenCalledTimes(1);
+      // The selection changes (a format rewrote its nodes, or it was extended): no re-measure.
+      Range.prototype.getBoundingClientRect = () => ({ ...rect, left: 90, width: 40 });
+      document.dispatchEvent(new Event("selectionchange"));
+      vi.advanceTimersByTime(TOOLBAR_REST_MS * 2);
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      expect(deps.setToolbarState).toHaveBeenCalledTimes(1);
+      // A collapse hides it, and the next selection measures afresh.
+      window.getSelection().collapseToStart();
+      document.dispatchEvent(new Event("selectionchange"));
+      expect(deps.setToolbarState).toHaveBeenLastCalledWith(null);
+      const range = document.createRange();
+      range.setStart(editor.firstChild.firstChild, 0);
+      range.setEnd(editor.firstChild.firstChild, 5);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+      vi.advanceTimersByTime(TOOLBAR_REST_MS);
+      expect(deps.setToolbarState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ left: 90 + 40 / 2 }),
+      );
+      editor.remove();
+    });
+
     it("leaves a mouse-up on the toolbar to applyFormat", () => {
       const editor = editorWithSelection(0, 5);
       const toolbar = document.createElement("div");

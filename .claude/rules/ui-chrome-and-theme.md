@@ -694,10 +694,15 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   accent and nothing else**; the grey fill is hover's alone, so a pressed button still lifts on
   hover and the accent stays ink, never a surface (the accent-tinted fill and the highlight
   button's mark-coloured fill were dropped the same day).
-- **Applying a format keeps the toolbar where it is.** `applyFormat` used to clear it and the
-  rest timer brought it back a beat later, a visible blink on every press; it now sets a fresh
-  state object at the same position so the pressed states re-read and nothing unmounts. The
-  document `mouseup` listener ignores a mouse-up on the toolbar for the same reason.
+- **Applying a format keeps the toolbar where it is, and once shown it holds its position
+  until it hides.** `applyFormat` used to clear it and the rest timer brought it back a beat
+  later, a visible blink on every press; it now sets a fresh state object at the same position
+  so the pressed states re-read and nothing unmounts. The document `mouseup` listener ignores a
+  mouse-up on the toolbar for the same reason. And the hook measures the selection once, when
+  the toolbar appears, never again while it is on screen: re-measured on every change, a
+  pressed Bold (wider glyphs) or Highlight shifted the selection's centre and the strip slid a
+  few pixels under the pointer. A selection extended by keyboard stays under the strip placed
+  over where it began; a collapse hides it and the next selection measures afresh.
 - **Resting on a button for `TOOLTIP_REST_MS` (400 ms) shows its name and shortcut** in a chip
   above it, `aria-hidden`, the app's own chip (elevated ground, divider border; an inverted
   Notion-style chip was offered and declined 2026-09-10) at 12px/500 with the shortcut in the

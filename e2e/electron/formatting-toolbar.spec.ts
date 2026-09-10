@@ -108,6 +108,9 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
   await expect(bar).toBeVisible({ timeout: 2_000 });
   // The toolbar acts on mouse-down so the selection survives the press.
   const barEl = await bar.elementHandle();
+  // Let the 120ms fade-in (a 4px lift) settle before taking the position.
+  await sleep(250);
+  const before = await bar.boundingBox();
   await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");
   // Chromium's own italic command wraps in <i>; the walker reads it as *…* all the same.
   await expect(h.page.locator("[data-block-id] em, [data-block-id] i")).toHaveText(LINE);
@@ -117,6 +120,8 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
     expect(await barEl?.evaluate((e) => e.isConnected)).toBe(true);
   }
   await expect(bar.getByRole("button", { name: "Italic" })).toHaveAttribute("aria-pressed", "true");
+  // And it has not moved: the wider glyphs shifted the selection, not the strip.
+  expect(await bar.boundingBox()).toEqual(before);
   await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");
   await expect(bar.getByRole("button", { name: "Italic" })).toHaveAttribute(
     "aria-pressed",
