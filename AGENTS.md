@@ -18,7 +18,7 @@ the map: stack, layout, the invariants, the editor traps, and where the detailed
 | Question | File |
 | --- | --- |
 | What is Boojy Notes, how do I run it | `README.md` |
-| What may exist: blocks, syntax support levels, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
+| What may exist: blocks, Markdown support dimensions, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
 | Direction, Beta requirements and candidates, what is known-broken, what comes after Beta | `docs/BACKLOG.md` |
 | What shipped, and what was removed | `CHANGELOG.md` |
 | How the UI is built, and which oddities are deliberate | `.claude/rules/ui-chrome-and-theme.md` |
@@ -74,9 +74,9 @@ docs/private/           # gitignored personal notes
   rendering of its *structure*, not of its source lines: a paragraph block holds every adjacent
   line of the paragraph, one blank line between paragraphs is structure rather than a block,
   further blank lines are empty rows. Every block round-trips block→markdown→block losslessly,
-  and editing one part of a file must not rewrite the rest. No nesting, columns or JSON-blob
-  blocks. Read the spec before adding or changing a block type, and check its support levels
-  before planning a feature.
+  and editing one part of a file must not rewrite the rest. No nesting into structures Markdown
+  cannot express, columns or JSON-blob blocks. Evaluate read/render, edit/write and preservation
+  independently; read the spec's definitions before planning a feature or changing a block type.
 - **A persisted note's title is its filename.** The write reports the basename the file actually
   got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once;
   nothing in the UI re-implements filename rules. Only a name the app makes is sanitised; a name
