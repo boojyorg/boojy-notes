@@ -1,6 +1,7 @@
 import { useState, useRef, startTransition } from "react";
 
 import { trace } from "../utils/trace";
+import { reconcileListEdit } from "../utils/listStructure";
 
 export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef) {
   const undoStack = useRef([]);
@@ -163,6 +164,19 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     // Apply updater to ref so it reflects both pending text changes AND this structural change
     const before = noteDataRef.current;
     noteDataRef.current = updater(before);
+    if (recordHistory) {
+      for (const [id, note] of Object.entries(noteDataRef.current)) {
+        const previous = before[id]?.content?.blocks;
+        if (!previous || !note?.content?.blocks) continue;
+        const blocks = reconcileListEdit(previous, note.content.blocks);
+        if (blocks !== note.content.blocks) {
+          noteDataRef.current = {
+            ...noteDataRef.current,
+            [id]: { ...note, content: { ...note.content, blocks } },
+          };
+        }
+      }
+    }
     // The quit/blur net records the notes this commit actually changed — not
     // the active note, which a commit about something else (discarding the
     // launch draft, renaming another row) would otherwise stamp without it

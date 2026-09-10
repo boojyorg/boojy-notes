@@ -86,9 +86,11 @@ Allowed *because markdown can express them*:
 - All current block types: `p`, `h1`–`h3`, `bullet`, `numbered`, `checkbox`, `blockquote`,
   `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file.
-  (`blocksToMarkdown` walks the array in order, so reordering re-serialises cleanly for free.)
-- **List indent / outdent** — markdown nested-list syntax (a `- nested` line indented by two
-  spaces). **List types only** (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
+  Structural list edits also update the affected numbering and indentation so the file
+  expresses the reordered list; text-only edits retain the source markers.
+- **List indent / outdent** — Markdown nested-list syntax, with child indentation accounting
+  for the parent's marker width. **List types only** (`bullet`/`numbered`/`checkbox`) — see
+  "Removed" below. Newly edited structure cannot skip levels or leave a child without a parent.
 - Obsidian-flavoured-but-still-text marks already in use: `==highlight==`, `[[wikilinks]]`.
 
 ## Forbidden — do not build (breaks portability)

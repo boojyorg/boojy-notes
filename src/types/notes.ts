@@ -25,6 +25,11 @@ interface BlockBase {
   id: string;
   text?: string;
   indent?: number;
+  /** Source spelling retained until a structural list edit makes it obsolete. */
+  indentStr?: string;
+  num?: number;
+  numRaw?: string;
+  marker?: string;
 }
 
 // ─── Discriminated block variants ─────────────────────────────────

@@ -244,12 +244,6 @@ from a correctness defect. Existing preservation blockers retain their status un
 - **Missing support: H4–H6.** Currently read as paragraph text. Consider recognition and
   editing while retaining authored source; menu exposure remains undecided. Setext headings
   have their own existing item under Open decisions.
-- **Writing defect: numbered-list indentation and numbering.** App-created nested items use
-  two-space indentation that can read as siblings elsewhere, while the writer's running
-  counter differs from the editor's per-depth numbering. Parsed numbers also remain after an
-  in-app reorder or insertion: dragging item 3 above item 1 saves `3. 1. 2.`, and Enter can
-  repeat a number (`markdown.js`, `numCounter`). Verify intended nesting and numbering against
-  an independent reader, including edits to imported lists; retain untouched authored forms.
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
   of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
   relative `.md` links use the external-link path rather than navigating within the vault.

@@ -1019,6 +1019,29 @@ sync-generation bump and lets the block paint itself.**
   have no margin against a second reader; with the paint taken from the ref, a spurious
   recompute now costs a repaint, never a keystroke.
 
+## List depth and numbering belong to the Markdown
+
+- `listLayout` in `utils/listStructure.ts` supplies the editor's numbers and the writer's
+  prefixes. Sibling counters continue across nested lists and blank rows, restart for a new
+  sequence, and respect an imported sequence's starting number. A child starts at its parent's
+  content column: three spaces after `1. `, four after `10. `, two after a bullet marker.
+- The reader recovers depth from source indentation in context, not spaces divided by two.
+  Noncanonical prefixes and authored number spellings remain on the blocks for preservation;
+  a text-only edit does not renumber or re-indent an imported list.
+- `useHistory` applies `reconcileListEdit` at the user structural-commit seam. Enter, deletion,
+  drag, keyboard reorder and indent/outdent repair affected ordered sibling sequences, retaining
+  their existing start when they remain under the same parent. A new child sequence starts at
+  one. A newly pasted independent list retains its authored markers. Unchanged sequences keep
+  their source spelling, including repeated numbers and leading zeros.
+- Structural edits cannot skip depths or create an orphan: indentation stops one level below
+  the preceding item, and children left without their parent are promoted as needed. Descendant
+  prefixes follow a parent whose indentation or marker width changes. Existing unusual source
+  indentation is not repaired merely because its text is edited.
+- Disk adoption bypasses this repair; Undo and Redo restore the original structural snapshots,
+  including source markers. The numbered-list Electron regression covers creation, indentation,
+  reorder, preservation, Undo and restart; independent-parser cases cover mixed lists and wider
+  markers.
+
 ## The paragraph model
 
 Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).
