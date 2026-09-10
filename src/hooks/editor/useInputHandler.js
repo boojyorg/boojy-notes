@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { cleanOrphanNodes, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown } from "../../utils/inlineFormatting";
+import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
 import { genBlockId } from "../../utils/storage";
 import { SLASH_COMMANDS } from "../../constants/data";
 
@@ -31,6 +32,18 @@ const MENU_TRIGGERS = [
   { regex: new RegExp(`^!\\[\\]${S}$`), id: "image" },
 ];
 
+/** An open `[[` not yet closed: the wikilink menu's trigger. */
+const WIKILINK_OPEN_RE = /\[\[([^\]]*)$/;
+/** A `#` with at least one letter typed: the tag menu's trigger. */
+const TAG_OPEN_RE = /(^|[\s(])#([a-zA-Z][\w/-]*)$/;
+
+/** Whether `text` is about to open or filter a suggestion menu under the caret. */
+const menuWouldOpen = (text) =>
+  text.trim().startsWith("/") || WIKILINK_OPEN_RE.test(text) || TAG_OPEN_RE.test(text);
+
+/** A block's text as the editor commits it: the DOM's Markdown, edge newlines trimmed. */
+const trimEdgeNewlines = (text) => text.replace(/[\n\r]+$/, "").replace(/^[\n\r]+/, "");
+
 export function useInputHandler({
   noteDataRef,
   activeNoteRef,
@@ -50,15 +63,29 @@ export function useInputHandler({
   insertBlockAfter,
   getBlock,
   executeSlashCommand,
+  noteTitleSetRef,
 }) {
   // --- Block input handler ---
-  const handleBlockInput = useCallback((noteId, blockIndex) => {
+  // `native` is the InputEvent behind the React event, when the caller has one:
+  // the typed-formatting trigger reads its inputType and data. The keyboard
+  // handler and the rAF fallback below pass nothing and never trigger it.
+  const handleBlockInput = useCallback((noteId, blockIndex, native = null) => {
     const blocks = noteDataRef.current[noteId].content.blocks;
     const el = blockRefs.current[blocks[blockIndex]?.id];
     if (!el) return;
-    const text = domNodeToMarkdown(el)
-      .replace(/[\n\r]+$/, "")
-      .replace(/^[\n\r]+/, "");
+    let text = trimEdgeNewlines(domNodeToMarkdown(el));
+
+    // Typed inline formatting: the closing marker of `**bold**` and its kin
+    // repaints the block and parks the caret after the new element, before
+    // the commit and before the bare-URL check below (the paint already
+    // styles a URL, so that check finds nothing to bump and repaint). An
+    // underscore form is committed in the star form only once it is painted;
+    // a paint that could not find its element leaves the literal text alone.
+    const hit = native ? typedFormatHit(el, native) : null;
+    if (hit && !menuWouldOpen(text)) {
+      const painted = hit.rewritten ? trimEdgeNewlines(hit.newText) : text;
+      if (paintTypedFormat(el, hit, painted, noteTitleSetRef?.current)) text = painted;
+    }
     updateBlockText(noteId, blockIndex, text);
 
     const currentBlock = noteDataRef.current[noteId].content.blocks[blockIndex];
@@ -169,7 +196,7 @@ export function useInputHandler({
     }
 
     // Wikilink menu detection: open [[ not yet closed
-    const wikiMatch = text.match(/\[\[([^\]]*)$/);
+    const wikiMatch = text.match(WIKILINK_OPEN_RE);
     if (wikiMatch) {
       const rect = el.getBoundingClientRect();
       setWikilinkMenu({
@@ -183,7 +210,7 @@ export function useInputHandler({
     }
 
     // Tag autocomplete detection: open # with at least one letter typed
-    const tagMatch = text.match(/(^|[\s(])#([a-zA-Z][\w/-]*)$/);
+    const tagMatch = text.match(TAG_OPEN_RE);
     if (tagMatch) {
       const rect = el.getBoundingClientRect();
       setTagMenu({
@@ -208,11 +235,15 @@ export function useInputHandler({
   }, []);
 
   // --- Editor wrapper input handler ---
-  const handleEditorInput = useCallback(() => {
+  const handleEditorInput = useCallback((e) => {
     const currentNote = activeNoteRef.current;
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
     const info = getBlock(sel.anchorNode);
+    // React's synthetic event wraps the native InputEvent; a bare native
+    // event (a test, a direct listener) is taken as it is.
+    const native =
+      e?.nativeEvent ?? (typeof InputEvent !== "undefined" && e instanceof InputEvent ? e : null);
     if (!info) {
       requestAnimationFrame(() => {
         const freshSel = window.getSelection();
@@ -231,7 +262,7 @@ export function useInputHandler({
       });
       return;
     }
-    handleBlockInput(currentNote, info.blockIndex);
+    handleBlockInput(currentNote, info.blockIndex, native);
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 

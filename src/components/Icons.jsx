@@ -17,6 +17,7 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
+  Bold as LuBold,
   ChevronLeft as LuChevronLeft,
   Code as LuCode,
   Copy as LuCopy,
@@ -25,11 +26,13 @@ import {
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
   GripVertical as LuGripVertical,
+  Highlighter as LuHighlighter,
   Heading1 as LuHeading1,
   Heading2 as LuHeading2,
   Heading3 as LuHeading3,
   Image as LuImage,
   Info as LuInfo,
+  Italic as LuItalic,
   Link as LuLink,
   List as LuList,
   ListOrdered as LuListOrdered,
@@ -42,6 +45,7 @@ import {
   Search as LuSearch,
   SquareCheck as LuSquareCheck,
   SquarePen as LuSquarePen,
+  Strikethrough as LuStrikethrough,
   Table as LuTable,
   TextQuote as LuTextQuote,
   Trash2 as LuTrash2,
@@ -137,5 +141,24 @@ const SLASH_GLYPHS = {
  */
 export const SlashCommandIcon = ({ name, size = ICON_INLINE }) => {
   const Glyph = SLASH_GLYPHS[name];
+  return Glyph ? <Glyph {...navBase} size={size} /> : null;
+};
+
+// ── Formatting toolbar ────────────────────────────────────────────────────
+// One glyph per inline format, keyed by the format name `applyFormat` takes.
+// These replaced styled text glyphs (a bold "B", an italic "I", "</>" in mono)
+// that read as a different family from every other control (2026-09-10).
+const FORMAT_GLYPHS = {
+  bold: LuBold,
+  italic: LuItalic,
+  strikethrough: LuStrikethrough,
+  highlight: LuHighlighter,
+  code: LuCode,
+  link: LuLink,
+};
+
+/** Navigation stroke at the inline size, as the slash menu's glyphs: a control, not prose. */
+export const FormatIcon = ({ name, size = ICON_INLINE }) => {
+  const Glyph = FORMAT_GLYPHS[name];
   return Glyph ? <Glyph {...navBase} size={size} /> : null;
 };

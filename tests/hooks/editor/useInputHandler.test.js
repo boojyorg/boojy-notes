@@ -17,6 +17,13 @@ vi.mock("../../../src/utils/storage", () => ({
   genBlockId: () => "new-block-id",
 }));
 
+const typedFormatHit = vi.fn(() => null);
+const paintTypedFormat = vi.fn(() => true);
+vi.mock("../../../src/utils/typedFormatting", () => ({
+  typedFormatHit: (...args) => typedFormatHit(...args),
+  paintTypedFormat: (...args) => paintTypedFormat(...args),
+}));
+
 describe("useInputHandler", () => {
   let deps;
   let mockEl;
@@ -59,6 +66,7 @@ describe("useInputHandler", () => {
       insertBlockAfter: vi.fn(),
       getBlock: vi.fn(),
       executeSlashCommand: vi.fn(),
+      noteTitleSetRef: { current: new Set(["Welcome"]) },
     };
   });
 
@@ -220,5 +228,104 @@ describe("useInputHandler", () => {
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
     expect(deps.setWikilinkMenu).not.toHaveBeenCalled();
+  });
+
+  // Typed inline formatting: the closing marker of `**bold**` repaints the
+  // block and parks the caret after it. The trigger reads the native
+  // InputEvent, is asked before the text commit so an underscore rewrite is
+  // one commit, and stays out of the way of a suggestion menu.
+  describe("typed inline formatting", () => {
+    const native = { inputType: "insertText", data: "*", isComposing: false };
+    const hit = (extra = {}) => ({
+      kind: "bold",
+      head: "say ",
+      canonicalRun: "**bold**",
+      newText: "say **bold**",
+      rewritten: false,
+      visibleCaret: 12,
+      ...extra,
+    });
+
+    it("asks the trigger with the native event and paints before the commit", () => {
+      mockEl.textContent = "say **bold**";
+      typedFormatHit.mockReturnValueOnce(hit());
+      const order = [];
+      paintTypedFormat.mockImplementationOnce(() => (order.push("paint"), true));
+      deps.updateBlockText.mockImplementationOnce(() => order.push("commit"));
+      const { result } = renderHook(() => useInputHandler(deps));
+      result.current.handleBlockInput("note-1", 0, native);
+      expect(typedFormatHit).toHaveBeenCalledWith(mockEl, native);
+      expect(paintTypedFormat).toHaveBeenCalledWith(
+        mockEl,
+        expect.objectContaining({ kind: "bold" }),
+        "say **bold**",
+        deps.noteTitleSetRef.current,
+      );
+      expect(order).toEqual(["paint", "commit"]);
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "say **bold**");
+      expect(deps.commitNoteData).not.toHaveBeenCalled();
+      expect(deps.syncGeneration.current).toBe(0);
+    });
+
+    it("never asks without a native event", () => {
+      mockEl.textContent = "say **bold**";
+      const { result } = renderHook(() => useInputHandler(deps));
+      result.current.handleBlockInput("note-1", 0);
+      expect(typedFormatHit).not.toHaveBeenCalled();
+      expect(paintTypedFormat).not.toHaveBeenCalled();
+    });
+
+    it("commits an underscore run in the star form, once, only when painted", () => {
+      mockEl.textContent = "see _it_ now";
+      typedFormatHit.mockReturnValueOnce(
+        hit({ kind: "italic", rewritten: true, newText: "see *it* now" }),
+      );
+      const { result } = renderHook(() => useInputHandler(deps));
+      result.current.handleBlockInput("note-1", 0, { ...native, data: "_" });
+      expect(paintTypedFormat).toHaveBeenCalledWith(
+        mockEl,
+        expect.anything(),
+        "see *it* now",
+        expect.anything(),
+      );
+      expect(deps.updateBlockText).toHaveBeenCalledTimes(1);
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "see *it* now");
+
+      // A paint that found no element leaves the literal text as the commit.
+      vi.clearAllMocks();
+      typedFormatHit.mockReturnValueOnce(
+        hit({ kind: "italic", rewritten: true, newText: "see *it* now" }),
+      );
+      paintTypedFormat.mockReturnValueOnce(false);
+      result.current.handleBlockInput("note-1", 0, { ...native, data: "_" });
+      expect(deps.updateBlockText).toHaveBeenCalledTimes(1);
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "see _it_ now");
+    });
+
+    it("stands aside for a suggestion menu", () => {
+      // (A tag ends in word characters, so a closing marker never coincides with one.)
+      for (const text of ["**[[x**", "/**x**"]) {
+        vi.clearAllMocks();
+        mockEl.textContent = text;
+        typedFormatHit.mockReturnValueOnce(hit());
+        const { result } = renderHook(() => useInputHandler(deps));
+        result.current.handleBlockInput("note-1", 0, native);
+        expect(paintTypedFormat, text).not.toHaveBeenCalled();
+      }
+    });
+
+    it("handleEditorInput hands the native event through", () => {
+      mockEl.textContent = "say **bold**";
+      document.body.appendChild(mockEl);
+      deps.getBlock.mockReturnValue({ blockIndex: 0 });
+      const range = document.createRange();
+      range.setStart(mockEl, 0);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      const { result } = renderHook(() => useInputHandler(deps));
+      result.current.handleEditorInput({ nativeEvent: native });
+      expect(typedFormatHit).toHaveBeenCalledWith(mockEl, native);
+      mockEl.remove();
+    });
   });
 });

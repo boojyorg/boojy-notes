@@ -179,66 +179,58 @@ const CARET_ANCHOR_RE = /\u200B/g;
  */
 function walkNode(node) {
   let result = "";
-  for (const child of node.childNodes) {
-    if (child.nodeType === Node.TEXT_NODE) {
-      result += child.textContent;
-    } else if (child.nodeType === Node.ELEMENT_NODE) {
-      const tag = child.nodeName;
-      const inner = walkNode(child);
-
-      if (tag === "STRONG" || tag === "B") {
-        if (inner) result += `**${inner}**`;
-      } else if (tag === "EM" || tag === "I") {
-        if (inner) result += `*${inner}*`;
-      } else if (tag === "CODE") {
-        if (inner) result += `\`${inner}\``;
-      } else if (tag === "DEL" || tag === "S") {
-        if (inner) result += `~~${inner}~~`;
-      } else if (tag === "MARK") {
-        if (inner) result += `==${inner}==`;
-      } else if (tag === "A") {
-        const href = child.getAttribute("href") || "";
-        if (child.classList.contains("bare-url") && inner === href) {
-          result += inner;
-        } else {
-          result += `[${inner}](${href})`;
-        }
-      } else if (tag === "SPAN") {
-        // External link icon — decorative, skip
-        if (child.classList.contains("external-link-icon")) {
-          continue;
-        }
-        if (child.classList.contains(CARET_ANCHOR_CLASS)) {
-          // The anchor's zero-width space is scaffolding; text typed on it is prose.
-          result += inner.replace(CARET_ANCHOR_RE, "");
-        } else if (child.classList.contains("wikilink")) {
-          const target = child.getAttribute("data-target") || inner;
-          if (target === inner) {
-            result += `[[${inner}]]`;
-          } else {
-            result += `[[${target}|${inner}]]`;
-          }
-        } else {
-          // Tag spans and anything else: the text, which for a tag already has its #.
-          result += inner;
-        }
-      } else if (tag === "BR") {
-        // Ignore <br> at end of block (browser artifact)
-        // Only add newline if it's not the last child
-        if (child.nextSibling) result += "\n";
-      } else if (tag === "DIV") {
-        // Browser sometimes wraps lines in <div>; treat as line break
-        if (inner) {
-          if (result && !result.endsWith("\n")) result += "\n";
-          result += inner;
-        }
-      } else {
-        // Unknown element — recurse children, strip the tag
-        result += inner;
-      }
-    }
-  }
+  for (const child of node.childNodes) result += nodeToMarkdown(child, result);
   return result;
+}
+
+/**
+ * The Markdown one child node adds to the walk, given `before`, the Markdown
+ * of its preceding siblings (a `<div>` line only needs a newline when the
+ * text so far does not end in one). Exported so the typed-formatting paint
+ * can find an element by the same reading the walker gives it.
+ */
+export function nodeToMarkdown(child, before = "") {
+  if (child.nodeType === Node.TEXT_NODE) return child.textContent;
+  if (child.nodeType !== Node.ELEMENT_NODE) return "";
+  const tag = child.nodeName;
+  const inner = walkNode(child);
+
+  if (tag === "STRONG" || tag === "B") return inner ? `**${inner}**` : "";
+  if (tag === "EM" || tag === "I") return inner ? `*${inner}*` : "";
+  if (tag === "CODE") return inner ? `\`${inner}\`` : "";
+  if (tag === "DEL" || tag === "S") return inner ? `~~${inner}~~` : "";
+  if (tag === "MARK") return inner ? `==${inner}==` : "";
+  if (tag === "A") {
+    const href = child.getAttribute("href") || "";
+    if (child.classList.contains("bare-url") && inner === href) return inner;
+    return `[${inner}](${href})`;
+  }
+  if (tag === "SPAN") {
+    // External link icon — decorative, skip
+    if (child.classList.contains("external-link-icon")) return "";
+    if (child.classList.contains(CARET_ANCHOR_CLASS)) {
+      // The anchor's zero-width space is scaffolding; text typed on it is prose.
+      return inner.replace(CARET_ANCHOR_RE, "");
+    }
+    if (child.classList.contains("wikilink")) {
+      const target = child.getAttribute("data-target") || inner;
+      return target === inner ? `[[${inner}]]` : `[[${target}|${inner}]]`;
+    }
+    // Tag spans and anything else: the text, which for a tag already has its #.
+    return inner;
+  }
+  if (tag === "BR") {
+    // Ignore <br> at end of block (browser artifact)
+    // Only add newline if it's not the last child
+    return child.nextSibling ? "\n" : "";
+  }
+  if (tag === "DIV") {
+    // Browser sometimes wraps lines in <div>; treat as line break
+    if (!inner) return "";
+    return before && !before.endsWith("\n") ? `\n${inner}` : inner;
+  }
+  // Unknown element — recurse children, strip the tag
+  return inner;
 }
 
 const ALLOWED_TAGS = new Set([
