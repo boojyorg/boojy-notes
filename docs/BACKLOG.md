@@ -310,9 +310,11 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 
 - [ ] **Sidebar focus ring is invisible** — inline `outline:none` overrides the global ring, and
   the global ring is 25% opacity (`Sidebar.jsx`, `GlobalStyles.jsx`).
-- [ ] **Context menus are `<div onClick>`** (Link/Table/Image/Slash/CalloutPicker): not
+- [ ] **Context menus are `<div onClick>`** (Link/Image/Slash/CalloutPicker): not
   keyboard-reachable, no roles or focus traps. SlashMenu's `aria-selected` on `menuitem` is
-  invalid.
+  invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
+  grammar); the note, vault and table menus now carry three copies of that grammar, and one
+  shared menu primitive is the cleanup that would also fix the four above.
 - [ ] **NIGHT `TEXT.muted` fails AA contrast** (`themes.js`); DAY was fixed, NIGHT was left for
   a later pass.
 - [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`

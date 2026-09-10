@@ -1209,9 +1209,10 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
   radius (judged against Obsidian's grid, 2026-09-10).
 - **The add-row and add-column boxes are Obsidian's**: a bordered box the grid's height past
-  its right edge and its width under its bottom edge (14px, `ADD_BAR`; 28px read too heavy
-  beside a 1px grid), sharing the grid's own border line (no left or top border of its own), a
-  Lucide `PlusIcon` at 12px centred, in
+  its right edge and its width under its bottom edge (18px, `ADD_BAR`; 28 read too heavy beside
+  a 1px grid and 14 too fussy to hit), sharing the grid's own border line (no left or top border
+  of its own), a Lucide `PlusIcon` at 16px on the navigation stroke (`nav`; the content stroke
+  rendered 1px at that size, the same as the grid line, and vanished) centred, in
   `TEXT.muted` and `TEXT.primary` on hover. Shown in CSS only while the pointer is on the box
   itself, past that edge (`.table-add-bar:hover`; never a JS hover state); a table at rest,
   hovered over its cells or being typed in shows none. Click adds one row or column; drag adds
@@ -1224,10 +1225,20 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   hold 400ms and drag reorders; Backspace on a selected row or column removes it). Judged after
   this pass: if discovering row or column selection is a struggle in daily use, add Obsidian's
   hover handles; if not, low chrome wins.
-- **The cell menu ends with Delete table**, in every context (`TableContextMenu`, sentence-case
-  labels), the discoverable path to what Escape then Backspace also does; it runs
-  `deleteWholeBlock`, so the caret lands under where the table was. The header row still cannot
-  be deleted (GFM needs one) and the last column cannot either; the table goes as a whole.
+- **The cell menu is the note-row menu's grammar, anchored to the cell** (`TableContextMenu`,
+  2026-09-10): `role="menu"` with the arrows, Enter and Escape on a document listener, the focus
+  trap parked on the container, elevated ground, divider border, `theme.modalShadow`, 12.5px
+  labels in the app face, a Lucide glyph per item at the navigation stroke (the arrow-to-line
+  family for the four inserts, where the direction is the meaning and the "between" glyphs blur
+  at 16px; Trash for the three deletes, red with their labels), and `useMenuPosition`. It opens
+  **under the clicked cell, left edges aligned, 4px gap, flipping above when there is no room**,
+  not at the pointer: every item acts on that cell's row or column, and anchored to the cell
+  the menu reads as attached to the table rather than floating where the click landed (the
+  pointer is inside the cell anyway). It portals to `body`, which is why `body` now carries the
+  app font: portalled to a font-less body it rendered in the browser's serif. It ends with
+  **Delete table** in every context, the discoverable path to what Escape then Backspace also
+  does (`deleteWholeBlock`, so the caret lands under where the table was). The header row
+  cannot be deleted (GFM needs one) and neither can the last column; the table goes as a whole.
   **No alignment items** (removed 2026-09-10, by decision): a file's `:---:` and `---:` still
   render the column and round-trip through `alignments`, but the app offers no control to set
   them; the menu is rows, columns and the table.

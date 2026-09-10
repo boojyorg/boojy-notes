@@ -17,6 +17,10 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
+  ArrowDownToLine as LuArrowDownToLine,
+  ArrowLeftToLine as LuArrowLeftToLine,
+  ArrowRightToLine as LuArrowRightToLine,
+  ArrowUpToLine as LuArrowUpToLine,
   Bold as LuBold,
   ChevronLeft as LuChevronLeft,
   Code as LuCode,
@@ -95,7 +99,24 @@ export const NewFolderIcon = ({ size = ICON_INLINE }) => (
 export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
   <LuGripVertical {...base} size={size} fill="currentColor" />
 );
-export const PlusIcon = ({ size = ICON_INLINE }) => <LuPlus {...base} size={size} />;
+/** `nav` takes the navigation stroke: a standalone control (the table's add boxes). */
+export const PlusIcon = ({ size = ICON_INLINE, nav = false }) => (
+  <LuPlus {...(nav ? navBase : base)} size={size} />
+);
+/** The table cell menu's insert glyphs: the direction is the meaning (nav stroke, as
+ *  every context-menu glyph). */
+export const ArrowUpToLineIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowUpToLine {...base} {...navBase} size={size} />
+);
+export const ArrowDownToLineIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowDownToLine {...base} {...navBase} size={size} />
+);
+export const ArrowLeftToLineIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowLeftToLine {...base} {...navBase} size={size} />
+);
+export const ArrowRightToLineIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowRightToLine {...base} {...navBase} size={size} />
+);
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
  *  12.5px menu labels (judged live 2026-08-23). */
 export const TrashIcon = () => <LuTrash2 {...base} {...navBase} size={ICON_INLINE} />;

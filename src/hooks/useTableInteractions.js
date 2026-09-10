@@ -59,9 +59,11 @@ export function useTableInteractions({
       } else {
         type = "cell";
       }
+      // The menu is anchored to the clicked cell, not the pointer: it opens
+      // under the cell, left edges aligned (TableContextMenu).
+      const r = e.currentTarget.getBoundingClientRect();
       setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
+        anchor: { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
         context: { type, rowIndex: rowIdx, colIndex: colIdx },
       });
     },

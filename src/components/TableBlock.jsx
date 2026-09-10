@@ -10,10 +10,10 @@ import TableContextMenu from "./TableContextMenu";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
-/** The add-row and add-column boxes' thickness (halved from 28 on 2026-09-10, judged live). */
-export const ADD_BAR = 14;
-/** The Plus inside them, sized to the box. */
-const ADD_PLUS = 12;
+/** The add-row and add-column boxes' thickness (28 and 14 judged live on 2026-09-10; 18 sits between). */
+export const ADD_BAR = 18;
+/** The Plus inside them: 16px on the navigation stroke, a step heavier than the 1px grid. */
+const ADD_PLUS = 16;
 /** The invisible row and column strips left of and above the grid. */
 const EDGE_ZONE = 24;
 
@@ -527,7 +527,7 @@ export default memo(function TableBlock({
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
         >
-          <PlusIcon size={ADD_PLUS} />
+          <PlusIcon size={ADD_PLUS} nav />
         </div>
       </div>
 
@@ -550,7 +550,7 @@ export default memo(function TableBlock({
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
       >
-        <PlusIcon size={ADD_PLUS} />
+        <PlusIcon size={ADD_PLUS} nav />
       </div>
 
       {/* Counter badge during drag-to-create */}
@@ -578,7 +578,7 @@ export default memo(function TableBlock({
       {/* Context menu */}
       {contextMenu && (
         <TableContextMenu
-          position={{ x: contextMenu.x, y: contextMenu.y }}
+          anchor={contextMenu.anchor}
           context={contextMenu.context}
           colCount={colCount}
           onInsertRow={insertRow}

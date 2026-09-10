@@ -149,6 +149,12 @@ export default function GlobalStyles() {
           opacity: 1;
         }
         input::placeholder { color: ${theme.TEXT.muted}; }
+        /* The app font on the body too, so a surface portalled to it (the
+           table's cell menu) inherits Inter rather than the browser's serif
+           (2026-09-10). The app root sets the same stack. */
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
         [contenteditable]:focus-visible { outline: none; }
