@@ -630,6 +630,93 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   `domRoundTrip.test.js` carries the cases; `inline-preservation.spec.ts` the edit in the real
   app.
 
+## Typed inline formatting converts on the closing marker, and changes no bytes
+
+- **`**bold**`, `*italic*`, `` `code` ``, `~~strike~~`, `==highlight==` and `***both***`
+  become their element the moment the closing marker is typed** (2026-09-10), Notion's model,
+  not Obsidian's syntax reveal (which needs a source-aware renderer: the source-view candidate).
+  The literal run the user typed *is* the Markdown the file holds, and a repaint from state
+  would show it rendered; only the screen was behind. So a conversion is a repaint of the block
+  from its own text plus the caret parked after the new element, and Cmd+Z is the ordinary
+  typing undo: there is no "un-convert", because there is no other version of the bytes to
+  restore. Literal stars are typed as `\*`, shown as written. The one byte change is the
+  underscore forms, `_italic_` and `__bold__`, committed in the star form the renderer and the
+  writer speak; a file made elsewhere that holds `_italic_` is untouched (no keystroke, no
+  trigger) and shows as literal text, because rendering it would have the first edit rewrite
+  the file (backlog).
+- **The trigger is the native InputEvent, never the text alone.** `handleEditorInput` hands
+  `e.nativeEvent` to `handleBlockInput`; `typedFormatHit` (`utils/typedFormatting.js`) fires
+  only on an `insertText` of one marker character outside a composition. Before this gate a
+  Backspace onto the fresh anchor read the block back as `**bold**` and converted it again, so
+  the bold could never be deleted into; paste, autocorrect and IME are out for the same price.
+  The rAF fallback and the keyboard handler pass no event and never trigger.
+- **The matcher is strict so prose is never mangled** (`closingFormatAt(before, after)`, pure,
+  the Markdown either side of the caret from `markdownBefore` / `markdownAfter`). Content is
+  non-empty and neither starts nor ends with whitespace (`2 * 3 * 4`, `a ** b` stay); the
+  opener does not follow a backslash; a star opener does not follow a star, so the first
+  closing star of `**bold*` is not an italic close; an underscore opener does not follow a
+  word character and its closer is not followed by one (CommonMark's intraword rule,
+  `snake_case_name` stays); the closer is not followed by its own marker (the renderer's
+  regexes refuse the same). It fires only with a collapsed caret in the block's plain text:
+  inside an existing formatting element or link nothing fires, and a code block, table cell or
+  callout field never reaches the input handler. A suggestion menu about to open (`/`, `[[`,
+  `#tag`) takes precedence and the run stays literal.
+- **The paint is by hand and verified, never assumed** (`paintTypedFormat`): the tag-completion
+  precedent, no `syncGeneration` bump (the repaint effect would rewrite the DOM and `placeCaret`
+  would put the caret back inside the element; `placeCaret` still anchors only around links, so
+  bold arrowed back into extends, as the rules above say). After `inlineMarkdownToHtml` the new
+  element is located by its Markdown prefix, walking `el.childNodes` with the walker's own
+  `nodeToMarkdown` until the accumulated Markdown equals the text before the caret and the child
+  is the run's tag. The renderer's passes run in a fixed order over the whole block and can pair
+  markers differently from the matcher (`* a *two*` renders `* a *` as the italic), so when no
+  child matches the previous DOM and caret are put back in the same task and the block stays
+  literal; an underscore run is committed in the star form only once it is painted. The paint
+  runs before the bare-URL check on purpose: it already styles a URL, so that check finds
+  nothing to bump. `typed-formatting.spec.ts` proves the markers, the underscore forms, the
+  mid-line run, Backspace after a conversion, Cmd+Z and a restart in the real app;
+  `typedFormatting.test.js` the matcher and the paint.
+
+## The selection toolbar waits for the selection to finish
+
+- **It shows on mouse-up for a pointer selection, and after `TOOLBAR_REST_MS` (300 ms) with no
+  further change for a keyboard one** (`useEditorFocusUX`, 2026-09-10). Measured on every
+  `selectionchange`, it repositioned under each movement of the drag and slid about under the
+  pointer. Nothing is set while `mouseIsDown` is true; a document `mouseup` listener clears
+  that flag (a drag that ends outside the editor never reaches the editor's own handler) and
+  shows at once, except when the mouse-up is on the toolbar itself, which is a format being
+  applied and `applyFormat`'s to handle. Hiding is immediate: a collapsed selection clears it
+  so it never lingers over typing.
+- **Six Lucide glyphs at 16px on a stroke of 2.5, in 28px boxes** (`FormatIcon` in
+  `Icons.jsx`, the `SlashCommandIcon` pattern; `ICON_STROKE_TOOLBAR`, the one tier above the
+  navigation stroke, because these glyphs stand alone with no label and at 2 the B and I read
+  faint, judged 2026-09-10 against Notion's strip). The 32px control tier read chunky hovering
+  over a line of text. Buttons are named by `aria-label` alone. **Active is the glyph in the
+  accent and nothing else**; the grey fill is hover's alone, so a pressed button still lifts on
+  hover and the accent stays ink, never a surface (the accent-tinted fill and the highlight
+  button's mark-coloured fill were dropped the same day).
+- **Applying a format keeps the toolbar where it is, and once shown it holds its position
+  until it hides.** `applyFormat` used to clear it and the rest timer brought it back a beat
+  later, a visible blink on every press; it now sets a fresh state object at the same position
+  so the pressed states re-read and nothing unmounts. The document `mouseup` listener ignores a
+  mouse-up on the toolbar for the same reason. And the hook measures the selection once, when
+  the toolbar appears, never again while it is on screen: re-measured on every change, a
+  pressed Bold (wider glyphs) or Highlight shifted the selection's centre and the strip slid a
+  few pixels under the pointer. A selection extended by keyboard stays under the strip placed
+  over where it began; a collapse hides it and the next selection measures afresh.
+- **Resting on a button for `TOOLTIP_REST_MS` (400 ms) shows its name and shortcut** in a chip
+  above it, `aria-hidden`, the app's own chip (elevated ground, divider border; an inverted
+  Notion-style chip was offered and declined 2026-09-10) at 12px/500 with the shortcut in the
+  UI face a step lighter (the link tooltip's 11px mono is for long URLs; in mono `⌘B` read as
+  code). It goes below only when it would clip: `chipWouldClip` measures the toolbar's top less
+  the chip's room against the `.editor-scroll` container's top at the moment the chip shows.
+  A rule on the toolbar's own position flipped it for the first lines of every note, where the
+  title above leaves room, and put the chip over the selected text. `FORMATS` in `FloatingToolbar.jsx` is the one place a shortcut is shown to the
+  user and must match the map in `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac
+  and `Ctrl+Shift+S` elsewhere (`isMac` in `utils/platform.js`, not the Electron-gated
+  `isElectronMac`). Chrome buttons keep the native `title`; they can adopt the chip if it earns
+  its keep. `formatting-toolbar.spec.ts` proves the timing, the glyphs and the chip in the real
+  app.
+
 ## The slash menu is tiered
 
 - `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps Callout, File

@@ -206,6 +206,20 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
   after it has been felt.
 
+- **Underscore emphasis from files made elsewhere shows as literal text.** `_italic_` and
+  `__bold__` are CommonMark, and typing them converts (saved in the star form, 2026-09-10), but
+  the renderer and the writer speak only `*`: rendering a file's `_italic_` would have the
+  first edit of that paragraph rewrite it as `*italic*`, a first-edit mutation. Needs the
+  writer to remember marker style per run before the renderer can show it.
+- **Cmd+B at a bare caret** (press, type, press, as Apple Notes and Notion do). Probed in the
+  real app 2026-09-10: bold and italic work through Chromium's own typing style, but a space
+  typed first lands inside the element and as U+00A0, so `Cmd+B`, ` bold`, `Cmd+B` reaches the
+  file as `** bold**`, which no reader takes for bold; strikethrough, highlight and code do
+  nothing (their toggles return early on a collapsed selection, `useInlineFormatting`). Making
+  it real means owning the typing style for all five and keeping the space outside.
+- **Nested typed formatting** (`*x*` typed inside existing bold) is left literal until the next
+  repaint, by the trigger's own guard; the renderer decides it then. Judge live.
+
 ### Data safety / reliability
 
 **First-edit mutations.** Fine on open; the first edit of an affected note rewrites third-party

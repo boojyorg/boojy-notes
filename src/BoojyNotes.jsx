@@ -512,6 +512,7 @@ export default function BoojyNotes() {
     focusCursorPos,
     noteDataRef,
     setToolbarState,
+    mouseIsDown,
   });
 
   // ── Ghost note (draft) effects ────────────────────────────────────────

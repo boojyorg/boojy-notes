@@ -1,49 +1,186 @@
-import { memo, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
+import { FormatIcon } from "./Icons";
+import { isMac } from "../utils/platform";
 
-function ToolbarBtn({ label, active, onClick, style = {}, ariaLabel }) {
+/** How long the pointer rests on a button before its name and shortcut show. */
+export const TOOLTIP_REST_MS = 400;
+/** Button box. The 32px control tier read chunky hovering over a line of text (judged 2026-09-10). */
+const BTN = 28;
+/**
+ * Room the chip needs above the toolbar (its height plus the 6px gap). The chip
+ * goes below only when that room would fall above the top of the scroll
+ * container, which is the first visible line of a scrolled note: measured,
+ * because a rule on the toolbar's own position fired for the first lines of
+ * every note (the title sits above them, so there was room) and put the chip
+ * over the selected text (2026-09-10).
+ */
+const CHIP_ROOM = 36;
+
+/**
+ * The strip's order, names and shortcuts. The shortcuts are the map in
+ * useKeyboardHandlers; the two must agree, and this is the one place a
+ * shortcut is shown to the user.
+ */
+export const FORMATS = [
+  { id: "bold", label: "Bold", key: "B" },
+  { id: "italic", label: "Italic", key: "I" },
+  { id: "strikethrough", label: "Strikethrough", key: "S", shift: true },
+  { id: "highlight", label: "Highlight", key: "H", shift: true },
+  { id: "code", label: "Inline code", key: "`" },
+  { id: "link", label: "Link", key: "K" },
+];
+
+/** `⇧⌘S` on a Mac, `Ctrl+Shift+S` elsewhere: each platform's own modifier order. */
+export function shortcutLabel({ key, shift }, mac = isMac) {
+  if (mac) return `${shift ? "⇧" : ""}⌘${key}`;
+  return `Ctrl+${shift ? "Shift+" : ""}${key}`;
+}
+
+/** Whether a chip above `bar` would fall above the top of the scroll container it lives in. */
+export function chipWouldClip(bar) {
+  if (!bar) return false;
+  const top = bar.getBoundingClientRect().top;
+  const scroller = bar.closest(".editor-scroll");
+  const limit = scroller ? scroller.getBoundingClientRect().top : 0;
+  return top - CHIP_ROOM < limit;
+}
+
+function Tooltip({ label, shortcut, below }) {
+  const { theme } = useTheme();
+  const { BG, TEXT } = theme;
+  return (
+    <div
+      role="tooltip"
+      aria-hidden="true"
+      data-testid="format-tooltip"
+      style={{
+        position: "absolute",
+        left: "50%",
+        transform: "translateX(-50%)",
+        ...(below ? { top: "calc(100% + 6px)" } : { bottom: "calc(100% + 6px)" }),
+        display: "flex",
+        alignItems: "baseline",
+        gap: 8,
+        padding: "4px 8px",
+        borderRadius: 5,
+        background: BG.elevated,
+        border: `1px solid ${BG.divider}`,
+        color: TEXT.primary,
+        // A control's label, read at a glance: 12px/500, a step above the link
+        // tooltip's 11px, which shows long URLs and wants to be quiet. The
+        // shortcut sits in the UI face on the same baseline; in mono `⌘B` read
+        // as a code snippet.
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: "16px",
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        zIndex: Z.TOOLBAR,
+        animation: "fadeIn 0.1s ease-out",
+      }}
+    >
+      <span>{label}</span>
+      <span style={{ color: TEXT.muted, fontWeight: 400 }}>{shortcut}</span>
+    </div>
+  );
+}
+
+function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow }) {
   const { theme } = useTheme();
   const { ACCENT, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
   return (
     <button
       aria-pressed={active}
-      aria-label={ariaLabel}
+      aria-label={format.label}
+      data-testid={`format-${format.id}`}
       onMouseDown={(e) => {
+        // The default would move focus and collapse the selection being formatted.
         e.preventDefault();
         onClick();
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => {
+        setHovered(true);
+        onRest(format.id);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        onLeave();
+      }}
       style={{
-        width: 28,
-        height: 28,
+        position: "relative",
+        width: BTN,
+        height: BTN,
         borderRadius: 5,
         border: "none",
+        padding: 0,
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: 13,
-        background: active ? `${ACCENT.primary}30` : hovered ? theme.overlay(0.08) : "transparent",
+        // Active is the glyph in the accent and nothing else, Notion's grammar:
+        // the fill is for hover alone, so a pressed button still lifts on hover
+        // and the accent stays ink, never a surface (judged 2026-09-10).
+        background: hovered ? theme.overlay(0.08) : "transparent",
         color: active ? ACCENT.primary : TEXT.primary,
         transition: "background 0.1s, color 0.1s",
-        ...style,
       }}
     >
-      {label}
+      <FormatIcon name={format.id} />
+      {tip && <Tooltip label={format.label} shortcut={shortcutLabel(format)} below={tipBelow} />}
     </button>
   );
 }
 
+/**
+ * The selection toolbar: six Lucide glyphs in one pill, shown over a finished
+ * selection (useEditorFocusUX decides when) and kept there while a format is
+ * applied, its pressed state refreshed. Resting on a button for
+ * TOOLTIP_REST_MS shows its name and shortcut above it, or below when the
+ * toolbar sits too near the top of the column for the chip to fit.
+ */
 const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats, onFormat }) {
   const { theme } = useTheme();
   const { BG } = theme;
+  // The button whose chip shows, and whether it goes below (no room above).
+  const [tip, setTip] = useState(null);
+  const [tipBelow, setTipBelow] = useState(false);
+  const barRef = useRef(null);
+  // The pending rest, as an object so a late timer can check it is still current.
+  const pending = useRef(null);
+  const cancelRest = useCallback(() => {
+    if (pending.current?.timer) clearTimeout(pending.current.timer);
+    pending.current = null;
+  }, []);
+  const onRest = (id) => {
+    cancelRest();
+    const rest = { id, timer: null };
+    rest.timer = setTimeout(() => {
+      if (pending.current !== rest) return;
+      setTipBelow(chipWouldClip(barRef.current));
+      setTip(id);
+    }, TOOLTIP_REST_MS);
+    pending.current = rest;
+  };
+  const onLeave = () => {
+    cancelRest();
+    setTip(null);
+  };
+  useEffect(() => cancelRest, [cancelRest]);
+  // A hidden toolbar shows no tip when it comes back.
+  useEffect(() => {
+    if (!position) {
+      cancelRest();
+      setTip(null);
+    }
+  }, [position, cancelRest]);
 
   if (!position) return null;
   return (
     <div
+      ref={barRef}
       role="toolbar"
       aria-label="Text formatting"
       style={{
@@ -57,56 +194,23 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         border: `1px solid ${BG.divider}`,
         borderRadius: 8,
         padding: "4px 4px",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        boxShadow: theme.modalShadow,
         zIndex: Z.TOOLBAR,
         animation: "fadeInToolbar 0.12s ease-out",
       }}
     >
-      <ToolbarBtn
-        label="B"
-        ariaLabel="Bold"
-        active={activeFormats.bold}
-        onClick={() => onFormat("bold")}
-        style={{ fontWeight: 700 }}
-      />
-      <ToolbarBtn
-        label="I"
-        ariaLabel="Italic"
-        active={activeFormats.italic}
-        onClick={() => onFormat("italic")}
-        style={{ fontStyle: "italic" }}
-      />
-      <ToolbarBtn
-        label={<span style={{ textDecoration: "line-through" }}>S</span>}
-        ariaLabel="Strikethrough"
-        active={activeFormats.strikethrough}
-        onClick={() => onFormat("strikethrough")}
-        style={{ fontWeight: 600 }}
-      />
-      <ToolbarBtn
-        label="H"
-        ariaLabel="Highlight"
-        active={activeFormats.highlight}
-        onClick={() => onFormat("highlight")}
-        style={{
-          fontWeight: 600,
-          background: activeFormats.highlight ? theme.mark.bg : undefined,
-        }}
-      />
-      <ToolbarBtn
-        label="</>"
-        ariaLabel="Inline code"
-        active={activeFormats.code}
-        onClick={() => onFormat("code")}
-        style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10 }}
-      />
-      <ToolbarBtn
-        label="Link"
-        ariaLabel="Link"
-        active={activeFormats.link}
-        onClick={() => onFormat("link")}
-        style={{ fontSize: 11 }}
-      />
+      {FORMATS.map((format) => (
+        <ToolbarBtn
+          key={format.id}
+          format={format}
+          active={activeFormats[format.id]}
+          onClick={() => onFormat(format.id)}
+          onRest={onRest}
+          onLeave={onLeave}
+          tip={tip === format.id}
+          tipBelow={tipBelow}
+        />
+      ))}
     </div>
   );
 });
