@@ -3,14 +3,15 @@ import {
   findNearestBlock,
   isEditableBlock,
   isSelectableBlock,
+  ownedField,
   placeCaret,
 } from "../../utils/domHelpers";
 
 /**
  * Where Backspace at the start of a block, or ArrowUp from its first line,
- * lands: the nearest block above that holds a caret or is selected as a whole
- * (a divider or an image). -1 at the top. Blocks that are neither (code,
- * table, callout, file) are stepped over as before.
+ * lands: the nearest block above that holds a caret or is addressed as a whole
+ * (a divider, an image, a table). -1 at the top. Blocks that are neither
+ * (code, callout, file) are stepped over as before.
  */
 function landingBefore(blocks, index) {
   let i = index - 1;
@@ -270,7 +271,11 @@ export function useKeyboardHandlers({
             if (titleEl) titleEl.focus();
           } else {
             const prevIdx = landingBefore(blocks, blockIndex);
-            if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
+            if (prevIdx >= 0 && blocks[prevIdx].type === "table") {
+              // The arrows walk a table's cells rather than stopping on it:
+              // arriving from below lands in its last row.
+              ownedField(editorRef.current, blocks[prevIdx].id, "end")?.focus();
+            } else if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
               selectBlock(blocks[prevIdx].id);
             } else if (prevIdx >= 0) {
               const prevEl = blockRefs.current[blocks[prevIdx].id];
@@ -292,7 +297,10 @@ export function useKeyboardHandlers({
           const nextIdx = landingAfter(blocks, blockIndex);
           if (nextIdx >= 0) {
             e.preventDefault();
-            if (isSelectableBlock(blocks[nextIdx])) {
+            if (blocks[nextIdx].type === "table") {
+              // Into the first cell; the arrows then walk the grid.
+              ownedField(editorRef.current, blocks[nextIdx].id)?.focus();
+            } else if (isSelectableBlock(blocks[nextIdx])) {
               selectBlock(blocks[nextIdx].id);
             } else {
               const nextEl = blockRefs.current[blocks[nextIdx].id];

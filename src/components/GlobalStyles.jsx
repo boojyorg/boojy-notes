@@ -149,6 +149,12 @@ export default function GlobalStyles() {
           opacity: 1;
         }
         input::placeholder { color: ${theme.TEXT.muted}; }
+        /* The app font on the body too, so a surface portalled to it (the
+           table's cell menu) inherits Inter rather than the browser's serif
+           (2026-09-10). The app root sets the same stack. */
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
         [contenteditable]:focus-visible { outline: none; }
@@ -463,27 +469,41 @@ export default function GlobalStyles() {
           pointer-events: none;
         }
         .callout-body p { margin: 0; }
-        /* Table block styles */
+        /* Table block styles. The grid sizes to its content (Obsidian's
+           model; Markdown holds no column width), with a minimum cell width
+           so an empty table reads as a small grid, capped at the column by the
+           scroller it sits in. No focus ring on a cell: the caret is the
+           signal, as in a paragraph (2026-09-10). */
         .table-outer {
           position: relative;
           outline: none;
         }
-        .table-block-wrapper {
-          overflow-x: auto;
-          border-radius: 8px;
-          border: 1px solid ${theme.BG.divider};
-        }
+        /* Shrink before you scroll, the way Chrome's tabs do: auto layout
+           shares the column's width between the columns in proportion to
+           their content and wraps text, down to a 72px floor per cell (about
+           six characters); only past that does the scroller take over. The
+           240px minimum is the table's, not the cells', so an empty 2×2 still
+           reads as a small grid while eight empty columns fit the column. A
+           120px per-cell minimum made six columns scroll at once
+           (2026-09-10). */
         .table-block {
-          width: 100%;
+          width: auto;
+          min-width: 240px;
+          table-layout: auto;
           border-collapse: collapse;
           font-size: 14px;
         }
+        /* One grid, one thickness: the cells' collapsed 1px borders are the
+           whole grid, outer edge included (no border on the scroller, which
+           doubled the edge), and no rounded corners (2026-09-10, judged
+           against Obsidian's). */
         .table-block th, .table-block td {
           border: 1px solid ${theme.BG.divider};
           padding: 8px 12px;
           text-align: left;
           outline: none;
-          min-width: 80px;
+          min-width: 72px;
+          overflow-wrap: anywhere;
         }
         .table-block th {
           background: transparent;
@@ -494,17 +514,24 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.primary};
           background: transparent;
         }
-        .table-block td:focus, .table-block th:focus {
-          box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}50;
-        }
         /* Edge zones */
         .table-left-zone { cursor: grab; }
         .table-left-zone:active { cursor: grabbing; }
         .table-top-zone { cursor: grab; }
         .table-top-zone:active { cursor: grabbing; }
-        /* Add row/column bars */
-        .table-bottom-zone:hover, .table-right-zone:hover {
-          background: ${theme.ACCENT.primary}0A;
+        /* The add-row and add-column boxes, Obsidian's: a bordered box the
+           grid's height at its right edge and its width under its bottom
+           edge, sharing the grid's own border line, with a Plus centred.
+           Hidden at rest and shown only while the pointer is past that edge,
+           on the box itself (reveal is CSS, never a JS hover state). */
+        .table-add-bar {
+          opacity: 0;
+          transition: opacity 120ms;
+          color: ${theme.TEXT.muted};
+        }
+        .table-add-bar:hover {
+          opacity: 1;
+          color: ${theme.TEXT.primary};
         }
         /* Preview rows */
         .table-preview-row td {

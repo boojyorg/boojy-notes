@@ -18,6 +18,7 @@ import {
   placeCaret,
   caretLength,
   isEditableBlock,
+  isSelectableBlock,
   ownedField,
   linkText,
   titleFieldText,
@@ -94,6 +95,13 @@ const COL_OFFSET_FROM = 560;
 const COL_OFFSET_TO = 880;
 /** The drag handle between sidebar and editor also eats width. */
 const SIDEBAR_HANDLE_W = 4;
+
+/** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
+function nearestTextIndex(blocks, from, step) {
+  let i = from;
+  while (i >= 0 && i < blocks.length && !isEditableBlock(blocks[i])) i += step;
+  return i >= 0 && i < blocks.length ? i : -1;
+}
 
 const EditorArea = memo(
   function EditorArea({
@@ -296,7 +304,12 @@ const EditorArea = memo(
       setLinkPopover(null);
     }, [setLinkPopover]);
 
-    // Block navigation for code blocks (Escape / ArrowUp / ArrowDown at edges)
+    // Block navigation out of a block that owns its fields (Escape / the
+    // arrows at the edges of a code block, a callout or a table cell). A text
+    // neighbour takes the caret at its near end; a table neighbour takes the
+    // caret in its near row (the arrows walk the grid); a divider or image is
+    // selected as a whole, never given a caret (its root is in the ref map for
+    // the gutter grip, not for the caret).
     const handleBlockNav = useCallback(
       (blockIndex, direction) => {
         const blocks = noteDataRef.current?.[activeNote]?.content?.blocks;
@@ -309,18 +322,26 @@ const EditorArea = memo(
         }
         if (targetIndex >= blocks.length) return;
         const target = blocks[targetIndex];
+        if (target.type === "table") {
+          ownedField(editorRef.current, target.id, direction === "prev" ? "end" : "start")?.focus();
+          return;
+        }
+        if (isSelectableBlock(target)) {
+          setSelectedBlockId(target.id);
+          return;
+        }
         const el = blockRefs.current[target.id];
         if (el) {
-          placeCaret(el, direction === "prev" ? el.textContent?.length || 0 : 0);
+          placeCaret(el, direction === "prev" ? caretLength(el) : 0);
         } else {
-          // A code block, callout or table: its own first field takes focus.
+          // A code block or callout: its own first field takes focus.
           ownedField(editorRef.current, target.id)?.focus();
         }
       },
-      [activeNote, noteDataRef, blockRefs, editorRef, titleRef],
+      [activeNote, noteDataRef, blockRefs, editorRef, titleRef, setSelectedBlockId],
     );
 
-    // Whole-block selection: a divider or an image (isSelectableBlock)
+    // Whole-block selection: a divider, an image or a table (isSelectableBlock)
     const handleBlockSelect = useCallback(
       (blockId) => {
         setSelectedBlockId(blockId);
@@ -328,13 +349,34 @@ const EditorArea = memo(
       [setSelectedBlockId],
     );
 
+    // Remove a block addressed as a whole (the selected divider, image or
+    // table; the table's own Delete table) and land the caret at the start of
+    // the next text block, or the end of the previous one if there is none,
+    // so a Backspace that arrived from the block below can carry on from where
+    // it was. Also the image's and file's own Delete.
+    const deleteWholeBlock = useCallback(
+      (noteId, idx) => {
+        const blocks = noteDataRef.current[noteId]?.content?.blocks || [];
+        const next = nearestTextIndex(blocks, idx + 1, 1);
+        const prev = nearestTextIndex(blocks, idx - 1, -1);
+        if (next >= 0) {
+          focusBlockId.current = blocks[next].id;
+          focusCursorPos.current = 0;
+        } else if (prev >= 0) {
+          focusBlockId.current = blocks[prev].id;
+          focusCursorPos.current = (blocks[prev].text || "").length;
+        }
+        deleteBlock(noteId, idx);
+        setSelectedBlockId(null);
+      },
+      [noteDataRef, deleteBlock, focusBlockId, focusCursorPos, setSelectedBlockId],
+    );
+
     // Keys while a whole block is selected. Escape deselects and moves nothing;
     // the arrows put the caret in the nearest text block on that side;
-    // Backspace and Delete remove the block and land the caret at the start of
-    // the next text block (the end of the previous one if there is none), so a
-    // Backspace that arrived from the block below can carry on from where it
-    // was; Enter opens a paragraph under the block; a printable character
-    // deselects and types where the caret already is. True when consumed.
+    // Backspace and Delete remove the block (deleteWholeBlock); Enter opens a
+    // paragraph under the block; a printable character deselects and types
+    // where the caret already is. True when consumed.
     const handleSelectedBlockKey = useCallback(
       (e) => {
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
@@ -343,11 +385,7 @@ const EditorArea = memo(
           setSelectedBlockId(null);
           return false;
         }
-        const nearestText = (from, step) => {
-          let i = from;
-          while (i >= 0 && i < blocks.length && !isEditableBlock(blocks[i])) i += step;
-          return i >= 0 && i < blocks.length ? i : -1;
-        };
+        const nearestText = (from, step) => nearestTextIndex(blocks, from, step);
         if (e.key === "Escape") {
           e.preventDefault();
           setSelectedBlockId(null);
@@ -366,17 +404,7 @@ const EditorArea = memo(
         }
         if (e.key === "Backspace" || e.key === "Delete") {
           e.preventDefault();
-          const next = nearestText(idx + 1, 1);
-          const prev = nearestText(idx - 1, -1);
-          if (next >= 0) {
-            focusBlockId.current = blocks[next].id;
-            focusCursorPos.current = 0;
-          } else if (prev >= 0) {
-            focusBlockId.current = blocks[prev].id;
-            focusCursorPos.current = (blocks[prev].text || "").length;
-          }
-          deleteBlock(activeNote, idx);
-          setSelectedBlockId(null);
+          deleteWholeBlock(activeNote, idx);
           return true;
         }
         if (e.key === "Enter") {
@@ -394,10 +422,8 @@ const EditorArea = memo(
         setSelectedBlockId,
         noteDataRef,
         blockRefs,
-        deleteBlock,
+        deleteWholeBlock,
         insertBlockAfter,
-        focusBlockId,
-        focusCursorPos,
       ],
     );
 
@@ -775,7 +801,7 @@ const EditorArea = memo(
                           blockIndex={i}
                           noteId={activeNote}
                           onCheckToggle={flipCheck}
-                          onDeleteBlock={deleteBlock}
+                          onDeleteBlock={deleteWholeBlock}
                           registerRef={registerBlockRef}
                           syncGen={syncGeneration.current}
                           accentColor={accentColor}

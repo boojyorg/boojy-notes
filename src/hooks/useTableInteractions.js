@@ -41,12 +41,6 @@ export function useTableInteractions({
     setSelectedCol(null);
   }, []);
 
-  /* ── Zone hover ───────────────────────────────────────── */
-  const [leftZoneHovered, setLeftZoneHovered] = useState(false);
-  const [topZoneHovered, setTopZoneHovered] = useState(false);
-  const [bottomZoneHovered, setBottomZoneHovered] = useState(false);
-  const [rightZoneHovered, setRightZoneHovered] = useState(false);
-
   /* ── Context menu ─────────────────────────────────────── */
   const [contextMenu, setContextMenu] = useState(null);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
@@ -65,13 +59,19 @@ export function useTableInteractions({
       } else {
         type = "cell";
       }
+      // The menu opens under the table, in line with the clicked column: the
+      // scroller's top and bottom for the vertical anchor (the grid plus its
+      // horizontal scrollbar when it has one, so the menu never covers a row
+      // or the bar, and flips above the whole grid when there is no room
+      // below), the cell's left and right for the horizontal (TableContextMenu).
+      const cell = e.currentTarget.getBoundingClientRect();
+      const grid = tableRef.current?.parentElement?.getBoundingClientRect() ?? cell;
       setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
+        anchor: { top: grid.top, bottom: grid.bottom, left: cell.left, right: cell.right },
         context: { type, rowIndex: rowIdx, colIndex: colIdx },
       });
     },
-    [selectedRow, selectedCol],
+    [selectedRow, selectedCol, tableRef],
   );
 
   /* ── Row / Column helpers ──────────────────────────────── */
@@ -142,7 +142,7 @@ export function useTableInteractions({
         const newAligns = [...a];
         newAligns.splice(insertAt, 0, "left");
         return {
-          rows: withColumnInserted(r, insertAt, `Col ${widthOf(r) + 1}`),
+          rows: withColumnInserted(r, insertAt),
           alignments: newAligns,
         };
       });
@@ -623,7 +623,7 @@ export function useTableInteractions({
     reshape((curRows, a) => {
       const cc = widthOf(curRows);
       return {
-        rows: withColumnInserted(curRows, cc, `Col ${cc + 1}`),
+        rows: withColumnInserted(curRows, cc),
         alignments: [...a, "left"],
       };
     });
@@ -669,7 +669,7 @@ export function useTableInteractions({
           const cc = widthOf(curRows);
           let newRows = curRows;
           for (let j = 0; j < c.count; j++) {
-            newRows = withColumnInserted(newRows, cc + j, `Col ${cc + j + 1}`);
+            newRows = withColumnInserted(newRows, cc + j);
           }
           const newAligns = [...a];
           for (let j = 0; j < c.count; j++) newAligns.push("left");
@@ -720,15 +720,6 @@ export function useTableInteractions({
     selectedRow,
     selectedCol,
     clearSelection,
-
-    leftZoneHovered,
-    setLeftZoneHovered,
-    topZoneHovered,
-    setTopZoneHovered,
-    bottomZoneHovered,
-    setBottomZoneHovered,
-    rightZoneHovered,
-    setRightZoneHovered,
 
     handleKeyDown,
 

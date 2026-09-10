@@ -76,14 +76,15 @@ test("adding a column makes the next visual column in every row, padding a short
     await h.page.locator(".table-right-zone").click({ force: true });
     await expect(table.locator("thead th")).toHaveCount(4);
 
-    await waitForFile(h.vault.file("Ragged.md"), (t) => t.includes("Col 4"));
+    await waitForFile(h.vault.file("Ragged.md"), (t) => t.includes("| --- | --- | --- | --- |"));
     await sleep(SETTLE_MS);
     expect(h.vault.read("Ragged.md")).toBe(
       [
         "Intro line.",
         "",
-        // The header is a short row too: it is padded to column four like the rest.
-        "| Name | Qty |  | Col 4 |",
+        // The header is a short row too: it is padded to column four like the
+        // rest, and the new header cell is empty (no `Col 4` label, 2026-09-10).
+        "| Name | Qty |  |  |",
         "| --- | --- | --- | --- |",
         "| Tea | 2 | extra |  |",
         "| Milk |  |  |  |",

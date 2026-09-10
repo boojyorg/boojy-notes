@@ -400,7 +400,7 @@ describe("reachAcross: a Delete or Backspace with a collapsed caret reaching int
     expect(reachAcross(blocks, 1, 2)).toEqual({ kind: "merge", startIdx: 1, endIdx: 2 });
   });
 
-  it("selects an adjacent divider or image instead of merging past it", () => {
+  it("selects an adjacent divider, image or table instead of merging past it", () => {
     expect(reachAcross([p("a", "x"), divider("s"), p("b", "y")], 0, 2)).toEqual({
       kind: "select",
       blockId: "s",
@@ -409,11 +409,21 @@ describe("reachAcross: a Delete or Backspace with a collapsed caret reaching int
       kind: "select",
       blockId: "i",
     });
+    // A table is addressed as a whole too (2026-09-10): forward Delete from
+    // above and Backspace from below select it; before this both were refused
+    // and the table could not be removed from the keyboard at all.
+    expect(reachAcross([p("a", "x"), table("t"), p("b", "y")], 0, 2)).toEqual({
+      kind: "select",
+      blockId: "t",
+    });
+    expect(reachAcross([p("a", "x"), table("t"), p("b", "y")], 2, 0)).toEqual({
+      kind: "select",
+      blockId: "t",
+    });
   });
 
-  it("refuses beside a code block, table or any other block that owns itself, even when Chromium's reach skips it", () => {
+  it("refuses beside a code block or any other block that owns itself, even when Chromium's reach skips it", () => {
     expect(reachAcross([p("a", "x"), code("k"), p("b", "y")], 0, 2)).toBeNull();
-    expect(reachAcross([p("a", "x"), table("t"), p("b", "y")], 2, 0)).toBeNull();
     expect(reachAcross([code("k"), p("b", "y")], 1, 0)).toBeNull();
   });
 

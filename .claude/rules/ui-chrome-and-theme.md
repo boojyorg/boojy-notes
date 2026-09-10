@@ -1145,32 +1145,119 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   Don't reintroduce a pad-on-read or a slice-to-header anywhere; keep the table's shape
   arithmetic in `tableShape.ts` rather than in the component or the hook.
 
-### Dividers are selectable blocks
+### Dividers and tables are selectable blocks
 
-- **A divider (or an image) is addressed as a whole, Notion-style** (`isSelectableBlock` in
-  `utils/domHelpers.js`; the state is `selectedBlockId`, one for both). A click selects it and a
-  band appears around it, the block's own box with a 4px radius reaching 4px past the text
-  column each side, accent at 10% (Light) / 18% (Dark), the rule inside lifted to accent at 40%
-  so it stays visible in the tint; Backspace or Delete removes it; Enter opens a paragraph under
-  it; Escape deselects and moves nothing; a printable character deselects and types where the
-  caret already is. No hover state, default cursor: the editor stays clean at rest, and the block
-  never changes height. The alphas live in `SpacerBlock`, theme-scoped by `theme.name`.
-- **The arrow keys stop on it, and Backspace from the block below selects it first.** ArrowDown
-  from the last line above selects the divider, ArrowDown again puts the caret at the start of the
-  next text block; ArrowUp mirrors it. Backspace at the start of the block below (empty or not)
-  selects the divider instead of merging text across a line the user can see; the second Backspace
-  removes it and lands the caret at the start of the next text block (the end of the previous one
-  if there is none), so a third Backspace merges as it always did. Code, table, callout and file
-  blocks are still stepped over (`landingBefore` / `landingAfter` in `useKeyboardHandlers`).
-- **The divider's root registers itself in the block ref map** from its own effect, so the gutter
-  grip can lift it and drop geometry sees it; the grip centres on the rule itself
-  (`firstLineRect` in `BlockDragHandle` takes a block's `hr` as its line), where the text-line
-  fallback sat it 8px low. It must not share `EditableBlock`'s `elRef`: that
-  ref's repaint effect would replace the rule with a `<br>` (a parsed divider carries `text: ""`).
-  `findNearestBlock` skips non-editable blocks so the mouse-up caret never lands in it.
-- Forward Delete at the end of the block above selects the divider first, as Backspace from
-  below does; the second Delete removes it (the block-root rule, above).
+- **A divider, an image or a table is addressed as a whole, Notion-style** (`isSelectableBlock`
+  in `utils/domHelpers.js`; the state is `selectedBlockId`, one for all three). Selected, a band
+  appears around it, the block's own box with a 4px radius reaching 4px past the text column
+  each side, accent at 10% (Light) / 18% (Dark) (`utils/selectionBand.ts`, theme-scoped by
+  `theme.name`; the divider's rule inside lifts to accent at 40% so it stays visible in the
+  tint); Backspace or Delete removes it (`deleteWholeBlock` in `EditorArea`, which lands the
+  caret at the start of the next text block, or the end of the previous one); Enter opens a
+  paragraph under it, for a table too, by decision (one grammar for every selectable block, and
+  the only keyboard route to a paragraph under a table that ends the note; ArrowUp from that
+  paragraph re-enters the table); Escape deselects and moves nothing; a printable character
+  deselects and types where the caret already is. No hover state, default cursor: the editor
+  stays clean at rest, and the block never changes height. A click selects a divider or an
+  image; a click on a table focuses the cell, and **Escape from a cell selects the table**
+  (`selectWhole` in `TableBlock`: the selection is dropped and the editor root focused, so the
+  next key reaches `handleSelectedBlockKey` and not the cell).
+- **Backspace from the block below and forward Delete from the block above select it first.**
+  Backspace at the start of the block below (empty or not) selects the block instead of merging
+  text across something the user can see; the second Backspace removes it and lands the caret
+  at the start of the next text block (the end of the previous one if there is none), so a third
+  Backspace merges as it always did. Forward Delete at the end of the block above is the mirror
+  (the block-root rule, above; `reachAcross`). Before the table joined (2026-09-10), Backspace
+  under a table stepped over it and deleted *that paragraph* into the one above, forward Delete
+  was refused, and with no Delete table in the menu and the header row and last column
+  undeletable, a table could not be removed at all. Code, callout and file blocks are still
+  stepped over (`landingBefore` / `landingAfter` in `useKeyboardHandlers`); the same rule
+  reaches them once the table has been judged live.
+- **The arrows stop on a divider or image and walk through a table.** ArrowDown from the last
+  line above selects a divider, ArrowDown again puts the caret at the start of the next text
+  block; ArrowUp mirrors it. A table takes the caret instead: ArrowDown from above enters its
+  first cell, ArrowUp from below its last row (`ownedField(…, "end")`), and inside the grid the
+  arrows move between cells only at a cell's edges (first or last line for Up and Down, first
+  or last character for Left and Right, wrapping rows), leaving at the header's top, the last
+  row's bottom, and the first and last cell (`handleCellKeyDown`; `onBlockNav`, which also
+  selects a divider or image neighbour rather than giving it a caret). Inside a cell the arrows
+  are the browser's; Shift+Arrow is never intercepted, and nothing selects a range of cells, by
+  decision. Backspace and Delete never traverse: outside they select the table, inside they
+  edit the cell.
+- **The root registers itself in the block ref map** from its own effect (`SpacerBlock`,
+  `TableBlock`), so the gutter grip can lift it and drop geometry sees it; the grip centres on
+  the divider's rule itself (`firstLineRect` in `BlockDragHandle` takes a block's `hr` as its
+  line), where the text-line fallback sat it 8px low. It must not share `EditableBlock`'s
+  `elRef`: that ref's repaint effect would replace the rule with a `<br>` (a parsed divider
+  carries `text: ""`) and paint a table's empty `text` over its grid. `findNearestBlock` skips
+  non-editable blocks so the mouse-up caret never lands in one.
 - Deliberately absent: a hover treatment on the rule, a block menu, Duplicate or Turn into.
+
+### The table is a compact grid you can enter and leave
+
+- **Content-sized, Obsidian's model, and it shrinks before it scrolls** (2026-09-10). The grid
+  is as wide as its content at the column's left, capped at the column (`width: fit-content;
+  max-width: 100%` on the root). Past the column, auto layout shares the width between the
+  columns in proportion to their content and wraps text, the way Chrome's tabs shrink, down to
+  a **72px floor per cell** (about six characters); only past that does the grid scroll
+  sideways inside its own scroller (`.table-scroller`, `overflow-x: auto`, the app's own pill
+  scrollbar; the page never scrolls). The **240px minimum is the table's** (`min-width` on
+  `.table-block`), so an empty 2×2 still reads as a small grid while eight empty columns fit
+  a 608px column. A 120px per-cell minimum was the first cut and made six columns scroll at
+  once. Markdown holds no column width, so Notion's fixed, resizable columns are out by the
+  spec; the costs are that the grid reflows as you type, and that at the floor a word longer
+  than the cell breaks mid-word (`overflow-wrap: anywhere`, kept so a long URL cannot force a
+  column; `break-word` would trade that the other way). Before this `.table-block { width:
+  100% }` filled the column (606px of 608 for an empty table). The header is bold with no
+  fill; **no focus ring on a cell**: the caret is
+  the signal, as in a paragraph (the 2px accent inset was removed the same day). **One grid,
+  one thickness, square corners**: the cells' collapsed 1px borders are the whole grid, outer
+  edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
+  radius (judged against Obsidian's grid, 2026-09-10).
+- **The add-row and add-column boxes are Obsidian's**: a bordered box the grid's height past
+  its right edge and its width under its bottom edge (18px, `ADD_BAR`; 28 read too heavy beside
+  a 1px grid and 14 too fussy to hit), sharing the grid's own border line (no left or top border
+  of its own), a Lucide `PlusIcon` at 16px on the navigation stroke (`nav`; the content stroke
+  rendered 1px at that size, the same as the grid line, and vanished) centred, in
+  `TEXT.muted` and `TEXT.primary` on hover. Shown in CSS only while the pointer is on the box
+  itself, past that edge (`.table-add-bar:hover`; never a JS hover state); a table at rest,
+  hovered over its cells or being typed in shows none. Click adds one row or column; drag adds
+  several with the counter badge (`useTableInteractions`). A reveal on table hover or cell
+  focus was built and rejected the same day: the boxes read as chrome on every table you
+  touched.
+- **A new column is empty.** `withColumnInserted` writes `""` into every row, the header
+  included; the `Col N` label it used to write reached the file as text nobody typed.
+- **The row and column strips left of and above the grid stay invisible** (24px, click selects,
+  hold 400ms and drag reorders; Backspace on a selected row or column removes it). Judged after
+  this pass: if discovering row or column selection is a struggle in daily use, add Obsidian's
+  hover handles; if not, low chrome wins.
+- **The cell menu is the note-row menu's grammar, anchored to the cell** (`TableContextMenu`,
+  2026-09-10): `role="menu"` with the arrows, Enter and Escape on a document listener, the focus
+  trap parked on the container, elevated ground, divider border, `theme.modalShadow`, 12.5px
+  labels in the app face, a Lucide glyph per item at the navigation stroke (the arrow-to-line
+  family for the four inserts, where the direction is the meaning and the "between" glyphs blur
+  at 16px; Trash for the three deletes, red with their labels), and `useMenuPosition`. It opens
+  **under the table, in line with the clicked column: 4px under the grid's bottom edge, left
+  edge on the cell's, flipping above the whole grid when there is no room**, not at the pointer
+  and not under the cell (from a header cell that covered the very column it was about to act
+  on; judged live 2026-09-10): every item acts on that column or the clicked row, and the menu
+  reads as attached to the table rather than floating where the click landed. On a very tall
+  table it can sit a way below the pointer; accepted for the short tables notes hold. It
+  portals to `body`, which is why `body` now carries the
+  app font: portalled to a font-less body it rendered in the browser's serif. It ends with
+  **Delete table** in every context, the discoverable path to what Escape then Backspace also
+  does (`deleteWholeBlock`, so the caret lands under where the table was). The header row
+  cannot be deleted (GFM needs one) and neither can the last column; the table goes as a whole.
+  **No alignment items** (removed 2026-09-10, by decision): a file's `:---:` and `---:` still
+  render the column and round-trip through `alignments`, but the app offers no control to set
+  them; the menu is rows, columns and the table.
+- Deliberately absent: column resizing and a header toggle (Markdown cannot hold either),
+  Shift+Arrow or any cell-range selection, a click on the grid's chrome to select the whole
+  table (the strips select rows and columns; Escape selects the table).
+- Proven in `table-block.spec.ts` (the real app: the typed `|||`, the width, the bars, Escape
+  then Backspace, Cmd+Z, Backspace from below, Delete from above, the arrows in, through and
+  out, Delete table from the menu, the empty added column) and the unit tests beside
+  `TableBlock`, `TableContextMenu`, `tableShape`, `domHelpers` and `crossBlockEdit`.
 
 ## Paste keeps the block you are in
 

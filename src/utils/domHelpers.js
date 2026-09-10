@@ -491,14 +491,24 @@ export function suppressNextClick(ttl = 200) {
 /**
  * The field a special block owns, for the caret: a code block's textarea, a
  * callout's title (its first field), a table's first cell. Found by the
- * block's wrapper, because a code block, callout or table registers no text
- * root in the block ref map (its fields are its own; see useOwnedField).
- * Null for a text block, for a block with no field (divider, image, file,
- * embed) and for a block that is not on screen.
+ * block's wrapper, because a code block or callout registers no text root in
+ * the block ref map, and a table registers its wrapper for the gutter grip
+ * only (its fields are its own; see useOwnedField). `edge` is the side the
+ * caret arrives from: `"end"` is the field a caret moving *up* into the block
+ * should land in, which for a table is the first cell of its last row (the
+ * arrows walk the grid; entering from below at the top would skip every row).
+ * Every other block has one field to enter. Null for a text block, for a
+ * block with no field (divider, image, file, embed) and for a block that is
+ * not on screen.
  */
-export function ownedField(editorEl, blockId) {
+export function ownedField(editorEl, blockId, edge = "start") {
   const wrapper = editorEl?.querySelector?.(`[data-block-id="${blockId}"]`);
   if (!wrapper || wrapper.getAttribute("contenteditable") !== "false") return null;
+  if (edge === "end" && wrapper.dataset.blockType === "table") {
+    const rows = wrapper.querySelectorAll("tr");
+    const last = rows[rows.length - 1]?.querySelector("[contenteditable='true']");
+    if (last) return last;
+  }
   return wrapper.querySelector("textarea, [contenteditable='true']");
 }
 
@@ -518,12 +528,16 @@ export function isEditableBlock(b) {
 }
 
 /**
- * A block with no text that is addressed as a whole: a click selects it,
- * Backspace or Delete removes it, Enter opens a paragraph under it, and the
- * arrow keys stop on it on the way past instead of skipping it. Dividers and
- * images. The other non-text blocks (code, table, callout, file) own their
- * focus or carry their own controls and are still skipped.
+ * A block that is addressed as a whole: selected, a tinted band appears
+ * around it, Backspace or Delete removes it, Enter opens a paragraph under it,
+ * and a Backspace or forward Delete arriving from a neighbour selects it
+ * rather than stepping over it. Dividers and images (a click selects them,
+ * the arrows stop on them) and tables (Escape from a cell selects; the arrows
+ * walk through the cells instead of stopping, see `ownedField`). Code,
+ * callout and file blocks own their focus or carry their own controls and are
+ * still skipped; the same rule reaches them once the table has been judged
+ * live (2026-09-10).
  */
 export function isSelectableBlock(b) {
-  return b.type === "spacer" || b.type === "image";
+  return b.type === "spacer" || b.type === "image" || b.type === "table";
 }

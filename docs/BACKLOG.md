@@ -72,9 +72,6 @@ missing core features no longer limit it. Worked one item at a time, each judged
 list is the product scope the release waits for; the CI gates and any serious data-loss bug
 found on the way gate it as well, without needing a line here.
 
-- [ ] **Tables** — finished-feeling basic interaction: visible cells, caret in the first cell,
-  Tab to the next cell, whole-table delete. Not started; Tyr gives the go. Arrow-key movement
-  between cells is an extension to judge then, not a requirement.
 - [ ] **Copy pass on Quote and Checklist.** The rest of the subtraction pass landed on
   2026-09-05 (`CHANGELOG.md`, Removed).
 - [ ] **Preservation blockers** — the two first-edit mutations marked under Data safety below.
@@ -105,6 +102,17 @@ none blocks the release. The shared question comes first because three candidate
   moves and through external renames, and whether losing it on an external rename is
   tolerable. Two fixed requirements: losing it must never damage a note, and existing
   `.boojy-meta.json` files stay untouched and unread. Decide once.
+- **Table row and column handles on hover.** The strips left of the rows and above the
+  columns are invisible (click selects, hold to drag); Obsidian and Notion show a small handle
+  when a row or column is hovered. Judged after the 2026-09-10 table pass (whole-table
+  selection, arrows, content-sized width, revealed add bars): if discovering row or column
+  selection is a struggle in daily use, add the handles; if not, low chrome wins.
+- **Whole-block selection for code, callout and file blocks.** The table joined the divider
+  and image as a block addressed as a whole on 2026-09-10 (Escape selects, Backspace from
+  below and forward Delete from above select rather than step over). The other three still
+  step over, so Backspace under a code block deletes the paragraph into the one above it.
+  Extend the same rule once the table has been judged live; one block type at a time was the
+  decision.
 - **Note information** at the bottom of the note's ··· menu: "428 words · Edited today at
   11:37", exact timestamp on demand, counting written content rather than Markdown punctuation.
   Edited follows the sort's recency rule (rename and move count; opening never does); imports,
@@ -302,9 +310,11 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 
 - [ ] **Sidebar focus ring is invisible** — inline `outline:none` overrides the global ring, and
   the global ring is 25% opacity (`Sidebar.jsx`, `GlobalStyles.jsx`).
-- [ ] **Context menus are `<div onClick>`** (Link/Table/Image/Slash/CalloutPicker): not
+- [ ] **Context menus are `<div onClick>`** (Link/Image/Slash/CalloutPicker): not
   keyboard-reachable, no roles or focus traps. SlashMenu's `aria-selected` on `menuitem` is
-  invalid.
+  invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
+  grammar); the note, vault and table menus now carry three copies of that grammar, and one
+  shared menu primitive is the cleanup that would also fix the four above.
 - [ ] **NIGHT `TEXT.muted` fails AA contrast** (`themes.js`); DAY was fixed, NIGHT was left for
   a later pass.
 - [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`

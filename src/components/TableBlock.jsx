@@ -4,9 +4,18 @@ import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
+import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
+import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
+
+/** The add-row and add-column boxes' thickness (28 and 14 judged live on 2026-09-10; 18 sits between). */
+export const ADD_BAR = 18;
+/** The Plus inside them: 16px on the navigation stroke, a step heavier than the 1px grid. */
+const ADD_PLUS = 16;
+/** The invisible row and column strips left of and above the grid. */
+const EDGE_ZONE = 24;
 
 /**
  * One cell. The browser's while typed into: it commits what it holds on
@@ -65,6 +74,49 @@ function TableCell({
   );
 }
 
+/**
+ * Whether a collapsed caret in `el` sits on its first (`"top"`) or last
+ * (`"bottom"`) line, the paragraph handler's measure: the caret's rect against
+ * the cell's content box, within one line height. An empty cell has no rect
+ * at all (Chromium reports zeros), and is one line, so both edges are true.
+ */
+function caretOnLine(el, edge) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+  const range = sel.getRangeAt(0);
+  // jsdom has no Range.getBoundingClientRect; a cell it cannot measure is one line.
+  if (typeof range.getBoundingClientRect !== "function") return true;
+  const rect = range.getBoundingClientRect();
+  if (rect.top === 0 && rect.bottom === 0) return true;
+  const cs = getComputedStyle(el);
+  const line = Number.parseFloat(cs.lineHeight) || 20;
+  const box = el.getBoundingClientRect();
+  if (edge === "top") return rect.top - (box.top + (Number.parseFloat(cs.paddingTop) || 0)) < line;
+  return box.bottom - (Number.parseFloat(cs.paddingBottom) || 0) - rect.bottom < line;
+}
+
+/**
+ * The table block. A GFM pipe table drawn as a grid that sizes to its content
+ * (Obsidian's model: Markdown holds no column width, so there is none to
+ * store), capped at the column and scrolling sideways past it. Each cell is a
+ * real field (TableCell). Addressed as a whole like the divider
+ * (`isSelectableBlock`): Escape from a cell selects it, and so does a Backspace
+ * or forward Delete arriving from a neighbour; selected, the band appears and
+ * Backspace removes it, Enter opens a paragraph under it. The arrows walk the
+ * grid: in from the paragraph above, cell to cell, out at the last row.
+ *
+ * The root registers itself in the block ref map so the gutter grip can lift
+ * it; it must not share EditableBlock's `elRef`, whose repaint effect would
+ * paint the block's empty `text` over the grid.
+ *
+ * The add-row and add-column boxes are Obsidian's: a bordered box the grid's
+ * height at its right edge and its width under its bottom edge, a Plus centred,
+ * shown in CSS only while the pointer is past that edge, on the box itself
+ * (`.table-add-bar:hover`); a table at rest, hovered or being typed in shows
+ * none. Click adds one; drag adds several (useTableInteractions). The row and
+ * column strips left of and above the grid stay invisible (click selects, hold
+ * to drag); judged after this pass (2026-09-10).
+ */
 export default memo(function TableBlock({
   block,
   noteId,
@@ -75,12 +127,22 @@ export default memo(function TableBlock({
   onUpdateTableRows,
   noteTitleSet,
   accentColor,
+  isSelected,
+  onSelect,
+  onBlockNav,
+  onDelete,
+  registerRef,
 }) {
   const { theme } = useTheme();
-  const { TEXT } = theme;
+  const accent = accentColor || theme.ACCENT.primary;
   const cellRefs = useRef({});
   const tableRef = useRef(null);
-  const outerRef = useRef(null);
+  const rootRef = useRef(null);
+
+  useLayoutEffect(() => {
+    registerRef?.(block.id, rootRef.current);
+    return () => registerRef?.(block.id, null);
+  }, [block.id, registerRef]);
 
   const rows = block.rows || [
     ["", ""],
@@ -101,14 +163,6 @@ export default memo(function TableBlock({
     selectedRow,
     selectedCol,
     clearSelection,
-    leftZoneHovered,
-    setLeftZoneHovered,
-    topZoneHovered,
-    setTopZoneHovered,
-    bottomZoneHovered,
-    setBottomZoneHovered,
-    rightZoneHovered,
-    setRightZoneHovered,
     handleKeyDown,
     handleLeftZonePointerDown,
     handleTopZonePointerDown,
@@ -154,22 +208,19 @@ export default memo(function TableBlock({
     }));
   }, [noteId, blockIndex, onUpdateTableRows]);
 
-  const setAlignment = useCallback(
-    (colIdx, align) => {
-      onUpdateTableRows(noteId, blockIndex, (cur, aligns) => {
-        const newAligns = [...aligns];
-        while (newAligns.length <= colIdx) newAligns.push("left");
-        newAligns[colIdx] = align;
-        return { rows: cur, alignments: newAligns };
-      });
-    },
-    [noteId, blockIndex, onUpdateTableRows],
-  );
-
   const focusCell = useCallback(
     (rowIdx, colIdx) => cellRefs.current[`${rowIdx}-${colIdx}`]?.focus(),
     [],
   );
+  // The caret into a cell at an offset (`"end"` for its end), for the arrows.
+  const caretInto = useCallback((rowIdx, colIdx, at) => {
+    const cell = cellRefs.current[`${rowIdx}-${colIdx}`];
+    if (!cell) return false;
+    cell.focus();
+    const len = caretLength(cell);
+    placeCaret(cell, at === "end" ? len : Math.min(at, len));
+    return true;
+  }, []);
   // A cell that does not exist yet (the row Enter or Tab has just added) is
   // focused as soon as it has rendered, not after a timer a fast typist
   // could beat.
@@ -183,9 +234,23 @@ export default memo(function TableBlock({
     }
   });
 
+  // Escape from a cell: the whole table is selected, and the keys go to the
+  // editor root (handleSelectedBlockKey), so the next Backspace removes the
+  // table and not a character of the cell.
+  const selectWhole = useCallback(() => {
+    window.getSelection()?.removeAllRanges();
+    rootRef.current?.parentElement?.closest('[contenteditable="true"]')?.focus();
+    onSelect?.();
+  }, [onSelect]);
+
   const handleCellKeyDown = useCallback(
     (e, rowIdx, colIdx) => {
-      if (e.key === "Tab" && !e.shiftKey) {
+      const lastRow = rows.length - 1;
+      const lastCol = colCount - 1;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        selectWhole();
+      } else if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
         const nextCol = colIdx + 1;
         const nextRow = rowIdx + (nextCol >= colCount ? 1 : 0);
@@ -208,15 +273,41 @@ export default memo(function TableBlock({
         // browser's line break, which the file holds as `<br>` (review
         // 2026-09-07, §3.1).
         e.preventDefault();
-        if (rowIdx < rows.length - 1) {
+        if (rowIdx < lastRow) {
           focusCell(rowIdx + 1, colIdx);
         } else {
           addRow();
           focusOnRender.current = { row: rows.length, col: colIdx };
         }
+      } else if (!plainArrow(e)) {
+        // A modified arrow is the browser's: Shift extends the selection,
+        // Cmd/Ctrl and Alt jump by line and word inside the cell (END_OF_LINE
+        // in a cell used to hop to the next cell before this guard).
+      } else if (e.key === "ArrowUp" && caretOnLine(e.currentTarget, "top")) {
+        // The arrows walk the grid, and leave it at its edges (2026-09-10).
+        // Inside a cell they are the browser's own; only a caret on the
+        // cell's first or last line, or at its first or last character, moves
+        // between cells.
+        e.preventDefault();
+        if (rowIdx > 0) caretInto(rowIdx - 1, colIdx, getCaretOffset(e.currentTarget));
+        else onBlockNav?.(blockIndex, "prev");
+      } else if (e.key === "ArrowDown" && caretOnLine(e.currentTarget, "bottom")) {
+        e.preventDefault();
+        if (rowIdx < lastRow) caretInto(rowIdx + 1, colIdx, getCaretOffset(e.currentTarget));
+        else onBlockNav?.(blockIndex, "next");
+      } else if (e.key === "ArrowLeft" && collapsedAt(e.currentTarget, 0)) {
+        e.preventDefault();
+        if (colIdx > 0) caretInto(rowIdx, colIdx - 1, "end");
+        else if (rowIdx > 0) caretInto(rowIdx - 1, lastCol, "end");
+        else onBlockNav?.(blockIndex, "prev");
+      } else if (e.key === "ArrowRight" && collapsedAt(e.currentTarget, "end")) {
+        e.preventDefault();
+        if (colIdx < lastCol) caretInto(rowIdx, colIdx + 1, 0);
+        else if (rowIdx < lastRow) caretInto(rowIdx + 1, 0, 0);
+        else onBlockNav?.(blockIndex, "next");
       }
     },
-    [rows, colCount, addRow, focusCell],
+    [rows, colCount, addRow, focusCell, caretInto, selectWhole, onBlockNav, blockIndex],
   );
 
   const handleCellPaste = useCallback(
@@ -253,208 +344,213 @@ export default memo(function TableBlock({
 
   const cellHighlightStyle = (rowIdx, colIdx) => {
     if (isRowSelected(rowIdx) || isColSelected(colIdx)) {
-      return { background: `${accentColor || theme.ACCENT.primary}20` };
+      return { background: `${accent}20` };
     }
     return {};
   };
 
   /* ── Render ────────────────────────────────────────────── */
 
+  const band = isSelected ? bandFill(accent, theme.name) : null;
+
   return (
     <div
-      ref={outerRef}
+      ref={rootRef}
       className="table-outer"
+      data-block-id={block.id}
+      data-block-type="table"
+      data-selected={isSelected ? "true" : undefined}
+      contentEditable="false"
+      suppressContentEditableWarning
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      style={{ position: "relative", outline: "none", margin: "8px 0" }}
+      style={{
+        position: "relative",
+        outline: "none",
+        margin: "8px 0",
+        // As wide as the grid, never wider than the column: the bars hug the
+        // table's own edges, and a wide table scrolls inside the scroller.
+        width: "fit-content",
+        maxWidth: "100%",
+        userSelect: "none",
+      }}
     >
-      {/* Left edge zone — 24px strip to the left of the wrapper */}
+      {/* Left edge zone — the row strip, left of the grid */}
       <div
         className="table-left-zone"
         style={{
           position: "absolute",
-          left: -24,
+          left: -EDGE_ZONE,
           top: 0,
-          width: 24,
-          bottom: 0,
+          width: EDGE_ZONE,
+          bottom: ADD_BAR,
           cursor: "grab",
           zIndex: Z.ELEMENT_OVERLAY,
         }}
-        onMouseEnter={() => setLeftZoneHovered(true)}
-        onMouseLeave={() => setLeftZoneHovered(false)}
         onPointerDown={handleLeftZonePointerDown}
       />
 
-      {/* Top edge zone — 24px strip above the wrapper */}
+      {/* Top edge zone — the column strip, above the grid */}
       <div
         className="table-top-zone"
         style={{
           position: "absolute",
-          left: -24,
-          top: -24,
-          right: -28,
-          height: 24,
+          left: -EDGE_ZONE,
+          top: -EDGE_ZONE,
+          right: 0,
+          height: EDGE_ZONE,
           cursor: "grab",
           zIndex: Z.ELEMENT_OVERLAY,
         }}
-        onMouseEnter={() => setTopZoneHovered(true)}
-        onMouseLeave={() => setTopZoneHovered(false)}
         onPointerDown={handleTopZonePointerDown}
       />
 
-      {/* Table wrapper */}
-      <div
-        className="table-block-wrapper"
-        style={{ margin: 0, borderRadius: "8px 0 0 0", position: "relative", overflow: "visible" }}
-      >
-        <table ref={tableRef} className="table-block">
-          <thead>
-            <tr>
-              {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
-                (cell, colIdx) => (
-                  <TableCell
-                    key={colIdx}
-                    tag="th"
-                    rowIdx={0}
-                    colIdx={colIdx}
-                    text={cell}
-                    syncGen={syncGen}
-                    latestRows={latestRows}
-                    noteTitleSet={noteTitleSet}
-                    cellRefs={cellRefs}
-                    onInput={handleCellInput}
-                    onKeyDown={handleCellKeyDown}
-                    onFocus={clearSelection}
-                    onPaste={handleCellPaste}
-                    onContextMenu={handleCellContextMenu}
-                    style={{
-                      fontWeight: 600,
-                      // Header cells carry no fill at rest — bold weight plus the border
-                      // grid is the whole signal. Only an active column selection tints.
-                      background: isColSelected(colIdx)
-                        ? `${accentColor || theme.ACCENT.primary}20`
-                        : "transparent",
-                      textAlign: alignments[colIdx] || "left",
-                    }}
-                  />
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.slice(1).map((row, rOffset) => {
-              const rowIdx = rOffset + 1;
-              return (
-                <tr key={rowIdx}>
-                  {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
-                    (cell, colIdx) => (
-                      <TableCell
-                        key={colIdx}
-                        tag="td"
-                        rowIdx={rowIdx}
-                        colIdx={colIdx}
-                        text={cell}
-                        syncGen={syncGen}
-                        latestRows={latestRows}
-                        noteTitleSet={noteTitleSet}
-                        cellRefs={cellRefs}
-                        onInput={handleCellInput}
-                        onKeyDown={handleCellKeyDown}
-                        onFocus={clearSelection}
-                        onPaste={handleCellPaste}
-                        onContextMenu={handleCellContextMenu}
-                        style={{
-                          textAlign: alignments[colIdx] || "left",
-                          ...cellHighlightStyle(rowIdx, colIdx),
-                        }}
-                      />
-                    ),
-                  )}
-                </tr>
-              );
-            })}
-            {/* Preview rows during drag-to-create */}
-            {previewCount.rows > 0 &&
-              Array.from({ length: previewCount.rows }, (_, i) => (
-                <tr key={`preview-${i}`} className="table-preview-row">
-                  {Array.from({ length: colCount }, (_, ci) => (
-                    <td
-                      key={ci}
-                      style={{
-                        textAlign: alignments[ci] || "left",
-                        background: `${accentColor || theme.ACCENT.primary}08`,
-                        borderStyle: "dashed",
-                      }}
-                    >
-                      &nbsp;
-                    </td>
-                  ))}
-                </tr>
-              ))}
-          </tbody>
-        </table>
-
-        {/* Right edge zone — full-height add-column bar, inside wrapper so it matches table height */}
+      {/* The grid, with the add-column bar at its right edge */}
+      <div style={{ position: "relative" }}>
         <div
-          className="table-right-zone"
+          className="table-scroller"
+          style={{
+            overflowX: "auto",
+            // The cells' collapsed borders are the whole grid, outer edge
+            // included; nothing here draws a second edge or a rounded corner.
+            // The selection band: the tint behind the cells, reaching past
+            // the grid by the divider's reach.
+            background: band || "transparent",
+            boxShadow: band ? `0 0 0 ${BAND_REACH}px ${band}` : "none",
+          }}
+        >
+          <table ref={tableRef} className="table-block">
+            <thead>
+              <tr>
+                {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
+                  (cell, colIdx) => (
+                    <TableCell
+                      key={colIdx}
+                      tag="th"
+                      rowIdx={0}
+                      colIdx={colIdx}
+                      text={cell}
+                      syncGen={syncGen}
+                      latestRows={latestRows}
+                      noteTitleSet={noteTitleSet}
+                      cellRefs={cellRefs}
+                      onInput={handleCellInput}
+                      onKeyDown={handleCellKeyDown}
+                      onFocus={clearSelection}
+                      onPaste={handleCellPaste}
+                      onContextMenu={handleCellContextMenu}
+                      style={{
+                        fontWeight: 600,
+                        // Header cells carry no fill at rest — bold weight plus the border
+                        // grid is the whole signal. Only an active column selection tints.
+                        background: isColSelected(colIdx) ? `${accent}20` : "transparent",
+                        textAlign: alignments[colIdx] || "left",
+                      }}
+                    />
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(1).map((row, rOffset) => {
+                const rowIdx = rOffset + 1;
+                return (
+                  <tr key={rowIdx}>
+                    {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
+                      (cell, colIdx) => (
+                        <TableCell
+                          key={colIdx}
+                          tag="td"
+                          rowIdx={rowIdx}
+                          colIdx={colIdx}
+                          text={cell}
+                          syncGen={syncGen}
+                          latestRows={latestRows}
+                          noteTitleSet={noteTitleSet}
+                          cellRefs={cellRefs}
+                          onInput={handleCellInput}
+                          onKeyDown={handleCellKeyDown}
+                          onFocus={clearSelection}
+                          onPaste={handleCellPaste}
+                          onContextMenu={handleCellContextMenu}
+                          style={{
+                            textAlign: alignments[colIdx] || "left",
+                            ...cellHighlightStyle(rowIdx, colIdx),
+                          }}
+                        />
+                      ),
+                    )}
+                  </tr>
+                );
+              })}
+              {/* Preview rows during drag-to-create */}
+              {previewCount.rows > 0 &&
+                Array.from({ length: previewCount.rows }, (_, i) => (
+                  <tr key={`preview-${i}`} className="table-preview-row">
+                    {Array.from({ length: colCount }, (_, ci) => (
+                      <td
+                        key={ci}
+                        style={{
+                          textAlign: alignments[ci] || "left",
+                          background: `${accent}08`,
+                          borderStyle: "dashed",
+                        }}
+                      >
+                        &nbsp;
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Add-column box — the grid's height, past its right edge, sharing
+            the grid's border line (no left border of its own) */}
+        <div
+          className="table-add-bar table-right-zone"
+          role="button"
+          aria-label="Add column"
           style={{
             position: "absolute",
             left: "100%",
-            top: -1,
-            width: 28,
-            bottom: -1,
+            top: 0,
+            bottom: 0,
+            width: ADD_BAR,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            borderTop: `1px solid ${theme.BG.divider}`,
-            borderRight: `1px solid ${theme.BG.divider}`,
-            borderBottom: `1px solid ${theme.BG.divider}`,
+            border: `1px solid ${theme.BG.divider}`,
             borderLeft: "none",
-            borderRadius: "0 8px 8px 0",
-            color: accentColor || theme.ACCENT.primary,
-            fontSize: 15,
-            opacity: rightZoneHovered ? 1 : 0,
-            transition: "opacity 150ms",
-            outline: "none",
-            background: "none",
           }}
-          onMouseEnter={() => setRightZoneHovered(true)}
-          onMouseLeave={() => setRightZoneHovered(false)}
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
         >
-          +
+          <PlusIcon size={ADD_PLUS} nav />
         </div>
       </div>
 
-      {/* Bottom edge zone — full-width add-row bar connected to table bottom */}
+      {/* Add-row box — the grid's width, under its bottom edge, sharing the
+          grid's border line (no top border of its own) */}
       <div
-        className="table-bottom-zone"
+        className="table-add-bar table-bottom-zone"
+        role="button"
+        aria-label="Add row"
         style={{
+          position: "relative",
+          height: ADD_BAR,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: 28,
           cursor: "pointer",
-          borderLeft: `1px solid ${theme.BG.divider}`,
-          borderRight: `1px solid ${theme.BG.divider}`,
-          borderBottom: `1px solid ${theme.BG.divider}`,
+          border: `1px solid ${theme.BG.divider}`,
           borderTop: "none",
-          borderRadius: "0 0 8px 8px",
-          color: accentColor || theme.ACCENT.primary,
-          fontSize: 15,
-          opacity: bottomZoneHovered ? 1 : 0,
-          transition: "opacity 150ms",
-          outline: "none",
-          background: "none",
         }}
-        onMouseEnter={() => setBottomZoneHovered(true)}
-        onMouseLeave={() => setBottomZoneHovered(false)}
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
       >
-        +
+        <PlusIcon size={ADD_PLUS} nav />
       </div>
 
       {/* Counter badge during drag-to-create */}
@@ -466,7 +562,7 @@ export default memo(function TableBlock({
             left: createBadge.x,
             top: createBadge.y,
             padding: "2px 8px",
-            background: accentColor || theme.ACCENT.primary,
+            background: accent,
             color: theme.ACCENT.onAccent,
             fontSize: 11,
             fontWeight: 600,
@@ -482,18 +578,31 @@ export default memo(function TableBlock({
       {/* Context menu */}
       {contextMenu && (
         <TableContextMenu
-          position={{ x: contextMenu.x, y: contextMenu.y }}
+          anchor={contextMenu.anchor}
           context={contextMenu.context}
           colCount={colCount}
-          alignments={alignments}
           onInsertRow={insertRow}
           onDeleteRow={deleteRowAt}
           onInsertColumn={insertColumn}
           onDeleteColumn={deleteColumnAt}
-          onSetAlignment={setAlignment}
+          onDeleteTable={onDelete}
           onDismiss={closeContextMenu}
         />
       )}
     </div>
   );
 });
+
+/** An arrow key with no modifier: the only kind that moves between cells. */
+function plainArrow(e) {
+  return e.key.startsWith("Arrow") && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey;
+}
+
+/** Whether the selection is a collapsed caret at offset `at` (`"end"` for the cell's end) of `el`. */
+function collapsedAt(el, at) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+  const offset = getCaretOffset(el);
+  if (offset < 0) return false;
+  return at === "end" ? offset >= caretLength(el) : offset === at;
+}
