@@ -7,6 +7,7 @@ import BlockDragHandle, {
   HANDLE_H,
   HANDLE_GAP,
 } from "../../src/components/BlockDragHandle";
+import { Z } from "../../src/constants/zIndex";
 
 vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
@@ -200,5 +201,43 @@ describe("BlockDragHandle", () => {
     const handle = screen.getByTestId("block-drag-handle");
     expect(handle.getAttribute("tabindex")).toBe(null);
     expect(handle.getAttribute("role")).toBe(null);
+  });
+
+  it("stacks above the table's row strip, which shares its footprint in the gutter", async () => {
+    // TableBlock's left zone is 24px wide at left: -24px on Z.ELEMENT_OVERLAY;
+    // the grip is drawn 24px left of the block. Below the zone it was visible
+    // but every press landed on the strip and selected a row.
+    render(<Harness blocks={["b1", "b2", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(50);
+    const handle = screen.getByTestId("block-drag-handle");
+    expect(Number(handle.style.zIndex)).toBe(Z.BLOCK_HANDLE);
+    expect(Z.BLOCK_HANDLE).toBeGreaterThan(Z.ELEMENT_OVERLAY);
+  });
+
+  it("under the UI scale's zoom, the grip is placed in CSS pixels, not viewport pixels", async () => {
+    // Chromium 128+ and Firefox 126+ report every rect multiplied by the `zoom`
+    // on <html>, and the handle's `top`/`left` are scaled again on paint. Lay
+    // the same page out at 1.25× and expect the same styles as at 1×.
+    const ZOOM = 1.25;
+    render(<Harness blocks={["b1", "hr", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    const scale = (el) => {
+      const base = el.getBoundingClientRect;
+      el.getBoundingClientRect = () => {
+        const r = base();
+        return rect(r.left * ZOOM, r.top * ZOOM, r.width * ZOOM, r.height * ZOOM);
+      };
+    };
+    for (const el of document.querySelectorAll("[data-block-id], [data-block-id] hr")) scale(el);
+    const anchor = document.querySelector('[aria-hidden="true"][style*="width: 0px"]');
+    scale(anchor);
+    anchor.currentCSSZoom = ZOOM;
+    await hoverAt(84 * ZOOM);
+    const handle = screen.getByTestId("block-drag-handle");
+    expect(handle.dataset.targetBlock).toBe("hr");
+    expect(parseFloat(handle.style.left)).toBe(BLOCK_LEFT - COLUMN.left - HANDLE_W - HANDLE_GAP);
+    const { top: ruleTop, height: ruleH } = blockRects.hr.rule;
+    expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(ruleTop + ruleH / 2, 5);
   });
 });

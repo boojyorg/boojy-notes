@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
+import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
@@ -55,6 +55,8 @@ export function useBlockDrag({
     startX: 0,
     startY: 0,
     offsetY: 0,
+    // CSS zoom (the UI scale) at drag start; viewport pixels ÷ this = CSS pixels.
+    zoom: 1,
     startIndex: -1,
     targetIndex: -1,
     outside: false,
@@ -116,6 +118,10 @@ export function useBlockDrag({
 
     const rect = el.getBoundingClientRect();
     bd.offsetY = pointerY - rect.top;
+    // The ghost and the marker live on <body>, inside the UI scale's `zoom`:
+    // pointer and rect values are viewport pixels, their styles are CSS pixels.
+    const zoom = cssZoom(document.body);
+    bd.zoom = zoom;
 
     // Ghost: a static, translucent print of the dragged block(s). No card, no
     // shadow, no lift — the page underneath stays exactly as it was and the
@@ -136,9 +142,9 @@ export function useBlockDrag({
       fontFamily: src.fontFamily,
       color: src.color,
       position: "fixed",
-      left: `${rect.left}px`,
-      top: `${pointerY - bd.offsetY}px`,
-      width: `${rect.width}px`,
+      left: `${rect.left / zoom}px`,
+      top: `${(pointerY - bd.offsetY) / zoom}px`,
+      width: `${rect.width / zoom}px`,
       zIndex: "1000",
       pointerEvents: "none",
       opacity: String(GHOST_OPACITY),
@@ -221,11 +227,13 @@ export function useBlockDrag({
       return;
     }
     const col = (editorRef.current || before || after).getBoundingClientRect();
+    const zoom = bd.zoom || 1;
     Object.assign(marker.style, {
       display: "block",
-      left: `${col.left}px`,
-      width: `${col.width}px`,
-      top: `${y - marker.offsetHeight / 2}px`,
+      left: `${col.left / zoom}px`,
+      width: `${col.width / zoom}px`,
+      // offsetHeight is already CSS pixels; only the measured y is scaled.
+      top: `${y / zoom - marker.offsetHeight / 2}px`,
     });
   };
 
@@ -381,7 +389,7 @@ export function useBlockDrag({
         if (Math.hypot(dx, dy) > DRAG_THRESHOLD) activateBlockDrag(blockInfo, ev.clientY);
         return;
       }
-      if (bd.cloneEl) bd.cloneEl.style.top = `${ev.clientY - bd.offsetY}px`;
+      if (bd.cloneEl) bd.cloneEl.style.top = `${(ev.clientY - bd.offsetY) / (bd.zoom || 1)}px`;
       if (bd._updatePointer) bd._updatePointer(ev.clientY, ev.clientX);
       updateBlockDropTarget(ev.clientY, ev.clientX);
     };

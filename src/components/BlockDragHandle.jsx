@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GripVerticalIcon } from "./Icons";
+import { cssZoom } from "../utils/domHelpers";
+import { Z } from "../constants/zIndex";
 
 /**
  * The block drag handle — one floating grip for the whole editor.
@@ -19,7 +21,11 @@ import { GripVerticalIcon } from "./Icons";
  * is measured against an invisible anchor rendered beside the handle, so it is
  * correct whatever positioned ancestor the handle lands in, and it scrolls with
  * the blocks. The handle is absolutely positioned in the gutter, so its
- * appearance never shifts a line of prose.
+ * appearance never shifts a line of prose. Every rect is in viewport pixels,
+ * which under the app's UI scale (`zoom` on `<html>`) are CSS pixels times the
+ * scale; the difference is divided by that scale once, where it becomes a
+ * style (`cssZoom`). Before this the grip drifted down the note by the scale
+ * factor at any setting but 100% (2026-09-10).
  *
  * Desktop-only by design (hover is the discoverability model); the mobile
  * layout does not mount it. Keyboard reorder (Cmd/Ctrl+Shift+↑/↓) is the
@@ -35,9 +41,10 @@ export const HANDLE_GAP = 4;
  * (so headings, list rows, quotes and code all centre the grip on the line
  * the eye reads first); a divider's is its rule, so the grip centres on the
  * line itself; otherwise the element's own line-height, for empty blocks and
- * media that have no text line.
+ * media that have no text line. Always viewport pixels: the computed
+ * line-height and padding are CSS pixels and are scaled by `zoom` to match.
  */
-function firstLineRect(el) {
+function firstLineRect(el, zoom) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });
@@ -55,8 +62,8 @@ function firstLineRect(el) {
   const cs = getComputedStyle(el);
   const lh = parseFloat(cs.lineHeight);
   const padTop = parseFloat(cs.paddingTop) || 0;
-  const line = Number.isFinite(lh) ? lh : 28;
-  return { top: r.top + padTop, height: Math.min(line, r.height || line) };
+  const line = (Number.isFinite(lh) ? lh : 28) * zoom;
+  return { top: r.top + padTop * zoom, height: Math.min(line, r.height || line) };
 }
 
 export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag }) {
@@ -81,18 +88,19 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       const anchor = anchorRef.current;
       if (!anchor) return null;
       const origin = anchor.getBoundingClientRect(); // top-left of our containing block
+      const zoom = cssZoom(anchor);
       // The block whose vertical band (its top → the next block's top) holds
       // the pointer, so the gaps between blocks belong to the block above.
       for (let i = 0; i < els.length; i++) {
         const r = els[i].getBoundingClientRect();
         const bottom = i + 1 < els.length ? els[i + 1].getBoundingClientRect().top : r.bottom;
         if (clientY >= r.top && clientY < bottom) {
-          const line = firstLineRect(els[i]);
+          const line = firstLineRect(els[i], zoom);
           return {
             blockId: els[i].dataset.blockId,
-            top: line.top - origin.top + (line.height - HANDLE_H) / 2,
+            top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
             // Negative on purpose: the grip lives in the column's left padding.
-            left: r.left - origin.left - HANDLE_W - HANDLE_GAP,
+            left: (r.left - origin.left) / zoom - HANDLE_W - HANDLE_GAP,
           };
         }
       }
@@ -173,7 +181,8 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
             justifyContent: "center",
             cursor: "grab",
             userSelect: "none",
-            zIndex: 2,
+            // Over the table's row strip, which shares the grip's footprint.
+            zIndex: Z.BLOCK_HANDLE,
           }}
         >
           <GripVerticalIcon size={16} />
