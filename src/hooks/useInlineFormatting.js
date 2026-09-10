@@ -260,7 +260,10 @@ export function useInlineFormatting({
           sel.addRange(whole);
         }
       }
-      setToolbarState(null);
+      // The toolbar stays where it is (the selection is still there) and
+      // re-reads the active formats: a fresh state object with the same
+      // position. Clearing it here made it vanish and come back a beat later.
+      setToolbarState((prev) => (prev ? { ...prev } : prev));
     },
     [
       reReadBlockFromDom,

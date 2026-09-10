@@ -686,10 +686,18 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   shows at once, except when the mouse-up is on the toolbar itself, which is a format being
   applied and `applyFormat`'s to handle. Hiding is immediate: a collapsed selection clears it
   so it never lingers over typing.
-- **Six Lucide glyphs at 16px on the navigation stroke, in 28px boxes** (`FormatIcon` in
-  `Icons.jsx`, the `SlashCommandIcon` pattern). The 32px control tier read chunky hovering over
-  a line of text. Buttons are named by `aria-label` alone; the highlight button's active fill is
-  `theme.mark.bg` so it reads as the effect.
+- **Six Lucide glyphs at 16px on a stroke of 2.5, in 28px boxes** (`FormatIcon` in
+  `Icons.jsx`, the `SlashCommandIcon` pattern; `ICON_STROKE_TOOLBAR`, the one tier above the
+  navigation stroke, because these glyphs stand alone with no label and at 2 the B and I read
+  faint, judged 2026-09-10 against Notion's strip). The 32px control tier read chunky hovering
+  over a line of text. Buttons are named by `aria-label` alone. **Active is the glyph in the
+  accent and nothing else**; the grey fill is hover's alone, so a pressed button still lifts on
+  hover and the accent stays ink, never a surface (the accent-tinted fill and the highlight
+  button's mark-coloured fill were dropped the same day).
+- **Applying a format keeps the toolbar where it is.** `applyFormat` used to clear it and the
+  rest timer brought it back a beat later, a visible blink on every press; it now sets a fresh
+  state object at the same position so the pressed states re-read and nothing unmounts. The
+  document `mouseup` listener ignores a mouse-up on the toolbar for the same reason.
 - **Resting on a button for `TOOLTIP_REST_MS` (400 ms) shows its name and shortcut** in a chip
   above it (below, when the toolbar sits within 32px of the column's top, where the chip would
   clip in the scroller), `aria-hidden`, the link tooltip's recipe with the shortcut in mono

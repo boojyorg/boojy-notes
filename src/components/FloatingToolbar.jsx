@@ -67,7 +67,7 @@ function Tooltip({ label, shortcut, below }) {
   );
 }
 
-function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow, activeBg }) {
+function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow }) {
   const { theme } = useTheme();
   const { ACCENT, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
@@ -100,11 +100,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow, a
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: active
-          ? (activeBg ?? `${ACCENT.primary}30`)
-          : hovered
-            ? theme.overlay(0.08)
-            : "transparent",
+        // Active is the glyph in the accent and nothing else, Notion's grammar:
+        // the fill is for hover alone, so a pressed button still lifts on hover
+        // and the accent stays ink, never a surface (judged 2026-09-10).
+        background: hovered ? theme.overlay(0.08) : "transparent",
         color: active ? ACCENT.primary : TEXT.primary,
         transition: "background 0.1s, color 0.1s",
       }}
@@ -117,7 +116,8 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow, a
 
 /**
  * The selection toolbar: six Lucide glyphs in one pill, shown over a finished
- * selection (useEditorFocusUX decides when). Resting on a button for
+ * selection (useEditorFocusUX decides when) and kept there while a format is
+ * applied, its pressed state refreshed. Resting on a button for
  * TOOLTIP_REST_MS shows its name and shortcut above it, or below when the
  * toolbar sits too near the top of the column for the chip to fit.
  */
@@ -180,7 +180,6 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
           key={format.id}
           format={format}
           active={activeFormats[format.id]}
-          activeBg={format.id === "highlight" ? theme.mark?.bg : undefined}
           onClick={() => onFormat(format.id)}
           onRest={onRest}
           onLeave={onLeave}

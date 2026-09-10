@@ -157,8 +157,14 @@ const FORMAT_GLYPHS = {
   link: LuLink,
 };
 
-/** Navigation stroke at the inline size, as the slash menu's glyphs: a control, not prose. */
+/**
+ * Heavier than the navigation stroke: these glyphs stand alone in a pill with
+ * no label beside them, and at 2 the B and I read faint against the accent
+ * (judged 2026-09-10 against Notion's toolbar). The one stroke tier above nav,
+ * for this toolbar only.
+ */
+const ICON_STROKE_TOOLBAR = 2.5;
 export const FormatIcon = ({ name, size = ICON_INLINE }) => {
   const Glyph = FORMAT_GLYPHS[name];
-  return Glyph ? <Glyph {...navBase} size={size} /> : null;
+  return Glyph ? <Glyph strokeWidth={ICON_STROKE_TOOLBAR} size={size} /> : null;
 };

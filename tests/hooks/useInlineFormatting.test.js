@@ -93,7 +93,14 @@ describe("useInlineFormatting", () => {
     });
 
     expect(document.execCommand).toHaveBeenCalledWith("bold");
-    expect(setToolbarState).toHaveBeenCalledWith(null);
+    // The toolbar is kept and refreshed (a fresh object at the same position), never cleared.
+    expect(setToolbarState).toHaveBeenCalledWith(expect.any(Function));
+    expect(setToolbarState).not.toHaveBeenCalledWith(null);
+    const refresh = setToolbarState.mock.calls[0][0];
+    const pos = { top: 1, left: 2 };
+    expect(refresh(pos)).toEqual(pos);
+    expect(refresh(pos)).not.toBe(pos);
+    expect(refresh(null)).toBeNull();
     document.execCommand = origExec;
     document.body.removeChild(editorEl);
   });
@@ -120,7 +127,7 @@ describe("useInlineFormatting", () => {
     });
 
     expect(document.execCommand).toHaveBeenCalledWith("italic");
-    expect(setToolbarState).toHaveBeenCalledWith(null);
+    expect(setToolbarState).not.toHaveBeenCalledWith(null);
     document.execCommand = origExec;
     document.body.removeChild(editorEl);
   });
@@ -146,8 +153,8 @@ describe("useInlineFormatting", () => {
     });
 
     expect(onOpenLinkEditor).toHaveBeenCalled();
-    // Should NOT dismiss toolbar for link (popover handles it)
-    expect(setToolbarState).not.toHaveBeenCalledWith(null);
+    // Should NOT touch the toolbar for link (popover handles it)
+    expect(setToolbarState).not.toHaveBeenCalled();
     document.body.removeChild(editorEl);
   });
 

@@ -92,7 +92,10 @@ describe("FloatingToolbar", () => {
     ]);
     for (const { label, id } of FORMATS) {
       const btn = getByRole("button", { name: label });
-      expect(btn.querySelector("svg.lucide"), id).not.toBeNull();
+      const svg = btn.querySelector("svg.lucide");
+      expect(svg, id).not.toBeNull();
+      // The toolbar's own stroke tier, heavier than the navigation chrome.
+      expect(svg.getAttribute("stroke-width")).toBe("2.5");
       expect(btn.textContent).toBe("");
     }
   });
@@ -111,12 +114,17 @@ describe("FloatingToolbar", () => {
     const { getByRole } = shown({
       activeFormats: { ...defaultFormats, bold: true, highlight: true },
     });
-    const boldBtn = getByRole("button", { name: "Bold" });
-    expect(boldBtn.style.color).toBe("rgb(164, 202, 206)");
-    expect(boldBtn.getAttribute("aria-pressed")).toBe("true");
-    // Highlight's active state is the mark tint, so the button reads as the effect.
-    const highlightBtn = getByRole("button", { name: "Highlight" });
-    expect(highlightBtn.style.background).toBe("rgba(164, 202, 206, 0.35)");
+    // Active is the glyph in the accent and no fill; the fill is hover's alone.
+    for (const name of ["Bold", "Highlight"]) {
+      const btn = getByRole("button", { name });
+      expect(btn.style.color).toBe("rgb(164, 202, 206)");
+      expect(btn.style.background).toBe("transparent");
+      expect(btn.getAttribute("aria-pressed")).toBe("true");
+    }
+    const italic = getByRole("button", { name: "Italic" });
+    expect(italic.style.color).toBe("rgb(255, 255, 255)");
+    fireEvent.mouseEnter(italic);
+    expect(italic.style.background).toBe("rgba(255, 255, 255, 0.08)");
   });
 
   it("shows a button's name and shortcut after the pointer rests on it", () => {

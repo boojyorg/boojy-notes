@@ -4,7 +4,8 @@
  * grown, it appears on release; a keyboard selection (Shift+Arrow) shows it
  * after a short rest. Its buttons are Lucide glyphs named by their label,
  * resting on one shows its name and shortcut, and pressing one formats the
- * selection and writes the Markdown to disk.
+ * selection and writes the Markdown to disk while the toolbar stays put with
+ * the button pressed.
  *
  * Needs the real app: the timing lives between Chromium's selectionchange
  * events, the document mouseup and the hook's timer.
@@ -106,9 +107,23 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
   const bar = toolbar(h.page);
   await expect(bar).toBeVisible({ timeout: 2_000 });
   // The toolbar acts on mouse-down so the selection survives the press.
+  const barEl = await bar.elementHandle();
   await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");
   // Chromium's own italic command wraps in <i>; the walker reads it as *…* all the same.
   await expect(h.page.locator("[data-block-id] em, [data-block-id] i")).toHaveText(LINE);
+  // The toolbar never left: the same element is still there, its button now pressed.
+  for (const wait of [0, 120, 250, 450]) {
+    await sleep(wait);
+    expect(await barEl?.evaluate((e) => e.isConnected)).toBe(true);
+  }
+  await expect(bar.getByRole("button", { name: "Italic" })).toHaveAttribute("aria-pressed", "true");
+  await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");
+  await expect(bar.getByRole("button", { name: "Italic" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  expect(await barEl?.evaluate((e) => e.isConnected)).toBe(true);
+  await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");
   await waitForFile(h.vault.file(NOTE), (t) => t.includes("*"));
   await sleep(SETTLE_MS);
   expect(h.vault.read(NOTE)).toBe(`*${LINE}*\n`);
