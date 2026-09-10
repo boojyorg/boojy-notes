@@ -24,6 +24,7 @@ import {
   titleFieldText,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
+import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
@@ -776,20 +777,9 @@ const EditorArea = memo(
                 style={{ outline: "none" }}
               >
                 {(() => {
-                  let numCounters = {};
+                  const listPositions = listLayout(note.content.blocks);
                   return note.content.blocks.map((block, i) => {
-                    let numberedIndex;
-                    if (block.type === "numbered") {
-                      const indent = block.indent || 0;
-                      numCounters[indent] = (numCounters[indent] || 0) + 1;
-                      // Reset deeper-level counters
-                      Object.keys(numCounters).forEach((k) => {
-                        if (+k > indent) delete numCounters[k];
-                      });
-                      numberedIndex = numCounters[indent];
-                    } else {
-                      numCounters = {};
-                    }
+                    const numberedIndex = listPositions[i]?.number;
                     return (
                       <BlockErrorBoundary
                         key={block.id + "-" + block.type}

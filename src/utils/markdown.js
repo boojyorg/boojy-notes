@@ -2,6 +2,8 @@
 // Shared markdown ↔ blocks converters.
 // Single source of truth used by both the renderer (browser) and Electron main process.
 
+import { listLayout, readListIndents } from "./listStructure";
+
 const CALLOUT_ALIASES = {
   note: "note",
   tip: "tip",
@@ -32,16 +34,6 @@ const CALLOUT_ALIASES = {
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
 let _parseBlockId = 0;
-
-/**
- * List indentation as written: the parsed raw prefix when the file used
- * something other than 2-space levels (tabs, odd space counts), else the
- * canonical 2 spaces per level. In-app indent changes clear `indentStr`
- * (useBlockOperations.updateBlockIndent), so it can never go stale.
- */
-function listIndent(block) {
-  return block.indentStr ?? "  ".repeat(block.indent || 0);
-}
 
 /**
  * The leading spaces of a blockquote line (`> text`, `>` alone, or `>` and a
@@ -206,12 +198,9 @@ export function blocksToMarkdown(blocks) {
   // Where each block's lines end, so the paragraph separator can be written
   // directly after the block it terminates, ahead of any empty rows between.
   const endOfBlock = [];
-  // Numbered items keep their parsed number (block.num); items created in-app
-  // have none and continue sequentially from the previous item in the run.
-  let numCounter = 0;
+  const listPositions = listLayout(blocks);
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
-    numCounter = block.type === "numbered" ? (block.num ?? numCounter + 1) : 0;
     if (takesSeparator(block)) {
       // A paragraph or divider after a paragraph or a list item needs one blank
       // line, or a conventional reader folds the paragraph into the block above
@@ -239,17 +228,17 @@ export function blocksToMarkdown(blocks) {
         break;
       case "bullet":
         lines.push(
-          `${listIndent(block)}${block.marker || "-"}${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}${block.marker || "-"}${afterMarker(block, itemText(block))}`,
         );
         break;
       case "numbered":
         lines.push(
-          `${listIndent(block)}${block.numRaw ?? numCounter}.${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}${block.numRaw ?? block.num ?? listPositions[i]?.number}.${afterMarker(block, itemText(block))}`,
         );
         break;
       case "checkbox":
         lines.push(
-          `${listIndent(block)}- [${block.checked ? "x" : " "}]${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}- [${block.checked ? "x" : " "}]${afterMarker(block, itemText(block))}`,
         );
         break;
       case "spacer":
@@ -552,10 +541,8 @@ export function markdownToBlocks(md) {
     }
 
     // 6. Single-line matchers
-    // Indent levels: 2 spaces = 1 level, a tab = 1 level. The raw prefix is
-    // kept on the block (indentStr) whenever it differs from the canonical
-    // 2-space form, so tab- and odd-space-indented list items round-trip
-    // byte-exact instead of being re-quantised (or dedented) on save.
+    // Capture the prefix before the list walk resolves depth in context:
+    // numbered parents need their marker width, not a fixed two spaces.
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
@@ -645,7 +632,7 @@ export function markdownToBlocks(md) {
   if (blocks.length === 0) {
     blocks.push({ id: `md-${++_parseBlockId}`, type: "p", text: "" });
   }
-  return structureParagraphs(blocks);
+  return readListIndents(structureParagraphs(blocks));
 }
 
 export function parseTableRow(line) {

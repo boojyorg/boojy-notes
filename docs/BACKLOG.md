@@ -27,8 +27,11 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   suite position on hosted storage lives in the suite root's `VISION.md` §7; nothing in this
   backlog assumes any particular Cloud outcome.
 - **Obsidian compatibility and Notion-first import are complementary.** Existing Markdown
-  folders, Obsidian vaults included, open as they are (the spec's support levels). Notion is
+  folders, Obsidian vaults included, open as they are (the spec's support dimensions). Notion is
   the first migration priority; Apple Notes follows.
+- **Dependable everyday Markdown and interoperability come before more formatting features.**
+  The read/render, edit/write and preservation contract lives in
+  `docs/SPEC-markdown-source-of-truth.md`; broader syntax support need not expand the menus.
 - **One visible note and one New Note workflow.** Opening a note replaces it; no tabs, no
   split view. Every entry point (the button, Cmd+N, a folder's menu, any later global shortcut
   or share action) runs the same creation; there is no separate quick-note type.
@@ -55,7 +58,10 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   before it became structure on 2026-09-05, because without it `---` is a heading underline).
   Making one such blank structural too keeps the common form tidy but needs a per-block "written
   tight" record to keep the rarer tight form byte-identical.
-- **A `---` directly under a paragraph line is read as a divider, not a setext heading.** To
+- **Setext headings (`===` and hyphen underlines).** Recommended direction: recognise both
+  forms while preserving their authored spelling. Editing behaviour remains unresolved; this
+  recommendation does not change the spec's documented current behaviour. `===` underlines
+  currently remain paragraph text. A `---` directly under a paragraph is read as a divider. To
   every other reader `hello` / `---` is a heading called "hello"; Boojy Notes shows a paragraph
   and a rule, and its first save writes the blank line that makes the file a divider everywhere
   (a sanctioned byte change, see the spec). Reading it as a heading would be right and needs a
@@ -137,6 +143,11 @@ none blocks the release. The shared question comes first because three candidate
   with an obvious way back. It is the one UI the preservation promise has, the tool for
   checking what an import did, and useful for unfamiliar syntax. A first version may commit
   source edits as one history entry on the way back.
+- **Nested-bullet visual hierarchy.** Consider distinguishing bullet markers by nesting depth
+  without changing the authored Markdown. Whether it helps, and which appearance to use, need
+  live judgement; retaining today's markers is an option.
+- **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
+  new block type. Discoverability and interaction need live judgement; adding it may be declined.
 - **Notion import.** The first migration priority; whether it ships in Beta is undecided.
   Notion exports Markdown and CSV in a ZIP. Proposed flow: pick the ZIP, preview the
   conversion, choose a destination, review a report that counts notes and attachments and
@@ -214,11 +225,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
   after it has been felt.
 
-- **Underscore emphasis from files made elsewhere shows as literal text.** `_italic_` and
-  `__bold__` are CommonMark, and typing them converts (saved in the star form, 2026-09-10), but
-  the renderer and the writer speak only `*`: rendering a file's `_italic_` would have the
-  first edit of that paragraph rewrite it as `*italic*`, a first-edit mutation. Needs the
-  writer to remember marker style per run before the renderer can show it.
 - **Cmd+B at a bare caret** (press, type, press, as Apple Notes and Notion do). Probed in the
   real app 2026-09-10: bold and italic work through Chromium's own typing style, but a space
   typed first lands inside the element and as U+00A0, so `Cmd+B`, ` bold`, `Cmd+B` reaches the
@@ -227,6 +233,33 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   it real means owning the typing style for all five and keeping the space outside.
 - **Nested typed formatting** (`*x*` typed inside existing bold) is left literal until the next
   repaint, by the trigger's own guard; the renderer decides it then. Judge live.
+
+### Markdown compatibility
+
+Priority for assessment, not additional Beta release requirements. New findings here come from
+the 2026-09-10 code inspection and sample probes, not a full desktop interaction test. Verify
+the relevant read, edit and save journeys before choosing a fix; missing support is distinct
+from a correctness defect. Existing preservation blockers retain their status under Data safety.
+
+- **Missing support: H4–H6.** Currently read as paragraph text. Consider recognition and
+  editing while retaining authored source; menu exposure remains undecided. Setext headings
+  have their own existing item under Open decisions.
+- **Links: parsing defects and missing navigation.** Optional link titles are treated as part
+  of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
+  relative `.md` links use the external-link path rather than navigating within the vault.
+  Assess correct parsing, source preservation and destination handling together. Heading
+  targets are a separate future item below.
+- **Code: literal handling and delimiter support.** Formatting inside a code span can render
+  as active emphasis; multi-backtick spans need correct delimiter handling. Indented code is
+  not recognised as code. Keep contents literal through reading, editing and writing. Tilde
+  fences and closing-fence preservation already have items under Data safety; do not duplicate
+  or downgrade them here.
+- **Missing rendering: imported underscore emphasis.** `_italic_` and `__bold__` are CommonMark,
+  and typing them converts (saved in the star form, 2026-09-10), but the renderer and writer
+  speak only `*`. Rendering imported underscores must not cause the first edit to rewrite
+  their marker style; source-preserving editing needs to accompany rendering support.
+- **Missing syntax variants: alternate dividers.** `***` and `___` are not recognised as
+  dividers. Assess common forms without normalising their authored spelling on save.
 
 ### Data safety / reliability
 
@@ -278,9 +311,6 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
   what is left is that a renderer that has already died still holds the quit for the cap.
 - [ ] **Orphaned `.*.tmp` files** after a crash followed by a rename.
-- [ ] **Numbered lists keep their parsed number after an in-app reorder or insertion** —
-  dragging item 3 above item 1 saves `3. 1. 2.`, and Enter inside a list can repeat a number;
-  lossless on round-trip, wrong in any other renderer (`markdown.js` `numCounter`).
 - [ ] **Wikilink rename does not update referrers** — silent link breakage.
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
@@ -407,7 +437,22 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 ### Editor and organisation
 
 - **Heading navigation or folding**, without another permanent panel. No choice yet between a
-  heading picker (an `@` mode in the search palette would add no panel) and folding.
+  heading picker (an `@` mode in the search palette would add no panel) and folding. Consider
+  links to sections within and between notes, including heading targets in wikilinks. Explicit
+  heading IDs are a separate syntax decision; target naming and behaviour when headings change
+  remain open.
+- **Table alignment controls.** Consider restoring a way to set left, centre and right column
+  alignment. Existing file alignments already render; the current absence of controls remains
+  intentional. Placement and interactions are unchosen. Preserving separator spelling is the
+  separate Data safety item, not dependent on adding controls.
+- **Footnotes.** Consider rendering, editing and navigation between references and definitions.
+  Supported syntax and interactions remain open; no citation-management system is implied.
+- **Richer nested quotes and list contents.** Consider nested quote depth and Markdown elements
+  inside quotes or list items. Basic list indentation is separate. Source preservation and
+  editing across those structures need a design before broader support is selected.
+- **Limited subscript/superscript, if useful.** Assess demand before choosing syntax or controls.
+  A narrow HTML subset is one possibility to weigh against Markdown extensions; no broad HTML
+  rendering is authorised by this idea.
 - **Archive.** "Keep it, remove it from everyday browsing", with no expiry. A real Archive
   directory is preferred (visible to Finder and other editors, ordinary files) over status
   stored separately (stable paths, simple unarchive, invisible to other apps). Costs of the

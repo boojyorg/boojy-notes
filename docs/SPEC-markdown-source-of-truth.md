@@ -2,7 +2,7 @@
 
 **Status:** binding constraint (adopted v0.5.0). This is an architectural rule, not a
 feature request. It governs what blocks and interactions may exist in Boojy Notes, what the app
-owes each piece of Markdown syntax it meets (the support levels below), and what that implies
+owes each piece of Markdown syntax it meets (the support dimensions below), and what that implies
 for the UI. Feature plans, reviews and UI decisions are judged against this document; if a
 proposal conflicts with it, the proposal changes.
 
@@ -86,9 +86,11 @@ Allowed *because markdown can express them*:
 - All current block types: `p`, `h1`–`h3`, `bullet`, `numbered`, `checkbox`, `blockquote`,
   `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file.
-  (`blocksToMarkdown` walks the array in order, so reordering re-serialises cleanly for free.)
-- **List indent / outdent** — markdown nested-list syntax (a `- nested` line indented by two
-  spaces). **List types only** (`bullet`/`numbered`/`checkbox`) — see "Removed" below.
+  Structural list edits also update the affected numbering and indentation so the file
+  expresses the reordered list; text-only edits retain the source markers.
+- **List indent / outdent** — Markdown nested-list syntax, with child indentation accounting
+  for the parent's marker width. **List types only** (`bullet`/`numbered`/`checkbox`) — see
+  "Removed" below. Newly edited structure cannot skip levels or leave a child without a parent.
 - Obsidian-flavoured-but-still-text marks already in use: `==highlight==`, `[[wikilinks]]`.
 
 ## Forbidden — do not build (breaks portability)
@@ -96,6 +98,8 @@ Allowed *because markdown can express them*:
 - **Block nesting / re-parenting** into structures markdown can't express.
 - **Columns / side-by-side layouts.**
 - **Any block that serialises to JSON-in-a-codeblock or hidden metadata.**
+- **Broad arbitrary HTML/CSS or executable rendering.** Preserving such source is distinct
+  from rendering or executing it; a narrowly supported HTML subset would need its own decision.
 
 If a feature request implies any of the above, the answer is no — point back to this spec.
 
@@ -167,21 +171,30 @@ and stronger: it can work directly with the Markdown files in an Obsidian vault 
 syntax it doesn't understand. Plugins, Canvas, `.obsidian` config and the rest of the workspace
 are out of scope.
 
-## Support levels
+## Markdown support: three independent dimensions
 
-Every piece of Markdown syntax Boojy Notes encounters sits at exactly one level. An Obsidian
-feature does not need to be a Boojy Notes feature just because the app can parse its syntax.
+Assess each piece of syntax along all three dimensions. Success in one does not prove the
+others: source can survive without rendering correctly, and correct rendering does not prove
+that an edit or save preserves it.
 
-| Level | Meaning | Examples |
-| --- | --- | --- |
-| **Native** | Boojy Notes creates, edits, and renders it as a first-class feature | headings, lists, checkboxes, tables, images, code, quotes |
-| **Compatible** | The app understands and renders it, but keeps the UI quiet: no permanent chrome, no promotion in menus | `[[wikilinks]]`, `#tags`, callouts, frontmatter |
-| **Preserved** | The app may not render it meaningfully, but must never destroy or rewrite it | plugin syntax, block refs `^id`, `%%comments%%`, unknown YAML |
-| **Out of scope** | No dedicated Boojy Notes feature or UI, until argued otherwise | graph view, canvas, databases, plugins, AI |
+| Dimension | Question |
+| --- | --- |
+| **Read/render** | Does Boojy Notes understand and display the syntax's meaning? |
+| **Edit/write** | Can the app create or modify it correctly and write Markdown with the intended meaning? |
+| **Preserve** | Does the original Markdown survive unchanged outside intentional edits, including syntax the app does not understand? |
 
-Moving something *up* a level (promoting a Compatible feature to Native UI) is a product
-decision, and the question it must answer is: *does a first-time user's five minutes get
-better or busier?*
+App-generated Markdown must express the intended meaning in conventional readers, not merely
+round-trip through the app's own parser. Existing authored Markdown retains its spelling and
+bytes outside intentional edits. The documented exceptions and known failures above still
+apply; they are not permission to normalise other source.
+
+Syntax support and UI exposure are separate decisions. The app may understand more syntax
+than it exposes in menus, and unsupported syntax needs no dedicated UI merely to survive.
+Adding a control must answer: *does a first-time user's five minutes get better or busier?*
+
+Supporting every Markdown dialect or extension is not a goal. Graph view, Canvas, databases,
+plugins and AI remain outside the product scope; preserving associated source does not imply
+implementing those features.
 
 ### Consequences for UI
 
@@ -204,4 +217,6 @@ better or busier?*
   meaning (`markdownInterop.test.js`, judged by an independent CommonMark parser against
   `tests/fixtures/interop/`). A red test means you broke a contract — fix the converter, don't
   weaken the test; a known gap is a narrow `it.fails`, never a deleted fixture.
-- **Asked to add nesting/columns/metadata-blocks?** Decline and link here.
+- **Asked to add nesting into structures Markdown cannot express, columns or metadata-blocks?**
+  Decline and link here. Ordinary Markdown nesting is eligible for consideration, not automatically
+  approved; concrete support gaps and proposals belong in `docs/BACKLOG.md`.
