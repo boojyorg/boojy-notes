@@ -546,6 +546,17 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   column's existing left padding, so it **never overlaps prose and never shifts layout**, and it
   centres on the block's first line so it lands where the eye reads first for headings, list
   rows and multi-line paragraphs alike. Desktop only.
+- **Measured geometry is divided by the UI scale before it becomes a style** (2026-09-10).
+  The scale is CSS `zoom` on `<html>`, and Chromium 128+ and Firefox 126+ report
+  `getBoundingClientRect()` and `clientX`/`clientY` already multiplied by it, while a `top` or
+  `left` on an element inside the zoom is multiplied again on paint. The grip
+  (`BlockDragHandle`), the drag ghost and the drop marker (`useBlockDrag`) divide every measured
+  distance by `cssZoom(el)` (`domHelpers`, `Element.currentCSSZoom`, 1 where unsupported); before
+  this the grip drifted down the note by the scale factor at any setting but 100% (3px on the
+  first block, 35px three blocks down at 120%), which Cmd+0 hid. Anything else that writes a
+  measured rect or a `clientX`/`clientY` into a style on a zoomed element (the fixed menus at the
+  pointer, the selection toolbar) is exposed by the same mechanism; not measured and not yet
+  corrected, so judge those at 100% until it is.
 - **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
   on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
   the grip lifts its ink and nothing else: **no hover surface**, so the gutter stays part of
@@ -1228,7 +1239,11 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
 - **A new column is empty.** `withColumnInserted` writes `""` into every row, the header
   included; the `Col N` label it used to write reached the file as text nobody typed.
 - **The row and column strips left of and above the grid stay invisible** (24px, click selects,
-  hold 400ms and drag reorders; Backspace on a selected row or column removes it). Judged after
+  hold 400ms and drag reorders; Backspace on a selected row or column removes it). **The gutter
+  grip stacks above the row strip** (`Z.BLOCK_HANDLE`, one step over `ELEMENT_OVERLAY`,
+  2026-09-10): the strip's 24px at `left: -24px` is exactly the grip's footprint, and below it
+  the grip was visible but every press selected the header row and the table could not be
+  dragged. The strip keeps the rest of its height. Judged after
   this pass: if discovering row or column selection is a struggle in daily use, add Obsidian's
   hover handles; if not, low chrome wins.
 - **The cell menu is the note-row menu's grammar, anchored to the cell** (`TableContextMenu`,

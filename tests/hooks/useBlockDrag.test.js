@@ -5,6 +5,8 @@ import { renderHook, act, cleanup } from "@testing-library/react";
 vi.mock("../../src/utils/domHelpers", () => ({
   runAutoScroll: vi.fn(),
   suppressNextClick: vi.fn(),
+  // The UI scale's zoom; tests set `document.body.currentCSSZoom` to simulate it.
+  cssZoom: (el) => (typeof el?.currentCSSZoom === "number" ? el.currentCSSZoom : 1),
 }));
 
 import { useBlockDrag } from "../../src/hooks/useBlockDrag";
@@ -382,5 +384,32 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     expect(bd.active).toBe(true);
     expect(bd.noteId).toBe("n2");
     expect(bd.blockIds).toEqual(["x1"]);
+  });
+
+  it("under the UI scale's zoom, the ghost and marker are placed in CSS pixels, not viewport pixels", () => {
+    // Chromium 128+ and Firefox 126+ report rects and clientX/Y multiplied by
+    // the `zoom` on <html>; a style on <body>'s children is scaled again on
+    // paint, so the measured values must be divided by the zoom first.
+    document.body.currentCSSZoom = 2;
+    try {
+      const { deps, blockRefs } = setup({
+        blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3")],
+      });
+      mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+      const { result } = renderHook(() => useBlockDrag(deps));
+      pressAndLift(result, "b1"); // lifts at y=122 in b1 (100–130) → offsetY 22
+      const bd = result.current.blockDrag.current;
+      expect(bd.zoom).toBe(2);
+      expect(bd.cloneEl.style.left).toBe("25px"); // rect.left 50 ÷ 2
+      expect(bd.cloneEl.style.width).toBe("250px");
+      expect(bd.cloneEl.style.top).toBe("50px"); // (122 − 22) ÷ 2
+      act(() => {
+        move(10, 400); // below every block → EDGE_GAP under b3: viewport y 214
+      });
+      expect(bd.cloneEl.style.top).toBe("189px"); // (400 − 22) ÷ 2
+      expect(markerCentre()).toBe(107); // 214 ÷ 2
+    } finally {
+      delete document.body.currentCSSZoom;
+    }
   });
 });

@@ -456,6 +456,22 @@ function selectAnchor(place, link) {
 }
 
 /**
+ * The CSS zoom in effect on `el`: the factor between the viewport pixels that
+ * `getBoundingClientRect()` and `clientX`/`clientY` report and the CSS pixels a
+ * `top` or `left` written on `el` is read in. The app's UI scale is `zoom` on
+ * `<html>` (SettingsContext), and Chromium 128+ and Firefox 126+ report
+ * geometry already multiplied by it, so a distance measured between two rects
+ * is divided by this before it becomes a style, or the style is scaled a
+ * second time on paint (the block grip drifted down the note by the scale
+ * factor at any setting but 100%, 2026-09-10). 1 where the browser has no
+ * zoom, jsdom included.
+ */
+export function cssZoom(el) {
+  const z = el?.currentCSSZoom;
+  return typeof z === "number" && z > 0 ? z : 1;
+}
+
+/**
  * Auto-scroll a container when pointer is near its edges.
  */
 export function runAutoScroll(scrollEl, pointerY) {
