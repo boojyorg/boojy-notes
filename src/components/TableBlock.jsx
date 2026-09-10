@@ -10,8 +10,10 @@ import TableContextMenu from "./TableContextMenu";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
-/** The add-row and add-column boxes' thickness. */
-export const ADD_BAR = 28;
+/** The add-row and add-column boxes' thickness (halved from 28 on 2026-09-10, judged live). */
+export const ADD_BAR = 14;
+/** The Plus inside them, sized to the box. */
+const ADD_PLUS = 12;
 /** The invisible row and column strips left of and above the grid. */
 const EDGE_ZONE = 24;
 
@@ -205,18 +207,6 @@ export default memo(function TableBlock({
       rows: [...cur, new Array(tableColumnCount(cur) || 2).fill("")],
     }));
   }, [noteId, blockIndex, onUpdateTableRows]);
-
-  const setAlignment = useCallback(
-    (colIdx, align) => {
-      onUpdateTableRows(noteId, blockIndex, (cur, aligns) => {
-        const newAligns = [...aligns];
-        while (newAligns.length <= colIdx) newAligns.push("left");
-        newAligns[colIdx] = align;
-        return { rows: cur, alignments: newAligns };
-      });
-    },
-    [noteId, blockIndex, onUpdateTableRows],
-  );
 
   const focusCell = useCallback(
     (rowIdx, colIdx) => cellRefs.current[`${rowIdx}-${colIdx}`]?.focus(),
@@ -537,7 +527,7 @@ export default memo(function TableBlock({
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
         >
-          <PlusIcon size={16} />
+          <PlusIcon size={ADD_PLUS} />
         </div>
       </div>
 
@@ -560,7 +550,7 @@ export default memo(function TableBlock({
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
       >
-        <PlusIcon size={16} />
+        <PlusIcon size={ADD_PLUS} />
       </div>
 
       {/* Counter badge during drag-to-create */}
@@ -591,12 +581,10 @@ export default memo(function TableBlock({
           position={{ x: contextMenu.x, y: contextMenu.y }}
           context={contextMenu.context}
           colCount={colCount}
-          alignments={alignments}
           onInsertRow={insertRow}
           onDeleteRow={deleteRowAt}
           onInsertColumn={insertColumn}
           onDeleteColumn={deleteColumnAt}
-          onSetAlignment={setAlignment}
           onDeleteTable={onDelete}
           onDismiss={closeContextMenu}
         />

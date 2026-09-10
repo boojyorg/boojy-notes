@@ -55,22 +55,21 @@ function Separator() {
 }
 
 /**
- * The cell's right-click menu: rows and columns around the clicked cell,
- * alignment for a header or a selected column, and, last, the whole table.
- * Delete table is the discoverable path to what Escape then Backspace also
- * does (the table is addressed as a whole; see TableBlock). Labels are
- * sentence case, as the rest of the app's menus are.
+ * The cell's right-click menu: rows and columns around the clicked cell and,
+ * last, the whole table. Delete table is the discoverable path to what Escape
+ * then Backspace also does (the table is addressed as a whole; see
+ * TableBlock). Labels are sentence case, as the rest of the app's menus are.
+ * No alignment items, by decision (2026-09-10): a file's `:---:` still renders
+ * and round-trips, but the app offers no control for it.
  */
 export default function TableContextMenu({
   position,
   context,
   colCount,
-  alignments,
   onInsertRow,
   onDeleteRow,
   onInsertColumn,
   onDeleteColumn,
-  onSetAlignment,
   onDeleteTable,
   onDismiss,
 }) {
@@ -140,42 +139,6 @@ export default function TableContextMenu({
         label="Insert column right"
         onClick={() => {
           onInsertColumn(colIndex, "right");
-          onDismiss();
-        }}
-      />,
-    );
-  }
-
-  // Alignment options for column/header context
-  if ((type === "column" || type === "header") && onSetAlignment) {
-    const currentAlign = alignments?.[colIndex] || "left";
-    items.push(<Separator key="sep-align" />);
-    items.push(
-      <MenuItem
-        key="align-left"
-        label={`Align left${currentAlign === "left" ? "  \u2713" : ""}`}
-        onClick={() => {
-          onSetAlignment(colIndex, "left");
-          onDismiss();
-        }}
-      />,
-    );
-    items.push(
-      <MenuItem
-        key="align-center"
-        label={`Align centre${currentAlign === "center" ? "  \u2713" : ""}`}
-        onClick={() => {
-          onSetAlignment(colIndex, "center");
-          onDismiss();
-        }}
-      />,
-    );
-    items.push(
-      <MenuItem
-        key="align-right"
-        label={`Align right${currentAlign === "right" ? "  \u2713" : ""}`}
-        onClick={() => {
-          onSetAlignment(colIndex, "right");
           onDismiss();
         }}
       />,

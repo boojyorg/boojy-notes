@@ -1209,8 +1209,9 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
   radius (judged against Obsidian's grid, 2026-09-10).
 - **The add-row and add-column boxes are Obsidian's**: a bordered box the grid's height past
-  its right edge and its width under its bottom edge (28px, `ADD_BAR`), sharing the grid's own
-  border line (no left or top border of its own), a Lucide `PlusIcon` at 16px centred, in
+  its right edge and its width under its bottom edge (14px, `ADD_BAR`; 28px read too heavy
+  beside a 1px grid), sharing the grid's own border line (no left or top border of its own), a
+  Lucide `PlusIcon` at 12px centred, in
   `TEXT.muted` and `TEXT.primary` on hover. Shown in CSS only while the pointer is on the box
   itself, past that edge (`.table-add-bar:hover`; never a JS hover state); a table at rest,
   hovered over its cells or being typed in shows none. Click adds one row or column; drag adds
@@ -1227,6 +1228,9 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
   labels), the discoverable path to what Escape then Backspace also does; it runs
   `deleteWholeBlock`, so the caret lands under where the table was. The header row still cannot
   be deleted (GFM needs one) and the last column cannot either; the table goes as a whole.
+  **No alignment items** (removed 2026-09-10, by decision): a file's `:---:` and `---:` still
+  render the column and round-trip through `alignments`, but the app offers no control to set
+  them; the menu is rows, columns and the table.
 - Deliberately absent: column resizing and a header toggle (Markdown cannot hold either),
   Shift+Arrow or any cell-range selection, a click on the grid's chrome to select the whole
   table (the strips select rows and columns; Escape selects the table).

@@ -24,7 +24,6 @@ const props = (context) => ({
   onDeleteRow: vi.fn(),
   onInsertColumn: vi.fn(),
   onDeleteColumn: vi.fn(),
-  onSetAlignment: vi.fn(),
   onDeleteTable: vi.fn(),
   onDismiss: vi.fn(),
 });
@@ -47,7 +46,7 @@ describe("TableContextMenu", () => {
     }
   });
 
-  it("labels are sentence case, and the header row cannot be deleted", () => {
+  it("labels are sentence case, the header row cannot be deleted, and there are no alignment items", () => {
     render(<TableContextMenu {...props({ type: "cell", rowIndex: 1, colIndex: 0 })} />);
     for (const label of [
       "Insert row above",
@@ -63,6 +62,6 @@ describe("TableContextMenu", () => {
     cleanup();
     render(<TableContextMenu {...props({ type: "header", rowIndex: 0, colIndex: 1 })} />);
     expect(screen.queryByText("Delete row")).toBeNull();
-    expect(screen.getByText(/Align centre/)).toBeInTheDocument();
+    expect(screen.queryByText(/Align/)).toBeNull();
   });
 });
