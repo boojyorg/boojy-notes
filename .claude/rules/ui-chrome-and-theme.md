@@ -1160,6 +1160,12 @@ hook for the paint half (`useOwnedField`), the ordinary text action for the comm
 
 ### Fenced code keeps its authored boundaries
 
+The visible highlight layer and the transparent textarea share their line geometry. Every
+`.code-line`, including an empty one, takes at least one line-height (`1lh`); otherwise a blank
+line collapses in the highlight layer and every visible line below it targets the wrong text
+when clicked. The real-Electron pointer regression clicks visible digits after leading and
+consecutive blank lines, edits them and checks the saved bytes, with and without highlighting.
+
 Backtick and tilde fences open one code block; its entire body is literal textarea text.
 A closer uses the same character and at least the opener's length. `fenceSource` on the code
 block retains non-default opening and closing lines, including whitespace and an absent

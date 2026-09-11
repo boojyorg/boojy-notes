@@ -9,6 +9,55 @@ const source = readFileSync(
 );
 const body = source.split("~~~~markdown  \n")[1].split("\n~~~~~ \t")[0];
 
+for (const lang of ["", "javascript"]) {
+  test(`clicking visible code after blank lines edits that character (${lang || "plain"})`, async () => {
+    const codeBody = "\n\nconst x = 1;\n\n\nconst y = 2;\n";
+    const original = `~~~~${lang}\n${codeBody}\n~~~~\n`;
+    const h = await launchApp({ "Click code.md": original });
+    try {
+      await h.openNote("Click code");
+      const code = h.page.locator("textarea.code-textarea");
+      for (const digit of ["1", "2"]) {
+        // Aim at the visible glyph, not a position computed from the textarea:
+        // the bug was that these two layers disagreed after an empty line.
+        const point = await h.page.locator(".code-overlay").evaluate((overlay, target) => {
+          const walker = document.createTreeWalker(overlay, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const at = node.textContent?.indexOf(target) ?? -1;
+            if (at < 0) continue;
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + 1);
+            const box = range.getBoundingClientRect();
+            return { x: box.x + box.width * 0.8, y: box.y + box.height / 2 };
+          }
+          throw new Error(`No visible ${target} in the code overlay`);
+        }, digit);
+        await h.page.mouse.click(point.x, point.y);
+        expect(await code.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(
+          codeBody.indexOf(digit) + 1,
+        );
+        await h.page.keyboard.press("Backspace");
+        await h.page.keyboard.type("9");
+        await waitForFile(
+          h.vault.file("Click code.md"),
+          (text) => text === original.replace(digit, "9"),
+        );
+        await h.page.keyboard.press(`${MOD}+z`);
+        await expect(code).toHaveValue(codeBody);
+        await waitForFile(h.vault.file("Click code.md"), (text) => text === original);
+      }
+      await h.restart();
+      await h.openNote("Click code");
+      await expect(h.page.locator("textarea.code-textarea")).toHaveValue(codeBody);
+      expect(h.vault.read("Click code.md")).toBe(original);
+      expect(h.pageErrors).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+}
+
 test("an imported tilde fence stays one code block through outside and inside edits, undo and restart", async () => {
   const h = await launchApp({ "Fences.md": source });
   try {
