@@ -21,6 +21,18 @@ change needs; the incidents behind them are in git.
   **electron-builder must be ≥ 26.16.1**: before that it handed `security set-key-partition-list`
   the certificate's password where the keychain's own is required (upstream #10066, fixed in
   #10172), which the `macos-26` runner image enforces and older images let through.
+  **Notarisation authenticates with an App Store Connect *Team* API key**
+  (`APPLE_API_KEY_B64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, plus `APPLE_TEAM_ID`), not an
+  Apple ID and app-specific password: that password had died with Audio's June credentials and
+  cost two rehearsals, and a team key does not expire with an Apple ID password. Three things
+  it demands. It must be a **Team** key: an Individual key cannot use notarytool at all, and
+  Developer is role enough. `@electron/notarize` wants **a filesystem path** to the `.p8`, not
+  its contents, so `release.yml` decodes the secret into `RUNNER_TEMP` before the build and
+  removes it after (outside the workspace, so no `files` glob can pack it). And `APPLE_ID` and
+  `APPLE_APP_SPECIFIC_PASSWORD` must stay **out** of that step's env: electron-builder checks
+  the Apple ID pair first and returns early, so their presence silently reinstates the dead
+  path. Check credentials against Apple before spending a run:
+  `xcrun notarytool history --key <p8> --key-id <id> --issuer <uuid>`.
 - **Releases land as drafts, and one tag can produce two of them** with the assets split
   between them (seen 2026-09-11 from the Windows job alone: EXE and `latest.yml` in one,
   the blockmap in the other; the matrix adds the same race across jobs). electron-builder
