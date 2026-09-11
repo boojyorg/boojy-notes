@@ -47,10 +47,8 @@ const FIXTURES_DIR = path.join(
 // Fixture → which experiments currently fail byte-exactness.
 // (The inline comments on each entry carry the per-fixture failure detail.)
 const KNOWN_FAILURES = {
-  "backtick-fences.md": { roundtrip: true, edit: true }, // empty fence gains a blank line
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
-  // Two patterns found by the 2026-08-18 real-vault smoke test (209 files):
-  "indented-fences.md": { roundtrip: true, edit: true }, // fence's own leading spaces dropped (serialised at col 0)
+  // Found by the 2026-08-18 real-vault smoke test (209 files):
   "trailing-ws-list-lines.md": { roundtrip: true, edit: true }, // list/heading lines still trim trailing spaces (paragraphs don't)
   "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md; ragged rows fixed 2026-09-07 — see table-ragged.md)
 };

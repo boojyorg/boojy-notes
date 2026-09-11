@@ -27,6 +27,68 @@ const stripIds = (blocks) => blocks.map(({ id, ...rest }) => rest);
 /** blocks → markdown → blocks, ids stripped, ready for deep-equal. */
 const roundTrip = (blocks) => stripIds(markdownToBlocks(blocksToMarkdown(blocks)));
 
+describe("fenced code retains its authored boundaries", () => {
+  it.each([
+    "~~~js\n# heading\n- [X] task\n> [!NOTE] callout\n~~~",
+    "~~~~ markdown  \n```js\ncode\n```\n~~~\n~~~~~ \t",
+    "  ~~~ruby  \n  puts 'hello'\n  ~~~~  ",
+    "\u00a0~~~js\u00a0\ncode\n\u00a0~~~~\u00a0",
+    "~~~~\n~~~~",
+    "~~~~\n\n~~~~",
+    "~~~js",
+    "~~~js\n",
+    "~~~js\ncode\n",
+    "````js  \nconst x = 1;\n`````  ",
+  ])("reads one literal code block and round-trips its source: %s", (source) => {
+    const blocks = markdownToBlocks(source);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("code");
+    expect(blocksToMarkdown(blocks)).toBe(source);
+    expect(roundTrip(blocks.map(({ id, ...block }) => block))).toEqual(
+      blocks.map(({ id, ...block }) => block),
+    );
+  });
+
+  it("does not let a shorter or different-character fence close a tilde block", () => {
+    const source = "~~~~\n~~~\n```\n~~~~~\nAfter.";
+    const blocks = markdownToBlocks(source);
+    expect(blocks.map((block) => block.type)).toEqual(["code", "p"]);
+    expect(blocks[0].text).toBe("~~~\n```");
+    expect(blocksToMarkdown(blocks)).toBe(source);
+  });
+
+  it("keeps the tilde style when the existing language control changes the language", () => {
+    const [block] = markdownToBlocks("~~~~js  \ncode\n~~~~~ \t");
+    block.lang = "python";
+    expect(blocksToMarkdown([block])).toBe("~~~~python\ncode\n~~~~~ \t");
+  });
+
+  it.each([
+    "",
+    " \t",
+    "\u00a0",
+  ])("grows the same fence character for a closing-looking line with %j padding", (padding) => {
+    const [block] = markdownToBlocks("~~~\ncode\n~~~~  ");
+    block.text = `code\n${padding}~~~${padding}\ninline ~~~~~ text`;
+    const source = blocksToMarkdown([block]);
+    expect(source).toBe(`~~~~\n${block.text}\n~~~~  `);
+    expect(markdownToBlocks(source)[0].text).toBe(block.text);
+  });
+
+  it("closes an unclosed imported fence only when a new block is added after it", () => {
+    const [block] = markdownToBlocks("~~~\ncode");
+    const source = blocksToMarkdown([block, { type: "p", text: "After." }]);
+    expect(source).toBe("~~~\ncode\n~~~\nAfter.");
+    expect(markdownToBlocks(source).map((block) => block.type)).toEqual(["code", "p"]);
+  });
+
+  it("escapes a tilde fence typed as a soft-break line in ordinary prose", () => {
+    const source = blocksToMarkdown([{ type: "p", text: "Prose\n~~~" }]);
+    expect(source).toBe("Prose\n\\~~~");
+    expect(markdownToBlocks(source).map((block) => block.type)).toEqual(["p"]);
+  });
+});
+
 // One representative, fixture for each lossless type. Each object is written to
 // EXACTLY match what markdownToBlocks emits, so a clean round-trip deep-equals it.
 const LOSSLESS_CASES = [

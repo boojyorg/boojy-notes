@@ -308,6 +308,8 @@ export default function GlobalStyles() {
         .code-line {
           position: relative;
           display: block;
+          /* Empty overlay lines must occupy the same line box as the textarea. */
+          min-height: 1lh;
         }
         .code-copy-wrapper {
           position: absolute;
