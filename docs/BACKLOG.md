@@ -1,15 +1,16 @@
 # Boojy Notes — Backlog
 
 Direction, what is left to do and what is known to be broken, checked against master on
-2026-09-07. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
+2026-09-11. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
 daily-drive Boojy Notes, and let observed friction decide what deserves to exist next. Nothing
 is added because it sounds plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-07,
-closing out the whole-repo review of 2026-09-06 (its fixes are in `CHANGELOG.md` Unreleased; the
-residue is here).
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-11,
+for the v0.7.0 release, closing out the whole-app review of 2026-09-07 (its fixes are in
+`CHANGELOG.md` v0.7.0, PRs #144–#158; the residue is here, marked *review §n* where it came
+from that file's B and C lists).
 
 ## Direction
 
@@ -83,17 +84,22 @@ found on the way gate it as well, without needing a line here.
 - [ ] **Preservation blocker** — the table-alignment mutation marked under Data safety below.
 - [ ] **Visual polish and a Windows smoke test.** Before Windows testers: a
   `requestSingleInstanceLock` in `main.js` (a second launch opens a second instance today, which
-  matters more on Windows than on macOS).
-- [ ] **Publish the tested build.** Testers and the website only ever see the last *published*
-  release (v0.5.0), never the daily-driver build, so a Beta that lives only in `/Applications`
-  is not released. `CHANGELOG.md` holds the notes (Unreleased plus the two unpublished 0.6.x
-  sections); the release runs the docs pass in `AGENTS.md` and the draft-release steps in the
-  CI rule. Two decisions wait on it, deliberately deferred until a build is worth publishing:
-  **sign macOS releases** (five secrets, then re-measure the release job's cap; until then every
-  published macOS build is unsigned and Settings → Updates cannot update it, so the alternative
-  is to say so in the release notes), and the **release path** (pre-create the release before
-  the matrix and auto-publish when both jobs pass, retiring the manual draft merge; and whether
-  a tag may be cut from a commit that never passed CI).
+  matters more on Windows than on macOS). Traced only, no Windows machine (review §6, §2.10):
+  reserved device names (`CON`, `NUL`, …) as a note or folder name, and the raw extension kept
+  by `save-image` and `save-attachment`; both belong to this smoke test. Windows spell-check
+  dictionaries download from Google's CDN on first launch (no
+  `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
+- [ ] **Sign macOS releases and fix the release path.** v0.7.0 (2026-09-11) published the
+  daily-driver line as early access, the first tag since v0.5.0. Testers and boojy.org only ever
+  see the last *published* release, so Beta too is a tag and a published release, never a build
+  that lives only in `/Applications`; every release runs the docs pass in `AGENTS.md` and the
+  draft-release steps in the CI rule. Two decisions were deferred until a build was worth
+  publishing: **sign macOS releases** (five secrets, `docs/private/code-signing.md`, then
+  re-measure the release job's cap; an unsigned, un-notarised build is blocked by Gatekeeper on
+  a fresh Mac and Settings → Updates cannot update it, and the release notes must say so while
+  that holds), and the **release path** (pre-create the release before the matrix and
+  auto-publish when both jobs pass, retiring the manual draft merge; and whether a tag may be
+  cut from a commit that never passed CI).
 
 ## Beta: candidates
 
@@ -198,7 +204,9 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
   `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).
 - [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
-  the third attempt.
+  the third attempt. The hold is also the cause of a 2px twitch-to-root, a swallowed slow click
+  and a stale target under auto-scroll (review §4.4); Finder, Notion and Obsidian lift after
+  ~5px of movement and never on a timer, and a displacement threshold fixes all four at once.
 - [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
 - [ ] **Undo snapshots the open note whatever the commit touched** (`useHistory.js`
   `pushHistory`): a sidebar rename of another note pushes a no-op entry, so Cmd+Z "does
@@ -221,6 +229,37 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   its own; an IME composition begun over a selection spanning blocks cannot be intercepted
   (`insertCompositionText` is not cancelable). None loses data; each is a decision to make
   once it has been felt.
+- [ ] **Toasts and the empty state are short of ink** (review §5): the info toast is `#fff` on
+  the accent, 1.76:1 on Dark; "Failed to save", the one data-loss message, is under 2.7:1 on
+  both themes; the empty-state line at half muted is 1.95:1; the focus ring at 25% accent is
+  under 2:1 where a component needs 3:1. `ACCENT.onAccent` on the info toast, dark ink on the
+  warning, full `TEXT.muted` for the empty state, a 2px ring at 60% would still be quiet.
+- [ ] **Shift-click never ranges after a plain click**; the anchor is set only by Cmd-click
+  (review §4.6). Not re-verified.
+- [ ] **The editor's ··· shows the sidebar's bulk menu** while a sidebar multi-selection stands,
+  and Rename, Duplicate and Delete on an empty draft misbehave (review §4.5). Not re-verified.
+- [ ] **Enter and Backspace placement** (review §1.11): Enter at the start of a heading leaves an
+  empty heading above and demotes the text; a Backspace-merge caret lands mid-word when the
+  block above ends in bold or a link; Enter at the end of a soft-broken first line gives the
+  new block a leading newline; ArrowDown from an empty row above a divider skips it
+  (reproduced live).
+- [ ] **Shift+Arrow at a block edge collapses the selection**, and ArrowUp from the first block
+  is a dead key, so the title is unreachable by keyboard (review §1.13).
+- [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
+- [ ] **Block drag on code, callout and image blocks**: the grip shows and drags nothing, and
+  the marker draws through a code block, which the UI rule forbids (review §3.10). The table
+  joined the draggable set on 2026-09-10; the other three have not.
+- [ ] **Image → Replace may keep showing the old image**: the editor's render comparator has no
+  `src` or `width` (review §3.8 residue).
+- [ ] **Tag chips harvest `#include` and `color: #fff`** from code blocks and frontmatter
+  (review §3.5); the same missing boundary as the `#` inside a word, above.
+- [ ] **Settings → Storage truncates the vault path twice** (review §4.6).
+- [ ] **Search snippets join blocks with a single space** (`…#tagonehere. first item…`), so a
+  heading and the line under it read as one sentence (review §7.9); one separator.
+- **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
+  2026-09-09); opening `/` after a space mid-line as well as at the start of an empty block
+  (Craft's compromise; review §7.6). Multi-line paste into a code block should be native since
+  2026-09-08 (review §1.10); confirm once.
 - **Judge live, not by reasoning:** Shift+Enter twice (`a\n\n` inside one block) reads back as
   `a` plus two empty rows: bytes identical, structure differs. Decide whether that matters only
   after it has been felt.
@@ -268,7 +307,9 @@ from a correctness defect. Existing preservation blockers retain their status un
   (`hello world\u00A0`, probed in the real app 2026-09-09; the next character rewrites it as a
   space). A trailing U+00A0 the file itself holds is indistinguishable from it at read-back,
   which is why no normalisation was added with the inline-preservation fix; `pre-wrap` was
-  rejected earlier for changing how every run of spaces renders.
+  rejected earlier for changing how every run of spaces renders. A leading space, or a double
+  space, typed in a line reaches the file the same way and, unlike the trailing one, persists
+  (review §1.7, reproduced live); one decision for the three.
 
 **Undocumented normalisations** (decision pending: carry the raw bytes with the
 `indentStr`/`marker`/`numRaw`/`bare` pattern, or sanction each in the spec). None is in the
@@ -302,6 +343,14 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 - [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a
   new inode over the link, so the target file is left stale and the link is gone.
+- [ ] **Birthtime, Finder tags and other xattrs are lost on every save** (review §2.8; the
+  permission bits are kept since 2026-09-09). The same root cause as the symlink above: the
+  atomic rename lands a new inode. One design decision for both, copy the xattrs onto the temp
+  file or write in place with a backup; never fixed by writing in place without a decision on
+  the backup strategy.
+- [ ] **A symlinked folder inside the vault is skipped by the walk and followed by chokidar**
+  (review §2.9), so a note under it can be reported changed but is never listed.
+  `followSymlinks: false` is the one-line consistent answer when the watcher is next touched.
 - [ ] **The last-writer race under a synced folder** — `write-note` never compares the file's
   mtime, so the app's own debounced write can land over an outside write the watcher has not yet
   reported. Not reproduced; instrument with `BOOJY_TRACE` under iCloud or Drive before designing
@@ -339,6 +388,15 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
   reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,
   not in isolation.
+- [ ] **Contrast and focus, from the review's script over `themes.js`** (2026-09-07, both
+  themes, every text token on every surface): Dark `SEMANTIC.error` on `BG.hover` 2.65 (a
+  hovered Delete row), `TEXT.secondary` on `BG.hover` 3.16; Light `TEXT.muted` on `BG.hover`
+  3.95 (the slash-menu hint on the selected row, by rule); the inline `#tag` at 0.7 opacity
+  3.01 in Light; `SEMANTIC.warning` as text 2.5 on every light surface. The theme segments
+  (Light / Dark / System) have no visible focus ring and no `aria-pressed`; the 400 ms theme
+  crossfade ignores `prefers-reduced-motion`; the crash screen loses its theme because
+  `GlobalStyles` renders inside the boundary. The toasts, empty state and focus ring are under
+  Known issues.
 - **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
   implemented six times (`ContextMenu`, `VaultMenu`, `WikilinkMenu`, `TagMenu`, `CalloutBlock`,
   `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
@@ -364,6 +422,29 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   report to read; the two Playwright configs also share one `playwright-report/`.
 - **Secret scanning and push protection are off** on this public repo (repository settings,
   free). Turn both on.
+- **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every
+  path-taking IPC handler goes through the vault guard, `will-navigate` and the window-open
+  handler deny everything, `open-external` is `http(s)`-only), but it is a hand-rolled regex
+  pipeline across three files and three `dangerouslySetInnerHTML` sites; one `<meta>` CSP is the
+  control that makes a future slip inert. It touches HMR, inline styles and `boojy-att:`, so it
+  is a job on its own. `javascript:` hrefs survive into the DOM and only the main process
+  filters them: inert on desktop, and the web build's `window.open` fallback is not product.
+- **The gates are green but say little** (review §6): `pnpm check` passes with ~266 warnings
+  (168 `useExhaustiveDependencies`), so neither it nor the coverage floor can tell drift from
+  signal; the audit gate is `critical` where `high` costs nothing with every dependency
+  dev-only; Actions are pinned by major tag, not SHA; majors are available (Electron 44, Vite
+  8, Vitest 5, TypeScript 7, jsdom 30) for a deliberate pass per the dependency policy. Zero
+  unit coverage on `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the
+  watcher's event handlers and `folderOps`; the Electron suite is the trustworthy layer for
+  those journeys.
+- **Chrome ink, one pass if it is seen** (review §5): fourteen popovers carry hardcoded black
+  shadows at 0.4–0.5 where `theme.modalShadow` is 0.12/0.08 in Light; the code block's
+  context-menu hover is white at 6% over a white surface, invisible in Light; the find
+  highlight colours are hardcoded amber in `main.jsx`; `CalloutBlock` imports eleven icons
+  straight from `lucide-react` at 15 and 17px, stroke 1.8, off both tiers; no font token
+  (`Inter` is named first and never shipped, so every geometry judgement in the rules was made
+  in SF Pro), four mono stacks, no `tabular-nums` where counts change width; `Toast` ids are
+  `Date.now()`, so two toasts in one millisecond share a key.
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
 - **The touch layout's grammar is recorded nowhere in the rules** (two screens, fixed-edge

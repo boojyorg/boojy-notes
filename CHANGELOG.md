@@ -1,12 +1,11 @@
 # Changelog
 
-The last published release is **v0.5.0** (2026-06-12): it is what boojy.org serves and what
-the in-app updater sees. The v0.6.0 and v0.6.1 sections below were never tagged or published;
-they are the versions `package.json` carried in the local daily-driver builds installed from
-master on 2026-09-05 (the Settings footer reads 0.6.1 for that reason). The next tag publishes
-them together with Unreleased, after the release docs pass in `AGENTS.md`.
+## v0.7.0 — 2026-09-11
 
-## Unreleased
+The first published release since v0.5.0 (2026-06-12). Everything in this section and in the
+v0.6.1 and v0.6.0 sections below ships together in it: those two numbers were only ever the
+`package.json` versions of local daily-driver builds installed from master on 2026-09-05, and
+were never tagged or published.
 
 ### Improvements
 - **All six ATX heading levels open, edit and save as headings.** H4–H6 work through typed Markdown and slash-menu search while the initial menu keeps H1–H3. Imported heading spacing and optional closing markers are retained through text edits. The six-level type hierarchy keeps deeper headings readable beside body text.
@@ -21,6 +20,7 @@ them together with Unreleased, after the release docs pass in `AGENTS.md`.
 
 ### Bug Fixes
 
+- **A vault holding an indented quote opens again** — A `> quote` line indented under a list item, ordinary Obsidian output, sent the parser into a loop: the vault could not be opened at all, and the same file arriving through the watcher froze a running app. The line now reads as the quote it is, keeps its indent on disk, and the parser always advances.
 - **Code stays aligned with its caret after blank lines.** Empty lines in the visible code layer now keep their height, matching the editable text underneath. Clicking a character after a blank line edits that character, with or without syntax highlighting.
 - **Imported fenced code stays literal through editing and saving.** Tilde fences now open as code, so Markdown examples inside them are no longer interpreted or rewritten as headings, tasks, callouts or tables. Imported backtick and tilde boundaries retain their marker, length and whitespace, including empty and unclosed blocks; a longer matching closing fence is recognised correctly. Intentional content edits lengthen a fence only when needed to keep the edited text inside it.
 - **Numbered sub-lists stay nested in other Markdown readers.** The editor and file writer now share numbering and indentation rules, including grandchildren, mixed lists and multi-digit parent numbers. Structural edits renumber affected sequences and keep valid depths; text-only edits preserve imported markers, and Undo restores their original form.
@@ -63,7 +63,7 @@ them together with Unreleased, after the release docs pass in `AGENTS.md`.
 - **Links open in your browser, never in a second window** — A web link (the boojy.org line in Settings, a link in a note opened with the middle button) opened a bare second app window; it now goes to the system browser, and nothing can navigate the app window away from the app. Attachment paths a note names are opened only when they lie inside the vault.
 - **A vault inside a hidden folder is watched** — A notes folder under a dot-directory such as `~/.notes` was never watched for outside changes, with no error; edits made in another app did not appear until a restart. They now appear as they do for any other folder.
 
-## v0.6.1 — 2026-09-05 (daily-driver build, unpublished)
+## v0.6.1 — 2026-09-05 (daily-driver build; published as part of v0.7.0)
 
 ### Improvements
 - **New application icon** — The macOS app icon is now the Notes mark on a light rounded square, replacing the placeholder gold circle on a dark tile. It is sized to Apple's icon grid (the rounded square at 824px on the 1024px canvas, corners transparent), so it sits in the Dock at the same size as every other app. The build input is `assets/boojy-notes-app-icon.png`, generated from the full-bleed source export beside it.
@@ -85,7 +85,7 @@ them together with Unreleased, after the release docs pass in `AGENTS.md`.
 - **The backlinks panel** — The "Linked from" list under a note, and the index behind it, are gone for now. Wikilinks themselves are unchanged: `[[` still autocompletes, clicking still opens or creates the note, and search finds every mention. The panel can return if daily use shows it earns its place; its one known bug (same-title notes were invisible to it) leaves with it.
 - **Web app residue** — The service worker, the web-app manifest and the home-screen icon tags are gone from the web build. The web build is a development and test surface for the desktop app, not an installable app; the manifest pointed at an icon that no longer existed and the theme colour was an old dark value.
 
-## v0.6.0 — 2026-09-05 (daily-driver build, unpublished)
+## v0.6.0 — 2026-09-05 (daily-driver build; published as part of v0.7.0)
 
 ### Bug Fixes
 - **Changing the notes folder no longer keeps the old vault's folders** — Switching to another vault in Settings merged its folders into the previous vault's list, so phantom folders lingered until a restart. The new vault's directories now replace them.
