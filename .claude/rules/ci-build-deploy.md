@@ -47,10 +47,11 @@ change needs; the incidents behind them are in git.
 - Publishing a release fires `site-rebuild.yml`, which POSTs the boojy.org Cloudflare deploy
   hook so the site picks up the new version. It skips gracefully if the secret is absent.
 - Every workflow job carries `timeout-minutes` (`ci.yml`: checks 15, web E2E 15, Electron 20,
-  the `ci` summary 5; `release.yml` 30; `site-rebuild.yml` 5), sized from measured actuals
-  (installers take 1-2m on macOS, 2-4m on Windows). Keep it that way; a stalled job once ran six
-  hours unnoticed. Turning on notarisation is the one change that needs the release number
-  re-measured; it can add 10-20m.
+  the `ci` summary 5; `release.yml` 45; `site-rebuild.yml` 5), sized from measured actuals.
+  Keep it that way; a stalled job once ran six hours unnoticed. The release number is the one
+  exception to sizing tight: measured 2026-09-11 on the first notarised run, macOS is 3m34s end
+  to end (notarisation 2m20s of it) and Windows 2m26s, but the variable is Apple's notarisation
+  queue rather than the build, and a cap that kills a submission mid-queue wastes the run.
 
 ## CI
 

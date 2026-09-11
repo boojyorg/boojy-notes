@@ -20,11 +20,13 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    # Packaging alone takes ~1-2m (macOS) and ~2-4m (Windows). Signing and Apple
-    # notarization went on for v0.7.0 (2026-09-11) and notarization can add 10-20m
-    # on its own, so 45 is provisional headroom until the first notarized run is
-    # measured; re-cut it to the actual then. A CI job once burned 6h1m unnoticed;
-    # nothing here should ever be allowed to sit that long.
+    # Measured on the first signed and notarized run (2026-09-11, v0.7.0-rc.3):
+    # macOS 3m34s end to end, of which notarization was 2m20s; Windows 2m26s.
+    # The cap stays at 45 despite ~12x headroom because the variable is Apple's
+    # notarization queue, not this build: it is minutes when quiet and has been
+    # reported at 20m+ when not, and a cap that kills a submission mid-queue
+    # wastes the whole run. A CI job once burned 6h1m unnoticed; nothing here
+    # should ever be allowed to sit that long.
     timeout-minutes: 45
 
     steps:
