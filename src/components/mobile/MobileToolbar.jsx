@@ -234,7 +234,7 @@ export default function MobileToolbar({
   // Is the current block a list-like type where indent/outdent is useful?
   const isListLike = ["bullet", "numbered", "checkbox"].includes(blockType);
   const isCodeBlock = blockType === "code";
-  const isHeading = ["h1", "h2", "h3"].includes(blockType);
+  const isHeading = /^h[1-6]$/.test(blockType);
 
   // ── Handlers ──────────────────────────────────────────────────────
 

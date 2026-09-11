@@ -26,6 +26,9 @@ describe("SLASH_COMMANDS", () => {
       "h1",
       "h2",
       "h3",
+      "h4",
+      "h5",
+      "h6",
       "bullet",
       "numbered",
       "checkbox",
@@ -43,9 +46,9 @@ describe("SLASH_COMMANDS", () => {
     }
   });
 
-  it("keeps callout, file and embed off the opening screen", () => {
+  it("keeps deeper headings, callout, file and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
-    expect(advanced).toEqual(["callout", "file", "embed"]);
+    expect(advanced).toEqual(["h4", "h5", "h6", "callout", "file", "embed"]);
   });
 
   it("shows only the first tier for an empty query", () => {
@@ -94,5 +97,19 @@ describe("SLASH_COMMANDS", () => {
 
   it("returns nothing for a query that matches no command", () => {
     expect(filterSlashCommands("zzzz")).toEqual([]);
+  });
+});
+
+describe("heading search", () => {
+  it("offers H1–H3 initially and finds all levels by heading name or short name", () => {
+    expect(
+      filterSlashCommands("")
+        .filter((cmd) => /^h\d$/.test(cmd.id))
+        .map((cmd) => cmd.id),
+    ).toEqual(["h1", "h2", "h3"]);
+    for (const level of [1, 2, 3, 4, 5, 6]) {
+      expect(filterSlashCommands(`heading ${level}`).map((cmd) => cmd.id)).toEqual([`h${level}`]);
+      expect(filterSlashCommands(`h${level}`).map((cmd) => cmd.id)).toEqual([`h${level}`]);
+    }
   });
 });

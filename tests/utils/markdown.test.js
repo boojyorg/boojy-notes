@@ -540,10 +540,12 @@ describe("empty list items and headings (preservation fix, 2026-09)", () => {
     expect(blocksToMarkdown(blocks)).toBe(md);
   });
 
-  it("leaves non-empty items, a #tag line and a four-hash line as they were", () => {
+  it("keeps #tags in list text but a four-hash heading starts a new block", () => {
     const blocks = markdownToBlocks("- item\n#tag first\n#### four\n-- not a marker\n");
     expect(blocks.map((b) => [b.type, b.text])).toEqual([
-      ["bullet", "item\n#tag first\n#### four\n-- not a marker"],
+      ["bullet", "item\n#tag first"],
+      ["h4", "four"],
+      ["p", "-- not a marker"],
       ["p", ""],
     ]);
   });
@@ -870,7 +872,7 @@ describe("the serializer never writes a line its own parser reads as another blo
 
   it("a line the parser reads as text is written as it is: nothing is escaped twice", () => {
     for (const text of [
-      "foo\n#### four hashes is text here",
+      "foo\n####### seven hashes is text here",
       "foo\n\\# already escaped",
       "foo\n1\\. already escaped",
       "foo\n1) not a list marker",
@@ -901,5 +903,66 @@ describe("the serializer never writes a line its own parser reads as another blo
     expect(blocksToMarkdown([{ type: "h2", text: "a\nb" }])).toBe("## a b");
     expect(blocksToMarkdown([{ type: "h3", text: "a\nb" }])).toBe("### a b");
     expect(stripIds(markdownToBlocks("# a b"))).toEqual([{ type: "h1", text: "a b" }]);
+  });
+});
+
+describe("ATX headings H1–H6", () => {
+  for (const level of [1, 2, 3, 4, 5, 6]) {
+    const marker = "#".repeat(level);
+    it.each([
+      "Title ###",
+      "###",
+    ])(`keeps literal final hashes in generated H${level}: %j`, (text) => {
+      const block = { type: `h${level}`, text };
+      expect(stripIds(markdownToBlocks(blocksToMarkdown([block])))).toEqual([block]);
+    });
+    it(`reads, edits and writes H${level} with conventional meaning`, () => {
+      const [block] = markdownToBlocks(`${marker} Title`);
+      expect(block).toMatchObject({ type: `h${level}`, text: "Title" });
+      const written = blocksToMarkdown([{ ...block, text: "Edited" }]);
+      expect(written).toBe(`${marker} Edited`);
+      expect(markdownToBlocks(written)[0]).toMatchObject({ type: `h${level}`, text: "Edited" });
+    });
+
+    it.each([
+      `${marker}`,
+      `${marker} `,
+      `  ${marker}\tTitle  ### \t`,
+      `${marker}   Title  `,
+      `${marker} ###`,
+      `${marker}\t\t`,
+      `${marker} C#`,
+      `${marker} Title \\###`,
+    ])(`preserves authored H${level}: %j`, (source) => {
+      const blocks = markdownToBlocks(source);
+      expect(blocks[0].type).toBe(`h${level}`);
+      expect(blocksToMarkdown(blocks)).toBe(source);
+      expect(stripIds(markdownToBlocks(blocksToMarkdown(blocks)))).toEqual(stripIds(blocks));
+    });
+
+    it(`keeps H${level} boundary spelling during a text edit`, () => {
+      const [block] = markdownToBlocks(`  ${marker}\tTitle  ### \t`);
+      expect(block.text).toBe("Title");
+      expect(blocksToMarkdown([{ ...block, text: "Revised" }])).toBe(
+        `  ${marker}\tRevised  ### \t`,
+      );
+      expect(blocksToMarkdown([{ type: `h${level}`, text: "one\ntwo" }])).toBe(`${marker} one two`);
+    });
+  }
+
+  it.each([
+    "####### Beyond six",
+    "####No gap",
+    "\\#### Escaped",
+    "    #### Indented",
+  ])("keeps non-heading source literal: %j", (source) => {
+    expect(markdownToBlocks(source)[0]).toMatchObject({ type: "p", text: source });
+    expect(blocksToMarkdown(markdownToBlocks(source))).toBe(source);
+  });
+
+  it("keeps a heading-like soft break inside its paragraph", () => {
+    const saved = blocksToMarkdown([{ type: "p", text: "Body\n###### Still body" }]);
+    expect(saved).toBe("Body\n\\###### Still body");
+    expect(markdownToBlocks(saved).map((block) => block.type)).toEqual(["p"]);
   });
 });

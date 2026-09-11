@@ -155,6 +155,13 @@ describe("EditableBlock", () => {
     expect(container.querySelector("h3")).toBeInTheDocument();
   });
 
+  it.each([4, 5, 6])("renders H%s as an accessible heading with its editable text", (level) => {
+    const { getByRole } = renderBlock(heading(level, "Deeper heading"));
+    const el = getByRole("heading", { level });
+    expect(el).toHaveTextContent("Deeper heading");
+    expect(el).toHaveAttribute("data-block-type", `h${level}`);
+  });
+
   it("renders bullet block with marker", () => {
     const block = bullet("item");
     const { container } = renderBlock(block);

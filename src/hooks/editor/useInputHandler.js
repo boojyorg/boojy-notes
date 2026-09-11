@@ -8,6 +8,9 @@ import { SLASH_COMMANDS } from "../../constants/data";
 // Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
 const S = "[\\s\\u00a0]";
 const MD_PATTERNS = [
+  { regex: new RegExp(`^######${S}$`), type: "h6" },
+  { regex: new RegExp(`^#####${S}$`), type: "h5" },
+  { regex: new RegExp(`^####${S}$`), type: "h4" },
   { regex: new RegExp(`^###${S}$`), type: "h3" },
   { regex: new RegExp(`^##${S}$`), type: "h2" },
   { regex: new RegExp(`^#${S}$`), type: "h1" },

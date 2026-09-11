@@ -5,7 +5,7 @@ import {
   stripIncidentalLineEnding,
   type PastedBlock,
 } from "../../src/utils/pasteBlocks";
-import { markdownToBlocks } from "../../src/utils/markdown";
+import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 import type { Block } from "../../src/types/notes";
 
 let n = 0;
@@ -19,6 +19,14 @@ function pasted(markdown: string): PastedBlock[] {
 const emptyCheckbox: Block = { id: "dest", type: "checkbox", text: "", checked: false };
 
 describe("buildPastedBlocks", () => {
+  it.each([4, 5, 6])("pasting H%s retains its level and authored boundary spelling", (level) => {
+    const source = `  ${"#".repeat(level)}\tTitle ###  `;
+    const r = buildPastedBlocks({ id: "dest", type: "p", text: "" }, pasted(source), "", "", genId);
+    expect(r.blocks[0]).toMatchObject({ type: `h${level}`, text: "Title" });
+    expect(blocksToMarkdown(r.blocks)).toBe(source);
+    const edited = buildPastedBlocks(r.blocks[0], pasted("one\ntwo"), "Title", "", genId);
+    expect(edited.blocks[0]).toMatchObject({ type: `h${level}`, text: "Titleone two" });
+  });
   describe("plain text keeps the destination block", () => {
     it("two plain lines pasted into a heading join with a space: a heading has no soft break", () => {
       const heading: Block = { id: "dest", type: "h2", text: "Title" };
