@@ -728,11 +728,39 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   its keep. `formatting-toolbar.spec.ts` proves the timing, the glyphs and the chip in the real
   app.
 
+## ATX headings share one editor path
+
+H1–H6 render as their native heading elements in `EditableBlock`, with the same editing,
+Enter/Shift+Enter (new paragraph), navigation and history behaviour. New headings use ATX
+markers; imported ATX indentation, marker-to-text spacing, trailing whitespace and optional
+closing markers live in `headingSource` and survive text edits. If newly typed heading text
+ends in a literal hash run, the writer adds a separate closing marker so those hashes remain
+text to both readers; it is not necessary when the imported suffix already closes the heading.
+Setext remains deferred.
+
+The desktop scale uses `TEXT.primary` throughout, against 15px/400 body text.
+Sizes, weights, top/bottom margins (px) and line-height ratios are:
+
+| Level | Size | Weight | Top / bottom | Line height |
+| --- | --- | --- | --- | --- |
+| H1 | 28 | 700 | 8 / 12 | 1.3 |
+| H2 | 22 | 600 | 6 / 10 | 1.35 |
+| H3 | 20 | 600 | 8 / 8 | 1.35 |
+| H4 | 18 | 600 | 8 / 6 | 1.35 |
+| H5 | 16.5 | 600 | 8 / 4 | 1.35 |
+| H6 | 15 | 700 | 8 / 4 | 1.4 |
+
+H1/H2 retain their -0.4px/-0.2px letter spacing; the other levels use normal spacing.
+The existing three heading render branches became one local style lookup, not a new
+typography system. H3 grows from 16.5px so the six levels have room; H6 stays at body size
+and uses bold weight to remain a heading.
+
 ## The slash menu is tiered
 
-- `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps Callout, File
+- `/` opens on eleven commands, including H1–H3. `advanced: true` in `SLASH_COMMANDS` keeps H4–H6, Callout, File
   attachment and Embed note off the opening screen; typing anything after the slash searches
-  everything, so `/call` still finds Callout.
+  everything, so `/call` still finds Callout. `/h4` and `/heading 4` (likewise 5 and 6)
+  find the deeper headings; those rows carry their Markdown trigger and Lucide heading icon.
 - **The tier rule lives in one place, `filterSlashCommands()`**, used by both the menu and the
   keyboard navigation. A second copy is how Enter inserts a different block than the one
   highlighted.

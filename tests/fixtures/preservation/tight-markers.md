@@ -1,4 +1,4 @@
-A paragraph line with a heading tight under it.
+A paragraph line with a heading tight under it. EDITME
 # Heading
 A paragraph line with a list tight under it.
 - item
@@ -9,7 +9,7 @@ lazy continuation of the item
 \- an escaped bullet
 \--- not a rule
 \``` not a fence
-#### four hashes, which this parser reads as text EDITME
+#### four hashes, now a level-four heading
 1) not a list marker
 
 | a |

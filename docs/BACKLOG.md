@@ -241,9 +241,6 @@ the 2026-09-10 code inspection and sample probes, not a full desktop interaction
 the relevant read, edit and save journeys before choosing a fix; missing support is distinct
 from a correctness defect. Existing preservation blockers retain their status under Data safety.
 
-- **Missing support: H4–H6.** Currently read as paragraph text. Consider recognition and
-  editing while retaining authored source; menu exposure remains undecided. Setext headings
-  have their own existing item under Open decisions.
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
   of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
   relative `.md` links use the external-link path rather than navigating within the vault.
@@ -279,7 +276,7 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 2026-09-07, every one still occurs on any save of the note:
 
 - [ ] Uppercase `- [X]` is written as `- [x]`.
-- [ ] Headings, dividers and table rows with 1–3 leading spaces are dedented; an indented table
+- [ ] Dividers and table rows with 1–3 leading spaces are dedented; an indented table
   body row (`  | 1 | 2 |`) also gains an empty leading cell.
 - [ ] Mixed line endings are healed to the dominant style (a code comment records this as
   intended; the spec does not).

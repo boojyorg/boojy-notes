@@ -193,6 +193,10 @@ const itemText = (block) => readsBackAsText(block.text || "", 1);
 /** A heading is one line: a newline in its text is written as a space. */
 const headingText = (block) => (block.text || "").replace(/\n/g, " ");
 
+// A separate closing marker keeps a literal final hash run inside the heading
+// text, without inserting escapes into the text the editor shows.
+const headingSuffix = (text) => (/(?:^|[ \t])#+$/.test(text) ? " #" : "");
+
 /** The app's default fence; imported spelling is retained separately when different. */
 function defaultCodeFence(text) {
   const runs = text.match(/`{3,}/g);
@@ -225,14 +229,24 @@ export function blocksToMarkdown(blocks) {
     }
     switch (block.type) {
       case "h1":
-        lines.push(`#${afterMarker(block, headingText(block))}`);
-        break;
       case "h2":
-        lines.push(`##${afterMarker(block, headingText(block))}`);
-        break;
       case "h3":
-        lines.push(`###${afterMarker(block, headingText(block))}`);
+      case "h4":
+      case "h5":
+      case "h6": {
+        const marker = "#".repeat(Number(block.type.slice(1)));
+        const text = headingText(block);
+        const source = block.headingSource;
+        const authoredSuffix = source?.suffix || "";
+        const suffix =
+          (/[ \t]#+[ \t]*$/.test(authoredSuffix) ? "" : headingSuffix(text)) + authoredSuffix;
+        lines.push(
+          source
+            ? source.indent + marker + (source.gap || (text ? " " : "")) + text + suffix
+            : marker + afterMarker(block, text) + suffix,
+        );
         break;
+      }
       case "bullet":
         lines.push(
           `${listPositions[i]?.prefix}${block.marker || "-"}${afterMarker(block, itemText(block))}`,
@@ -587,7 +601,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string } }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -630,9 +644,26 @@ export function markdownToBlocks(md) {
       block.text = markerText(m);
       if (line[0] !== "-") block.marker = line[0];
       applyListIndent(block);
-    } else if ((m = line.match(/^(#{1,3})(?: |$)/))) {
-      block = { id: `md-${++_parseBlockId}`, type: `h${m[1].length}`, text: "" };
-      block.text = markerText(m);
+    } else if ((m = raw.match(/^( {0,3})(#{1,6})(?:([ \t]+)(.*)|$)/))) {
+      let gap = m[3] || "";
+      let text = m[4] || "";
+      let suffix = "";
+      const closing = text.match(/(?:^|[ \t]+)#+[ \t]*$|[ \t]+$/);
+      if (closing) {
+        suffix = closing[0];
+        text = text.slice(0, closing.index);
+        // In an empty closed heading, the opening gap also separates the
+        // closing marker. Keep it with that marker when text is later typed.
+        if (!text && suffix.startsWith("#")) {
+          suffix = gap + suffix;
+          gap = "";
+        }
+      }
+      block = { id: `md-${++_parseBlockId}`, type: `h${m[2].length}`, text };
+      if (!gap && !suffix && !text) block.bare = true;
+      if (m[1] || suffix !== headingSuffix(text) || gap !== (block.bare ? "" : " ")) {
+        block.headingSource = { indent: m[1], gap, suffix };
+      }
     } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
       const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
       // Obsidian-style width suffix in the alt: ![alt|350](url)

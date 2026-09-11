@@ -36,6 +36,9 @@ const TEXT_BLOCK_TYPES: ReadonlySet<BlockType> = new Set<BlockType>([
   "h1",
   "h2",
   "h3",
+  "h4",
+  "h5",
+  "h6",
   "bullet",
   "numbered",
   "checkbox",
@@ -94,6 +97,7 @@ function materialise(pasted: PastedBlock, id: string): Block {
     const block = { id, type: pasted.type, text: pasted.text ?? "" } as Block;
     if (pasted.checked !== undefined) (block as { checked?: boolean }).checked = pasted.checked;
     if (pasted.indent) block.indent = pasted.indent;
+    if (pasted.headingSource) Object.assign(block, { headingSource: pasted.headingSource });
     return block;
   }
   const { fullBlock: _fullBlock, ...rest } = pasted;

@@ -33,6 +33,29 @@ export const EDITOR_FONT_SIZE = 15;
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
 
+// One render path for all heading levels; the smaller levels keep body-sized
+// text and use weight/spacing to remain headings. No extra editor chrome.
+const HEADING_STYLES = {
+  h1: {
+    fontSize: 28,
+    fontWeight: 700,
+    margin: "8px 0 12px",
+    lineHeight: 1.3,
+    letterSpacing: "-0.4px",
+  },
+  h2: {
+    fontSize: 22,
+    fontWeight: 600,
+    margin: "6px 0 10px",
+    lineHeight: 1.35,
+    letterSpacing: "-0.2px",
+  },
+  h3: { fontSize: 20, fontWeight: 600, margin: "8px 0 8px", lineHeight: 1.35 },
+  h4: { fontSize: 18, fontWeight: 600, margin: "8px 0 6px", lineHeight: 1.35 },
+  h5: { fontSize: 16.5, fontWeight: 600, margin: "8px 0 4px", lineHeight: 1.35 },
+  h6: { fontSize: 15, fontWeight: 700, margin: "8px 0 4px", lineHeight: 1.4 },
+};
+
 const INDENT_PX = 24;
 
 const EditableBlock = memo(
@@ -344,64 +367,19 @@ const EditableBlock = memo(
       );
     }
 
-    if (block.type === "h1") {
+    if (/^h[1-6]$/.test(block.type)) {
+      const Heading = block.type;
+      const style = HEADING_STYLES[block.type];
       return (
-        <h1
+        <Heading
           ref={elRef}
           data-block-id={block.id}
           data-block-type={block.type}
-          aria-label="Heading 1"
+          aria-label={`Heading ${block.type.slice(1)}`}
           style={{
             contain: "content",
-            fontSize: 28,
-            fontWeight: 700,
+            ...style,
             color: TEXT.primary,
-            margin: "8px 0 12px",
-            lineHeight: 1.3,
-            letterSpacing: "-0.4px",
-            outline: "none",
-            paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
-          }}
-        />
-      );
-    }
-
-    if (block.type === "h2") {
-      return (
-        <h2
-          ref={elRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          aria-label="Heading 2"
-          style={{
-            contain: "content",
-            fontSize: 22,
-            fontWeight: 600,
-            color: TEXT.primary,
-            margin: "6px 0 10px",
-            lineHeight: 1.35,
-            letterSpacing: "-0.2px",
-            outline: "none",
-            paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
-          }}
-        />
-      );
-    }
-
-    if (block.type === "h3") {
-      return (
-        <h3
-          ref={elRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          aria-label="Heading 3"
-          style={{
-            contain: "content",
-            fontSize: 16.5,
-            fontWeight: 600,
-            color: TEXT.primary,
-            margin: "6px 0 6px",
-            lineHeight: 1.35,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}

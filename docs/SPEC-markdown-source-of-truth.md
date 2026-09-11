@@ -83,7 +83,7 @@ that plainly rather than pretending otherwise.
 
 Allowed *because markdown can express them*:
 
-- All current block types: `p`, `h1`–`h3`, `bullet`, `numbered`, `checkbox`, `blockquote`,
+- All current block types: `p`, `h1`–`h6`, `bullet`, `numbered`, `checkbox`, `blockquote`,
   `code`, `callout`, `table`, `image`, `file`, `embed`, `spacer`, `frontmatter`.
 - **Block reorder** — dragging a block up/down = reordering lines in the `.md` file.
   Structural list edits also update the affected numbering and indentation so the file

@@ -157,6 +157,22 @@ const fixtures = fs
   .sort();
 
 describe("interop — the conventional meaning of Markdown written elsewhere", () => {
+  it.each([
+    1, 2, 3, 4, 5, 6,
+  ])("H%s keeps its conventional level and text through editing", (level) => {
+    const source = `  ${"#".repeat(level)}\tTitle  ### \t`;
+    const [block] = markdownToBlocks(source);
+    expect(meaningOf(source)).toBe(`h${level} "Title"\n`);
+    expect(meaningOf(blocksToMarkdown([{ ...block, text: "Revised" }]))).toBe(
+      `h${level} "Revised"\n`,
+    );
+    expect(meaningOf(blocksToMarkdown([heading(level, "New heading")]))).toBe(
+      `h${level} "New heading"\n`,
+    );
+    expect(meaningOf(blocksToMarkdown([heading(level, "Title ###")]))).toBe(
+      `h${level} "Title ###"\n`,
+    );
+  });
   it("tilde-fenced Markdown stays literal code after saving and editing", () => {
     const body = "# literal heading\n- [X] literal task\n```js\nconst x = 1;\n```";
     const source = `~~~markdown\n${body}\n~~~\n`;

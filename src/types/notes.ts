@@ -7,6 +7,9 @@ export type BlockType =
   | "h1"
   | "h2"
   | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
   | "bullet"
   | "numbered"
   | "checkbox"
@@ -34,7 +37,9 @@ interface BlockBase {
 
 // ─── Discriminated block variants ─────────────────────────────────
 interface TextBlock extends BlockBase {
-  type: "p" | "h1" | "h2" | "h3" | "bullet" | "numbered" | "blockquote";
+  type: "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "bullet" | "numbered" | "blockquote";
+  /** Imported ATX spacing and optional closing markers, separate from editable text. */
+  headingSource?: { indent: string; gap: string; suffix: string };
 }
 
 interface CheckboxBlock extends BlockBase {
