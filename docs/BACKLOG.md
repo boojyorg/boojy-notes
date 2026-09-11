@@ -89,17 +89,16 @@ found on the way gate it as well, without needing a line here.
   by `save-image` and `save-attachment`; both belong to this smoke test. Windows spell-check
   dictionaries download from Google's CDN on first launch (no
   `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
-- [ ] **Sign macOS releases and fix the release path.** v0.7.0 (2026-09-11) published the
-  daily-driver line as early access, the first tag since v0.5.0. Testers and boojy.org only ever
-  see the last *published* release, so Beta too is a tag and a published release, never a build
-  that lives only in `/Applications`; every release runs the docs pass in `AGENTS.md` and the
-  draft-release steps in the CI rule. Two decisions were deferred until a build was worth
-  publishing: **sign macOS releases** (five secrets, `docs/private/code-signing.md`, then
-  re-measure the release job's cap; an unsigned, un-notarised build is blocked by Gatekeeper on
-  a fresh Mac and Settings → Updates cannot update it, and the release notes must say so while
-  that holds), and the **release path** (pre-create the release before the matrix and
-  auto-publish when both jobs pass, retiring the manual draft merge; and whether a tag may be
-  cut from a commit that never passed CI).
+- [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early
+  access, the first tag since v0.5.0, and the first signed and notarised macOS build (the five
+  secrets are set; the two traps the first run hit are in the CI rule and
+  `docs/private/code-signing.md`). Testers and boojy.org only ever see the last *published*
+  release, so Beta too is a tag and a published release, never a build that lives only in
+  `/Applications`; every release runs the docs pass in `AGENTS.md` and the draft-release steps
+  in the CI rule. Left open: pre-create the release before the matrix and auto-publish when
+  both jobs pass, retiring the manual draft merge (electron-builder already uploads into an
+  existing draft of the version's name, so pre-creating one is most of the fix); and whether a
+  tag may be cut from a commit that never passed CI.
 
 ## Beta: candidates
 

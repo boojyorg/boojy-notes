@@ -7,20 +7,31 @@ change needs; the incidents behind them are in git.
 
 - Pushing a `v*` tag runs `release.yml`: a macOS and a Windows job, each running
   `pnpm build:electron` and uploading through electron-builder's GitHub publisher. macOS
-  signs and notarises only if the certificate secrets are set; otherwise it builds unsigned.
-  **None of them is set (2026-09-07)**: the workflow reads `MACOS_CERTIFICATE`,
-  `MACOS_CERTIFICATE_PWD`, `APPLE_ID`, `APPLE_APP_PASSWORD` and `APPLE_TEAM_ID`, the repo holds
-  only the Cloudflare hook, and every published macOS build so far (v0.5.0 included) is
-  unsigned. electron-updater refuses to update an unsigned macOS app and the error is
-  swallowed, so Settings → Updates does nothing for release users until signing is on. Setting
-  the secrets is the whole fix (`docs/private/code-signing.md`, local); it is deliberately
-  unscheduled until a build is worth publishing.
-- **Releases land as drafts, and the matrix creates two of them** on the same tag (DMG in one,
-  EXE in the other). A draft is invisible to "latest release" lookups, so the website version
-  text and the auto-updater keep resolving to the last *published* release. After every tag
-  push: check `gh release list`, merge the assets into one release, **publish it**, delete the
-  leftover draft. Proper fix, unscheduled: create the release once before the matrix so both
-  jobs upload to it, or auto-publish when both succeed.
+  signs and notarises when the five certificate secrets are set (`MACOS_CERTIFICATE`,
+  `MACOS_CERTIFICATE_PWD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`; notarisation is
+  electron-builder's own, triggered by the three Apple variables) and builds unsigned
+  otherwise. **Set on 2026-09-11** for the v0.7.0 release; every published macOS build before it
+  (v0.5.0 included) is unsigned, and electron-updater refuses to update an unsigned app with
+  the error swallowed, so Settings → Updates only works from a signed build onward. Two things
+  the first signed run taught, each a silent failure until found (`docs/private/code-signing.md`,
+  local, has the commands): **the `.p12` must be legacy-encoded** (`openssl pkcs12 -export
+  -legacy -nomaciter -descert -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES`); an OpenSSL 3
+  default export (AES/PBES2) verifies with `openssl` but the runner's `security import` rejects
+  it as "MAC verification failed (wrong password?)", which is not the password. And
+  **electron-builder must be ≥ 26.16.1**: before that it handed `security set-key-partition-list`
+  the certificate's password where the keychain's own is required (upstream #10066, fixed in
+  #10172), which the `macos-26` runner image enforces and older images let through.
+- **Releases land as drafts, and one tag can produce two of them** with the assets split
+  between them (seen 2026-09-11 from the Windows job alone: EXE and `latest.yml` in one,
+  the blockmap in the other; the matrix adds the same race across jobs). electron-builder
+  names the draft after `package.json`'s version, never the pushed tag, and **uploads into an
+  existing draft of that name** when it finds one, so a rehearsal tag (`v0.7.0-rc.1`) with the
+  version already bumped makes the real `v0.7.0` drafts. A draft is invisible to "latest
+  release" lookups, so the website version text and the auto-updater keep resolving to the
+  last *published* release. After every tag push: check `gh release list`, merge the assets
+  into one release, **publish it**, delete the leftover draft. Proper fix, unscheduled: create
+  the release once before the matrix so both jobs upload to it, or auto-publish when both
+  succeed.
 - Publishing a release fires `site-rebuild.yml`, which POSTs the boojy.org Cloudflare deploy
   hook so the site picks up the new version. It skips gracefully if the secret is absent.
 - Every workflow job carries `timeout-minutes` (`ci.yml`: checks 15, web E2E 15, Electron 20,
