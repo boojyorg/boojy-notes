@@ -889,13 +889,21 @@ describe("applyExternalNote", () => {
       vi.advanceTimersByTime(300);
     });
     expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("from disk");
-    // Undo skips the replaced note's dropped entries and lands on the other note's.
+    // The replaced note has no history left, and undo touches no other note.
+    expect(result.current.canUndo).toBe(false);
     act(() => {
       result.current.undo();
     });
     expect(getNoteData()[NOTE_ID].content.blocks[0].text).toBe("from disk");
+    expect(getNoteData()[OTHER].title).toBe("Other, renamed");
+    // The other note's own entry is untouched and still its to undo.
+    activeNoteRef.current = OTHER;
+    act(() => result.current.onActiveNoteChanged());
+    expect(result.current.canUndo).toBe(true);
+    act(() => {
+      result.current.undo();
+    });
     expect(getNoteData()[OTHER].title).toBe("Other");
-    expect(result.current.canUndo).toBe(false);
     vi.useRealTimers();
   });
 });
@@ -967,7 +975,7 @@ describe("history ownership", () => {
     expect(getNoteData()[NOTE_ID].folder).toBe("New");
   });
 
-  it("undo never brings a deleted note back: its entries are discarded and the next live entry is taken", async () => {
+  it("undo never brings a deleted note back: its entries are discarded, and the open note's own are unaffected", async () => {
     const { result, getNoteData, activeNoteRef } = setup();
     // The other note is made, edited and deleted while it is the open one, as
     // deleteNote does: two entries whose snapshots hold it.
@@ -1006,8 +1014,8 @@ describe("history ownership", () => {
     expect(getNoteData()[OTHER]).toBeUndefined();
     // The remaining entries all belong to the deleted note (before this, the
     // first of them put it back in state and the next flush wrote it to a
-    // fresh file); undo consumes them without conjuring it, and the stack is
-    // then empty.
+    // fresh file). They are unreachable from any note and are dropped, so the
+    // open note is simply out of history.
     act(() => result.current.undo());
     expect(getNoteData()[OTHER]).toBeUndefined();
     expect(result.current.noteDataRef.current[OTHER]).toBeUndefined();
@@ -1055,5 +1063,198 @@ describe("history ownership", () => {
     act(() => result.current.undo());
     expect(getNoteData()).toBe(disk);
     vi.useRealTimers();
+  });
+});
+
+// ─── Undo and redo belong to the note you are looking at ──────────────
+//
+// The stacks have always been note-tagged, but `undo` took the newest entry
+// of any note: an edit in A, a switch to B and Cmd+Z restored A behind the
+// user's back, and `canUndo` described the app rather than the open note.
+// With the buttons on screen that becomes a visible way to change a note you
+// are not looking at (review 2026-09-12).
+describe("history belongs to the open note", () => {
+  const A = "note-a";
+  const B = "note-b";
+
+  const withText = (id, text) => (prev) => ({
+    ...prev,
+    [id]: {
+      ...prev[id],
+      content: {
+        ...prev[id].content,
+        blocks: [{ ...prev[id].content.blocks[0], text }],
+      },
+    },
+  });
+  const textOf = (nd, id) => nd[id].content.blocks[0].text;
+
+  function setupPair() {
+    let noteData = {
+      [A]: { id: A, title: "A", content: { title: "A", blocks: [paragraph("a0")] } },
+      [B]: { id: B, title: "B", content: { title: "B", blocks: [paragraph("b0")] } },
+    };
+    const syncGeneration = { current: 0 };
+    const activeNoteRef = { current: A };
+
+    const { result } = renderHook(() => {
+      const [nd, setNd] = useState(noteData);
+      noteData = nd;
+      const set = (updaterOrValue) => {
+        noteData = typeof updaterOrValue === "function" ? updaterOrValue(noteData) : updaterOrValue;
+        setNd(noteData);
+      };
+      return useHistory(nd, set, syncGeneration, activeNoteRef);
+    });
+
+    // What BoojyNotes does when the active note changes: the ref first (it is
+    // assigned during render), then the notification from an effect.
+    const open = (id) => {
+      activeNoteRef.current = id;
+      act(() => result.current.onActiveNoteChanged());
+    };
+    const edit = async (id, text) => {
+      act(() => result.current.commitNoteData(withText(id, text)));
+      await act(() => flushMicrotasks());
+    };
+
+    return { result, getNoteData: () => noteData, activeNoteRef, open, edit };
+  }
+
+  it("does not undo another note's edit, and gives the edit back on return", async () => {
+    const { result, getNoteData, open, edit } = setupPair();
+    await edit(A, "a1");
+
+    open(B);
+    expect(result.current.canUndo).toBe(false);
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a1");
+    expect(textOf(getNoteData(), B)).toBe("b0");
+
+    open(A);
+    expect(result.current.canUndo).toBe(true);
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a0");
+  });
+
+  it("undoes two notes independently, newest entry of that note first", async () => {
+    const { result, getNoteData, open, edit } = setupPair();
+    await edit(A, "a1");
+    open(B);
+    await edit(B, "b1");
+    await edit(B, "b2");
+
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), B)).toBe("b1");
+    expect(textOf(getNoteData(), A)).toBe("a1");
+
+    open(A);
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a0");
+    expect(textOf(getNoteData(), B)).toBe("b1");
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("keeps a note's redo while another note is edited, and clears it on its own next edit", async () => {
+    const { result, getNoteData, open, edit } = setupPair();
+    await edit(A, "a1");
+    act(() => result.current.undo());
+    expect(result.current.canRedo).toBe(true);
+
+    // An edit in B must not consume A's redo lineage.
+    open(B);
+    await edit(B, "b1");
+    expect(result.current.canRedo).toBe(false);
+
+    open(A);
+    expect(result.current.canRedo).toBe(true);
+    act(() => result.current.redo());
+    expect(textOf(getNoteData(), A)).toBe("a1");
+
+    // A's own next edit does clear it.
+    act(() => result.current.undo());
+    expect(result.current.canRedo).toBe(true);
+    await edit(A, "a2");
+    expect(result.current.canRedo).toBe(false);
+    open(B);
+    expect(result.current.canUndo).toBe(true);
+  });
+
+  it("starts a second note's typing group at once, inside the first note's debounce", async () => {
+    const { result, getNoteData, activeNoteRef } = setupPair();
+
+    act(() => result.current.commitTextChange(withText(A, "a typed")));
+    await act(() => flushMicrotasks());
+    // The switch lands inside the 500ms group window; the ref moves first.
+    activeNoteRef.current = B;
+    act(() => result.current.commitTextChange(withText(B, "b typed")));
+    await act(() => flushMicrotasks());
+    act(() => vi.advanceTimersByTime(400));
+
+    expect(textOf(getNoteData(), B)).toBe("b typed");
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), B)).toBe("b0");
+    expect(textOf(getNoteData(), A)).toBe("a typed");
+
+    activeNoteRef.current = A;
+    act(() => result.current.onActiveNoteChanged());
+    expect(result.current.canUndo).toBe(true);
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a0");
+  });
+
+  it("closes the typing group when the note is left, so the next burst is its own entry", async () => {
+    const { result, getNoteData, open } = setupPair();
+
+    act(() => result.current.commitTextChange(withText(A, "a1")));
+    await act(() => flushMicrotasks());
+    act(() => result.current.commitTextChange(withText(A, "a12")));
+    await act(() => flushMicrotasks());
+
+    // Away and back well inside the 500ms burst window.
+    open(B);
+    open(A);
+    act(() => result.current.commitTextChange(withText(A, "a123")));
+    await act(() => flushMicrotasks());
+    act(() => vi.advanceTimersByTime(400));
+
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a12");
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a0");
+  });
+
+  it("disables both with no active note, and undo does nothing", async () => {
+    const { result, getNoteData, open, edit } = setupPair();
+    await edit(A, "a1");
+
+    open(null);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    act(() => result.current.undo());
+    act(() => result.current.redo());
+    expect(textOf(getNoteData(), A)).toBe("a1");
+  });
+
+  it("holds the restored text against the text commit the click interrupted", async () => {
+    const { result, getNoteData, open } = setupPair();
+
+    act(() => result.current.commitTextChange(withText(A, "a typed")));
+    await act(() => flushMicrotasks());
+    act(() => vi.advanceTimersByTime(600));
+    act(() => result.current.commitTextChange(withText(A, "a typed more")));
+    await act(() => flushMicrotasks());
+    expect(result.current.hasPendingFlush.current).toBe(true);
+
+    // The button is pressed while that commit is still pending.
+    act(() => result.current.undo());
+    expect(textOf(getNoteData(), A)).toBe("a typed");
+    act(() => vi.advanceTimersByTime(600));
+    expect(textOf(getNoteData(), A)).toBe("a typed");
+    expect(result.current.noteDataRef.current[A].content.blocks[0].text).toBe("a typed");
+
+    open(B);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
   });
 });
