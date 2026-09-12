@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- **Undo changes the note you are looking at, and no other** — Editing a note, opening a second one and pressing Cmd+Z undid the edit in the *first* note: the note off screen changed, its file was rewritten, and nothing on screen said so. Undo and redo now act on the open note alone — its newest edit, whichever notes were edited in between — and the note you are looking at is the only note either can change. Opening a note you edited earlier in the session gives you its remaining history back, and an edit in one note no longer discards another note's redo. Alongside: typing in one note and switching to another within a third of a second used to leave the second note with nothing to undo, because both notes' keystrokes were one step; each note's typing is now its own. History is still temporary — it starts empty each time the app opens — and still never brings back a deleted note or moves a file back to an old folder. Proven in the real-Electron suite and the unit tests beside the history owner.
+
 ## v0.7.0 — 2026-09-11
 
 The first published release since v0.5.0 (2026-06-12). Everything in this section and in the

@@ -91,8 +91,8 @@ docs/private/           # gitignored personal notes
 - **State is React Context** (7 providers, no Redux/Zustand). NoteData separates data from
   actions; refs carry anything that must not trigger renders. **Note state has one owner:**
   every change goes through a `useHistory` action (the raw setter is not exposed), and undo
-  restores text, never a location or a note that no longer exists. Which action for which
-  change: UI rule, "One owner for note state".
+  restores text in the note the user has open, never another note, a location, or a note that no
+  longer exists. Which action for which change: UI rule, "One owner for note state".
 - **Styling is inline from `useTheme()`** (`BG`, `TEXT`, `ACCENT`, `SEMANTIC`), never a
   hardcoded hex. Tokens live in `src/tokens/`. Roles, grammar and known leaks: UI rule.
 - **Icons are Lucide only**, via `src/components/Icons.jsx`, always `currentColor`. Size and

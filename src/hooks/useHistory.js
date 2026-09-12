@@ -1,4 +1,4 @@
-import { useState, useRef, startTransition } from "react";
+import { useState, useRef, useCallback, startTransition } from "react";
 
 import { trace } from "../utils/trace";
 import { reconcileListEdit } from "../utils/listStructure";
@@ -7,6 +7,9 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const undoStack = useRef([]);
   const redoStack = useRef([]);
   const historyTimer = useRef(null);
+  // The note the open typing group belongs to. A group is one note's burst:
+  // typing in another note, or leaving and coming back, starts a fresh one.
+  const historyGroupNote = useRef(null);
   const isUndoRedo = useRef(false);
   const textFlushTimer = useRef(null);
   const hasPendingFlush = useRef(false);
@@ -54,6 +57,27 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
+  // Undo and redo act on the note the user is looking at and on no other, so
+  // what the buttons report is what the open note has. The stacks stay shared
+  // and note-tagged: one 50-entry budget for the session, not a cache per
+  // note, and an entry of another live note is never spent to reach one of
+  // this note's.
+  const hasEntryFor = (stack, noteId) => !!noteId && stack.some((e) => e.noteId === noteId);
+  const syncAvailability = () => {
+    const noteId = activeNoteRef.current;
+    setCanUndo(hasEntryFor(undoStack.current, noteId));
+    setCanRedo(hasEntryFor(redoStack.current, noteId));
+  };
+
+  // Entries of a note that no longer exists are unreachable (only the active
+  // note's are ever taken) and would otherwise hold part of the budget.
+  // History never brings a note back; the OS Trash is the recovery surface.
+  const dropDeadEntries = () => {
+    const live = (e) => !!noteDataRef.current[e.noteId];
+    undoStack.current = undoStack.current.filter(live);
+    redoStack.current = redoStack.current.filter(live);
+  };
+
   const pushHistory = () => {
     const noteId = activeNoteRef.current;
     if (!noteId || !noteDataRef.current[noteId]) return;
@@ -65,12 +89,29 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       if (import.meta.env.DEV && dt > 1)
         console.warn(`[perf] pushHistory cloneNote: ${dt.toFixed(1)}ms`);
       undoStack.current.push({ noteId, snapshot });
+      dropDeadEntries();
       if (undoStack.current.length > 50) undoStack.current.shift();
-      redoStack.current = [];
-      setCanUndo(true);
-      setCanRedo(false);
+      // A new edit ends this note's redo lineage and no one else's: an edit
+      // here says nothing about an edit undone in another note.
+      redoStack.current = redoStack.current.filter((e) => e.noteId !== noteId);
+      syncAvailability();
     });
   };
+
+  // The active note changed. Two things follow, and nothing else: the typing
+  // group the previous note owned is closed, so the first keystroke back in
+  // it starts its own entry rather than joining a burst it was never part of;
+  // and availability is re-read for the note now open. Navigation is not an
+  // edit and leaves the stacks alone. Called from an effect in BoojyNotes;
+  // `activeNoteRef` is already the new id by then.
+  const onActiveNoteChanged = useCallback(() => {
+    if (historyTimer.current) {
+      clearTimeout(historyTimer.current);
+      historyTimer.current = null;
+    }
+    historyGroupNote.current = null;
+    syncAvailability();
+  }, []);
 
   const commitNoteData = (updater) => applyCommit(updater, true);
 
@@ -126,8 +167,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     const keep = (e) => e.noteId in next;
     undoStack.current = undoStack.current.filter(keep);
     redoStack.current = redoStack.current.filter(keep);
-    setCanUndo(undoStack.current.length > 0);
-    setCanRedo(redoStack.current.length > 0);
+    syncAvailability();
     for (const id of unflushedNotes.current) if (!(id in next)) unflushedNotes.current.delete(id);
     trace("replaceNoteData", Object.keys(next).length);
     noteDataRef.current = next;
@@ -150,8 +190,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     if (id === activeNoteRef.current && textFlushTimer.current) cancelPendingText();
     undoStack.current = undoStack.current.filter((e) => e.noteId !== id);
     redoStack.current = redoStack.current.filter((e) => e.noteId !== id);
-    setCanUndo(undoStack.current.length > 0);
-    setCanRedo(redoStack.current.length > 0);
+    syncAvailability();
     unflushedNotes.current.delete(id);
     trace("applyExternalNote", id);
     noteDataRef.current = { ...noteDataRef.current, [id]: note };
@@ -225,13 +264,20 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     }
 
     if (!isUndoRedo.current) {
-      if (!historyTimer.current) {
+      // A group belongs to one note. Typing in another note inside the 500ms
+      // window opens that note's own group at once; without the check the
+      // second note's first burst joined the first note's entry and left the
+      // second with nothing to undo.
+      const groupNote = activeNoteRef.current;
+      if (!historyTimer.current || historyGroupNote.current !== groupNote) {
         pushHistory();
       } else {
         clearTimeout(historyTimer.current);
       }
+      historyGroupNote.current = groupNote;
       historyTimer.current = setTimeout(() => {
         historyTimer.current = null;
+        historyGroupNote.current = null;
       }, 500);
     }
 
@@ -288,6 +334,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       clearTimeout(historyTimer.current);
       historyTimer.current = null;
     }
+    historyGroupNote.current = null;
     isUndoRedo.current = true;
     syncGeneration.current++;
     trace("restoreSnapshot (undo/redo)", noteId);
@@ -302,49 +349,41 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     isUndoRedo.current = false;
   };
 
-  // The newest entry whose note still exists. Entries for a note that was
-  // deleted (or left behind by a vault switch, though replaceNoteData drops
-  // those) are discarded on the way: history never brings a note back, and
-  // the OS Trash is the recovery surface.
-  const takeLive = (stack) => {
-    while (stack.length > 0) {
-      const entry = stack.pop();
-      if (noteDataRef.current[entry.noteId]) return entry;
+  // The newest entry for one note, lifted out of the shared stack. Scanning
+  // backwards rather than popping is what leaves every other live note's
+  // history where it is; entries in front of it are not spent reaching it.
+  const takeNewestFor = (stack, noteId) => {
+    for (let i = stack.length - 1; i >= 0; i--) {
+      if (stack[i].noteId === noteId) return stack.splice(i, 1)[0];
     }
     return null;
   };
 
-  const undo = () => {
-    const entry = takeLive(undoStack.current);
-    if (entry) {
-      redoStack.current.push({
-        noteId: entry.noteId,
-        snapshot: cloneNote(noteDataRef.current[entry.noteId]),
-      });
-      restoreSnapshot(entry.noteId, entry.snapshot);
+  // Undo and redo read the active note at the moment they are invoked, never
+  // a rendered flag: the button may have been painted a beat before the note
+  // changed. A note that is gone has no history, so nothing is restored.
+  const step = (from, to) => {
+    const noteId = activeNoteRef.current;
+    if (noteId && noteDataRef.current[noteId]) {
+      const entry = takeNewestFor(from, noteId);
+      if (entry) {
+        to.push({ noteId, snapshot: cloneNote(noteDataRef.current[noteId]) });
+        if (to.length > 50) to.shift();
+        restoreSnapshot(noteId, entry.snapshot);
+      }
     }
-    setCanUndo(undoStack.current.length > 0);
-    setCanRedo(redoStack.current.length > 0);
+    syncAvailability();
   };
 
-  const redo = () => {
-    const entry = takeLive(redoStack.current);
-    if (entry) {
-      undoStack.current.push({
-        noteId: entry.noteId,
-        snapshot: cloneNote(noteDataRef.current[entry.noteId]),
-      });
-      restoreSnapshot(entry.noteId, entry.snapshot);
-    }
-    setCanUndo(undoStack.current.length > 0);
-    setCanRedo(redoStack.current.length > 0);
-  };
+  const undo = () => step(undoStack.current, redoStack.current);
+  const redo = () => step(redoStack.current, undoStack.current);
 
   return {
     canUndo,
     canRedo,
     undo,
     redo,
+    onActiveNoteChanged,
     commitNoteData,
     adoptNoteData,
     applyExternalNote,

@@ -964,12 +964,31 @@ smell.
 | `remapNoteFolders` | a directory rename or move | no |
 | `replaceNoteData` | the whole vault as the disk holds it: the initial load, a vault switch, the rebuild after an outside delete | keeps entries for notes that still exist |
 
+- **Undo and redo act on the open note and on no other** (2026-09-12). The stacks were always
+  note-tagged, but `undo` popped the newest entry of any note: an edit in A, a click on B and
+  Cmd+Z restored A behind the user's back, the write debounce put the reverted text on A's file,
+  and `canUndo` described the app rather than the note on screen. Both now take the newest entry
+  *for `activeNoteRef.current`*, scanning backwards and lifting it out (`takeNewestFor`), so an
+  entry belonging to another live note is never spent reaching one of this note's; a new edit
+  ends that note's redo lineage alone; and `canUndo` / `canRedo` are the open note's, re-read
+  through `onActiveNoteChanged` whenever the active note changes. The handlers read the ref at
+  the moment they run, never a rendered flag, because a button can be painted a beat before the
+  note changes. The stacks stay **shared and capped at 50 entries for the session** — one budget,
+  not a cache per note — and entries of a note that is gone are dropped at the next push, since
+  only the active note's are ever reachable. **Navigation is not an edit**: switching notes
+  pushes and drops nothing, it only closes the typing group and re-reads availability.
+  `undo-scope.spec.ts` proves the two files in the real app.
+- **A typing group belongs to one note.** `commitTextChange` opens a 500 ms group; it now records
+  which note the group is for (`historyGroupNote`) and starts a fresh one the moment the active
+  note differs, so typing in B inside A's window is B's own entry. Before this it joined A's and
+  B had nothing to undo. Leaving a note closes its group, so the first keystroke on return is a
+  new entry rather than a continuation of a burst it was never part of.
 - **History is the editor's.** A snapshot restores the title and the blocks and keeps the live
   `folder`, so undoing the typing that followed a move never writes the file back to its old
   place; a move is therefore not itself undoable, like a move in Finder is not undoable from
   inside a document. Undo never conjures a note: entries for a note that is gone (deleted here,
-  or left in another vault) are discarded on the way to the next live one, and a vault switch
-  drops them outright. The OS Trash is the recovery surface.
+  or left in another vault) are discarded rather than followed, and a vault switch drops them
+  outright. The OS Trash is the recovery surface.
 - **A draft is a note that has never held text, and it ends in the ref at the keystroke that
   first gives it a title or a character of body** (2026-09-08, review §2.6). `commitTextChange`
   strips `_draft` from the active note as soon as it has text, so everything that reads the ref

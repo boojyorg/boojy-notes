@@ -66,6 +66,7 @@ export default function BoojyNotes() {
     activeNoteRef,
     undo,
     redo,
+    onActiveNoteChanged,
     commitNoteData,
     adoptNoteData,
     applyExternalNote,
@@ -158,6 +159,14 @@ export default function BoojyNotes() {
 
   // ── Sync activeNoteRef from context ─────────────────────────────────
   activeNoteRef.current = activeNote;
+
+  // Undo and redo belong to the open note, so history is told when that
+  // changes: it closes the previous note's typing group and re-reads what
+  // the newly open note has to undo. The ref above is already the new id.
+  // Navigation is not an edit and nothing is pushed or dropped.
+  useEffect(() => {
+    onActiveNoteChanged();
+  }, [activeNote, onActiveNoteChanged]);
 
   // A persisted note's title is its filename: when a write lands under
   // another basename, the title follows it, in state and in the title field.
