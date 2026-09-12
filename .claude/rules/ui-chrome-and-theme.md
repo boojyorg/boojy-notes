@@ -305,7 +305,7 @@ below it — accepted 2026-09-12, the price of reading the row left to right as
 ### Alignment and rows
 
 - **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
-  (`wordmark … toggle`), the labelled `+ New note` action, and the `Notes` row carrying Search,
+  (`wordmark … toggle`), the labelled `New note` action, and the `Notes` row carrying Search,
   New folder and the ··· menu. Reading down, that is *what this app is*, *make one*, *find and
   organise what is here*.
 - **The chrome row carries the window's own control and nothing else.** Search left it on
@@ -315,10 +315,10 @@ below it — accepted 2026-09-12, the price of reading the row left to right as
   Cmd+N and Cmd+P are unchanged. The `New Note` and `New Folder` tree rows are mobile-only.
 - **New note is the sidebar's one labelled action** (`SidebarNewNote`, 2026-09-12): a full-width
   pill in the tree's own row grammar (`BG.hover`, 12px radius, the 4px inset), 32px tall, 14px
-  text, the Lucide Plus at 18px on the navigation stroke sitting on `SPINE` with the label on
+  text, the Lucide SquarePen at 18px on the navigation stroke sitting on `SPINE` with the label on
   `TEXT_COL`, 12px of air above and below it. Neutral at rest — never a filled accent button or
   a border: it is the first row of the column, not a button dropped on it. It calls the same
-  root-creation action as Cmd+N and as the collapsed header's Plus. The editor header's own New
+  root-creation action as Cmd+N and as the collapsed header's SquarePen. The editor header's own New
   note button went the same day, so the app has one visible way to make a note per state.
 - **Wordmark at 18px, one asset per theme, drawn in the theme's ink** (`Wordmark.tsx`,
   2026-09-07; mobile draws the same component at 30px). At 20px it out-shouted the note's

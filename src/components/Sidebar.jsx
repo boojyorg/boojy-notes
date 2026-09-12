@@ -11,7 +11,7 @@ import {
   NewFolderIcon,
   SearchIcon,
   MoreHorizontalIcon,
-  PlusIcon,
+  NewNoteIcon,
   SidebarToggleIcon,
 } from "./Icons";
 import {
@@ -291,7 +291,7 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
           flexShrink: 0,
         }}
       >
-        <PlusIcon size={18} nav />
+        <NewNoteIcon size={18} />
       </span>
       New note
     </button>

@@ -6,7 +6,7 @@ import {
   SidebarToggleIcon,
   MoreHorizontalIcon,
   SearchIcon,
-  PlusIcon,
+  NewNoteIcon,
   UndoIcon,
   RedoIcon,
 } from "./Icons";
@@ -214,7 +214,7 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
               <SearchIcon size={18} />
             </ChromeButton>
             <ChromeButton onClick={onNewNote} title="New note">
-              <PlusIcon size={18} nav />
+              <NewNoteIcon size={18} />
             </ChromeButton>
           </div>
         )}
