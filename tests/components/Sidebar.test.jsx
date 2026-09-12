@@ -139,7 +139,6 @@ function renderSidebar(overrides = {}) {
     clearSelection: noop,
     isMobile: overrides.isMobile ?? false,
     onOpenSearch: overrides.onOpenSearch,
-    vaultName: overrides.vaultName ?? "My Vault",
     onRevealVault: overrides.onRevealVault,
     onChangeVault: overrides.onChangeVault,
   };
@@ -170,19 +169,21 @@ describe("Sidebar", () => {
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
-  // Search is a palette over the window (2026-09-05). The chrome row's Search
-  // glyph opens it; the desktop panel never shows a field or results, so the
-  // vault header is always the first line of the panel.
-  it("opens the search palette from the chrome row's Search glyph and shows no field", () => {
+  // Search is a palette over the window (2026-09-05). Its glyph sits on the
+  // Notes row with New folder and the ··· (2026-09-12), not on the window's
+  // own row above; the desktop panel never shows a field or results.
+  it("opens the search palette from the Notes row's Search glyph and shows no field", () => {
     const onOpenSearch = vi.fn();
-    const { getByLabelText, queryByLabelText } = renderSidebar({ onOpenSearch });
-    expect(queryByLabelText("Search notes")).not.toBeInTheDocument();
-    fireEvent.click(getByLabelText("Search"));
+    const { getByLabelText } = renderSidebar({ onOpenSearch });
+    const search = getByLabelText("Search notes");
+    expect(search.closest(".sidebar-section-header")).not.toBeNull();
+    expect(search.tagName).toBe("BUTTON");
+    fireEvent.click(search);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();
-    expect(
-      renderSidebar({ searchFocused: true, search: "abc" }).queryByLabelText("Search notes"),
-    ).not.toBeInTheDocument();
+    // Still no field, whatever the search state.
+    const r = renderSidebar({ searchFocused: true, search: "abc" });
+    expect(r.container.querySelector("input")).toBeNull();
   });
 
   it("renders folder names from filteredTree", () => {
@@ -371,19 +372,28 @@ describe("Sidebar", () => {
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
   });
 
-  // ── The vault header (2026-09-05) ─────────────────────────────────────────
-  // One header carrying the vault folder's name replaces the `Folders` and
-  // `Notes` sections. Everything that makes something lives on it: New note,
-  // New folder, and the ··· menu holding the rare whole-vault actions.
+  // ── The Notes row and its controls (2026-09-12) ───────────────────────────
+  // One row labelled `Notes` heads the list, with Search, New folder and the
+  // ··· menu on it, all three visible at rest. The storage folder's name is
+  // not shown here at all; it lives in Settings → Storage. New note is the
+  // labelled action row above it.
 
-  it("names the header after the vault and carries no New note of its own", () => {
-    const { getByText, queryByText, queryByLabelText } = renderSidebar({ vaultName: "Vault" });
-    expect(getByText("Vault")).toBeInTheDocument();
-    // New note lives above the editor (EditorChrome), not in the panel.
-    expect(queryByLabelText("New note")).not.toBeInTheDocument();
-    expect(queryByText("New note")).not.toBeInTheDocument();
+  it("labels the list Notes, not the storage folder, and carries the labelled New note", () => {
+    const createNote = vi.fn();
+    const { getByText, queryByText, getByRole } = renderSidebar({ createNote });
+    expect(getByText("Notes")).toBeInTheDocument();
+    expect(queryByText("My Vault")).not.toBeInTheDocument();
     expect(queryByText("Folders")).not.toBeInTheDocument();
-    expect(queryByText("Notes")).not.toBeInTheDocument();
+    fireEvent.click(getByRole("button", { name: "New note" }));
+    expect(createNote).toHaveBeenCalledWith(null);
+  });
+
+  // Both stay reachable however far the tree is scrolled.
+  it("keeps New note and the Notes row in one sticky block above the tree", () => {
+    const { getByRole, getByText } = renderSidebar();
+    const block = getByRole("button", { name: "New note" }).parentElement;
+    expect(block.style.position).toBe("sticky");
+    expect(getByText("Notes").closest("div").parentElement).toBe(block);
   });
 
   it("makes a root folder from the header's New folder control", () => {
@@ -401,7 +411,7 @@ describe("Sidebar", () => {
       search: "xyz",
       searchResults: { results: [], totalCount: 0 },
     });
-    expect(getByText("My Vault")).toBeInTheDocument();
+    expect(getByText("Notes")).toBeInTheDocument();
     expect(queryByText(/No results for/)).not.toBeInTheDocument();
   });
 
@@ -410,7 +420,7 @@ describe("Sidebar", () => {
       filteredTree: [],
       fNotes: [],
     });
-    expect(getByText("My Vault")).toBeInTheDocument();
+    expect(getByText("Notes")).toBeInTheDocument();
     expect(getByLabelText("New folder")).toBeInTheDocument();
     // An empty tree fails axe's aria-required-children.
     expect(queryByRole("tree")).not.toBeInTheDocument();
@@ -418,10 +428,10 @@ describe("Sidebar", () => {
 
   it("keeps the header while a search narrows the tree to nothing", () => {
     const { getByText } = renderSidebar({ search: "zzz", filteredTree: [], fNotes: [] });
-    expect(getByText("My Vault")).toBeInTheDocument();
+    expect(getByText("Notes")).toBeInTheDocument();
   });
 
-  it("renders one tree named after the vault: folders first, then root notes", () => {
+  it("renders one tree named Notes: folders first, then root notes", () => {
     const noteData = buildNoteData([
       { id: "r1", title: "Loose Note" },
       { id: "n1", title: "Nested Note" },
@@ -434,7 +444,7 @@ describe("Sidebar", () => {
       expanded: { "Zed Folder": true },
     });
     expect(getAllByRole("tree")).toHaveLength(1);
-    const tree = getByRole("tree", { name: "My Vault" });
+    const tree = getByRole("tree", { name: "Notes" });
     const rows = Array.from(tree.querySelectorAll('[role="treeitem"]')).map((r) =>
       r.textContent.trim(),
     );
@@ -443,9 +453,9 @@ describe("Sidebar", () => {
     expect(rows[2]).toContain("Loose Note");
   });
 
-  it("marks the vault header as the root drop target", () => {
+  it("marks the Notes row as the root drop target", () => {
     const { getByText } = renderSidebar({ fNotes: [] });
-    expect(getByText("My Vault").closest("[data-drop-root]")).not.toBeNull();
+    expect(getByText("Notes").closest("[data-drop-root]")).not.toBeNull();
   });
 
   // ── The ··· menu ──────────────────────────────────────────────────────────
@@ -458,9 +468,9 @@ describe("Sidebar", () => {
       setSortMode,
       sortMode: "recent",
     });
-    expect(queryByRole("menu", { name: "Vault options" })).not.toBeInTheDocument();
-    fireEvent.click(getByLabelText("Vault options"));
-    const menu = getByRole("menu", { name: "Vault options" });
+    expect(queryByRole("menu", { name: "List options" })).not.toBeInTheDocument();
+    fireEvent.click(getByLabelText("List options"));
+    const menu = getByRole("menu", { name: "List options" });
     expect(menu).toBeInTheDocument();
     expect(getByRole("menuitemradio", { name: "Most recent" })).toHaveAttribute(
       "aria-checked",
@@ -468,18 +478,18 @@ describe("Sidebar", () => {
     );
     fireEvent.click(getByRole("menuitemradio", { name: "Alphabetical" }));
     expect(setSortMode).toHaveBeenCalledWith("alpha");
-    expect(queryByRole("menu", { name: "Vault options" })).not.toBeInTheDocument();
+    expect(queryByRole("menu", { name: "List options" })).not.toBeInTheDocument();
   });
 
   it("offers Reveal only when a handler is provided, and never Collapse all or Change vault", () => {
     const { getByLabelText, queryByRole, unmount } = renderSidebar();
-    fireEvent.click(getByLabelText("Vault options"));
+    fireEvent.click(getByLabelText("List options"));
     expect(queryByRole("menuitem", { name: /Reveal in Finder|Show in folder/ })).toBeNull();
     unmount();
 
     const onRevealVault = vi.fn();
     const r = renderSidebar({ onRevealVault });
-    fireEvent.click(r.getByLabelText("Vault options"));
+    fireEvent.click(r.getByLabelText("List options"));
     // Both removed 2026-09-05: Change vault folder is Settings → Storage only.
     expect(r.queryByRole("menuitem", { name: "Collapse all folders" })).toBeNull();
     expect(r.queryByRole("menuitem", { name: "Change vault folder…" })).toBeNull();
@@ -487,25 +497,24 @@ describe("Sidebar", () => {
     expect(onRevealVault).toHaveBeenCalled();
   });
 
-  // The header's two controls are hover-revealed (New note moved to the editor
-  // header, so nothing frequent hides here). jsdom can't compute the
-  // stylesheet, so assert the DOM hooks: the reveal class, inside the header
-  // the selectors scope to, keyboard-reachable, and not the visible variant.
-  it("keeps the two header controls keyboard-reachable with the CSS reveal hooks", () => {
+  // The Notes row's three controls are visible at rest (2026-09-12). jsdom
+  // can't compute the stylesheet, so assert the DOM hooks: the shared class,
+  // inside the header its selectors scope to, keyboard-reachable, and no
+  // hover-reveal variant left on any of them.
+  it("keeps all three list controls keyboard-reachable and on the one class", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["New folder", "Vault options"]) {
+    for (const name of ["Search notes", "New folder", "List options"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
-      expect(btn.className).toContain("sidebar-section-action");
-      expect(btn.className).not.toContain("--visible");
+      expect(btn.className).toBe("sidebar-section-action");
       expect(btn.closest(".sidebar-section-header")).not.toBeNull();
     }
   });
 
-  it("lists New folder in the vault menu as the standing hint for the hover control", () => {
+  it("lists New folder in the list menu as the keyboard route to the glyph", () => {
     const createFolder = vi.fn();
     const { getByLabelText, getByRole } = renderSidebar({ createFolder });
-    fireEvent.click(getByLabelText("Vault options"));
+    fireEvent.click(getByLabelText("List options"));
     fireEvent.click(getByRole("menuitem", { name: "New folder" }));
     expect(createFolder).toHaveBeenCalledWith(null);
   });

@@ -26,6 +26,13 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
+// ── Settings mock ───────────────────────────────────────────────────────────
+// The header menu is the one route to Settings, so the menu opens it itself.
+const setSettingsOpen = vi.fn();
+vi.mock("../../src/context/SettingsContext", () => ({
+  useSettings: () => ({ setSettingsOpen }),
+}));
+
 // ── Import component after mocks ────────────────────────────────────────────
 import ContextMenu from "../../src/components/ContextMenu.jsx";
 
@@ -140,5 +147,58 @@ describe("ContextMenu", () => {
     const backdrop = container.firstChild;
     fireEvent.click(backdrop);
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+  });
+});
+
+/**
+ * The editor header's ··· is its own menu: the open note's actions plus
+ * Settings, the sidebar's selection never redirecting it, and Settings still
+ * reachable with no note open at all.
+ */
+describe("the header menu", () => {
+  const headerProps = (id) => {
+    const props = baseProps();
+    props.ctxMenu = { type: "header", id, x: 100, y: 100 };
+    return props;
+  };
+
+  it("carries the open note's actions and Settings under a separator", () => {
+    const { getByText, getByRole } = render(<ContextMenu {...headerProps("n1")} />);
+    for (const label of ["Rename", "Duplicate", "Delete", "Settings"]) {
+      expect(getByText(label)).toBeInTheDocument();
+    }
+    expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
+    // Settings is ruled off from the note's own items.
+    expect(getByText("Settings").closest("button").style.borderTop).not.toBe("");
+  });
+
+  it("opens Settings and closes itself", () => {
+    const props = headerProps("n1");
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("Settings"));
+    expect(setSettingsOpen).toHaveBeenCalledWith(true);
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+  });
+
+  it("holds Settings alone when no note is open", () => {
+    const { getByText, queryByText, getByRole } = render(<ContextMenu {...headerProps(null)} />);
+    expect(getByText("Settings")).toBeInTheDocument();
+    for (const gone of ["Rename", "Duplicate", "Delete"]) {
+      expect(queryByText(gone)).not.toBeInTheDocument();
+    }
+    expect(getByRole("menu")).toHaveAttribute("aria-label", "App options");
+  });
+
+  // A multi-select made in the sidebar must not redirect an action taken from
+  // the note on screen: the sidebar's own menu is where bulk lives.
+  it("acts on the active note even with a sidebar multi-selection", () => {
+    const props = headerProps("n1");
+    props.selectedNotes = new Set(["n2", "n3"]);
+    props.selectedCount = 2;
+    const { getByText, queryByText } = render(<ContextMenu {...props} />);
+    expect(queryByText("Delete 2 notes")).not.toBeInTheDocument();
+    fireEvent.click(getByText("Delete"));
+    expect(props.deleteNote).toHaveBeenCalledWith("n1");
+    expect(props.bulkDeleteNotes).not.toHaveBeenCalled();
   });
 });

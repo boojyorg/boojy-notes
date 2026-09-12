@@ -88,6 +88,12 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       const dt = performance.now() - t0;
       if (import.meta.env.DEV && dt > 1)
         console.warn(`[perf] pushHistory cloneNote: ${dt.toFixed(1)}ms`);
+      // The commit has applied by now. If it left the open note's object
+      // untouched — discarding the launch draft on the way into a note,
+      // making or deleting another note — there is nothing here to take
+      // back, and an entry that restores the note to itself would light the
+      // Undo button on a note nobody has edited.
+      if (noteDataRef.current[noteId] === noteToClone) return;
       undoStack.current.push({ noteId, snapshot });
       dropDeadEntries();
       if (undoStack.current.length > 50) undoStack.current.shift();
@@ -390,7 +396,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     remapNoteFolders,
     replaceNoteData,
     commitTextChange,
-    pushHistory,
     isUndoRedo,
     noteDataRef,
     hasPendingFlush,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
+import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
@@ -29,6 +30,7 @@ const ContextMenu = memo(function ContextMenu({
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
+  const { setSettingsOpen } = useSettings();
 
   const [moveSubmenu, setMoveSubmenu] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -86,10 +88,56 @@ const ContextMenu = memo(function ContextMenu({
 
   if (!ctxMenu) return null;
 
+  // The editor header's ··· is the active note's, never the sidebar's
+  // selection: a multi-select made in the sidebar must not redirect an action
+  // taken from the note on screen. It is the one menu that carries Settings,
+  // and it opens with no active note at all, carrying Settings alone.
+  const isHeader = ctxMenu.type === "header";
   const isBulk = ctxMenu.type === "note" && selectedCount > 1;
 
-  const items =
-    ctxMenu.type === "note" && isBulk
+  const noteItems = (id) => [
+    {
+      label: "Rename",
+      icon: <PencilIcon />,
+      action: () => {
+        // Inline in the sidebar row (BoojyNotes.startNoteRename);
+        // falls back to the editor title if the sidebar is hidden.
+        onRenameNote(id);
+        setCtxMenu(null);
+      },
+    },
+    {
+      label: "Duplicate",
+      icon: <CopyIcon />,
+      action: () => {
+        duplicateNote(id);
+        setCtxMenu(null);
+      },
+    },
+    {
+      label: "Delete",
+      icon: <TrashIcon />,
+      action: () => {
+        deleteNote(id);
+        setCtxMenu(null);
+      },
+      danger: true,
+    },
+  ];
+
+  const settingsItem = {
+    label: "Settings",
+    // Under a rule: the app's own business, not this note's.
+    separator: true,
+    action: () => {
+      setCtxMenu(null);
+      setSettingsOpen(true);
+    },
+  };
+
+  const items = isHeader
+    ? [...(ctxMenu.id ? noteItems(ctxMenu.id) : []), settingsItem]
+    : ctxMenu.type === "note" && isBulk
       ? [
           {
             label: `Delete ${selectedCount} notes`,
@@ -113,35 +161,7 @@ const ContextMenu = memo(function ContextMenu({
           },
         ]
       : ctxMenu.type === "note"
-        ? [
-            {
-              label: "Rename",
-              icon: <PencilIcon />,
-              action: () => {
-                // Inline in the sidebar row (BoojyNotes.startNoteRename);
-                // falls back to the editor title if the sidebar is hidden.
-                onRenameNote(ctxMenu.id);
-                setCtxMenu(null);
-              },
-            },
-            {
-              label: "Duplicate",
-              icon: <CopyIcon />,
-              action: () => {
-                duplicateNote(ctxMenu.id);
-                setCtxMenu(null);
-              },
-            },
-            {
-              label: "Delete",
-              icon: <TrashIcon />,
-              action: () => {
-                deleteNote(ctxMenu.id);
-                setCtxMenu(null);
-              },
-              danger: true,
-            },
-          ]
+        ? noteItems(ctxMenu.id)
         : [
             {
               label: "New note here",
@@ -198,7 +218,7 @@ const ContextMenu = memo(function ContextMenu({
       <div
         ref={menuContainerRef}
         role="menu"
-        aria-label="Context menu"
+        aria-label={isHeader ? (ctxMenu.id ? "Note actions" : "App options") : "Context menu"}
         aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}
         tabIndex={-1}
         style={{
@@ -233,9 +253,15 @@ const ContextMenu = memo(function ContextMenu({
               width: "100%",
               background: index === activeIndex ? BG.hover : "none",
               border: "none",
+              // A separator is a rule above the item, drawn in the menu's own
+              // divider ink and spaced off the items either side of it.
+              borderTop: item.separator ? `1px solid ${BG.divider}` : undefined,
               borderRadius: 6,
+              marginTop: item.separator ? 4 : undefined,
               // 10px + the menu's 4px inset keeps the text 14px off the edge.
               padding: "7px 10px",
+              // After the shorthand, so the separator's own top air wins.
+              paddingTop: item.separator ? 11 : undefined,
               cursor: "pointer",
               color: item.danger ? SEMANTIC.error : TEXT.primary,
               fontSize: 12.5,

@@ -112,10 +112,35 @@ hardcoded green); swap them for Lucide when touching those files.
   with pane state still migrate in `resolveInitialActiveNote()`; leave that read path alone.
 - Cmd-click on a wikilink is a plain click. Deleting the open note lands on an empty draft
   (desktop) or the sidebar (mobile).
-- **The wordmark opens Settings directly** (testid `wordmark-settings-button`). There is no app
-  dropdown, About page, Help entry or Recently Deleted surface.
+- **The wordmark opens Settings directly** (testid `wordmark-settings-button`, tooltip
+  `Open Settings`). There is no app dropdown, About page, Help entry or Recently Deleted surface.
+- **The editor header's ··· is the second route to Settings, under a separator** (2026-09-12,
+  `ctxMenu.type === "header"`). It is the active note's menu — Rename, Duplicate, Delete — and
+  never the sidebar's multi-selection, however many rows are selected there; with no active note
+  it holds Settings alone and is named `App options` rather than `Note actions`. It renders in
+  both sidebar states and with no note open, because app settings must never need a note to
+  reach. No Settings cog anywhere, and no Settings item in a note-row or folder menu.
+- **Undo and Redo are chrome buttons before the note's name, in both sidebar states**
+  (2026-09-12): Lucide's curved `Undo2`/`Redo2` at 18px on the navigation stroke, in the shared
+  32px `ChromeButton`, natively disabled when the open note has nothing to take back. They act
+  on the open note alone (see "One owner for note state"), so a disabled pair means *this* note
+  is out of history, not the app. A press prevents its mousedown default (`keepSelection`), so
+  the editor's caret and selection survive it and typing carries on; Tab and Enter/Space are
+  untouched. No Unicode arrows and no straight navigation arrows: Back is not undo.
+- **The collapsed header carries the sidebar's own three controls**, in front of the history
+  pair and separated from it by a wider gap (`BTN_GAP` 2 within a group, `GROUP_GAP` 12 between
+  them): the toggle, Search and New note, running the same actions as the sidebar's, never a
+  second, different one. Opening Search or making a note from them does not bring the sidebar
+  back. While the sidebar shows, it owns those three and the header renders none of them, so
+  exactly one of each is reachable. The hidden sidebar keeps its DOM (drag hit-tests and scroll
+  position survive a collapse), so **its chrome row and its sticky action block are `inert`
+  while it is not showing** and are out of the tab order and the accessibility tree. Only those
+  two blocks: `inert` on the whole column also swallowed the second click of a double-click
+  while the panel was animating shut, and the overlay's inline rename stopped working
+  (`key-ownership.spec.ts` caught it). `header-controls.spec.ts` counts what is exposed in
+  every state, the overlay included.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
-  footer. `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
+  footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
   Appearance is the theme picker alone: the font-size row (`settingsFontSize`, 10–24) was
   removed on 2026-09-05 because the scale shortcuts already size everything, and body text is
@@ -254,25 +279,40 @@ hardcoded green); swap them for Lucide when touching those files.
 
 **The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
 opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
-renders it fixed at the viewport's top-left. Both use the exported `ChromeButton`.
-**The note label steps around the collapsed toggle by `COLLAPSED_TOGGLE_CLEARANCE`**
-(`EditorChrome`: the toggle's left, `MAC_TRAFFIC_INSET` or `CHROME_INSET`, plus its box plus
-8px of air), and only while the sidebar is hidden; the body column never moves. The reserve
-was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first letters of
-the name at every width (2026-09-07). Keep the clearance next to the toggle's position; the
-two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
+renders it at the head of the left group. Both use the exported `ChromeButton`.
+**The note label steps around the whole visible control group, by `chromeLabelClearance()`**
+(`EditorChrome`: where the group starts — `MAC_TRAFFIC_INSET` or `CHROME_INSET`, and, expanded,
+past the sidebar and its handle — plus the group's own width plus 8px of air), in **both**
+sidebar states: two buttons expanded, five collapsed. The body column never moves; the label
+gives up only what the column's padding and offset do not already cover, and truncates. The
+reserve was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first
+letters of the name at every width (2026-09-07), and counting it from the toggle alone would now
+put four more buttons there. Keep the clearance next to the group it measures; the two must move
+together. Collapsed at a wide window the name therefore sits a long way right of the body column
+below it — accepted 2026-09-12, the price of reading the row left to right as
+`navigation · history · name`. `chrome-row.spec.ts` measures both states, a long name and the
+600px minimum window in the real app.
 
 ## Sidebar
 
 ### Alignment and rows
 
-- **The chrome row is `wordmark … Search, toggle`** (2026-09-05). Search is a `ChromeButton`
-  beside the panel toggle that opens the search palette; the desktop panel never shows a
-  field or results, so the vault header is always the first line of the panel. **New
-  note lives above the editor** (`EditorChrome`, beside the note's ···), Apple Notes style:
-  the sidebar's row is for finding and hiding, the editor's for making and managing, and the
-  button is still there with the sidebar collapsed. Cmd+N is unchanged. The `New Note` and
-  `New Folder` tree rows are mobile-only.
+- **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
+  (`wordmark … toggle`), the labelled `+ New note` action, and the `Notes` row carrying Search,
+  New folder and the ··· menu. Reading down, that is *what this app is*, *make one*, *find and
+  organise what is here*.
+- **The chrome row carries the window's own control and nothing else.** Search left it on
+  2026-09-12 for the Notes row, where it sits at the list tier beside the list's other controls:
+  two rows of 18px glyphs stacked read as two toolbars, which is the same reason New note is not
+  there either. The desktop panel never shows a search field or results; the palette owns them.
+  Cmd+N and Cmd+P are unchanged. The `New Note` and `New Folder` tree rows are mobile-only.
+- **New note is the sidebar's one labelled action** (`SidebarNewNote`, 2026-09-12): a full-width
+  pill in the tree's own row grammar (`BG.hover`, 12px radius, the 4px inset), 32px tall, 14px
+  text, the Lucide Plus at 18px on the navigation stroke sitting on `SPINE` with the label on
+  `TEXT_COL`, 12px of air above and below it. Neutral at rest — never a filled accent button or
+  a border: it is the first row of the column, not a button dropped on it. It calls the same
+  root-creation action as Cmd+N and as the collapsed header's Plus. The editor header's own New
+  note button went the same day, so the app has one visible way to make a note per state.
 - **Wordmark at 18px, one asset per theme, drawn in the theme's ink** (`Wordmark.tsx`,
   2026-09-07; mobile draws the same component at 30px). At 20px it out-shouted the note's
   H1. The artwork is two colours, the cyan N (the same in both themes) and "otes" in
@@ -291,10 +331,13 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   glyph and sit on the folder-label column, so without the line they read as children of the
   last open folder; the line ending is what says "this folder ends here". No breath before the
   root notes: the row rhythm stays even. Tree rows are 28px with a 2px gap.
-- **The action group is a sticky block inside the sidebar's single scroll container.** Every
+- **New note and the Notes row are a sticky block inside the sidebar's single scroll
+  container** (2026-09-12; this reversed the 2026-09-05 rule that the header scrolls with the
+  tree). Making a note and reaching Search must not depend on where the list is scrolled. Every
   sidebar state shares that one scroller so the search field never remounts (and drops focus)
-  mid-typing; don't split states back into separate scrollers. Rows slide under the sticky
-  block with no separator; a scrolled-only hairline is the fix if that reads smudgy.
+  mid-typing; don't split states back into separate scrollers. Rows slide under the sticky block
+  with no separator; a scrolled-only hairline is the fix if that reads smudgy. The block paints
+  `chromeBg`, the sidebar's own ground, or rows would show through it.
 - **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
   folder icons; `TEXT_COL` carries every label. Root note rows are text-only, so an empty
   gutter sits left of their titles. **That gutter is alignment, not a missing icon. Don't fix
@@ -330,38 +373,43 @@ two must move together. `collapsed-toggle.spec.ts` measures it in the real app.
   second toggle rather than delaying single-click to disambiguate. Rename from a menu depends
   on the closing menu leaving focus with the field (see "Keys and focus").
 
-### The vault header and its one tree
+### The Notes row and its one tree
 
-- **One header, named after the vault folder** (`vaultName`, the basename of the notes
-  directory; `Notes` on web), replaces the `Folders` and `Notes` sections (2026-09-05). Row
-  height, row size (14px), weight 500, `TEXT.muted`: a label for the list, not a heading over
-  it (judged live against 15px/600/primary, which fought the wordmark). 10px below the chrome
-  row, 2px to the first row. It does not collapse, so no chevron. It scrolls with the tree; a
-  pinned header lies about the rows under it once the list scrolls. It is hidden with the tree
-  while a search shows results or none.
-- **The header carries New folder and the ··· menu, hover-revealed at the 16px row tier**
-  (`SectionAction`, `.sidebar-section-action`, reveal on header hover or focus-within, all
-  CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above;
-  two rows of 18px glyphs stacked read as two toolbars, which is why New note left the header.
-  **Never a third glyph here.** New folder is also the first item of the ··· menu, the
-  standing hint for a hover-revealed control and the keyboard path. Sort and Reveal in Finder
-  follow (`VaultMenu.tsx`, keyboard grammar as `ContextMenu`); anything rarer goes there too,
-  never onto the header. Not in the menu, by decision (2026-09-05): Collapse all folders
-  (folders toggle on click and persist as left) and Change vault folder, which is Settings →
-  Storage only, beside the path it changes. The
-  `--visible` variant of `SectionAction` exists for a control that must show at rest; nothing
-  uses it today.
-- **One `role="tree"`, the header a sibling above it, never inside it.** A header inside a tree
-  fails axe `aria-required-children` at critical impact, which the E2E gate catches. The tree
-  element exists only when it has rows, because an empty tree fails axe too; the header stays
-  regardless, since it is the root drop target and the home of New note. Folders come first,
+- **One header over the list, labelled `Notes`** (2026-09-12), replacing the vault folder's own
+  name, which had replaced the `Folders` and `Notes` sections in turn (2026-09-05). Row height,
+  row size (14px), weight 500, `TEXT.muted`: a label for the list, not a heading over it (judged
+  live against 15px/600/primary, which fought the wordmark). 12px below New note, 2px to the
+  first row. It does not collapse, so no chevron. It is hidden with the tree while a search
+  shows results or none, and it is the tree's accessible name.
+  **The storage folder's name is not shown in the sidebar at all**: it is the path in Settings →
+  Storage, beside the control that changes it, and nothing else in the app needs to say it. The
+  word `Notes` therefore appears twice in the column, once as the wordmark and once as this
+  label; they read at different ranks (artwork against 14px muted text), and that repetition was
+  judged and kept.
+- **The row carries Search, New folder and the ··· menu, visible at rest, at the 16px row tier**
+  (`SectionAction`, `.sidebar-section-action`, muted at 0.55 and full on hover or focus, all
+  CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above. They
+  hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
+  always-visible rule): Search is the only route to the palette while the sidebar shows, and a
+  control you must hover to find is not one. **Never a fourth glyph here** — three muted glyphs
+  read as a set, four read as a toolbar. New folder is also the first item of the ··· menu, the
+  keyboard path to it. Sort and Reveal in Finder follow (`VaultMenu.tsx`, labelled
+  `List options`, keyboard grammar as `ContextMenu`); anything rarer goes there too, never onto
+  the row. Not in the menu, by decision: Collapse all folders (folders toggle on click and
+  persist as left; declined again 2026-09-12) and Change vault folder, which is Settings →
+  Storage only, beside the path it changes.
+- **One `role="tree"`, the Notes row a sibling above it, never inside it.** A header inside a
+  tree fails axe `aria-required-children` at critical impact, which the E2E gate catches. The
+  tree element exists only when it has rows, because an empty tree fails axe too; the row stays
+  regardless, since it is the root drop target. Renaming the label changed no path, folder id,
+  drop target or sort order. Folders come first,
   alphabetical; root notes follow in the sort preference, exactly as inside a folder. **The
   root is a folder.** Mobile has no header and keeps its own inline rows.
 
 ## Search is a palette, not a panel
 
-- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the chrome row's Search glyph, or a
-  click on an inline `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
+- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the Notes row's Search glyph (the
+  editor header's while the sidebar is away), or a click on an inline `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
   2026-09-09; before this both fired and the palette opened over the link popover). Boojy
   Notes has Search, not a command palette: the popup exists only to find and open notes, and
   nothing unrelated goes into it. A
