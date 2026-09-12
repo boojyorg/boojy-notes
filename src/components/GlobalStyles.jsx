@@ -117,30 +117,18 @@ export default function GlobalStyles() {
           opacity: 1;
           color: ${theme.TEXT.primary};
         }
-        /* Section-header actions, judged live 2026-08-23 (New
-           folder, Sort) hide at rest and reveal on header hover or keyboard
-           focus, mirroring the note-row ··· grammar. 0.55 is the quiet revealed
-           ink — the faintest composite that clears ~3:1 on the DAY ground (0.4
-           does not). :where() keeps the reveal at class specificity so the
-           emphasis rules below can win. Touch devices (no hover) keep the
-           controls always visible; an open menu holds its control via inline
-           opacity (SectionAction \`active\`). */
+        /* The Notes row's three controls (Search, New folder, ···) are
+           visible at rest and lift on hover or focus. 0.55 is the quiet ink —
+           the faintest composite that clears ~3:1 on the DAY ground (0.4 does
+           not). They hid at rest until 2026-09-12; Search is the only route to
+           the palette while the sidebar is showing, and a control you must
+           hover to find is not one. An open menu holds its control at full ink
+           via inline opacity (SectionAction \`active\`). */
         .sidebar-section-action {
           background: transparent;
           color: ${theme.TEXT.secondary};
           opacity: 0.55;
           transition: background 120ms, color 120ms, opacity 120ms;
-        }
-        @media (hover: hover) {
-          .sidebar-section-action { opacity: 0; }
-          :where(.sidebar-section-header:hover, .sidebar-section-header:focus-within)
-            .sidebar-section-action {
-            opacity: 0.55;
-          }
-          /* The vault header's controls stay visible at rest: New note is the
-             most frequent action in the app and cannot be a secret. Muted ink,
-             full on hover, same as the section-action emphasis below. */
-          .sidebar-section-action--visible { opacity: 0.55; }
         }
         .sidebar-section-action:hover,
         .sidebar-section-action:focus-visible {

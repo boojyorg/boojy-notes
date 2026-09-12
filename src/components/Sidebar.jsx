@@ -11,6 +11,7 @@ import {
   NewFolderIcon,
   SearchIcon,
   MoreHorizontalIcon,
+  PlusIcon,
   SidebarToggleIcon,
 } from "./Icons";
 import { CHROME_TOP, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
@@ -106,6 +107,9 @@ const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 // neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
 // 28px with a 2px rhythm gap; the vault header is the same height.
 const ACTION_RADIUS = 12;
+/** The labelled New note row: a touch taller than a tree row, as the one
+ *  action among a list of names. */
+const ACTION_ROW_H = 32;
 const TREE_ROW_H = 28;
 const TREE_ROW_GAP = 2;
 // ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
@@ -134,17 +138,19 @@ const SECTION_HEADER_RIGHT = 5;
 const SECTION_BTN = 32;
 const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 2;
-// Header controls hide at rest and reveal on header hover / keyboard focus,
-// mirroring the note-row ··· grammar (judged live 2026-08-23 — this reversed
-// the earlier always-visible-at-0.55 rule). All rest/reveal/emphasis states
-// are CSS (.sidebar-section-action in GlobalStyles); keyboard users are never
-// locked out (focus reveals), and touch devices keep the controls visible.
+// Header controls are visible at rest, muted, and lift on hover or keyboard
+// focus (2026-09-12: this reversed the 2026-08-23 hover-reveal). Search, New
+// folder and the ··· are the list's own controls and the only route to Search
+// while the sidebar is showing; a control you must hover to find is not one.
+// All rest/emphasis states are CSS (.sidebar-section-action in GlobalStyles).
 
 /**
- * The one section lid: the vault's name left, its controls right.
+ * The one section lid: the list's name left, its controls right.
  * `role="presentation"` keeps it out of the tree below — the text still
- * reads, it just isn't announced as a row. The name is the vault folder's
- * basename, quiet secondary ink: it says where you are, nothing more.
+ * reads, it just isn't announced as a row. The name is the plain word
+ * `Notes`, quiet muted ink: a label for the list, not a second wordmark and
+ * not the storage folder's name, which lives in Settings → Storage beside the
+ * control that changes it (2026-09-12).
  */
 function SectionHeader({ label, TEXT, first, children, dropRoot }) {
   return (
@@ -192,17 +198,16 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
 }
 
 /**
- * A trailing header control (New note, New folder, ···). One component so
- * all wear the same geometry and the same rest/hover ink. `visible` keeps
- * the control on screen at rest (muted) instead of hover-revealed; the vault
- * header's three are, because New note cannot be a secret. Never a fourth:
- * three muted glyphs read as a set, four read as a toolbar.
+ * A trailing header control (Search, New folder, ···). One component so all
+ * wear the same geometry and the same rest/hover ink, muted at rest and full
+ * on hover or focus. Never a fourth: three muted glyphs read as a set, four
+ * read as a toolbar — anything rarer goes into the ··· menu.
  */
-function SectionAction({ onClick, title, ariaLabel, active, visible, children, ...rest }) {
+function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
   return (
     <button
       type="button"
-      className={`sidebar-section-action${visible ? " sidebar-section-action--visible" : ""}`}
+      className="sidebar-section-action"
       onClick={onClick}
       title={title}
       aria-label={ariaLabel || title}
@@ -223,6 +228,66 @@ function SectionAction({ onClick, title, ariaLabel, active, visible, children, .
       {...rest}
     >
       {children}
+    </button>
+  );
+}
+
+/**
+ * The sidebar's one labelled action: New note, above the list it adds to.
+ * A full-width pill in the tree's own row grammar (hover to BG.hover, the
+ * same 12px radius and 4px inset), so it reads as part of the column rather
+ * than as a button dropped on it — no filled accent, no border at rest. The
+ * plus sits on the structural SPINE and the label on TEXT_COL, with the
+ * folder names and note titles below it.
+ */
+function SidebarNewNote({ onClick, TEXT, BG }) {
+  return (
+    <button
+      type="button"
+      className="sidebar-action-row"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
+        marginLeft: ROW_INSET,
+        marginRight: ROW_INSET_RIGHT,
+        minHeight: ACTION_ROW_H,
+        boxSizing: "border-box",
+        paddingLeft: SPINE - ROW_INSET,
+        paddingRight: 8,
+        background: "none",
+        border: "none",
+        borderRadius: ACTION_RADIUS,
+        cursor: "pointer",
+        color: TEXT.secondary,
+        fontFamily: "inherit",
+        fontSize: 14,
+        textAlign: "left",
+        transition: "background 0.12s, color 0.12s",
+      }}
+      onMouseEnter={(e) => {
+        hBg(e.currentTarget, BG.hover);
+        e.currentTarget.style.color = TEXT.primary;
+      }}
+      onMouseLeave={(e) => {
+        hBg(e.currentTarget, "transparent");
+        e.currentTarget.style.color = TEXT.secondary;
+      }}
+    >
+      {/* Left-aligned in a box the width of the spine-to-label gap, so the
+          glyph starts on SPINE and the label starts exactly on TEXT_COL. */}
+      <span
+        style={{
+          width: TEXT_COL - SPINE,
+          display: "flex",
+          alignItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        <PlusIcon size={18} nav />
+      </span>
+      New note
     </button>
   );
 }
@@ -288,15 +353,21 @@ const Sidebar = memo(function Sidebar({
   clearSelection,
   ctxMenuNoteId,
   isMobile,
-  // The vault folder's basename ("Notes" on web, where there is no folder).
-  vaultName = "Notes",
-  // Desktop only: the ··· menu's whole-vault action. (Change vault folder is
-  // Settings → Storage only.)
+  // Desktop only: the ··· menu's whole-list action. (Change vault folder is
+  // Settings → Storage only, beside the path it changes.)
   onRevealVault,
-  // Desktop only: the chrome row's Search glyph opens the search palette.
+  // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
-  const { accentColor, toggleSidebar } = useLayout();
+  const { accentColor, chromeBg, sidebarVisible, toggleSidebar } = useLayout();
+  // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
+  // survive a collapse — but a zero-width, overflow-hidden panel still hands
+  // its buttons to Tab and to a screen reader, and the editor header renders
+  // the toggle, Search and New note while the panel is away. Its controls are
+  // therefore inert while it is not showing, so exactly one of each is ever
+  // reachable. Only the controls: `inert` on the whole column would also
+  // swallow the second click of a double-click while the panel animates shut.
+  const hiddenControls = !isMobile && !sidebarVisible;
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -790,6 +861,7 @@ const Sidebar = memo(function Sidebar({
           and toggle opt back out so they stay clickable. */}
       {!isMobile && (
         <div
+          inert={hiddenControls}
           style={{
             display: "flex",
             alignItems: "center",
@@ -810,7 +882,7 @@ const Sidebar = memo(function Sidebar({
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Notes — open Settings"
-            title="Settings"
+            title="Open Settings"
             style={{
               background: "none",
               border: "none",
@@ -829,18 +901,13 @@ const Sidebar = memo(function Sidebar({
                 the 0.92-opacity stand-in for a black asset is gone with it. */}
             <Wordmark height={18} />
           </button>
-          {/* Window-level controls live in the chrome row with the traffic
-              lights: Search and the panel toggle. The vault header below is
-              the first content line. Search opens the palette (Cmd+P); the
-              panel itself never shows a field or results on desktop. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <ChromeButton onClick={onOpenSearch} title="Search">
-              <SearchIcon size={18} />
-            </ChromeButton>
-            <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
-              <SidebarToggleIcon />
-            </ChromeButton>
-          </div>
+          {/* The window's row carries the window's own control and nothing
+              else (2026-09-12): Search moved down to the list it searches,
+              where it sits beside New folder and the ··· at the list's own
+              tier. Two rows of 18px glyphs stacked read as two toolbars. */}
+          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
+            <SidebarToggleIcon />
+          </ChromeButton>
         </div>
       )}
 
@@ -1090,20 +1157,40 @@ const Sidebar = memo(function Sidebar({
                     the ··· reveal on hover or focus, at the 16px row tier so
                     they read with the folder glyphs below, not with the chrome
                     row above. New note lives in the chrome row. */}
-                <SectionHeader label={vaultName} TEXT={TEXT} first dropRoot>
-                  <SectionAction onClick={() => createFolder(null)} title="New folder">
-                    <NewFolderIcon size={16} />
-                  </SectionAction>
-                  <SectionAction
-                    onClick={(e) => setVaultMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                    title="Vault options"
-                    aria-haspopup="menu"
-                    aria-expanded={vaultMenuAnchor !== null}
-                    active={vaultMenuAnchor !== null}
-                  >
-                    <MoreHorizontalIcon size={16} />
-                  </SectionAction>
-                </SectionHeader>
+                {/* New note and the list's controls stay reachable however
+                    far the tree is scrolled: they are a sticky block at the
+                    top of the sidebar's one scroller, and rows slide under
+                    them with no separator (2026-09-12). */}
+                <div
+                  inert={hiddenControls}
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                    background: chromeBg,
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{ height: SECTION_GAP }} />
+                  <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
+                  <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
+                    <SectionAction onClick={onOpenSearch} title="Search notes">
+                      <SearchIcon size={16} />
+                    </SectionAction>
+                    <SectionAction onClick={() => createFolder(null)} title="New folder">
+                      <NewFolderIcon size={16} />
+                    </SectionAction>
+                    <SectionAction
+                      onClick={(e) => setVaultMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                      title="List options"
+                      aria-haspopup="menu"
+                      aria-expanded={vaultMenuAnchor !== null}
+                      active={vaultMenuAnchor !== null}
+                    >
+                      <MoreHorizontalIcon size={16} />
+                    </SectionAction>
+                  </SectionHeader>
+                </div>
                 {vaultMenuAnchor && (
                   <VaultMenu
                     anchor={vaultMenuAnchor}
@@ -1117,7 +1204,7 @@ const Sidebar = memo(function Sidebar({
                 )}
                 {/* An empty tree fails axe, so the element exists only with rows. */}
                 {(filteredTree.length > 0 || fNotes.length > 0) && (
-                  <div role="tree" aria-label={vaultName}>
+                  <div role="tree" aria-label="Notes">
                     {filteredTree.map((f) => renderFolder(f, 0))}
                     {/* No breath before the root notes: the guide line ending
                         says the folder ended; the row rhythm stays even. */}

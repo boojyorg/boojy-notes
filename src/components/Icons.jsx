@@ -49,6 +49,7 @@ import {
   Paperclip as LuPaperclip,
   Pencil as LuPencil,
   Plus as LuPlus,
+  Redo2 as LuRedo2,
   Search as LuSearch,
   SquareCheck as LuSquareCheck,
   SquarePen as LuSquarePen,
@@ -56,6 +57,7 @@ import {
   Table as LuTable,
   TextQuote as LuTextQuote,
   Trash2 as LuTrash2,
+  Undo2 as LuUndo2,
 } from "lucide-react";
 
 const ICON_INLINE = 16;
@@ -95,6 +97,11 @@ export const NewNoteIcon = ({ size = ICON_INLINE }) => (
 export const NewFolderIcon = ({ size = ICON_INLINE }) => (
   <LuFolderPlus {...base} {...navBase} size={size} />
 );
+/** History, in the editor header. Lucide's curved pair, navigation tier: they
+ *  stand as controls beside the note's name, not as glyphs inside prose. A
+ *  straight arrow would read as navigation (Back), which undo is not. */
+export const UndoIcon = ({ size = ICON_CONTROL }) => <LuUndo2 {...base} {...navBase} size={size} />;
+export const RedoIcon = ({ size = ICON_CONTROL }) => <LuRedo2 {...base} {...navBase} size={size} />;
 /** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
 /** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
  *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;

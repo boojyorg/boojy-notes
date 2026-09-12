@@ -5,7 +5,7 @@ import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { CHROME_TOP, CHROME_BTN, COLLAPSED_TOGGLE_CLEARANCE } from "./EditorChrome";
+import { CHROME_TOP, CHROME_BTN, SIDEBAR_HANDLE_W, chromeLabelClearance } from "./EditorChrome";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
@@ -58,14 +58,17 @@ const LABEL_RIGHT_RESERVE = 48;
  */
 const LABEL_PAD_X = 5;
 /**
- * Kept clear on the label's LEFT, but only while the panel toggle is pinned to
- * the viewport corner. Measured to the hover pill rather than the text, so what
- * you see keeps the chrome's 8px of air from the toggle. The clearance comes
- * from EditorChrome, which knows where the toggle is: on macOS it sits right
- * of the traffic lights, and a reserve counted from the web inset left it on
- * the first letters of the name at every window width (2026-09-07).
+ * Kept clear on the label's LEFT: the chrome row's controls share the label's
+ * line, and the label starts past them. Measured to the hover pill rather than
+ * the text, so what you see keeps the chrome's 8px of air. The clearance comes
+ * from EditorChrome, which knows what is on the row and where: Undo and Redo
+ * while the sidebar is showing, and the toggle, Search and New note in front
+ * of them while it is not (on macOS, right of the traffic lights). A reserve
+ * counted from the web inset left the toggle on the first letters of the name
+ * at every window width (2026-09-07), and one counted from the toggle alone
+ * would now put four more buttons there.
  */
-const LABEL_LEFT_RESERVE = COLLAPSED_TOGGLE_CLEARANCE + LABEL_PAD_X;
+const LABEL_LEFT_RESERVE = (collapsed) => chromeLabelClearance(collapsed) + LABEL_PAD_X;
 
 /*
  * The writing column is fluid, because the window is.
@@ -94,8 +97,6 @@ const COL_PAD_TO = 800;
 const COL_OFFSET_MAX = 40;
 const COL_OFFSET_FROM = 560;
 const COL_OFFSET_TO = 880;
-/** The drag handle between sidebar and editor also eats width. */
-const SIDEBAR_HANDLE_W = 4;
 
 /** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
 function nearestTextIndex(blocks, from, step) {
@@ -524,11 +525,12 @@ const EditorArea = memo(
     const editorW = `(100vw - ${sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
-    // The toggle is only pinned to the corner while the sidebar isn't showing;
-    // that is the only time the label has to step around it.
-    const labelIndent = !sidebarVisible
-      ? `max(0px, calc(${LABEL_LEFT_RESERVE}px - ${colPad} - ${colOffset}))`
-      : "0px";
+    // The label steps around whatever the chrome row is showing, in either
+    // sidebar state: two history buttons expanded, five controls collapsed.
+    // It gives up only what it must — the column's own padding and offset
+    // already carry part of the reserve — and truncates rather than moving
+    // the body column, which never shifts.
+    const labelIndent = `max(0px, calc(${LABEL_LEFT_RESERVE(!sidebarVisible)}px - ${colPad} - ${colOffset}))`;
 
     return (
       <div

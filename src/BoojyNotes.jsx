@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -219,11 +219,6 @@ export default function BoojyNotes() {
     remapNoteFolders,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
-  // The sidebar header carries the vault folder's own name; web has no folder.
-  const vaultName = useMemo(
-    () => (notesDir ? notesDir.split(/[\\/]/).filter(Boolean).pop() : null) || "Notes",
-    [notesDir],
-  );
   const revealVault = useCallback(() => {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
@@ -709,8 +704,11 @@ export default function BoojyNotes() {
       {!isMobile && (
         <EditorChrome
           activeNote={activeNote}
-          onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "note", id: activeNote })}
+          // Its own menu type: the active note's actions plus Settings, never
+          // the sidebar's multi-selection, and open with no note at all.
+          onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "header", id: activeNote })}
           onNewNote={() => createNote(null)}
+          onOpenSearch={openSearch}
         />
       )}
       {isMobile && (
@@ -801,7 +799,6 @@ export default function BoojyNotes() {
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
             isMobile={isMobile}
-            vaultName={vaultName}
             onRevealVault={isElectron ? revealVault : undefined}
             onOpenSearch={openSearch}
           />

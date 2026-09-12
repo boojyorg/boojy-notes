@@ -41,10 +41,25 @@ function setup(initialBlocks = [paragraph("hello")]) {
   };
 }
 
-// Helper: flush queueMicrotask used inside pushHistory
+// Helper: flush the queueMicrotask an entry is made in
 async function flushMicrotasks() {
   await new Promise((r) => setTimeout(r, 0));
 }
+
+// A commit that actually changes the note. `(prev) => prev` used to be enough
+// to make an undo entry; a commit that leaves the open note as it was is not
+// one any more, so the tests that want an entry edit something.
+let editSeq = 0;
+const edit = (prev) => ({
+  ...prev,
+  [NOTE_ID]: {
+    ...prev[NOTE_ID],
+    content: {
+      ...prev[NOTE_ID].content,
+      blocks: [{ ...prev[NOTE_ID].content.blocks[0], text: `hello ${++editSeq}` }],
+    },
+  },
+});
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -164,14 +179,14 @@ describe("useHistory", () => {
 
       // Set textOnlyEdit via commitTextChange
       act(() => {
-        result.current.commitTextChange((prev) => prev);
+        result.current.commitTextChange(edit);
       });
       await act(() => flushMicrotasks());
       expect(result.current.textOnlyEdit.current).toBe(true);
 
       // commitNoteData should clear it
       act(() => {
-        result.current.commitNoteData((prev) => prev);
+        result.current.commitNoteData(edit);
       });
       expect(result.current.textOnlyEdit.current).toBe(false);
       expect(result.current.textOnlyEditForSidebar.current).toBe(false);
@@ -184,7 +199,7 @@ describe("useHistory", () => {
       result.current.isUndoRedo.current = true;
 
       act(() => {
-        result.current.commitNoteData((prev) => prev);
+        result.current.commitNoteData(edit);
       });
       await act(() => flushMicrotasks());
 
@@ -250,7 +265,7 @@ describe("useHistory", () => {
       const { result } = setup();
 
       act(() => {
-        result.current.commitTextChange((prev) => prev);
+        result.current.commitTextChange(edit);
       });
       await act(() => flushMicrotasks());
 
@@ -260,7 +275,7 @@ describe("useHistory", () => {
     it("debounces history pushes within 500ms", async () => {
       const { result } = setup();
 
-      act(() => result.current.commitTextChange((prev) => prev));
+      act(() => result.current.commitTextChange(edit));
       await act(() => flushMicrotasks());
 
       // Second call within 500ms should NOT push again
@@ -275,13 +290,13 @@ describe("useHistory", () => {
     it("pushes new history after 500ms debounce expires", async () => {
       const { result } = setup();
 
-      act(() => result.current.commitTextChange((prev) => prev));
+      act(() => result.current.commitTextChange(edit));
       await act(() => flushMicrotasks());
 
       // Advance past debounce window
       act(() => vi.advanceTimersByTime(600));
 
-      act(() => result.current.commitTextChange((prev) => prev));
+      act(() => result.current.commitTextChange(edit));
       await act(() => flushMicrotasks());
 
       // Two undo entries should exist
@@ -579,7 +594,7 @@ describe("useHistory", () => {
       const { result, syncGeneration } = setup();
 
       act(() => {
-        result.current.commitNoteData((prev) => prev);
+        result.current.commitNoteData(edit);
       });
       await act(() => flushMicrotasks());
 
@@ -621,7 +636,7 @@ describe("useHistory", () => {
       const { result } = setup();
 
       act(() => {
-        result.current.commitNoteData((prev) => prev);
+        result.current.commitNoteData(edit);
       });
       await act(() => flushMicrotasks());
 
@@ -637,7 +652,7 @@ describe("useHistory", () => {
       const { result, syncGeneration } = setup();
 
       act(() => {
-        result.current.commitNoteData((prev) => prev);
+        result.current.commitNoteData(edit);
       });
       await act(() => flushMicrotasks());
       act(() => result.current.undo());
@@ -660,7 +675,7 @@ describe("useHistory", () => {
     it("canUndo becomes true after commit and false after all undone", async () => {
       const { result } = setup();
 
-      act(() => result.current.commitNoteData((prev) => prev));
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
       expect(result.current.canUndo).toBe(true);
 
@@ -671,12 +686,12 @@ describe("useHistory", () => {
     it("canRedo becomes false after a new commit", async () => {
       const { result } = setup();
 
-      act(() => result.current.commitNoteData((prev) => prev));
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
       act(() => result.current.undo());
       expect(result.current.canRedo).toBe(true);
 
-      act(() => result.current.commitNoteData((prev) => prev));
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
       expect(result.current.canRedo).toBe(false);
     });
@@ -689,7 +704,7 @@ describe("useHistory", () => {
       const { result } = setup();
 
       for (let i = 0; i < 55; i++) {
-        act(() => result.current.pushHistory());
+        act(() => result.current.commitNoteData(edit));
         await act(() => flushMicrotasks());
       }
 
@@ -761,20 +776,37 @@ describe("useHistory", () => {
 
   // ─── pushHistory ──────────────────────────────────────────────────
 
-  describe("pushHistory", () => {
-    it("pushHistory adds an entry", async () => {
+  // History is made by the commits alone; there is no bare push to call.
+  describe("what makes an entry", () => {
+    it("records a commit that changed the open note", async () => {
       const { result } = setup();
 
-      act(() => result.current.pushHistory());
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
       expect(result.current.canUndo).toBe(true);
     });
 
-    it("pushHistory ignores call when no active note", async () => {
+    // Discarding the launch draft on the way into a note, or making or
+    // deleting another note, leaves the open note as it was: an entry that
+    // restored it to itself lit Undo on a note nobody had edited.
+    it("records nothing when the commit left the open note as it was", async () => {
+      const { result } = setup();
+
+      act(() =>
+        result.current.commitNoteData((prev) => ({
+          ...prev,
+          "note-2": { id: "note-2", title: "Other", content: { blocks: [] } },
+        })),
+      );
+      await act(() => flushMicrotasks());
+      expect(result.current.canUndo).toBe(false);
+    });
+
+    it("records nothing when there is no active note", async () => {
       const { result, activeNoteRef } = setup();
       activeNoteRef.current = null;
 
-      act(() => result.current.pushHistory());
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
 
       expect(result.current.canUndo).toBe(false);
@@ -792,7 +824,7 @@ describe("useHistory", () => {
     it("is set during undo/redo but reset afterwards", async () => {
       const { result } = setup();
 
-      act(() => result.current.commitNoteData((prev) => prev));
+      act(() => result.current.commitNoteData(edit));
       await act(() => flushMicrotasks());
 
       // After undo completes, isUndoRedo should be false

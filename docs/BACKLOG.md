@@ -7,7 +7,7 @@ is added because it sounds plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-11,
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-12,
 for the v0.7.0 release, closing out the whole-app review of 2026-09-07 (its fixes are in
 `CHANGELOG.md` v0.7.0, PRs #144–#158; the residue is here, marked *review §n* where it came
 from that file's B and C lists).
@@ -128,10 +128,12 @@ none blocks the release. The shared question comes first because three candidate
   11:37", exact timestamp on demand, counting written content rather than Markdown punctuation.
   Edited follows the sort's recency rule (rename and move count; opening never does); imports,
   external changes and appearance changes need the same rule stated once.
-- **Favourites.** A Favourite action; a Favourites list that appears with the first favourite
-  and disappears when empty; the note stays in its folder and the list is a second route to it.
-  One concept, not Favourite and Pin. Open: ordering, placement (a sibling list above the vault
-  header keeps the one-tree rule), whether folders qualify. Needs the metadata decision.
+- **Favourites.** Decided in shape (2026-09-12), not scheduled: a note is favourited and
+  unfavourited from its own ··· menu; a Favourites section appears with the first favourite and
+  disappears when the last is removed; the note keeps its place in its folder, and the section
+  is a second route to it, never a move. One concept, not Favourite and Pin. Still open:
+  ordering, placement (a sibling list above the Notes row keeps the one-tree rule), whether
+  folders qualify. Needs the metadata decision above; nothing here is built until that is made.
 - **Folder colours and icons.** Colour the folder glyph, keep the label and row neutral; Light
   and Dark variants; selection never colour-only; a reset to the default folder. The reference
   used outline icons, not emoji, roughly 25–30 icons and 7–8 colours; the catalogue is
@@ -164,18 +166,16 @@ none blocks the release. The shared question comes first because three candidate
   proving the conversion as a script over fixtures before any UI is one way to do that.
   Distinct from the File menu
   Import removed on 2026-09-05: a one-time journey with a report, not a converter.
-- **Visible Undo and Redo controls.** Keyboard-only on desktop; the touch toolbar already
-  carries them at its fixed left edge (see Technical debt for the rule that says otherwise).
-  Desktop and touch are judged separately, and the answer may be no. For reference: Apple shows a button on iPhone and iPad, Notion keeps them in its
-  mobile ··· menu, Obsidian is keyboard-only.
 - **Move to…** for a single note: a destination without dragging (drag and the bulk menu cover
   it today).
-- **Back and Forward** through recently open notes, remembering caret and scroll position.
-  Controls unchosen; Cmd+[ and Cmd+] is the convention.
 - **Context menu on plain text** and **rich paste** are listed under Known issues; promoting
   either is a candidate call, not a fix.
-- **A Recent list** in the empty search palette, if the last-touched note proves hard to get
-  back to. **A muted "N other files" hint** on folders holding files the app cannot open
+- **Recent notes in Search.** Decided in shape (2026-09-12), not scheduled: opening Search with
+  an empty query lists recently *opened* notes, and the first character typed replaces them with
+  results. The rule it must keep is the sort's: opening a note is not editing it, so appearing
+  in this list never moves a note in "Most recent" or touches its timestamp. How the list is
+  persisted, how long it is, and whether it survives a restart belong to the feature.
+  **A muted "N other files" hint** on folders holding files the app cannot open
   (Reveal in Finder answers it for now).
 - **More New Note entry points** (a global shortcut; a share action on mobile later) run the
   same workflow. Initial focus, location and the moment an empty note becomes a file are
@@ -207,12 +207,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   and a stale target under auto-scroll (review §4.4); Finder, Notion and Obsidian lift after
   ~5px of movement and never on a timer, and a displacement threshold fixes all four at once.
 - [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
-- [ ] **Undo snapshots the open note whatever the commit touched** (`useHistory.js`
-  `pushHistory`): a sidebar rename of another note pushes a no-op entry, so Cmd+Z "does
-  nothing" once; deleting the open note and undoing within the flush debounce restores it in
-  memory while the flush trashes the file. Decision to make: undo scope is the open note's text
-  and structure only, skipping commits that do not change it and excluding delete (about ten
-  lines), or per-note entries.
 - [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
   up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`
@@ -502,7 +496,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 
 ### Editor and organisation
 
-- **Heading navigation or folding**, without another permanent panel. No choice yet between a
+- **Heading navigation or folding**, without another permanent panel. Deferred again on
+  2026-09-12 and deliberately left out of the sidebar rearrangement. No choice yet between a
   heading picker (an `@` mode in the search palette would add no panel) and folding. Consider
   links to sections within and between notes, including heading targets in wikilinks. Explicit
   heading IDs are a separate syntax decision; target naming and behaviour when headings change
@@ -595,3 +590,9 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 No AI features or agents; no collaboration; no calendar; no Inbox; no daily-note feature; no
 templates; no tabs or split view; no separate quick-note workflow. The spec
 additionally excludes layouts and blocks that cannot round-trip to readable Markdown.
+
+Declined 2026-09-12, when the sidebar was rearranged: **Collapse all folders** (folders toggle
+on click and persist as left, and the list menu has no room for an action nobody reached for),
+and **Back and Forward** through recently open notes (one active note, no navigation stack; the
+sidebar and Search are how you get back to a note, and Recent notes in Search is the idea that
+survives from it).

@@ -152,7 +152,7 @@ export default function VaultMenu({
       <div
         ref={menuRef}
         role="menu"
-        aria-label="Vault options"
+        aria-label="List options"
         aria-activedescendant={activeIndex >= 0 ? `vault-item-${activeIndex}` : undefined}
         tabIndex={-1}
         style={{
