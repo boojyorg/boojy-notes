@@ -90,7 +90,7 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
 
     expect(result.current.sidebarDrag.current.active).toBe(true);
     expect(folderRow.style.background).toBe(rgb(NIGHT.BG.hover));
-    expect(folderRow.style.boxShadow).toContain(rgb(NIGHT.TEXT.muted));
+    expect(folderRow.style.boxShadow.toLowerCase()).toContain(NIGHT.TEXT.muted.toLowerCase());
     expect(folderRow.style.background).not.toBe(rgb(DAY.BG.hover));
 
     act(() => result.current.cancelSidebarDrag());
