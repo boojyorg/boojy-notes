@@ -107,6 +107,13 @@ hardcoded green); swap them for Lucide when touching those files.
   drag region; the wordmark and chrome buttons opt out. Collapsed, a thin invisible strip along
   the viewport top keeps the window draggable and deliberately stops above the note label's
   line box so it never steals label clicks. Web and non-mac Electron render none of this.
+  **In full screen the inset goes too** (2026-09-14): macOS hides the lights, so the wordmark,
+  the collapsed group, the label clearance and the drag strip all fall back to the ordinary inset
+  while it is on. The main process is the one that knows: it answers `is-full-screen` once at
+  mount and sends `full-screen-changed` at every edge; `useFullScreen` holds the answer in
+  `LayoutContext`, and every inset that keys off the lights asks `trafficLightsShown(fullScreen)`
+  (`EditorChrome`), never `isElectronMac` alone. `chrome-row.spec.ts` proves both states in the
+  real app on macOS (a hidden window still enters full screen there; Linux CI skips it).
 - **One active note.** Opening a note replaces it; no tabs, no split view. Restoring tabs means
   reverting the refactor, not remounting a component. Old persisted `boojy-ui-state` blobs
   with pane state still migrate in `resolveInitialActiveNote()`; leave that read path alone.

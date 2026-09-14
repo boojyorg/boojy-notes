@@ -10,6 +10,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
 import { useSidebarFits } from "../hooks/useSidebarFits";
+import { useFullScreen } from "../hooks/useFullScreen";
 import { SIDEBAR_MIN_W, SIDEBAR_DEFAULT_W } from "../constants/layout";
 
 const LayoutContext = createContext(null);
@@ -39,6 +40,13 @@ export function LayoutProvider({ children }) {
    * and must never be rewritten by a window resize.
    */
   const sidebarFits = useSidebarFits(sidebarWidth);
+
+  /**
+   * macOS full screen: the traffic lights are gone, so the chrome that clears
+   * them (the wordmark, the collapsed control group, the note label behind
+   * them) moves back to the ordinary inset. Only the window writes it.
+   */
+  const fullScreen = useFullScreen();
 
   /*
    * Three questions, three answers — this is the whole point of the split:
@@ -103,6 +111,7 @@ export function LayoutProvider({ children }) {
       sidebarVisible,
       overlayOpen,
       overlayWidth,
+      fullScreen,
       toggleSidebar,
       revealSidebar,
       closeOverlay,
@@ -122,6 +131,7 @@ export function LayoutProvider({ children }) {
       sidebarVisible,
       overlayOpen,
       overlayWidth,
+      fullScreen,
       toggleSidebar,
       revealSidebar,
       closeOverlay,

@@ -17,9 +17,9 @@ vi.mock("electron-updater", () => ({
   autoUpdater: { on: vi.fn(), checkForUpdates: vi.fn(async () => {}) },
 }));
 
-const { getNotesDir, loadConfig, loadSettings, saveConfig, saveSettings } = await import(
-  "../../electron/settingsManager.js"
-);
+const { ipcMain } = await import("electron");
+const { getNotesDir, loadConfig, loadSettings, registerSettingsIPC, saveConfig, saveSettings } =
+  await import("../../electron/settingsManager.js");
 
 const SETTINGS = path.join(userData, "settings.json");
 const CONFIG = path.join(userData, "config.json");
@@ -80,5 +80,25 @@ describe("getNotesDir", () => {
 
     expect(fs.existsSync(chosen)).toBe(false);
     expect(fs.existsSync(path.join(documents, "Boojy"))).toBe(false);
+  });
+});
+
+// The renderer asks once at mount whether the window is already in full
+// screen (a reload, a window restored to it), before main.js's edge events
+// can have told it; the inset that clears the traffic lights keys off the
+// answer. No window means no full screen, never a throw.
+describe("is-full-screen", () => {
+  it("answers the window's own state, and false with no window", async () => {
+    let win = null;
+    registerSettingsIPC(() => win, vi.fn());
+    const call = ipcMain.handle.mock.calls.find(([channel]) => channel === "is-full-screen");
+    expect(call).toBeDefined();
+    const handler = call[1];
+
+    expect(await handler()).toBe(false);
+    win = { isFullScreen: () => true };
+    expect(await handler()).toBe(true);
+    win = { isFullScreen: () => false };
+    expect(await handler()).toBe(false);
   });
 });

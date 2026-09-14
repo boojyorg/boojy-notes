@@ -74,6 +74,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Window
   setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
+  // macOS full screen hides the traffic lights; the renderer drops the inset
+  // that clears them while it is on. One answer at mount, then every edge.
+  isFullScreen: () => ipcRenderer.invoke("is-full-screen"),
+  onFullScreenChanged: (callback) => {
+    const handler = (_event, on) => callback(on);
+    ipcRenderer.on("full-screen-changed", handler);
+    return () => ipcRenderer.removeListener("full-screen-changed", handler);
+  },
 
   // Diagnostic trace (electron/trace.js): a no-op unless BOOJY_TRACE is set.
   traceEnabled: ipcRenderer.sendSync("trace-enabled"),

@@ -68,7 +68,8 @@ const LABEL_PAD_X = 5;
  * at every window width (2026-09-07), and one counted from the toggle alone
  * would now put four more buttons there.
  */
-const LABEL_LEFT_RESERVE = (collapsed) => chromeLabelClearance(collapsed) + LABEL_PAD_X;
+const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
+  chromeLabelClearance(collapsed, fullScreen) + LABEL_PAD_X;
 
 /*
  * The writing column is fluid, because the window is.
@@ -169,7 +170,8 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth } = useLayout();
+    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth, fullScreen } =
+      useLayout();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -530,7 +532,7 @@ const EditorArea = memo(
     // It gives up only what it must — the column's own padding and offset
     // already carry part of the reserve — and truncates rather than moving
     // the body column, which never shifts.
-    const labelIndent = `max(0px, calc(${LABEL_LEFT_RESERVE(!sidebarVisible)}px - ${colPad} - ${colOffset}))`;
+    const labelIndent = `max(0px, calc(${LABEL_LEFT_RESERVE(!sidebarVisible, fullScreen)}px - ${colPad} - ${colOffset}))`;
 
     return (
       <div

@@ -35,7 +35,9 @@ import { isElectronMac } from "../utils/platform";
  * (hiddenInset, no title bar): expanded, they share the sidebar header, which
  * doubles as the window drag region; collapsed, they sit alone at the top-left
  * and the left group shifts right of them (MAC_TRAFFIC_INSET), with a slim
- * invisible strip along the very top keeping the window draggable.
+ * invisible strip along the very top keeping the window draggable. In full
+ * screen macOS takes the lights away (and nothing can be dragged), so both
+ * fall back to the ordinary inset (`trafficLightsShown`).
  */
 
 export const CHROME_INSET = 10;
@@ -60,6 +62,14 @@ export const SIDEBAR_HANDLE_W = 4;
  * the third light sat on the wordmark (measured 2026-09-05).
  */
 export const MAC_TRAFFIC_INSET = 86;
+/**
+ * Whether the traffic lights are on screen to be cleared: macOS Electron, and
+ * not in full screen, where macOS hides them and the inset would be dead space
+ * in front of the wordmark and the collapsed group. `fullScreen` is
+ * LayoutContext's; every inset that keys off the lights asks this, never
+ * `isElectronMac` alone.
+ */
+export const trafficLightsShown = (fullScreen = false) => isElectronMac && !fullScreen;
 /** Height of the collapsed-state drag strip — stops above the note label's
     line box (top ≈16px) so the strip never steals its clicks. */
 const DRAG_STRIP_H = 14;
@@ -69,11 +79,11 @@ const groupWidth = (n) => n * CHROME_BTN + (n - 1) * BTN_GAP;
 /**
  * Where the left-hand controls begin, measured from the EDITOR's left edge.
  * Collapsed that edge is the viewport's, and on macOS the group starts right
- * of the traffic lights; expanded the sidebar holds the corner and the group
- * takes the editor's own inset.
+ * of the traffic lights (unless full screen has hidden them); expanded the
+ * sidebar holds the corner and the group takes the editor's own inset.
  */
-export const chromeControlsLeft = (collapsed) =>
-  collapsed && isElectronMac ? MAC_TRAFFIC_INSET : CHROME_INSET;
+export const chromeControlsLeft = (collapsed, fullScreen = false) =>
+  collapsed && trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : CHROME_INSET;
 
 /**
  * Kept clear on the left of anything sharing the chrome row (the note label in
@@ -84,8 +94,8 @@ export const chromeControlsLeft = (collapsed) =>
  * alone it would now put four more buttons there. Keep this beside the group
  * it measures — the two must move together.
  */
-export const chromeLabelClearance = (collapsed) =>
-  chromeControlsLeft(collapsed) +
+export const chromeLabelClearance = (collapsed, fullScreen = false) =>
+  chromeControlsLeft(collapsed, fullScreen) +
   (collapsed ? groupWidth(3) + GROUP_GAP + groupWidth(2) : groupWidth(2)) +
   CONTROL_AIR;
 
@@ -150,7 +160,7 @@ export function ChromeButton({
 }
 
 export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onOpenSearch }) {
-  const { sidebarVisible, sidebarInFlow, sidebarWidth, toggleSidebar } = useLayout();
+  const { sidebarVisible, sidebarInFlow, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const collapsed = !sidebarVisible;
 
@@ -159,16 +169,19 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
   // layout, so the editor still starts at the viewport — the group sits under
   // the overlay, exactly as the note label does.
   const groupLeft =
-    (sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0) + chromeControlsLeft(collapsed);
+    (sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0) +
+    chromeControlsLeft(collapsed, fullScreen);
 
   return (
     <>
-      {collapsed && isElectronMac && (
+      {collapsed && trafficLightsShown(fullScreen) && (
         // With the sidebar hidden there is no header to drag the window by, so
         // a slim invisible strip along the very top takes that job. It sits
         // under the chrome buttons in stacking order; they opt out via
         // no-drag. 14px tall: real enough to grab, short of the note label.
+        // Not in full screen: nothing to drag, and no lights to sit beside.
         <div
+          data-testid="window-drag-strip"
           style={{
             position: "fixed",
             top: 0,
