@@ -80,12 +80,15 @@ const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
  * for roughly 200px longer than shrinking both at once would.
  *
  * Both ramps are linear between two anchors and clamped at each end. The
- * offset is fully spent at 560px of editor width and the gutters bottom out
- * at 400px; below that the column only gets narrower. The sidebar stays in
- * the layout at every width (2026-09-14), so at the 600px window minimum
- * with a 240px sidebar the editor has about 356px: prose keeps reading, the
- * way it does in Apple Notes at its minimum, and one click on the toggle
- * gives the room back.
+ * offset is fully spent at 640px of editor width and the gutters bottom out
+ * at 560px (2026-09-14; they were 560 and 400, so the 600px window still
+ * carried 45px gutters and the minimum could go no lower); below that the
+ * column only gets narrower. The gutter floor is the drag grip's: 20px plus
+ * its 4px gap live in the left padding, and the right side matches it. The
+ * sidebar stays in the layout at every width and yields before the note does
+ * (`EDITOR_FLOOR_W`), so at the 520px window minimum the editor has 316px
+ * beside the narrowest sidebar and 520px alone: prose keeps reading either
+ * way, and one click on the toggle gives the room back.
  *
  * Driven by viewport math rather than container queries on purpose:
  * `container-type` applies layout containment, which would make the editor
@@ -95,11 +98,11 @@ const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
 /** Side gutters: COL_PAD_MIN at COL_PAD_FROM of editor width, MAX at _TO. */
 const COL_PAD_MIN = 24;
 const COL_PAD_MAX = 56;
-const COL_PAD_FROM = 400;
+const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;
 /** Decorative left offset: 0 at the editor floor, COL_OFFSET_MAX at _TO. */
 const COL_OFFSET_MAX = 40;
-const COL_OFFSET_FROM = 560;
+const COL_OFFSET_FROM = 640;
 const COL_OFFSET_TO = 880;
 
 /** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */

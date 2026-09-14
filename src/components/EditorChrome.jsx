@@ -11,6 +11,7 @@ import {
   RedoIcon,
 } from "./Icons";
 import { isElectronMac } from "../utils/platform";
+import { SIDEBAR_HANDLE_W } from "../constants/layout";
 
 /**
  * The editor's own chrome: two fixed corners, no horizontal strip.
@@ -52,7 +53,7 @@ const GROUP_GAP = 12;
 /** Air between the last left-hand control and anything on its row. */
 const CONTROL_AIR = 8;
 /** The sidebar's drag handle sits between the sidebar and the editor. */
-export const SIDEBAR_HANDLE_W = 4;
+export { SIDEBAR_HANDLE_W } from "../constants/layout";
 /**
  * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
  * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by

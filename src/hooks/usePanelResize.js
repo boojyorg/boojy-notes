@@ -1,7 +1,19 @@
 import { useRef, useCallback } from "react";
 import { SIDEBAR_MIN_W, SIDEBAR_MAX_W } from "../constants/layout";
 
-export function usePanelResize({ sidebarHandles, setSidebarWidth, handleActiveBg }) {
+/**
+ * `maxWidth` is the widest the divider may be dragged to right now: the
+ * sidebar's own maximum, or less when the window cannot hold that beside an
+ * editor at its floor (LayoutContext computes it). Without it a drag could
+ * set a preference the window then capped, and the divider would stop
+ * following the pointer with no sign of why.
+ */
+export function usePanelResize({
+  sidebarHandles,
+  setSidebarWidth,
+  maxWidth = SIDEBAR_MAX_W,
+  handleActiveBg,
+}) {
   const isDragging = useRef(false);
 
   const startDrag = useCallback(
@@ -20,7 +32,7 @@ export function usePanelResize({ sidebarHandles, setSidebarWidth, handleActiveBg
       }
       const onMove = (ev) => {
         if (!isDragging.current) return;
-        setSidebarWidth(Math.min(SIDEBAR_MAX_W, Math.max(SIDEBAR_MIN_W, ev.clientX)));
+        setSidebarWidth(Math.min(maxWidth, Math.max(SIDEBAR_MIN_W, ev.clientX)));
       };
       const onUp = () => {
         isDragging.current = false;
@@ -36,7 +48,7 @@ export function usePanelResize({ sidebarHandles, setSidebarWidth, handleActiveBg
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [setSidebarWidth, sidebarHandles, handleActiveBg],
+    [setSidebarWidth, sidebarHandles, maxWidth, handleActiveBg],
   );
 
   return { isDragging, startDrag };

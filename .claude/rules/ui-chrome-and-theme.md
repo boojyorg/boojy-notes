@@ -1476,16 +1476,32 @@ in `LayoutContext`, written by the toggle and by nothing else). Narrowing a desk
 therefore does not preview the mobile layout; use device emulation.
 
 - **The sidebar has one presentation: in the layout, at every width** (2026-09-14). Shown, it
-  pushes the editor, which shrinks to whatever is left: at the 600px window minimum with the
-  240px default sidebar the column has about 356px, the way Apple Notes and Obsidian behave at
-  their minimums, and one click on the toggle gives the room back. Until this a window narrower
+  pushes the editor, the way Apple Notes and Obsidian behave at their minimums, and one click on
+  the toggle gives the room back. Until this a window narrower
   than the sidebar plus a 560px editor floor took the sidebar out of the layout and brought it
   back as an overlay over the note behind a scrim, with its own open state, a hysteresis band
   on the threshold, an Escape that closed it and an open-note that dismissed it
   (`useSidebarFits`, `overlayOpen`, `Z.SIDEBAR_OVERLAY`, all gone). It was a second identity
   for the same panel, the one desktop surface that floated, and the smoother of the two
-  animations only because nothing beneath it moved. Don't bring it back to make room; raise
-  the window minimum if the narrow editor ever grates.
+  animations only because nothing beneath it moved. Don't bring it back to make room.
+- **The sidebar yields before the note does** (2026-09-14, judged live by Tyr at 600px with the
+  sidebar dragged wide: the note was 215px). The dragged width is the preference and a resize
+  never rewrites it; what is drawn is `sidebarWidthFor(preference, window.innerWidth)` in
+  `constants/layout.js`: the preference capped so the editor keeps `EDITOR_FLOOR_W` (316px,
+  about 268px of text at the gutter floor, some 34 characters), and never below `SIDEBAR_MIN_W`
+  (200px, under which the New note pill and the Notes row's three glyphs fight the panel). The
+  drag clamp reads the same cap (`maxWidth` into `usePanelResize`), so the divider stops where
+  the window would squeeze the note. **The window minimum is the two floors and the handle,
+  `WINDOW_MIN_W` = 200 + 4 + 316 = 520**, which `electron/main.js` imports; it is not a number of
+  its own, so don't set `minWidth` by hand. `LayoutContext` exposes the drawn `sidebarWidth`;
+  the preference is internal. `chrome-row.spec.ts` drags the divider wide, narrows the window
+  and measures the cap, the floor and the return in the real app.
+- **The column gives up its air before its text** (2026-09-14): the side gutters ramp from 56px
+  at 800px of editor width down to 24px at 560px (they bottomed out at 400px before, so the
+  600px window still carried 45px gutters), and the decorative left offset is spent by 640px.
+  The 24px floor is the block drag grip's (20px plus its 4px gap live in the left padding); the
+  right side matches it because asymmetric gutters read as a mistake. At the minimum the note
+  has 472px of text alone and 268px beside the narrowest sidebar.
 
 ## Testing notes
 

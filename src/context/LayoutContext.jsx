@@ -2,7 +2,8 @@ import { createContext, useState, useContext, useMemo, useRef, useCallback } fro
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
 import { useFullScreen } from "../hooks/useFullScreen";
-import { SIDEBAR_DEFAULT_W } from "../constants/layout";
+import { useWindowWidth } from "../hooks/useWindowWidth";
+import { SIDEBAR_DEFAULT_W, SIDEBAR_MAX_W, sidebarWidthFor } from "../constants/layout";
 
 const LayoutContext = createContext(null);
 
@@ -10,7 +11,18 @@ export function LayoutProvider({ children }) {
   const { theme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
+  /**
+   * The width the user dragged to is the preference; what is drawn is that
+   * width capped by the room the window has beside an editor at its floor
+   * (`sidebarWidthFor`). A resize never rewrites the preference, so widening
+   * the window gives the dragged width back, as it gives a hidden sidebar
+   * back. The drag clamp reads the same cap, so the divider stops where the
+   * window would otherwise squeeze the note.
+   */
+  const [sidebarPrefWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
+  const windowWidth = useWindowWidth();
+  const sidebarWidth = sidebarWidthFor(sidebarPrefWidth, windowWidth);
+  const sidebarMaxWidth = sidebarWidthFor(SIDEBAR_MAX_W, windowWidth);
   const chromeBg = theme.BG.dark;
   const editorBg = theme.BG.editor;
   const accentColor = theme.ACCENT.primary;
@@ -45,6 +57,7 @@ export function LayoutProvider({ children }) {
   const { isDragging, startDrag } = usePanelResize({
     sidebarHandles,
     setSidebarWidth,
+    maxWidth: sidebarMaxWidth,
     handleActiveBg: theme.sidebarHandle.active,
   });
 

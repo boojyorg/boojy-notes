@@ -15,6 +15,36 @@ export const SIDEBAR_MIN_W = 200;
 /** Widest the sidebar can be dragged. */
 export const SIDEBAR_MAX_W = 400;
 
+/** The drag handle between the sidebar and the editor. */
+export const SIDEBAR_HANDLE_W = 4;
+
+/**
+ * Narrowest editor the sidebar is allowed to leave beside itself. Below this
+ * the panel yields first, down to its own minimum, before the note loses
+ * another pixel: 316px of editor is about 268px of text at the gutter floor,
+ * some 34 characters a line, and it is the user's toggle, never the window,
+ * that takes the note below it (2026-09-14).
+ */
+export const EDITOR_FLOOR_W = 316;
+
+/**
+ * The window's minimum width falls out of the two floors rather than being a
+ * number of its own: the narrowest sidebar beside the narrowest editor.
+ * `electron/main.js` reads it for `minWidth`.
+ */
+export const WINDOW_MIN_W = SIDEBAR_MIN_W + SIDEBAR_HANDLE_W + EDITOR_FLOOR_W;
+
+/**
+ * The width the sidebar is drawn at: the width the user dragged to, capped by
+ * what the window can hold beside an editor at its floor, and never below the
+ * sidebar's own minimum. The preference is untouched by a resize, so widening
+ * the window gives the dragged width back.
+ * @param {number} preference the dragged width
+ * @param {number} windowWidth `window.innerWidth`
+ */
+export const sidebarWidthFor = (preference, windowWidth) =>
+  Math.max(SIDEBAR_MIN_W, Math.min(preference, windowWidth - SIDEBAR_HANDLE_W - EDITOR_FLOOR_W));
+
 /**
  * First-run width. Not persisted, so this is what every reload lands on —
  * which makes it directly observable when judging a candidate value.

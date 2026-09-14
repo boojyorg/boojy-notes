@@ -16,6 +16,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 
 import { LayoutProvider, useLayout } from "../../src/context/LayoutContext";
+import { EDITOR_FLOOR_W, SIDEBAR_HANDLE_W, SIDEBAR_MIN_W } from "../../src/constants/layout";
 
 const ORIGINAL_WIDTH = window.innerWidth;
 
@@ -91,6 +92,21 @@ describe("LayoutContext sidebar presentation", () => {
       setWidth(1200);
       expect(layout.collapsed).toBe(true);
       expect(layout.sidebarVisible).toBe(false);
+    });
+
+    // The sidebar yields before the note does. The width the user dragged to
+    // is kept as the preference; the drawn width is capped so the editor keeps
+    // its floor, and widening the window gives the dragged width back.
+    it("caps a wide sidebar in a narrow window and gives it back", () => {
+      renderLayout(1200);
+      act(() => layout.setSidebarWidth(380));
+      expect(layout.sidebarWidth).toBe(380);
+      setWidth(600);
+      expect(layout.sidebarWidth).toBe(600 - SIDEBAR_HANDLE_W - EDITOR_FLOOR_W);
+      setWidth(520);
+      expect(layout.sidebarWidth).toBe(SIDEBAR_MIN_W);
+      setWidth(1200);
+      expect(layout.sidebarWidth).toBe(380);
     });
 
     it("exposes no overlay state", () => {
