@@ -12,13 +12,21 @@
  * React state; if an invariant cannot be proven from the outside, say so in the
  * spec rather than adding one.
  *
- * The app runs with its window hidden by default (`BOOJY_TEST_HIDDEN=1`, read
- * by the main process), so a routine run never steals focus. Playwright drives
- * the renderer over CDP, which needs no OS focus, and the main process turns
- * off background throttling so debounces run at full speed. To watch a run,
- * set `BOOJY_TEST_HEADED=1` and the window is shown instead. Nothing in the
- * suite needs real OS focus, the system clipboard or native menus; a spec that
- * did would need its own project with a visible window, and would say so.
+ * The app runs with its window hidden on a desktop (`BOOJY_TEST_HIDDEN=1`,
+ * read by the main process), so a routine run never steals focus. Playwright
+ * drives the renderer over CDP, which needs no OS focus, and the main process
+ * turns off background throttling so debounces run at full speed. To watch a
+ * run, set `BOOJY_TEST_HEADED=1` and the window is shown instead. Nothing in
+ * the suite needs real OS focus, the system clipboard or native menus; a spec
+ * that did would need its own project with a visible window, and would say so.
+ *
+ * On CI the window is always shown. There is no desktop to protect (xvfb is the
+ * display), and a hidden window on the Linux runner produces no compositor
+ * frames, so nothing on a requestAnimationFrame runs on its own: Playwright's
+ * click and locator waits poll on exactly that, and every action stalled until
+ * a stray frame arrived. Measured 2026-09-14 on the same 133 tests: hidden,
+ * the suite took 672 s with tests that run in 1 s here taking 5–16 s; shown,
+ * 267 s, each test within a beat of its local time. Keep it shown there.
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -119,7 +127,7 @@ async function launchElectron(userData: string) {
     env: {
       ...process.env,
       BOOJY_TEST_USERDATA: userData,
-      BOOJY_TEST_HIDDEN: process.env.BOOJY_TEST_HEADED === "1" ? "0" : "1",
+      BOOJY_TEST_HIDDEN: process.env.BOOJY_TEST_HEADED === "1" || process.env.CI ? "0" : "1",
     },
   });
   const page = await app.firstWindow();

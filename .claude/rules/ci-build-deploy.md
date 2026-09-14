@@ -81,7 +81,11 @@ change needs; the incidents behind them are in git.
   is the one status branch protection requires, so keep that job name. Measured 2026-09-06 over
   five runs of one commit: wall clock 197 s (serial, the same steps took 256 s; before the
   two-worker change, 422 s), with the Electron job the critical path at ~190 s, checks ~74 s,
-  web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone.
+  web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone. By 2026-09-12
+  the suite had doubled (62 → 126 tests in four days) and the wall clock was 11.5 min, most of
+  it the hidden-window stall described under the xvfb bullet below; with the window shown the Electron step is ~4.5 min for
+  138 tests, which is its floor at two workers, so the next lever is sharding the job, not the
+  runner.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
   `pnpm test`.** Coverage is measured against every file under `src/` and `electron/`
   (`coverage.include`, 2026-09-07), whether or not a test imports it; before that, Vitest 4
@@ -101,9 +105,17 @@ change needs; the incidents behind them are in git.
   Don't remove the global setup when touching the workers. Its assertions are about files on disk,
   so Linux is a fair proxy for the renderer and main-process logic; anything that depends on the
   OS Trash or native dialogs is macOS-only and says so in the spec. `--no-sandbox` is passed only
-  when `CI` is set. The window is always hidden (`BOOJY_TEST_HEADED=1` shows it for watching a
-  run); the `headed` project and `pnpm test:electron:headed` were removed on 2026-09-07 because
-  the bucket never held a spec and the script exited 1 with "No tests found".
+  when `CI` is set. **The window is hidden on a desktop and shown on CI** (`harness.ts`:
+  `BOOJY_TEST_HEADED=1` shows it for watching a run locally; `CI` shows it always). A hidden
+  window on the Linux runner ticks no compositor frames, so nothing on a
+  `requestAnimationFrame` runs on its own, and Playwright's click and locator waits poll on
+  exactly that: every action stalled until a stray frame arrived. Measured 2026-09-14 on the
+  same 133 tests: hidden, the step took 672 s and tests that run in 1 s on a Mac took 5–16 s;
+  shown under xvfb, 267 s, each test within a beat of its local time, no retries. Before this
+  the per-spec workaround was a `page.screenshot()` to force a frame and `polling: 50` on
+  `waitForFunction`; both are gone, don't bring them back, show the window. The `headed`
+  project and `pnpm test:electron:headed` were removed on 2026-09-07 because the bucket never
+  held a spec and the script exited 1 with "No tests found".
 
 ## pnpm and Electron
 

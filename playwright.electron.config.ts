@@ -13,8 +13,11 @@ import { defineConfig } from "@playwright/test";
  *
  * The app runs with its window hidden (harness.ts sets `BOOJY_TEST_HIDDEN=1`)
  * so a routine run never takes over the desktop; `BOOJY_TEST_HEADED=1` shows
- * the window for watching a run locally. No spec needs real OS focus, the
- * clipboard or native menus, so there is no separate headed project.
+ * the window for watching a run locally, and on CI it is always shown: a
+ * hidden window on the Linux runner ticks no animation frames and every
+ * Playwright action stalled on one (harness.ts has the numbers). No spec
+ * needs real OS focus, the clipboard or native menus, so there is no separate
+ * headed project.
  */
 export default defineConfig({
   testDir: "./e2e/electron",
