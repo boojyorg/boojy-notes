@@ -1,42 +1,45 @@
 export const NIGHT = {
   name: "night",
+  // Neutral grey ramp, no blue cast, small steps between regions (2026-09-14):
+  // the sheet at L* 8, the sidebar one step up at L* 13, hover/selected one
+  // more. Grounds are neutral; the ink is one step warm (DAY's tilt read cream here).
   BG: {
-    darkest: "#13151C",
-    dark: "#2C2C32",
-    standard: "#272A38",
-    editor: "#040412",
-    elevated: "#292B36",
-    surface: "#353845",
-    divider: "#3A3D4A",
-    hover: "#4A4D5A",
+    darkest: "#1C1C1C", // app ground
+    dark: "#212121", // chrome: sidebar ground (chromeBg), mobile toolbar
+    standard: "#212121", // sidebar
+    editor: "#181818", // writing sheet
+    elevated: "#272727", // raised: menus, popovers, modals
+    surface: "#282828", // content hover
+    divider: "#313131", // border, ink @ 8% on the sidebar
+    hover: "#2D2D2D", // row/menu hover + selected
   },
   TEXT: {
-    primary: "#E8EAF0",
-    secondary: "#9B9EB0",
-    muted: "#646880",
+    primary: "#E7E6E5", // 13.9:1 on the sheet; one step warm (three read cream, judged live 2026-09-14)
+    secondary: "#ACABAA", // 7.0:1 on the sidebar
+    muted: "#8D8C8B", // 4.7:1 on the sidebar
   },
   ACCENT: {
     primary: "#A4CACE",
-    onAccent: "#13151C", // text/icon on an accent fill — dark, since the accent is pale here
+    onAccent: "#1C1C1C", // text/icon on an accent fill — dark, since the accent is pale here
   },
   SEMANTIC: {
     warning: "#FFC107",
     error: "#FF5722",
   },
   scrollbar: {
-    thumb: "#3A3D4A",
-    thumbHover: "#4A4D5A",
-    thumbActive: "#5A5D6A",
+    thumb: "#313131",
+    thumbHover: "#414141",
+    thumbActive: "#525252",
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
   // Mirrors the scrollbar's rest/hover steps on purpose: both are draggable
   // chrome, so they should speak one neutral language.
   sidebarHandle: {
-    hover: "#3A3D4A",
-    active: "#4A4D5A",
+    hover: "#313131",
+    active: "#414141",
   },
-  codeBlockBg: "#03030D",
+  codeBlockBg: "#121212",
   codeBlockBorder: "rgba(255,255,255,0.10)",
   codeBlockBorderFocus: "rgba(255,255,255,0.18)",
   transitionMs: 400,
@@ -78,8 +81,8 @@ export const NIGHT = {
   codeLangOption: { hoverBg: "rgba(255,255,255,0.06)" },
   codeSelection: "rgba(255,255,255,0.12)",
   caretColor: "#fff",
-  searchInputBg: "#18191E",
-  modalBg: "rgba(20,22,35,0.95)",
+  searchInputBg: "#181818",
+  modalBg: "rgba(35,35,35,0.96)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
   /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
   dragShadow: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)",

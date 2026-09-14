@@ -19,6 +19,22 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
   grates.
 - The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
   Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
+- **Dark is a neutral grey ramp with small steps, not near-black** (2026-09-14, judged live
+  against Obsidian and Notion). The sheet is `#181818` (Notion's, L* 8), the sidebar one step up
+  at `#212121`, the hover/selected row one more at `#2D2D2D`; before this the sheet was `#040412`
+  (L* 1.4) under a blue-violet `#272A38` sidebar sixteen steps above it, which glared and read as
+  two materials, and the muted tier sat at 2.6:1 on the sidebar. Grounds are pure grey; the ink
+  is one step warm (`#E7E6E5`), because DAY's warm tilt read cream on a neutral dark ground and
+  pure neutral read clinical. All three text tiers clear AA on the sidebar. `TEXT.primary` moved,
+  so the dark wordmark was regenerated (see the wordmark bullet). Not re-pitched: the callout
+  grounds and the syntax colours, still hand-picked and bluish; judge them on the new ground
+  before touching them.
+- **`?tweak` on a dev build mounts a colour panel** (`dev/ThemeTweaker.jsx`, loaded from
+  `main.jsx` only when `import.meta.env.DEV`; dead code in a production bundle and outside the
+  coverage denominator). It lays token overrides over the active theme through
+  `setThemeOverrides` in `ThemeContext`, keeps them per theme in `localStorage`, and copies the
+  block in `themes.js`'s own shape. Nothing in the product sets an override; `themes.js` stays
+  the only authority, and a judged value goes there, never into the panel's storage.
 - There is no decorative background. The Dark star field was removed on 2026-09-05 (git has
   it, tag-free); the editor ground is the theme's `BG.editor` and nothing else.
 
