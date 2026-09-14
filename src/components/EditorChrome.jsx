@@ -84,7 +84,7 @@ const DRAG_STRIP_H = 14;
 
 const groupWidth = (n) => n * CHROME_BTN + (n - 1) * BTN_GAP;
 /** The collapsed trio's fade-in, timed to end with the panel's slide. */
-const TRIO_FADE_MS = 120;
+const TRIO_FADE_MS = PANEL_MS / 2;
 
 /**
  * Where the left-hand controls begin, measured from the EDITOR's left edge.

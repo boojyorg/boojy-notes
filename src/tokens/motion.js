@@ -10,12 +10,18 @@
  *
  * Ease-out, not the symmetric `ease`: the panel decelerates into place, which
  * reads as settling rather than gliding.
+ *
+ * 280, not the 200 most kits default to: a 240px panel is a bigger object
+ * than a menu, and at 200 Tyr judged it "a bit too fast" live (2026-09-14).
+ * macOS sidebars sit near 250 and Notion's near 300; past 300 it reads as
+ * waiting.
  */
-export const PANEL_MS = 200;
+export const PANEL_MS = 280;
 export const PANEL_EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
-/** How long the sidebar's contents take to fade, inside the panel's clock. */
-export const PANEL_FADE_MS = 100;
+/** How long the sidebar's contents take to fade, inside the panel's clock:
+ *  half of it, so the panel is never a blank slab for long. */
+export const PANEL_FADE_MS = PANEL_MS / 2;
 
 /**
  * A `transition` value for the given properties on the panel's clock.
