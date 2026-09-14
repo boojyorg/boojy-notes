@@ -101,6 +101,8 @@ jobs:
       # electron binary from node_modules, so no Playwright browser download.
       - name: Electron core-journey tests
         timeout-minutes: 15
+        env:
+          BOOJY_TEST_HEADED: "1"
         run: xvfb-run -a pnpm test:electron
 
   # The single status branch protection requires. Runs even when a job above
