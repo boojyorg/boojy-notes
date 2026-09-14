@@ -9,14 +9,19 @@ export function useSidebarDrag({
   noteDataRef,
   adoptNoteData,
   sidebarScrollRef,
-  accentColor,
   setDragTooltip,
   dragTooltipCount,
   selectedNotesRef,
   clearSelectionRef,
   moveFolder,
 }) {
-  const { theme } = useTheme();
+  // Read through a ref at paint time, never from the render that made the
+  // handler: a drag paints from inside listeners registered at pointer-down,
+  // and a theme switched after mount left the drop target on Light's #ECECEC
+  // over the dark sidebar (seen 2026-09-14).
+  const { theme: renderTheme } = useTheme();
+  const themeRef = useRef(renderTheme);
+  themeRef.current = renderTheme;
   const sidebarDrag = useRef({
     active: false,
     type: null,
@@ -69,8 +74,8 @@ export function useSidebarDrag({
       borderRadius: "12px",
       zIndex: "1000",
       pointerEvents: "none",
-      background: theme.BG.elevated,
-      color: theme.TEXT.primary,
+      background: themeRef.current.BG.elevated,
+      color: themeRef.current.TEXT.primary,
       boxShadow: "none",
       opacity: "1",
       transform: "scale(1)",
@@ -103,14 +108,14 @@ export function useSidebarDrag({
         width: "20px",
         height: "20px",
         borderRadius: "50%",
-        background: accentColor,
-        color: theme.ACCENT.onAccent,
+        background: themeRef.current.ACCENT.primary,
+        color: themeRef.current.ACCENT.onAccent,
         fontSize: "11px",
         fontWeight: "600",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: theme.dragShadow,
+        boxShadow: themeRef.current.dragShadow,
       });
       badge.textContent = String(sd.draggedIds.length);
       pill.style.overflow = "visible";
@@ -127,7 +132,7 @@ export function useSidebarDrag({
       Object.assign(pill.style, {
         transition: `transform ${LIFT_MS}ms ease, box-shadow ${LIFT_MS}ms ease, opacity ${LIFT_MS}ms ease`,
         transform: "scale(1.02)",
-        boxShadow: theme.dragShadow,
+        boxShadow: themeRef.current.dragShadow,
         opacity: "0.96",
       });
     });
@@ -151,8 +156,8 @@ export function useSidebarDrag({
   // A row/header fills to BG.hover (the same tone selection uses) with a 1px
   // muted ring so the target reads as chosen rather than merely hovered.
   const paintDropTarget = (el) => {
-    el.style.background = theme.BG.hover;
-    el.style.boxShadow = `inset 0 0 0 1px ${theme.TEXT.muted}`;
+    el.style.background = themeRef.current.BG.hover;
+    el.style.boxShadow = `inset 0 0 0 1px ${themeRef.current.TEXT.muted}`;
   };
 
   const clearDropHighlights = (scrollEl) => {

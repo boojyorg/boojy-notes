@@ -340,7 +340,6 @@ export default function BoojyNotes() {
     noteDataRef,
     adoptNoteData,
     sidebarScrollRef,
-    accentColor,
     setDragTooltip,
     dragTooltipCount,
     selectedNotesRef: multiSelectRef,
