@@ -85,6 +85,10 @@ declare global {
 
       // Window
       setWindowTitle: (title: string) => void;
+      /** Whether the window is in macOS full screen now (the traffic lights are hidden). */
+      isFullScreen: () => Promise<boolean>;
+      /** Every enter or leave of full screen after `isFullScreen` answered. */
+      onFullScreenChanged: (callback: (on: boolean) => void) => Unsubscribe;
     };
   }
 }

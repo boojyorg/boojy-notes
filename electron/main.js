@@ -120,6 +120,19 @@ function createWindow() {
     mainWindow = null;
   });
 
+  // macOS full screen takes the traffic lights away, and with them the reason
+  // for the inset that clears them (MAC_TRAFFIC_INSET in EditorChrome.jsx).
+  // The window is the only thing that knows; it reports both edges and the
+  // renderer's LayoutContext follows. `is-full-screen` answers the question
+  // once at mount (settingsManager.js), for a renderer that loads already in
+  // full screen (a reload, or a window restored to it).
+  for (const [event, on] of [
+    ["enter-full-screen", true],
+    ["leave-full-screen", false],
+  ]) {
+    mainWindow.on(event, () => mainWindow?.webContents.send("full-screen-changed", on));
+  }
+
   // The renderer never opens windows and never navigates. An `http(s)` link
   // (the footer's boojy.org, a link block) goes to the system browser; a
   // `window.open` of anything else is dropped. Without the handler Electron

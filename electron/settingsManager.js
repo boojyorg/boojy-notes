@@ -119,6 +119,10 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     if (win) win.setTitle(title);
   });
 
+  // Whether the window is in (macOS) full screen right now; main.js sends
+  // `full-screen-changed` at every edge after this.
+  ipcMain.handle("is-full-screen", () => getMainWindow()?.isFullScreen() ?? false);
+
   // ─── Auto-updater IPC ───
 
   ipcMain.handle("check-for-update", () => {

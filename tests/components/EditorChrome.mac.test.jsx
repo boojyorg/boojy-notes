@@ -13,11 +13,14 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 
+// Mutable so one test can put the window into full screen.
+const layout = vi.hoisted(() => ({ fullScreen: false }));
 vi.mock("../../src/context/LayoutContext", () => ({
   useLayout: () => ({
     sidebarVisible: false,
     sidebarInFlow: false,
     sidebarWidth: 260,
+    fullScreen: layout.fullScreen,
     toggleSidebar: vi.fn(),
   }),
 }));
@@ -31,12 +34,17 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 vi.mock("../../src/utils/platform", () => ({ isElectronMac: true }));
 
 import EditorChrome, {
+  CHROME_INSET,
   MAC_TRAFFIC_INSET,
   chromeControlsLeft,
   chromeLabelClearance,
+  trafficLightsShown,
 } from "../../src/components/EditorChrome.jsx";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  layout.fullScreen = false;
+});
 
 /**
  * Review H12: the note label kept clear of the toggle as if it sat at the web
@@ -69,5 +77,46 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     expect(chromeLabelClearance(true)).toBe(MAC_TRAFFIC_INSET + 100 + 12 + 66 + 8);
     // Expanded, only the history pair is on the row, from the editor's inset.
     expect(chromeLabelClearance(false)).toBe(10 + 66 + 8);
+  });
+});
+
+/**
+ * macOS full screen hides the traffic lights, so the 86px that cleared them
+ * was dead space in front of the collapsed group and the note label sat a
+ * long way right for nothing (2026-09-14). Both fall back to the web inset
+ * while full screen is on, and the drag strip, with nothing to drag, goes.
+ */
+describe("EditorChrome on macOS in full screen", () => {
+  it("drops the traffic-light inset and the drag strip", () => {
+    layout.fullScreen = true;
+    const { getByTitle, container } = render(
+      <EditorChrome
+        activeNote="n1"
+        onNoteActions={vi.fn()}
+        onNewNote={vi.fn()}
+        onOpenSearch={vi.fn()}
+      />,
+    );
+    const group = getByTitle("Show sidebar").parentElement.parentElement;
+    expect(Number.parseInt(group.style.left, 10)).toBe(CHROME_INSET);
+    expect(trafficLightsShown(true)).toBe(false);
+    expect(trafficLightsShown(false)).toBe(true);
+    expect(chromeControlsLeft(true, true)).toBe(CHROME_INSET);
+    expect(chromeLabelClearance(true, true)).toBe(CHROME_INSET + 100 + 12 + 66 + 8);
+    // Expanded the group never sat behind the lights, so nothing changes.
+    expect(chromeLabelClearance(false, true)).toBe(chromeLabelClearance(false, false));
+    expect(container.querySelector("[data-testid='window-drag-strip']")).toBeNull();
+  });
+
+  it("keeps the drag strip while the lights are shown", () => {
+    const { container } = render(
+      <EditorChrome
+        activeNote="n1"
+        onNoteActions={vi.fn()}
+        onNewNote={vi.fn()}
+        onOpenSearch={vi.fn()}
+      />,
+    );
+    expect(container.querySelector("[data-testid='window-drag-strip']")).not.toBeNull();
   });
 });

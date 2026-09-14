@@ -11,10 +11,16 @@ import {
   NewFolderIcon,
   SearchIcon,
   MoreHorizontalIcon,
-  PlusIcon,
+  NewNoteIcon,
   SidebarToggleIcon,
 } from "./Icons";
-import { CHROME_TOP, CHROME_BTN, MAC_TRAFFIC_INSET, ChromeButton } from "./EditorChrome";
+import {
+  CHROME_TOP,
+  CHROME_BTN,
+  MAC_TRAFFIC_INSET,
+  ChromeButton,
+  trafficLightsShown,
+} from "./EditorChrome";
 import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
@@ -285,7 +291,7 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
           flexShrink: 0,
         }}
       >
-        <PlusIcon size={18} nav />
+        <NewNoteIcon size={18} />
       </span>
       New note
     </button>
@@ -359,7 +365,7 @@ const Sidebar = memo(function Sidebar({
   // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
-  const { accentColor, chromeBg, sidebarVisible, toggleSidebar } = useLayout();
+  const { accentColor, chromeBg, sidebarVisible, fullScreen, toggleSidebar } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
   // survive a collapse — but a zero-width, overflow-hidden panel still hands
   // its buttons to Tab and to a screen reader, and the editor header renders
@@ -857,8 +863,9 @@ const Sidebar = memo(function Sidebar({
       {/* Sidebar header: wordmark left, panel toggle right near the divider.
           On macOS Electron the native traffic lights sit in this row too
           (hiddenInset, no title bar): the wordmark shifts right to clear them
-          and the whole header doubles as the window drag region — the wordmark
-          and toggle opt back out so they stay clickable. */}
+          (not in full screen, where macOS hides them) and the whole header
+          doubles as the window drag region — the wordmark and toggle opt back
+          out so they stay clickable. */}
       {!isMobile && (
         <div
           inert={hiddenControls}
@@ -871,7 +878,7 @@ const Sidebar = memo(function Sidebar({
             // Children are centred, so top padding shifts them by half of it.
             // Height is unchanged, so nothing below the header moves.
             paddingTop: HEADER_NUDGE * 2,
-            paddingLeft: isElectronMac ? MAC_TRAFFIC_INSET : HEADER_LEFT_INSET,
+            paddingLeft: trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : HEADER_LEFT_INSET,
             paddingRight: HEADER_RIGHT_INSET,
             flexShrink: 0,
             WebkitAppRegion: isElectronMac ? "drag" : undefined,

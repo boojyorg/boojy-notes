@@ -100,3 +100,51 @@ test("a very long name yields to the controls rather than covering them", async 
     await h.close();
   }
 });
+
+/**
+ * macOS full screen hides the traffic lights, so the inset that clears them
+ * (86px in front of the wordmark expanded, and of the whole left group
+ * collapsed) was dead space there, and the note's name sat a long way right
+ * for nothing (2026-09-14). Both fall back to the ordinary inset while full
+ * screen is on and return when it ends. Only macOS has the lights, so this is
+ * a macOS-only guard; elsewhere the inset never applies.
+ */
+test("full screen drops the traffic-light inset and leaving it brings it back", async () => {
+  test.skip(process.platform !== "darwin", "the traffic lights are macOS's");
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  const setFullScreen = (on: boolean) =>
+    h.app.evaluate(({ BrowserWindow }, v) => {
+      BrowserWindow.getAllWindows()[0].setFullScreen(v);
+    }, on);
+  const leftOf = async (title: string) => (await h.page.getByTitle(title).boundingBox())!.x;
+  try {
+    await h.openNote("Alpha");
+    await setWidth(h, 1200);
+    const wordmark = h.page.getByTitle("Open Settings");
+    const atRest = (await wordmark.boundingBox())!.x;
+    expect(atRest).toBe(86);
+
+    // Expanded: the wordmark moves back to the header's own inset...
+    await setFullScreen(true);
+    await expect.poll(() => leftOf("Open Settings"), { timeout: 10000 }).toBeLessThan(40);
+    // ...and collapsed, the group starts at the web inset with the name past it.
+    await h.page.getByTitle("Hide sidebar").click();
+    await expect.poll(() => leftOf("Show sidebar")).toBe(10);
+    const { right } = await controlsRight(h.page, LEFT_CONTROLS);
+    const n = await h.page.getByRole("textbox", { name: "Note title" }).boundingBox();
+    expect(n!.x).toBeGreaterThanOrEqual(right + 8);
+    // No drag strip either: nothing to drag in full screen.
+    await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(0);
+
+    // Leaving full screen restores the inset in both states.
+    await setFullScreen(false);
+    await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(86);
+    await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(1);
+    await h.page.getByTitle("Show sidebar").click();
+    await expect.poll(() => leftOf("Open Settings")).toBe(atRest);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await setFullScreen(false).catch(() => {});
+    await h.close();
+  }
+});
