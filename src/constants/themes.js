@@ -1,13 +1,14 @@
 // The one teal (2026-09-14). Marks and fills — the checkbox, the bullet dot, the
 // quote bar, drop markers, focus rings, the selection band, switches, buttons,
-// the wordmark's N — are the same colour in both themes. It is the misty brand
-// teal brought to mid-lightness (hue 186, the same as #A4CACE and #2A737D;
-// #2593A0 was judged too saturated and read blue): 2.4:1 on white, 7.5:1 on
-// the dark sheet. Whatever sits on it is dark ink in both themes (7.9:1), since
-// white on a misty fill is 2.4:1. Accent *as ink* cannot be one colour —
-// nothing passes 4.5:1 on both grounds — so that is `ACCENT.text`, per theme.
-export const MARK = "#6FB3BA";
-export const ON_MARK = "#14110F"; // a tick, a bold label, never body text
+// the wordmark's N — are the same colour in both themes: the misty brand teal
+// (#A4CACE, hue 186) two steps deeper. Judged live 2026-09-14 against #2593A0
+// (read blue: same hue, twice the saturation) and #6FB3BA (still too far from
+// the brand). 2.0:1 on white, 9:1 on the dark sheet. What sits on it is white
+// in both themes, Tyr's call over a dark tick: 2:1, a soft tick by design,
+// never body text. Accent *as ink* cannot be one colour — nothing passes 4.5:1
+// on both grounds — so that is `ACCENT.text`, per theme.
+export const MARK = "#8FC1C6";
+export const ON_MARK = "#FFFFFF";
 
 export const NIGHT = {
   name: "night",
@@ -81,7 +82,7 @@ export const NIGHT = {
     hoverColor: "rgba(255,255,255,0.6)",
     hoverUnderline: "rgba(255,255,255,0.3)",
   },
-  mark: { bg: "rgba(111, 179, 186, 0.4)" },
+  mark: { bg: "rgba(143, 193, 198, 0.4)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
@@ -184,7 +185,7 @@ export const DAY = {
     hoverColor: "rgba(0,0,0,0.5)",
     hoverUnderline: "rgba(0,0,0,0.25)",
   },
-  mark: { bg: "rgba(111, 179, 186, 0.3)" },
+  mark: { bg: "rgba(143, 193, 198, 0.35)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {

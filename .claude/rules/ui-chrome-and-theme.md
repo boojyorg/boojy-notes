@@ -55,15 +55,17 @@ right; naming greys by darkness is what makes every region read as a separate bo
 Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground.
 
 **The accent is two tokens, and one of them is shared** (2026-09-14, Tyr's ask: the tick box
-the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#6FB3BA` in
+the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#8FC1C6` in
 both themes: the checkbox fill, the bullet dot, the quote bar, drop markers, focus rings, the
 selection band, the switch, the confirm button, the info toast, the wordmark's N. It is the
-misty brand teal (`#A4CACE`, hue 186) brought to mid-lightness, judged live against `#2593A0`
-(the darkest teal that carries a white tick; Tyr read it as blue and dark: same hue, twice the
-saturation). At 2.4:1 on white it sits under WCAG's 3:1 line for graphical objects, accepted:
-a filled 16px square is plainly visible there, and misty is the brand; 7.5:1 on the dark sheet.
-`ACCENT.onAccent` is `ON_MARK`, **dark ink in both themes** (`#14110F`, 7.9:1 on the mark),
-because white on a misty fill is 2.4:1; a tick or a bold label, never body text. `ACCENT.text`
+misty brand teal (`#A4CACE`, hue 186) two steps deeper, judged live against `#2593A0` (the
+darkest teal that carries a white tick at 3.7:1; Tyr read it as blue and dark: same hue, twice
+the saturation) and `#6FB3BA` (still too far from the brand). At 2.0:1 on white it sits under
+WCAG's 3:1 line for graphical objects, accepted: misty *is* the identity, and a filled 16px
+square still reads; 9:1 on the dark sheet. `ACCENT.onAccent` is `ON_MARK`, **white in both
+themes**, Tyr's call over a dark tick (offered because white on this fill is 2:1): the tick
+and a bold button label are soft by design, never body text. Deepen the mark before ever
+putting body text on it. `ACCENT.text`
 is accent *as ink* and is per theme, because nothing passes 4.5:1 on both white and a dark
 ground: `#2A737D` in Light (5.5:1, the deep teal words need), `#9CC9CE` in Dark (9:1, a step
 off the brand colour); wikilinks, `#tags`, search hits, the active toolbar and slash-menu
