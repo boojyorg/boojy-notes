@@ -1,13 +1,15 @@
 /**
  * The chrome row's controls and the note's name share one line, and the name
- * starts past the last of them — whatever the window width, and in either
+ * stays clear of all of them — whatever the window width, and in either
  * sidebar state. Review H12 found the reserve measured from the web inset, so
  * on macOS the toggle was drawn over the first letters at 1,200px and at 700px
  * alike; since 2026-09-12 there are up to five controls in front of the name
- * rather than one, and the reserve must clear all of them. This spec is a real
- * guard on macOS and a plain layout check elsewhere.
+ * rather than one, and since 2026-09-15 the name sits centred in a band that
+ * must clear all of them by `PATH_AIR`. This spec is a real guard on macOS and
+ * a plain layout check elsewhere; `note-path.spec.ts` covers the path itself.
  */
 import { expect, type Page, test } from "@playwright/test";
+import { PATH_AIR } from "../../src/components/EditorChrome";
 import { type AppHandle, launchApp } from "./harness";
 import {
   EDITOR_FLOOR_W,
@@ -51,15 +53,15 @@ async function setWidth(h: AppHandle, width: number) {
 }
 
 /**
- * The name's box once the layout has settled. The sidebar collapses and the
- * column's padding, offset and max-width ease over 200ms, and a window resize
- * inside that window measures a column in flux (the label's own margin moves
- * at once while the column's padding is still easing, so for a few frames the
- * name can overrun the ···). Assertions on the name therefore poll.
+ * The name's box once the layout has settled: the path's, whose edges are the
+ * text's (the name's own box reaches 5px further each side for its hover pill,
+ * which is not ink). The sidebar collapses and the row's inset eases on the
+ * panel's clock, and a window resize inside that window measures a row in
+ * flux. Assertions on the name therefore poll.
  */
 async function titleBox(page: Page) {
-  const b = await page.getByRole("textbox", { name: "Note title" }).boundingBox();
-  expect(b, "title box").not.toBeNull();
+  const b = await page.getByTestId("note-path").boundingBox();
+  expect(b, "path box").not.toBeNull();
   return { x: b!.x, right: b!.x + b!.width, y: b!.y, height: b!.height };
 }
 
@@ -94,13 +96,13 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left, expanded at ${width}`,
         })
-        .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
+        .toBeGreaterThanOrEqual(right + PATH_AIR - SUBPIXEL);
       // The name still has room to read in, and stays clear of the ··· .
       await expect
         .poll(async () => (await titleBox(h.page)).right, {
           message: `title right, expanded at ${width}`,
         })
-        .toBeLessThanOrEqual(more!.x);
+        .toBeLessThanOrEqual(more!.x - PATH_AIR + SUBPIXEL);
       const n = await titleBox(h.page);
       expect(mid).toBeGreaterThan(n.y);
       expect(mid).toBeLessThan(n.y + n.height);
@@ -120,11 +122,11 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left at ${width}, collapsed`,
         })
-        .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
+        .toBeGreaterThanOrEqual(right + PATH_AIR - SUBPIXEL);
       // The name still has room to read in, and stays clear of the ··· .
       await expect
         .poll(async () => (await titleBox(h.page)).right, { message: `title right at ${width}` })
-        .toBeLessThanOrEqual(more!.x);
+        .toBeLessThanOrEqual(more!.x - PATH_AIR + SUBPIXEL);
       // Same row: the controls' centre falls within the label's line box, and
       // nothing has wrapped to a second line.
       const n = await titleBox(h.page);
@@ -149,8 +151,10 @@ test("a very long name yields to the controls rather than covering them", async 
     const more = await h.page.locator("button[title='Note actions']").boundingBox();
     await expect
       .poll(async () => (await titleBox(h.page)).x)
-      .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
-    await expect.poll(async () => (await titleBox(h.page)).right).toBeLessThanOrEqual(more!.x);
+      .toBeGreaterThanOrEqual(right + PATH_AIR - SUBPIXEL);
+    await expect
+      .poll(async () => (await titleBox(h.page)).right)
+      .toBeLessThanOrEqual(more!.x - PATH_AIR + SUBPIXEL);
     // Truncated, not wrapped: one line box, the height of the label's row.
     expect((await titleBox(h.page)).height).toBeLessThan(30);
     expect(h.pageErrors).toEqual([]);
@@ -191,15 +195,12 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     await expect.poll(() => leftOf("Show sidebar")).toBe(10);
     await settled(h.page);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
-    const n = await h.page.getByRole("textbox", { name: "Note title" }).boundingBox();
-    expect(n!.x).toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
-    // No drag strip either: nothing to drag in full screen.
-    await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(0);
+    const n = await titleBox(h.page);
+    expect(n.x).toBeGreaterThanOrEqual(right + PATH_AIR - SUBPIXEL);
 
     // Leaving full screen restores the inset in both states.
     await setFullScreen(false);
     await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(86);
-    await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(1);
     await h.page.getByTitle("Show sidebar").click();
     await settled(h.page);
     await expect.poll(() => leftOf("Open Settings")).toBe(atRest);
@@ -241,8 +242,8 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     // The note has its floor beside it: the row is visible and the title
     // starts past the sidebar and its handle.
     await expect(row).toBeVisible();
-    const title = await h.page.getByRole("textbox", { name: "Note title" }).boundingBox();
-    expect(title!.x).toBeGreaterThanOrEqual(600 - EDITOR_FLOOR_W);
+    const title = await titleBox(h.page);
+    expect(title.x).toBeGreaterThanOrEqual(600 - EDITOR_FLOOR_W);
 
     await setWidth(h, WINDOW_MIN_W);
     await expect.poll(sidebarWidth).toBe(SIDEBAR_MIN_W);

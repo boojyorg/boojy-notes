@@ -5,7 +5,9 @@ import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
-import { CHROME_TOP, CHROME_BTN, SIDEBAR_HANDLE_W, chromeLabelClearance } from "./EditorChrome";
+import { SIDEBAR_HANDLE_W } from "./EditorChrome";
+import NotePath, { PATH_FONT } from "./NotePath";
+import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
@@ -33,44 +35,33 @@ import { panelTransition } from "../tokens/motion";
 /*
  * The note name is a FILE LABEL, not the document's heading.
  *
- * It reads at label rank — small, muted, medium weight — so it can never
- * compete with a real Markdown H1 in the body. A note whose file is
- * `boojy-notes-design-demo-v1.2.md` and whose first block is `# Notes Demo
- * v1.2` shows both, and they read as file-then-document rather than as two
- * titles. The filename and the H1 stay independent: editing the heading never
- * renames the file.
+ * It reads at label rank so it can never compete with a real Markdown H1 in
+ * the body. A note whose file is `boojy-notes-design-demo-v1.2.md` and whose
+ * first block is `# Notes Demo v1.2` shows both, and they read as
+ * file-then-document rather than as two titles. The filename and the H1 stay
+ * independent: editing the heading never renames the file.
  *
- * Vertically it joins the one optical row the app already has. The sidebar
- * header centres its children at 25px (height CHROME_INSET + CHROME_BTN, 8px
- * of top padding); EditorChrome pins ··· at CHROME_INSET with a CHROME_BTN-tall
- * button, centring it at 26px. Putting the label's line-box centre at 26px
- * lines it up with the wordmark, the toggle and the ···.
+ * On the desktop it sits in the chrome row, centred on the pane behind its
+ * folder path (NotePath, 2026-09-15), and the column below it starts where it
+ * always did: the body did not move when the name left it. On a touch device
+ * there is no chrome row, so the name keeps its place at the head of the
+ * column, small and muted.
  */
-const LABEL_FONT_SIZE = 13.5;
-const LABEL_LINE_HEIGHT = 1.4;
-const LABEL_ROW_CENTER = CHROME_TOP + CHROME_BTN / 2;
-const LABEL_TOP = Math.round(LABEL_ROW_CENTER - (LABEL_FONT_SIZE * LABEL_LINE_HEIGHT) / 2);
-/** Air between the label row and the first Markdown block. */
-const LABEL_GAP = 26;
-/** Kept clear on the label's right so a long name truncates before the ···. */
-const LABEL_RIGHT_RESERVE = 48;
+/** The column's own top padding on the desktop, under the chrome row's 39px:
+ *  exactly what the name's row and its gap added up to when they were part
+ *  of the column (14px of padding, a 13.5px × 1.4 line box, a 26px gap, less
+ *  the row), so the first block did not move by a tenth of a pixel when the
+ *  name left. Two specs click the centre of a two-line block and land on its
+ *  first line by that tenth; keep the fraction. */
+const COLUMN_TOP = 14 + 13.5 * 1.4 + 26 - 39;
+const MOBILE_LABEL_FONT_SIZE = 13.5;
+const MOBILE_LABEL_LINE_HEIGHT = 1.4;
+/** Air between the mobile label and the first Markdown block. */
+const MOBILE_LABEL_GAP = 26;
 /**
  * Negative inset so the hover tint can have padding without moving the text.
  */
 const LABEL_PAD_X = 5;
-/**
- * Kept clear on the label's LEFT: the chrome row's controls share the label's
- * line, and the label starts past them. Measured to the hover pill rather than
- * the text, so what you see keeps the chrome's 8px of air. The clearance comes
- * from EditorChrome, which knows what is on the row and where: Undo and Redo
- * while the sidebar is showing, and the toggle, Search and New note in front
- * of them while it is not (on macOS, right of the traffic lights). A reserve
- * counted from the web inset left the toggle on the first letters of the name
- * at every window width (2026-09-07), and one counted from the toggle alone
- * would now put four more buttons there.
- */
-const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
-  chromeLabelClearance(collapsed, fullScreen) + LABEL_PAD_X;
 
 /*
  * The writing column is fluid, because the window is.
@@ -531,12 +522,133 @@ const EditorArea = memo(
     const editorW = `(100vw - ${sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
-    // The label steps around whatever the chrome row is showing, in either
-    // sidebar state: two history buttons expanded, five controls collapsed.
-    // It gives up only what it must — the column's own padding and offset
-    // already carry part of the reserve — and truncates rather than moving
-    // the body column, which never shifts.
-    const labelIndent = `max(0px, calc(${LABEL_LEFT_RESERVE(!sidebarVisible, fullScreen)}px - ${colPad} - ${colOffset}))`;
+    // The name's field, one element wherever it is rendered: in the chrome
+    // row's path band on the desktop, at the head of the column on a touch
+    // device. Its handlers are the title's own and do not change with the
+    // place; only its rest colours do (primary ink in the band, muted in the
+    // column).
+    const restColor = isMobile ? TEXT.muted : TEXT.primary;
+    // Memoised so the band's measuring effect keys on the folder, not on a
+    // fresh array every render.
+    const folder = note?.folder;
+    const parents = useMemo(() => parentFolders(folder), [folder]);
+    const hoverColor = isMobile ? TEXT.secondary : TEXT.primary;
+    const titleField = note ? (
+      <div
+        ref={titleRef}
+        contentEditable
+        suppressContentEditableWarning
+        data-title
+        data-placeholder="Untitled"
+        role="textbox"
+        aria-label="Note title"
+        className={note.title ? undefined : "empty-title"}
+        onInput={(e) => {
+          const newTitle = titleFieldText(e.currentTarget);
+          commitTextChange((prev) => {
+            const next = { ...prev };
+            const n = { ...next[activeNote] };
+            n.title = newTitle;
+            n.content = { ...n.content, title: newTitle };
+            next[activeNote] = n;
+            return next;
+          });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const blocks = noteDataRef.current[activeNote].content.blocks;
+            const first = blocks.find((b) => isEditableBlock(b));
+            if (first) {
+              const firstId = first.id;
+              const el = blockRefs.current[firstId];
+              if (el) {
+                placeCaret(el, 0);
+                requestAnimationFrame(() => {
+                  const sel = window.getSelection();
+                  if (
+                    sel.rangeCount &&
+                    getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)
+                  )
+                    return;
+                  const freshEl = blockRefs.current[firstId];
+                  if (freshEl) placeCaret(freshEl, 0);
+                });
+              } else {
+                focusBlockId.current = firstId;
+                focusCursorPos.current = 0;
+                forceRender((c) => c + 1);
+              }
+            }
+          }
+        }}
+        onPaste={(e) => {
+          e.preventDefault();
+          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+        }}
+        onFocus={(e) => {
+          // Truncation is a display concern — editing reveals the whole name.
+          e.currentTarget.style.background = BG.surface;
+          e.currentTarget.style.color = TEXT.primary;
+          e.currentTarget.style.textOverflow = "clip";
+          e.currentTarget.style.overflowX = "auto";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = restColor;
+          e.currentTarget.style.textOverflow = "ellipsis";
+          e.currentTarget.style.overflowX = "hidden";
+        }}
+        onMouseEnter={(e) => {
+          if (document.activeElement === e.currentTarget) return;
+          e.currentTarget.style.background = BG.surface;
+          e.currentTarget.style.color = hoverColor;
+        }}
+        onMouseLeave={(e) => {
+          if (document.activeElement === e.currentTarget) return;
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = restColor;
+        }}
+        style={
+          isMobile
+            ? {
+                fontSize: MOBILE_LABEL_FONT_SIZE,
+                fontWeight: 500,
+                color: restColor,
+                lineHeight: MOBILE_LABEL_LINE_HEIGHT,
+                margin: `0 0 ${MOBILE_LABEL_GAP}px ${-LABEL_PAD_X}px`,
+                padding: `0 ${LABEL_PAD_X}px`,
+                borderRadius: 4,
+                outline: "none",
+                position: "relative",
+                cursor: "text",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                transition: "background 0.12s, color 0.12s",
+              }
+            : {
+                // In the path band: the name's box is its text, and the hover
+                // pill's padding is pulled back out with a negative margin so the
+                // path centres on the letters, not on the pill.
+                ...PATH_FONT,
+                color: restColor,
+                margin: `0 ${-LABEL_PAD_X}px`,
+                padding: `0 ${LABEL_PAD_X}px`,
+                borderRadius: 4,
+                outline: "none",
+                position: "relative",
+                cursor: "text",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                minWidth: 0,
+                flex: "1 1 auto",
+                transition: "background 0.12s, color 0.12s",
+              }
+        }
+      />
+    ) : null;
 
     return (
       <div
@@ -554,13 +666,26 @@ const EditorArea = memo(
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
+        {note && !isMobile && (
+          <NotePath
+            parents={parents}
+            name={note.title}
+            collapsed={!sidebarVisible}
+            fullScreen={fullScreen}
+            bg={editorBg}
+          >
+            {titleField}
+          </NotePath>
+        )}
         {note ? (
           <div
             key={activeNote}
             ref={columnRef}
             className="panel-motion"
             style={{
-              padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
+              padding: isMobile
+                ? "12px 20px 80px 20px"
+                : `${COLUMN_TOP}px ${colPad} 80px ${colPad}`,
               maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
@@ -579,116 +704,13 @@ const EditorArea = memo(
               // divider stays 1:1.
               transition: `${panelTransition("max-width", "padding", "margin-left")}, opacity 0.2s ease`,
               position: "relative",
-              zIndex: Z.BASE,
+              // No z-index: as a stacking context the column kept its own
+              // toolbar, find bar and popovers under the path band above it
+              // (2026-09-15). Without one the band (Z.PATH_ROW) sits over the
+              // blocks and the grip and under everything that floats.
             }}
           >
-            {/* File label — see the LABEL_* constants for why it looks like this.
-                The breadcrumb that used to sit above it is gone: it only ever
-                populated for notes created in-session inside a folder, so it
-                appeared inconsistently, and a second muted line directly above
-                this one reads as a stack of two labels. Location is the
-                sidebar's job. */}
-            <div
-              ref={titleRef}
-              contentEditable
-              suppressContentEditableWarning
-              data-title
-              data-placeholder="Untitled"
-              role="textbox"
-              aria-label="Note title"
-              className={!note.title ? "empty-title panel-motion" : "panel-motion"}
-              onInput={(e) => {
-                const newTitle = titleFieldText(e.currentTarget);
-                commitTextChange((prev) => {
-                  const next = { ...prev };
-                  const n = { ...next[activeNote] };
-                  n.title = newTitle;
-                  n.content = { ...n.content, title: newTitle };
-                  next[activeNote] = n;
-                  return next;
-                });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const blocks = noteDataRef.current[activeNote].content.blocks;
-                  const first = blocks.find((b) => isEditableBlock(b));
-                  if (first) {
-                    const firstId = first.id;
-                    const el = blockRefs.current[firstId];
-                    if (el) {
-                      placeCaret(el, 0);
-                      requestAnimationFrame(() => {
-                        const sel = window.getSelection();
-                        if (
-                          sel.rangeCount &&
-                          getBlockFromNode(
-                            sel.anchorNode,
-                            editorRef.current,
-                            blocks,
-                            blockRefs.current,
-                          )
-                        )
-                          return;
-                        const freshEl = blockRefs.current[firstId];
-                        if (freshEl) placeCaret(freshEl, 0);
-                      });
-                    } else {
-                      focusBlockId.current = firstId;
-                      focusCursorPos.current = 0;
-                      forceRender((c) => c + 1);
-                    }
-                  }
-                }
-              }}
-              onPaste={(e) => {
-                e.preventDefault();
-                document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
-              }}
-              onFocus={(e) => {
-                // Truncation is a display concern — editing reveals the whole name.
-                e.currentTarget.style.background = BG.surface;
-                e.currentTarget.style.color = TEXT.primary;
-                e.currentTarget.style.textOverflow = "clip";
-                e.currentTarget.style.overflowX = "auto";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = TEXT.muted;
-                e.currentTarget.style.textOverflow = "ellipsis";
-                e.currentTarget.style.overflowX = "hidden";
-              }}
-              onMouseEnter={(e) => {
-                if (document.activeElement === e.currentTarget) return;
-                e.currentTarget.style.background = BG.surface;
-                e.currentTarget.style.color = TEXT.secondary;
-              }}
-              onMouseLeave={(e) => {
-                if (document.activeElement === e.currentTarget) return;
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = TEXT.muted;
-              }}
-              style={{
-                fontSize: LABEL_FONT_SIZE,
-                fontWeight: 500,
-                color: TEXT.muted,
-                lineHeight: LABEL_LINE_HEIGHT,
-                margin: `0 ${LABEL_RIGHT_RESERVE}px ${LABEL_GAP}px calc(${-LABEL_PAD_X}px + ${labelIndent})`,
-                padding: `0 ${LABEL_PAD_X}px`,
-                borderRadius: 4,
-                outline: "none",
-                position: "relative",
-                cursor: "text",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                // The indent steps around the chrome row's controls, which
-                // change with the sidebar state; it moves on the panel's
-                // clock so the name glides with the pair beside it rather
-                // than jumping to its new start and sliding back.
-                transition: `background 0.12s, color 0.12s, ${panelTransition("margin-left")}`,
-              }}
-            />
+            {isMobile && titleField}
 
             {/* Blocks */}
             <div ref={editorContainerRef} style={{ position: "relative" }}>

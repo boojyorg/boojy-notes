@@ -36,7 +36,9 @@ import EditorChrome, {
   CHROME_INSET,
   MAC_TRAFFIC_INSET,
   chromeControlsLeft,
-  chromeLabelClearance,
+  chromePathInset,
+  CHROME_PATH_RIGHT_INSET,
+  PATH_AIR,
   trafficLightsShown,
 } from "../../src/components/EditorChrome.jsx";
 
@@ -48,8 +50,9 @@ afterEach(() => {
 /**
  * Review H12: the note label kept clear of the toggle as if it sat at the web
  * inset, so on macOS the glyph was drawn over the first letters of the name.
- * The clearance EditorArea reserves must follow the controls to wherever they
- * are — and, since 2026-09-12, past all of them rather than past the toggle.
+ * The inset the path band (NotePath) starts at must follow the controls to
+ * wherever they are — and, since 2026-09-12, past all of them rather than
+ * past the toggle.
  */
 describe("EditorChrome on macOS with the sidebar hidden", () => {
   it("pins the left group right of the traffic lights and clears its whole width", () => {
@@ -66,27 +69,29 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     expect(Number.parseInt(group.style.left, 10)).toBe(MAC_TRAFFIC_INSET);
     expect(chromeControlsLeft(true)).toBe(MAC_TRAFFIC_INSET);
 
-    // Five controls in two groups, and the label starts past the last of them.
+    // Five controls in two groups, and the path's band starts past the last of them.
     const controls = ["Show sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
       getByTitle(t),
     );
     expect(controls).toHaveLength(5);
     // 3 buttons at 32 + two 2px gaps, a 12px step, 2 buttons at 32 + one gap,
-    // then 8px of air: the reserve must reach past all of it.
-    expect(chromeLabelClearance(true)).toBe(MAC_TRAFFIC_INSET + 100 + 12 + 66 + 8);
+    // then the band's air: the inset must reach past all of it.
+    expect(chromePathInset(true)).toBe(MAC_TRAFFIC_INSET + 100 + 12 + 66 + PATH_AIR);
     // Expanded, only the history pair is on the row, from the editor's inset.
-    expect(chromeLabelClearance(false)).toBe(10 + 66 + 8);
+    expect(chromePathInset(false)).toBe(10 + 66 + PATH_AIR);
+    // The right edge clears the ··· by the same air, in every state.
+    expect(CHROME_PATH_RIGHT_INSET).toBe(10 + 32 + PATH_AIR);
   });
 });
 
 /**
  * macOS full screen hides the traffic lights, so the 86px that cleared them
- * was dead space in front of the collapsed group and the note label sat a
+ * was dead space in front of the collapsed group and the note's path sat a
  * long way right for nothing (2026-09-14). Both fall back to the web inset
- * while full screen is on, and the drag strip, with nothing to drag, goes.
+ * while full screen is on.
  */
 describe("EditorChrome on macOS in full screen", () => {
-  it("drops the traffic-light inset and the drag strip", () => {
+  it("drops the traffic-light inset", () => {
     layout.fullScreen = true;
     const { getByTitle, container } = render(
       <EditorChrome
@@ -101,21 +106,10 @@ describe("EditorChrome on macOS in full screen", () => {
     expect(trafficLightsShown(true)).toBe(false);
     expect(trafficLightsShown(false)).toBe(true);
     expect(chromeControlsLeft(true, true)).toBe(CHROME_INSET);
-    expect(chromeLabelClearance(true, true)).toBe(CHROME_INSET + 100 + 12 + 66 + 8);
+    expect(chromePathInset(true, true)).toBe(CHROME_INSET + 100 + 12 + 66 + PATH_AIR);
     // Expanded the group never sat behind the lights, so nothing changes.
-    expect(chromeLabelClearance(false, true)).toBe(chromeLabelClearance(false, false));
+    expect(chromePathInset(false, true)).toBe(chromePathInset(false, false));
+    // No drag strip anywhere: the path band is the drag region now (NotePath).
     expect(container.querySelector("[data-testid='window-drag-strip']")).toBeNull();
-  });
-
-  it("keeps the drag strip while the lights are shown", () => {
-    const { container } = render(
-      <EditorChrome
-        activeNote="n1"
-        onNoteActions={vi.fn()}
-        onNewNote={vi.fn()}
-        onOpenSearch={vi.fn()}
-      />,
-    );
-    expect(container.querySelector("[data-testid='window-drag-strip']")).not.toBeNull();
   });
 });

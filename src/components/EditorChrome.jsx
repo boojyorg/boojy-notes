@@ -39,13 +39,20 @@ import { PANEL_MS, panelTransition } from "../tokens/motion";
  * separator. It is rendered with no active note too, carrying Settings alone:
  * app settings must never need a note to reach.
  *
+ * Between the two, centred on the pane, the note's path and name (NotePath,
+ * rendered by EditorArea at the top of its scroller so the note scrolls under
+ * it); the band it sits in starts `chromePathInset` from the editor's left
+ * edge and stops `CHROME_PATH_RIGHT_INSET` short of its right, so it never
+ * reaches a control in either sidebar state, and it is the window's drag
+ * region on macOS.
+ *
  * On macOS Electron the native traffic lights render over our chrome
  * (hiddenInset, no title bar): expanded, they share the sidebar header, which
  * doubles as the window drag region; collapsed, they sit alone at the top-left
- * and the left group shifts right of them (MAC_TRAFFIC_INSET), with a slim
- * invisible strip along the very top keeping the window draggable. In full
- * screen macOS takes the lights away (and nothing can be dragged), so both
- * fall back to the ordinary inset (`trafficLightsShown`).
+ * and the left group shifts right of them (MAC_TRAFFIC_INSET), with the path
+ * band keeping the window draggable. In full screen macOS takes the lights
+ * away (and nothing can be dragged), so the inset falls back to the ordinary
+ * one (`trafficLightsShown`).
  */
 
 export const CHROME_INSET = 10;
@@ -57,8 +64,8 @@ export const CHROME_BTN = 32;
  *  a group only if the step out of it is bigger than the step within it. */
 const BTN_GAP = 2;
 const GROUP_GAP = 12;
-/** Air between the last left-hand control and anything on its row. */
-const CONTROL_AIR = 8;
+/** Air between the path's band and the control groups either side of it. */
+export const PATH_AIR = 12;
 /** The sidebar's drag handle sits between the sidebar and the editor. */
 export { SIDEBAR_HANDLE_W } from "../constants/layout";
 /**
@@ -78,10 +85,6 @@ export const MAC_TRAFFIC_INSET = 86;
  * `isElectronMac` alone.
  */
 export const trafficLightsShown = (fullScreen = false) => isElectronMac && !fullScreen;
-/** Height of the collapsed-state drag strip — stops above the note label's
-    line box (top ≈16px) so the strip never steals its clicks. */
-const DRAG_STRIP_H = 14;
-
 const groupWidth = (n) => n * CHROME_BTN + (n - 1) * BTN_GAP;
 /** The collapsed trio's fade-in, timed to end with the panel's slide. */
 const TRIO_FADE_MS = PANEL_MS / 2;
@@ -96,18 +99,21 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
   collapsed && trafficLightsShown(fullScreen) ? MAC_TRAFFIC_INSET : CHROME_INSET;
 
 /**
- * Kept clear on the left of anything sharing the chrome row (the note label in
- * EditorArea), measured from the editor's left edge: past the whole visible
- * control group, not just the toggle. Counted from CHROME_INSET alone, the
- * reserve left the collapsed toggle sitting on the first letters of the note's
- * name at every window width on macOS (2026-09-07); counted from the toggle
- * alone it would now put four more buttons there. Keep this beside the group
- * it measures — the two must move together.
+ * Where the path's band begins, measured from the editor's left edge: past
+ * the whole visible control group, not just the toggle, plus its air. Counted
+ * from CHROME_INSET alone, the reserve left the collapsed toggle sitting on
+ * the first letters of the note's name at every window width on macOS
+ * (2026-09-07); counted from the toggle alone it would now put four more
+ * buttons there. Keep this beside the group it measures — the two must move
+ * together.
  */
-export const chromeLabelClearance = (collapsed, fullScreen = false) =>
+export const chromePathInset = (collapsed, fullScreen = false) =>
   chromeControlsLeft(collapsed, fullScreen) +
   (collapsed ? groupWidth(3) + GROUP_GAP + groupWidth(2) : groupWidth(2)) +
-  CONTROL_AIR;
+  PATH_AIR;
+
+/** Where the path's band ends, measured from the editor's right edge: the ··· and its air. */
+export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + CHROME_BTN + PATH_AIR;
 
 export function ChromeButton({
   onClick,
@@ -185,26 +191,6 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
 
   return (
     <>
-      {collapsed && trafficLightsShown(fullScreen) && (
-        // With the sidebar hidden there is no header to drag the window by, so
-        // a slim invisible strip along the very top takes that job. It sits
-        // under the chrome buttons in stacking order; they opt out via
-        // no-drag. 14px tall: real enough to grab, short of the note label.
-        // Not in full screen: nothing to drag, and no lights to sit beside.
-        <div
-          data-testid="window-drag-strip"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: DRAG_STRIP_H,
-            zIndex: Z.TOOLBAR,
-            WebkitAppRegion: "drag",
-          }}
-        />
-      )}
-
       {collapsed && (
         <div
           className="panel-motion"

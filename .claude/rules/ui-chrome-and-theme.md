@@ -140,11 +140,12 @@ hardcoded green); swap them for Lucide when touching those files.
   `MAC_TRAFFIC_INSET` to clear them (move one, re-judge the other, **at 100% page zoom only**:
   the lights are native and never scale with the page, and macOS 26 draws them 14px on a 23px
   pitch, so they end at 75px). The header is the window
-  drag region; the wordmark and chrome buttons opt out. Collapsed, a thin invisible strip along
-  the viewport top keeps the window draggable and deliberately stops above the note label's
-  line box so it never steals label clicks. Web and non-mac Electron render none of this.
+  drag region, and so is the editor's chrome row (the path band, below), in both sidebar states;
+  the wordmark, the chrome buttons and the path itself opt out. The collapsed-state drag strip
+  that used to stop above the note label's line box went with the label (2026-09-15). Web and
+  non-mac Electron render none of this.
   **In full screen the inset goes too** (2026-09-14): macOS hides the lights, so the wordmark,
-  the collapsed group, the label clearance and the drag strip all fall back to the ordinary inset
+  the collapsed group and the path band's inset all fall back to the ordinary inset
   while it is on. The main process is the one that knows: it answers `is-full-screen` once at
   mount and sends `full-screen-changed` at every edge; `useFullScreen` holds the answer in
   `LayoutContext`, and every inset that keys off the lights asks `trafficLightsShown(fullScreen)`
@@ -334,8 +335,9 @@ column is its full `sidebarWidth`, never `flex: 1`, and slides out under the win
 gains a containing block) as the wrapper's width closes over it**, with its contents fading out
 in the first half and in over the last; **the history pair is its own fixed block and
 transitions `left`** between its two positions; **the trio fades in over the last half** of the
-slide, so the sidebar's own toggle leaves and this one arrives; and **the name's indent
-transitions with the pair**. The wrapper and the editor column ease on the same token. Still
+slide, so the sidebar's own toggle leaves and this one arrives; and **the path band's inset and
+its centring bias transition with the pair**, so the note's name glides to its new centre. The
+wrapper and the editor column ease on the same token. Still
 per-frame: the column's prose re-wraps, because its max-width is 720 beside the sidebar and 840
 alone (a product choice; one width would make a wide-window toggle a pure slide). Don't put the
 sidebar back on `flex: 1`, and don't add a second duration. `sidebar-motion.spec.ts` proves the
@@ -344,18 +346,39 @@ clip at rest and the pair's position in the real app.
 **The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
 opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
 renders it at the head of the left group. Both use the exported `ChromeButton`.
-**The note label steps around the whole visible control group, by `chromeLabelClearance()`**
-(`EditorChrome`: where the group starts — `MAC_TRAFFIC_INSET` or `CHROME_INSET`, and, expanded,
-past the sidebar and its handle — plus the group's own width plus 8px of air), in **both**
-sidebar states: two buttons expanded, five collapsed. The body column never moves; the label
-gives up only what the column's padding and offset do not already cover, and truncates. The
-reserve was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first
-letters of the name at every width (2026-09-07), and counting it from the toggle alone would now
-put four more buttons there. Keep the clearance next to the group it measures; the two must move
-together. Collapsed at a wide window the name therefore sits a long way right of the body column
-below it — accepted 2026-09-12, the price of reading the row left to right as
-`navigation · history · name`. `chrome-row.spec.ts` measures both states, a long name and the
-600px minimum window in the real app.
+**The note's path is centred in the chrome row, between the controls** (2026-09-15, `NotePath`,
+judged on three rendered mockups). `University / Archive / Todd's Note`: the parent folders and
+then the name, in both sidebar states, at the interface size (14px, weight 400, no letter
+spacing): the name in `TEXT.primary`, the folders one step quieter in `TEXT.secondary`, the
+slashes `TEXT.muted`; nothing bold, nothing in the accent, nothing that looks clickable (folder
+navigation from the row is a separate decision, and the folders are plain spans until it is
+made). A root note shows its name alone, never `Notes /`. The name is still the editable file
+label it was in the column: a single click renames in place, Enter goes to the first block, and
+every filename rule and save path is unchanged. **Where it sits is CSS; what it shows is
+JavaScript.** The band is the row's full height and the pane's width, `position: sticky` at the
+top of `.editor-scroll` so the note scrolls under it (it paints `BG.editor` for that reason and
+is invisible at rest); its side padding is `chromePathInset()` on the left (where the visible
+control group ends, `PATH_AIR` = 12 further) and `CHROME_PATH_RIGHT_INSET` on the right (the ···
+and the same air). Two flex spacers share the band: the one on the narrower side starts with the
+difference between the two paddings as its basis, so the path lands on the *pane's* centre when
+it fits there, and that basis is the first thing to shrink when it does not, so the path slides
+toward the band's centre by the least it must and never over a control. No shift cap and no
+second position: the mockups' 40px cap produced a jump at the cap, and centring in the symmetric
+room alone dropped folders the band had room for. What is shown is the richest form that fits the
+band (`utils/pathCrumbs.ts`: full path, then `… /` and the nearest folders, then `… / name`, then
+the name, which truncates only once no folder is left), measured, never estimated: an invisible
+twin of every crumb is laid out beside the path in the same font and a `ResizeObserver` on the
+band re-reads it as the band's width changes, both through `getBoundingClientRect` so the UI
+scale cancels. Because fit is judged against the band alone, the choice is monotonic in the
+window's width: widening never hides a folder. The body column never moved: its top padding is
+what the label's row and gap used to add up to (`COLUMN_TOP`). On a touch device there is no
+chrome row and the name keeps its old place at the head of the column, small and muted. The
+inset was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first letters
+of the name at every width (2026-09-07); keep the inset next to the group it measures. Proven in
+`note-path.spec.ts` (both states, a 20px-step narrowing from 1200px to the minimum, a long name
+four folders deep, rename by click) and `chrome-row.spec.ts` (the controls at every width, full
+screen, the sidebar yielding) in the real app; `pathCrumbs.test.ts` and `NotePath.test.jsx` hold
+the rule and the spacers.
 
 ## Sidebar
 
@@ -615,7 +638,10 @@ below it — accepted 2026-09-12, the price of reading the row left to right as
   restart in the real app.
 - **The name is a quiet file label, not a title.** A `#` heading in the body is body text: it
   never names the file, and the filename is never written into the note as a heading. Decided
-  because altitude implies rank, and a filename cannot hold title rank.
+  because altitude implies rank, and a filename cannot hold title rank. Since 2026-09-15 the label
+  sits centred in the chrome row behind its folder path, at interface size in primary ink (see
+  "The note's path is centred in the chrome row"): a document's name in its window's own row, the
+  macOS idiom, still 14px in a toolbar and never a heading.
 - **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
   own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
   other file on disk is a collision, indexed or not.
