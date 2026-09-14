@@ -55,16 +55,20 @@ right; naming greys by darkness is what makes every region read as a separate bo
 Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground.
 
 **The accent is two tokens, and one of them is shared** (2026-09-14, Tyr's ask: the tick box
-the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#2593A0` in
+the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#6FB3BA` in
 both themes: the checkbox fill, the bullet dot, the quote bar, drop markers, focus rings, the
-selection band, the switch, the confirm button, the wordmark's N. A mark only has to clear the
-ground (3:1, WCAG non-text), and this one does on white (3.7:1) and on the dark sheet (4.9:1),
-the way Notion's checkbox blue is one colour in both modes. `ACCENT.text` is accent *as ink*
-and is per theme, because nothing passes 4.5:1 on both white and a dark ground: `#2A737D` in
-Light (5.5:1), `#5FBFCA` in Dark (8.3:1); wikilinks, `#tags`, search hits, the active toolbar
-and slash-menu glyph, Settings section labels. `ACCENT.onAccent` is `ON_MARK`, white in both
-themes (3.7:1 on the mark: a tick or a bold label, never body text). The rule for a new use:
-does it have to be *read*? Then `text`; otherwise `primary`. Before this each theme had one
+selection band, the switch, the confirm button, the info toast, the wordmark's N. It is the
+misty brand teal (`#A4CACE`, hue 186) brought to mid-lightness, judged live against `#2593A0`
+(the darkest teal that carries a white tick; Tyr read it as blue and dark: same hue, twice the
+saturation). At 2.4:1 on white it sits under WCAG's 3:1 line for graphical objects, accepted:
+a filled 16px square is plainly visible there, and misty is the brand; 7.5:1 on the dark sheet.
+`ACCENT.onAccent` is `ON_MARK`, **dark ink in both themes** (`#14110F`, 7.9:1 on the mark),
+because white on a misty fill is 2.4:1; a tick or a bold label, never body text. `ACCENT.text`
+is accent *as ink* and is per theme, because nothing passes 4.5:1 on both white and a dark
+ground: `#2A737D` in Light (5.5:1, the deep teal words need), `#9CC9CE` in Dark (9:1, a step
+off the brand colour); wikilinks, `#tags`, search hits, the active toolbar and slash-menu
+glyph, Settings section labels. The rule for a new use: does it have to be *read*? Then `text`;
+otherwise `primary`, with `onAccent` for anything drawn on it. Before this each theme had one
 accent for both jobs, Dark's a pale `#A4CACE` that read grey-mint and Light's a deep `#2A737D`
 that made the checkbox a different object in each mode; the wordmark's N was `#A4CACE` in both,
 1.76:1 on white. `LayoutContext` hands out both as `accentColor` (marks) and `accentText`.
@@ -87,8 +91,8 @@ Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use pl
 alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme
 (Dark's callout grounds are the colour at 14% over the sheet since 2026-09-14, the border at
 25%, so that a new type is derived, not picked); `Toast` and the danger `ConfirmDialog` keep
-`#fff` on semantic status colours, deliberately outside the accent scope; `UpdatesTab` and
-the Appearance theme picker no longer do.
+`#fff` on semantic status colours, deliberately outside the accent scope (the info toast takes
+`onAccent`); `UpdatesTab`, the Appearance theme picker and the mobile action button no longer do.
 
 ## Scrollbars
 

@@ -1,11 +1,13 @@
 // The one teal (2026-09-14). Marks and fills — the checkbox, the bullet dot, the
 // quote bar, drop markers, focus rings, the selection band, switches, buttons,
-// the wordmark's N — are the same colour in both themes, as Notion's checkbox
-// blue is: a fill only has to clear the ground (3:1), and this one does on
-// white (3.7:1) and on the dark sheet (4.9:1). Accent *as ink* cannot be one
-// colour — nothing passes 4.5:1 on both — so that is `ACCENT.text`, per theme.
-export const MARK = "#2593A0";
-export const ON_MARK = "#FFFFFF"; // 3.7:1 on the mark: a tick, a bold label, never body text
+// the wordmark's N — are the same colour in both themes. It is the misty brand
+// teal brought to mid-lightness (hue 186, the same as #A4CACE and #2A737D;
+// #2593A0 was judged too saturated and read blue): 2.4:1 on white, 7.5:1 on
+// the dark sheet. Whatever sits on it is dark ink in both themes (7.9:1), since
+// white on a misty fill is 2.4:1. Accent *as ink* cannot be one colour —
+// nothing passes 4.5:1 on both grounds — so that is `ACCENT.text`, per theme.
+export const MARK = "#6FB3BA";
+export const ON_MARK = "#14110F"; // a tick, a bold label, never body text
 
 export const NIGHT = {
   name: "night",
@@ -29,7 +31,7 @@ export const NIGHT = {
   },
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with DAY
-    text: "#5FBFCA", // accent as ink on the ground: 8.3:1 on the sheet
+    text: "#9CC9CE", // accent as ink on the ground: misty, 9:1 on the sheet
     onAccent: ON_MARK,
   },
   SEMANTIC: {
@@ -72,14 +74,14 @@ export const NIGHT = {
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
   link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
-  wikilink: { color: "#5FBFCA", underline: "rgba(95,191,202,0.3)" },
+  wikilink: { color: "#9CC9CE", underline: "rgba(156,201,206,0.3)" },
   wikilinkBroken: {
     color: "rgba(255,255,255,0.4)",
     underline: "rgba(255,255,255,0.2)",
     hoverColor: "rgba(255,255,255,0.6)",
     hoverUnderline: "rgba(255,255,255,0.3)",
   },
-  mark: { bg: "rgba(37, 147, 160, 0.4)" },
+  mark: { bg: "rgba(111, 179, 186, 0.4)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
@@ -182,7 +184,7 @@ export const DAY = {
     hoverColor: "rgba(0,0,0,0.5)",
     hoverUnderline: "rgba(0,0,0,0.25)",
   },
-  mark: { bg: "rgba(37, 147, 160, 0.22)" },
+  mark: { bg: "rgba(111, 179, 186, 0.3)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {

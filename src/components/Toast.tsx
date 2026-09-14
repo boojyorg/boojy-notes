@@ -1,6 +1,6 @@
 interface ToastTheme {
   SEMANTIC: { error: string; warning: string };
-  ACCENT: { primary: string };
+  ACCENT: { primary: string; onAccent: string };
 }
 
 interface ToastProps {
@@ -17,12 +17,18 @@ function toRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function getColors(type: string, theme: ToastTheme): { bg: string; border: string } {
+function getColors(type: string, theme: ToastTheme): { bg: string; border: string; fg: string } {
+  // White stays on the two status colours, deliberately outside the accent scope;
+  // the info toast sits on the mark fill, so it takes what every mark carries.
   if (type === "error")
-    return { bg: toRgba(theme.SEMANTIC.error, 0.92), border: theme.SEMANTIC.error };
+    return { bg: toRgba(theme.SEMANTIC.error, 0.92), border: theme.SEMANTIC.error, fg: "#fff" };
   if (type === "warning")
-    return { bg: toRgba(theme.SEMANTIC.warning, 0.92), border: theme.SEMANTIC.warning };
-  return { bg: toRgba(theme.ACCENT.primary, 0.92), border: theme.ACCENT.primary };
+    return { bg: toRgba(theme.SEMANTIC.warning, 0.92), border: theme.SEMANTIC.warning, fg: "#fff" };
+  return {
+    bg: toRgba(theme.ACCENT.primary, 0.92),
+    border: theme.ACCENT.primary,
+    fg: theme.ACCENT.onAccent,
+  };
 }
 
 export default function Toast({ message, type = "error", onDismiss, theme }: ToastProps) {
@@ -34,7 +40,7 @@ export default function Toast({ message, type = "error", onDismiss, theme }: Toa
       onClick={onDismiss}
       style={{
         background: colors.bg,
-        color: "#fff",
+        color: colors.fg,
         padding: "10px 16px",
         borderRadius: 8,
         fontSize: 13,
