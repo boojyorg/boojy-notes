@@ -26,9 +26,9 @@ a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`
   two materials, and the muted tier sat at 2.6:1 on the sidebar. Grounds are pure grey; the ink
   is one step warm (`#E7E6E5`), because DAY's warm tilt read cream on a neutral dark ground and
   pure neutral read clinical. All three text tiers clear AA on the sidebar. `TEXT.primary` moved,
-  so the dark wordmark was regenerated (see the wordmark bullet). Not re-pitched: the callout
-  grounds and the syntax colours, still hand-picked and bluish; judge them on the new ground
-  before touching them.
+  so the dark wordmark was regenerated (see the wordmark bullet). The callout grounds followed
+  the same day (see Known leaks), and the comment and punctuation syntax colours lost their
+  blue; the rest of the syntax set is unchanged.
 - **`?tweak` on a dev build mounts a colour panel** (`dev/ThemeTweaker.jsx`, loaded from
   `main.jsx` only when `import.meta.env.DEV`; dead code in a production bundle and outside the
   coverage denominator). It lays token overrides over the active theme through
@@ -52,17 +52,29 @@ right; naming greys by darkness is what makes every region read as a separate bo
 | `BG.hover` | **row/menu** hover AND selected |
 | `BG.divider` | border, ink at 8% |
 
-Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground;
-`ACCENT.onAccent` is for anything sitting on an accent fill (the Updates "Restart & Update"
-button and the auto-update switch's on-state knob were hardcoded white until 2026-09-07,
-unreadable on Dark's pale accent; the off-state knob is `TEXT.secondary`, since a white dot on
-the 6% track was invisible in Light).
+Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground.
+
+**The accent is two tokens, and one of them is shared** (2026-09-14, Tyr's ask: the tick box
+the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#2593A0` in
+both themes: the checkbox fill, the bullet dot, the quote bar, drop markers, focus rings, the
+selection band, the switch, the confirm button, the wordmark's N. A mark only has to clear the
+ground (3:1, WCAG non-text), and this one does on white (3.7:1) and on the dark sheet (4.9:1),
+the way Notion's checkbox blue is one colour in both modes. `ACCENT.text` is accent *as ink*
+and is per theme, because nothing passes 4.5:1 on both white and a dark ground: `#2A737D` in
+Light (5.5:1), `#5FBFCA` in Dark (8.3:1); wikilinks, `#tags`, search hits, the active toolbar
+and slash-menu glyph, Settings section labels. `ACCENT.onAccent` is `ON_MARK`, white in both
+themes (3.7:1 on the mark: a tick or a bold label, never body text). The rule for a new use:
+does it have to be *read*? Then `text`; otherwise `primary`. Before this each theme had one
+accent for both jobs, Dark's a pale `#A4CACE` that read grey-mint and Light's a deep `#2A737D`
+that made the checkbox a different object in each mode; the wordmark's N was `#A4CACE` in both,
+1.76:1 on white. `LayoutContext` hands out both as `accentColor` (marks) and `accentText`.
+(The Updates "Restart & Update" button and the switch's on-state knob were hardcoded white
+until 2026-09-07; the off-state knob is `TEXT.secondary`, since a white dot on the 6% track was
+invisible in Light.)
 
 - **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
   hover *and* select to `BG.hover`, so hover previews selection. Every new hover state is one
   or the other.
-- **Accent is theme-scoped.** Dark's accent is illegible on a light ground. Never share one
-  accent constant across themes.
 - **Accent is never a desktop surface.** It is identity, focus rings, 2-3px markers, wikilinks
   and the caret. Desktop selected rows are neutral. The one sanctioned tint is the selected
   divider's band, a transient selection state and closer to a focus ring than a surface: accent
@@ -72,9 +84,11 @@ the 6% track was invisible in Light).
   accent-tinted pill because the denser layout needs it; that is fixed styling, not an option.
 
 Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use plain black
-alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme;
-`Toast` and the danger `ConfirmDialog` keep `#fff` on semantic status colours, deliberately
-outside the accent scope; `UpdatesTab` no longer does.
+alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme
+(Dark's callout grounds are the colour at 14% over the sheet since 2026-09-14, the border at
+25%, so that a new type is derived, not picked); `Toast` and the danger `ConfirmDialog` keep
+`#fff` on semantic status colours, deliberately outside the accent scope; `UpdatesTab` and
+the Appearance theme picker no longer do.
 
 ## Scrollbars
 
@@ -359,15 +373,17 @@ below it — accepted 2026-09-12, the price of reading the row left to right as
   note button went the same day, so the app has one visible way to make a note per state.
 - **Wordmark at 18px, one asset per theme, drawn in the theme's ink** (`Wordmark.tsx`,
   2026-09-07; mobile draws the same component at 30px). At 20px it out-shouted the note's
-  H1. The artwork is two colours, the cyan N (the same in both themes) and "otes" in
-  `TEXT.primary`; before this the black master was drawn in both themes at 0.92 opacity, and
-  in Dark "otes" was near-black on the dark ground. A CSS `invert()` was rejected because it
-  would also turn the N into its complement. The master `assets/boojy-notes-wordmark.png` is
-  never drawn; the two drawn files are generated from it, alpha untouched, and regenerated
-  whenever a theme's `TEXT.primary` moves:
+  H1. The artwork is two colours, the N in the mark colour (`MARK`, the same in both themes)
+  and "otes" in `TEXT.primary`; before this the black master was drawn in both themes at 0.92
+  opacity, and in Dark "otes" was near-black on the dark ground. A CSS `invert()` was rejected
+  because it would also turn the N into its complement. The master
+  `assets/boojy-notes-wordmark.png` is never drawn (its N is the old `#A4CACE`, which is what
+  the recolour matches); the two drawn files are generated from it, alpha untouched, and
+  regenerated whenever `MARK` or a theme's `TEXT.primary` moves:
   `magick assets/boojy-notes-wordmark.png \( +clone -alpha extract \) \( -clone 0 -alpha off
-  -fill "<TEXT.primary>" -opaque black \) -delete 0 +swap -alpha off -compose CopyOpacity
-  -composite assets/boojy-notes-wordmark-<light|dark>.png`.
+  -fuzz 12% -fill "<MARK>" -opaque "#A4CACE" +fuzz -fill "<TEXT.primary>" -opaque black \)
+  -delete 0 +swap -alpha off -compose CopyOpacity -composite
+  assets/boojy-notes-wordmark-<light|dark>.png`.
   The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
   vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
 - **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through

@@ -89,7 +89,7 @@ const EditableBlock = memo(
     onNavigateToNote,
   }) {
     const { theme } = useTheme();
-    const { BG, TEXT } = theme;
+    const { TEXT, ACCENT } = theme;
     const elRef = useRef(null);
 
     // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
@@ -527,7 +527,7 @@ const EditableBlock = memo(
             >
               <path
                 d="M2 5L4.2 7.2L8 3"
-                stroke={BG.darkest}
+                stroke={ACCENT.onAccent}
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"

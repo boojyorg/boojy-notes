@@ -124,7 +124,7 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         // the fill is for hover alone, so a pressed button still lifts on hover
         // and the accent stays ink, never a surface (judged 2026-09-10).
         background: hovered ? theme.overlay(0.08) : "transparent",
-        color: active ? ACCENT.primary : TEXT.primary,
+        color: active ? ACCENT.text : TEXT.primary,
         transition: "background 0.1s, color 0.1s",
       }}
     >

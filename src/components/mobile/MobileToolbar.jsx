@@ -34,7 +34,7 @@ function TBtn({ label, active, disabled, onPress, style = {}, ariaLabel }) {
         color: disabled
           ? `${theme.TEXT.muted}50`
           : active
-            ? theme.ACCENT.primary
+            ? theme.ACCENT.text
             : theme.TEXT.secondary,
         opacity: disabled ? 0.35 : 1,
         flexShrink: 0,

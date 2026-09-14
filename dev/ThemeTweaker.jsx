@@ -19,7 +19,7 @@ const GROUPS = [
     keys: ["editor", "standard", "dark", "darkest", "elevated", "surface", "hover", "divider"],
   },
   { group: "TEXT", keys: ["primary", "secondary", "muted"] },
-  { group: "ACCENT", keys: ["primary", "onAccent"] },
+  { group: "ACCENT", keys: ["primary", "text", "onAccent"] },
   { group: null, keys: ["codeBlockBg"] },
 ];
 

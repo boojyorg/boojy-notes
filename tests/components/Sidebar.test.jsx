@@ -20,7 +20,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
         hover: "#555",
         darkest: "#111",
       },
-      ACCENT: { primary: "#A4CACE" },
+      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
       modalShadow: "0 8px 24px rgba(0,0,0,0.4)",
       SEMANTIC: { error: "#ef4444" },
       link: { color: "#7AA2F7", underline: "#7AA2F744", hoverBg: "#7AA2F710" },

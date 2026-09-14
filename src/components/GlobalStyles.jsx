@@ -198,7 +198,7 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
         [data-block-id] .inline-tag {
-          color: ${theme.ACCENT.primary};
+          color: ${theme.ACCENT.text};
           opacity: 0.7;
           font-size: 0.92em;
           cursor: pointer;
@@ -414,7 +414,7 @@ export default function GlobalStyles() {
         }
         .code-ctx-danger { color: ${theme.SEMANTIC.error}; }
         .code-ctx-danger:hover { background: ${theme.SEMANTIC.error}18; }
-        .code-ctx-active { color: ${theme.ACCENT.primary}; }
+        .code-ctx-active { color: ${theme.ACCENT.text}; }
         .code-ctx-sep {
           height: 1px;
           background: ${theme.BG.divider};

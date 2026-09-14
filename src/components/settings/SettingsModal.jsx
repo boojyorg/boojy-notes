@@ -56,7 +56,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
         style={{
           fontSize: fontSize.xs,
           fontWeight: fontWeight.semibold,
-          color: ACCENT.primary,
+          color: ACCENT.text,
           textTransform: "uppercase",
           letterSpacing: 1.5,
           whiteSpace: "nowrap",
@@ -88,7 +88,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
       style={{
         fontSize: 11,
         fontWeight: fontWeight.semibold,
-        color: ACCENT.primary,
+        color: ACCENT.text,
         textTransform: "uppercase",
         letterSpacing: 1.2,
         padding: `${spacing.xl}px 0 ${spacing.sm}px`,

@@ -1,3 +1,12 @@
+// The one teal (2026-09-14). Marks and fills — the checkbox, the bullet dot, the
+// quote bar, drop markers, focus rings, the selection band, switches, buttons,
+// the wordmark's N — are the same colour in both themes, as Notion's checkbox
+// blue is: a fill only has to clear the ground (3:1), and this one does on
+// white (3.7:1) and on the dark sheet (4.9:1). Accent *as ink* cannot be one
+// colour — nothing passes 4.5:1 on both — so that is `ACCENT.text`, per theme.
+export const MARK = "#2593A0";
+export const ON_MARK = "#FFFFFF"; // 3.7:1 on the mark: a tick, a bold label, never body text
+
 export const NIGHT = {
   name: "night",
   // Neutral grey ramp, no blue cast, small steps between regions (2026-09-14):
@@ -19,8 +28,9 @@ export const NIGHT = {
     muted: "#8D8C8B", // 4.7:1 on the sidebar
   },
   ACCENT: {
-    primary: "#A4CACE",
-    onAccent: "#1C1C1C", // text/icon on an accent fill — dark, since the accent is pale here
+    primary: MARK, // marks and fills: the one teal, shared with DAY
+    text: "#5FBFCA", // accent as ink on the ground: 8.3:1 on the sheet
+    onAccent: ON_MARK,
   },
   SEMANTIC: {
     warning: "#FFC107",
@@ -44,30 +54,32 @@ export const NIGHT = {
   codeBlockBorderFocus: "rgba(255,255,255,0.18)",
   transitionMs: 400,
   callouts: {
-    note: { colour: "#7AA2F7", bg: "#3f4e74", border: "rgba(122,162,247,0.18)" },
-    info: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
-    tip: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
-    warning: { colour: "#E0AF68", bg: "#635242", border: "rgba(224,175,104,0.18)" },
-    danger: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
-    success: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
-    question: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
-    quote: { colour: "#9B9EB0", bg: "#4c4c5a", border: "rgba(155,158,176,0.18)" },
-    example: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
-    bug: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
-    abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
+    // Grounds are the colour at 14% over the sheet (2026-09-14); the old hand-picked
+    // mid-greys read as lit panels once the sheet stopped being near-black.
+    note: { colour: "#7AA2F7", bg: "#262B37", border: "rgba(122,162,247,0.25)" },
+    info: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
+    tip: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
+    warning: { colour: "#E0AF68", bg: "#342D23", border: "rgba(224,175,104,0.25)" },
+    danger: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
+    success: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
+    question: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
+    quote: { colour: "#ACABAA", bg: "#2D2D2C", border: "rgba(172,171,170,0.25)" },
+    example: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
+    bug: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
+    abstract: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
   },
   overlay: (a) => `rgba(255,255,255,${a})`,
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
   link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
-  wikilink: { color: "#A4CACE", underline: "rgba(164,202,206,0.3)" },
+  wikilink: { color: "#5FBFCA", underline: "rgba(95,191,202,0.3)" },
   wikilinkBroken: {
     color: "rgba(255,255,255,0.4)",
     underline: "rgba(255,255,255,0.2)",
     hoverColor: "rgba(255,255,255,0.6)",
     hoverUnderline: "rgba(255,255,255,0.3)",
   },
-  mark: { bg: "rgba(164, 202, 206, 0.35)" },
+  mark: { bg: "rgba(37, 147, 160, 0.4)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
@@ -87,8 +99,8 @@ export const NIGHT = {
   /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
   dragShadow: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)",
   syntax: {
-    comment: "#636980",
-    punctuation: "#9B9EB0",
+    comment: "#808080",
+    punctuation: "#ACABAA",
     property: "#FF9E64",
     string: "#9ECE6A",
     operator: "#89DDFF",
@@ -121,8 +133,9 @@ export const DAY = {
     muted: "#7A736C", // 4.6:1
   },
   ACCENT: {
-    primary: "#2A737D", // 5.3:1 on ground, 4.6:1 on selected row
-    onAccent: "#FFFFFF", // text/icon on an accent fill (5.5:1)
+    primary: MARK, // marks and fills: the one teal, shared with NIGHT
+    text: "#2A737D", // accent as ink on the ground: 5.5:1 on the sheet, 4.6:1 on a selected row
+    onAccent: ON_MARK,
   },
   SEMANTIC: {
     warning: "#D4920A",
@@ -169,7 +182,7 @@ export const DAY = {
     hoverColor: "rgba(0,0,0,0.5)",
     hoverUnderline: "rgba(0,0,0,0.25)",
   },
-  mark: { bg: "rgba(42, 115, 125, 0.18)" },
+  mark: { bg: "rgba(37, 147, 160, 0.22)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {

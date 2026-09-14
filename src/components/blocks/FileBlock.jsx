@@ -26,6 +26,7 @@ function formatFriendlyFilename(filename) {
 }
 
 function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, accentColor }) {
+  const { theme: fileTheme } = useTheme();
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
@@ -110,7 +111,7 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
               style={{
                 fontSize: 10,
                 fontWeight: 600,
-                color: accentColor,
+                color: fileTheme.ACCENT.text,
                 background: `${accentColor}18`,
                 padding: "1px 6px",
                 borderRadius: 3,
