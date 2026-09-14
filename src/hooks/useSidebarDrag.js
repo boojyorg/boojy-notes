@@ -155,17 +155,26 @@ export function useSidebarDrag({
   // Drop feedback is neutral by rule — the accent is identity, not a surface.
   // A row/header fills to BG.hover (the same tone selection uses) with a 1px
   // muted ring so the target reads as chosen rather than merely hovered.
+  // One target is painted at a time, and what it held before is put back when
+  // the pointer leaves it: clearing the inline background to "" instead left a
+  // folder row (a <button>) on the UA's buttonface, #EFEFEF, so after the first
+  // drag every folder lit up white in Dark (Tyr, 2026-09-14).
   const paintDropTarget = (el) => {
+    const sd = sidebarDrag.current;
+    if (sd.painted?.el === el) return;
+    clearDropHighlights();
+    sd.painted = { el, background: el.style.background, boxShadow: el.style.boxShadow };
     el.style.background = themeRef.current.BG.hover;
     el.style.boxShadow = `inset 0 0 0 1px ${themeRef.current.TEXT.muted}`;
   };
 
-  const clearDropHighlights = (scrollEl) => {
-    if (!scrollEl) return;
-    scrollEl.querySelectorAll("[data-folder-path], [data-drop-root]").forEach((el) => {
-      el.style.background = "";
-      el.style.boxShadow = "";
-    });
+  const clearDropHighlights = () => {
+    const sd = sidebarDrag.current;
+    const p = sd.painted;
+    if (!p) return;
+    p.el.style.background = p.background;
+    p.el.style.boxShadow = p.boxShadow;
+    sd.painted = null;
   };
 
   const updateSidebarDropTarget = (pointerX, pointerY) => {
@@ -181,7 +190,7 @@ export function useSidebarDrag({
       pointerY < scrollRect.top ||
       pointerY > scrollRect.bottom
     ) {
-      clearDropHighlights(scrollEl);
+      clearDropHighlights();
       // Outside the sidebar there is no target. Dropping here cancels: drag
       // changes where a note lives, it never navigates (dropping over the
       // editor used to open the note — removed 2026-09-03).
@@ -195,8 +204,6 @@ export function useSidebarDrag({
     // changes a note's location, the sort preference decides display order.
     let target = null;
     const folderEls = scrollEl.querySelectorAll("[data-folder-path]");
-
-    clearDropHighlights(scrollEl);
 
     for (const el of folderEls) {
       const folderPath = el.dataset.folderPath;
@@ -232,6 +239,7 @@ export function useSidebarDrag({
 
     sd.dropTarget = target;
     if (target.el) paintDropTarget(target.el);
+    else clearDropHighlights();
   };
 
   const finalizeSidebarDrag = () => {
@@ -288,7 +296,7 @@ export function useSidebarDrag({
       cancelAnimationFrame(sd.scrollRAF);
       sd.scrollRAF = null;
     }
-    clearDropHighlights(sidebarScrollRef.current);
+    clearDropHighlights();
     Object.assign(pill.style, {
       transition: `top ${SETTLE_MS}ms ease, left ${SETTLE_MS}ms ease, opacity ${SETTLE_MS}ms ease, transform ${SETTLE_MS}ms ease, box-shadow ${SETTLE_MS}ms ease`,
       top: origin.top + "px",
@@ -311,7 +319,7 @@ export function useSidebarDrag({
       cancelAnimationFrame(sd.scrollRAF);
       sd.scrollRAF = null;
     }
-    clearDropHighlights(sidebarScrollRef.current);
+    clearDropHighlights();
     if (sd._scrollEl) {
       sd._scrollEl.style.touchAction = "";
       sd._scrollEl = null;

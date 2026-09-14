@@ -95,4 +95,47 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
 
     act(() => result.current.cancelSidebarDrag());
   });
+
+  it("puts back what the row held once the pointer leaves it, never an empty background", () => {
+    // A folder row is a <button> whose rest background is set inline; clearing
+    // it to "" dropped it onto the UA's buttonface (#EFEFEF), so after the first
+    // drag every folder lit up white in Dark.
+    folderRow.style.background = "none";
+    theme = NIGHT;
+    const { result } = mount();
+
+    act(() => {
+      result.current.handleSidebarPointerDown({
+        button: 0,
+        target: noteRow,
+        clientX: 20,
+        clientY: 60,
+        pointerType: "mouse",
+      });
+    });
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 20 }));
+    });
+    expect(folderRow.style.background).toBe(rgb(NIGHT.BG.hover));
+
+    // Off the folder onto the empty space below the rows: the row is put back.
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 300 }));
+    });
+    expect(folderRow.style.background).toBe("none");
+    expect(folderRow.style.boxShadow).toBe("");
+
+    // And after the drag ends, the same.
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 20 }));
+    });
+    act(() => result.current.cancelSidebarDrag());
+    act(() => {
+      vi.runAllTimers();
+    });
+    expect(folderRow.style.background).toBe("none");
+  });
 });
