@@ -160,16 +160,15 @@ export function ChromeButton({
 }
 
 export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onOpenSearch }) {
-  const { sidebarVisible, sidebarInFlow, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
+  const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const collapsed = !sidebarVisible;
 
   // The left group belongs to the editor, so it starts at the editor's left
-  // edge. An open overlay sidebar is painted over the editor and occupies no
-  // layout, so the editor still starts at the viewport — the group sits under
-  // the overlay, exactly as the note label does.
+  // edge: past the sidebar and its handle while the sidebar shows, at the
+  // viewport otherwise.
   const groupLeft =
-    (sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0) +
+    (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) +
     chromeControlsLeft(collapsed, fullScreen);
 
   return (

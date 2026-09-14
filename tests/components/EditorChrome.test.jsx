@@ -15,12 +15,11 @@ vi.mock("../../src/hooks/useTheme", () => ({
 
 /**
  * The chrome no longer knows *why* the sidebar isn't showing — hidden by the
- * user or a closed overlay at a narrow width are the same thing to it. It asks
- * whether the sidebar is visible, and toggles through one action.
+ * user is the one state it knows. It asks whether the sidebar is visible, and
+ * toggles through one action.
  */
 const layoutState = {
   sidebarVisible: true,
-  sidebarInFlow: true,
   sidebarWidth: 260,
   toggleSidebar: vi.fn(),
 };
@@ -46,7 +45,6 @@ import EditorChrome from "../../src/components/EditorChrome.jsx";
 
 beforeEach(() => {
   layoutState.sidebarVisible = true;
-  layoutState.sidebarInFlow = true;
   layoutState.sidebarWidth = 260;
   layoutState.toggleSidebar = vi.fn();
   historyState.canUndo = false;
@@ -163,10 +161,8 @@ describe("EditorChrome", () => {
   // ─── Placement ────────────────────────────────────────────────────
   // With the sidebar away, the left group is pinned to the top-left of the
   // viewport, over the editor rather than over the (zero-width) sidebar column.
-  // The same group serves a closed overlay at narrow widths.
   it("pins the left group to the viewport corner when the sidebar is away", () => {
     layoutState.sidebarVisible = false;
-    layoutState.sidebarInFlow = false;
     const { container } = renderChrome();
     const group = container.firstChild;
     expect(group.style.position).toBe("fixed");
@@ -175,9 +171,8 @@ describe("EditorChrome", () => {
 
   // Expanded, the group belongs to the editor and starts at its left edge: the
   // sidebar's width plus its drag handle, then the chrome inset.
-  it("starts the left group at the editor's left edge while the sidebar is in flow", () => {
+  it("starts the left group at the editor's left edge while the sidebar shows", () => {
     layoutState.sidebarVisible = true;
-    layoutState.sidebarInFlow = true;
     layoutState.sidebarWidth = 260;
     const { container } = renderChrome();
     expect(container.firstChild.style.left).toBe("274px");

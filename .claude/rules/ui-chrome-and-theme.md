@@ -143,9 +143,9 @@ hardcoded green); swap them for Lucide when touching those files.
   position survive a collapse), so **its chrome row and its sticky action block are `inert`
   while it is not showing** and are out of the tab order and the accessibility tree. Only those
   two blocks: `inert` on the whole column also swallowed the second click of a double-click
-  while the panel was animating shut, and the overlay's inline rename stopped working
+  while the panel was animating shut, and the sidebar's inline rename stopped working
   (`key-ownership.spec.ts` caught it). `header-controls.spec.ts` counts what is exposed in
-  every state, the overlay included.
+  every state, a narrow window included.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
@@ -955,8 +955,8 @@ already gives: `preventDefault`, the active element, and the focus trap.
   nobody above has claimed. A surface therefore never listens on the window in the bubble
   phase: a listener added when it opens runs *after* the shell's and its preventDefault comes
   too late (ContextMenu and VaultMenu moved to the document on 2026-09-09; before that Escape in
-  either also closed the overlay sidebar under it). Element handlers, document listeners and
-  capture listeners all run before the shell.
+  either also reached the shell and closed the sidebar overlay of the time under it). Element
+  handlers, document listeners and capture listeners all run before the shell.
 - **An open modal dialog, or a menu that holds focus, owns every key beneath it.**
   `focusOwner()` asks the DOM: any `[aria-modal="true"]` present, or the active element inside a
   `[role="menu"]`, and no shell shortcut runs (Cmd+N over Settings made a note behind it; Cmd+K
@@ -964,7 +964,8 @@ already gives: `preventDefault`, the active element, and the focus trap.
   frame later when its trap places focus: a Cmd+N inside that frame made a note. Each
   such surface closes itself on Escape, Settings included; the shell knows nothing about which
   one is open. Escape's order is: an active block or sidebar drag, then whatever surface has
-  taken it, then the overlay sidebar.
+  taken it; with nothing to take it, Escape is nobody's. It never hides the sidebar (2026-09-14):
+  a panel sitting in the layout is hidden by its toggle alone.
 - **A native text field outside the editor owns its editing keys.** Cmd+Z, Cmd+Shift+Z and
   Cmd+Y in the palette's field, a rename field or the find bar are the browser's own undo
   there, not the note's (typing in the palette and pressing Cmd+Z used to take a word out of
@@ -994,7 +995,7 @@ already gives: `preventDefault`, the active element, and the focus trap.
   nothing on screen. The wikilink menu keeps completing on Enter: an unclosed `[[` has no other
   meaning for it. The slash menu is opened on purpose and keeps its keys.
 - Proven in `key-ownership.spec.ts` (the real app: the confirm's buttons, Cmd+Z in the palette
-  and a rename field, Escape over the overlay sidebar, Cmd+N and Cmd+P over Settings, Cmd+K
+  and a rename field, Escape over the sidebar in a narrow window, Cmd+N and Cmd+P over Settings, Cmd+K
   against Cmd+P, the typed tag, Rename from the row menu) and the unit tests beside
   `useAppKeyboard`, `useFocusTrap`, `ConfirmDialog` and `TagMenu`. Not changed: Shift+Arrow
   selection at a block's edges, ArrowUp into the title, the table's row-selection keys, and
@@ -1469,11 +1470,22 @@ external multi-line paste paths; single lines paste inline.
 ## Narrow desktop is still desktop
 
 **Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
-touch-device thing, not a width thing. Three separate questions drive layout: is this a touch
-device (`useIsMobile.ts`, misnamed; rename in the backlog), does the sidebar fit
-(`useSidebarFits.ts`), is the sidebar open. On a narrow desktop window the sidebar floats over
-the editor as an overlay; that is the app making room, not switching identity. Narrowing a
-desktop browser therefore does not preview the mobile layout; use device emulation.
+touch-device thing, not a width thing. Two separate questions drive layout: is this a touch
+device (`useIsMobile.ts`, misnamed; rename in the backlog), and is the sidebar open (`collapsed`
+in `LayoutContext`, written by the toggle and by nothing else). Narrowing a desktop browser
+therefore does not preview the mobile layout; use device emulation.
+
+- **The sidebar has one presentation: in the layout, at every width** (2026-09-14). Shown, it
+  pushes the editor, which shrinks to whatever is left: at the 600px window minimum with the
+  240px default sidebar the column has about 356px, the way Apple Notes and Obsidian behave at
+  their minimums, and one click on the toggle gives the room back. Until this a window narrower
+  than the sidebar plus a 560px editor floor took the sidebar out of the layout and brought it
+  back as an overlay over the note behind a scrim, with its own open state, a hysteresis band
+  on the threshold, an Escape that closed it and an open-note that dismissed it
+  (`useSidebarFits`, `overlayOpen`, `Z.SIDEBAR_OVERLAY`, all gone). It was a second identity
+  for the same panel, the one desktop surface that floated, and the smoother of the two
+  animations only because nothing beneath it moved. Don't bring it back to make room; raise
+  the window minimum if the narrow editor ever grates.
 
 ## Testing notes
 

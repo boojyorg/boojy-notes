@@ -8,7 +8,6 @@ function makeDeps(overrides = {}) {
     activeNote: "n1",
     noteData: { n1: { title: "A", content: { blocks: [] } } },
     uiScale: 100,
-    overlayOpen: false,
     blockDrag: { current: { active: false } },
     sidebarDrag: { current: { active: false } },
     titleRef: { current: null },
@@ -17,7 +16,6 @@ function makeDeps(overrides = {}) {
     createNote: vi.fn(),
     revealSidebar: vi.fn(),
     openSearch: vi.fn(),
-    closeOverlay: vi.fn(),
     setUiScale: vi.fn(),
     cancelBlockDrag: vi.fn(),
     cancelSidebarDrag: vi.fn(),
@@ -52,10 +50,9 @@ describe("useAppKeyboard", () => {
     const first = makeDeps();
     const { rerender } = renderHook((props) => useAppKeyboard(props), { initialProps: first });
 
-    // A re-render hands the hook new callbacks — as happens when the sidebar
-    // flips to overlay mode (revealSidebar) or the active note changes
-    // (cancelBlockDrag). Nothing else changed, so the old code kept the mount
-    // closure and called the first-render functions.
+    // A re-render hands the hook new callbacks — as happens when the active
+    // note changes (cancelBlockDrag). Nothing else changed, so the old code
+    // kept the mount closure and called the first-render functions.
     // The drag refs themselves are stable across renders; only their contents move.
     const second = makeDeps({ blockDrag: first.blockDrag, sidebarDrag: first.sidebarDrag });
     rerender(second);
@@ -70,18 +67,22 @@ describe("useAppKeyboard", () => {
     expect(first.cancelBlockDrag).not.toHaveBeenCalled();
   });
 
-  it("Escape cancels an active drag before anything else, then closes an open overlay", () => {
-    const deps = makeDeps({ overlayOpen: true });
+  it("Escape cancels an active drag, and otherwise is nobody's", () => {
+    const deps = makeDeps();
     deps.sidebarDrag.current.active = true;
     renderHook(() => useAppKeyboard(deps));
 
-    key("Escape");
+    let e = key("Escape");
     expect(deps.cancelSidebarDrag).toHaveBeenCalledTimes(1);
-    expect(deps.closeOverlay).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(true);
 
+    // With no drag to cancel the shell leaves Escape alone: the sidebar sits
+    // in the layout at every width and only its toggle hides it (the overlay
+    // it used to close went on 2026-09-14).
     deps.sidebarDrag.current.active = false;
-    key("Escape");
-    expect(deps.closeOverlay).toHaveBeenCalledTimes(1);
+    e = key("Escape");
+    expect(deps.cancelSidebarDrag).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(false);
   });
 
   it("Cmd+N focuses the title instead of creating a note while a draft is open", () => {
@@ -128,16 +129,16 @@ describe("useAppKeyboard", () => {
 // The closest active surface owns the key (review 2026-09-07, §1.13, §4.6).
 describe("key ownership", () => {
   it("a key a surface has already taken is not the shell's", () => {
-    const deps = makeDeps({ overlayOpen: true });
+    const deps = makeDeps();
     renderHook(() => useAppKeyboard(deps));
-    const e = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+    const e = new KeyboardEvent("keydown", { key: "p", metaKey: true, cancelable: true });
     e.preventDefault();
     window.dispatchEvent(e);
-    expect(deps.closeOverlay).not.toHaveBeenCalled();
+    expect(deps.openSearch).not.toHaveBeenCalled();
   });
 
   it("no shortcut runs while a modal dialog or a menu holds focus", () => {
-    const deps = makeDeps({ overlayOpen: true });
+    const deps = makeDeps();
     renderHook(() => useAppKeyboard(deps));
 
     mount('<div role="dialog" aria-modal="true"><button>ok</button></div>', "button");
@@ -148,14 +149,12 @@ describe("key ownership", () => {
     expect(deps.createNote).not.toHaveBeenCalled();
     expect(deps.openSearch).not.toHaveBeenCalled();
     expect(deps.undo).not.toHaveBeenCalled();
-    expect(deps.closeOverlay).not.toHaveBeenCalled();
 
     document.body.innerHTML = "";
     mount('<div role="menu" tabindex="-1"></div>', "[role=menu]");
     key("n", { metaKey: true });
     key("Escape");
     expect(deps.createNote).not.toHaveBeenCalled();
-    expect(deps.closeOverlay).not.toHaveBeenCalled();
   });
 
   it("a native text field outside the editor keeps its own undo and redo; the rest still runs", () => {

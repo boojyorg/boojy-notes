@@ -8,9 +8,8 @@ import { SCALE_OPTIONS } from "../constants/data";
  * action callbacks — goes through `latest`, a ref refreshed on every render,
  * so a stale closure can never act on an old note or an old layout. This used
  * to capture the callbacks directly (re-registering only when Settings
- * toggled), and two of them are render-bound: `revealSidebar` closes over
- * whether the sidebar is an overlay, and `cancelBlockDrag` used to write to
- * whichever note was active when it was captured (see useBlockDrag).
+ * toggled), and `cancelBlockDrag` used to write to whichever note was active
+ * when it was captured (see useBlockDrag).
  *
  * The closest active surface owns the key (review 2026-09-07, §1.13, §4.6).
  * This handler is the last to see a keystroke, a bubble-phase listener on the
@@ -18,7 +17,7 @@ import { SCALE_OPTIONS } from "../constants/data";
  *
  * - a surface that takes a key prevents its default, and a prevented key is
  *   not the shell's (Escape in a menu, a rename field or the palette used to
- *   also close the overlay sidebar beneath it);
+ *   also reach the shell and act beneath it);
  * - a modal dialog or a menu that holds focus owns every key beneath it, so
  *   no shortcut runs over Settings, a confirm dialog or a context menu
  *   (Cmd+N over Settings made a note behind it, Cmd+K opened the palette on
@@ -37,7 +36,6 @@ export function useAppKeyboard({
   activeNote,
   noteData,
   uiScale,
-  overlayOpen,
   blockDrag,
   sidebarDrag,
   titleRef,
@@ -47,7 +45,6 @@ export function useAppKeyboard({
   createNote,
   revealSidebar,
   openSearch,
-  closeOverlay,
   setUiScale,
   cancelBlockDrag,
   cancelSidebarDrag,
@@ -57,13 +54,11 @@ export function useAppKeyboard({
     activeNote,
     noteData,
     uiScale,
-    overlayOpen,
     undo,
     redo,
     createNote,
     revealSidebar,
     openSearch,
-    closeOverlay,
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
@@ -87,14 +82,8 @@ export function useAppKeyboard({
       if (e.defaultPrevented) return;
       const owner = focusOwner();
       if (owner === "modal") return;
-      // Esc dismisses an open overlay sidebar. It is a no-op when the sidebar
-      // is in flow — Esc must never hide a sidebar the user can see sitting in
-      // the layout.
-      if (e.key === "Escape" && L.overlayOpen) {
-        e.preventDefault();
-        L.closeOverlay();
-        return;
-      }
+      // Escape never reaches the sidebar: a panel the user can see sitting in
+      // the layout is hidden by its toggle and by nothing else.
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
       if (mod && (key === "z" || key === "y")) {

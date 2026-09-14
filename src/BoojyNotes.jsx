@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
-import { useLayout, SIDEBAR_SCRIM } from "./context/LayoutContext";
+import { useLayout } from "./context/LayoutContext";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -83,12 +83,7 @@ export default function BoojyNotes() {
 
   const {
     sidebarWidth,
-    sidebarOverlay,
-    sidebarInFlow,
     sidebarVisible,
-    overlayOpen,
-    overlayWidth,
-    closeOverlay,
     revealSidebar,
     chromeBg,
     accentColor,
@@ -223,21 +218,9 @@ export default function BoojyNotes() {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
-  /**
-   * Opening a note dismisses an overlay sidebar — by click or by drag. The
-   * overlay is transient navigation; leaving it up over the note you just asked
-   * for would mean dismissing it by hand every single time. (Revert: drop the
-   * closeOverlay call and openNote goes back to being setActiveNote.)
-   */
-  const openNote = useCallback(
-    (id) => {
-      closeOverlay();
-      // Opening is side-effect-free for ordering: "Most recent" means most
-      // recently modified, and the row must not move under the pointer.
-      setActiveNote(id);
-    },
-    [closeOverlay, setActiveNote],
-  );
+  // Opening is side-effect-free for ordering: "Most recent" means most
+  // recently modified, and the row must not move under the pointer.
+  const openNote = setActiveNote;
 
   // Start renaming a note where the user can see it: the sidebar row swaps to
   // an inline input (same grammar as folder rename). Only when the sidebar is
@@ -464,7 +447,6 @@ export default function BoojyNotes() {
     activeNote,
     noteData,
     uiScale,
-    overlayOpen,
     blockDrag,
     sidebarDrag,
     titleRef,
@@ -473,7 +455,6 @@ export default function BoojyNotes() {
     createNote,
     revealSidebar,
     openSearch,
-    closeOverlay,
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
@@ -751,36 +732,19 @@ export default function BoojyNotes() {
                   overflow: "hidden",
                   position: "relative",
                 }
-              : sidebarOverlay
-                ? {
-                    // Too narrow for both: the same sidebar, painted over the
-                    // editor instead of beside it. Kept mounted while closed so
-                    // drag queries and scroll position survive.
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: overlayWidth,
-                    background: chromeBg,
-                    borderRight: `1px solid ${theme.BG.divider}`,
-                    boxShadow: sidebarVisible ? theme.modalShadow : "none",
-                    display: "flex",
-                    overflow: "hidden",
-                    zIndex: Z.SIDEBAR_OVERLAY,
-                    transform: sidebarVisible ? "translateX(0)" : "translateX(-100%)",
-                    visibility: sidebarVisible ? "visible" : "hidden",
-                    transition: "transform 0.2s ease, visibility 0.2s ease, box-shadow 0.2s ease",
-                  }
-                : {
-                    width: sidebarVisible ? sidebarWidth : 0,
-                    minWidth: sidebarVisible ? sidebarWidth : 0,
-                    background: chromeBg,
-                    display: "flex",
-                    flexShrink: 0,
-                    overflow: "hidden",
-                    position: "relative",
-                    transition: "width 0.2s ease, min-width 0.2s ease",
-                  }
+              : {
+                  // In the layout at every width: the editor beside it gets
+                  // narrower, never covered. Kept mounted while hidden so drag
+                  // queries and scroll position survive.
+                  width: sidebarVisible ? sidebarWidth : 0,
+                  minWidth: sidebarVisible ? sidebarWidth : 0,
+                  background: chromeBg,
+                  display: "flex",
+                  flexShrink: 0,
+                  overflow: "hidden",
+                  position: "relative",
+                  transition: "width 0.2s ease, min-width 0.2s ease",
+                }
           }
         >
           <Sidebar
@@ -809,31 +773,11 @@ export default function BoojyNotes() {
             />
           )}
         </div>
-        {/* Scrim behind an open overlay. It stays subtle because the sidebar is
-            navigation, not a modal. Click-away closes on mousedown so the
-            dismissing press can't also land in the editor. */}
-        {!isMobile && sidebarOverlay && (
-          <div
-            data-testid="sidebar-overlay-scrim"
-            aria-hidden="true"
-            onMouseDown={closeOverlay}
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: Z.SIDEBAR_SCRIM,
-              background: SIDEBAR_SCRIM,
-              opacity: sidebarVisible ? 1 : 0,
-              pointerEvents: sidebarVisible ? "auto" : "none",
-              transition: "opacity 0.2s ease",
-            }}
-          />
-        )}
         {/* Sidebar drag handle — desktop only, and only while the sidebar is
-            actually in the layout. Hidden when collapsed (its 4px fill + 1px
-            border left a hairline strip down the left edge instead of the
-            sidebar fully disappearing) and hidden in overlay mode, where it
-            would sit over the editor resizing a panel that isn't in flow. */}
-        {!isMobile && sidebarInFlow && (
+            showing. Hidden when collapsed (its 4px fill + 1px border left a
+            hairline strip down the left edge instead of the sidebar fully
+            disappearing). */}
+        {!isMobile && sidebarVisible && (
           <div
             ref={(el) => {
               // Assign null on unmount too, so the hover handlers don't restyle a

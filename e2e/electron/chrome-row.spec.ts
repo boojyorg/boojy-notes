@@ -38,24 +38,27 @@ async function controlsRight(page: Page, titles: string[]) {
 }
 
 test("the chrome row's controls never overlap the note's name, wide or narrow", async () => {
-  // 600px is the window's minimum (electron/main.js), where the sidebar no
-  // longer fits beside the editor and becomes an overlay.
+  // 600px is the window's minimum (electron/main.js).
   const h = await launchApp({ "Link end.md": "Alpha.\n" });
   try {
     await h.openNote("Link end");
     const title = h.page.getByRole("textbox", { name: "Note title" });
 
-    // Expanded: the history pair is the only thing in front of the name. The
-    // sidebar only stays in flow while it fits, so this is the wide case.
-    await setWidth(h, 1200);
-    {
+    // Expanded: the history pair is the only thing in front of the name, at
+    // every width, since the sidebar stays in the layout at the minimum too.
+    for (const width of [1200, 600]) {
+      await setWidth(h, width);
       const { right, mid } = await controlsRight(h.page, ["Undo", "Redo"]);
       const n = await title.boundingBox();
-      expect(n, "title box, expanded").not.toBeNull();
-      expect(n!.x, "title left, expanded").toBeGreaterThanOrEqual(right + 8);
+      expect(n, `title box, expanded at ${width}`).not.toBeNull();
+      expect(n!.x, `title left, expanded at ${width}`).toBeGreaterThanOrEqual(right + 8);
       expect(mid).toBeGreaterThan(n!.y);
       expect(mid).toBeLessThan(n!.y + n!.height);
+      // The name still has room to read in, and stays clear of the ··· .
+      const more = await h.page.locator("button[title='Note actions']").boundingBox();
+      expect(n!.x + n!.width, `title right, expanded at ${width}`).toBeLessThanOrEqual(more!.x);
     }
+    await setWidth(h, 1200);
 
     await h.page.getByTitle("Hide sidebar").click();
     await expect(h.page.getByTitle("Show sidebar")).toBeVisible();

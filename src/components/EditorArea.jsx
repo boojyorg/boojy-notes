@@ -80,9 +80,12 @@ const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
  * for roughly 200px longer than shrinking both at once would.
  *
  * Both ramps are linear between two anchors and clamped at each end. The
- * offset is fully spent at 560px of editor width, which is exactly the floor
- * at which the sidebar stops fitting (MIN_EDITOR_WIDTH) — by the time the
- * sidebar leaves the layout there is no offset left to lose.
+ * offset is fully spent at 560px of editor width and the gutters bottom out
+ * at 400px; below that the column only gets narrower. The sidebar stays in
+ * the layout at every width (2026-09-14), so at the 600px window minimum
+ * with a 240px sidebar the editor has about 356px: prose keeps reading, the
+ * way it does in Apple Notes at its minimum, and one click on the toggle
+ * gives the room back.
  *
  * Driven by viewport math rather than container queries on purpose:
  * `container-type` applies layout containment, which would make the editor
@@ -170,8 +173,7 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth, fullScreen } =
-      useLayout();
+    const { accentColor, editorBg, sidebarVisible, sidebarWidth, fullScreen } = useLayout();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -521,10 +523,8 @@ const EditorArea = memo(
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
     // Width the editor actually has: the viewport less whatever the sidebar and
-    // its handle are occupying. An overlay sidebar occupies nothing — it's
-    // painted on top — so the editor measures the full viewport underneath it.
-    // Mobile keeps its own fixed geometry.
-    const editorW = `(100vw - ${sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
+    // its handle are occupying. Mobile keeps its own fixed geometry.
+    const editorW = `(100vw - ${sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
     // The label steps around whatever the chrome row is showing, in either
@@ -556,7 +556,7 @@ const EditorArea = memo(
             ref={columnRef}
             style={{
               padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : sidebarInFlow ? 720 : 840,
+              maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
@@ -568,10 +568,10 @@ const EditorArea = memo(
               // left edge and scroll, for the fade's 200ms and, because it
               // ended at translateY(0), for ever after (review 2026-09-07 §3.9).
               opacity: editorFadeIn ? 1 : 0,
-              // Padding and margin ease too, so crossing the width at which the
-              // sidebar leaves the layout reads as the column breathing out
-              // rather than the page re-laying-out under you. `.sidebar-dragging`
-              // kills all transitions, so dragging the divider stays 1:1.
+              // Padding and margin ease too, so hiding the sidebar reads as the
+              // column breathing out rather than the page re-laying-out under
+              // you. `.sidebar-dragging` kills all transitions, so dragging the
+              // divider stays 1:1.
               transition:
                 "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease",
               position: "relative",
