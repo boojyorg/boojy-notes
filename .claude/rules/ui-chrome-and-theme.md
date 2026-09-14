@@ -143,9 +143,9 @@ hardcoded green); swap them for Lucide when touching those files.
   position survive a collapse), so **its chrome row and its sticky action block are `inert`
   while it is not showing** and are out of the tab order and the accessibility tree. Only those
   two blocks: `inert` on the whole column also swallowed the second click of a double-click
-  while the panel was animating shut, and the overlay's inline rename stopped working
+  while the panel was animating shut, and the sidebar's inline rename stopped working
   (`key-ownership.spec.ts` caught it). `header-controls.spec.ts` counts what is exposed in
-  every state, the overlay included.
+  every state, a narrow window included.
 - **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
   footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
@@ -283,6 +283,27 @@ hardcoded green); swap them for Lucide when touching those files.
   Undo and Redo buttons at its fixed left edge.
 - The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
   the left edge.
+
+**The toggle is one slide on one clock** (2026-09-14, `tokens/motion.js`: `PANEL_MS` 280, judged
+live against 200, which read as snapping for a 240px panel; the fades are half of it,
+ease-out `PANEL_EASE`, `panelTransition()`; every element on it carries `.panel-motion`, which a
+reduced-motion user gets with no travel at all). Measured frame by frame before this: the
+wrapper's width tweened to 0 with the sidebar laid out `flex: 1` inside it, so every frame
+re-laid the column out (the New note pill went 234px → 16, rows re-truncated, the Notes row's
+glyphs piled up); the collapsed trio mounted on the first frame over the still-open sidebar and
+the history pair jumped 132px and floated in the editor for 200ms; the note's name jumped to its
+new start and slid back; and the column re-wrapped its prose every frame. Now: **the sidebar's
+column is its full `sidebarWidth`, never `flex: 1`, and slides out under the window's edge
+(`translateX(-width)`; `none` at rest, never an identity transform, so nothing fixed inside it
+gains a containing block) as the wrapper's width closes over it**, with its contents fading out
+in the first half and in over the last; **the history pair is its own fixed block and
+transitions `left`** between its two positions; **the trio fades in over the last half** of the
+slide, so the sidebar's own toggle leaves and this one arrives; and **the name's indent
+transitions with the pair**. The wrapper and the editor column ease on the same token. Still
+per-frame: the column's prose re-wraps, because its max-width is 720 beside the sidebar and 840
+alone (a product choice; one width would make a wide-window toggle a pure slide). Don't put the
+sidebar back on `flex: 1`, and don't add a second duration. `sidebar-motion.spec.ts` proves the
+clip at rest and the pair's position in the real app.
 
 **The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
 opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
@@ -955,8 +976,8 @@ already gives: `preventDefault`, the active element, and the focus trap.
   nobody above has claimed. A surface therefore never listens on the window in the bubble
   phase: a listener added when it opens runs *after* the shell's and its preventDefault comes
   too late (ContextMenu and VaultMenu moved to the document on 2026-09-09; before that Escape in
-  either also closed the overlay sidebar under it). Element handlers, document listeners and
-  capture listeners all run before the shell.
+  either also reached the shell and closed the sidebar overlay of the time under it). Element
+  handlers, document listeners and capture listeners all run before the shell.
 - **An open modal dialog, or a menu that holds focus, owns every key beneath it.**
   `focusOwner()` asks the DOM: any `[aria-modal="true"]` present, or the active element inside a
   `[role="menu"]`, and no shell shortcut runs (Cmd+N over Settings made a note behind it; Cmd+K
@@ -964,7 +985,8 @@ already gives: `preventDefault`, the active element, and the focus trap.
   frame later when its trap places focus: a Cmd+N inside that frame made a note. Each
   such surface closes itself on Escape, Settings included; the shell knows nothing about which
   one is open. Escape's order is: an active block or sidebar drag, then whatever surface has
-  taken it, then the overlay sidebar.
+  taken it; with nothing to take it, Escape is nobody's. It never hides the sidebar (2026-09-14):
+  a panel sitting in the layout is hidden by its toggle alone.
 - **A native text field outside the editor owns its editing keys.** Cmd+Z, Cmd+Shift+Z and
   Cmd+Y in the palette's field, a rename field or the find bar are the browser's own undo
   there, not the note's (typing in the palette and pressing Cmd+Z used to take a word out of
@@ -994,7 +1016,7 @@ already gives: `preventDefault`, the active element, and the focus trap.
   nothing on screen. The wikilink menu keeps completing on Enter: an unclosed `[[` has no other
   meaning for it. The slash menu is opened on purpose and keeps its keys.
 - Proven in `key-ownership.spec.ts` (the real app: the confirm's buttons, Cmd+Z in the palette
-  and a rename field, Escape over the overlay sidebar, Cmd+N and Cmd+P over Settings, Cmd+K
+  and a rename field, Escape over the sidebar in a narrow window, Cmd+N and Cmd+P over Settings, Cmd+K
   against Cmd+P, the typed tag, Rename from the row menu) and the unit tests beside
   `useAppKeyboard`, `useFocusTrap`, `ConfirmDialog` and `TagMenu`. Not changed: Shift+Arrow
   selection at a block's edges, ArrowUp into the title, the table's row-selection keys, and
@@ -1469,11 +1491,38 @@ external multi-line paste paths; single lines paste inline.
 ## Narrow desktop is still desktop
 
 **Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
-touch-device thing, not a width thing. Three separate questions drive layout: is this a touch
-device (`useIsMobile.ts`, misnamed; rename in the backlog), does the sidebar fit
-(`useSidebarFits.ts`), is the sidebar open. On a narrow desktop window the sidebar floats over
-the editor as an overlay; that is the app making room, not switching identity. Narrowing a
-desktop browser therefore does not preview the mobile layout; use device emulation.
+touch-device thing, not a width thing. Two separate questions drive layout: is this a touch
+device (`useIsMobile.ts`, misnamed; rename in the backlog), and is the sidebar open (`collapsed`
+in `LayoutContext`, written by the toggle and by nothing else). Narrowing a desktop browser
+therefore does not preview the mobile layout; use device emulation.
+
+- **The sidebar has one presentation: in the layout, at every width** (2026-09-14). Shown, it
+  pushes the editor, the way Apple Notes and Obsidian behave at their minimums, and one click on
+  the toggle gives the room back. Until this a window narrower
+  than the sidebar plus a 560px editor floor took the sidebar out of the layout and brought it
+  back as an overlay over the note behind a scrim, with its own open state, a hysteresis band
+  on the threshold, an Escape that closed it and an open-note that dismissed it
+  (`useSidebarFits`, `overlayOpen`, `Z.SIDEBAR_OVERLAY`, all gone). It was a second identity
+  for the same panel, the one desktop surface that floated, and the smoother of the two
+  animations only because nothing beneath it moved. Don't bring it back to make room.
+- **The sidebar yields before the note does** (2026-09-14, judged live by Tyr at 600px with the
+  sidebar dragged wide: the note was 215px). The dragged width is the preference and a resize
+  never rewrites it; what is drawn is `sidebarWidthFor(preference, window.innerWidth)` in
+  `constants/layout.js`: the preference capped so the editor keeps `EDITOR_FLOOR_W` (316px,
+  about 268px of text at the gutter floor, some 34 characters), and never below `SIDEBAR_MIN_W`
+  (200px, under which the New note pill and the Notes row's three glyphs fight the panel). The
+  drag clamp reads the same cap (`maxWidth` into `usePanelResize`), so the divider stops where
+  the window would squeeze the note. **The window minimum is the two floors and the handle,
+  `WINDOW_MIN_W` = 200 + 4 + 316 = 520**, which `electron/main.js` imports; it is not a number of
+  its own, so don't set `minWidth` by hand. `LayoutContext` exposes the drawn `sidebarWidth`;
+  the preference is internal. `chrome-row.spec.ts` drags the divider wide, narrows the window
+  and measures the cap, the floor and the return in the real app.
+- **The column gives up its air before its text** (2026-09-14): the side gutters ramp from 56px
+  at 800px of editor width down to 24px at 560px (they bottomed out at 400px before, so the
+  600px window still carried 45px gutters), and the decorative left offset is spent by 640px.
+  The 24px floor is the block drag grip's (20px plus its 4px gap live in the left padding); the
+  right side matches it because asymmetric gutters read as a mistake. At the minimum the note
+  has 472px of text alone and 268px beside the narrowest sidebar.
 
 ## Testing notes
 

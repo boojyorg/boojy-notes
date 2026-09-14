@@ -137,8 +137,8 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
     expect(await exposed(name), name).toBe(0);
   }
 
-  // Narrow enough that the sidebar can only float over the editor: an open
-  // overlay is a showing sidebar, so it owns the trio exactly as in flow.
+  // A narrow window changes nothing about ownership: the sidebar shown again
+  // there is the same in-layout panel and owns the trio exactly as wide.
   await h.app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0].setSize(700, 800);
   });
@@ -146,7 +146,7 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   await h.page.locator("[title='Show sidebar']:not([inert] *)").click();
   await expect(h.page.getByTitle("Hide sidebar")).toBeVisible();
   for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "List options"]) {
-    expect(await exposed(name), `overlay: ${name}`).toBe(1);
+    expect(await exposed(name), `narrow: ${name}`).toBe(1);
   }
   expect(await exposed("Show sidebar")).toBe(0);
   expect(await exposed("Undo")).toBe(1);

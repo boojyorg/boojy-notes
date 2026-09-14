@@ -7,7 +7,7 @@
  *   Tabbed to Cancel it deletes nothing; Tab stays inside the dialog.
  * - Cmd+Z in the search field or a rename field is that field's undo; the
  *   note behind it is untouched.
- * - Escape closes the topmost layer only: a menu or a rename over the overlay
+ * - Escape closes the topmost layer only: a menu or a rename over the sidebar
  *   sidebar leaves the sidebar showing.
  * - Cmd+N and Cmd+P do nothing while Settings is open.
  * - Cmd+K is the link editor; Cmd+P is Search.
@@ -121,21 +121,26 @@ test("Cmd+Z in the search field and in a rename field belongs to the field, not 
   }
 });
 
-test("Escape closes only the topmost layer over the overlay sidebar", async () => {
+test("Escape closes only the topmost layer, and never the sidebar", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n", "Beta.md": "Beta.\n" });
   try {
     await h.openNote("Alpha");
-    // Narrow enough that the sidebar leaves the layout and comes back as an overlay.
+    // A narrow window: the sidebar stays in the layout beside a narrower
+    // editor (it floated over the note as an overlay until 2026-09-14).
     await h.app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0].setSize(700, 800);
     });
     await expect.poll(() => h.page.evaluate(() => window.innerWidth)).toBe(700);
     const rows = h.page.locator("[data-note-id]");
-    await expect(rows.first()).toBeHidden();
-    await h.page.getByTitle("Show sidebar").click();
     await expect(rows.first()).toBeVisible();
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    const sidebarRight =
+      (await rows.first().boundingBox())!.x + (await rows.first().boundingBox())!.width;
+    expect((await title.boundingBox())!.x, "editor beside the sidebar").toBeGreaterThan(
+      sidebarRight,
+    );
 
-    // A context menu over the overlay: Escape closes the menu, the panel stays.
+    // A context menu over the sidebar: Escape closes the menu, the panel stays.
     await rows.filter({ hasText: "Beta" }).click({ button: "right" });
     const menu = h.page.getByRole("menu");
     await expect(menu).toBeVisible();
@@ -143,7 +148,7 @@ test("Escape closes only the topmost layer over the overlay sidebar", async () =
     await expect(menu).toBeHidden();
     await expect(rows.first()).toBeVisible();
 
-    // An inline rename over the overlay: Escape ends the rename, the panel stays.
+    // An inline rename in the sidebar: Escape ends the rename, the panel stays.
     await rows.filter({ hasText: "Beta" }).dblclick();
     const rename = h.page.getByRole("textbox", { name: "Rename note" });
     await expect(rename).toBeFocused();
@@ -151,9 +156,10 @@ test("Escape closes only the topmost layer over the overlay sidebar", async () =
     await expect(rename).toBeHidden();
     await expect(rows.first()).toBeVisible();
 
-    // With nothing above it, Escape is the overlay's.
+    // With nothing above it, Escape is nobody's: the sidebar sits in the
+    // layout and only its toggle hides it.
     await h.page.keyboard.press("Escape");
-    await expect(rows.first()).toBeHidden();
+    await expect(rows.first()).toBeVisible();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

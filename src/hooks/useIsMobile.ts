@@ -10,8 +10,9 @@ const MOBILE_BREAKPOINT = 768;
  * became a phone app: back arrow, centred title, floating action button,
  * bottom toolbar, 17px rows. Width says how much room there is; it says
  * nothing about how the thing is being pointed at. Those are separate
- * questions, and only the second one should choose a navigation model — see
- * `useSidebarFits` for the first.
+ * questions, and only the second one should choose a navigation model. The
+ * first is answered by the editor column alone, which shrinks beside a
+ * sidebar that stays in the layout at every width.
  *
  * `pointer: coarse` is the *primary* input, so a touchscreen laptop reports
  * `fine` and correctly stays desktop. Deliberately not `any-pointer: coarse`,

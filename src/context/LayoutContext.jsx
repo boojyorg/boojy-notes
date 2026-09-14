@@ -1,45 +1,31 @@
-import {
-  createContext,
-  useState,
-  useEffect,
-  useContext,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import { createContext, useState, useContext, useMemo, useRef, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { usePanelResize } from "../hooks/usePanelResize";
-import { useSidebarFits } from "../hooks/useSidebarFits";
 import { useFullScreen } from "../hooks/useFullScreen";
-import { SIDEBAR_MIN_W, SIDEBAR_DEFAULT_W } from "../constants/layout";
+import { useWindowWidth } from "../hooks/useWindowWidth";
+import { SIDEBAR_DEFAULT_W, SIDEBAR_MAX_W, sidebarWidthFor } from "../constants/layout";
 
 const LayoutContext = createContext(null);
-
-/**
- * Editor left visible beside an open overlay, so it can never read as a
- * full-screen takeover — the point of the overlay is that the app hasn't
- * changed, only where the sidebar is painted.
- */
-const OVERLAY_MIN_PEEK = 120;
-
-/** The sidebar is navigation rather than a modal, so its scrim stays deliberately subtle. */
-export const SIDEBAR_SCRIM = "rgba(0,0,0,0.10)";
 
 export function LayoutProvider({ children }) {
   const { theme } = useTheme();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
+  /**
+   * The width the user dragged to is the preference; what is drawn is that
+   * width capped by the room the window has beside an editor at its floor
+   * (`sidebarWidthFor`). A resize never rewrites the preference, so widening
+   * the window gives the dragged width back, as it gives a hidden sidebar
+   * back. The drag clamp reads the same cap, so the divider stops where the
+   * window would otherwise squeeze the note.
+   */
+  const [sidebarPrefWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_W);
+  const windowWidth = useWindowWidth();
+  const sidebarWidth = sidebarWidthFor(sidebarPrefWidth, windowWidth);
+  const sidebarMaxWidth = sidebarWidthFor(SIDEBAR_MAX_W, windowWidth);
   const chromeBg = theme.BG.dark;
   const editorBg = theme.BG.editor;
   const accentColor = theme.ACCENT.primary;
-
-  /**
-   * Geometry only: is there room for the sidebar beside a usable editor?
-   * Kept strictly separate from `collapsed`, which is what the user asked for
-   * and must never be rewritten by a window resize.
-   */
-  const sidebarFits = useSidebarFits(sidebarWidth);
 
   /**
    * macOS full screen: the traffic lights are gone, so the chrome that clears
@@ -49,53 +35,29 @@ export function LayoutProvider({ children }) {
   const fullScreen = useFullScreen();
 
   /*
-   * Three questions, three answers — this is the whole point of the split:
-   *
-   *   collapsed        what the user asked for. Only a toggle writes it.
-   *   sidebarFits      whether there is room. Only the window writes it.
-   *   overlayOpen      whether the transient panel is showing right now.
-   *
-   * Presentation is derived from all three, so a resize can never silently
-   * rewrite a preference. Widening the window restores exactly the sidebar the
-   * user left behind.
+   * The sidebar is either in the layout or hidden, and only the user decides
+   * which: `collapsed` is written by a toggle and nothing else. The window's
+   * width changes how much room the editor has beside it, never where the
+   * sidebar is painted. Until 2026-09-14 a narrow window took the sidebar out
+   * of the layout and brought it back as an overlay over the note, behind a
+   * scrim, with its own open state and a hysteresis band on the threshold; a
+   * second identity for the same panel, and the one desktop surface that
+   * floated. It is gone: at every width the sidebar pushes the editor, as it
+   * does in Apple Notes and Obsidian, and the editor column shrinks.
    */
-  const [overlayOpen, setOverlayOpen] = useState(false);
-  const sidebarOverlay = !sidebarFits;
-  const sidebarInFlow = sidebarFits && !collapsed;
-  const sidebarVisible = sidebarOverlay ? overlayOpen : !collapsed;
+  const sidebarVisible = !collapsed;
 
-  // An overlay left open when the window widens has nothing to overlay; drop it
-  // so the state can't come back on the next narrowing.
-  useEffect(() => {
-    if (sidebarFits) setOverlayOpen(false);
-  }, [sidebarFits]);
-
-  /** One toggle, one meaning: show or hide the sidebar, however it's painted. */
-  const toggleSidebar = useCallback(() => {
-    if (sidebarOverlay) setOverlayOpen((o) => !o);
-    else setCollapsed((c) => !c);
-  }, [sidebarOverlay]);
+  const toggleSidebar = useCallback(() => setCollapsed((c) => !c), []);
 
   /** Make the sidebar visible without toggling it away if it already is. */
-  const revealSidebar = useCallback(() => {
-    if (sidebarOverlay) setOverlayOpen(true);
-    else setCollapsed(false);
-  }, [sidebarOverlay]);
-
-  const closeOverlay = useCallback(() => setOverlayOpen(false), []);
-
-  /**
-   * Overlay width preserves whatever width the user dragged the sidebar to,
-   * but can't grow past the viewport minus a strip of editor. Pure CSS so a
-   * window resize doesn't have to re-render anything to stay correct.
-   */
-  const overlayWidth = `max(${SIDEBAR_MIN_W}px, min(${sidebarWidth}px, calc(100vw - ${OVERLAY_MIN_PEEK}px)))`;
+  const revealSidebar = useCallback(() => setCollapsed(false), []);
 
   const sidebarHandles = useRef([]);
 
   const { isDragging, startDrag } = usePanelResize({
     sidebarHandles,
     setSidebarWidth,
+    maxWidth: sidebarMaxWidth,
     handleActiveBg: theme.sidebarHandle.active,
   });
 
@@ -105,16 +67,10 @@ export function LayoutProvider({ children }) {
       setCollapsed,
       sidebarWidth,
       setSidebarWidth,
-      sidebarFits,
-      sidebarOverlay,
-      sidebarInFlow,
       sidebarVisible,
-      overlayOpen,
-      overlayWidth,
       fullScreen,
       toggleSidebar,
       revealSidebar,
-      closeOverlay,
       chromeBg,
       editorBg,
       accentColor,
@@ -125,16 +81,10 @@ export function LayoutProvider({ children }) {
     [
       collapsed,
       sidebarWidth,
-      sidebarFits,
-      sidebarOverlay,
-      sidebarInFlow,
       sidebarVisible,
-      overlayOpen,
-      overlayWidth,
       fullScreen,
       toggleSidebar,
       revealSidebar,
-      closeOverlay,
       chromeBg,
       editorBg,
       accentColor,

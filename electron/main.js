@@ -10,6 +10,7 @@ import {
   shell,
 } from "electron";
 import path from "node:path";
+import { WINDOW_MIN_W } from "../src/constants/layout.js";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { registerNoteFileIPC } from "./noteFileManager.js";
@@ -67,7 +68,8 @@ function createWindow() {
     show: !hiddenForTests,
     width: 1200,
     height: 800,
-    minWidth: 600,
+    // The narrowest sidebar beside the narrowest editor; see constants/layout.
+    minWidth: WINDOW_MIN_W,
     minHeight: 400,
     title: "Boojy Notes",
     titleBarStyle: "hiddenInset",

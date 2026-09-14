@@ -28,6 +28,7 @@ import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
+import { panelTransition } from "../tokens/motion";
 
 /*
  * The note name is a FILE LABEL, not the document's heading.
@@ -80,9 +81,15 @@ const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
  * for roughly 200px longer than shrinking both at once would.
  *
  * Both ramps are linear between two anchors and clamped at each end. The
- * offset is fully spent at 560px of editor width, which is exactly the floor
- * at which the sidebar stops fitting (MIN_EDITOR_WIDTH) — by the time the
- * sidebar leaves the layout there is no offset left to lose.
+ * offset is fully spent at 640px of editor width and the gutters bottom out
+ * at 560px (2026-09-14; they were 560 and 400, so the 600px window still
+ * carried 45px gutters and the minimum could go no lower); below that the
+ * column only gets narrower. The gutter floor is the drag grip's: 20px plus
+ * its 4px gap live in the left padding, and the right side matches it. The
+ * sidebar stays in the layout at every width and yields before the note does
+ * (`EDITOR_FLOOR_W`), so at the 520px window minimum the editor has 316px
+ * beside the narrowest sidebar and 520px alone: prose keeps reading either
+ * way, and one click on the toggle gives the room back.
  *
  * Driven by viewport math rather than container queries on purpose:
  * `container-type` applies layout containment, which would make the editor
@@ -92,11 +99,11 @@ const LABEL_LEFT_RESERVE = (collapsed, fullScreen) =>
 /** Side gutters: COL_PAD_MIN at COL_PAD_FROM of editor width, MAX at _TO. */
 const COL_PAD_MIN = 24;
 const COL_PAD_MAX = 56;
-const COL_PAD_FROM = 400;
+const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;
 /** Decorative left offset: 0 at the editor floor, COL_OFFSET_MAX at _TO. */
 const COL_OFFSET_MAX = 40;
-const COL_OFFSET_FROM = 560;
+const COL_OFFSET_FROM = 640;
 const COL_OFFSET_TO = 880;
 
 /** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
@@ -170,8 +177,7 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, sidebarInFlow, sidebarVisible, sidebarWidth, fullScreen } =
-      useLayout();
+    const { accentColor, editorBg, sidebarVisible, sidebarWidth, fullScreen } = useLayout();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -521,10 +527,8 @@ const EditorArea = memo(
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
     // Width the editor actually has: the viewport less whatever the sidebar and
-    // its handle are occupying. An overlay sidebar occupies nothing — it's
-    // painted on top — so the editor measures the full viewport underneath it.
-    // Mobile keeps its own fixed geometry.
-    const editorW = `(100vw - ${sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
+    // its handle are occupying. Mobile keeps its own fixed geometry.
+    const editorW = `(100vw - ${sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
     // The label steps around whatever the chrome row is showing, in either
@@ -554,9 +558,10 @@ const EditorArea = memo(
           <div
             key={activeNote}
             ref={columnRef}
+            className="panel-motion"
             style={{
               padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : sidebarInFlow ? 720 : 840,
+              maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",
               width: "100%",
@@ -568,12 +573,11 @@ const EditorArea = memo(
               // left edge and scroll, for the fade's 200ms and, because it
               // ended at translateY(0), for ever after (review 2026-09-07 §3.9).
               opacity: editorFadeIn ? 1 : 0,
-              // Padding and margin ease too, so crossing the width at which the
-              // sidebar leaves the layout reads as the column breathing out
-              // rather than the page re-laying-out under you. `.sidebar-dragging`
-              // kills all transitions, so dragging the divider stays 1:1.
-              transition:
-                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease",
+              // Padding and margin ease too, so hiding the sidebar reads as the
+              // column breathing out rather than the page re-laying-out under
+              // you. `.sidebar-dragging` kills all transitions, so dragging the
+              // divider stays 1:1.
+              transition: `${panelTransition("max-width", "padding", "margin-left")}, opacity 0.2s ease`,
               position: "relative",
               zIndex: Z.BASE,
             }}
@@ -592,7 +596,7 @@ const EditorArea = memo(
               data-placeholder="Untitled"
               role="textbox"
               aria-label="Note title"
-              className={!note.title ? "empty-title" : undefined}
+              className={!note.title ? "empty-title panel-motion" : "panel-motion"}
               onInput={(e) => {
                 const newTitle = titleFieldText(e.currentTarget);
                 commitTextChange((prev) => {
@@ -678,7 +682,11 @@ const EditorArea = memo(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                transition: "background 0.12s, color 0.12s",
+                // The indent steps around the chrome row's controls, which
+                // change with the sidebar state; it moves on the panel's
+                // clock so the name glides with the pair beside it rather
+                // than jumping to its new start and sliding back.
+                transition: `background 0.12s, color 0.12s, ${panelTransition("margin-left")}`,
               }}
             />
 

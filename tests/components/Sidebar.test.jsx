@@ -35,7 +35,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
 const layoutState = {
   sidebarWidth: 220,
   accentColor: "#A4CACE",
-  collapsed: false,
+  // The column is `visibility: hidden` once hidden (2026-09-14), so a mock
+  // that leaves this out renders a sidebar nothing can query.
+  sidebarVisible: true,
   toggleSidebar: vi.fn(),
   chromeBg: "#222",
   sidebarHandles: { current: [] },
@@ -160,9 +162,7 @@ afterEach(() => {
 });
 
 describe("Sidebar", () => {
-  // The header's toggle is the same action as the pinned one in EditorChrome:
-  // it hides an in-flow sidebar and closes an overlaying one, and the sidebar
-  // itself doesn't need to know which of those it currently is.
+  // The header's toggle is the same action as the pinned one in EditorChrome.
   it("puts the panel toggle in the sidebar header and toggles on click", () => {
     const { getByTitle } = renderSidebar();
     fireEvent.click(getByTitle("Hide sidebar"));

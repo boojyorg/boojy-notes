@@ -399,7 +399,8 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 ### Technical debt
 
 - **`useIsMobile` → `useIsTouch`** — the hook answers "is this a touch device", not "is the
-  window narrow"; `useSidebarFits.ts` already owns the fit question.
+  window narrow"; width decides nothing about navigation since the sidebar overlay went
+  (2026-09-14).
 - **`tests/electron/markdown.test.js` is misfiled** — it tests `src/utils/markdown.js`; move it
   beside `tests/utils/markdown.test.js` and drop its round-trip block, which duplicates
   `LOSSLESS_CASES` there (no overlapping test names otherwise).

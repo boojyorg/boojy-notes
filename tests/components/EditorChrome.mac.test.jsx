@@ -18,7 +18,6 @@ const layout = vi.hoisted(() => ({ fullScreen: false }));
 vi.mock("../../src/context/LayoutContext", () => ({
   useLayout: () => ({
     sidebarVisible: false,
-    sidebarInFlow: false,
     sidebarWidth: 260,
     fullScreen: layout.fullScreen,
     toggleSidebar: vi.fn(),

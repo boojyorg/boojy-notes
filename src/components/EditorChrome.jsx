@@ -11,6 +11,8 @@ import {
   RedoIcon,
 } from "./Icons";
 import { isElectronMac } from "../utils/platform";
+import { SIDEBAR_HANDLE_W } from "../constants/layout";
+import { PANEL_MS, panelTransition } from "../tokens/motion";
 
 /**
  * The editor's own chrome: two fixed corners, no horizontal strip.
@@ -19,13 +21,19 @@ import { isElectronMac } from "../utils/platform";
  * jobs and a wider gap between them than within either:
  *
  *   navigation and creation  panel toggle, Search, New note — rendered ONLY
- *          while the sidebar is not showing, whether the user hid it or it is
- *          a closed overlay at a narrow width. When the sidebar IS showing,
+ *          while the sidebar is not showing. When the sidebar IS showing,
  *          those three live in it (see Sidebar.jsx), so exactly one of each
  *          exists at any moment and it always means the same thing.
  *   history  Undo and Redo, the open note's edits. Always here, in both
  *          sidebar states, disabled when the open note has nothing to undo or
  *          redo (and with no note open at all).
+ *
+ * The two are separate fixed blocks so each can move on the panel's clock
+ * (tokens/motion.js, 2026-09-14): the history pair slides between its two
+ * positions as the sidebar slides, and the trio fades in at the corner as the
+ * panel finishes leaving. As one block, the trio mounted on the first frame
+ * over the still-open sidebar and the pair jumped 132px and floated in the
+ * editor for the 200ms the panel took to catch up.
  *
  * Right, the note's ··· menu — the active note's actions, and Settings under a
  * separator. It is rendered with no active note too, carrying Settings alone:
@@ -52,7 +60,7 @@ const GROUP_GAP = 12;
 /** Air between the last left-hand control and anything on its row. */
 const CONTROL_AIR = 8;
 /** The sidebar's drag handle sits between the sidebar and the editor. */
-export const SIDEBAR_HANDLE_W = 4;
+export { SIDEBAR_HANDLE_W } from "../constants/layout";
 /**
  * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
  * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
@@ -75,6 +83,8 @@ export const trafficLightsShown = (fullScreen = false) => isElectronMac && !full
 const DRAG_STRIP_H = 14;
 
 const groupWidth = (n) => n * CHROME_BTN + (n - 1) * BTN_GAP;
+/** The collapsed trio's fade-in, timed to end with the panel's slide. */
+const TRIO_FADE_MS = PANEL_MS / 2;
 
 /**
  * Where the left-hand controls begin, measured from the EDITOR's left edge.
@@ -160,17 +170,18 @@ export function ChromeButton({
 }
 
 export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onOpenSearch }) {
-  const { sidebarVisible, sidebarInFlow, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
+  const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
   const collapsed = !sidebarVisible;
 
-  // The left group belongs to the editor, so it starts at the editor's left
-  // edge. An open overlay sidebar is painted over the editor and occupies no
-  // layout, so the editor still starts at the viewport — the group sits under
-  // the overlay, exactly as the note label does.
-  const groupLeft =
-    (sidebarInFlow ? sidebarWidth + SIDEBAR_HANDLE_W : 0) +
-    chromeControlsLeft(collapsed, fullScreen);
+  // The left controls belong to the editor, so they start at its left edge:
+  // past the sidebar and its handle while the sidebar shows, at the viewport
+  // otherwise. Collapsed, the trio holds that edge and the history pair sits
+  // a group-gap past it; expanded, the pair holds the edge alone.
+  const trioLeft = chromeControlsLeft(true, fullScreen);
+  const pairLeft = collapsed
+    ? trioLeft + groupWidth(3) + GROUP_GAP
+    : sidebarWidth + SIDEBAR_HANDLE_W + chromeControlsLeft(false, fullScreen);
 
   return (
     <>
@@ -194,18 +205,20 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
         />
       )}
 
-      <div
-        style={{
-          position: "fixed",
-          top: CHROME_TOP,
-          left: groupLeft,
-          zIndex: Z.TOOLBAR,
-          display: "flex",
-          alignItems: "center",
-          gap: GROUP_GAP,
-        }}
-      >
-        {collapsed && (
+      {collapsed && (
+        <div
+          className="panel-motion"
+          style={{
+            position: "fixed",
+            top: CHROME_TOP,
+            left: trioLeft,
+            zIndex: Z.TOOLBAR,
+            // In after the panel has gone, not over it: the sidebar's own
+            // toggle slides out under the window's edge and this one takes
+            // the corner as it arrives.
+            animation: `fadeIn ${TRIO_FADE_MS}ms ease ${PANEL_MS - TRIO_FADE_MS}ms both`,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
             <ChromeButton onClick={toggleSidebar} title="Show sidebar">
               <SidebarToggleIcon />
@@ -217,15 +230,27 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
               <NewNoteIcon size={18} />
             </ChromeButton>
           </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
-          <ChromeButton onClick={undo} disabled={!canUndo} keepSelection title="Undo">
-            <UndoIcon />
-          </ChromeButton>
-          <ChromeButton onClick={redo} disabled={!canRedo} keepSelection title="Redo">
-            <RedoIcon />
-          </ChromeButton>
         </div>
+      )}
+      <div
+        className="panel-motion"
+        style={{
+          position: "fixed",
+          top: CHROME_TOP,
+          left: pairLeft,
+          zIndex: Z.TOOLBAR,
+          display: "flex",
+          alignItems: "center",
+          gap: BTN_GAP,
+          transition: panelTransition("left"),
+        }}
+      >
+        <ChromeButton onClick={undo} disabled={!canUndo} keepSelection title="Undo">
+          <UndoIcon />
+        </ChromeButton>
+        <ChromeButton onClick={redo} disabled={!canRedo} keepSelection title="Redo">
+          <RedoIcon />
+        </ChromeButton>
       </div>
 
       <div
