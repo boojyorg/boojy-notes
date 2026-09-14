@@ -169,7 +169,15 @@ describe("the header menu", () => {
     }
     expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
     // Settings is ruled off from the note's own items.
-    expect(getByText("Settings").closest("button").style.borderTop).not.toBe("");
+    expect(getByText("Settings").closest("button").style.borderTopWidth).toBe("1px");
+    // The other items set every edge themselves: an edge left unset by the
+    // inline style showed Chromium's own 2px outset button border and lost
+    // its padding (a `borderTop: undefined` longhand after the shorthand
+    // cleared it, 2026-09-14).
+    const rename = getByText("Rename").closest("button");
+    expect(rename.style.borderTopWidth).toBe("0px");
+    expect(rename.style.borderTopStyle).toBe("solid");
+    expect(rename.style.paddingTop).toBe("7px");
   });
 
   it("opens Settings and closes itself", () => {

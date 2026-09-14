@@ -252,16 +252,21 @@ const ContextMenu = memo(function ContextMenu({
             style={{
               width: "100%",
               background: index === activeIndex ? BG.hover : "none",
-              border: "none",
               // A separator is a rule above the item, drawn in the menu's own
-              // divider ink and spaced off the items either side of it.
-              borderTop: item.separator ? `1px solid ${BG.divider}` : undefined,
+              // divider ink and spaced off the items either side of it. One
+              // shorthand per box property, never a shorthand plus a longhand
+              // in the same object: React applies them in key order and an
+              // undefined longhand (`borderTop: undefined`) is written as
+              // `style.borderTop = ""`, which erases the edge the shorthand had
+              // just set and lets Chromium's own 2px outset button border and
+              // zero padding back onto that edge (seen 2026-09-14).
+              borderWidth: item.separator ? "1px 0 0" : 0,
+              borderStyle: "solid",
+              borderColor: BG.divider,
               borderRadius: 6,
               marginTop: item.separator ? 4 : undefined,
               // 10px + the menu's 4px inset keeps the text 14px off the edge.
-              padding: "7px 10px",
-              // After the shorthand, so the separator's own top air wins.
-              paddingTop: item.separator ? 11 : undefined,
+              padding: item.separator ? "11px 10px 7px" : "7px 10px",
               cursor: "pointer",
               color: item.danger ? SEMANTIC.error : TEXT.primary,
               fontSize: 12.5,
