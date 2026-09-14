@@ -108,7 +108,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
-                    color: selected ? ACCENT.primary : TEXT.muted,
+                    color: selected ? ACCENT.text : TEXT.muted,
                   }}
                 >
                   <SlashCommandIcon name={cmd.icon} />

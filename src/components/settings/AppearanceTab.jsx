@@ -6,8 +6,8 @@ import { fontSize, fontWeight } from "../../tokens/typography";
 
 export default function AppearanceTab({ SectionHeader }) {
   const { accentColor } = useLayout();
-  const { theme, themeMode, setThemeMode, isDark } = useTheme();
-  const { BG, TEXT } = theme;
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const { BG, TEXT, ACCENT } = theme;
 
   return (
     <div>
@@ -48,7 +48,7 @@ export default function AppearanceTab({ SectionHeader }) {
               onClick={() => setThemeMode(mode)}
               style={{
                 background: themeMode === mode ? accentColor : "transparent",
-                color: themeMode === mode ? (isDark ? BG.darkest : "#fff") : TEXT.muted,
+                color: themeMode === mode ? ACCENT.onAccent : TEXT.muted,
                 border: "none",
                 padding: `${spacing.xs}px ${spacing.md}px`,
                 fontSize: fontSize.sm,

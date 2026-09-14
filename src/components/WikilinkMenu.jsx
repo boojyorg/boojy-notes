@@ -86,7 +86,7 @@ export default function WikilinkMenu({ position, filter, noteData, onSelect, onD
     >
       {filtered.length === 0 ? (
         <div style={{ padding: "8px 12px", fontSize: 12, color: TEXT.muted }}>
-          Create note: <strong style={{ color: ACCENT.primary }}>{filter}</strong>
+          Create note: <strong style={{ color: ACCENT.text }}>{filter}</strong>
         </div>
       ) : (
         filtered.slice(0, 10).map((n, i) => (

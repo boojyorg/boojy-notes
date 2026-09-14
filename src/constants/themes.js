@@ -1,70 +1,88 @@
+// The one teal (2026-09-14). Marks and fills — the checkbox, the bullet dot, the
+// quote bar, drop markers, focus rings, the selection band, switches, buttons,
+// the wordmark's N — are the same colour in both themes: the misty brand teal
+// (#A4CACE, hue 186) two steps deeper. Judged live 2026-09-14 against #2593A0
+// (read blue: same hue, twice the saturation) and #6FB3BA (still too far from
+// the brand). 2.0:1 on white, 9:1 on the dark sheet. What sits on it is white
+// in both themes, Tyr's call over a dark tick: 2:1, a soft tick by design,
+// never body text. Accent *as ink* cannot be one colour — nothing passes 4.5:1
+// on both grounds — so that is `ACCENT.text`, per theme.
+export const MARK = "#8FC1C6";
+export const ON_MARK = "#FFFFFF";
+
 export const NIGHT = {
   name: "night",
+  // Neutral grey ramp, no blue cast, small steps between regions (2026-09-14):
+  // the sheet at L* 8, the sidebar one step up at L* 13, hover/selected one
+  // more. Grounds are neutral; the ink is one step warm (DAY's tilt read cream here).
   BG: {
-    darkest: "#13151C",
-    dark: "#2C2C32",
-    standard: "#272A38",
-    editor: "#040412",
-    elevated: "#292B36",
-    surface: "#353845",
-    divider: "#3A3D4A",
-    hover: "#4A4D5A",
+    darkest: "#1C1C1C", // app ground
+    dark: "#212121", // chrome: sidebar ground (chromeBg), mobile toolbar
+    standard: "#212121", // sidebar
+    editor: "#181818", // writing sheet
+    elevated: "#272727", // raised: menus, popovers, modals
+    surface: "#282828", // content hover
+    divider: "#313131", // border, ink @ 8% on the sidebar
+    hover: "#2D2D2D", // row/menu hover + selected
   },
   TEXT: {
-    primary: "#E8EAF0",
-    secondary: "#9B9EB0",
-    muted: "#646880",
+    primary: "#E7E6E5", // 13.9:1 on the sheet; one step warm (three read cream, judged live 2026-09-14)
+    secondary: "#ACABAA", // 7.0:1 on the sidebar
+    muted: "#8D8C8B", // 4.7:1 on the sidebar
   },
   ACCENT: {
-    primary: "#A4CACE",
-    onAccent: "#13151C", // text/icon on an accent fill — dark, since the accent is pale here
+    primary: MARK, // marks and fills: the one teal, shared with DAY
+    text: "#9CC9CE", // accent as ink on the ground: misty, 9:1 on the sheet
+    onAccent: ON_MARK,
   },
   SEMANTIC: {
     warning: "#FFC107",
     error: "#FF5722",
   },
   scrollbar: {
-    thumb: "#3A3D4A",
-    thumbHover: "#4A4D5A",
-    thumbActive: "#5A5D6A",
+    thumb: "#313131",
+    thumbHover: "#414141",
+    thumbActive: "#525252",
   },
   // Sidebar resize handle. Neutral by rule — the accent is identity, not a
   // surface, and a full-height accent bar was the loudest violation in the app.
   // Mirrors the scrollbar's rest/hover steps on purpose: both are draggable
   // chrome, so they should speak one neutral language.
   sidebarHandle: {
-    hover: "#3A3D4A",
-    active: "#4A4D5A",
+    hover: "#313131",
+    active: "#414141",
   },
-  codeBlockBg: "#03030D",
+  codeBlockBg: "#121212",
   codeBlockBorder: "rgba(255,255,255,0.10)",
   codeBlockBorderFocus: "rgba(255,255,255,0.18)",
   transitionMs: 400,
   callouts: {
-    note: { colour: "#7AA2F7", bg: "#3f4e74", border: "rgba(122,162,247,0.18)" },
-    info: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
-    tip: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
-    warning: { colour: "#E0AF68", bg: "#635242", border: "rgba(224,175,104,0.18)" },
-    danger: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
-    success: { colour: "#9ECE6A", bg: "#4c5e43", border: "rgba(158,206,106,0.18)" },
-    question: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
-    quote: { colour: "#9B9EB0", bg: "#4c4c5a", border: "rgba(155,158,176,0.18)" },
-    example: { colour: "#BB9AF7", bg: "#564b74", border: "rgba(187,154,247,0.18)" },
-    bug: { colour: "#F7768E", bg: "#6b3d4f", border: "rgba(247,118,142,0.18)" },
-    abstract: { colour: "#89DDFF", bg: "#446277", border: "rgba(137,221,255,0.18)" },
+    // Grounds are the colour at 14% over the sheet (2026-09-14); the old hand-picked
+    // mid-greys read as lit panels once the sheet stopped being near-black.
+    note: { colour: "#7AA2F7", bg: "#262B37", border: "rgba(122,162,247,0.25)" },
+    info: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
+    tip: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
+    warning: { colour: "#E0AF68", bg: "#342D23", border: "rgba(224,175,104,0.25)" },
+    danger: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
+    success: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
+    question: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
+    quote: { colour: "#ACABAA", bg: "#2D2D2C", border: "rgba(172,171,170,0.25)" },
+    example: { colour: "#BB9AF7", bg: "#2F2A37", border: "rgba(187,154,247,0.25)" },
+    bug: { colour: "#F7768E", bg: "#372529", border: "rgba(247,118,142,0.25)" },
+    abstract: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
   },
   overlay: (a) => `rgba(255,255,255,${a})`,
   // Inline formatting colors
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
   link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
-  wikilink: { color: "#A4CACE", underline: "rgba(164,202,206,0.3)" },
+  wikilink: { color: "#9CC9CE", underline: "rgba(156,201,206,0.3)" },
   wikilinkBroken: {
     color: "rgba(255,255,255,0.4)",
     underline: "rgba(255,255,255,0.2)",
     hoverColor: "rgba(255,255,255,0.6)",
     hoverUnderline: "rgba(255,255,255,0.3)",
   },
-  mark: { bg: "rgba(164, 202, 206, 0.35)" },
+  mark: { bg: "rgba(143, 193, 198, 0.4)" },
   calloutIconHover: "rgba(255,255,255,0.06)",
   frontmatter: "rgba(255,255,255,0.02)",
   codeCopy: {
@@ -78,14 +96,14 @@ export const NIGHT = {
   codeLangOption: { hoverBg: "rgba(255,255,255,0.06)" },
   codeSelection: "rgba(255,255,255,0.12)",
   caretColor: "#fff",
-  searchInputBg: "#18191E",
-  modalBg: "rgba(20,22,35,0.95)",
+  searchInputBg: "#181818",
+  modalBg: "rgba(35,35,35,0.96)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
   /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
   dragShadow: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)",
   syntax: {
-    comment: "#636980",
-    punctuation: "#9B9EB0",
+    comment: "#808080",
+    punctuation: "#ACABAA",
     property: "#FF9E64",
     string: "#9ECE6A",
     operator: "#89DDFF",
@@ -118,8 +136,9 @@ export const DAY = {
     muted: "#7A736C", // 4.6:1
   },
   ACCENT: {
-    primary: "#2A737D", // 5.3:1 on ground, 4.6:1 on selected row
-    onAccent: "#FFFFFF", // text/icon on an accent fill (5.5:1)
+    primary: MARK, // marks and fills: the one teal, shared with NIGHT
+    text: "#2A737D", // accent as ink on the ground: 5.5:1 on the sheet, 4.6:1 on a selected row
+    onAccent: ON_MARK,
   },
   SEMANTIC: {
     warning: "#D4920A",
@@ -166,7 +185,7 @@ export const DAY = {
     hoverColor: "rgba(0,0,0,0.5)",
     hoverUnderline: "rgba(0,0,0,0.25)",
   },
-  mark: { bg: "rgba(42, 115, 125, 0.18)" },
+  mark: { bg: "rgba(143, 193, 198, 0.35)" },
   calloutIconHover: "rgba(0,0,0,0.06)",
   frontmatter: "rgba(0,0,0,0.02)",
   codeCopy: {

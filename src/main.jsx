@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "./context/ThemeContext";
 import { NoteDataProvider, useNoteDataActions } from "./context/NoteDataContext";
@@ -17,6 +17,13 @@ function AppErrorBoundary({ children }) {
   const { noteDataRef } = useNoteDataActions();
   return <ErrorBoundary noteDataRef={noteDataRef}>{children}</ErrorBoundary>;
 }
+
+// `?tweak` on a dev build mounts the colour tweaking panel (dev/, outside the
+// coverage denominator). Dead code in a production build.
+const ThemeTweaker =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has("tweak")
+    ? lazy(() => import("../dev/ThemeTweaker.jsx"))
+    : null;
 
 // Apply saved UI scale immediately to prevent flash
 const savedScale = localStorage.getItem("boojy-ui-scale");
@@ -54,6 +61,11 @@ createRoot(document.getElementById("root")).render(
           </LayoutProvider>
         </SettingsProvider>
       </NoteDataProvider>
+      {ThemeTweaker && (
+        <Suspense fallback={null}>
+          <ThemeTweaker />
+        </Suspense>
+      )}
     </ThemeProvider>
   </StrictMode>,
 );

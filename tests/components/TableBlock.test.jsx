@@ -16,7 +16,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
         hover: "#555",
         darkest: "#111",
       },
-      ACCENT: { primary: "#A4CACE" },
+      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
       SEMANTIC: { error: "#ef4444" },
       overlay: (a) => `rgba(255,255,255,${a})`,
     },

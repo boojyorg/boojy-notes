@@ -45,7 +45,7 @@ export default function SearchPalette({ onOpenResult, onClose }: SearchPalettePr
     theme: Record<string, Record<string, string>> & { modalShadow: string };
   };
   const { BG, TEXT, ACCENT } = theme;
-  const { accentColor } = useLayout() as { accentColor: string };
+  const { accentText } = useLayout() as { accentText: string };
   const { noteData } = useNoteData() as { noteData: Record<string, { title: string }> };
   const {
     search,
@@ -255,7 +255,7 @@ export default function SearchPalette({ onOpenResult, onClose }: SearchPalettePr
                       }}
                     >
                       {r.matchIn === "title"
-                        ? renderHighlightedTitle(r.title, r.matchStart, r.matchEnd, accentColor)
+                        ? renderHighlightedTitle(r.title, r.matchStart, r.matchEnd, accentText)
                         : r.title}
                     </span>
                     {folderPath && (
@@ -286,7 +286,7 @@ export default function SearchPalette({ onOpenResult, onClose }: SearchPalettePr
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {renderSnippet(r.snippet, accentColor)}
+                      {renderSnippet(r.snippet, accentText)}
                     </span>
                   )}
                 </button>

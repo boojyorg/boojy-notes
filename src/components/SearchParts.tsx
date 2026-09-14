@@ -36,7 +36,7 @@ export function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }:
             onClick={() => onPick(t.tag)}
             style={{
               background: `${ACCENT.primary}15`,
-              color: ACCENT.primary,
+              color: ACCENT.text,
               border: "none",
               borderRadius: 10,
               padding: "2px 8px",

@@ -66,6 +66,7 @@ electron/               # main process: IPC, file I/O, watcher, OS trash, folder
 tests/                  # unit tests and the preservation fixture corpus
 e2e/                    # Playwright
 docs/private/           # gitignored personal notes
+dev/                    # dev-only tooling (the ?tweak colour panel); never bundled, not covered
 ```
 
 ## Invariants

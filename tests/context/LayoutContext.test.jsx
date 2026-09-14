@@ -8,7 +8,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
       BG: { dark: "#111", editor: "#000", divider: "#333" },
-      ACCENT: { primary: "#A4CACE" },
+      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
       // LayoutContext reads this to hand usePanelResize the drag colour.
       sidebarHandle: { hover: "#3A3D4A", active: "#4A4D5A" },
     },

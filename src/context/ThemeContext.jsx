@@ -19,6 +19,20 @@ function saveThemeSettings(settings) {
   } catch {}
 }
 
+// Dev-only theme tweaking (`?tweak` on a dev build mounts dev/ThemeTweaker.jsx):
+// a flat map of token paths (`BG.editor`, `TEXT.muted`, `codeBlockBg`) laid over
+// the resolved theme. Nothing sets it in the product, so `theme` is the palette.
+function withOverrides(base, overrides) {
+  if (!overrides || Object.keys(overrides).length === 0) return base;
+  const out = { ...base };
+  for (const [path, value] of Object.entries(overrides)) {
+    const [group, key] = path.split(".");
+    if (key) out[group] = { ...out[group], [key]: value };
+    else out[group] = value;
+  }
+  return out;
+}
+
 function systemPrefersDark() {
   return (
     typeof window !== "undefined" &&
@@ -80,13 +94,17 @@ export function ThemeProvider({ children }) {
     // Deps deliberately not exhaustive: isFirstRender is a stable ref-like object created with useMemo
   }, [resolvedMode]);
 
-  const theme = resolvedMode === "day" ? DAY : NIGHT;
+  const [themeOverrides, setThemeOverrides] = useState(null);
+  const theme = useMemo(
+    () => withOverrides(resolvedMode === "day" ? DAY : NIGHT, themeOverrides),
+    [resolvedMode, themeOverrides],
+  );
   const isDark = resolvedMode === "night";
 
   const setThemeMode = useCallback((v) => setThemeModeRaw(v), []);
 
   const value = useMemo(
-    () => ({ theme, themeMode, setThemeMode, isDark }),
+    () => ({ theme, themeMode, setThemeMode, isDark, setThemeOverrides }),
     [theme, themeMode, isDark, setThemeMode],
   );
 

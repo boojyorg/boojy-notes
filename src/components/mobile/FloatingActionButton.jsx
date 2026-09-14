@@ -110,7 +110,7 @@ export default function FloatingActionButton({ onNewNote, onNewFolder }) {
           alignItems: "center",
           justifyContent: "center",
           boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-          color: "#fff",
+          color: theme.ACCENT.onAccent,
           touchAction: "none",
         }}
         aria-label="New note"

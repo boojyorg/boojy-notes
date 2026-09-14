@@ -366,8 +366,15 @@ const Sidebar = memo(function Sidebar({
   // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
-  const { accentColor, chromeBg, sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } =
-    useLayout();
+  const {
+    accentColor,
+    accentText,
+    chromeBg,
+    sidebarVisible,
+    sidebarWidth,
+    fullScreen,
+    toggleSidebar,
+  } = useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
   // survive a collapse — but a zero-width, overflow-hidden panel still hands
   // its buttons to Tab and to a screen reader, and the editor header renders
@@ -1069,7 +1076,7 @@ const Sidebar = memo(function Sidebar({
                             result.title,
                             result.matchStart,
                             result.matchEnd,
-                            accentColor,
+                            accentText,
                           )
                         : result.title}
                     </span>
@@ -1101,7 +1108,7 @@ const Sidebar = memo(function Sidebar({
                         lineHeight: "16px",
                       }}
                     >
-                      {renderSnippet(result.snippet, accentColor)}
+                      {renderSnippet(result.snippet, accentText)}
                     </div>
                   ) : result.matchIn === "title" ? (
                     <div

@@ -11,6 +11,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         divider: "#444",
         hover: "#555",
       },
+      ACCENT: { primary: "#2593A0", text: "#5FBFCA", onAccent: "#FFFFFF" },
     },
     isDark: true,
   }),

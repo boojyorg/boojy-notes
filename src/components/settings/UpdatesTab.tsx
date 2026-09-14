@@ -21,7 +21,7 @@ interface UpdateStatus {
 
 interface UpdatesTheme {
   TEXT: { primary: string; secondary: string; muted: string };
-  ACCENT: { primary: string; onAccent: string };
+  ACCENT: { primary: string; text: string; onAccent: string };
   SEMANTIC: { error: string };
   overlay: (alpha: number) => string;
 }
@@ -118,7 +118,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
           <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>Up to date</span>
         )}
         {updateStatus?.state === "available" && (
-          <span style={{ fontSize: fontSize.sm, color: ACCENT.primary }}>
+          <span style={{ fontSize: fontSize.sm, color: ACCENT.text }}>
             Update available: v{updateStatus.version}
           </span>
         )}
@@ -156,7 +156,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
               justifyContent: "space-between",
             }}
           >
-            <span style={{ fontSize: fontSize.sm, color: ACCENT.primary }}>
+            <span style={{ fontSize: fontSize.sm, color: ACCENT.text }}>
               v{updateStatus.version} ready to install
             </span>
             <button
@@ -164,7 +164,6 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
               style={{
                 ...buttonBase,
                 background: accentColor,
-                // Dark's accent is pale; white on it was about 1.7:1.
                 color: ACCENT.onAccent,
                 padding: `${spacing.xs}px ${spacing.md}px`,
                 fontSize: fontSize.sm,

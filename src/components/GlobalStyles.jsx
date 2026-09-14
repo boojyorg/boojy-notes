@@ -106,6 +106,11 @@ export default function GlobalStyles() {
            (judged live: a sliding re-truncation reads worse than an instant
            one) — only the ink transitions. An open menu holds the slot via
            inline styles in Sidebar.jsx. */
+        /* Rest ground for the drag's drop targets when their inline background is
+           absent. A folder row is a <button>: with no inline background it falls to
+           the UA's buttonface (#EFEFEF), which no theme covers. Inline values, the
+           row's own rest colour and the drag's paint alike, still win over this. */
+        [data-folder-path], [data-drop-root] { background: transparent; }
         .sidebar-note-more {
           opacity: 0;
           width: 0;
@@ -198,7 +203,7 @@ export default function GlobalStyles() {
           padding: 0 2px;
         }
         [data-block-id] .inline-tag {
-          color: ${theme.ACCENT.primary};
+          color: ${theme.ACCENT.text};
           opacity: 0.7;
           font-size: 0.92em;
           cursor: pointer;
@@ -414,7 +419,7 @@ export default function GlobalStyles() {
         }
         .code-ctx-danger { color: ${theme.SEMANTIC.error}; }
         .code-ctx-danger:hover { background: ${theme.SEMANTIC.error}18; }
-        .code-ctx-active { color: ${theme.ACCENT.primary}; }
+        .code-ctx-active { color: ${theme.ACCENT.text}; }
         .code-ctx-sep {
           height: 1px;
           background: ${theme.BG.divider};
