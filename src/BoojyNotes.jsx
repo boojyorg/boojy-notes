@@ -3,6 +3,7 @@ import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
 import { useLayout } from "./context/LayoutContext";
+import { panelTransition } from "./tokens/motion";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -721,6 +722,7 @@ export default function BoojyNotes() {
       >
         {/* Sidebar wrapper */}
         <div
+          className={isMobile ? undefined : "panel-motion"}
           style={
             isMobile
               ? {
@@ -743,7 +745,7 @@ export default function BoojyNotes() {
                   flexShrink: 0,
                   overflow: "hidden",
                   position: "relative",
-                  transition: "width 0.2s ease, min-width 0.2s ease",
+                  transition: panelTransition("width", "min-width"),
                 }
           }
         >

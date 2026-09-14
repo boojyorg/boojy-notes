@@ -284,6 +284,26 @@ hardcoded green); swap them for Lucide when touching those files.
 - The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
   the left edge.
 
+**The toggle is one slide on one clock** (2026-09-14, `tokens/motion.js`: `PANEL_MS` 200,
+ease-out `PANEL_EASE`, `panelTransition()`; every element on it carries `.panel-motion`, which a
+reduced-motion user gets with no travel at all). Measured frame by frame before this: the
+wrapper's width tweened to 0 with the sidebar laid out `flex: 1` inside it, so every frame
+re-laid the column out (the New note pill went 234px → 16, rows re-truncated, the Notes row's
+glyphs piled up); the collapsed trio mounted on the first frame over the still-open sidebar and
+the history pair jumped 132px and floated in the editor for 200ms; the note's name jumped to its
+new start and slid back; and the column re-wrapped its prose every frame. Now: **the sidebar's
+column is its full `sidebarWidth`, never `flex: 1`, and slides out under the window's edge
+(`translateX(-width)`; `none` at rest, never an identity transform, so nothing fixed inside it
+gains a containing block) as the wrapper's width closes over it**, with its contents fading out
+in the first 100ms and in over the last; **the history pair is its own fixed block and
+transitions `left`** between its two positions; **the trio fades in over the last 120ms** of the
+slide, so the sidebar's own toggle leaves and this one arrives; and **the name's indent
+transitions with the pair**. The wrapper and the editor column ease on the same token. Still
+per-frame: the column's prose re-wraps, because its max-width is 720 beside the sidebar and 840
+alone (a product choice; one width would make a wide-window toggle a pure slide). Don't put the
+sidebar back on `flex: 1`, and don't add a second duration. `sidebar-motion.spec.ts` proves the
+clip at rest and the pair's position in the real app.
+
 **The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
 opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
 renders it at the head of the left group. Both use the exported `ChromeButton`.

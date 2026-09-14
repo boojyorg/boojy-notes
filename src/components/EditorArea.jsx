@@ -28,6 +28,7 @@ import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
+import { panelTransition } from "../tokens/motion";
 
 /*
  * The note name is a FILE LABEL, not the document's heading.
@@ -557,6 +558,7 @@ const EditorArea = memo(
           <div
             key={activeNote}
             ref={columnRef}
+            className="panel-motion"
             style={{
               padding: isMobile ? "12px 20px 80px 20px" : `${LABEL_TOP}px ${colPad} 80px ${colPad}`,
               maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
@@ -575,8 +577,7 @@ const EditorArea = memo(
               // column breathing out rather than the page re-laying-out under
               // you. `.sidebar-dragging` kills all transitions, so dragging the
               // divider stays 1:1.
-              transition:
-                "max-width 0.2s ease, padding 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease",
+              transition: `${panelTransition("max-width", "padding", "margin-left")}, opacity 0.2s ease`,
               position: "relative",
               zIndex: Z.BASE,
             }}
@@ -595,7 +596,7 @@ const EditorArea = memo(
               data-placeholder="Untitled"
               role="textbox"
               aria-label="Note title"
-              className={!note.title ? "empty-title" : undefined}
+              className={!note.title ? "empty-title panel-motion" : "panel-motion"}
               onInput={(e) => {
                 const newTitle = titleFieldText(e.currentTarget);
                 commitTextChange((prev) => {
@@ -681,7 +682,11 @@ const EditorArea = memo(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                transition: "background 0.12s, color 0.12s",
+                // The indent steps around the chrome row's controls, which
+                // change with the sidebar state; it moves on the panel's
+                // clock so the name glides with the pair beside it rather
+                // than jumping to its new start and sliding back.
+                transition: `background 0.12s, color 0.12s, ${panelTransition("margin-left")}`,
               }}
             />
 

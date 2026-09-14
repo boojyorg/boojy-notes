@@ -25,6 +25,7 @@ import VaultMenu from "./VaultMenu";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import Wordmark from "./Wordmark";
+import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -365,7 +366,8 @@ const Sidebar = memo(function Sidebar({
   // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
-  const { accentColor, chromeBg, sidebarVisible, fullScreen, toggleSidebar } = useLayout();
+  const { accentColor, chromeBg, sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } =
+    useLayout();
   // A hidden sidebar keeps its DOM — drag hit-tests and the scroll position
   // survive a collapse — but a zero-width, overflow-hidden panel still hands
   // its buttons to Tab and to a screen reader, and the editor header renders
@@ -853,12 +855,39 @@ const Sidebar = memo(function Sidebar({
 
   return (
     <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
+      className={isMobile ? undefined : "panel-motion"}
+      style={
+        isMobile
+          ? { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }
+          : {
+              // The column is its full width whatever the wrapper is showing
+              // of it, and slides out under the window's edge as the wrapper
+              // closes over it (2026-09-14). Before this it was `flex: 1` in
+              // a wrapper whose width tweened to 0, so every frame of the
+              // toggle re-laid it out: the New note pill shrank from 234px to
+              // 16, rows re-truncated, and the Notes row's glyphs piled up.
+              // Nothing inside reflows now; the contents fade instead, out
+              // as the slide begins and in as it ends. `transform: none` at
+              // rest, never an identity translate, so nothing fixed inside
+              // the column gains a containing block. Once the slide has
+              // ended the column is `visibility: hidden` (flipped at the end
+              // of the hide and at the start of the show), so its rows are
+              // out of the tab order and off the accessibility tree while
+              // the DOM and scroll position stay; `inert` on the whole
+              // column was tried and broke a double-click mid-slide.
+              width: sidebarWidth,
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              transform: sidebarVisible ? "none" : `translateX(${-sidebarWidth}px)`,
+              opacity: sidebarVisible ? 1 : 0,
+              visibility: sidebarVisible ? "visible" : "hidden",
+              transition: `${panelTransition("transform")}, opacity ${PANEL_FADE_MS}ms ease ${
+                sidebarVisible ? PANEL_MS - PANEL_FADE_MS : 0
+              }ms, visibility 0s linear ${sidebarVisible ? 0 : PANEL_MS}ms`,
+            }
+      }
     >
       {/* Sidebar header: wordmark left, panel toggle right near the divider.
           On macOS Electron the native traffic lights sit in this row too

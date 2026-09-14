@@ -35,7 +35,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
 const layoutState = {
   sidebarWidth: 220,
   accentColor: "#A4CACE",
-  collapsed: false,
+  // The column is `visibility: hidden` once hidden (2026-09-14), so a mock
+  // that leaves this out renders a sidebar nothing can query.
+  sidebarVisible: true,
   toggleSidebar: vi.fn(),
   chromeBg: "#222",
   sidebarHandles: { current: [] },

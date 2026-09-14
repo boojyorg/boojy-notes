@@ -27,6 +27,11 @@ export default function GlobalStyles() {
           to { opacity: 1; transform: translateY(0); }
         }
         .sidebar-dragging * { transition: none !important; }
+        /* Everything on the panel's clock (tokens/motion.js) carries this
+           class; a reduced-motion user gets the two states and no travel. */
+        @media (prefers-reduced-motion: reduce) {
+          .panel-motion { transition: none !important; animation: none !important; }
+        }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         /* Block drag handle (BlockDragHandle.jsx) follows the note-row ···

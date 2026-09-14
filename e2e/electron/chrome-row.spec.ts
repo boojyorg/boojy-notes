@@ -16,8 +16,29 @@ import {
   WINDOW_MIN_W,
 } from "../../src/constants/layout";
 
+/** A transitioned margin can settle a hundredth of a pixel short of its target. */
+const SUBPIXEL = 0.5;
+
 /** The chrome buttons that sit left of the note's name, in DOM order. */
 const LEFT_CONTROLS = ["Show sidebar", "Search notes", "New note", "Undo", "Redo"];
+
+/**
+ * Wait for every running CSS transition and animation to finish. The chrome
+ * row moves on the panel's clock since 2026-09-14 (the history pair slides,
+ * the trio fades in), so a position read straight after a toggle or a resize
+ * is a position in flight.
+ */
+async function settled(page: Page) {
+  await page.evaluate(async () => {
+    // A transition a resize interrupts rejects its `finished` with AbortError
+    // and a fresh one takes its place, so wait in rounds until none is left.
+    for (let round = 0; round < 10; round++) {
+      const running = document.getAnimations();
+      if (running.length === 0) return;
+      await Promise.allSettled(running.map((a) => a.finished));
+    }
+  });
+}
 
 async function setWidth(h: AppHandle, width: number) {
   await h.app.evaluate(({ BrowserWindow }, w) => {
@@ -26,6 +47,7 @@ async function setWidth(h: AppHandle, width: number) {
   await expect
     .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5000 })
     .toBe(width);
+  await settled(h.page);
 }
 
 /**
@@ -72,7 +94,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left, expanded at ${width}`,
         })
-        .toBeGreaterThanOrEqual(right + 8);
+        .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
       // The name still has room to read in, and stays clear of the ··· .
       await expect
         .poll(async () => (await titleBox(h.page)).right, {
@@ -86,6 +108,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     await setWidth(h, 1200);
 
     await h.page.getByTitle("Hide sidebar").click();
+    await settled(h.page);
     await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
 
     // Collapsed: five controls, and the name still starts past the last.
@@ -97,7 +120,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left at ${width}, collapsed`,
         })
-        .toBeGreaterThanOrEqual(right + 8);
+        .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
       // The name still has room to read in, and stays clear of the ··· .
       await expect
         .poll(async () => (await titleBox(h.page)).right, { message: `title right at ${width}` })
@@ -120,10 +143,13 @@ test("a very long name yields to the controls rather than covering them", async 
   try {
     await h.openNote(long);
     await h.page.getByTitle("Hide sidebar").click();
+    await settled(h.page);
     await setWidth(h, WINDOW_MIN_W);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
     const more = await h.page.locator("button[title='Note actions']").boundingBox();
-    await expect.poll(async () => (await titleBox(h.page)).x).toBeGreaterThanOrEqual(right + 8);
+    await expect
+      .poll(async () => (await titleBox(h.page)).x)
+      .toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
     await expect.poll(async () => (await titleBox(h.page)).right).toBeLessThanOrEqual(more!.x);
     // Truncated, not wrapped: one line box, the height of the label's row.
     expect((await titleBox(h.page)).height).toBeLessThan(30);
@@ -161,10 +187,12 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     await expect.poll(() => leftOf("Open Settings"), { timeout: 10000 }).toBeLessThan(40);
     // ...and collapsed, the group starts at the web inset with the name past it.
     await h.page.getByTitle("Hide sidebar").click();
+    await settled(h.page);
     await expect.poll(() => leftOf("Show sidebar")).toBe(10);
+    await settled(h.page);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
     const n = await h.page.getByRole("textbox", { name: "Note title" }).boundingBox();
-    expect(n!.x).toBeGreaterThanOrEqual(right + 8);
+    expect(n!.x).toBeGreaterThanOrEqual(right + 8 - SUBPIXEL);
     // No drag strip either: nothing to drag in full screen.
     await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(0);
 
@@ -173,6 +201,7 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(86);
     await expect(h.page.getByTestId("window-drag-strip")).toHaveCount(1);
     await h.page.getByTitle("Show sidebar").click();
+    await settled(h.page);
     await expect.poll(() => leftOf("Open Settings")).toBe(atRest);
     expect(h.pageErrors).toEqual([]);
   } finally {

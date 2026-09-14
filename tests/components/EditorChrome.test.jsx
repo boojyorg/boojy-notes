@@ -169,7 +169,23 @@ describe("EditorChrome", () => {
     expect(group.style.left).toBe("10px");
   });
 
-  // Expanded, the group belongs to the editor and starts at its left edge: the
+  // Collapsed, the trio holds the corner and the history pair sits one
+  // group-gap past it, as its own fixed block so it can slide on the panel's
+  // clock (2026-09-14): 10 + three 32px buttons with two 2px gaps + 12.
+  it("places the history pair past the trio, in its own block, when collapsed", () => {
+    layoutState.sidebarVisible = false;
+    const { getByTitle } = renderChrome();
+    const pair = getByTitle("Undo").parentElement;
+    const trio = getByTitle("Show sidebar").parentElement.parentElement;
+    expect(pair).not.toBe(trio);
+    expect(pair.style.position).toBe("fixed");
+    expect(pair.style.left).toBe("122px");
+    expect(pair.style.transition).toContain("left");
+    // The trio arrives after the panel has gone, never over it.
+    expect(trio.style.animation).toContain("fadeIn");
+  });
+
+  // Expanded, the pair belongs to the editor and starts at its left edge: the
   // sidebar's width plus its drag handle, then the chrome inset.
   it("starts the left group at the editor's left edge while the sidebar shows", () => {
     layoutState.sidebarVisible = true;
