@@ -106,6 +106,11 @@ export default function GlobalStyles() {
            (judged live: a sliding re-truncation reads worse than an instant
            one) — only the ink transitions. An open menu holds the slot via
            inline styles in Sidebar.jsx. */
+        /* Rest ground for the drag's drop targets when their inline background is
+           absent. A folder row is a <button>: with no inline background it falls to
+           the UA's buttonface (#EFEFEF), which no theme covers. Inline values, the
+           row's own rest colour and the drag's paint alike, still win over this. */
+        [data-folder-path], [data-drop-root] { background: transparent; }
         .sidebar-note-more {
           opacity: 0;
           width: 0;
