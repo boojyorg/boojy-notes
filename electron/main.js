@@ -55,7 +55,9 @@ function getMainWindow() {
 // drives the renderer over CDP, which needs no OS focus. Timers must keep
 // running at full speed while hidden, or the text-commit and write debounces
 // the suite exists to exercise would stall behind Chromium's background
-// throttling. Never set outside the test harness.
+// throttling. Animation frames are another matter: a hidden window on Linux
+// ticks none, so the harness shows the window on CI (e2e/electron/harness.ts).
+// Never set outside the test harness.
 const hiddenForTests = process.env.BOOJY_TEST_HIDDEN === "1";
 
 const stripHash = (url) => url.split("#")[0];
