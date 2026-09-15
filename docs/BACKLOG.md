@@ -272,6 +272,12 @@ Priority for assessment, not additional Beta release requirements. New findings 
 the 2026-09-10 code inspection and sample probes, not a full desktop interaction test. Verify
 the relevant read, edit and save journeys before choosing a fix; missing support is distinct
 from a correctness defect. Existing preservation blockers retain their status under Data safety.
+**Two-way use with Obsidian is not yet a general guarantee** (assessed 2026-09-15 on a copy of
+Tyr's vault, six findings reproduced in the real app): a note's *text* survives switching apps,
+but a block can be moved above its frontmatter, a click on a link the app cannot resolve writes
+a file, a rename leaves dangling references, and the first save reformats most tables (all
+under Data safety). Until those close, treat the promise as "the bytes it understands are safe
+and the rest is preserved", not "switch freely".
 
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
   of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
@@ -293,7 +299,24 @@ from a correctness defect. Existing preservation blockers retain their status un
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
 `KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already fail.
 
-- [ ] **Table `:---` separators normalise to `---`** on first edit. This blocks Beta.
+- [ ] **Table `:---` separators normalise to `---`** on first edit. This blocks Beta. Wider than
+  alignment (measured 2026-09-15 on a copy of Tyr's Obsidian vault, load → save with no edit): every
+  table not in the app's own spacing is rewritten, `|---|---|` to `| --- | --- |`, padded columns
+  collapsed, in 82 of 202 notes and 833 rows; cell content and count never changed. And a
+  `[[Note|alias]]` inside a cell is rewritten `[[Note | alias]]` (the cell splitter takes the pipe;
+  Obsidian documents the `\|` form, which holds).
+- [ ] **A block can be moved above the frontmatter** (2026-09-15, reproduced in the real app).
+  Cmd+Shift+Up on the first paragraph, or a drop at the top, puts it above the `frontmatter` block,
+  which is then written mid-file: `text` / `---` / yaml / `---`, a setext heading and a divider to
+  every reader, paragraphs to this one; the properties are gone. Neither reorder path has a guard
+  (`moveBlock` in `useBlockOperations`, `updateBlockDropTarget` in `useBlockDrag`); the block itself
+  is `contentEditable=false` and unselectable, so it cannot be edited or deleted, only displaced.
+- [ ] **Clicking a link the app cannot resolve creates a file** (2026-09-15, reproduced in the real
+  app). `[[Note#Heading]]`, `[[Note#^id]]` and `[[Folder/Note]]` never resolve (`handleWikilinkClick`
+  matches the whole target against titles), and a click calls `createNote`, so `Note#Heading.md` or
+  `Folder_Note.md` lands in the vault root; `#`, `^`, `[` and `]` are not in `sanitizeFilename`, and
+  Obsidian refuses such names. A link the app cannot resolve must not create a file; opening the
+  base note is the smallest step, full target support is the Future item below.
 - [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
   keystroke; a save that lands in a pause after the space writes the non-breaking byte
@@ -331,7 +354,12 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   itself and a destroyed window is checked, so nothing accumulates on rapid Cmd+W then Cmd+Q;
   what is left is that a renderer that has already died still holds the quit for the cap.
 - [ ] **Orphaned `.*.tmp` files** after a crash followed by a rename.
-- [ ] **Wikilink rename does not update referrers** — silent link breakage.
+- [ ] **Wikilink rename does not update referrers** — silent link breakage, and a two-way
+  compatibility gap even though it is current behaviour rather than a regression (reproduced
+  2026-09-15: rename `Beta` to `Gamma` and `[[Beta]]` in another note stays as written and shows
+  broken). The rename is a new file plus an unlink, so Obsidian sees a delete and a create and
+  its own link update never runs either; a vault edited in both apps accumulates dangling links
+  from every rename made here.
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a
@@ -344,10 +372,6 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 - [ ] **A symlinked folder inside the vault is skipped by the walk and followed by chokidar**
   (review §2.9), so a note under it can be reported changed but is never listed.
   `followSymlinks: false` is the one-line consistent answer when the watcher is next touched.
-- [ ] **The last-writer race under a synced folder** — `write-note` never compares the file's
-  mtime, so the app's own debounced write can land over an outside write the watcher has not yet
-  reported. Not reproduced; instrument with `BOOJY_TRACE` under iCloud or Drive before designing
-  anything (the conflict-copy rule in the UI rule covers only changes the watcher reports first).
 - [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes
   the first write strip the whole frontmatter block; `resolve-attachment` still scans the v0.1
   `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three

@@ -126,6 +126,75 @@ test("an outside edit to the open note while edits are pending keeps both: disk 
   }
 });
 
+test("an outside write that lands inside the app's own save window is kept, and the local edit goes to a copy", async () => {
+  // Regression (2026-09-15, the last-writer race): the app's debounced save
+  // never looked at the file before writing it. An outside write inside that
+  // window (~800 ms after the last keystroke; the watcher reports a write only
+  // once the file has been stable for 300 ms, so a write in the second half
+  // of the window is reported after the save) was written over, and the
+  // watcher then dropped the event as the save's own echo: the outside edit
+  // was lost with no copy and no toast.
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" mine");
+    await sleep(600);
+    h.vault.write("Alpha.md", "Alpha body.\nTheirs, from outside.\n");
+
+    const copyName = `Alpha (conflicted copy ${TODAY})`;
+    await expect(h.page.getByRole("textbox", { name: "Note title" })).toHaveText(copyName, {
+      timeout: 5_000,
+    });
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md"), "the outside version keeps the name").toBe(
+      "Alpha body.\nTheirs, from outside.\n",
+    );
+    expect(h.vault.read(`${copyName}.md`)).toBe("Alpha body. mine\n");
+    expect(
+      h.vault
+        .list()
+        .filter((f) => f.endsWith(".md"))
+        .sort(),
+    ).toEqual(["Alpha.md", `${copyName}.md`].sort());
+    expect(await noteText(h.page)).toBe("Alpha body. mine");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("an outside change to a note with pending edits that is no longer on screen keeps both, and the editor stays where it is", async () => {
+  // Regression (2026-09-15): the conflict rule ran only for the open note. A
+  // note the user had typed in and switched away from inside the save window
+  // took the disk version at once, and its pending keystrokes were discarded
+  // with no copy and no toast.
+  const h = await launchApp({ "Alpha.md": "Alpha body.\n", "Beta.md": "Beta body.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" mine");
+    await h.openNote("Beta");
+    h.vault.write("Alpha.md", "Alpha body.\nTheirs, from outside.\n");
+
+    const copyName = `Alpha (conflicted copy ${TODAY})`;
+    await waitForFile(h.vault.file(`${copyName}.md`), (t) => t.includes("mine"));
+    await expect(h.page.getByText("changed outside Boojy Notes")).toBeVisible();
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Alpha body.\nTheirs, from outside.\n");
+    expect(h.vault.read(`${copyName}.md`)).toBe("Alpha body. mine\n");
+    // The user was reading Beta; the copy is a row to open, not a jump.
+    await expect(h.page.getByRole("textbox", { name: "Note title" })).toHaveText("Beta");
+    await h.openNote(copyName);
+    expect(await noteText(h.page)).toBe("Alpha body. mine");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("when the conflict copy cannot be written, blur and quit never put the local version over the outside edit", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
   try {

@@ -173,19 +173,24 @@ export default function BoojyNotes() {
   // keeps the note's block ids, so the caret's block and offset carry over
   // through the focus refs the note switch consumes.
   const onExternalConflict = useCallback(
-    ({ title, copyId, copyTitle }) => {
-      const sel = window.getSelection();
-      const node = sel?.rangeCount ? sel.anchorNode : null;
-      const blockEl = (node?.nodeType === 1 ? node : node?.parentElement)?.closest?.(
-        "[data-block-id]",
-      );
-      const blockId = blockEl?.getAttribute("data-block-id");
-      const el = blockId ? blockRefs.current[blockId] : null;
-      if (el && editorRef.current?.contains(el)) {
-        focusBlockId.current = blockId;
-        focusCursorPos.current = Math.max(0, getCaretOffset(el));
+    ({ title, copyId, copyTitle, active = true }) => {
+      // The note on screen continues in its copy, caret carried over. A note
+      // the user has left keeps its copy as a sidebar row: the toast says so,
+      // and nothing jumps away from what they are reading.
+      if (active) {
+        const sel = window.getSelection();
+        const node = sel?.rangeCount ? sel.anchorNode : null;
+        const blockEl = (node?.nodeType === 1 ? node : node?.parentElement)?.closest?.(
+          "[data-block-id]",
+        );
+        const blockId = blockEl?.getAttribute("data-block-id");
+        const el = blockId ? blockRefs.current[blockId] : null;
+        if (el && editorRef.current?.contains(el)) {
+          focusBlockId.current = blockId;
+          focusCursorPos.current = Math.max(0, getCaretOffset(el));
+        }
+        setActiveNote(copyId);
       }
-      setActiveNote(copyId);
       showToast(
         `"${title}" changed outside Boojy Notes. Your edits were kept in "${copyTitle}".`,
         "info",

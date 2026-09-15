@@ -282,16 +282,30 @@ hardcoded green); swap them for Lucide when touching those files.
   raw setter is not used for it, because a text commit pending for another note republished
   the stale ref and wrote the old bytes back over the edit. "Same" is judged by the writer
   itself (`persistedEquals`: `blocksToMarkdown` plus title, folder and line-ending style),
-  never by a field list. A change to a note that is not open, or to the open note with
-  nothing pending, is taken at once, and the editor repaints only when it is the open note (a
-  repaint while typing elsewhere would paint lagging state over the live DOM). A change to the
-  open note while edits are pending keeps both: the outside bytes stay under the note's name,
-  the local version, pending text included, is written first as `Title (conflicted copy
-  YYYY-MM-DD)` through the ordinary write path, and only once that write has succeeded is
-  the disk version adopted, the copy adopted (dirty, so the ordinary flush rewrites it with
-  any keystrokes typed during the write), and the editor moved to the copy with the caret's
-  block and offset carried through the focus refs. A failed copy replaces nothing and says so
-  once. The note is remembered as conflicted (`conflicted` in `useFileSystem`) from the moment
+  never by a field list. A change to a note with nothing pending is taken at once, and the
+  editor repaints only when it is the open note (a repaint while typing elsewhere would paint
+  lagging state over the live DOM). A change to a note while edits to it are pending keeps
+  both, **whether or not the note is on screen** (2026-09-15; until then the rule ran for the
+  open note alone, so a note typed in and switched away from inside the save window took the
+  disk version and its pending keystrokes were discarded with no copy): the outside bytes stay
+  under the note's name, the local version, pending text included, is written first as `Title
+  (conflicted copy YYYY-MM-DD)` through the ordinary write path, and only once that write has
+  succeeded is the disk version adopted and the copy adopted (dirty, so the ordinary flush
+  rewrites it with any keystrokes typed during the write). For the open note the editor then
+  moves to the copy with the caret's block and offset carried through the focus refs; for any
+  other note the copy is a sidebar row, the toast names it, and nothing jumps
+  (`onExternalConflict`'s `active`). A failed copy replaces nothing and says so once.
+  **The news of an outside version has two sources and one handler**
+  (`takeOutsideVersion` in `useFileSystem`): the watcher's `file-changed`, and a save the main
+  process refused. `write-note` compares the file's bytes with the hash of what the app last
+  read or wrote (`_identity`, the record `relocateNote` already used) and, when they differ,
+  writes and moves nothing and answers `{ stale: true, note }` with the disk version; the
+  flush hands that to the same handler and the note stays dirty until its copy is written.
+  Before this (the last-writer race, reproduced 2026-09-15 in `external-edit.spec.ts`) the
+  save landed over an outside write made inside the ~800 ms commit-plus-debounce window, and
+  the watcher, which reports a write only once the file has been stable for 300 ms, then
+  dropped the change as the save's own echo. Reading the file in the refusal records it as
+  seen, so the write after the copy goes through. The note is remembered as conflicted (`conflicted` in `useFileSystem`) from the moment
   the conflict is seen, before the copy's write begins and not only once it has failed
   (2026-09-08, review §2.9): from then on every flush, the debounce, the 5 s retry, blur and
   quit alike, writes it as the copy and never under its own name, until a copy write succeeds,
@@ -303,8 +317,9 @@ hardcoded green); swap them for Lucide when touching those files.
   still cannot be written inside the 2 s the main process holds a quit, the local version is
   lost with the quit, as any unsaved work is; it is never resolved by overwriting the file.
   No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
-  covered: the app's own debounced write landing over an outside write before the watcher
-  reports it (the last-writer race), which needs instrumenting under a sync provider first.
+  covered: two apps writing the same file within the same few milliseconds, which no
+  read-before-write can order; a sync client that recreates files (a new inode) is the
+  `relocateNote` case, not this one.
 - **A dirty mark is cleared only by a write of the version the note holds now** (2026-09-07).
   `flush` in `useFileSystem` writes dirty notes one after another; after each write it clears
   the note's mark only if the object written is still what state (`noteDataRef`) or the
