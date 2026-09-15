@@ -33,6 +33,7 @@ import {
   markdownBefore,
 } from "../../utils/crossBlockEdit";
 import { filterSlashCommands } from "../../constants/data";
+import { reorderFloor } from "../../utils/blockOrder";
 
 export function useKeyboardHandlers({
   noteDataRef,
@@ -125,8 +126,10 @@ export function useKeyboardHandlers({
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       e.preventDefault();
       const target = blockIndex + (e.key === "ArrowUp" ? -1 : 1);
-      // Boundary: nothing to move into — bail without committing a no-op history step.
-      if (target < 0 || target >= blocks.length) return;
+      // Boundary: nothing to move into — bail without committing a no-op history
+      // step. The top is the reorder floor: frontmatter is the file's head, and
+      // the first block under it is the first block there is to move.
+      if (target < reorderFloor(blocks) || target >= blocks.length) return;
       moveBlock(noteId, blockIndex, target);
       return;
     }

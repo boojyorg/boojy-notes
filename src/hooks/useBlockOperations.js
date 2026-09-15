@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { genBlockId } from "../utils/storage";
 import { getCaretOffset } from "../utils/domHelpers";
 import { withCell } from "../utils/tableShape";
+import { reorderFloor } from "../utils/blockOrder";
 import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
@@ -255,7 +256,8 @@ export function useBlockOperations({
   // block's DOM node (keyed by id) to its new slot, carrying its live content — the
   // same mechanism the pointer drag (useBlockDrag) already relies on. Callers should
   // guard against boundary no-ops (don't call when the target index is out of range)
-  // so we don't push an empty history step.
+  // so we don't push an empty history step. The top boundary is `reorderFloor`:
+  // with frontmatter first, index 0 is the file's head and no move touches it.
   const moveBlock = useCallback(
     (noteId, fromIndex, toIndex) => {
       let movedId = null;
@@ -263,10 +265,11 @@ export function useBlockOperations({
         const n0 = prev[noteId];
         if (!n0) return prev;
         const blocks = [...n0.content.blocks];
+        const floor = reorderFloor(blocks);
         if (
-          fromIndex < 0 ||
+          fromIndex < floor ||
           fromIndex >= blocks.length ||
-          toIndex < 0 ||
+          toIndex < floor ||
           toIndex >= blocks.length ||
           fromIndex === toIndex
         ) {

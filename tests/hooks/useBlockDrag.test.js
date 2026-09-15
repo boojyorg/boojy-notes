@@ -413,3 +413,96 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     }
   });
 });
+
+/**
+ * Frontmatter is the file's head, not a block of the body. The drag reads the
+ * same floor as Cmd+Shift+Arrow: the frontmatter never lifts, a selection run
+ * that reaches it takes the body blocks alone, and the drop target never rises
+ * above it, so the marker's highest position is the gap under it. The
+ * frontmatter root is mounted with a rect here, as any root may be one day;
+ * the rule must not depend on it having none.
+ */
+describe("useBlockDrag keeps the frontmatter first", () => {
+  const withFrontmatter = () => [
+    { id: "fm", type: "frontmatter", text: "title: x" },
+    makeBlock("b1", "one"),
+    makeBlock("b2", "two"),
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = "";
+    document.body.className = "";
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("the grip on the frontmatter never lifts", () => {
+    const commitNoteData = vi.fn();
+    const { deps, blockRefs } = setup({ blocks: withFrontmatter(), commitNoteData });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "fm", { x: 10, y: 110 });
+    expect(result.current.blockDrag.current.active).toBe(false);
+    expect(marker()).toBe(null);
+    expect(document.body.classList.contains("block-dragging")).toBe(false);
+    act(() => {
+      move(10, 300);
+      up();
+    });
+    expect(commitNoteData).not.toHaveBeenCalled();
+  });
+
+  it("a drop above the frontmatter lands under it, and the marker never rises above it", () => {
+    vi.useFakeTimers();
+    const commitNoteData = vi.fn();
+    const { deps, blockRefs, noteDataRef } = setup({ blocks: withFrontmatter(), commitNoteData });
+    // fm 100–130, b1 140–170, b2 180–210
+    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b2", { x: 10, y: 190 });
+    act(() => {
+      move(10, 20); // above everything, the frontmatter included
+    });
+    const bd = result.current.blockDrag.current;
+    expect(bd.targetIndex).toBe(1);
+    expect(markerCentre()).toBe(135); // the gap under the frontmatter, (130 + 140) / 2
+    act(() => {
+      up();
+    });
+    expect(commitNoteData).toHaveBeenCalledTimes(1);
+    const next = commitNoteData.mock.calls[0][0](noteDataRef.current);
+    expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["fm", "b2", "b1"]);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+  });
+
+  it("a selection run that reaches the frontmatter lifts the body blocks alone, and they move as a run", () => {
+    vi.useFakeTimers();
+    const commitNoteData = vi.fn();
+    const blocks = [...withFrontmatter(), makeBlock("b3", "three")];
+    const { deps, blockRefs, noteDataRef } = setup({ blocks, commitNoteData });
+    // fm 100–130, b1 140–170, b2 180–210, b3 220–250
+    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    const range = document.createRange();
+    range.setStartBefore(blockRefs.current.fm);
+    range.setEndAfter(blockRefs.current.b2);
+    window.getSelection().addRange(range);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1", { x: 10, y: 150 });
+    expect(result.current.blockDrag.current.blockIds).toEqual(["b1", "b2"]);
+    act(() => {
+      move(10, 260); // below b3
+      up();
+    });
+    expect(commitNoteData).toHaveBeenCalledTimes(1);
+    const next = commitNoteData.mock.calls[0][0](noteDataRef.current);
+    expect(next.n1.content.blocks.map((b) => b.id)).toEqual(["fm", "b3", "b1", "b2"]);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+  });
+});

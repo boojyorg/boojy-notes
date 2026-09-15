@@ -24,6 +24,7 @@ const COLUMN = { left: 100, top: 0 };
 const BLOCK_LEFT = 156; // column left + 56px gutter
 const blockRects = {
   b1: { top: 40, height: 30 },
+  fm: { top: 40, height: 30 }, // a frontmatter block in b1's place
   b2: { top: 80, height: 51 }, // two-line paragraph
   b3: { top: 140, height: 30 },
   hr: { top: 80, height: 17, rule: { top: 88, height: 1 } }, // a divider: 8px, the rule, 8px
@@ -40,7 +41,11 @@ function Harness({ blocks, startHandleDrag }) {
     <div ref={columnRef} data-testid="column" style={{ position: "relative" }}>
       <div ref={editorRef} contentEditable suppressContentEditableWarning>
         {blocks.map((id) =>
-          id.startsWith("hr") ? (
+          id.startsWith("fm") ? (
+            <div key={id} data-block-id={id} data-block-type="frontmatter" contentEditable="false">
+              <div>Frontmatter (1 property)</div>
+            </div>
+          ) : id.startsWith("hr") ? (
             <div key={id} data-block-id={id} data-block-type="spacer" contentEditable="false">
               <hr />
             </div>
@@ -239,5 +244,32 @@ describe("BlockDragHandle", () => {
     expect(parseFloat(handle.style.left)).toBe(BLOCK_LEFT - COLUMN.left - HANDLE_W - HANDLE_GAP);
     const { top: ruleTop, height: ruleH } = blockRects.hr.rule;
     expect(parseFloat(handle.style.top) + HANDLE_H / 2).toBeCloseTo(ruleTop + ruleH / 2, 5);
+  });
+});
+
+/**
+ * Frontmatter is the file's head, never a block to lift: hovering it reveals
+ * no grip, and the blocks under it are the ones there are to reorder.
+ */
+describe("BlockDragHandle and frontmatter", () => {
+  afterEach(() => {
+    cleanup();
+    document.body.className = "";
+  });
+
+  it("shows no grip over the frontmatter, and the grip for the block under it as usual", async () => {
+    render(<Harness blocks={["fm", "b2", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(50); // inside the frontmatter's band
+    expect(screen.queryByTestId("block-drag-handle")).toBe(null);
+    await hoverAt(90); // inside b2's band
+    expect(screen.getByTestId("block-drag-handle").dataset.targetBlock).toBe("b2");
+  });
+
+  it("with frontmatter and one block there is nothing to reorder", async () => {
+    render(<Harness blocks={["fm", "b2"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(90);
+    expect(screen.queryByTestId("block-drag-handle")).toBe(null);
   });
 });

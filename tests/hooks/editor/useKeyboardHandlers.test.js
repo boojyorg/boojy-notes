@@ -447,4 +447,40 @@ describe("useKeyboardHandlers", () => {
       expect(placeCaret).not.toHaveBeenCalled();
     });
   });
+  describe("Cmd+Shift+Arrow under frontmatter", () => {
+    const shiftArrow = (key) => {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        metaKey: true,
+        shiftKey: true,
+        bubbles: true,
+      });
+      Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+      return event;
+    };
+
+    beforeEach(() => {
+      deps.noteDataRef.current["note-1"].content.blocks = [
+        { id: "fm", type: "frontmatter", text: "title: x" },
+        { id: "b1", type: "p", text: "Hello" },
+        { id: "b2", type: "p", text: "World" },
+      ];
+    });
+
+    it("the first block under the frontmatter is at the top: ArrowUp moves nothing", () => {
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = shiftArrow("ArrowUp");
+      result.current.handleBlockKeyDown("note-1", 1, event);
+      expect(deps.moveBlock).not.toHaveBeenCalled();
+      expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it("ArrowDown from it, and ArrowUp from the block below, still reorder under the frontmatter", () => {
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 1, shiftArrow("ArrowDown"));
+      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 1, 2);
+      result.current.handleBlockKeyDown("note-1", 2, shiftArrow("ArrowUp"));
+      expect(deps.moveBlock).toHaveBeenCalledWith("note-1", 2, 1);
+    });
+  });
 });
