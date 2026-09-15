@@ -34,7 +34,16 @@ declare global {
       chooseNotesDir: () => Promise<string | null>;
       readAllNotes: () => Promise<Record<string, Note>>;
       /** `title` is the basename the file actually got, which the title adopts. */
-      writeNote: (note: Note) => Promise<{ filePath: string; title: string }>;
+      /**
+       * Writes the note and answers with the name the file got. Refused, and
+       * nothing written, when the file changed since the app last read or
+       * wrote it: `stale` carries the disk version as an outside change.
+       */
+      writeNote: (
+        note: Note,
+      ) => Promise<
+        { filePath: string; title: string; stale?: undefined } | { stale: true; note: Note }
+      >;
       saveImage: (data: { fileName: string; dataBase64: string }) => Promise<string>;
       saveAttachment: (data: {
         fileName: string;

@@ -767,9 +767,75 @@ describe("useFileSystem — outside edits", () => {
       title: "Alpha",
       copyId: written.id,
       copyTitle: "Alpha (conflicted copy 2026-09-06)-2",
+      active: true,
     });
     expect(syncGeneration.current).toBe(generationBefore + 1);
     expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("keeps both versions for a note with pending edits that is not on screen, without moving the editor or repainting it", async () => {
+    // Regression (2026-09-15): the conflict rule was gated on the open note, so a
+    // note typed in and switched away from inside the save window took the disk
+    // version and its pending keystrokes were discarded, with no copy.
+    writeNote.mockResolvedValue({
+      filePath: "/notes/Alpha (conflicted copy 2026-09-06).md",
+      title: "Alpha (conflicted copy 2026-09-06)",
+    });
+    const { links, syncGeneration, generationBefore } = await renderWith({
+      active: "n2",
+      unflushed: ["n1"],
+      latest: { n1: alphaMine, n2: beta },
+    });
+    await act(async () => fileChanged(alphaOutside));
+    await waitFor(() => expect(links.onExternalConflict).toHaveBeenCalled());
+
+    // (Hooks left mounted by earlier tests may write their own notes here, so
+    // the copy is found by its title rather than by call count.)
+    const copyId = links.onExternalConflict.mock.calls[0][0].copyId;
+    const written = writeNote.mock.calls.map((c) => c[0]).find((n) => n.id === copyId);
+    expect(written.title).toMatch(/^Alpha \(conflicted copy \d{4}-\d{2}-\d{2}\)$/);
+    expect(written.content.blocks).toEqual(alphaMine.content.blocks);
+    const { _filePath, ...expectedExternal } = alphaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
+    expect(links.onExternalConflict).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ noteId: "n1", copyId, active: false }),
+    );
+    // Beta is on screen and untouched: no repaint.
+    expect(syncGeneration.current).toBe(generationBefore);
+  });
+
+  it("a save refused because the file changed under it is taken as the outside change: the disk version keeps the name, the local one goes to a copy", async () => {
+    // Regression (2026-09-15, the last-writer race): `write-note` now compares
+    // the file with the bytes last seen and refuses a stale write, handing back
+    // the disk version. The flush routes it through the same conflict path a
+    // watcher-reported change takes.
+    writeNote.mockImplementation(async (note) => {
+      if (/conflicted copy/.test(note.title))
+        return { filePath: `/notes/${note.title}.md`, title: note.title };
+      return { stale: true, note: alphaOutside };
+    });
+    const { rerender, links, onError } = await renderWith({
+      unflushed: ["n1"],
+      latest: { n1: alphaMine, n2: beta },
+    });
+    vi.useFakeTimers();
+    await act(async () => rerender({ data: { n1: alphaMine, n2: beta } }));
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+
+    // One refused attempt under the note's own name, then the copy.
+    expect(writeNote.mock.calls.map((c) => c[0].title)).toEqual([
+      "Alpha",
+      expect.stringMatching(/^Alpha \(conflicted copy \d{4}-\d{2}-\d{2}\)$/),
+    ]);
+    const { _filePath, ...expectedExternal } = alphaOutside;
+    expect(links.applyExternalNote).toHaveBeenCalledExactlyOnceWith(expectedExternal);
+    expect(links.onExternalConflict).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ noteId: "n1", active: true }),
+    );
+    // Not a failure, and nothing left to retry: no third write follows.
+    expect(onError).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(6000));
+    expect(writeNote).toHaveBeenCalledTimes(2);
   });
 
   it("replaces nothing when the copy cannot be written: the work stays in memory, the disk keeps the outside bytes, and the failure is shown", async () => {

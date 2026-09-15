@@ -163,8 +163,9 @@ Each of these has caused a real bug. Read before touching the editor.
    Never replace the bytes with a timer (macOS sends a second metadata-only `change`
    1.5–2.7s after a write). An echo that escapes re-parses the file with fresh block IDs, every
    block remounts, the caret jumps to the top and the unsaved keystroke is lost. The rules for a
-   real outside change (never silently overwritten; a conflicted copy when edits are pending)
-   are in the UI rule. Reproduce
+   real outside change (never silently overwritten; a conflicted copy when edits are pending, on
+   screen or not; a save is refused when the file changed since the app last saw it) are in the
+   UI rule. Reproduce
    desktop-only bugs in the real Electron build (Playwright `_electron`, temp `userData` and
    vault), not jsdom.
 

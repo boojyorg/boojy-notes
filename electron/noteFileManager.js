@@ -401,6 +401,27 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // The note's own file, if it has one (a title or folder change is a rename away from it).
     const existingRelPath = _idIndex[note.id];
     const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
+
+    // A save never lands over bytes the app has not seen (2026-09-15). The
+    // note's file can change under it between the last read or write and this
+    // save: an edit in another app inside the write debounce, or one the
+    // watcher has yet to report (it waits for the file to settle for 300 ms).
+    // Written over, the outside edit was lost and the event that followed was
+    // dropped as this save's own echo, with no copy and no toast. So the bytes
+    // on disk are compared with the ones last seen, and a mismatch refuses the
+    // write, moves nothing, and hands the renderer the disk version as the
+    // outside change it is; the renderer keeps both, exactly as it does for a
+    // change the watcher reports first. Reading the file records it as seen,
+    // so the write that follows the conflict copy goes through.
+    const identity = _identity.get(note.id);
+    if (existingPath && identity && fs.existsSync(existingPath)) {
+      const onDisk = fs.readFileSync(existingPath, "utf-8");
+      if (hashOf(onDisk) !== identity.hash) {
+        trace("M", "write-note refused: file changed on disk", existingRelPath);
+        return { stale: true, note: parseNoteFile(existingPath, notesDir) };
+      }
+    }
+
     const targetPath = noteToFilePath(note, notesDir, existingRelPath);
     const traceStart = Date.now();
     trace(

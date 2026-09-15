@@ -233,6 +233,41 @@ describe("write-note — the returned title is the basename on disk", () => {
     content: { title, blocks: [{ id: "b1", type: "p", text }] },
   });
 
+  // A save never lands over bytes the app has not seen (2026-09-15). The
+  // watcher reports an outside write only once the file has settled, so a
+  // save inside that window wrote over it and the event was then dropped as
+  // the save's own echo. The write is refused and the disk version handed
+  // back as the outside change it is; once seen, the next write goes through.
+  it("refuses to write over a file that changed since the app last saw it, and hands back the disk version", () => {
+    const alpha = path.join(notesDir, "Alpha.md");
+    writeNote(note("n-stale", "Alpha", null, "Alpha body."));
+    fs.writeFileSync(alpha, "Alpha body.\nTheirs, from outside.\n", "utf-8");
+
+    const refused = writeNote(note("n-stale", "Alpha", null, "Alpha body. mine"));
+    expect(refused.stale).toBe(true);
+    expect(refused.note.id).toBe("n-stale");
+    expect(refused.note.content.blocks.map((b) => b.text)).toEqual([
+      "Alpha body.\nTheirs, from outside.",
+      "",
+    ]);
+    expect(fs.readFileSync(alpha, "utf-8")).toBe("Alpha body.\nTheirs, from outside.\n");
+
+    // The disk version has been seen now: a write is a write again.
+    const written = writeNote(note("n-stale", "Alpha", null, "Alpha body. mine"));
+    expect(written.stale).toBeUndefined();
+    expect(written.title).toBe("Alpha");
+    expect(fs.readFileSync(alpha, "utf-8")).toBe("Alpha body. mine");
+  });
+
+  it("a rename away from a file that changed since is refused too, and nothing moves", () => {
+    writeNote(note("n-stale-rename", "Plan", null, "Plan body."));
+    fs.writeFileSync(path.join(notesDir, "Plan.md"), "Plan body.\nTheirs.\n", "utf-8");
+    const refused = writeNote(note("n-stale-rename", "Plan renamed", null, "Plan body."));
+    expect(refused.stale).toBe(true);
+    expect(fs.existsSync(path.join(notesDir, "Plan.md"))).toBe(true);
+    expect(fs.existsSync(path.join(notesDir, "Plan renamed.md"))).toBe(false);
+  });
+
   it("suffixes a namesake and keeps that suffix on every later save", () => {
     fs.mkdirSync(path.join(notesDir, "Work"));
     fs.writeFileSync(path.join(notesDir, "Work", "Meeting notes.md"), "theirs", "utf-8");

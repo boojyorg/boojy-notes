@@ -307,9 +307,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         externalIds.current.add(id);
         links.applyExternalNote(disk);
         links.adoptNoteData((prev) => ({ ...prev, [copyId]: copy }));
-        if (syncGeneration) syncGeneration.current++;
+        // The editor repaints, and moves to the copy, only when the note is
+        // the one on screen; a note the user has left keeps its copy as a row.
+        const active = links.activeNoteRef?.current === id;
+        if (syncGeneration && active) syncGeneration.current++;
         ensureFolder(disk.folder);
-        links.onExternalConflict?.({ noteId: id, title: disk.title, copyId, copyTitle });
+        links.onExternalConflict?.({ noteId: id, title: disk.title, copyId, copyTitle, active });
         return true;
       })();
       copyInFlight.current.set(id, run);
@@ -317,6 +320,70 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     },
     // Deps deliberately not exhaustive: refs and stable setters only
     [ensureFolder],
+  );
+
+  // Take the disk's version of a note. The editor repaints from state only
+  // when it is the open note: a repaint while typing in another note would
+  // paint that note's state, which lags the keystrokes still inside the
+  // text-commit debounce, over the live DOM.
+  const applyExternal = useCallback(
+    (external) => {
+      const links = editorLinksRef.current;
+      dirtyNotes.current.delete(external.id);
+      externalIds.current.add(external.id);
+      links.applyExternalNote(external);
+      if (syncGeneration && links.activeNoteRef.current === external.id) syncGeneration.current++;
+      ensureFolder(external.folder);
+    },
+    // Deps deliberately not exhaustive: syncGeneration is a stable ref
+    [ensureFolder],
+  );
+
+  // One note as the disk holds it, from wherever the news arrives: the
+  // watcher's `file-changed`, or a save refused because the file had changed
+  // under it (`write-note` compares the bytes with the ones last seen). With
+  // nothing pending here the disk version is taken at once. With edits
+  // pending, on screen or not, both are kept: the outside bytes under the
+  // note's name, the local version as a conflict copy. Until 2026-09-15 the
+  // conflict rule ran for the open note alone, so a note typed in and switched
+  // away from inside the save window took the disk version and its pending
+  // keystrokes were discarded with no copy. Resolves once the copy is written
+  // (or was not needed), so a flush can wait on it.
+  const takeOutsideVersion = useCallback(
+    (external) => {
+      const links = editorLinksRef.current;
+      // The latest local version, pending text included, is what the disk is
+      // compared against and what a conflict copy must hold.
+      const local =
+        links?.latestNoteDataRef?.current?.[external.id] ?? noteDataRef.current[external.id];
+      const same = !!local && persistedEquals(local, external);
+      const pending =
+        !!local &&
+        !local._draft &&
+        (dirtyNotes.current.has(external.id) || !!links?.unflushedNotes?.current?.has(external.id));
+      trace(
+        "outside version",
+        external.id,
+        JSON.stringify(external.title),
+        same ? "SAME (ignored)" : pending ? "CONFLICT → keep both" : "DIFFERS → apply",
+        "memBlocks",
+        local?.content?.blocks?.length ?? "none",
+        "diskBlocks",
+        external.content?.blocks?.length ?? 0,
+      );
+      if (same) return Promise.resolve(false);
+      if (pending && links?.applyExternalNote && links?.adoptNoteData) {
+        // Dropped now, not after the copy is written: a debounced flush firing
+        // during that write would otherwise put the local bytes over the
+        // outside edit. A failed copy puts it back, conflicted, so every later
+        // flush writes it as the copy and never under its own name.
+        dirtyNotes.current.delete(external.id);
+        return keepBothVersions(external, local);
+      }
+      applyExternal(external);
+      return Promise.resolve(false);
+    },
+    [applyExternal, keepBothVersions],
   );
 
   // ─── Flush writes to disk ───
@@ -357,6 +424,15 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             const t0 = performance.now();
             trace("write start", noteId, "blocks", note.content?.blocks?.length ?? 0);
             const written = await api.writeNote(note);
+            if (written?.stale) {
+              // The file changed under the note since the app last saw it, so
+              // nothing was written. The disk version is the outside change
+              // it is; the note stays dirty until its copy is written.
+              trace("write refused", noteId, "file changed on disk");
+              const { _filePath, ...external } = written.note;
+              await takeOutsideVersion(external);
+              continue;
+            }
             trace(
               "write done",
               noteId,
@@ -434,7 +510,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       }
       // Deps deliberately not exhaustive: onError is not stable
     },
-    [keepBothVersions],
+    [keepBothVersions, takeOutsideVersion],
   );
 
   const flushRef = useRef(flush);
@@ -444,55 +520,11 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   useEffect(() => {
     if (!isElectron) return;
 
-    // Take the disk's version of a note. The editor repaints from state only
-    // when it is the open note: a repaint while typing in another note would
-    // paint that note's state, which lags the keystrokes still inside the
-    // text-commit debounce, over the live DOM.
-    const applyExternal = (external) => {
-      const links = editorLinksRef.current;
-      dirtyNotes.current.delete(external.id);
-      externalIds.current.add(external.id);
-      links.applyExternalNote(external);
-      if (syncGeneration && links.activeNoteRef.current === external.id) syncGeneration.current++;
-      ensureFolder(external.folder);
-    };
-
     const unsubChange = window.electronAPI.onFileChanged((note) => {
       if (!note?.id) return;
       // Strip internal _filePath from the note before setting state
       const { _filePath, ...external } = note;
-      const links = editorLinksRef.current;
-      // The latest local version, pending text included, is what the disk is
-      // compared against and what a conflict copy must hold.
-      const local =
-        links?.latestNoteDataRef?.current?.[external.id] ?? noteDataRef.current[external.id];
-      const same = !!local && persistedEquals(local, external);
-      const isActive = !!links?.activeNoteRef && links.activeNoteRef.current === external.id;
-      const pending =
-        !!local &&
-        !local._draft &&
-        (dirtyNotes.current.has(external.id) || !!links?.unflushedNotes?.current?.has(external.id));
-      trace(
-        "file-changed recv",
-        external.id,
-        JSON.stringify(external.title),
-        same ? "SAME (ignored)" : isActive && pending ? "CONFLICT → keep both" : "DIFFERS → apply",
-        "memBlocks",
-        local?.content?.blocks?.length ?? "none",
-        "diskBlocks",
-        external.content?.blocks?.length ?? 0,
-      );
-      if (same) return;
-      if (isActive && pending && links?.applyExternalNote && links?.adoptNoteData) {
-        // Dropped now, not after the copy is written: a debounced flush firing
-        // during that write would otherwise put the local bytes over the
-        // outside edit. A failed copy puts it back, conflicted, so every later
-        // flush writes it as the copy and never under its own name.
-        dirtyNotes.current.delete(external.id);
-        keepBothVersions(external, local);
-        return;
-      }
-      applyExternal(external);
+      takeOutsideVersion(external);
     });
 
     // A note renamed or moved outside the app is the same note under a new
