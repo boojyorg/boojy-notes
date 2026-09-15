@@ -184,7 +184,7 @@ describe("EditableBlock", () => {
       expect(marker).toHaveAttribute("data-marker", kind);
       if (kind === "hollow") {
         expect(marker.style.background).toBe("transparent");
-        expect(marker.style.border).toBe("1.5px solid rgb(238, 238, 238)");
+        expect(marker.style.border).toBe("1.25px solid rgb(238, 238, 238)");
       } else {
         expect(marker.style.border).toBe("");
       }

@@ -1352,7 +1352,7 @@ sync-generation bump and lets the block paint itself.**
   level, which Tyr dislikes. `TEXT.primary` in both themes and never the accent: the marker is
   typography, the checkbox is a control, and the small rings need the full ink to hold on the
   dark sheet (secondary and muted were shown and declined). The pair is drawn as boxes
-  (`bulletMarkerStyle` in `EditableBlock`: a 6px dot, a 7px ring with a 1.5px stroke and a
+  (`bulletMarkerStyle` in `EditableBlock`: a 6px dot, a 7px ring with a 1.25px stroke and a
   transparent centre, both centred ~13px into the line box so a wrapped item keeps its marker
   on the first line), never as the `●`/`○` glyphs, which differ in size and weight between
   fonts and platforms and were a 7px-font `●` before this. Presentation only: the file's

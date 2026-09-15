@@ -74,7 +74,7 @@ const INDENT_PX = 24;
  */
 const BULLET_DOT = 6;
 const BULLET_RING = 7;
-const BULLET_RING_STROKE = 1.5;
+const BULLET_RING_STROKE = 1.25;
 const BULLET_LINE_CENTRE = 13;
 
 function bulletMarkerStyle(hollow, ink) {
