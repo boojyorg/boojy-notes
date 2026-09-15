@@ -66,6 +66,24 @@ describe("inlineMarkdownToHtml", () => {
     expect(result).toContain("wikilink-broken");
   });
 
+  it("judges broken by the note a heading, block or folder-path target names", () => {
+    // The set holds `folder/title` beside the title (noteLinkKeys).
+    const titles = new Set(["beta", "gamma", "work/gamma"]);
+    const broken = (md) => inlineMarkdownToHtml(md, titles).includes("wikilink-broken");
+    expect(broken("[[Beta#Intro]]")).toBe(false);
+    expect(broken("[[Beta#^ref]]")).toBe(false);
+    expect(broken("[[Work/Gamma.md]]")).toBe(false);
+    expect(broken("[[work/Gamma#Plan]]")).toBe(false);
+    expect(broken("[[Beta#Intro|alias]]")).toBe(false);
+    // A heading of the note the link sits in names no other note.
+    expect(broken("[[#Intro]]")).toBe(false);
+    // An explicit path is the path: Beta exists, but not in Work.
+    expect(broken("[[Work/Beta]]")).toBe(true);
+    expect(broken("[[Delta#Intro]]")).toBe(true);
+    // The target attribute still carries the whole target, as written.
+    expect(inlineMarkdownToHtml("[[Beta#Intro]]", titles)).toContain('data-target="Beta#Intro"');
+  });
+
   it("converts markdown links", () => {
     const result = inlineMarkdownToHtml("[Click](https://example.com)");
     expect(result).toContain('href="https://example.com"');

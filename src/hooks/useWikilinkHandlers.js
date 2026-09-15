@@ -1,4 +1,11 @@
 import { useCallback, useMemo, useRef } from "react";
+import {
+  noteLinkKeys,
+  parseWikilinkTarget,
+  resolveWikilink,
+  unresolvedWikilinkMessage,
+  wikilinkMayCreate,
+} from "../utils/wikilinkTarget";
 
 /**
  * Wikilink wiring for the editor:
@@ -14,6 +21,15 @@ import { useCallback, useMemo, useRef } from "react";
  * 2026-09-09 (`wikilink.spec.ts`), and the block now paints itself from the
  * keystroke ref like every other programmatic change (the UI rule, "One
  * owner for note state").
+ *
+ * A click resolves the *note* a target names (`utils/wikilinkTarget`), so
+ * `[[Beta#Intro]]` and `[[Work/Gamma]]` open Beta and the Gamma in Work (an
+ * explicit path is the path, never a namesake elsewhere); the heading or
+ * block is not jumped to. Creating a note on click is kept for a plain name no
+ * note has. A target of any other form that resolves to nothing creates
+ * nothing and says so: before this the whole target was matched against
+ * titles, failed, and `createNote` wrote `Beta#Intro.md` or `Work_Gamma.md`
+ * into the vault root (2026-09-15, on a copy of Tyr's Obsidian vault).
  */
 export function useWikilinkHandlers({
   noteData,
@@ -27,19 +43,19 @@ export function useWikilinkHandlers({
   commitNoteData,
   focusBlockId,
   focusCursorPos,
+  showToast,
 }) {
-  // Note title set for broken wikilink detection
+  // Note title set for broken wikilink detection (its only consumer is
+  // inlineMarkdownToHtml's `has`)
   const lastTitlesKey = useRef("");
   const noteTitlesKey = useMemo(() => {
     if (textOnlyEdit.current) {
       textOnlyEdit.current = false;
       return lastTitlesKey.current;
     }
-    const key = Object.values(noteData)
-      .map((n) => (n.title || "").trim().toLowerCase())
-      .filter(Boolean)
-      .sort()
-      .join("\0");
+    // Titles and `folder/title`s alike, so the renderer judges an explicit
+    // path by the path (utils/wikilinkTarget).
+    const key = Object.values(noteData).flatMap(noteLinkKeys).sort().join("\0");
     lastTitlesKey.current = key;
     return key;
   }, [noteData]);
@@ -47,18 +63,17 @@ export function useWikilinkHandlers({
 
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
-    (targetTitle) => {
-      const lc = targetTitle.trim().toLowerCase();
-      const found = Object.entries(noteDataRef.current).find(
-        ([, n]) => (n.title || "").toLowerCase() === lc,
-      );
-      if (found) {
-        openNote(found[0]);
-      } else {
-        createNote(null, targetTitle);
+    (target) => {
+      const id = resolveWikilink(target, noteDataRef.current);
+      if (id) {
+        openNote(id);
+        return;
       }
+      const parsed = parseWikilinkTarget(target);
+      if (wikilinkMayCreate(parsed)) createNote(null, parsed.name);
+      else showToast?.(unresolvedWikilinkMessage(parsed), "info");
     },
-    [openNote, createNote, noteDataRef],
+    [openNote, createNote, noteDataRef, showToast],
   );
 
   // Wikilink autocomplete select handler

@@ -273,11 +273,11 @@ the 2026-09-10 code inspection and sample probes, not a full desktop interaction
 the relevant read, edit and save journeys before choosing a fix; missing support is distinct
 from a correctness defect. Existing preservation blockers retain their status under Data safety.
 **Two-way use with Obsidian is not yet a general guarantee** (assessed 2026-09-15 on a copy of
-Tyr's vault, six findings reproduced in the real app, three of them since fixed): a note's
-*text* survives switching apps, but a click on a link the app cannot resolve writes a file, a
-rename leaves dangling references, and the first save reformats most tables (all under Data
-safety). Until those close, treat the promise as "the bytes it understands are safe and the
-rest is preserved", not "switch freely".
+Tyr's vault, six findings reproduced in the real app, four of them since fixed): a note's
+*text* survives switching apps, and a click on any link Obsidian writes now opens the note or
+creates nothing, but a rename leaves dangling references and the first save reformats most
+tables (both under Data safety). Until those close, treat the promise as "the bytes it
+understands are safe and the rest is preserved", not "switch freely".
 
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
   of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
@@ -305,12 +305,6 @@ rest is preserved", not "switch freely".
   collapsed, in 82 of 202 notes and 833 rows; cell content and count never changed. And a
   `[[Note|alias]]` inside a cell is rewritten `[[Note | alias]]` (the cell splitter takes the pipe;
   Obsidian documents the `\|` form, which holds).
-- [ ] **Clicking a link the app cannot resolve creates a file** (2026-09-15, reproduced in the real
-  app). `[[Note#Heading]]`, `[[Note#^id]]` and `[[Folder/Note]]` never resolve (`handleWikilinkClick`
-  matches the whole target against titles), and a click calls `createNote`, so `Note#Heading.md` or
-  `Folder_Note.md` lands in the vault root; `#`, `^`, `[` and `]` are not in `sanitizeFilename`, and
-  Obsidian refuses such names. A link the app cannot resolve must not create a file; opening the
-  base note is the smallest step, full target support is the Future item below.
 - [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
   keystroke; a save that lands in a pause after the space writes the non-breaking byte
@@ -518,7 +512,10 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 - **Heading navigation or folding**, without another permanent panel. Deferred again on
   2026-09-12 and deliberately left out of the sidebar rearrangement. No choice yet between a
   heading picker (an `@` mode in the search palette would add no panel) and folding. Consider
-  links to sections within and between notes, including heading targets in wikilinks. Explicit
+  links to sections within and between notes, including heading targets in wikilinks (since
+  2026-09-15 a `[[Note#Heading]]` or `[[Note#^block]]` click opens the note; the jump to the
+  heading or block is what is missing, and a folder-path link to a note that does not exist
+  creates nothing rather than making the folder). Explicit
   heading IDs are a separate syntax decision; target naming and behaviour when headings change
   remain open.
 - **Table alignment controls.** Consider restoring a way to set left, centre and right column

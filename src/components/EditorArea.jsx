@@ -30,6 +30,7 @@ import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
+import { parseWikilinkTarget, wikilinkMayCreate } from "../utils/wikilinkTarget";
 import { panelTransition } from "../tokens/motion";
 
 /*
@@ -505,10 +506,15 @@ const EditorArea = memo(
         });
       } else if (wikilink) {
         const target = wikilink.getAttribute("data-target");
-        const isBroken = wikilink.classList.contains("wikilink-broken");
+        // Create Note only where a click would create one (a plain name); a
+        // broken heading, block or folder-path link gets Open Note, which
+        // says why nothing opens rather than offering a note it won't make.
+        const creatable =
+          wikilink.classList.contains("wikilink-broken") &&
+          wikilinkMayCreate(parseWikilinkTarget(target || ""));
         setLinkCtxMenu({
           position: { top: e.clientY, left: e.clientX },
-          linkType: isBroken ? "wikilink-broken" : "wikilink",
+          linkType: creatable ? "wikilink-broken" : "wikilink",
           url: target,
           element: wikilink,
         });
