@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/utils/platform", () => ({
@@ -23,6 +23,18 @@ vi.mock("../../src/services/apiProvider", () => ({
 }));
 
 import { conflictCopyTitle, persistedEquals, useFileSystem } from "../../src/hooks/useFileSystem";
+
+// Unmount every hook a test rendered before the next test runs. Vitest has no
+// globals here, so Testing Library never unmounts on its own, and a hook left
+// mounted keeps its write debounce and retry timers: a test that marks notes
+// dirty on real timers and never flushes had its write land inside a later
+// test, after that test's mock reset and under that test's mock
+// implementation (seen on CI 2026-09-15: three stray writes in front of the
+// refused-save test's own). The hook clears both timers on unmount.
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 /**
  * The useHistory actions and refs useFileSystem is wired to in BoojyNotes,
