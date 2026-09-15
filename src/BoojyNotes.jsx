@@ -550,6 +550,7 @@ export default function BoojyNotes() {
     commitNoteData,
     focusBlockId,
     focusCursorPos,
+    showToast,
   });
   noteTitleSetRef.current = noteTitleSet;
 

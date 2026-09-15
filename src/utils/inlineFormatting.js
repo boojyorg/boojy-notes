@@ -2,6 +2,7 @@
 // Stores formatting as markdown tokens in block.text, renders as HTML via innerHTML.
 
 import { CARET_ANCHOR_CLASS } from "./domHelpers";
+import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -83,16 +84,23 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // 7. Highlight (==text==)
   s = s.replace(/==(.+?)==/g, "<mark>$1</mark>");
 
-  // 8. Wikilinks [[Target]] or [[Target|Display]]
+  // 8. Wikilinks [[Target]] or [[Target|Display]]. Broken means the *note* the
+  // target names is not in the vault: `[[Beta#Intro]]` names Beta, and
+  // `[[Work/Gamma]]` the Gamma in Work and no other (utils/wikilinkTarget, the
+  // same reading the click resolves by; the set holds `folder/title` keys
+  // too); `[[#Intro]]` names the note it sits in.
   const escAttr = (v) => v.replace(/"/g, "&quot;");
+  const brokenClass = (target) => {
+    if (!noteTitles) return "";
+    const key = wikilinkKey(parseWikilinkTarget(target));
+    return key && !noteTitles.has(key) ? " wikilink-broken" : "";
+  };
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
-    const broken =
-      noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    const broken = brokenClass(target);
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${display}</span>`;
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
-    const broken =
-      noteTitles && !noteTitles.has(target.trim().toLowerCase()) ? " wikilink-broken" : "";
+    const broken = brokenClass(target);
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${target}</span>`;
   });
 

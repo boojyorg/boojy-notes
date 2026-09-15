@@ -872,6 +872,27 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   the title in the real app.
 - Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
   typing at the end of bold text extends it, as in every editor.
+- **A wikilink click opens the note its target names, and creates one only for a plain name**
+  (2026-09-15, `utils/wikilinkTarget.ts`, the one reading of a target for the click, the
+  right-click menu and the renderer's broken mark alike). Obsidian writes `[[Note#Heading]]`,
+  `[[Note#^block]]` and `[[Folder/Note]]` (with or without `.md`); the part before the first `#`
+  names the note, in the folder its path gives when it gives one, and that note is what opens.
+  An explicit path is the path: only the note at `Work/Gamma` answers `[[Work/Gamma]]`, never a
+  Gamma elsewhere, so a stale path is drawn broken and a click says so rather than silently
+  opening a namesake (the title set holds `folder/title` keys beside titles, `noteLinkKeys`, so
+  the renderer and the click read alike). The heading or block is ignored (jumping to it is the Future
+  item in the backlog), and `[[#Heading]]` names the note it sits in, so it is never broken and a
+  click on it only says it can't be followed. A target that resolves to nothing creates a note
+  only when it is a plain name, the ordinary "link first, write later" case; a heading, block or
+  folder-path target creates nothing, an info toast names the missing note, the link's bytes stay
+  as written, and its right-click menu offers Open Note rather than Create Note. Before this the
+  whole target was matched against titles, every one of the three forms failed, and
+  `createNote` wrote `Beta#Intro.md` or `Work_Gamma.md` into the vault root (reproduced
+  2026-09-15 on a copy of Tyr's Obsidian vault; `#` is not in `sanitizeFilename`, and Obsidian
+  refuses both names). A folder-path link to a missing note does not make the folder, by
+  decision: nothing on a click creates a directory. `link-resolution.spec.ts` proves what opens
+  and lists the vault's files after every click in the real app; `wikilinkTarget.test.ts` holds
+  the reading.
 - **A backslash escape is shown as written** (`\*not italic\*` reads exactly so on screen, never
   as italic), the way Obsidian's live preview shows it. The renderer once hid the backslash; the
   DOM walkers read text back verbatim, so the escape was gone on the first edit and the text
