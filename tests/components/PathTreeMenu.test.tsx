@@ -271,6 +271,22 @@ describe("PathTreeMenu", () => {
     expect(container.querySelector('[role="group"]')).toBeNull();
   });
 
+  it("a collapse whose transition never ends still unmounts its rows", () => {
+    vi.useFakeTimers();
+    try {
+      motion(false);
+      const { container, getByText } = mount();
+      fireEvent.click(getByText("Archive"));
+      expect(container.querySelector('[role="group"]')).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(container.querySelector('[role="group"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("an empty folder says so", () => {
     const { container } = mount({ scope: "Personal", initialExpanded: [] });
     expect(rows(container)).toEqual([]);
