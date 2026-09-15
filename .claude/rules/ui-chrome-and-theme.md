@@ -56,8 +56,9 @@ Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on
 
 **The accent is two tokens, and one of them is shared** (2026-09-14, Tyr's ask: the tick box
 the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#8FC1C6` in
-both themes: the checkbox fill, the bullet dot, the quote bar, drop markers, focus rings, the
-selection band, the switch, the confirm button, the info toast, the wordmark's N. It is the
+both themes: the checkbox fill, the quote bar, drop markers, focus rings, the
+selection band, the switch, the confirm button, the info toast, the wordmark's N (the bullet
+marker left this set on 2026-09-16; see "List depth and numbering"). It is the
 misty brand teal (`#A4CACE`, hue 186) two steps deeper, judged live against `#2593A0` (the
 darkest teal that carries a white tick at 3.7:1; Tyr read it as blue and dark: same hue, twice
 the saturation) and `#6FB3BA` (still too far from the brand). At 2.0:1 on white it sits under
@@ -1343,6 +1344,21 @@ sync-generation bump and lets the block paint itself.**
 
 ## List depth and numbering belong to the Markdown
 
+- **Bullet markers alternate by depth, in primary ink** (2026-09-16, judged on a mockup of
+  four levels in both themes against filled-then-hollow-throughout): a filled dot at the top
+  level, a hollow ring one level in, filled again at the third, and so on, so
+  `Check the release list` and `Delete the leftover draft` three levels down read as the same
+  group; with every nested level hollow they blended. No square at any depth, Notion's third
+  level, which Tyr dislikes. `TEXT.primary` in both themes and never the accent: the marker is
+  typography, the checkbox is a control, and the small rings need the full ink to hold on the
+  dark sheet (secondary and muted were shown and declined). The pair is drawn as boxes
+  (`bulletMarkerStyle` in `EditableBlock`: a 6px dot, a 7px ring with a 1.5px stroke and a
+  transparent centre, both centred ~13px into the line box so a wrapped item keeps its marker
+  on the first line), never as the `●`/`○` glyphs, which differ in size and weight between
+  fonts and platforms and were a 7px-font `●` before this. Presentation only: the file's
+  marker character and indentation are untouched, depth is `block.indent` as the reader
+  recovers it, and Enter, Tab and every list rule below are unchanged. Diameter and stroke
+  are to be judged at actual size in the app before they move.
 - `listLayout` in `utils/listStructure.ts` supplies the editor's numbers and the writer's
   prefixes. Sibling counters continue across nested lists and blank rows, restart for a new
   sequence, and respect an imported sequence's starting number. A child starts at its parent's
