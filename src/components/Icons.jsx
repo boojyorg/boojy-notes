@@ -73,9 +73,9 @@ const navBase = { strokeWidth: ICON_STROKE_NAV };
 export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
 
 // ── Tree items ────────────────────────────────────────────────────────────
-export const FolderIcon = ({ open, color, size: sz }) => {
+export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {
   const Cmp = open ? LuFolderOpen : LuFolder;
-  return <Cmp {...base} {...navBase} size={sz || ICON_INLINE} color={color || "currentColor"} />;
+  return <Cmp {...base} {...navBase} size={sz} color={color} />;
 };
 export const FileIcon = ({ active, color, size: sz }) => (
   <LuFileText

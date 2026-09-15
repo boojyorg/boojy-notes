@@ -141,7 +141,16 @@ hardcoded green); swap them for Lucide when touching those files.
   the lights are native and never scale with the page, and macOS 26 draws them 14px on a 23px
   pitch, so they end at 75px). The header is the window
   drag region, and so is the editor's chrome row (the path band, below), in both sidebar states;
-  the wordmark, the chrome buttons and the path itself opt out. The collapsed-state drag strip
+  the wordmark, the chrome buttons and the path itself opt out. **A drag rectangle must never
+  lie under a control that comes before it in the DOM** (2026-09-16): Chromium collects
+  `app-region` rectangles in DOM order and applies them in that order, so a later `drag` unions
+  back over an earlier `no-drag`, and macOS then lays a window-move view over the control (no
+  cursor change, the first press moves the window; Playwright's synthetic clicks never see it).
+  `EditorChrome` renders before the editor, so the path band's draggable part is a strip
+  strictly between the two control groups (`note-path-drag`, the row's padding edges), never
+  the row; a full-row drag rect killed Undo, Redo, the ··· and the collapsed trio whenever a
+  note was open. `chrome-row.spec.ts` asserts that no drag rectangle overlaps a chrome button
+  in either state. The collapsed-state drag strip
   that used to stop above the note label's line box went with the label (2026-09-15). Web and
   non-mac Electron render none of this.
   **In full screen the inset goes too** (2026-09-14): macOS hides the lights, so the wordmark,
@@ -350,9 +359,9 @@ renders it at the head of the left group. Both use the exported `ChromeButton`.
 judged on three rendered mockups). `University / Archive / Todd's Note`: the parent folders and
 then the name, in both sidebar states, at the interface size (14px, weight 400, no letter
 spacing): the name in `TEXT.primary`, the folders one step quieter in `TEXT.secondary`, the
-slashes `TEXT.muted`; nothing bold, nothing in the accent, nothing that looks clickable (folder
-navigation from the row is a separate decision, and the folders are plain spans until it is
-made). A root note shows its name alone, never `Notes /`. The name is still the editable file
+slashes `TEXT.muted`; nothing bold, nothing in the accent, no underline: the folders are
+buttons in the crumb's own ink that lift to `TEXT.primary` on hover (the folder popup, below).
+A root note shows its name alone, never `Notes /`. The name is still the editable file
 label it was in the column: a single click renames in place, Enter goes to the first block, and
 every filename rule and save path is unchanged. **Where it sits is CSS; what it shows is
 JavaScript.** The band is the row's full height and the pane's width, `position: sticky` at the
@@ -379,6 +388,75 @@ of the name at every width (2026-09-07); keep the inset next to the group it mea
 four folders deep, rename by click) and `chrome-row.spec.ts` (the controls at every width, full
 screen, the sidebar yielding) in the real app; `pathCrumbs.test.ts` and `NotePath.test.jsx` hold
 the rule and the spacers.
+
+**A folder crumb opens the sidebar's tree, small, under itself** (2026-09-16, `PathTreeMenu`,
+judged on ASCII mockups against two alternatives: a drill-down menu with a parent row, and
+flyout submenus, both rejected as a second surface grammar). The popup shows the clicked
+folder's *parent's* contents with the clicked folder open and every folder under it on the way
+to the open note open too, so the note's row is there on the sidebar's own active pill with the
+highlight on it; a top-level folder shows the root, and the `…` that stands for hidden folders
+shows the root with the whole path open (`crumbScope` in `utils/pathTree.ts`; the ellipsis is a
+crumb like any other, never a list of ancestors and never an Up control). **A root note carries
+a folder glyph in the crumb's slot** before its name (`note-path-root`: a `ChromeButton` like
+the row's other controls, Lucide Folder at 18px on the navigation stroke in the 32px box with
+the same hover, held in that state while its popup is open through the button's `active` prop;
+the box's own 7px either side of the glyph is its air before the name; a 16px glyph in a 24px
+box was judged too small beside the row's controls, 2026-09-16),
+which opens the root with nothing expanded: the path always has one clickable location
+segment, and at the root the glyph stands in for the folder there is not. Visible at rest,
+never hover-revealed (judged 2026-09-16 against a hover/focus reveal that kept the name still,
+and against revealing it during rename): with the sidebar hidden it is the one way to browse
+from the row, and a control you must hover to find is not one. Hover opens nothing; click only.
+Nested notes carry no glyph, their folders are the route, and there is still no `Notes /`.
+**Three states on one pill** (2026-09-16, Tyr's ask in place of a check): the open note keeps
+the sidebar's active row, `BG.hover` in `TEXT.primary`, for as long as the popup is open; the
+pointer's row takes the same pill, as every hover does, so two pills can show at once exactly
+as in the sidebar; and once a key has moved the highlight the highlighted row also carries a
+2px inset accent ring, what `:focus-visible` means everywhere else, so Enter's target is never
+in doubt once the highlight has left the open note. The ring goes the moment the pointer moves
+over a row; a pointer-opened popup paints none. A single click
+anywhere on a folder row opens or closes it in place, as in the sidebar; a note row opens the
+note through the same `openNote` the sidebar's rows use and closes the popup; the path above
+does not change while you browse, only when a note opens. Expansion starts fresh each time the
+popup opens (nothing persisted, nothing shared with the sidebar's `expanded`). The contents are
+the sidebar's own `folderTree` and root list, unfiltered, in the tree's own order: folders
+first, alphabetical, then notes in the sort preference. It is that tree drawn in the sidebar's
+row grammar, whose constants moved to `constants/layout.js` the same day so the two cannot
+drift: the folder glyph on `SPINE`, labels on `TEXT_COL`, 28px pills at the 12px radius, the
+indent guide from an open folder's glyph through its children, root and scope notes text-only.
+The surface is every menu's (elevated ground, divider border, `theme.modalShadow`, 4px inset,
+`useMenuPosition` under the crumb's left edge with the ordinary flip and clamp, the result
+divided by the UI scale before it is written, `cssZoom`, so it lands under the crumb at 120%
+where the pointer menus still drift), **280px wide whatever is open**, so it never breathes as folders toggle, names truncating instead, and at
+most twelve rows tall before it scrolls inside itself; opening scrolls the highlighted row into
+view by the least the list must move (`nearest`), never pinning the note to the top and losing
+the folders above it. Keys are the tree grammar on a document listener (the ContextMenu/VaultMenu
+seam): Up and Down through the visible rows, Right opens a closed folder or steps into an open
+one, Left closes an open folder or steps out to the row's folder, Enter and Space open a note
+or toggle a folder, Home and End, Escape closes with focus back on the crumb. **A press outside
+closes it and is not swallowed** (a document `mousedown` in the capture phase, no backdrop): Undo
+with the popup open undoes, a sidebar row opens, a click in the note places the caret, the
+manner of a macOS transient popover rather than of the ··· and list menus, which keep their
+backdrops because a menu is dismissed on purpose; with a backdrop the first press on any
+top-row button only closed the popup and read as a dead button (found live 2026-09-16). The
+crumb that opened it is left to itself, so its click closes the popup, and another crumb's
+click switches straight to that folder. **While it is open the window's drag regions stand
+down** (`html.popup-open [data-drag-region]` in GlobalStyles, `!important` over the inline
+regions; NotePath toggles the class): a press on a drag region goes to the window-move layer
+and never reaches the page, so a click on the empty top row could not close the popup (found
+live 2026-09-16); the first press now closes it and the next one drags. A folder's children
+open and close through the sidebar's own `Collapsible` (moved to its own file that day), so
+the two trees slide alike. Focus rests on the `role="tree"` (initial focus on the container, so a pointer-opened
+popup paints no ring) inside a **non-modal `role="dialog"`**, and `focusOwner` now counts a
+focused dialog as a menu, so Cmd+N and Cmd+P stay quiet over it. Deliberately absent: hover
+expansion, flyouts, a back or parent row, filtering, and every file action (no rename, move,
+delete or new-folder here: it is for reaching notes, and the sidebar and its menus are for
+organising them). Search and the sidebar reach root notes too, as does the popup from any
+nested note. `breadcrumb-tree.spec.ts`
+proves the scoping, the in-place toggle, the keys and the returned focus, the ellipsis in a
+window at its minimum width, and a keystroke pending when another note is chosen reaching the
+first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` and
+`NotePath.test.jsx` hold the rule, the rows and the crumbs.
 
 ## Sidebar
 

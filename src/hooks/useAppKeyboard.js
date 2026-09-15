@@ -148,7 +148,9 @@ export function focusOwner() {
   if (document.querySelector('[aria-modal="true"]')) return "modal";
   const el = document.activeElement;
   if (!el || el === document.body) return null;
-  if (el.closest('[role="menu"]')) return "modal";
+  // A menu, or a non-modal dialog such as the path's folder popup, owns the
+  // keys while it holds focus; a modal one owns them from the moment it exists.
+  if (el.closest('[role="menu"], [role="dialog"]')) return "modal";
   const tag = el.tagName;
   if ((tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor]")) return "field";
   return null;

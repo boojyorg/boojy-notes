@@ -222,7 +222,9 @@ test("a click on the name still renames the file in place, folders untouched", a
     await waitForFile(h.vault.file("University/Archive/Todd's Plan.md"), (t) => t === "Alpha.\n", {
       label: "renamed file in its folder",
     });
-    expect(h.vault.exists(NOTE)).toBe(false);
+    // The old file goes after the new one is written; under load the unlink
+    // can land a beat later than the write, so wait for it rather than assume.
+    await expect.poll(() => h.vault.exists(NOTE), { timeout: 4000 }).toBe(false);
     // The path still says where it is; the name is the field's, which stays focused.
     expect(await folders(h.page)).toEqual(["University", "Archive"]);
     await expect(title).toBeFocused();

@@ -165,6 +165,10 @@ export function SidebarProvider({ children }) {
       getActiveResult,
       filteredTree,
       fNotes,
+      // The unfiltered tree and root list, for the path's folder popup: it
+      // shows what is there, never what a search left.
+      folderTree,
+      sortedRootNotes,
       folderList,
       sortMode,
       setSortMode,
@@ -185,6 +189,8 @@ export function SidebarProvider({ children }) {
       getActiveResult,
       filteredTree,
       fNotes,
+      folderTree,
+      sortedRootNotes,
       folderList,
       sortMode,
       setSortMode,
