@@ -1,5 +1,5 @@
-// The one teal (2026-09-14). Marks and fills — the checkbox, the bullet dot, the
-// quote bar, drop markers, focus rings, the selection band, switches, buttons,
+// The one teal (2026-09-14). Marks and fills — the checkbox, the quote bar,
+// drop markers, focus rings, the selection band, switches, buttons,
 // the wordmark's N — are the same colour in both themes: the misty brand teal
 // (#A4CACE, hue 186) two steps deeper. Judged live 2026-09-14 against #2593A0
 // (read blue: same hue, twice the saturation) and #6FB3BA (still too far from

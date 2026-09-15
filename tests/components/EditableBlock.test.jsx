@@ -162,13 +162,34 @@ describe("EditableBlock", () => {
     expect(el).toHaveAttribute("data-block-type", `h${level}`);
   });
 
-  it("renders bullet block with marker", () => {
+  it("renders bullet block with a drawn marker in primary ink, not a glyph", () => {
     const block = bullet("item");
     const { container } = renderBlock(block);
     const el = container.querySelector(`[data-block-id="${block.id}"]`);
     expect(el).toBeInTheDocument();
-    // Bullet marker character
-    expect(el.textContent).toContain("\u25CF");
+    const marker = el.querySelector("[data-marker]");
+    expect(marker).toHaveAttribute("data-marker", "filled");
+    expect(marker).toHaveAttribute("aria-hidden", "true");
+    expect(marker.textContent).toBe("");
+    expect(marker.style.background).toBe("rgb(238, 238, 238)");
+    expect(marker.style.borderRadius).toBe("50%");
+  });
+
+  it("alternates filled and hollow markers by nesting depth", () => {
+    const expected = ["filled", "hollow", "filled", "hollow"];
+    expected.forEach((kind, indent) => {
+      const block = { ...bullet(`level ${indent + 1}`), indent };
+      const { container, unmount } = renderBlock(block);
+      const marker = container.querySelector(`[data-block-id="${block.id}"] [data-marker]`);
+      expect(marker).toHaveAttribute("data-marker", kind);
+      if (kind === "hollow") {
+        expect(marker.style.background).toBe("transparent");
+        expect(marker.style.border).toBe("1.25px solid rgb(238, 238, 238)");
+      } else {
+        expect(marker.style.border).toBe("");
+      }
+      unmount();
+    });
   });
 
   it("renders numbered block with index", () => {

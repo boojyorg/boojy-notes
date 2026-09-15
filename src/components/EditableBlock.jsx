@@ -58,6 +58,40 @@ const HEADING_STYLES = {
 
 const INDENT_PX = 24;
 
+/**
+ * Bullet markers alternate by depth: a filled dot at the top level, a hollow
+ * ring one level in, filled again at the third, and so on (2026-09-16, judged
+ * on a mockup against filled-then-hollow-throughout: the filled third level
+ * keeps sibling groups apart without Notion's square). Drawn as boxes rather
+ * than the ● and ○ glyphs, so the pair shares one geometry in every font and
+ * on every platform and scales cleanly under the UI zoom; the ring is 1px
+ * wider because a ring reads optically smaller than a dot of its diameter.
+ * Both centre on the first line's x-height, about 13px into the 25.5px line
+ * box, so a wrapped item keeps its marker on its first line. Primary ink,
+ * never the accent: the marker is typography, the checkbox is a control.
+ * Presentation only: the file's own marker character and indentation are
+ * untouched (`block.marker`, `block.indentStr`).
+ */
+const BULLET_DOT = 6;
+const BULLET_RING = 7;
+const BULLET_RING_STROKE = 1.25;
+const BULLET_LINE_CENTRE = 13;
+
+function bulletMarkerStyle(hollow, ink) {
+  const size = hollow ? BULLET_RING : BULLET_DOT;
+  return {
+    width: size,
+    height: size,
+    marginTop: BULLET_LINE_CENTRE - size / 2,
+    borderRadius: "50%",
+    boxSizing: "border-box",
+    flexShrink: 0,
+    userSelect: "none",
+    background: hollow ? "transparent" : ink,
+    border: hollow ? `${BULLET_RING_STROKE}px solid ${ink}` : undefined,
+  };
+}
+
 const EditableBlock = memo(
   function EditableBlock({
     block,
@@ -388,6 +422,8 @@ const EditableBlock = memo(
     }
 
     if (block.type === "bullet") {
+      const depth = block.indent || 0;
+      const hollow = depth % 2 === 1;
       return (
         <div
           data-block-id={block.id}
@@ -401,22 +437,16 @@ const EditableBlock = memo(
             padding: "2px 0",
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: 1.7,
-            paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
+            paddingLeft: depth * INDENT_PX || undefined,
           }}
         >
           <span
             contentEditable="false"
             suppressContentEditableWarning
-            style={{
-              color: accentColor,
-              marginTop: 6.5,
-              flexShrink: 0,
-              fontSize: 7,
-              userSelect: "none",
-            }}
-          >
-            {"\u25CF"}
-          </span>
+            aria-hidden="true"
+            data-marker={hollow ? "hollow" : "filled"}
+            style={bulletMarkerStyle(hollow, TEXT.primary)}
+          />
           <span
             ref={elRef}
             role="textbox"
