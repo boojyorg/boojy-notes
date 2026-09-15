@@ -1114,6 +1114,20 @@ root is the app's, made through state; Chromium never mutates across roots.**
   a paste across blocks is the owned replacement; a link needs one text block. Don't add an
   `execCommand`, `surroundContents` or `insertNode` on a selection whose scope has not been
   checked.
+- **Bold and italic on a selection are structural wraps, like code, strike and highlight**
+  (2026-09-16, `toggleWrappingTag` with `STRONG` / `EM` in `useInlineFormatting`), never
+  `execCommand("bold")`. The command decides its direction from the *computed* style, so in a
+  heading (already 600–700) or a quote (already italic) it removed the format instead, leaving
+  a `font-weight: normal` span that the walker reads as plain text: the heading's word went
+  lighter on screen and the file never got its `**`. A wrap that reaches into an existing run
+  of the same format dissolves the partial clone it drags along, so there is never a
+  `<strong>` inside a `<strong>`. A collapsed caret keeps `execCommand`: the pending style it
+  sets for the next keystroke has no structural equivalent, and in a heading that path still
+  misfires (residue, rare). Bold inside a heading is one step heavier than the heading in
+  `GlobalStyles` (800 in H1 and H6, 700 in H2–H5); the browser's own `bolder` would jump to
+  900. The strike line is the text's own colour, not the accent (the same day).
+  `heading-bold.spec.ts` proves the wrap, the file's bytes, the weight and the second press in
+  the real app.
 - **A block that owns its own field owns its edits.** A selection inside a table cell, a
   callout or a code block's textarea is that block's; the editor's key, paste, cut and
   re-read paths keep out (a block with no registered element is never read back into

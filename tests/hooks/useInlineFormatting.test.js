@@ -69,12 +69,14 @@ describe("useInlineFormatting", () => {
     expect(typeof result.current.getLinkContext).toBe("function");
   });
 
-  it("applyFormat calls document.execCommand for bold", () => {
+  // Bold and italic on a selection are structural wraps, never execCommand:
+  // the command reads the computed style to pick its direction, so inside a
+  // heading it removed bold instead (2026-09-16).
+  it("applyFormat wraps a selection in <strong> without execCommand, and keeps the toolbar", () => {
     const setToolbarState = vi.fn();
     const { deps, editorEl } = setup({ setToolbarState });
     document.body.appendChild(editorEl);
 
-    // Add text and create a selection so applyFormat doesn't bail
     const textNode = document.createTextNode("hello");
     editorEl.appendChild(textNode);
     const range = document.createRange();
@@ -82,7 +84,6 @@ describe("useInlineFormatting", () => {
     window.getSelection().removeAllRanges();
     window.getSelection().addRange(range);
 
-    // Define execCommand on document if it doesn't exist (jsdom)
     const origExec = document.execCommand;
     document.execCommand = vi.fn(() => true);
 
@@ -92,7 +93,9 @@ describe("useInlineFormatting", () => {
       result.current.applyFormat("bold");
     });
 
-    expect(document.execCommand).toHaveBeenCalledWith("bold");
+    expect(document.execCommand).not.toHaveBeenCalled();
+    expect(editorEl.innerHTML).toBe("<strong>hello</strong>");
+    expect(window.getSelection().toString()).toBe("hello");
     // The toolbar is kept and refreshed (a fresh object at the same position), never cleared.
     expect(setToolbarState).toHaveBeenCalledWith(expect.any(Function));
     expect(setToolbarState).not.toHaveBeenCalledWith(null);
@@ -101,11 +104,18 @@ describe("useInlineFormatting", () => {
     expect(refresh(pos)).toEqual(pos);
     expect(refresh(pos)).not.toBe(pos);
     expect(refresh(null)).toBeNull();
+
+    // A second press on the same selection unwraps it.
+    act(() => {
+      result.current.applyFormat("bold");
+    });
+    expect(editorEl.innerHTML).toBe("hello");
+
     document.execCommand = origExec;
     document.body.removeChild(editorEl);
   });
 
-  it("applyFormat calls document.execCommand for italic", () => {
+  it("applyFormat wraps a selection in <em> without execCommand", () => {
     const setToolbarState = vi.fn();
     const { deps, editorEl } = setup({ setToolbarState });
     document.body.appendChild(editorEl);
@@ -126,9 +136,64 @@ describe("useInlineFormatting", () => {
       result.current.applyFormat("italic");
     });
 
-    expect(document.execCommand).toHaveBeenCalledWith("italic");
+    expect(document.execCommand).not.toHaveBeenCalled();
+    expect(editorEl.innerHTML).toBe("<em>hello</em>");
     expect(setToolbarState).not.toHaveBeenCalledWith(null);
     document.execCommand = origExec;
+    document.body.removeChild(editorEl);
+  });
+
+  it("applyFormat on a collapsed caret still uses execCommand for the pending style", () => {
+    const { deps, editorEl } = setup();
+    document.body.appendChild(editorEl);
+
+    const textNode = document.createTextNode("hello");
+    editorEl.appendChild(textNode);
+    const range = document.createRange();
+    range.setStart(textNode, 2);
+    range.collapse(true);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+
+    const origExec = document.execCommand;
+    document.execCommand = vi.fn(() => true);
+
+    const { result } = renderHook(() => useInlineFormatting(deps));
+    act(() => {
+      result.current.applyFormat("bold");
+    });
+    expect(document.execCommand).toHaveBeenCalledWith("bold");
+    expect(editorEl.innerHTML).toBe("hello");
+
+    document.execCommand = origExec;
+    document.body.removeChild(editorEl);
+  });
+
+  it("a wrap that reaches into an existing run of the same format leaves one element, not a nest", () => {
+    const { deps, editorEl } = setup();
+    document.body.appendChild(editorEl);
+
+    // "one <strong>two</strong>" with "one tw" selected: the extracted range
+    // carries a partial clone of the strong.
+    editorEl.appendChild(document.createTextNode("one "));
+    const strong = document.createElement("strong");
+    strong.appendChild(document.createTextNode("two"));
+    editorEl.appendChild(strong);
+    const range = document.createRange();
+    range.setStart(editorEl.firstChild, 0);
+    range.setEnd(strong.firstChild, 2);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const { result } = renderHook(() => useInlineFormatting(deps));
+    act(() => {
+      result.current.applyFormat("bold");
+    });
+
+    expect(editorEl.querySelectorAll("strong strong")).toHaveLength(0);
+    expect(editorEl.innerHTML).toBe("<strong>one tw</strong><strong>o</strong>");
+
     document.body.removeChild(editorEl);
   });
 
