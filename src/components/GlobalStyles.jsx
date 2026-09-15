@@ -146,6 +146,11 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.primary};
           opacity: 1;
         }
+        /* A window drag region takes the press before the page sees it, so
+           while the path's folder popup is open every drag region stands down
+           and a press on the empty top row closes the popup instead (2026-09-16).
+           !important, because the regions are set inline. */
+        html.popup-open [data-drag-region] { -webkit-app-region: no-drag !important; }
         input::placeholder { color: ${theme.TEXT.muted}; }
         /* The app font on the body too, so a surface portalled to it (the
            table's cell menu) inherits Inter rather than the browser's serif

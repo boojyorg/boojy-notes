@@ -155,8 +155,10 @@ test("a very long name yields to the controls rather than covering them", async 
     await expect
       .poll(async () => (await titleBox(h.page)).right)
       .toBeLessThanOrEqual(more!.x - PATH_AIR + SUBPIXEL);
-    // Truncated, not wrapped: one line box, the height of the label's row.
-    expect((await titleBox(h.page)).height).toBeLessThan(30);
+    // Truncated, not wrapped: the name's own box is one line (the path's box
+    // is the chrome button's 32px for a root note, since 2026-09-16).
+    const name = await h.page.getByRole("textbox", { name: "Note title" }).boundingBox();
+    expect(name!.height).toBeLessThan(30);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -250,6 +252,74 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
 
     await setWidth(h, 1200);
     await expect.poll(sidebarWidth).toBe(380);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("no window-drag rectangle lies under a chrome button, in either sidebar state", async () => {
+  test.skip(process.platform !== "darwin", "drag regions are macOS's");
+  const h = await launchApp({ "University/Archive/Todd's Note.md": "Alpha.\n" });
+  try {
+    await h.page.locator('[role="treeitem"]').filter({ hasText: "University" }).click();
+    await h.page.locator('[role="treeitem"]').filter({ hasText: "Archive" }).click();
+    await h.openNote("Todd's Note");
+    // Chromium applies app-region rectangles in DOM order, a later `drag`
+    // unioning back over an earlier `no-drag`. A button inside or after the
+    // drag element (the sidebar header's own wordmark and toggle) is
+    // subtracted correctly; one that comes before it (the editor's chrome,
+    // rendered ahead of the sidebar and the editor) is overridden, so no drag
+    // rectangle may overlap a button that precedes it.
+    const check = async (state: string) => {
+      const overlaps = await h.page.evaluate(() => {
+        const rect = (el: Element) => el.getBoundingClientRect();
+        const drags = [...document.querySelectorAll<HTMLElement>('[style*="app-region: drag"]')];
+        const buttons = [...document.querySelectorAll<HTMLElement>("button[title]")].filter(
+          (b) => !b.closest("[inert]") && rect(b).width > 0,
+        );
+        const hits: string[] = [];
+        for (const d of drags) {
+          const r = rect(d);
+          if (r.width === 0 || r.right < 0) continue;
+          for (const b of buttons) {
+            const q = rect(b);
+            const precedes = d.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING;
+            if (
+              precedes &&
+              q.left < r.right &&
+              q.right > r.left &&
+              q.top < r.bottom &&
+              q.bottom > r.top
+            )
+              hits.push(`${d.dataset.testid ?? d.className} over ${b.title}`);
+          }
+        }
+        return { drags: drags.length, hits };
+      });
+      expect(overlaps.drags, `${state}: drag rectangles present`).toBeGreaterThan(0);
+      expect(overlaps.hits, state).toEqual([]);
+    };
+    await check("expanded");
+    // While the path's popup is open every drag region stands down, so a
+    // press on the empty top row reaches the page and closes the popup.
+    const regionModes = () =>
+      h.page.evaluate(() =>
+        [...document.querySelectorAll("[data-drag-region]")].map((el) =>
+          getComputedStyle(el).getPropertyValue("app-region"),
+        ),
+      );
+    expect(await regionModes()).toEqual(["drag", "drag"]);
+    await h.page.getByTestId("note-path-folder").filter({ hasText: "Archive" }).click();
+    await h.page.getByTestId("path-tree").waitFor();
+    expect(await regionModes()).toEqual(["no-drag", "no-drag"]);
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.getByTestId("path-tree")).toHaveCount(0);
+    expect(await regionModes()).toEqual(["drag", "drag"]);
+    await h.page.locator("[title='Hide sidebar']:not([inert] *)").click();
+    await h.page.locator("[title='Show sidebar']").waitFor();
+    await settled(h.page);
+    await check("collapsed");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

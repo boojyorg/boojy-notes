@@ -213,5 +213,15 @@ describe("key ownership", () => {
     document.body.innerHTML = "";
     mount('<button role="treeitem">row</button>', "button");
     expect(focusOwner()).toBeNull();
+    document.body.innerHTML = "";
+    // A non-modal dialog (the path's folder popup) owns the keys while it
+    // holds focus, and not when focus is elsewhere.
+    mount(
+      '<div role="dialog"><div role="tree" tabindex="-1"></div></div><button>out</button>',
+      '[role="tree"]',
+    );
+    expect(focusOwner()).toBe("modal");
+    document.querySelector("button").focus();
+    expect(focusOwner()).toBeNull();
   });
 });

@@ -673,6 +673,8 @@ const EditorArea = memo(
             collapsed={!sidebarVisible}
             fullScreen={fullScreen}
             bg={editorBg}
+            activeNote={activeNote}
+            onOpenNote={openNoteProp}
           >
             {titleField}
           </NotePath>

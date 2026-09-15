@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -22,62 +22,25 @@ import {
   trafficLightsShown,
 } from "./EditorChrome";
 import VaultMenu from "./VaultMenu";
+import Collapsible from "./Collapsible";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
 import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
+import {
+  ACTION_RADIUS,
+  ROW_INSET,
+  SPINE,
+  SPINE_ICON,
+  TEXT_COL,
+  TREE_INDENT,
+  TREE_ROW_GAP,
+  TREE_ROW_H,
+} from "../constants/layout";
 
 const hBg = (el, c) => {
   el.style.background = c;
 };
-
-/** Duration of the folder expand/collapse slide. */
-const FOLDER_ANIM_MS = 160;
-
-// Animated disclosure for folder children. The grid 0fr→1fr trick animates to
-// auto height with no measuring. Children MUST unmount once the collapse
-// finishes (not merely clip): useSidebarDrag hit-tests every [data-folder-path]
-// row by rect, and clipped-but-mounted rows would swallow drops meant for the
-// visible rows they overlap. Expand mounts at 0fr and flips to 1fr on the next
-// frames so the first open animates too. Reduced-motion users skip the
-// animation entirely (mount/unmount is instant, as before the animation).
-function Collapsible({ open, children }) {
-  const reduceMotion =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const [mounted, setMounted] = useState(open);
-  const [grown, setGrown] = useState(open);
-  const rafRef = useRef(null);
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = requestAnimationFrame(() => setGrown(true));
-      });
-    } else {
-      setGrown(false);
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [open]);
-  if (reduceMotion) return open ? children : null;
-  if (!mounted && !open) return null;
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateRows: grown ? "1fr" : "0fr",
-        transition: `grid-template-rows ${FOLDER_ANIM_MS}ms ease`,
-      }}
-      onTransitionEnd={(e) => {
-        // Guard on target: a child row's own background/color transition
-        // bubbling up must not unmount the subtree mid-collapse.
-        if (!open && e.target === e.currentTarget) setMounted(false);
-      }}
-    >
-      <div style={{ overflow: "hidden", minHeight: 0 }}>{children}</div>
-    </div>
-  );
-}
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -89,23 +52,13 @@ const HEADER_RIGHT_INSET = 6;
 const HEADER_NUDGE = 4;
 
 // ── Desktop alignment system: one spine, one text column ────────────────────
-// Two columns replace the previous six left edges: everything structural
-// (wordmark, action icons, section headers, folder icons) sits on SPINE; every
-// label (action labels, folder names, root note titles) sits on TEXT_COL. Root
-// notes carry no glyph, so a 22px empty gutter keeps their titles aligned with
-// folder names at the same navigation tier.
-/** Structural spine: left edge of icons/headers, matches HEADER_LEFT_INSET. */
-const SPINE = 12;
-/** Label column: where every text label in the panel starts. */
-const TEXT_COL = 34;
-/** Rows are inset this much from both sidebar edges so hover pills breathe. */
-const ROW_INSET = 4;
-/** Tree pills keep the 4px left inset but run only this far short of the
- *  scrollbar gutter on the right (judged live 2026-08-23). Pairs with the
- *  .sidebar-scroll thumb override in GlobalStyles.jsx. */
+// The row grammar (SPINE, TEXT_COL, the row height and pill radius) lives in
+// constants/layout.js since 2026-09-16, shared with the path's folder popup so
+// the popup is this tree drawn small. Rows are inset from both sidebar edges
+// so hover pills breathe; tree pills keep the 4px left inset but run only
+// ROW_INSET_RIGHT short of the scrollbar gutter on the right (judged live
+// 2026-08-23). Pairs with the .sidebar-scroll thumb override in GlobalStyles.jsx.
 const ROW_INSET_RIGHT = 2;
-/** Folder-row glyph box on the spine (16px list tier). */
-const SPINE_ICON = 16;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 
@@ -113,12 +66,9 @@ const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
 // neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
 // 28px with a 2px rhythm gap; the vault header is the same height.
-const ACTION_RADIUS = 12;
 /** The labelled New note row: a touch taller than a tree row, as the one
  *  action among a list of names. */
 const ACTION_ROW_H = 32;
-const TREE_ROW_H = 28;
-const TREE_ROW_GAP = 2;
 // ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
 // just below the note row and grows rightward into the editor, its left edge
 // slightly left of the ··· button.
@@ -455,7 +405,7 @@ const Sidebar = memo(function Sidebar({
           // The removed FileIcon's width + gap is folded into the left padding
           // so titles keep their column under the folder names; the chevron
           // removal took its allowance back out of both row kinds.
-          padding: `12px 16px 12px ${7 + depth * 20 + 19 + 5}px`,
+          padding: `12px 16px 12px ${7 + depth * TREE_INDENT + 19 + 5}px`,
           boxShadow: "none",
         }
       : {
@@ -467,7 +417,7 @@ const Sidebar = memo(function Sidebar({
           boxSizing: "border-box",
           background: act || sel || menuOpen ? BG.hover : "transparent",
           borderRadius: ACTION_RADIUS,
-          padding: `0 8px 0 ${TEXT_COL - ROW_INSET + depth * 20}px`,
+          padding: `0 8px 0 ${TEXT_COL - ROW_INSET + depth * TREE_INDENT}px`,
         };
     return (
       <button
@@ -652,7 +602,7 @@ const Sidebar = memo(function Sidebar({
             ...(isMobile
               ? {
                   width: "100%",
-                  padding: `12px 16px 12px ${10 + depth * 20}px`,
+                  padding: `12px 16px 12px ${10 + depth * TREE_INDENT}px`,
                 }
               : {
                   width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
@@ -660,7 +610,7 @@ const Sidebar = memo(function Sidebar({
                   marginBottom: TREE_ROW_GAP,
                   height: TREE_ROW_H,
                   boxSizing: "border-box",
-                  padding: `0 8px 0 ${SPINE - ROW_INSET + depth * 20}px`,
+                  padding: `0 8px 0 ${SPINE - ROW_INSET + depth * TREE_INDENT}px`,
                   borderRadius: ACTION_RADIUS,
                 }),
             background: "none",
@@ -757,7 +707,7 @@ const Sidebar = memo(function Sidebar({
                     position: "absolute",
                     top: 0,
                     bottom: TREE_ROW_GAP,
-                    left: SPINE + SPINE_ICON / 2 + depth * 20,
+                    left: SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
                     width: 1,
                     background: BG.divider,
                     pointerEvents: "none",
@@ -904,6 +854,7 @@ const Sidebar = memo(function Sidebar({
           out so they stay clickable. */}
       {!isMobile && (
         <div
+          data-drag-region=""
           inert={hiddenControls}
           style={{
             display: "flex",

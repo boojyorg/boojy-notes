@@ -121,14 +121,19 @@ export function ChromeButton({
   ariaLabel,
   disabled,
   keepSelection,
+  // Held in the hover state (surface and primary ink) while whatever it opened
+  // is open, so the pointer leaving for the popup does not drop it.
+  active,
   children,
   style,
+  ...rest
 }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   return (
     <button
       type="button"
+      {...rest}
       onClick={onClick}
       disabled={disabled || undefined}
       // A press on a history button must not take the editor's selection with
@@ -141,7 +146,7 @@ export function ChromeButton({
       style={{
         width: CHROME_BTN,
         height: CHROME_BTN,
-        background: "none",
+        background: active ? BG.surface : "none",
         border: "none",
         borderRadius: 6,
         cursor: disabled ? "default" : "pointer",
@@ -149,7 +154,7 @@ export function ChromeButton({
         alignItems: "center",
         justifyContent: "center",
         padding: 0,
-        color: TEXT.muted,
+        color: active ? TEXT.primary : TEXT.muted,
         // Disabled reads as inactive ink, never as a second colour: the glyph
         // is the same one, just further back.
         opacity: disabled ? 0.4 : 1,
@@ -165,7 +170,7 @@ export function ChromeButton({
         e.currentTarget.style.color = TEXT.primary;
       }}
       onMouseLeave={(e) => {
-        if (disabled) return;
+        if (disabled || active) return;
         e.currentTarget.style.background = "transparent";
         e.currentTarget.style.color = TEXT.muted;
       }}

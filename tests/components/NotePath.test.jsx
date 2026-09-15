@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/hooks/useTheme", () => ({
@@ -13,6 +13,24 @@ vi.mock("../../src/hooks/useTheme", () => ({
   }),
 }));
 vi.mock("../../src/utils/platform", () => ({ isElectronMac: false, isMac: true }));
+
+vi.mock("../../src/components/PathTreeMenu", () => ({
+  default: ({ scope, initialExpanded, activeNote, onOpen, onClose }) => (
+    <div
+      data-testid="path-tree-stub"
+      data-scope={scope}
+      data-expanded={initialExpanded.join(",")}
+      data-active={activeNote ?? ""}
+    >
+      <button type="button" onClick={() => onOpen("other")}>
+        open other
+      </button>
+      <button type="button" onClick={onClose}>
+        close
+      </button>
+    </div>
+  ),
+}));
 
 import NotePath from "../../src/components/NotePath.jsx";
 import { CHROME_PATH_RIGHT_INSET, chromePathInset } from "../../src/components/EditorChrome.jsx";
@@ -155,5 +173,118 @@ describe("NotePath", () => {
     const path = container.querySelector("[data-testid='note-path']");
     const wrapper = path.lastElementChild;
     expect(wrapper.style.minWidth).toBe(`${"Untitled".length * 8}px`);
+  });
+
+  describe("the folder popup", () => {
+    const stub = (c) => c.querySelector("[data-testid='path-tree-stub']");
+
+    it("is closed at rest and the crumbs are buttons that say so", () => {
+      const { container } = mount(["University", "Archive"]);
+      expect(stub(container)).toBeNull();
+      const crumbs = container.querySelectorAll("button[data-testid='note-path-folder']");
+      expect(crumbs.length).toBe(2);
+      expect(crumbs[1].getAttribute("aria-expanded")).toBe("false");
+      expect(crumbs[1].getAttribute("aria-haspopup")).toBe("dialog");
+    });
+
+    it("a folder crumb opens its parent's contents with the path below it expanded", () => {
+      const { container } = mount(["University", "Archive"], "Todd's Note", { activeNote: "todd" });
+      const crumbs = container.querySelectorAll("[data-testid='note-path-folder']");
+      fireEvent.click(crumbs[1]);
+      const s = stub(container);
+      expect(s.dataset.scope).toBe("University");
+      expect(s.dataset.expanded).toBe("University/Archive");
+      expect(s.dataset.active).toBe("todd");
+      expect(crumbs[1].getAttribute("aria-expanded")).toBe("true");
+      expect(crumbs[0].getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("the open crumb's click closes the popup; another crumb's switches to it", () => {
+      const { container } = mount(["University", "Archive"]);
+      const crumbs = container.querySelectorAll("[data-testid='note-path-folder']");
+      fireEvent.click(crumbs[1]);
+      expect(stub(container).dataset.scope).toBe("University");
+      fireEvent.click(crumbs[0]);
+      expect(stub(container).dataset.scope).toBe("");
+      fireEvent.click(crumbs[0]);
+      expect(stub(container)).toBeNull();
+    });
+
+    it("a top-level crumb opens the root, itself expanded", () => {
+      const { container } = mount(["University", "Archive"]);
+      fireEvent.click(container.querySelector("[data-testid='note-path-folder']"));
+      expect(stub(container).dataset.scope).toBe("");
+      expect(stub(container).dataset.expanded).toBe("University,University/Archive");
+    });
+
+    it("the ellipsis opens the root with the whole path expanded", () => {
+      const { container } = mount(["University", "Archive"]);
+      resize(255);
+      const dots = container.querySelector("button[data-testid='note-path-ellipsis']");
+      expect(dots.getAttribute("aria-label")).toBe("Hidden folders");
+      fireEvent.click(dots);
+      expect(stub(container).dataset.scope).toBe("");
+      expect(stub(container).dataset.expanded).toBe("University,University/Archive");
+    });
+
+    it("opening a note hands the id up, and closing unmounts the popup", () => {
+      const onOpenNote = vi.fn();
+      const { container, getByText } = mount(["University", "Archive"], "Todd's Note", {
+        onOpenNote,
+      });
+      fireEvent.click(container.querySelector("[data-testid='note-path-folder']"));
+      fireEvent.click(getByText("open other"));
+      expect(onOpenNote).toHaveBeenCalledWith("other");
+      fireEvent.click(getByText("close"));
+      expect(stub(container)).toBeNull();
+    });
+
+    it("a root note carries the folder glyph, which opens the root with nothing expanded", () => {
+      const { container } = mount([], "Ideas", { activeNote: "ideas" });
+      const glyph = container.querySelector("button[data-testid='note-path-root']");
+      expect(glyph).toBeTruthy();
+      expect(glyph.getAttribute("aria-label")).toBe("Browse notes");
+      expect(glyph.getAttribute("aria-haspopup")).toBe("dialog");
+      expect(glyph.getAttribute("aria-expanded")).toBe("false");
+      expect(glyph.querySelector("svg")).toBeTruthy();
+      // One of the row's chrome buttons: the 32px box, muted at rest.
+      expect(glyph.style.width).toBe("32px");
+      expect(glyph.style.height).toBe("32px");
+      expect(glyph.style.color).toBe("rgb(122, 115, 108)");
+      // Before the name, after nothing else: it stands in the crumb's slot.
+      const field = container.querySelector("[role='textbox']");
+      expect(glyph.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(container.textContent).not.toContain("Notes");
+      fireEvent.click(glyph);
+      expect(stub(container).dataset.scope).toBe("");
+      expect(stub(container).dataset.expanded).toBe("");
+      expect(stub(container).dataset.active).toBe("ideas");
+      expect(glyph.getAttribute("aria-expanded")).toBe("true");
+      // Held in its hover state while open.
+      expect(glyph.style.color).toBe("rgb(20, 17, 15)");
+      expect(glyph.style.background).toBe("rgb(244, 244, 245)");
+      fireEvent.click(glyph);
+      expect(stub(container)).toBeNull();
+    });
+
+    it("the window's drag regions stand down while the popup is open", () => {
+      const { container, getByText } = mount(["University", "Archive"]);
+      expect(document.documentElement.classList.contains("popup-open")).toBe(false);
+      fireEvent.click(container.querySelector("[data-testid='note-path-folder']"));
+      expect(document.documentElement.classList.contains("popup-open")).toBe(true);
+      fireEvent.click(getByText("close"));
+      expect(document.documentElement.classList.contains("popup-open")).toBe(false);
+    });
+
+    it("a nested note carries no glyph: its folders are the route", () => {
+      const { container } = mount(["University"]);
+      expect(container.querySelector("[data-testid='note-path-root']")).toBeNull();
+    });
+
+    it("the name is not a crumb: no button wraps the title field", () => {
+      const { getByRole } = mount(["University"]);
+      const field = getByRole("textbox", { name: "Note title" });
+      expect(field.closest("button")).toBeNull();
+    });
   });
 });

@@ -1,12 +1,21 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { isElectronMac } from "../utils/platform";
 import { panelTransition } from "../tokens/motion";
 import { pickCrumbForm } from "../utils/pathCrumbs";
+import { crumbScope } from "../utils/pathTree";
 import { cssZoom } from "../utils/domHelpers";
-import { CHROME_TOP, CHROME_BTN, CHROME_PATH_RIGHT_INSET, chromePathInset } from "./EditorChrome";
+import {
+  CHROME_TOP,
+  CHROME_BTN,
+  CHROME_PATH_RIGHT_INSET,
+  ChromeButton,
+  chromePathInset,
+} from "./EditorChrome";
+import PathTreeMenu from "./PathTreeMenu";
+import { FolderIcon } from "./Icons";
 
 /*
  * The note's path, centred in the editor's chrome row (2026-09-15).
@@ -15,8 +24,23 @@ import { CHROME_TOP, CHROME_BTN, CHROME_PATH_RIGHT_INSET, chromePathInset } from
  * which is the same editable file label it was when it sat in the column, at
  * interface size (14px, regular weight) and in the theme's primary ink, with
  * the folders one step quieter and the slashes muted. A root note shows its
- * name alone; there is no `Notes /` in front of it. Nothing here looks
- * clickable: folder navigation from the row is a separate decision.
+ * name alone; there is no `Notes /` in front of it, and no control of its own.
+ *
+ * Each folder crumb, and the `…` that stands for hidden ones, is a button
+ * (2026-09-16): it opens PathTreeMenu under itself, the sidebar's tree drawn
+ * small and scoped to that folder's parent, with the path down to the open
+ * note expanded (`crumbScope`). The `…` opens the root the same way. The name
+ * is not part of that: a single click on it still renames the file. Browsing
+ * changes nothing here; only opening a note does, and then the path is the
+ * new note's.
+ *
+ * The path always carries one clickable location segment. A root note has no
+ * folder to click, so a small folder glyph stands in the crumb's slot before
+ * its name (`note-path-root`, muted at rest as the Notes row's glyphs are)
+ * and opens the root's contents with nothing expanded. Visible at rest, not
+ * hover-revealed: with the sidebar hidden it is the one way to browse from
+ * the row, and a control you must hover to find is not one (the Notes row's
+ * own lesson, 2026-09-12). Still no `Notes /` label.
  *
  * Where it sits is CSS, and only what it shows is JavaScript:
  *
@@ -25,6 +49,17 @@ import { CHROME_TOP, CHROME_BTN, CHROME_PATH_RIGHT_INSET, chromePathInset } from
  *   the editor's ground for that reason; at rest it is invisible). Its side
  *   padding keeps `PATH_AIR` clear of the controls: the whole left group,
  *   whichever state the sidebar is in, and the ··· on the right.
+ *
+ *   On macOS the row is what the window is dragged by, and the draggable part
+ *   is a strip that lies strictly between the two control groups (the row's
+ *   padding edges), never the row itself (2026-09-16). Chromium collects
+ *   `app-region` rectangles in DOM order and applies them in that order, a
+ *   later `drag` unioning back over an earlier `no-drag`; the chrome buttons
+ *   are rendered before the editor, so a drag rectangle spanning the whole
+ *   row put a window-move view over every one of them: the cursor never
+ *   changed and the first press moved the window instead. A drag rectangle
+ *   that overlaps no control cannot be overridden into one. The path itself
+ *   sits inside the strip and opts out, as it must: it comes after the strip.
  *
  *   Inside it two spacers share the room. Equal spacers would centre the path
  *   in the band, which is off the pane's centre by half the difference
@@ -54,6 +89,11 @@ const BIAS_SHRINK = 1000;
 
 /** The path's font: interface size, regular weight, no letter spacing. */
 export const PATH_FONT = { fontSize: 14, fontWeight: 400, lineHeight: "20px" };
+/** The root glyph is a chrome button like the row's others (judged live 2026-09-16:
+ *  an 18px glyph in the 32px box, same hover), so its 7px of box either side of
+ *  the glyph is most of its air before the name; the gap adds a touch more. */
+const ROOT_GLYPH_GAP = 2;
+const ROOT_GLYPH_W = CHROME_BTN + ROOT_GLYPH_GAP;
 
 /**
  * Measure the band and the twin and pick the form. Runs on mount, whenever
@@ -74,18 +114,23 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
       const spans = twin.children;
       const w = (i) => spans[i].getBoundingClientRect().width;
       const n = parents.length;
+      const zoom = cssZoom(band);
+      const nameW = w(n + 2);
+      // A root note's glyph sits in front of the name and takes its room; a
+      // style value, so scaled up to the measured pixels it is compared with.
+      const glyphW = n === 0 ? ROOT_GLYPH_W * zoom : 0;
       const widths = {
         parents: Array.from({ length: n }, (_, i) => w(i)),
         sep: w(n),
         ellipsis: w(n + 1),
-        name: w(n + 2),
+        name: nameW + glyphW,
       };
       const available = band.getBoundingClientRect().width;
       const form = pickCrumbForm(widths, available);
       // The empty field is as wide as its placeholder, so `Untitled` is
       // centred like a name. Measured under the UI scale, written as a style:
       // divided by the zoom, as every measured distance is (domHelpers).
-      const placeholderWidth = name ? 0 : Math.ceil(widths.name / cssZoom(band));
+      const placeholderWidth = name ? 0 : Math.ceil(nameW / zoom);
       setFit((prev) =>
         prev.form.keep === form.keep &&
         prev.form.ellipsis === form.ellipsis &&
@@ -117,14 +162,55 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {boolean} props.collapsed whether the sidebar is hidden
  * @param {boolean} props.fullScreen macOS full screen (no traffic lights)
  * @param {string} props.bg the editor's ground, painted so the note scrolls under the row
+ * @param {string | null} [props.activeNote] the open note's id, marked in the popup
+ * @param {(id: string) => void} [props.onOpenNote] opens a note chosen in the popup
  * @param {import("react").ReactNode} props.children the title field
  */
-export default function NotePath({ parents, name, collapsed, fullScreen, bg, children }) {
+export default function NotePath({
+  parents,
+  name,
+  collapsed,
+  fullScreen,
+  bg,
+  activeNote = null,
+  onOpenNote,
+  children,
+}) {
   const { theme } = useTheme();
   const { TEXT } = theme;
   const bandRef = useRef(null);
   const twinRef = useRef(null);
   const { form, placeholderWidth } = useCrumbFit(bandRef, twinRef, parents, name);
+
+  // The folder popup: which crumb opened it (its index in `parents`, -1 for
+  // the ellipsis, and the element itself), what it shows, and where it hangs.
+  // The open crumb's click closes it; another crumb's switches to that folder.
+  const [menu, setMenu] = useState(null);
+  const openMenu = useCallback(
+    (index, el) => {
+      setMenu((prev) => {
+        if (prev?.index === index) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          index,
+          opener: el,
+          ...crumbScope(parents, index),
+          anchor: { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
+        };
+      });
+    },
+    [parents],
+  );
+  const closeMenu = useCallback(() => setMenu(null), []);
+  // While the popup is open the window's drag regions stand down (GlobalStyles:
+  // `html.popup-open [data-drag-region]`), because a press on a drag region
+  // goes to the window-move layer and never reaches the page, so a click on
+  // the empty top row could not close the popup (found live 2026-09-16). The
+  // first press closes; the next drags.
+  useEffect(() => {
+    document.documentElement.classList.toggle("popup-open", menu !== null);
+    return () => document.documentElement.classList.remove("popup-open");
+  }, [menu]);
 
   const padLeft = chromePathInset(collapsed, fullScreen);
   const padRight = CHROME_PATH_RIGHT_INSET;
@@ -143,7 +229,65 @@ export default function NotePath({ parents, name, collapsed, fullScreen, bg, chi
       /
     </span>
   );
-  const crumbStyle = { color: TEXT.secondary, flexShrink: 0, whiteSpace: "nowrap" };
+  // A crumb is a button in the crumb's own ink: no box, no underline, the
+  // label lifts to primary on hover and while its popup is open.
+  const crumbStyle = (open) => ({
+    color: open ? TEXT.primary : TEXT.secondary,
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    background: "none",
+    border: "none",
+    padding: 0,
+    margin: 0,
+    font: "inherit",
+    lineHeight: "inherit",
+    cursor: "pointer",
+    borderRadius: 4,
+    transition: "color 0.12s",
+  });
+  const lift = (e) => {
+    e.currentTarget.style.color = TEXT.primary;
+  };
+  const rest = (open) => (e) => {
+    e.currentTarget.style.color = open ? TEXT.primary : TEXT.secondary;
+  };
+  // The root glyph: the crumb slot's stand-in when there is no folder, one of
+  // the row's own controls (ChromeButton: 32px box, 18px navigation glyph,
+  // the same hover), held in its hover state while its popup is open.
+  const rootOpen = menu?.index === -1;
+  const rootGlyph = (
+    <ChromeButton
+      data-testid="note-path-root"
+      ariaLabel="Browse notes"
+      aria-haspopup="dialog"
+      aria-expanded={rootOpen}
+      active={rootOpen}
+      onClick={(e) => openMenu(-1, e.currentTarget)}
+      style={{ flexShrink: 0, marginRight: ROOT_GLYPH_GAP }}
+    >
+      <FolderIcon size={18} />
+    </ChromeButton>
+  );
+
+  const crumb = (index, label, testid, ariaLabel) => {
+    const open = menu?.index === index;
+    return (
+      <button
+        key={testid + index}
+        type="button"
+        data-testid={testid}
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(e) => openMenu(index, e.currentTarget)}
+        onMouseEnter={lift}
+        onMouseLeave={rest(open)}
+        style={crumbStyle(open)}
+      >
+        {label}
+      </button>
+    );
+  };
   const spacer = (basis) => ({
     flexGrow: 1,
     flexShrink: basis > 0 ? BIAS_SHRINK : 0,
@@ -168,11 +312,28 @@ export default function NotePath({ parents, name, collapsed, fullScreen, bg, chi
         paddingRight: padRight,
         background: bg,
         transition: panelTransition("padding-left"),
-        // With no title bar the chrome row is what the window is dragged by;
-        // the path itself opts out so a click on the name still edits it.
-        WebkitAppRegion: isElectronMac ? "drag" : undefined,
       }}
     >
+      {/* The drag strip: the row's height, between the paddings, so it never
+          lies under a control (see the header comment). The path, which
+          opts out, comes after it. */}
+      {isElectronMac && (
+        <div
+          aria-hidden="true"
+          data-testid="note-path-drag"
+          data-drag-region=""
+          className="panel-motion"
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: padLeft,
+            right: padRight,
+            WebkitAppRegion: "drag",
+            transition: panelTransition("left"),
+          }}
+        />
+      )}
       <div
         ref={bandRef}
         style={{
@@ -197,21 +358,13 @@ export default function NotePath({ parents, name, collapsed, fullScreen, bg, chi
             WebkitAppRegion: "no-drag",
           }}
         >
-          {form.ellipsis && (
-            <span data-testid="note-path-ellipsis" style={crumbStyle}>
-              …
-            </span>
-          )}
+          {form.ellipsis && crumb(-1, "…", "note-path-ellipsis", "Hidden folders")}
           {form.ellipsis && sep("sep-ellipsis")}
           {shown.map((folder, i) => {
             const at = parents.length - form.keep + i;
-            return [
-              <span key={`folder-${at}`} style={crumbStyle} data-testid="note-path-folder">
-                {folder}
-              </span>,
-              sep(`sep-${at}`),
-            ];
+            return [crumb(at, folder, "note-path-folder", undefined), sep(`sep-${at}`)];
           })}
+          {parents.length === 0 && rootGlyph}
           <span
             style={{
               display: "flex",
@@ -224,6 +377,17 @@ export default function NotePath({ parents, name, collapsed, fullScreen, bg, chi
           </span>
         </div>
         <div style={spacer(bias)} />
+        {menu && (
+          <PathTreeMenu
+            anchor={menu.anchor}
+            scope={menu.scope}
+            initialExpanded={menu.expanded}
+            activeNote={activeNote}
+            opener={menu.opener}
+            onOpen={(id) => onOpenNote?.(id)}
+            onClose={closeMenu}
+          />
+        )}
         {/* The twin: every crumb at its full width, never shown, only measured. */}
         <div
           ref={twinRef}
