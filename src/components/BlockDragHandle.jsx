@@ -76,10 +76,15 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
     const column = columnRef.current;
     if (!column) return;
 
+    // The frontmatter root is left out: it is the file's head, never lifted
+    // and never dropped past (utils/blockOrder), so it gets no grip and the
+    // block under it is the first there is to reorder.
     const topLevelBlocks = () => {
       const root = editorRef.current;
       if (!root) return [];
-      return Array.from(root.children).filter((el) => el.dataset?.blockId);
+      return Array.from(root.children).filter(
+        (el) => el.dataset?.blockId && el.dataset.blockType !== "frontmatter",
+      );
     };
 
     const locate = (clientY) => {

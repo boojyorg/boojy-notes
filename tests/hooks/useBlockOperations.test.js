@@ -10,6 +10,7 @@ import {
   bullet,
   checkbox as makeCheckbox,
   codeBlock,
+  frontmatter,
   resetBlockCounter,
 } from "../mocks/blocks.js";
 
@@ -369,6 +370,49 @@ describe("useBlockOperations", () => {
       expect(blocks[0]).toMatchObject({ type: "code", text: "a\n", lang: "js" });
       expect(blocks[1]).toMatchObject({ type: "callout", text: "**b**" });
       expect(commitTextChange).toHaveBeenCalledTimes(2);
+    });
+  });
+  /**
+   * Frontmatter is the file's head, not a block of the body: a note's
+   * `---` must stay on line 1 or every reader loses the properties. The
+   * reorder primitive refuses a move that would put anything above it or
+   * lift it, whatever the caller asked (the callers pre-guard so no empty
+   * history step is pushed; this is the net under them).
+   */
+  describe("moveBlock keeps the frontmatter first", () => {
+    it("refuses to move a block above the frontmatter, and refuses to move the frontmatter", () => {
+      const blocks = [frontmatter("title: x"), paragraph("a"), paragraph("b")];
+      const { result, noteId, getNoteData, focusBlockId } = setup(blocks);
+      const before = getNoteData();
+
+      act(() => {
+        result.current.moveBlock(noteId, 1, 0); // a above the frontmatter
+        result.current.moveBlock(noteId, 0, 1); // the frontmatter into the body
+        result.current.moveBlock(noteId, 0, 2);
+      });
+
+      expect(getNoteData()).toBe(before);
+      expect(getNoteData()[noteId].content.blocks.map((b) => b.type)).toEqual([
+        "frontmatter",
+        "p",
+        "p",
+      ]);
+      expect(focusBlockId.current).toBe(null);
+    });
+
+    it("still reorders the body under it", () => {
+      const blocks = [frontmatter("title: x"), paragraph("a"), paragraph("b")];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.moveBlock(noteId, 2, 1);
+      });
+
+      expect(getNoteData()[noteId].content.blocks.map((b) => b.text)).toEqual([
+        "title: x",
+        "b",
+        "a",
+      ]);
     });
   });
 });

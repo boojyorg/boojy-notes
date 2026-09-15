@@ -77,3 +77,7 @@ export function makeNote(id, title = "Untitled", folder = null, blocks = null) {
     },
   };
 }
+
+export function frontmatter(text = "title: x") {
+  return { id: id(), type: "frontmatter", text, meta: {} };
+}

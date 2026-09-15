@@ -273,11 +273,11 @@ the 2026-09-10 code inspection and sample probes, not a full desktop interaction
 the relevant read, edit and save journeys before choosing a fix; missing support is distinct
 from a correctness defect. Existing preservation blockers retain their status under Data safety.
 **Two-way use with Obsidian is not yet a general guarantee** (assessed 2026-09-15 on a copy of
-Tyr's vault, six findings reproduced in the real app): a note's *text* survives switching apps,
-but a block can be moved above its frontmatter, a click on a link the app cannot resolve writes
-a file, a rename leaves dangling references, and the first save reformats most tables (all
-under Data safety). Until those close, treat the promise as "the bytes it understands are safe
-and the rest is preserved", not "switch freely".
+Tyr's vault, six findings reproduced in the real app, three of them since fixed): a note's
+*text* survives switching apps, but a click on a link the app cannot resolve writes a file, a
+rename leaves dangling references, and the first save reformats most tables (all under Data
+safety). Until those close, treat the promise as "the bytes it understands are safe and the
+rest is preserved", not "switch freely".
 
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
   of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
@@ -305,12 +305,6 @@ and the rest is preserved", not "switch freely".
   collapsed, in 82 of 202 notes and 833 rows; cell content and count never changed. And a
   `[[Note|alias]]` inside a cell is rewritten `[[Note | alias]]` (the cell splitter takes the pipe;
   Obsidian documents the `\|` form, which holds).
-- [ ] **A block can be moved above the frontmatter** (2026-09-15, reproduced in the real app).
-  Cmd+Shift+Up on the first paragraph, or a drop at the top, puts it above the `frontmatter` block,
-  which is then written mid-file: `text` / `---` / yaml / `---`, a setext heading and a divider to
-  every reader, paragraphs to this one; the properties are gone. Neither reorder path has a guard
-  (`moveBlock` in `useBlockOperations`, `updateBlockDropTarget` in `useBlockDrag`); the block itself
-  is `contentEditable=false` and unselectable, so it cannot be edited or deleted, only displaced.
 - [ ] **Clicking a link the app cannot resolve creates a file** (2026-09-15, reproduced in the real
   app). `[[Note#Heading]]`, `[[Note#^id]]` and `[[Folder/Note]]` never resolve (`handleWikilinkClick`
   matches the whole target against titles), and a click calls `createNote`, so `Note#Heading.md` or

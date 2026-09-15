@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
+import { reorderFloor } from "../utils/blockOrder";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
@@ -88,13 +89,18 @@ export function useBlockDrag({
     if (!el) return;
 
     // A selection spanning several blocks, one of them the grabbed block, drags
-    // them all — the one multi-block gesture, and it costs no extra UI.
+    // them all — the one multi-block gesture, and it costs no extra UI. A range
+    // that reaches the frontmatter root takes the body alone (Chromium makes
+    // none today: Select All starts in the first paragraph's text, probed
+    // 2026-09-15; the rule holds whatever a range says).
     let draggedIds = [blockId];
     const sel = window.getSelection();
     if (sel.rangeCount && !sel.isCollapsed) {
+      const floor = reorderFloor(blocks);
       const range = sel.getRangeAt(0);
       const multiIds = blocks
-        .filter((b) => {
+        .filter((b, i) => {
+          if (i < floor) return false;
           const bEl = blockRefs.current[b.id];
           return bEl && range.intersectsNode(bEl);
         })
@@ -256,7 +262,8 @@ export function useBlockDrag({
       }
       targetIndex = i + 1;
     }
-    targetIndex = Math.max(0, Math.min(targetIndex, blocks.length));
+    // Never above the frontmatter: the highest position is the gap under it.
+    targetIndex = Math.max(reorderFloor(blocks), Math.min(targetIndex, blocks.length));
 
     // Releasing outside the editor's scroll area (over the sidebar, say) is a
     // cancel, so the marker disappears the moment the pointer crosses out.
@@ -375,7 +382,7 @@ export function useBlockDrag({
     const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     if (!blocks || blocks.length <= 1) return;
     const blockIndex = blocks.findIndex((b) => b.id === blockId);
-    if (blockIndex === -1) return;
+    if (blockIndex < reorderFloor(blocks)) return; // -1, or the frontmatter
     const blockInfo = { blockId, blockIndex };
 
     const bd = blockDrag.current;

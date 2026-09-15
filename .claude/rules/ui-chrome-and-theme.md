@@ -807,6 +807,26 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   of the next block.
 - A multi-block selection containing the grabbed block drags as one run. The sidebar note pill
   is the thing that lifts with `theme.dragShadow`; the block ghost deliberately does not.
+- **Frontmatter is the file's head, not a block of the body** (2026-09-15, reproduced on a copy
+  of Tyr's Obsidian vault). Its `---` must stay on line 1 or every reader, this parser included,
+  takes the properties for a paragraph, a setext heading and a divider; a blank line above it is
+  no frontmatter at all. `reorderFloor` in `utils/blockOrder.ts` is the one rule: with
+  frontmatter first the lowest index a reorder may touch is 1, and both reorder paths read it.
+  `moveBlock` refuses a move from or to index 0 as it refuses an out-of-range one; Cmd+Shift+Up
+  on the first block under the frontmatter is the top boundary and pushes no history step;
+  the grip never lifts the frontmatter, a selection run whose range reaches its root takes the
+  body blocks alone (no gesture makes such a range today: Select All starts in the first
+  paragraph's own text and Shift+Arrow never crosses a root, probed in the real app 2026-09-15;
+  the hook's contract does not lean on that), and the drop target is clamped so the marker's
+  highest position is the gap under the frontmatter; `BlockDragHandle` leaves the frontmatter root out of the
+  blocks it locates, so no grip appears over it and a note of frontmatter plus one block has
+  nothing to reorder. Before this the drag was safe only because the frontmatter root registers
+  no element ref, which the drop loop skipped by accident; the hook's tests now mount it with a
+  rect. Not a reorder and unchanged: the block is `contentEditable=false`, `isEditableBlock`
+  says no, and the cross-block seam refuses a range whose end is not a text block, so it can
+  neither be edited nor deleted. `frontmatter-order.spec.ts` proves the refused move (bytes untouched,
+  Undo still off), an allowed one under it, the drop at the very top and a restart of Boojy
+  Notes in the real app; Obsidian's own reading of the file is not exercised by any test.
 - **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a
   click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
   reading as a document, not a block-management surface.
