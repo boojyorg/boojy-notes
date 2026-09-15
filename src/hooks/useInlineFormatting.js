@@ -18,6 +18,19 @@ export const EMPTY_FORMATS = {
   highlight: false,
 };
 
+/** The first and last non-empty text nodes under `root`, or nulls. */
+function textEdges(root) {
+  let first = null;
+  let last = null;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+    if (!t.length) continue;
+    if (!first) first = t;
+    last = t;
+  }
+  return [first, last];
+}
+
 export function useInlineFormatting({
   blockRefs,
   editorRef,
@@ -126,8 +139,27 @@ export function useInlineFormatting({
           el.appendChild(frag);
           range.insertNode(el);
         }
+        // A selection that reaches into an existing run of the same format
+        // brings a partial clone of it along; one element of the format is
+        // what the wrap means, so any nested copy is dissolved into it.
+        for (const inner of Array.from(el.querySelectorAll(tagName.toLowerCase()))) {
+          while (inner.firstChild) inner.parentNode.insertBefore(inner.firstChild, inner);
+          inner.remove();
+        }
+        // Reselect on text boundaries, as Chromium's own commands do. An
+        // element-boundary range, (em, 0)–(em, 1), is canonicalised against
+        // the empty text node the split leaves beside the element and
+        // collapses to the block's start (probed live 2026-09-16), so the
+        // toolbar read no format and a second press wrapped nothing.
+        el.parentNode?.normalize();
+        const [first, last] = textEdges(el);
         const r = document.createRange();
-        r.selectNodeContents(el);
+        if (first && last) {
+          r.setStart(first, 0);
+          r.setEnd(last, last.length);
+        } else {
+          r.selectNodeContents(el);
+        }
         sel.removeAllRanges();
         sel.addRange(r);
       }
@@ -135,6 +167,16 @@ export function useInlineFormatting({
     [editorRef],
   );
 
+  // Bold and italic wrap the selection structurally, as code, strike and
+  // highlight do, never through execCommand("bold") on a selection
+  // (2026-09-16): the command decides its direction from the computed style,
+  // so inside a heading (already weight 600–700) or a quote (already italic)
+  // it *removed* the format, leaving a `font-weight: normal` span the walker
+  // reads as plain text: the heading's word went lighter on screen and the
+  // file never got its `**`. A collapsed caret keeps execCommand: the pending
+  // style it sets for the next keystroke has no structural equivalent.
+  const toggleBold = useCallback((sel) => toggleWrappingTag(sel, "STRONG"), [toggleWrappingTag]);
+  const toggleItalic = useCallback((sel) => toggleWrappingTag(sel, "EM"), [toggleWrappingTag]);
   const toggleStrikethrough = useCallback(
     (sel) => toggleWrappingTag(sel, "DEL"),
     [toggleWrappingTag],
@@ -218,8 +260,9 @@ export function useInlineFormatting({
       const scope = textBlockScope(range);
       if (!scope) return;
       const run = () => {
-        if (format === "bold") document.execCommand("bold");
-        else if (format === "italic") document.execCommand("italic");
+        if (format === "bold") sel.isCollapsed ? document.execCommand("bold") : toggleBold(sel);
+        else if (format === "italic")
+          sel.isCollapsed ? document.execCommand("italic") : toggleItalic(sel);
         else if (format === "code") toggleInlineCode(sel);
         else if (format === "strikethrough") toggleStrikethrough(sel);
         else if (format === "highlight") toggleHighlight(sel);
@@ -267,6 +310,8 @@ export function useInlineFormatting({
     },
     [
       reReadBlockFromDom,
+      toggleBold,
+      toggleItalic,
       toggleInlineCode,
       toggleStrikethrough,
       toggleHighlight,

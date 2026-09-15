@@ -195,12 +195,20 @@ export default function GlobalStyles() {
         [data-block-id] a:hover .external-link-icon {
           opacity: 0.8;
         }
+        /* The strike is drawn in the text's own colour (2026-09-16, Tyr's ask);
+           it was the accent, which made struck words the one inline format
+           with a colour of its own. */
         [data-block-id] del {
           text-decoration: line-through;
-          text-decoration-color: ${theme.ACCENT.primary};
           text-decoration-thickness: 1.5px;
           color: inherit;
         }
+        /* Bold inside a heading is one step heavier than the heading
+           (2026-09-16). Left to the browser, "bolder" on a 600 or 700 heading
+           jumps to 900, which is a different face rather than an emphasis. */
+        [data-block-type="h1"] strong, [data-block-type="h6"] strong { font-weight: 800; }
+        [data-block-type="h2"] strong, [data-block-type="h3"] strong,
+        [data-block-type="h4"] strong, [data-block-type="h5"] strong { font-weight: 700; }
         [data-block-id] mark {
           background: ${theme.mark.bg};
           color: inherit;
