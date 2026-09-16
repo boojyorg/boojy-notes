@@ -124,10 +124,12 @@ none blocks the release. The shared question comes first because three candidate
   step over, so Backspace under a code block deletes the paragraph into the one above it.
   Extend the same rule once the table has been judged live; one block type at a time was the
   decision.
-- **Note information** at the bottom of the note's ··· menu: "428 words · Edited today at
-  11:37", exact timestamp on demand, counting written content rather than Markdown punctuation.
-  Edited follows the sort's recency rule (rename and move count; opening never does); imports,
-  external changes and appearance changes need the same rule stated once.
+- **Note information** at the bottom of the note's ··· menu. The word count half shipped on
+  2026-09-16 (`428 words`, one muted line under the menu's only rule, counting written content
+  rather than Markdown punctuation; a character count was shown and dropped, since nobody writes
+  a note to a character limit). Still a candidate: "Edited today at 11:37" beside it, exact
+  timestamp on demand. Edited follows the sort's recency rule (rename and move count; opening
+  never does); imports, external changes and appearance changes need the same rule stated once.
 - **Favourites.** Decided in shape (2026-09-12), not scheduled: a note is favourited and
   unfavourited from its own ··· menu; a Favourites section appears with the first favourite and
   disappears when the last is removed; the note keeps its place in its folder, and the section
@@ -239,9 +241,12 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Shift+Arrow at a block edge collapses the selection**, and ArrowUp from the first block
   is a dead key, so the title is unreachable by keyboard (review §1.13).
 - [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
-- [ ] **Block drag on code, callout and image blocks**: the grip shows and drags nothing, and
-  the marker draws through a code block, which the UI rule forbids (review §3.10). The table
-  joined the draggable set on 2026-09-10; the other three have not.
+- [ ] **Block drag on code and callout blocks**: the grip shows and drags nothing, and the
+  marker draws through a code block, which the UI rule forbids (review §3.10). The table joined
+  the draggable set on 2026-09-10, the image and the file attachment on 2026-09-16 (their
+  wrappers now register in the block ref map); code and callout wait on the same judgement as
+  their whole-block selection, because the paste and caret paths take a registered element for
+  one with text to read.
 - [ ] **Image → Replace may keep showing the old image**: the editor's render comparator has no
   `src` or `width` (review §3.8 residue).
 - [ ] **Tag chips harvest `#include` and `color: #fff`** from code blocks and frontmatter
