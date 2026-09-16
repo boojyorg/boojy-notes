@@ -140,7 +140,7 @@ async function launchElectron(userData: string) {
   try {
     await page.waitForLoadState("domcontentloaded");
     // The sidebar renders once the vault has been read.
-    await page.getByRole("button", { name: "New note" }).waitFor();
+    await page.getByRole("button", { name: "New note", exact: true }).waitFor();
   } catch (err) {
     // Don't leave a hidden app process behind when the launch itself failed.
     await app.close().catch(() => {});

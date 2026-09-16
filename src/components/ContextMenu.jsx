@@ -5,7 +5,6 @@ import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
-import { isElectronMac } from "../utils/platform";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -30,7 +29,6 @@ const ContextMenu = memo(function ContextMenu({
   createFolder,
   setRenamingFolder,
   onRenameNote,
-  onRevealFolder,
   selectedNotes,
   selectedCount,
   bulkDeleteNotes,
@@ -196,19 +194,9 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
-            // Folders are directories, so the file manager can show one; the
-            // item is desktop-only because web folders exist only in memory.
-            ...(onRevealFolder
-              ? [
-                  {
-                    label: isElectronMac ? "Reveal in Finder" : "Show in folder",
-                    action: () => {
-                      onRevealFolder(ctxMenu.id);
-                      setCtxMenu(null);
-                    },
-                  },
-                ]
-              : []),
+            // Four items and no rule (2026-09-16, Tyr's call): New note here,
+            // New folder inside, Rename, Delete folder. Reveal in Finder left
+            // the folder menu that day; the vault's ··· still has it.
             {
               label: "Delete folder",
               action: () => {

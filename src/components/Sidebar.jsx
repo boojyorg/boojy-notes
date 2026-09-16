@@ -82,6 +82,9 @@ const ACTION_ROW_H = 32;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
+/** The folder row's two trailing glyph boxes (New note, ···), 20px each, the
+ *  note row's single ··· slot twice over. */
+const FOLDER_ACTIONS_W = 40;
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
@@ -316,6 +319,7 @@ const Sidebar = memo(function Sidebar({
   handleNoteClick,
   clearSelection,
   ctxMenuNoteId,
+  ctxMenuFolderId,
   isMobile,
   // Desktop only: the ··· menu's whole-list action. (Change vault folder is
   // Settings → Storage only, beside the path it changes.)
@@ -587,12 +591,16 @@ const Sidebar = memo(function Sidebar({
     // only programmatic expansion signal (undefined would omit the attribute).
     const isOpen = !!expanded[folderPath];
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
+    // The row that opened the folder menu (··· or right-click) holds its
+    // actions visible until the menu closes, as a note row holds its dots.
+    const folderMenuOpen = ctxMenuFolderId === folderPath;
     return (
       <div key={folderPath}>
         <button
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
+          className="sidebar-folder"
           onClick={(e) => {
             // Desktop double-click renames: the second click is the rename
             // gesture, so it must not toggle again — the first click's toggle
@@ -696,9 +704,66 @@ const Sidebar = memo(function Sidebar({
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                flex: 1,
               }}
             >
               {folder.name}
+            </span>
+          )}
+          {/* Trailing New note and ··· (2026-09-16, ChatGPT's project rows):
+              what a folder does, write here and organise here. Zero-width
+              at rest so a long name truncates against the full row, revealed
+              on row hover or focus exactly as a note row's dots are
+              (.sidebar-folder-actions in GlobalStyles), held open while this
+              row's menu is up. New note makes the note inside this folder;
+              ··· opens the same folder menu as right-click, growing rightward.
+              span+role, tabIndex -1, as the note dots: a real button inside
+              the treeitem button fails axe nested-interactive; the row stays
+              the keyboard path (right-click opens the menu). Clicks stop here
+              so the row does not toggle, and a double-click does not rename. */}
+          {!isMobile && (
+            <span
+              className="sidebar-folder-actions"
+              onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              style={{
+                opacity: folderMenuOpen ? 1 : undefined,
+                width: folderMenuOpen ? FOLDER_ACTIONS_W : undefined,
+              }}
+            >
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="New note here"
+                title="New note here"
+                className="sidebar-folder-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  createNote(folderPath);
+                }}
+              >
+                <NewNoteIcon size={16} />
+              </span>
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="Folder actions"
+                title="Folder actions"
+                className="sidebar-folder-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const btn = e.currentTarget.getBoundingClientRect();
+                  const row = e.currentTarget.closest("[data-folder-path]").getBoundingClientRect();
+                  setCtxMenu({
+                    x: btn.left - NOTE_MENU_SHIFT,
+                    y: row.bottom + NOTE_MENU_GAP,
+                    type: "folder",
+                    id: folderPath,
+                  });
+                }}
+              >
+                <MoreHorizontalIcon size={16} />
+              </span>
             </span>
           )}
         </button>

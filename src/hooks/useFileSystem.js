@@ -756,11 +756,6 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         if (hasNotes) afterNextFlush(run);
         else await run();
       },
-      /** Show the directory in the OS file manager. */
-      reveal: (relPath) => {
-        const dir = notesDirRef.current;
-        if (dir) getAPI().showItemInFolder(`${dir}/${relPath}`);
-      },
     };
   }, [setCustomFolders, afterNextFlush]);
 

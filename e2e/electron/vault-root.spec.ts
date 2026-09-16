@@ -31,7 +31,7 @@ test("a chosen vault that is missing is never recreated; a write says it failed"
     expect(fs.existsSync(h.vault.dir)).toBe(false);
     expect(await sidebarNoteTitles(h.page)).toEqual([]);
 
-    await h.page.getByRole("button", { name: "New note" }).click();
+    await h.page.getByRole("button", { name: "New note", exact: true }).click();
     await expect(h.page.getByText(/Failed to save note to disk/)).toBeVisible({
       timeout: 5_000,
     });

@@ -94,16 +94,26 @@ describe("ContextMenu", () => {
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 
-  it("offers Reveal only when a reveal handler is provided (desktop)", () => {
+  it("the folder menu is exactly four items in order, with no rule (2026-09-16)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
-    const { queryByText, rerender } = render(<ContextMenu {...props} />);
-    expect(queryByText(/Reveal in Finder|Show in folder/)).not.toBeInTheDocument();
+    const { getAllByRole, container } = render(<ContextMenu {...props} />);
+    expect(getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+      "New note here",
+      "New folder inside",
+      "Rename",
+      "Delete folder",
+    ]);
+    expect(container.querySelector("[role='separator'], hr")).toBeNull();
+  });
 
-    const onRevealFolder = vi.fn();
-    rerender(<ContextMenu {...props} onRevealFolder={onRevealFolder} />);
-    fireEvent.click(queryByText(/Reveal in Finder|Show in folder/));
-    expect(onRevealFolder).toHaveBeenCalledWith("f1");
+  it("New note here creates inside the clicked folder", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("New note here"));
+    expect(props.createNote).toHaveBeenCalledWith("Uni/Sem 1");
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 
   it("has no Import item (removed 2026-09-05; files are added in the OS file manager)", () => {

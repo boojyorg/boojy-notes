@@ -761,6 +761,7 @@ export default function BoojyNotes() {
             renameNote={renameNote}
             setCtxMenu={setCtxMenu}
             ctxMenuNoteId={ctxMenu?.type === "note" ? ctxMenu.id : null}
+            ctxMenuFolderId={ctxMenu?.type === "folder" ? ctxMenu.id : null}
             renameFolder={renameFolder}
             createFolder={createFolder}
             createNote={createNote}
@@ -946,7 +947,6 @@ export default function BoojyNotes() {
         createFolder={createFolder}
         setRenamingFolder={setRenamingFolder}
         onRenameNote={startNoteRename}
-        onRevealFolder={folderOps?.reveal}
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}

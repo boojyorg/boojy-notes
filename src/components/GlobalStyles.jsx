@@ -127,6 +127,38 @@ export default function GlobalStyles() {
           opacity: 1;
           color: ${theme.TEXT.primary};
         }
+        /* A folder row's trailing New note and ··· (2026-09-16): the note
+           row's slot grammar, two glyph boxes wide. Zero-width at rest,
+           revealed on row hover or focus; muted, each glyph primary on its
+           own hover. Sidebar.jsx holds the slot open inline while the row's
+           menu is up. */
+        .sidebar-folder-actions {
+          opacity: 0;
+          width: 0;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          flex-shrink: 0;
+          color: ${theme.TEXT.muted};
+          transition: opacity 120ms;
+        }
+        .sidebar-folder:hover .sidebar-folder-actions,
+        .sidebar-folder:focus-visible .sidebar-folder-actions {
+          opacity: 1;
+          width: 40px;
+        }
+        .sidebar-folder-action {
+          width: 20px;
+          height: 24px;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: color 120ms;
+        }
+        .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
         /* The Notes row's three controls (Search, New folder, ···) are
            visible at rest and lift on hover or focus. 0.55 is the quiet ink —
            the faintest composite that clears ~3:1 on the DAY ground (0.4 does

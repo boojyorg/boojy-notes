@@ -581,6 +581,24 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 
 - Desktop note rows carry a trailing ··· that opens the same menu as right-click, growing
   rightward into the editor. Right-click keeps cursor placement.
+- **Desktop folder rows carry a trailing New note and ···, at every depth** (2026-09-16, Tyr's
+  ask, after ChatGPT's project rows; judged on ASCII mockups against a ···-only row, whose
+  two-click note lost). The pair is what a folder *does*: write here, organise here. New note
+  (Lucide SquarePen, 16px) makes the note inside that folder through the same `createNote`
+  the menu's `New note here` calls, and **a note made in a folder opens the folder**
+  (`useNoteCrud`, both routes) so it is seen to arrive; ··· opens the folder's own menu, the
+  right-click one, growing rightward as a note row's does. Same slot grammar as the note dots:
+  zero-width at rest so a long name truncates against the full row (`.sidebar-folder-actions`,
+  40px when revealed, two 20px glyph boxes), revealed on row hover or focus, muted with each
+  glyph primary on its own hover, held open inline while that row's menu is up
+  (`ctxMenuFolderId`); `span role="button"` with `tabIndex={-1}`, the row the keyboard path;
+  clicks stop at the glyph so the row does not toggle and a double-click does not rename. The
+  right edge is shared across depths. **The folder menu is four items and no rule: New note
+  here, New folder inside, Rename, Delete folder** (Tyr's call, the same day). Reveal in Finder
+  left it then, with its `onRevealFolder` prop and the `folderOps.reveal` op; the vault's ···
+  still reveals the vault. Anything more is added when it is actually needed. `folders.spec.ts`
+  proves the note landing in the folder, and in a nested one, the folder opening, and the four
+  items in the real app.
 - **The ··· slot is zero-width at rest** so a long title truncates against the full row width;
   it re-truncates only while the dots are revealed (row hover/focus, or its menu open). The
   width change is instant and only the ink fades; a sliding re-truncation reads worse than a
@@ -724,7 +742,8 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
   the answer; no input sanitises a folder name.
 - **New folder makes the directory at once** (root from the header, `New folder inside` from a
-  folder's menu), opens the parent, and opens the inline rename. The rename input commits once:
+  folder's menu; a folder's *note* comes from the row's New note glyph or its menu's `New note
+  here`, and opens the folder), opens the parent, and opens the inline rename. The rename input commits once:
   Enter unmounts it and the blur that can follow must not rename the moved directory again.
 - **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
   files travel together. Pending edits under the folder are flushed first, or a late write would

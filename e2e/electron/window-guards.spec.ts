@@ -75,7 +75,7 @@ test("closing the window keeps the app running; the watcher stays quiet and acti
     const reopened = h.app.waitForEvent("window");
     await h.app.evaluate(({ app }) => app.emit("activate"));
     const page = await reopened;
-    await page.getByRole("button", { name: "New note" }).waitFor();
+    await page.getByRole("button", { name: "New note", exact: true }).waitFor();
     await expect.poll(() => sidebarNoteTitles(page)).toEqual(["While closed", "Welcome"]);
 
     expect(
