@@ -71,6 +71,49 @@ test("a new folder is a directory at once, can nest, and is still there after a 
   }
 });
 
+test("a folder row's New note makes the note inside that folder and opens the folder; its ··· is the folder menu", async () => {
+  const h = await launchApp({ "Work/Note.md": "Note.\n", "Work/Sub/Deep.md": "Deep.\n" });
+  try {
+    // Collapsed folders, so the arrival has to open one.
+    for (const path of ["Work", "Work/Sub"]) {
+      const row = folderRow(h.page, path);
+      if ((await row.count()) && (await row.getAttribute("aria-expanded")) === "true") {
+        await row.click();
+      }
+    }
+    await expect(folderRow(h.page, "Work")).toHaveAttribute("aria-expanded", "false");
+
+    // The glyphs are hover-revealed; Playwright hovers the row, then clicks.
+    await folderRow(h.page, "Work").hover();
+    await folderRow(h.page, "Work").locator("[title='New note here']").click();
+    await expect(h.page.getByRole("textbox", { name: "Note title" })).toBeFocused();
+    await expect(folderRow(h.page, "Work")).toHaveAttribute("aria-expanded", "true");
+    await expect.poll(() => h.vault.exists("Work/Untitled.md")).toBe(true);
+    expect(h.vault.exists("Untitled.md")).toBe(false);
+
+    // The same pair on a nested folder, into that folder.
+    await folderRow(h.page, "Work/Sub").hover();
+    await folderRow(h.page, "Work/Sub").locator("[title='New note here']").click();
+    await expect(folderRow(h.page, "Work/Sub")).toHaveAttribute("aria-expanded", "true");
+    await expect.poll(() => h.vault.exists("Work/Sub/Untitled.md")).toBe(true);
+
+    // ··· opens the folder's own menu: four items, nothing else.
+    await folderRow(h.page, "Work").hover();
+    await folderRow(h.page, "Work").locator("[title='Folder actions']").click();
+    await expect(h.page.getByRole("menu")).toBeVisible();
+    await expect(h.page.getByRole("menuitem")).toHaveText([
+      "New note here",
+      "New folder inside",
+      "Rename",
+      "Delete folder",
+    ]);
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.getByRole("menu")).toHaveCount(0);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a folder that holds only non-note files, or nothing, still shows as a folder", async () => {
   const h = await launchApp(
     { "Uni/COMP336/Weeks/Week 1.md": "Lecture.\n" },

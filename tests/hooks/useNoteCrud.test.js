@@ -308,7 +308,6 @@ describe("useNoteCrud", () => {
       create: vi.fn(async (rel) => `${rel}-2`),
       rename: vi.fn(async (_old, rel) => rel.replace(/:/g, "_")),
       remove: vi.fn(async () => {}),
-      reveal: vi.fn(),
     });
 
     it("renameFolder asks the disk and remaps expanded with the answered path", async () => {

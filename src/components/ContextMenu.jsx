@@ -5,7 +5,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
-import { isElectronMac } from "../utils/platform";
+import { cssZoom } from "../utils/domHelpers";
 
 const hBg = (el, c) => {
   el.style.background = c;
@@ -30,7 +30,6 @@ const ContextMenu = memo(function ContextMenu({
   createFolder,
   setRenamingFolder,
   onRenameNote,
-  onRevealFolder,
   selectedNotes,
   selectedCount,
   bulkDeleteNotes,
@@ -60,6 +59,13 @@ const ContextMenu = memo(function ContextMenu({
     [ctxMenu],
   );
   const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor, { reflowKey: moveSubmenu });
+  // The UI scale is CSS zoom on <html>: the pointer's clientX/Y and every
+  // measured rect arrive already multiplied by it, and a `top`/`left` written
+  // on this fixed element is multiplied again on paint, so the placement is
+  // divided by the zoom before it becomes a style (2026-09-16; the folder
+  // popup, the grip and the drop marker do the same). Before this the menu
+  // opened 50px under and 60px right of the ··· at 125%.
+  const zoom = cssZoom(document.documentElement);
 
   // Keyboard navigation — hooks must be above early return
   const handleKeyDown = useCallback(
@@ -196,19 +202,9 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
-            // Folders are directories, so the file manager can show one; the
-            // item is desktop-only because web folders exist only in memory.
-            ...(onRevealFolder
-              ? [
-                  {
-                    label: isElectronMac ? "Reveal in Finder" : "Show in folder",
-                    action: () => {
-                      onRevealFolder(ctxMenu.id);
-                      setCtxMenu(null);
-                    },
-                  },
-                ]
-              : []),
+            // Four items and no rule (2026-09-16, Tyr's call): New note here,
+            // New folder inside, Rename, Delete folder. Reveal in Finder left
+            // the folder menu that day; the vault's ··· still has it.
             {
               label: "Delete folder",
               action: () => {
@@ -236,8 +232,8 @@ const ContextMenu = memo(function ContextMenu({
         style={{
           outline: "none",
           position: "fixed",
-          top: pos?.top ?? ctxMenu.y,
-          left: pos?.left ?? ctxMenu.x,
+          top: (pos?.top ?? ctxMenu.y) / zoom,
+          left: (pos?.left ?? ctxMenu.x) / zoom,
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,

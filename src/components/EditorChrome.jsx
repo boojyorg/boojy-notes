@@ -62,7 +62,7 @@ export const CHROME_TOP = 7;
 export const CHROME_BTN = 32;
 /** Between buttons of one group, and between the two groups. A group reads as
  *  a group only if the step out of it is bigger than the step within it. */
-const BTN_GAP = 2;
+export const BTN_GAP = 2;
 const GROUP_GAP = 12;
 /** Air between the path's band and the control groups either side of it. */
 export const PATH_AIR = 12;

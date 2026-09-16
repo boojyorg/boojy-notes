@@ -31,6 +31,9 @@ export function useNoteCrud({
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
+    // A note made inside a folder (the row's New note, or New note here from
+    // its menu) must be seen to arrive: open the folder it lands in.
+    if (folder) setExpanded((prev) => (prev[folder] ? prev : { ...prev, [folder]: true }));
     open(id);
     setTimeout(() => {
       if (titleRef.current) {

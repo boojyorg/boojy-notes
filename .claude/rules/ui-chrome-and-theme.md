@@ -496,14 +496,19 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 ### Alignment and rows
 
 - **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
-  (`wordmark … toggle`), the labelled `New note` action, and the `Notes` row carrying Search,
-  New folder and the ··· menu. Reading down, that is *what this app is*, *make one*, *find and
-  organise what is here*.
-- **The chrome row carries the window's own control and nothing else.** Search left it on
-  2026-09-12 for the Notes row, where it sits at the list tier beside the list's other controls:
-  two rows of 18px glyphs stacked read as two toolbars, which is the same reason New note is not
-  there either. The desktop panel never shows a search field or results; the palette owns them.
-  Cmd+N and Cmd+P are unchanged. The `New Note` and `New Folder` tree rows are mobile-only.
+  (`wordmark … Search, toggle`), the labelled `New note` action, and the `Notes` row carrying
+  New folder and the ··· menu. Reading down, that is *what this app is, and find what is here*,
+  *make one*, *organise what is here*.
+- **The chrome row carries the window's own control and Search, one group** (2026-09-16, Tyr's
+  ask): Search is a `ChromeButton` immediately left of the toggle, the same 32px box, 18px glyph
+  and hover surface, at the chrome row's own within-group gap (`BTN_GAP`, 2, exported from
+  `EditorChrome`), so the two are the neighbours they already are in the collapsed header and
+  Search never changes row when the sidebar hides. Same handler, title, label and Cmd+P. Search
+  had left this row on 2026-09-12 for the Notes row, because two rows of 18px glyphs stacked
+  read as two toolbars; with one glyph beside the toggle and two on the Notes row that was
+  judged acceptable. New note is still not here. The desktop panel never shows a search field
+  or results; the palette owns them. Cmd+N and Cmd+P are unchanged. The `New Note` and
+  `New Folder` tree rows are mobile-only.
 - **New note is the sidebar's one labelled action** (`SidebarNewNote`, 2026-09-12): a full-width
   pill in the tree's own row grammar (`BG.hover`, 12px radius, the 4px inset), 32px tall, 14px
   text, the Lucide SquarePen at 18px on the navigation stroke sitting on `SPINE` with the label on
@@ -527,7 +532,7 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
   vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
 - **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through
-  its children (`SPINE + SPINE_ICON / 2 + depth × 20`). In one mixed tree, root notes have no
+  its children (`TREE_SPINE + SPINE_ICON / 2 + depth × TREE_INDENT`). In one mixed tree, root notes have no
   glyph and sit on the folder-label column, so without the line they read as children of the
   last open folder; the line ending is what says "this folder ends here". No breath before the
   root notes: the row rhythm stays even. Tree rows are 28px with a 2px gap.
@@ -539,22 +544,62 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   with no separator; a scrolled-only hairline is the fix if that reads smudgy. The block paints
   `chromeBg`, the sidebar's own ground, or rows would show through it.
 - **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
-  folder icons; `TEXT_COL` carries every label. Root note rows are text-only, so an empty
-  gutter sits left of their titles. **That gutter is alignment, not a missing icon. Don't fix
-  it.**
+  folder icons; `TEXT_COL` carries every label, with one exception. **A note's title starts
+  where a folder at the same depth puts its glyph** (`SPINE + depth × TREE_INDENT`, the folder
+  row's own padding; 2026-09-16, Tyr's ask, judged on a screenshot of a three-level tree), so
+  notes and folders at one depth share a left edge: root notes are flush with the root folders'
+  glyphs and the `Notes` label, and a folder's notes sit one step in, under its name. Until then
+  a note's title sat on `TEXT_COL` at its depth, level with the *names* of the folders beside
+  it, the text-only row keeping an empty gutter where a glyph would be; read down, that put a
+  folder's notes two steps past the folder and the sibling notes level with a sibling folder's
+  name, so loose notes read as tucked under the last folder. **The indent step is the name's
+  offset from its glyph** (`TREE_INDENT = TEXT_COL − SPINE`, 22, the same day): a child's
+  contents, glyph or text, start exactly under its parent's name. At 20 every nested row sat
+  2px short of it, which the glyph's inner whitespace hid and a note's text gave away (Tyr's
+  screenshot: `Sem 1 26-27 Master` a hair left of `Sem 1 26-27`). Closing the glyph gap to 4
+  instead would have moved every label and read cramped. **The sidebar's column sits 6px
+  further in than the shared spine** (`SIDEBAR_TREE_INSET`, the same day, judged live in 2px
+  steps): New note, the `Notes` label, every row and the indent guides start at `SPINE + 6`
+  (`TREE_SPINE` in `Sidebar.jsx`), with nesting, the glyph-to-name gap, the pills, the row
+  height and the right-side controls unchanged; the wordmark row keeps its own
+  `HEADER_LEFT_INSET`. Never bake the 6 into `SPINE` or `TEXT_COL`: those are the popup's too.
+  The folder popup
+  (`PathTreeMenu`) is deliberately not changed by either rule: its note rows stay on `TEXT_COL`
+  and its column on the bare `SPINE`, so the two trees differ for now; judge the popup live
+  before moving it, and move it by the same expressions if it follows. The row's pill, inset,
+  height and behaviour are untouched; only the text's x moved.
 - Tree rows are pills with neutral `BG.hover` for hover, selection and multi-select alike. The
   active note is primary ink at normal weight; the pill alone carries "active", never bold,
   never accent. Mobile keeps its accent pill and bold title.
 - **Only structure and actions get a glyph.** Note rows carry no file icon. Folders carry only
   the folder icon: no chevron, the whole row toggles, the open-folder glyph plus indented
-  children carry the state, `aria-expanded` is the programmatic signal. Note-row padding still
-  reserves the removed icon's width so titles keep their column under folder names; don't
-  simplify it away. `FileIcon` still ships in search results, which are not tree rows.
+  children carry the state, `aria-expanded` is the programmatic signal. A note row's padding is
+  the folder row's (the alignment bullet above); it reserves no glyph width. `FileIcon` still
+  ships in search results, which are not tree rows.
 
 ### Note rows: trailing ··· and inline rename
 
 - Desktop note rows carry a trailing ··· that opens the same menu as right-click, growing
   rightward into the editor. Right-click keeps cursor placement.
+- **Desktop folder rows carry a trailing New note and ···, at every depth** (2026-09-16, Tyr's
+  ask, after ChatGPT's project rows; judged on ASCII mockups against a ···-only row, whose
+  two-click note lost). The pair is what a folder *does*: write here, organise here. New note
+  (Lucide SquarePen, 16px) makes the note inside that folder through the same `createNote`
+  the menu's `New note here` calls, and **a note made in a folder opens the folder**
+  (`useNoteCrud`, both routes) so it is seen to arrive; ··· opens the folder's own menu, the
+  right-click one, growing rightward as a note row's does. Same slot grammar as the note dots:
+  zero-width at rest so a long name truncates against the full row (`.sidebar-folder-actions`,
+  44px when revealed, two 20px glyph boxes with 4px between them so the pen's ink stands off
+  the dots), revealed on row hover or focus, muted with each
+  glyph primary on its own hover, held open inline while that row's menu is up
+  (`ctxMenuFolderId`); `span role="button"` with `tabIndex={-1}`, the row the keyboard path;
+  clicks stop at the glyph so the row does not toggle and a double-click does not rename. The
+  right edge is shared across depths. **The folder menu is four items and no rule: New note
+  here, New folder inside, Rename, Delete folder** (Tyr's call, the same day). Reveal in Finder
+  left it then, with its `onRevealFolder` prop and the `folderOps.reveal` op; the vault's ···
+  still reveals the vault. Anything more is added when it is actually needed. `folders.spec.ts`
+  proves the note landing in the folder, and in a nested one, the folder opening, and the four
+  items in the real app.
 - **The ··· slot is zero-width at rest** so a long title truncates against the full row width;
   it re-truncates only while the dots are revealed (row hover/focus, or its menu open). The
   width change is instant and only the ink fades; a sliding re-truncation reads worse than a
@@ -586,13 +631,14 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   word `Notes` therefore appears twice in the column, once as the wordmark and once as this
   label; they read at different ranks (artwork against 14px muted text), and that repetition was
   judged and kept.
-- **The row carries Search, New folder and the ··· menu, visible at rest, at the 16px row tier**
+- **The row carries New folder and the ··· menu, visible at rest, at the 16px row tier**
   (`SectionAction`, `.sidebar-section-action`, muted at 0.55 and full on hover or focus, all
-  CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above. They
-  hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
-  always-visible rule): Search is the only route to the palette while the sidebar shows, and a
-  control you must hover to find is not one. **Never a fourth glyph here** — three muted glyphs
-  read as a set, four read as a toolbar. New folder is also the first item of the ··· menu, the
+  CSS; Search was the row's first glyph from 2026-09-12 to 2026-09-16 and is on the window's
+  row now). 16px so they read with the folder glyphs below, not with the 18px chrome row above.
+  They hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
+  always-visible rule): a control you must hover to find is not one. **Never more than three
+  glyphs here** — muted glyphs in threes read as a set, four read as a toolbar. New folder is
+  also the first item of the ··· menu, the
   keyboard path to it. Sort and Reveal in Finder follow (`VaultMenu.tsx`, labelled
   `List options`, keyboard grammar as `ContextMenu`); anything rarer goes there too, never onto
   the row. Not in the menu, by decision: Collapse all folders (folders toggle on click and
@@ -608,8 +654,9 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 
 ## Search is a palette, not a panel
 
-- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the Notes row's Search glyph (the
-  editor header's while the sidebar is away), or a click on an inline `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
+- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the sidebar header's Search button
+  beside the toggle (the editor header's while the sidebar is away), or a click on an inline
+  `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
   2026-09-09; before this both fired and the palette opened over the link popover). Boojy
   Notes has Search, not a command palette: the popup exists only to find and open notes, and
   nothing unrelated goes into it. A
@@ -696,7 +743,8 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
   the answer; no input sanitises a folder name.
 - **New folder makes the directory at once** (root from the header, `New folder inside` from a
-  folder's menu), opens the parent, and opens the inline rename. The rename input commits once:
+  folder's menu; a folder's *note* comes from the row's New note glyph or its menu's `New note
+  here`, and opens the folder), opens the parent, and opens the inline rename. The rename input commits once:
   Enter unmounts it and the blur that can follow must not rename the moved directory again.
 - **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
   files travel together. Pending edits under the folder are flushed first, or a late write would
@@ -804,10 +852,13 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   (`BlockDragHandle`), the drag ghost and the drop marker (`useBlockDrag`) divide every measured
   distance by `cssZoom(el)` (`domHelpers`, `Element.currentCSSZoom`, 1 where unsupported); before
   this the grip drifted down the note by the scale factor at any setting but 100% (3px on the
-  first block, 35px three blocks down at 120%), which Cmd+0 hid. Anything else that writes a
-  measured rect or a `clientX`/`clientY` into a style on a zoomed element (the fixed menus at the
-  pointer, the selection toolbar) is exposed by the same mechanism; not measured and not yet
-  corrected, so judge those at 100% until it is.
+  first block, 35px three blocks down at 120%), which Cmd+0 hid. `ContextMenu` (the note,
+  folder, bulk and header menus, from a row's ··· or a right-click) divides its placement the
+  same way since 2026-09-16 (measured in the real app at 125%: it opened 50px under and 60px
+  right of the folder ···). Anything else that writes a measured rect or a `clientX`/`clientY`
+  into a style on a zoomed element (the link, code block, image and file menus, the table's
+  badge and cell menu, `VaultMenu`, the selection toolbar) is exposed by the same mechanism;
+  not measured and not yet corrected, so judge those at 100% until it is.
 - **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
   on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
   the grip lifts its ink and nothing else: **no hover surface**, so the gutter stays part of

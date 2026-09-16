@@ -18,7 +18,7 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
     await h.openNote("Alpha");
-    const newNote = h.page.getByRole("button", { name: "New note" }).first();
+    const newNote = h.page.getByRole("button", { name: "New note", exact: true }).first();
     const row = h.page.locator("[data-note-id]").first();
     const widths = () =>
       h.page.evaluate(() => {
@@ -56,7 +56,7 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(hidden.transform).not.toBe("none");
 
     // The history pair sits past the trio, one group-gap on, at rest.
-    const trioRight = await h.page.getByTitle("New note").boundingBox();
+    const trioRight = await h.page.getByTitle("New note", { exact: true }).boundingBox();
     const undo = await h.page.getByTitle("Undo").boundingBox();
     expect(undo!.x - (trioRight!.x + trioRight!.width)).toBe(12);
 

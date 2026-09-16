@@ -113,6 +113,13 @@ vi.mock("../../src/context/SidebarContext", () => ({
 
 // ── Import component after mocks ──────────────────────────────────────────────
 import Sidebar from "../../src/components/Sidebar.jsx";
+import {
+  ROW_INSET,
+  SIDEBAR_TREE_INSET,
+  SPINE,
+  TEXT_COL,
+  TREE_INDENT,
+} from "../../src/constants/layout.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const noop = () => {};
@@ -131,6 +138,7 @@ function renderSidebar(overrides = {}) {
     openNote: overrides.openNote ?? vi.fn(),
     renameNote: overrides.renameNote ?? vi.fn(),
     setCtxMenu: overrides.setCtxMenu ?? vi.fn(),
+    ctxMenuFolderId: overrides.ctxMenuFolderId ?? null,
     renameFolder: noop,
     createFolder: overrides.createFolder ?? vi.fn(),
     createNote: overrides.createNote ?? vi.fn(),
@@ -170,14 +178,17 @@ describe("Sidebar", () => {
   });
 
   // Search is a palette over the window (2026-09-05). Its glyph sits on the
-  // Notes row with New folder and the ··· (2026-09-12), not on the window's
-  // own row above; the desktop panel never shows a field or results.
-  it("opens the search palette from the Notes row's Search glyph and shows no field", () => {
+  // window's own row, a chrome button immediately left of the toggle
+  // (2026-09-16; on the Notes row from 2026-09-12); the desktop panel never
+  // shows a field or results.
+  it("opens the search palette from the header's Search button, beside the toggle", () => {
     const onOpenSearch = vi.fn();
-    const { getByLabelText } = renderSidebar({ onOpenSearch });
+    const { getByLabelText, getByTitle } = renderSidebar({ onOpenSearch });
     const search = getByLabelText("Search notes");
-    expect(search.closest(".sidebar-section-header")).not.toBeNull();
+    expect(search.closest(".sidebar-section-header")).toBeNull();
     expect(search.tagName).toBe("BUTTON");
+    expect(search.nextElementSibling).toBe(getByTitle("Hide sidebar"));
+    expect(search.style.width).toBe(getByTitle("Hide sidebar").style.width);
     fireEvent.click(search);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();
@@ -497,13 +508,13 @@ describe("Sidebar", () => {
     expect(onRevealVault).toHaveBeenCalled();
   });
 
-  // The Notes row's three controls are visible at rest (2026-09-12). jsdom
-  // can't compute the stylesheet, so assert the DOM hooks: the shared class,
-  // inside the header its selectors scope to, keyboard-reachable, and no
-  // hover-reveal variant left on any of them.
-  it("keeps all three list controls keyboard-reachable and on the one class", () => {
+  // The Notes row's two controls are visible at rest (2026-09-12; Search
+  // left the row on 2026-09-16). jsdom can't compute the stylesheet, so
+  // assert the DOM hooks: the shared class, inside the header its selectors
+  // scope to, keyboard-reachable, and no hover-reveal variant left on them.
+  it("keeps both list controls keyboard-reachable and on the one class", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["Search notes", "New folder", "List options"]) {
+    for (const name of ["New folder", "List options"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
       expect(btn.className).toBe("sidebar-section-action");
@@ -517,6 +528,59 @@ describe("Sidebar", () => {
     fireEvent.click(getByLabelText("List options"));
     fireEvent.click(getByRole("menuitem", { name: "New folder" }));
     expect(createFolder).toHaveBeenCalledWith(null);
+  });
+
+  // A folder row's trailing New note and ··· (2026-09-16). jsdom can't
+  // compute the reveal stylesheet, so assert the DOM hooks: both inside the
+  // row, on the shared classes, tabIndex -1 (the row stays the keyboard
+  // path), and each click reaching its action without toggling the folder.
+  it("gives a folder row a trailing New note and ··· that act on that folder", () => {
+    const createNote = vi.fn();
+    const setCtxMenu = vi.fn();
+    const toggle = vi.fn();
+    const filteredTree = [
+      {
+        name: "Work",
+        _path: "Work",
+        notes: [],
+        children: [{ name: "Client", _path: "Work/Client", children: [], notes: [] }],
+      },
+    ];
+    const { getAllByLabelText } = renderSidebar({
+      filteredTree,
+      expanded: { Work: true },
+      createNote,
+      setCtxMenu,
+      toggle,
+    });
+    const newNotes = getAllByLabelText("New note here");
+    const menus = getAllByLabelText("Folder actions");
+    // One pair per folder row, nested rows included.
+    expect(newNotes).toHaveLength(2);
+    expect(menus).toHaveLength(2);
+    for (const el of [...newNotes, ...menus]) {
+      expect(el.tagName).toBe("SPAN");
+      expect(el.getAttribute("role")).toBe("button");
+      expect(el.tabIndex).toBe(-1);
+      expect(el.className).toBe("sidebar-folder-action");
+      expect(el.closest(".sidebar-folder-actions")).not.toBeNull();
+      expect(el.closest(".sidebar-folder")).not.toBeNull();
+    }
+    fireEvent.click(newNotes[1]);
+    expect(createNote).toHaveBeenCalledWith("Work/Client");
+    fireEvent.click(menus[0]);
+    expect(setCtxMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "folder", id: "Work" }),
+    );
+    expect(toggle).not.toHaveBeenCalled();
+  });
+
+  it("holds a folder row's actions open while its menu is up", () => {
+    const filteredTree = [{ name: "Work", _path: "Work", notes: [], children: [] }];
+    const { getByLabelText } = renderSidebar({ filteredTree, ctxMenuFolderId: "Work" });
+    const slot = getByLabelText("Folder actions").closest(".sidebar-folder-actions");
+    expect(slot.style.opacity).toBe("1");
+    expect(slot.style.width).toBe("44px");
   });
 
   it("renders note rows without a file glyph, at any depth", () => {
@@ -537,6 +601,34 @@ describe("Sidebar", () => {
       // No document glyph — the row's only svg is the trailing ··· action.
       expect(row.querySelector("svg.lucide-file-text")).toBeNull();
     }
+  });
+
+  it("starts a note's title on the glyph column of its depth, like a folder's", () => {
+    const noteData = buildNoteData([
+      { id: "r1", title: "Loose Note" },
+      { id: "n1", title: "Nested Note" },
+    ]);
+    const filteredTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const { getByText } = renderSidebar({
+      noteData,
+      fNotes: ["r1"],
+      filteredTree,
+      expanded: { "My Folder": true },
+    });
+    const root = getByText("Loose Note").closest("[data-note-id]");
+    const nested = getByText("Nested Note").closest("[data-note-id]");
+    const folder = getByText("My Folder").closest('[role="treeitem"]');
+    // The pill is inset ROW_INSET from the panel, so the text lands on the
+    // sidebar's spine (SPINE plus its own inset; root, flush with the folder
+    // glyphs) and one indent in for a folder's note; a note row's padding is
+    // exactly the folder row's at its depth.
+    const spine = SPINE + SIDEBAR_TREE_INSET;
+    expect(root.style.paddingLeft).toBe(`${spine - ROW_INSET}px`);
+    expect(root.style.paddingLeft).toBe(folder.style.paddingLeft);
+    expect(nested.style.paddingLeft).toBe(`${spine + TREE_INDENT - ROW_INSET}px`);
+    // The step is the name's own offset from its glyph, so a folder's note
+    // starts exactly under the folder's name.
+    expect(TREE_INDENT).toBe(TEXT_COL - SPINE);
   });
 
   it("renders empty search message when searchMode is active but results are empty", () => {

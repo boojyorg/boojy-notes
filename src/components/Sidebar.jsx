@@ -15,6 +15,7 @@ import {
   SidebarToggleIcon,
 } from "./Icons";
 import {
+  BTN_GAP,
   CHROME_TOP,
   CHROME_BTN,
   MAC_TRAFFIC_INSET,
@@ -30,6 +31,7 @@ import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
   ROW_INSET,
+  SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
   TEXT_COL,
@@ -61,6 +63,10 @@ const HEADER_NUDGE = 4;
 const ROW_INSET_RIGHT = 2;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
+/** The spine as this column draws it: SPINE plus the sidebar's own inset.
+ *  Every desktop x below (New note, the Notes row, rows, guides) starts here,
+ *  so the column moves as one and the popup, on the bare SPINE, does not. */
+const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
@@ -76,6 +82,10 @@ const ACTION_ROW_H = 32;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
+/** The folder row's two trailing glyph boxes (New note, ···), 20px each with
+ *  4px between them (judged live 2026-09-16: adjacent, the pen's ink sat on
+ *  the dots), the note row's single ··· slot twice over. */
+const FOLDER_ACTIONS_W = 44;
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
@@ -87,7 +97,7 @@ const NOTE_MENU_SHIFT = 8;
 // SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
 // action group's own bottom padding, which is set to the same 12.
 const SECTION_HEADER_H = TREE_ROW_H;
-const SECTION_HEADER_LEFT = SPINE;
+const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
  *  HEADER_RIGHT_INSET (12) + the chrome glyph's 7px inset − this row's 8px. */
 const SECTION_HEADER_RIGHT = 5;
@@ -155,10 +165,11 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
 }
 
 /**
- * A trailing header control (Search, New folder, ···). One component so all
- * wear the same geometry and the same rest/hover ink, muted at rest and full
- * on hover or focus. Never a fourth: three muted glyphs read as a set, four
- * read as a toolbar — anything rarer goes into the ··· menu.
+ * A trailing header control (New folder, ···; Search until 2026-09-16, now
+ * on the window's row). One component so all wear the same geometry and the
+ * same rest/hover ink, muted at rest and full on hover or focus. Never more
+ * than three: muted glyphs in threes read as a set, four read as a toolbar —
+ * anything rarer goes into the ··· menu.
  */
 function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
   return (
@@ -211,7 +222,7 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         marginRight: ROW_INSET_RIGHT,
         minHeight: ACTION_ROW_H,
         boxSizing: "border-box",
-        paddingLeft: SPINE - ROW_INSET,
+        paddingLeft: TREE_SPINE - ROW_INSET,
         paddingRight: 8,
         background: "none",
         border: "none",
@@ -309,6 +320,7 @@ const Sidebar = memo(function Sidebar({
   handleNoteClick,
   clearSelection,
   ctxMenuNoteId,
+  ctxMenuFolderId,
   isMobile,
   // Desktop only: the ··· menu's whole-list action. (Change vault folder is
   // Settings → Storage only, beside the path it changes.)
@@ -389,12 +401,15 @@ const Sidebar = memo(function Sidebar({
     const menuOpen = ctxMenuNoteId === nId;
     const mobFont = isMobile ? 17 : 14;
     const mobGap = isMobile ? 9 : 5;
-    // Desktop: quiet row grammar — a full-width pill whose title sits on
-    // TEXT_COL, level with the folder names; hover, selection and multi-select
-    // all use neutral BG.hover, and the active note is distinguished by ink
-    // (weight + TEXT.primary), never by accent. The empty gutter left of the
-    // title is the TEXT_COL alignment, not a missing icon. Mobile keeps the
-    // existing accent-tinted pill grammar untouched.
+    // Desktop: quiet row grammar — a full-width pill; hover, selection and
+    // multi-select all use neutral BG.hover, and the active note is
+    // distinguished by ink (weight + TEXT.primary), never by accent. A note's
+    // title starts where a folder at the same depth puts its glyph (SPINE +
+    // depth × TREE_INDENT, the folder row's own padding; 2026-09-16), so notes
+    // and folders at one depth share a left edge and a folder's name is further
+    // right only by its glyph. The folder popup keeps its notes on TEXT_COL
+    // (PathTreeMenu), a deliberate difference. Mobile keeps the existing
+    // accent-tinted pill grammar untouched.
     const rowStyle = isMobile
       ? {
           width: "calc(100% - 8px)",
@@ -417,7 +432,7 @@ const Sidebar = memo(function Sidebar({
           boxSizing: "border-box",
           background: act || sel || menuOpen ? BG.hover : "transparent",
           borderRadius: ACTION_RADIUS,
-          padding: `0 8px 0 ${TEXT_COL - ROW_INSET + depth * TREE_INDENT}px`,
+          padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
         };
     return (
       <button
@@ -577,12 +592,16 @@ const Sidebar = memo(function Sidebar({
     // only programmatic expansion signal (undefined would omit the attribute).
     const isOpen = !!expanded[folderPath];
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
+    // The row that opened the folder menu (··· or right-click) holds its
+    // actions visible until the menu closes, as a note row holds its dots.
+    const folderMenuOpen = ctxMenuFolderId === folderPath;
     return (
       <div key={folderPath}>
         <button
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
+          className="sidebar-folder"
           onClick={(e) => {
             // Desktop double-click renames: the second click is the rename
             // gesture, so it must not toggle again — the first click's toggle
@@ -610,7 +629,7 @@ const Sidebar = memo(function Sidebar({
                   marginBottom: TREE_ROW_GAP,
                   height: TREE_ROW_H,
                   boxSizing: "border-box",
-                  padding: `0 8px 0 ${SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+                  padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
                   borderRadius: ACTION_RADIUS,
                 }),
             background: "none",
@@ -686,19 +705,74 @@ const Sidebar = memo(function Sidebar({
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                flex: 1,
               }}
             >
               {folder.name}
             </span>
           )}
+          {/* Trailing New note and ··· (2026-09-16, ChatGPT's project rows):
+              what a folder does, write here and organise here. Zero-width
+              at rest so a long name truncates against the full row, revealed
+              on row hover or focus exactly as a note row's dots are
+              (.sidebar-folder-actions in GlobalStyles), held open while this
+              row's menu is up. New note makes the note inside this folder;
+              ··· opens the same folder menu as right-click, growing rightward.
+              span+role, tabIndex -1, as the note dots: a real button inside
+              the treeitem button fails axe nested-interactive; the row stays
+              the keyboard path (right-click opens the menu). Clicks stop here
+              so the row does not toggle, and a double-click does not rename. */}
+          {!isMobile && (
+            <span
+              className="sidebar-folder-actions"
+              onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              style={{
+                opacity: folderMenuOpen ? 1 : undefined,
+                width: folderMenuOpen ? FOLDER_ACTIONS_W : undefined,
+              }}
+            >
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="New note here"
+                title="New note here"
+                className="sidebar-folder-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  createNote(folderPath);
+                }}
+              >
+                <NewNoteIcon size={16} />
+              </span>
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label="Folder actions"
+                title="Folder actions"
+                className="sidebar-folder-action"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const btn = e.currentTarget.getBoundingClientRect();
+                  const row = e.currentTarget.closest("[data-folder-path]").getBoundingClientRect();
+                  setCtxMenu({
+                    x: btn.left - NOTE_MENU_SHIFT,
+                    y: row.bottom + NOTE_MENU_GAP,
+                    type: "folder",
+                    id: folderPath,
+                  });
+                }}
+              >
+                <MoreHorizontalIcon size={16} />
+              </span>
+            </span>
+          )}
         </button>
         {hasChildren && (
           <Collapsible open={isOpen}>
-            {/* LIVE TRY 2026-09-05: an indent guide, a hairline dropping from
-                the folder glyph's centre through its children. In one mixed
-                tree, root notes (no glyph, text on the folder-label column)
-                otherwise read as children of the last open folder above them;
-                the line ending is what says "this folder ends here". */}
+            {/* An indent guide (2026-09-05), a hairline dropping from the
+                folder glyph's centre through its children; the line ending is
+                what says "this folder ends here" in a mixed tree. */}
             <div style={{ position: "relative" }}>
               {!isMobile && (
                 <div
@@ -707,7 +781,7 @@ const Sidebar = memo(function Sidebar({
                     position: "absolute",
                     top: 0,
                     bottom: TREE_ROW_GAP,
-                    left: SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
+                    left: TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
                     width: 1,
                     background: BG.divider,
                     pointerEvents: "none",
@@ -895,13 +969,18 @@ const Sidebar = memo(function Sidebar({
                 the 0.92-opacity stand-in for a black asset is gone with it. */}
             <Wordmark height={18} />
           </button>
-          {/* The window's row carries the window's own control and nothing
-              else (2026-09-12): Search moved down to the list it searches,
-              where it sits beside New folder and the ··· at the list's own
-              tier. Two rows of 18px glyphs stacked read as two toolbars. */}
-          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
-            <SidebarToggleIcon />
-          </ChromeButton>
+          {/* Search and the toggle, one group at the chrome row's own gap
+              (2026-09-16; Search sat on the Notes row from 2026-09-12). The
+              same two neighbours the collapsed header shows, so Search keeps
+              its place beside the toggle in both sidebar states. */}
+          <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
+            <ChromeButton onClick={onOpenSearch} title="Search notes">
+              <SearchIcon size={18} />
+            </ChromeButton>
+            <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
+              <SidebarToggleIcon />
+            </ChromeButton>
+          </div>
         </div>
       )}
 
@@ -1168,9 +1247,6 @@ const Sidebar = memo(function Sidebar({
                   <div style={{ height: SECTION_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
                   <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
-                    <SectionAction onClick={onOpenSearch} title="Search notes">
-                      <SearchIcon size={16} />
-                    </SectionAction>
                     <SectionAction onClick={() => createFolder(null)} title="New folder">
                       <NewFolderIcon size={16} />
                     </SectionAction>
