@@ -584,8 +584,9 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 - **Desktop folder rows carry a trailing New note and ···, at every depth** (2026-09-16, Tyr's
   ask, after ChatGPT's project rows; judged on ASCII mockups against a ···-only row, whose
   two-click note lost). The pair is what a folder *does*: write here, organise here. New note
-  (Lucide SquarePen, 16px) makes the note inside that folder through the same `createNote`
-  the menu's `New note here` calls, and **a note made in a folder opens the folder**
+  (Lucide SquarePen, 16px, named `New note in <folder>` so it is never the sidebar pill's own
+  name, which `header-controls.spec.ts` counts) makes the note inside that folder through the
+  same `createNote` the menu's `New note` calls, and **a note made in a folder opens the folder**
   (`useNoteCrud`, both routes) so it is seen to arrive; ··· opens the folder's own menu, the
   right-click one, growing rightward as a note row's does. Same slot grammar as the note dots:
   zero-width at rest so a long name truncates against the full row (`.sidebar-folder-actions`,
@@ -594,12 +595,27 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   glyph primary on its own hover, held open inline while that row's menu is up
   (`ctxMenuFolderId`); `span role="button"` with `tabIndex={-1}`, the row the keyboard path;
   clicks stop at the glyph so the row does not toggle and a double-click does not rename. The
-  right edge is shared across depths. **The folder menu is four items and no rule: New note
-  here, New folder inside, Rename, Delete folder** (Tyr's call, the same day). Reveal in Finder
-  left it then, with its `onRevealFolder` prop and the `folderOps.reveal` op; the vault's ···
-  still reveals the vault. Anything more is added when it is actually needed. `folders.spec.ts`
-  proves the note landing in the folder, and in a nested one, the folder opening, and the four
-  items in the real app.
+  right edge is shared across depths. **The folder menu is four items, each with its glyph,
+  and no rule: New note, New folder, Rename, Delete folder** (Tyr's call, the same day; the
+  labels lost `here` and `inside` later that day because the menu opens from the folder's own
+  row and the anchoring already says where; `New folder`, not `New subfolder`, because it is
+  the Notes row's action one level down; only Delete keeps its noun, because it can take
+  several notes to the Trash and confirms first, unlike the note menu's Delete). The glyphs are
+  the ones the same actions already wear: the row's pen, the Notes row's FolderPlus, the note
+  menu's Pencil and Trash (red with its label), at the menu tier; a text-only menu beside the
+  note menu's glyphed one read as a different kind of thing, opened from identical dots.
+  Reveal in Finder left the menu that day, with its `onRevealFolder` prop and the
+  `folderOps.reveal` op; the vault's ··· still reveals the vault. Anything more is added when
+  it is actually needed. **A row's ··· hands its menu the row's rectangle, not a point**
+  (`rowMenuAnchor` in `Sidebar.jsx`, the row with the menu's gap either side, note and folder
+  rows alike): below the row when it fits, and when it does not `useMenuPosition` flips it to
+  sit above the row. With a point anchor under the row the flipped menu ended at the row's
+  bottom edge, over the row, and the pointer still resting on the dots sat inside its last
+  item, Delete, which took the hover highlight the moment the menu opened (Tyr saw it on a
+  folder low in the window; the header's ··· and a right-click keep their point anchors).
+  `folders.spec.ts` proves the note landing in the folder, and in a nested one, the folder
+  opening, the four items, and a menu from the lowest folder and note rows opening above the
+  row with nothing highlighted, in the real app.
 - **The ··· slot is zero-width at rest** so a long title truncates against the full row width;
   it re-truncates only while the dots are revealed (row hover/focus, or its menu open). The
   width change is instant and only the ink fades; a sliding re-truncation reads worse than a
@@ -609,8 +625,8 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   button fails axe `nested-interactive`. The row stays the keyboard path.
 - A pointer-opened menu shows no focus ring on its first item (initial focus parks on the menu
   container) because Chromium treats script focus as `:focus-visible`. Keyboard navigation
-  still indicates normally. Single-note menu items carry glyphs; folder and bulk menus are
-  text-only.
+  still indicates normally. Single-note and folder menu items carry glyphs (the folder menu
+  since 2026-09-16); the bulk menu is text-only.
 - **Double-click renames inline**, notes and folders alike, with the same in-place input. A
   note's name is selected Finder-style; the folder input only autofocuses with the caret at the
   end, so typing appends (a known gap in the backlog; the intent is Finder-style for both). The
@@ -742,9 +758,9 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   is a rename, a path can never escape the vault, and
   every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
   the answer; no input sanitises a folder name.
-- **New folder makes the directory at once** (root from the header, `New folder inside` from a
-  folder's menu; a folder's *note* comes from the row's New note glyph or its menu's `New note
-  here`, and opens the folder), opens the parent, and opens the inline rename. The rename input commits once:
+- **New folder makes the directory at once** (root from the header, `New folder` from a
+  folder's menu; a folder's *note* comes from the row's New note glyph or its menu's `New note`,
+  and opens the folder), opens the parent, and opens the inline rename. The rename input commits once:
   Enter unmounts it and the blur that can follow must not rename the moved directory again.
 - **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
   files travel together. Pending edits under the folder are flushed first, or a late write would

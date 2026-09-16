@@ -79,32 +79,52 @@ describe("ContextMenu", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
     const { getByText } = render(<ContextMenu {...props} />);
-    expect(getByText("New note here")).toBeInTheDocument();
-    expect(getByText("New folder inside")).toBeInTheDocument();
+    expect(getByText("New note")).toBeInTheDocument();
+    expect(getByText("New folder")).toBeInTheDocument();
     expect(getByText("Rename")).toBeInTheDocument();
     expect(getByText("Delete folder")).toBeInTheDocument();
   });
 
-  it("New folder inside creates under the clicked folder", () => {
+  it("New folder creates under the clicked folder", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };
     const { getByText } = render(<ContextMenu {...props} />);
-    fireEvent.click(getByText("New folder inside"));
+    fireEvent.click(getByText("New folder"));
     expect(props.createFolder).toHaveBeenCalledWith("Uni/Sem 1");
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 
-  it("the folder menu is exactly four items in order, with no rule (2026-09-16)", () => {
+  it("the folder menu is exactly four glyphed items in order, with no rule (2026-09-16)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
     const { getAllByRole, container } = render(<ContextMenu {...props} />);
-    expect(getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
-      "New note here",
-      "New folder inside",
+    const items = getAllByRole("menuitem");
+    expect(items.map((el) => el.textContent)).toEqual([
+      "New note",
+      "New folder",
       "Rename",
       "Delete folder",
     ]);
+    // Every row carries a Lucide glyph, as the note menu's rows do.
+    for (const el of items) expect(el.querySelector("svg.lucide")).not.toBeNull();
     expect(container.querySelector("[role='separator'], hr")).toBeNull();
+  });
+
+  it("takes a row's rect anchor over the point, so a flipped menu sits above the row", () => {
+    const props = baseProps();
+    props.ctxMenu = {
+      type: "folder",
+      id: "f1",
+      x: 1,
+      y: 2,
+      anchor: { top: 96, bottom: 132, left: 200, right: 220 },
+    };
+    const { getByRole } = render(<ContextMenu {...props} />);
+    const menu = getByRole("menu");
+    // jsdom measures the menu as 0×0, so the hook answers the anchor's own
+    // bottom-left: the rect, not the point, is what it was handed.
+    expect(menu.style.left).toBe("200px");
+    expect(menu.style.top).toBe("132px");
   });
 
   it("divides its placement by the UI scale so it lands under the pointer at 125%", () => {
@@ -126,11 +146,11 @@ describe("ContextMenu", () => {
     }
   });
 
-  it("New note here creates inside the clicked folder", () => {
+  it("New note creates inside the clicked folder", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };
     const { getByText } = render(<ContextMenu {...props} />);
-    fireEvent.click(getByText("New note here"));
+    fireEvent.click(getByText("New note"));
     expect(props.createNote).toHaveBeenCalledWith("Uni/Sem 1");
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });

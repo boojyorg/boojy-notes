@@ -31,7 +31,7 @@ export function useNoteCrud({
       content: { title: noteTitle, blocks: [{ id: firstBlockId, type: "p", text: "" }] },
     };
     commitNoteData((prev) => ({ ...prev, [id]: newNote }));
-    // A note made inside a folder (the row's New note, or New note here from
+    // A note made inside a folder (the row's New note, or New note from
     // its menu) must be seen to arrive: open the folder it lands in.
     if (folder) setExpanded((prev) => (prev[folder] ? prev : { ...prev, [folder]: true }));
     open(id);
@@ -185,7 +185,7 @@ export function useNoteCrud({
     );
   };
 
-  // `parent` is a folder path for "New folder inside", or null for the root.
+  // `parent` is a folder path for the folder menu's New folder, or null for the root.
   // (The header button passes its click event; anything but a string is root.)
   const createFolder = (parent = null) => {
     const parentPath = typeof parent === "string" ? parent : null;
