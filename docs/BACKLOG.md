@@ -178,7 +178,7 @@ none blocks the release. The shared question comes first because three candidate
   in this list never moves a note in "Most recent" or touches its timestamp. How the list is
   persisted, how long it is, and whether it survives a restart belong to the feature.
   **A muted "N other files" hint** on folders holding files the app cannot open
-  (Reveal in Finder answers it for now).
+  (Show in Finder in Settings → Storage answers it for now).
 - **More New Note entry points** (a global shortcut; a share action on mobile later) run the
   same workflow. Initial focus, location and the moment an empty note becomes a file are
   undecided for every entry point. Not accepted: deriving the title from the first line.
@@ -410,7 +410,7 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   `GlobalStyles` renders inside the boundary. The toasts, empty state and focus ring are under
   Known issues.
 - **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
-  implemented six times (`ContextMenu`, `VaultMenu`, `WikilinkMenu`, `TagMenu`, `CalloutBlock`,
+  implemented six times (`ContextMenu`, `SortMenu`, `WikilinkMenu`, `TagMenu`, `CalloutBlock`,
   `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
   three ways (`CodeBlock` keeps a hand-rolled clamp). One `useMenuKeyboard`/`useDismiss` pair
   is worth it only because the accessibility pass touches every one of them anyway.

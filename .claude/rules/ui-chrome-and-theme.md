@@ -209,8 +209,8 @@ hardcoded green); swap them for Lucide when touching those files.
   while the panel was animating shut, and the sidebar's inline rename stopped working
   (`key-ownership.spec.ts` caught it). `header-controls.spec.ts` counts what is exposed in
   every state, a narrow window included.
-- **Settings is a single pane:** Appearance, Storage (desktop), Updates, a one-line version
-  footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
+- **Settings is a single pane:** Appearance, Storage (desktop: the path, `Show in Finder` and
+  `Change`), Updates, a one-line version footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
   but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
   Appearance is the theme picker alone: the font-size row (`settingsFontSize`, 10–24) was
   removed on 2026-09-05 because the scale shortcuts already size everything, and body text is
@@ -463,7 +463,7 @@ divided by the UI scale before it is written, `cssZoom`, so it lands under the c
 where the pointer menus still drift), **280px wide whatever is open**, so it never breathes as folders toggle, names truncating instead, and at
 most twelve rows tall before it scrolls inside itself; opening scrolls the highlighted row into
 view by the least the list must move (`nearest`), never pinning the note to the top and losing
-the folders above it. Keys are the tree grammar on a document listener (the ContextMenu/VaultMenu
+the folders above it. Keys are the tree grammar on a document listener (the ContextMenu/SortMenu
 seam): Up and Down through the visible rows, Right opens a closed folder or steps into an open
 one, Left closes an open folder or steps out to the row's folder, Enter and Space open a note
 or toggle a folder, Home and End, Escape closes with focus back on the crumb. **A press outside
@@ -497,7 +497,7 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 
 - **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
   (`wordmark … Search, toggle`), the labelled `New note` action, and the `Notes` row carrying
-  New folder and the ··· menu. Reading down, that is *what this app is, and find what is here*,
+  New folder and Sort. Reading down, that is *what this app is, and find what is here*,
   *make one*, *organise what is here*.
 - **The chrome row carries the window's own control and Search, one group** (2026-09-16, Tyr's
   ask): Search is a `ChromeButton` immediately left of the toggle, the same 32px box, 18px glyph
@@ -605,7 +605,7 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   menu's Pencil and Trash (red with its label), at the menu tier; a text-only menu beside the
   note menu's glyphed one read as a different kind of thing, opened from identical dots.
   Reveal in Finder left the menu that day, with its `onRevealFolder` prop and the
-  `folderOps.reveal` op; the vault's ··· still reveals the vault. Anything more is added when
+  `folderOps.reveal` op; the vault is revealed from Settings → Storage. Anything more is added when
   it is actually needed. **A row's ··· hands its menu the row's rectangle, not a point**
   (`rowMenuAnchor` in `Sidebar.jsx`, the row with the menu's gap either side, note and folder
   rows alike): below the row when it fits, and when it does not `useMenuPosition` flips it to
@@ -647,19 +647,39 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   word `Notes` therefore appears twice in the column, once as the wordmark and once as this
   label; they read at different ranks (artwork against 14px muted text), and that repetition was
   judged and kept.
-- **The row carries New folder and the ··· menu, visible at rest, at the 16px row tier**
-  (`SectionAction`, `.sidebar-section-action`, muted at 0.55 and full on hover or focus, all
-  CSS; Search was the row's first glyph from 2026-09-12 to 2026-09-16 and is on the window's
-  row now). 16px so they read with the folder glyphs below, not with the 18px chrome row above.
-  They hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
-  always-visible rule): a control you must hover to find is not one. **Never more than three
-  glyphs here** — muted glyphs in threes read as a set, four read as a toolbar. New folder is
-  also the first item of the ··· menu, the
-  keyboard path to it. Sort and Reveal in Finder follow (`VaultMenu.tsx`, labelled
-  `List options`, keyboard grammar as `ContextMenu`); anything rarer goes there too, never onto
-  the row. Not in the menu, by decision: Collapse all folders (folders toggle on click and
-  persist as left; declined again 2026-09-12) and Change vault folder, which is Settings →
-  Storage only, beside the path it changes.
+- **The row carries New folder and Sort, hidden at rest and revealed on row hover or focus,
+  at the 16px row tier** (2026-09-16, Tyr's ask, judged on ASCII mockups; `SectionAction`,
+  `.sidebar-section-action`: opacity 0 at rest, 0.55 while the pointer is on the
+  `.sidebar-section-header` or a `:focus-visible` is inside it, each glyph full ink on
+  `BG.surface` on its own hover; the reveal region is the whole row, as a folder row's is, and
+  only the ink fades: the slot keeps its width, so the label never re-truncates). 16px so they
+  read with the folder glyphs below, not with the 18px chrome row above. **This is the row's
+  third flip, on record so there is not a fourth:** hover-revealed on 2026-08-23, visible at
+  rest on 2026-09-12 ("a control you must hover to find is not one"), hidden again now because
+  the folder rows under it reveal their own pair on hover since the same day, so a row that
+  kept its glyphs was the odd one out; the cost, unchanged, is that a new user gets no cue at
+  rest that the row has anything on it (Tab still finds them, and focus reveals them). **Sort is
+  a Lucide ArrowUpDown, the same glyph in both modes** (tooltip `Sort`): the row is hidden at
+  rest, so a per-mode glyph would tell nobody anything, and the menu is what says which mode is
+  on. Its menu (`SortMenu.tsx`, `role="menu"` named `Sort notes`, keyboard grammar as
+  `ContextMenu`, hanging off the glyph's bottom edge and growing rightward into the editor) is
+  the two modes and nothing else, `menuitemradio` each with its glyph at the menu tier (Clock
+  for Most recent, ArrowDownAZ for Alphabetical) and a Lucide Check in the mark colour on the
+  right of the chosen one; no "Sort by" heading, no footnote about folders (the tree shows them
+  staying first within a second of choosing). **The pair is held revealed, and Sort lit, while
+  the menu is open** (`menu-open` on the row, `is-active` on the control; the folder rows'
+  `ctxMenuFolderId` rule), so nothing flickers as the menu closes. Until this the row's second
+  glyph was a ··· (`VaultMenu.tsx`, labelled `List options`) holding New folder as its first
+  item (the keyboard path to the glyph, no longer needed: the glyph is focusable and focus
+  reveals it), a "Sort by" heading with the two modes marked by an accent dot, and Reveal in
+  Finder, which is **Settings → Storage's now** (`Show in Finder`, `Show in folder` off macOS,
+  beside the path and Change: the panel is the vault's one home, and the backlog's "N other
+  files" hint leans on the action existing there). Search was the row's first glyph from
+  2026-09-12 to 2026-09-16 and is on the window's row now. **Never more than three glyphs
+  here** — muted glyphs in threes read as a set, four read as a toolbar; anything rarer than
+  New folder and Sort earns a menu, never a glyph. Not anywhere, by decision: Collapse all
+  folders (folders toggle on click and persist as left; declined again 2026-09-12) and Change
+  vault folder, which is Settings → Storage only, beside the path it changes.
 - **One `role="tree"`, the Notes row a sibling above it, never inside it.** A header inside a
   tree fails axe `aria-required-children` at critical impact, which the E2E gate catches. The
   tree element exists only when it has rows, because an empty tree fails axe too; the row stays
@@ -873,7 +893,7 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   same way since 2026-09-16 (measured in the real app at 125%: it opened 50px under and 60px
   right of the folder ···). Anything else that writes a measured rect or a `clientX`/`clientY`
   into a style on a zoomed element (the link, code block, image and file menus, the table's
-  badge and cell menu, `VaultMenu`, the selection toolbar) is exposed by the same mechanism;
+  badge and cell menu, `SortMenu`, the selection toolbar) is exposed by the same mechanism;
   not measured and not yet corrected, so judge those at 100% until it is.
 - **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
   on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
@@ -1283,7 +1303,7 @@ already gives: `preventDefault`, the active element, and the focus trap.
   listener, a bubble-phase window listener registered at startup, and they act only on a key
   nobody above has claimed. A surface therefore never listens on the window in the bubble
   phase: a listener added when it opens runs *after* the shell's and its preventDefault comes
-  too late (ContextMenu and VaultMenu moved to the document on 2026-09-09; before that Escape in
+  too late (ContextMenu and the then VaultMenu, now `SortMenu`, moved to the document on 2026-09-09; before that Escape in
   either also reached the shell and closed the sidebar overlay of the time under it). Element
   handlers, document listeners and capture listeners all run before the shell.
 - **An open modal dialog, or a menu that holds focus, owns every key beneath it.**

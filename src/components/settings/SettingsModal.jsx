@@ -12,7 +12,13 @@ import ExportTab from "./ExportTab";
 import SettingsFooter from "./SettingsFooter";
 import { ChevronLeftIcon } from "../Icons";
 
-export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNotesDir }) {
+export default function SettingsModal({
+  isMobile,
+  isDesktop,
+  notesDir,
+  changeNotesDir,
+  revealNotesDir,
+}) {
   const { settingsOpen, setSettingsOpen } = useSettings();
 
   const { theme } = useTheme();
@@ -175,6 +181,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
                   isMobile={isMobile}
                   notesDir={notesDir}
                   changeNotesDir={changeNotesDir}
+                  revealNotesDir={revealNotesDir}
                   SectionHeader={() => null}
                 />
               </MobileCard>
@@ -302,6 +309,7 @@ export default function SettingsModal({ isMobile, isDesktop, notesDir, changeNot
             isMobile={false}
             notesDir={notesDir}
             changeNotesDir={changeNotesDir}
+            revealNotesDir={revealNotesDir}
             SectionHeader={SectionHeader}
           />
           <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionHeader} />

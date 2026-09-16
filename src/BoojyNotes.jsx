@@ -771,7 +771,6 @@ export default function BoojyNotes() {
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
             isMobile={isMobile}
-            onRevealVault={isElectron ? revealVault : undefined}
             onOpenSearch={openSearch}
           />
           {isMobile && !activeNote && (
@@ -1033,6 +1032,7 @@ export default function BoojyNotes() {
           isDesktop={isDesktop}
           notesDir={notesDir}
           changeNotesDir={changeNotesDir}
+          revealNotesDir={isElectron ? revealVault : undefined}
         />
       </React.Suspense>
 

@@ -119,7 +119,7 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
 
   // Expanded: the sidebar owns navigation and creation; the header carries the
   // note's history and its ··· .
-  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "List options"]) {
+  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(1);
   }
   expect(await exposed("Show sidebar")).toBe(0);
@@ -133,7 +133,7 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   for (const name of ["Search notes", "New note", "Show sidebar", "Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  for (const name of ["Hide sidebar", "New folder", "List options"]) {
+  for (const name of ["Hide sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(0);
   }
 
@@ -145,7 +145,7 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   await expect.poll(() => h.page.evaluate(() => window.innerWidth)).toBe(700);
   await h.page.locator("[title='Show sidebar']:not([inert] *)").click();
   await expect(h.page.getByTitle("Hide sidebar")).toBeVisible();
-  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "List options"]) {
+  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), `narrow: ${name}`).toBe(1);
   }
   expect(await exposed("Show sidebar")).toBe(0);
