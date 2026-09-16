@@ -167,14 +167,26 @@ export default function GlobalStyles() {
            the palette while the sidebar is showing, and a control you must
            hover to find is not one. An open menu holds its control at full ink
            via inline opacity (SectionAction \`active\`). */
+        /* The Notes row's New folder and Sort (2026-09-16): hidden at rest,
+           revealed muted while the pointer is on the row or a focus is in it
+           (the folder rows' own grammar), each full ink on its own hover.
+           .menu-open on the row holds the pair while the Sort menu is up,
+           and .is-active is the control whose menu it is. Only the ink
+           fades; the slot keeps its width, so the label never re-truncates. */
         .sidebar-section-action {
           background: transparent;
           color: ${theme.TEXT.secondary};
-          opacity: 0.55;
+          opacity: 0;
           transition: background 120ms, color 120ms, opacity 120ms;
         }
-        .sidebar-section-action:hover,
-        .sidebar-section-action:focus-visible {
+        .sidebar-section-header:hover .sidebar-section-action,
+        .sidebar-section-header:has(:focus-visible) .sidebar-section-action,
+        .sidebar-section-header.menu-open .sidebar-section-action {
+          opacity: 0.55;
+        }
+        .sidebar-section-header .sidebar-section-action:hover,
+        .sidebar-section-header .sidebar-section-action:focus-visible,
+        .sidebar-section-header .sidebar-section-action.is-active {
           background: ${theme.BG.surface};
           color: ${theme.TEXT.primary};
           opacity: 1;

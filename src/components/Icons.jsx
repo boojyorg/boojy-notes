@@ -17,12 +17,16 @@
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
  */
 import {
+  ArrowDownAZ as LuArrowDownAZ,
   ArrowDownToLine as LuArrowDownToLine,
   ArrowLeftToLine as LuArrowLeftToLine,
   ArrowRightToLine as LuArrowRightToLine,
+  ArrowUpDown as LuArrowUpDown,
   ArrowUpToLine as LuArrowUpToLine,
   Bold as LuBold,
+  Check as LuCheck,
   ChevronLeft as LuChevronLeft,
+  Clock as LuClock,
   Code as LuCode,
   Copy as LuCopy,
   FileText as LuFileText,
@@ -98,12 +102,23 @@ export const NewNoteIcon = ({ size = ICON_INLINE }) => (
 export const NewFolderIcon = ({ size = ICON_INLINE }) => (
   <LuFolderPlus {...base} {...navBase} size={size} />
 );
+/** The Notes row's Sort control (2026-09-16): one glyph whatever the mode, since
+ *  the row is hidden at rest and the menu is what says which mode is on. */
+export const SortIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowUpDown {...base} {...navBase} size={size} />
+);
 /** History, in the editor header. Lucide's curved pair, navigation tier: they
  *  stand as controls beside the note's name, not as glyphs inside prose. A
  *  straight arrow would read as navigation (Back), which undo is not. */
 export const UndoIcon = ({ size = ICON_CONTROL }) => <LuUndo2 {...base} {...navBase} size={size} />;
 export const RedoIcon = ({ size = ICON_CONTROL }) => <LuRedo2 {...base} {...navBase} size={size} />;
-/** Menu tick — content tier, so it sits quietly beside a 12.5px label. */
+/** Menu tick — the chosen sort mode's mark; nav stroke like every menu glyph. */
+export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} {...navBase} size={size} />;
+/** The sort menu's item glyphs: a clock for Most recent, A→Z for Alphabetical. */
+export const ClockIcon = ({ size = ICON_INLINE }) => <LuClock {...base} {...navBase} size={size} />;
+export const SortAlphaIcon = ({ size = ICON_INLINE }) => (
+  <LuArrowDownAZ {...base} {...navBase} size={size} />
+);
 /** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
  *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;
  *  filling them gives crisp ~2.3px discs (judged live 2026-09-03). */

@@ -149,7 +149,6 @@ function renderSidebar(overrides = {}) {
     clearSelection: noop,
     isMobile: overrides.isMobile ?? false,
     onOpenSearch: overrides.onOpenSearch,
-    onRevealVault: overrides.onRevealVault,
     onChangeVault: overrides.onChangeVault,
   };
 
@@ -383,11 +382,11 @@ describe("Sidebar", () => {
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(true);
   });
 
-  // ── The Notes row and its controls (2026-09-12) ───────────────────────────
-  // One row labelled `Notes` heads the list, with Search, New folder and the
-  // ··· menu on it, all three visible at rest. The storage folder's name is
-  // not shown here at all; it lives in Settings → Storage. New note is the
-  // labelled action row above it.
+  // ── The Notes row and its controls (2026-09-12; Sort since 2026-09-16) ───
+  // One row labelled `Notes` heads the list, with New folder and Sort on it,
+  // revealed on row hover or focus. The storage folder's name is not shown
+  // here at all; it lives in Settings → Storage. New note is the labelled
+  // action row above it.
 
   it("labels the list Notes, not the storage folder, and carries the labelled New note", () => {
     const createNote = vi.fn();
@@ -469,52 +468,79 @@ describe("Sidebar", () => {
     expect(getByText("Notes").closest("[data-drop-root]")).not.toBeNull();
   });
 
-  // ── The ··· menu ──────────────────────────────────────────────────────────
-  // Sort is a preference flipped a few times a month, so it lives in the
-  // menu rather than on the header; the current mode is a radio item.
+  // ── The Sort menu (2026-09-16) ────────────────────────────────────────────
+  // The row's ··· became a Sort glyph whose menu is the two modes alone, each
+  // with its glyph and the chosen one marked with a check. Folders stay first
+  // and alphabetical; the choice orders notes.
 
-  it("opens the vault menu with the current sort mode checked, and flips it", () => {
+  it("opens the Sort menu with the current mode checked, and flips it", () => {
+    const setSortMode = vi.fn();
+    const { getByLabelText, getByRole, queryByRole, getAllByRole } = renderSidebar({
+      setSortMode,
+      sortMode: "recent",
+    });
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+    fireEvent.click(getByLabelText("Sort"));
+    const menu = getByRole("menu", { name: "Sort notes" });
+    expect(menu).toBeInTheDocument();
+    // Two radio items and nothing else: no New folder, no Reveal, no heading.
+    expect(getAllByRole("menuitemradio")).toHaveLength(2);
+    expect(queryByRole("menuitem")).toBeNull();
+    const recent = getByRole("menuitemradio", { name: "Most recent" });
+    const alpha = getByRole("menuitemradio", { name: "Alphabetical" });
+    expect(recent).toHaveAttribute("aria-checked", "true");
+    expect(alpha).toHaveAttribute("aria-checked", "false");
+    // Each item carries a glyph; only the chosen one carries the check.
+    expect(recent.querySelector("svg")).not.toBeNull();
+    expect(alpha.querySelector("svg")).not.toBeNull();
+    expect(recent.querySelector("[data-testid='sort-check']")).not.toBeNull();
+    expect(alpha.querySelector("[data-testid='sort-check']")).toBeNull();
+    fireEvent.click(alpha);
+    expect(setSortMode).toHaveBeenCalledWith("alpha");
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+  });
+
+  it("marks Alphabetical when it is the mode", () => {
+    const { getByLabelText, getByRole } = renderSidebar({ sortMode: "alpha" });
+    fireEvent.click(getByLabelText("Sort"));
+    expect(getByRole("menuitemradio", { name: "Alphabetical" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(
+      getByRole("menuitemradio", { name: "Alphabetical" }).querySelector(
+        "[data-testid='sort-check']",
+      ),
+    ).not.toBeNull();
+  });
+
+  it("walks the Sort menu with the arrows and chooses with Enter, and Escape closes it", () => {
     const setSortMode = vi.fn();
     const { getByLabelText, getByRole, queryByRole } = renderSidebar({
       setSortMode,
       sortMode: "recent",
     });
-    expect(queryByRole("menu", { name: "List options" })).not.toBeInTheDocument();
-    fireEvent.click(getByLabelText("List options"));
-    const menu = getByRole("menu", { name: "List options" });
-    expect(menu).toBeInTheDocument();
-    expect(getByRole("menuitemradio", { name: "Most recent" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    fireEvent.click(getByRole("menuitemradio", { name: "Alphabetical" }));
+    fireEvent.click(getByLabelText("Sort"));
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    fireEvent.keyDown(document, { key: "Enter" });
     expect(setSortMode).toHaveBeenCalledWith("alpha");
-    expect(queryByRole("menu", { name: "List options" })).not.toBeInTheDocument();
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
+
+    fireEvent.click(getByLabelText("Sort"));
+    expect(getByRole("menu", { name: "Sort notes" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(queryByRole("menu", { name: "Sort notes" })).not.toBeInTheDocument();
   });
 
-  it("offers Reveal only when a handler is provided, and never Collapse all or Change vault", () => {
-    const { getByLabelText, queryByRole, unmount } = renderSidebar();
-    fireEvent.click(getByLabelText("List options"));
-    expect(queryByRole("menuitem", { name: /Reveal in Finder|Show in folder/ })).toBeNull();
-    unmount();
-
-    const onRevealVault = vi.fn();
-    const r = renderSidebar({ onRevealVault });
-    fireEvent.click(r.getByLabelText("List options"));
-    // Both removed 2026-09-05: Change vault folder is Settings → Storage only.
-    expect(r.queryByRole("menuitem", { name: "Collapse all folders" })).toBeNull();
-    expect(r.queryByRole("menuitem", { name: "Change vault folder…" })).toBeNull();
-    fireEvent.click(r.getByRole("menuitem", { name: /Reveal in Finder|Show in folder/ }));
-    expect(onRevealVault).toHaveBeenCalled();
-  });
-
-  // The Notes row's two controls are visible at rest (2026-09-12; Search
-  // left the row on 2026-09-16). jsdom can't compute the stylesheet, so
-  // assert the DOM hooks: the shared class, inside the header its selectors
-  // scope to, keyboard-reachable, and no hover-reveal variant left on them.
+  // The Notes row's two controls are hidden at rest and revealed on row hover
+  // or focus, held while the Sort menu is open (2026-09-16). jsdom can't
+  // compute the stylesheet, so assert the DOM hooks: the shared class, inside
+  // the header its selectors scope to, keyboard-reachable, and the held-open
+  // classes on the row and the Sort control while its menu is up.
   it("keeps both list controls keyboard-reachable and on the one class", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["New folder", "List options"]) {
+    for (const name of ["New folder", "Sort"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
       expect(btn.className).toBe("sidebar-section-action");
@@ -522,12 +548,19 @@ describe("Sidebar", () => {
     }
   });
 
-  it("lists New folder in the list menu as the keyboard route to the glyph", () => {
-    const createFolder = vi.fn();
-    const { getByLabelText, getByRole } = renderSidebar({ createFolder });
-    fireEvent.click(getByLabelText("List options"));
-    fireEvent.click(getByRole("menuitem", { name: "New folder" }));
-    expect(createFolder).toHaveBeenCalledWith(null);
+  it("holds the row's pair revealed, and Sort lit, while the Sort menu is open", () => {
+    const { getByLabelText, queryByRole } = renderSidebar();
+    const sort = getByLabelText("Sort");
+    const header = sort.closest(".sidebar-section-header");
+    expect(header.classList.contains("menu-open")).toBe(false);
+    fireEvent.click(sort);
+    expect(header.classList.contains("menu-open")).toBe(true);
+    expect(sort.classList.contains("is-active")).toBe(true);
+    expect(sort).toHaveAttribute("aria-expanded", "true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(queryByRole("menu")).toBeNull();
+    expect(header.classList.contains("menu-open")).toBe(false);
+    expect(sort.classList.contains("is-active")).toBe(false);
   });
 
   // A folder row's trailing New note and ··· (2026-09-16). jsdom can't

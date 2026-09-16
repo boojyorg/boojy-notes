@@ -52,7 +52,12 @@ vi.mock("../../../src/components/settings/UpdatesTab", () => ({
   default: ({ isDesktop }) => (isDesktop ? <div data-testid="updates-tab">Updates</div> : null),
 }));
 vi.mock("../../../src/components/settings/ExportTab", () => ({
-  default: ({ isDesktop }) => (isDesktop ? <div data-testid="export-tab">Export</div> : null),
+  default: ({ isDesktop, revealNotesDir }) =>
+    isDesktop ? (
+      <div data-testid="export-tab" data-reveal={revealNotesDir ? "yes" : "no"}>
+        Export
+      </div>
+    ) : null,
 }));
 vi.mock("../../../src/components/settings/SettingsFooter", () => ({
   default: () => <div data-testid="settings-footer" />,
@@ -68,6 +73,7 @@ const defaultProps = {
   isDesktop: true,
   notesDir: "/notes",
   changeNotesDir: vi.fn(),
+  revealNotesDir: vi.fn(),
 };
 
 function renderModal(overrides = {}) {
@@ -124,6 +130,8 @@ describe("SettingsModal", () => {
     renderModal();
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
     expect(screen.getByTestId("export-tab")).toBeInTheDocument();
+    // Show in Finder reaches the Storage section through the modal.
+    expect(screen.getByTestId("export-tab").dataset.reveal).toBe("yes");
     expect(screen.getByTestId("updates-tab")).toBeInTheDocument();
     expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
   });

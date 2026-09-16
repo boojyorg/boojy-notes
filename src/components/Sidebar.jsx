@@ -13,6 +13,7 @@ import {
   MoreHorizontalIcon,
   NewNoteIcon,
   SidebarToggleIcon,
+  SortIcon,
 } from "./Icons";
 import {
   BTN_GAP,
@@ -22,7 +23,7 @@ import {
   ChromeButton,
   trafficLightsShown,
 } from "./EditorChrome";
-import VaultMenu from "./VaultMenu";
+import SortMenu from "./SortMenu";
 import Collapsible from "./Collapsible";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
@@ -120,11 +121,16 @@ const SECTION_HEADER_RIGHT = 5;
 const SECTION_BTN = 32;
 const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 2;
-// Header controls are visible at rest, muted, and lift on hover or keyboard
-// focus (2026-09-12: this reversed the 2026-08-23 hover-reveal). Search, New
-// folder and the ··· are the list's own controls and the only route to Search
-// while the sidebar is showing; a control you must hover to find is not one.
-// All rest/emphasis states are CSS (.sidebar-section-action in GlobalStyles).
+// Header controls (New folder, Sort) are hidden at rest and revealed, muted,
+// while the pointer is on the Notes row or a keyboard focus is in it, lifting
+// to full ink on their own hover; the pair is held while the Sort menu is open
+// (2026-09-16, Tyr's ask). This is the row's third flip: hover-revealed on
+// 2026-08-23, visible at rest on 2026-09-12 ("a control you must hover to find
+// is not one"), and hidden again now because the folder rows under it reveal
+// their own pair on hover since the same day, so a row that kept its glyphs
+// was the odd one out. All rest/emphasis states are CSS
+// (.sidebar-section-action in GlobalStyles); Sidebar.jsx only adds the
+// held-open class while the menu is up.
 
 /**
  * The one section lid: the list's name left, its controls right.
@@ -134,11 +140,13 @@ const SECTION_CONTENT_GAP = 2;
  * not the storage folder's name, which lives in Settings → Storage beside the
  * control that changes it (2026-09-12).
  */
-function SectionHeader({ label, TEXT, first, children, dropRoot }) {
+function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
   return (
     <div
       role="presentation"
-      className="sidebar-section-header"
+      // `menu-open` holds the row's controls revealed while one of their menus
+      // is up, as a folder row holds its pair (see .sidebar-section-header).
+      className={menuOpen ? "sidebar-section-header menu-open" : "sidebar-section-header"}
       // The header doubles as the visible root drop target during a drag:
       // drop on a folder → into that folder, drop here → back to the root.
       // useSidebarDrag finds it by this attribute and paints it neutrally.
@@ -180,24 +188,22 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
 }
 
 /**
- * A trailing header control (New folder, ···; Search until 2026-09-16, now
- * on the window's row). One component so all wear the same geometry and the
- * same rest/hover ink, muted at rest and full on hover or focus. Never more
- * than three: muted glyphs in threes read as a set, four read as a toolbar —
- * anything rarer goes into the ··· menu.
+ * A trailing header control (New folder, Sort; Search until 2026-09-16, now
+ * on the window's row, and the ··· until the same day). One component so all
+ * wear the same geometry and the same reveal/hover ink. Never more than
+ * three: muted glyphs in threes read as a set, four read as a toolbar.
+ * `active` is the control whose menu is open: full ink on its hover surface
+ * until the menu closes.
  */
 function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
   return (
     <button
       type="button"
-      className="sidebar-section-action"
+      className={active ? "sidebar-section-action is-active" : "sidebar-section-action"}
       onClick={onClick}
       title={title}
       aria-label={ariaLabel || title}
       style={{
-        // Rest/reveal/emphasis ink lives in CSS; inline opacity holds the
-        // control visible while its menu is open (inline wins over the class).
-        opacity: active ? 1 : undefined,
         width: SECTION_BTN,
         height: SECTION_BTN,
         display: "flex",
@@ -337,9 +343,6 @@ const Sidebar = memo(function Sidebar({
   ctxMenuNoteId,
   ctxMenuFolderId,
   isMobile,
-  // Desktop only: the ··· menu's whole-list action. (Change vault folder is
-  // Settings → Storage only, beside the path it changes.)
-  onRevealVault,
   // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
 }) {
@@ -390,8 +393,8 @@ const Sidebar = memo(function Sidebar({
   } = useSidebar();
 
   // Anchor rect of the ··· trigger, or null when the vault menu is closed.
-  const [vaultMenuAnchor, setVaultMenuAnchor] = useState(null);
-  const closeVaultMenu = () => setVaultMenuAnchor(null);
+  const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
+  const closeSortMenu = () => setSortMenuAnchor(null);
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -1241,9 +1244,9 @@ const Sidebar = memo(function Sidebar({
                     alphabetical; root notes follow in the sort preference,
                     exactly as inside a folder — the root is a folder. */}
                 {/* The vault row is a title with quiet controls: New folder and
-                    the ··· reveal on hover or focus, at the 16px row tier so
-                    they read with the folder glyphs below, not with the chrome
-                    row above. New note lives in the chrome row. */}
+                    Sort, revealed on row hover or focus (held while the Sort
+                    menu is open), at the 16px row tier so they read with the
+                    folder glyphs below, not with the chrome row above. */}
                 {/* New note and the list's controls stay reachable however
                     far the tree is scrolled: they are a sticky block at the
                     top of the sidebar's one scroller, and rows slide under
@@ -1260,30 +1263,32 @@ const Sidebar = memo(function Sidebar({
                 >
                   <div style={{ height: SECTION_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
-                  <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
+                  <SectionHeader
+                    label="Notes"
+                    TEXT={TEXT}
+                    dropRoot
+                    menuOpen={sortMenuAnchor !== null}
+                  >
                     <SectionAction onClick={() => createFolder(null)} title="New folder">
                       <NewFolderIcon size={16} />
                     </SectionAction>
                     <SectionAction
-                      onClick={(e) => setVaultMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                      title="List options"
+                      onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                      title="Sort"
                       aria-haspopup="menu"
-                      aria-expanded={vaultMenuAnchor !== null}
-                      active={vaultMenuAnchor !== null}
+                      aria-expanded={sortMenuAnchor !== null}
+                      active={sortMenuAnchor !== null}
                     >
-                      <MoreHorizontalIcon size={16} />
+                      <SortIcon size={16} />
                     </SectionAction>
                   </SectionHeader>
                 </div>
-                {vaultMenuAnchor && (
-                  <VaultMenu
-                    anchor={vaultMenuAnchor}
+                {sortMenuAnchor && (
+                  <SortMenu
+                    anchor={sortMenuAnchor}
                     sortMode={sortMode}
                     setSortMode={setSortMode}
-                    onNewFolder={() => createFolder(null)}
-                    onReveal={onRevealVault}
-                    revealLabel={isElectronMac ? "Reveal in Finder" : "Show in folder"}
-                    onClose={closeVaultMenu}
+                    onClose={closeSortMenu}
                   />
                 )}
                 {/* An empty tree fails axe, so the element exists only with rows. */}
