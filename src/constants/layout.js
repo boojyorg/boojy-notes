@@ -56,10 +56,10 @@ export const SIDEBAR_DEFAULT_W = 240;
 // which is that tree drawn small under a crumb: same spine, same label column,
 // same row height, so the two read as one thing. Two columns: everything
 // structural (folder glyphs, section labels) sits on SPINE, every label on
-// TEXT_COL. The one exception is the sidebar's root note rows (2026-09-16):
-// they carry no glyph and their titles sit on SPINE, flush with the root
-// folders' glyphs, rather than leaving an empty gutter. Nested notes and the
-// popup's scope notes keep TEXT_COL.
+// TEXT_COL. The exception is the sidebar's note rows (2026-09-16): a note
+// carries no glyph and its title starts on the glyph column of its depth
+// (SPINE + depth × TREE_INDENT), so notes and folders at one depth share a
+// left edge. The popup's note rows keep TEXT_COL.
 
 /** Structural spine: the left edge of folder glyphs and section labels. */
 export const SPINE = 12;

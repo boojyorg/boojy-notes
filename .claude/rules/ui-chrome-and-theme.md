@@ -539,23 +539,30 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   with no separator; a scrolled-only hairline is the fix if that reads smudgy. The block paints
   `chromeBg`, the sidebar's own ground, or rows would show through it.
 - **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
-  folder icons; `TEXT_COL` carries every label, with one exception. **A root note's title sits
-  on `SPINE`, flush with the root folders' glyphs and the `Notes` label** (2026-09-16, Tyr's
-  ask; until then the text-only row kept an empty gutter so its title shared the label
-  column). Nested notes stay on `TEXT_COL` at their depth, level with the names of the folders
-  beside them, so only depth 0 differs. The folder popup (`PathTreeMenu`) is deliberately not
-  changed: its scope notes stay on `TEXT_COL` with the gutter, so the two trees differ at depth
-  0 for now; judge the popup live before moving it, and move it by the same expression if it
-  follows. The row's pill, inset, height and behaviour are untouched; only the text's x moved.
+  folder icons; `TEXT_COL` carries every label, with one exception. **A note's title starts
+  where a folder at the same depth puts its glyph** (`SPINE + depth × TREE_INDENT`, the folder
+  row's own padding; 2026-09-16, Tyr's ask, judged on a screenshot of a three-level tree), so
+  notes and folders at one depth share a left edge: root notes are flush with the root folders'
+  glyphs and the `Notes` label, and a folder's notes sit one step in, under its name. Until then
+  a note's title sat on `TEXT_COL` at its depth, level with the *names* of the folders beside
+  it, the text-only row keeping an empty gutter where a glyph would be; read down, that put a
+  folder's notes two steps past the folder and the sibling notes level with a sibling folder's
+  name, so loose notes read as tucked under the last folder. Accepted: a nested note lands 2px
+  left of its parent's name (the glyph column steps 20, a name sits 22 past its glyph), the
+  same 2px the tree already has between a folder's name and a child folder's glyph; making the
+  step 22 would fix it at the cost of moving every nested folder. The folder popup
+  (`PathTreeMenu`) is deliberately not changed: its note rows stay on `TEXT_COL`, so the two
+  trees differ for now; judge the popup live before moving it, and move it by the same
+  expression if it follows. The row's pill, inset, height and behaviour are untouched; only
+  the text's x moved.
 - Tree rows are pills with neutral `BG.hover` for hover, selection and multi-select alike. The
   active note is primary ink at normal weight; the pill alone carries "active", never bold,
   never accent. Mobile keeps its accent pill and bold title.
 - **Only structure and actions get a glyph.** Note rows carry no file icon. Folders carry only
   the folder icon: no chevron, the whole row toggles, the open-folder glyph plus indented
-  children carry the state, `aria-expanded` is the programmatic signal. Nested note-row padding
-  still reserves the removed icon's width so titles keep their column under folder names; don't
-  simplify it away (root rows are the exception above). `FileIcon` still ships in search
-  results, which are not tree rows.
+  children carry the state, `aria-expanded` is the programmatic signal. A note row's padding is
+  the folder row's (the alignment bullet above); it reserves no glyph width. `FileIcon` still
+  ships in search results, which are not tree rows.
 
 ### Note rows: trailing ··· and inline rename
 

@@ -391,12 +391,13 @@ const Sidebar = memo(function Sidebar({
     const mobGap = isMobile ? 9 : 5;
     // Desktop: quiet row grammar — a full-width pill; hover, selection and
     // multi-select all use neutral BG.hover, and the active note is
-    // distinguished by ink (weight + TEXT.primary), never by accent. A root
-    // note's title sits on SPINE, flush with the root folders' glyphs and the
-    // Notes label (2026-09-16); a nested note's stays on TEXT_COL at its depth,
-    // level with the names of the folders beside it. The folder popup keeps
-    // its scope notes on TEXT_COL (PathTreeMenu), a deliberate difference.
-    // Mobile keeps the existing accent-tinted pill grammar untouched.
+    // distinguished by ink (weight + TEXT.primary), never by accent. A note's
+    // title starts where a folder at the same depth puts its glyph (SPINE +
+    // depth × TREE_INDENT, the folder row's own padding; 2026-09-16), so notes
+    // and folders at one depth share a left edge and a folder's name is further
+    // right only by its glyph. The folder popup keeps its notes on TEXT_COL
+    // (PathTreeMenu), a deliberate difference. Mobile keeps the existing
+    // accent-tinted pill grammar untouched.
     const rowStyle = isMobile
       ? {
           width: "calc(100% - 8px)",
@@ -419,7 +420,7 @@ const Sidebar = memo(function Sidebar({
           boxSizing: "border-box",
           background: act || sel || menuOpen ? BG.hover : "transparent",
           borderRadius: ACTION_RADIUS,
-          padding: `0 8px 0 ${(depth === 0 ? SPINE : TEXT_COL + depth * TREE_INDENT) - ROW_INSET}px`,
+          padding: `0 8px 0 ${SPINE - ROW_INSET + depth * TREE_INDENT}px`,
         };
     return (
       <button
