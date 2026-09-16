@@ -113,7 +113,13 @@ vi.mock("../../src/context/SidebarContext", () => ({
 
 // ── Import component after mocks ──────────────────────────────────────────────
 import Sidebar from "../../src/components/Sidebar.jsx";
-import { ROW_INSET, SPINE, TEXT_COL, TREE_INDENT } from "../../src/constants/layout.js";
+import {
+  ROW_INSET,
+  SIDEBAR_TREE_INSET,
+  SPINE,
+  TEXT_COL,
+  TREE_INDENT,
+} from "../../src/constants/layout.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const noop = () => {};
@@ -555,12 +561,14 @@ describe("Sidebar", () => {
     const root = getByText("Loose Note").closest("[data-note-id]");
     const nested = getByText("Nested Note").closest("[data-note-id]");
     const folder = getByText("My Folder").closest('[role="treeitem"]');
-    // The pill is inset ROW_INSET from the panel, so the text lands on SPINE
-    // (root, flush with the folder glyphs) and one indent in for a folder's
-    // note; a note row's padding is exactly the folder row's at its depth.
-    expect(root.style.paddingLeft).toBe(`${SPINE - ROW_INSET}px`);
+    // The pill is inset ROW_INSET from the panel, so the text lands on the
+    // sidebar's spine (SPINE plus its own inset; root, flush with the folder
+    // glyphs) and one indent in for a folder's note; a note row's padding is
+    // exactly the folder row's at its depth.
+    const spine = SPINE + SIDEBAR_TREE_INSET;
+    expect(root.style.paddingLeft).toBe(`${spine - ROW_INSET}px`);
     expect(root.style.paddingLeft).toBe(folder.style.paddingLeft);
-    expect(nested.style.paddingLeft).toBe(`${SPINE + TREE_INDENT - ROW_INSET}px`);
+    expect(nested.style.paddingLeft).toBe(`${spine + TREE_INDENT - ROW_INSET}px`);
     // The step is the name's own offset from its glyph, so a folder's note
     // starts exactly under the folder's name.
     expect(TREE_INDENT).toBe(TEXT_COL - SPINE);

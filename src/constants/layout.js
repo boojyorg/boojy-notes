@@ -63,6 +63,15 @@ export const SIDEBAR_DEFAULT_W = 240;
 
 /** Structural spine: the left edge of folder glyphs and section labels. */
 export const SPINE = 12;
+/**
+ * The sidebar's own column (New note, the Notes row, the tree and its indent
+ * guides) sits this much further in than SPINE, judged live 2026-09-16 in 2px
+ * steps up to 6; every x in it is SPINE + this, so nesting and the
+ * glyph-to-name gap are unchanged.
+ * Sidebar only: the folder popup draws its tree on the bare SPINE, and the
+ * wordmark row keeps its own inset.
+ */
+export const SIDEBAR_TREE_INSET = 6;
 /** Label column: where every text label in a tree starts. */
 export const TEXT_COL = 34;
 /** Rows are inset this much from the panel's edges so hover pills breathe. */

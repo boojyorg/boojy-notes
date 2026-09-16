@@ -30,6 +30,7 @@ import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
   ROW_INSET,
+  SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
   TEXT_COL,
@@ -61,6 +62,10 @@ const HEADER_NUDGE = 4;
 const ROW_INSET_RIGHT = 2;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
+/** The spine as this column draws it: SPINE plus the sidebar's own inset.
+ *  Every desktop x below (New note, the Notes row, rows, guides) starts here,
+ *  so the column moves as one and the popup, on the bare SPINE, does not. */
+const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 
 // ── Row grammar (desktop) ────────────────────────────────────────────────────
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
@@ -87,7 +92,7 @@ const NOTE_MENU_SHIFT = 8;
 // SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
 // action group's own bottom padding, which is set to the same 12.
 const SECTION_HEADER_H = TREE_ROW_H;
-const SECTION_HEADER_LEFT = SPINE;
+const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
  *  HEADER_RIGHT_INSET (12) + the chrome glyph's 7px inset − this row's 8px. */
 const SECTION_HEADER_RIGHT = 5;
@@ -211,7 +216,7 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         marginRight: ROW_INSET_RIGHT,
         minHeight: ACTION_ROW_H,
         boxSizing: "border-box",
-        paddingLeft: SPINE - ROW_INSET,
+        paddingLeft: TREE_SPINE - ROW_INSET,
         paddingRight: 8,
         background: "none",
         border: "none",
@@ -420,7 +425,7 @@ const Sidebar = memo(function Sidebar({
           boxSizing: "border-box",
           background: act || sel || menuOpen ? BG.hover : "transparent",
           borderRadius: ACTION_RADIUS,
-          padding: `0 8px 0 ${SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+          padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
         };
     return (
       <button
@@ -613,7 +618,7 @@ const Sidebar = memo(function Sidebar({
                   marginBottom: TREE_ROW_GAP,
                   height: TREE_ROW_H,
                   boxSizing: "border-box",
-                  padding: `0 8px 0 ${SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+                  padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
                   borderRadius: ACTION_RADIUS,
                 }),
             background: "none",
@@ -697,11 +702,9 @@ const Sidebar = memo(function Sidebar({
         </button>
         {hasChildren && (
           <Collapsible open={isOpen}>
-            {/* LIVE TRY 2026-09-05: an indent guide, a hairline dropping from
-                the folder glyph's centre through its children. In one mixed
-                tree, root notes (no glyph, text on the folder-label column)
-                otherwise read as children of the last open folder above them;
-                the line ending is what says "this folder ends here". */}
+            {/* An indent guide (2026-09-05), a hairline dropping from the
+                folder glyph's centre through its children; the line ending is
+                what says "this folder ends here" in a mixed tree. */}
             <div style={{ position: "relative" }}>
               {!isMobile && (
                 <div
@@ -710,7 +713,7 @@ const Sidebar = memo(function Sidebar({
                     position: "absolute",
                     top: 0,
                     bottom: TREE_ROW_GAP,
-                    left: SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
+                    left: TREE_SPINE + SPINE_ICON / 2 + depth * TREE_INDENT,
                     width: 1,
                     background: BG.divider,
                     pointerEvents: "none",
