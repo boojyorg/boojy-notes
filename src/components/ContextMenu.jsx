@@ -1,4 +1,13 @@
-import { Fragment, useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import {
+  Fragment,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  memo,
+} from "react";
 import { useTheme } from "../hooks/useTheme";
 import { CopyIcon, NewFolderIcon, NewNoteIcon, PencilIcon, SettingsIcon, TrashIcon } from "./Icons";
 import { useSettings } from "../context/SettingsContext";
@@ -42,7 +51,20 @@ const ContextMenu = memo(function ContextMenu({
   const { setSettingsOpen } = useSettings();
 
   const [moveSubmenu, setMoveSubmenu] = useState(false);
+  // The highlighted row, by index: the pointer's row, or the arrows'. -1 is
+  // none. The one owner of a row's hover surface (`background` below); no
+  // direct style write, so nothing can disagree with it.
   const [activeIndex, setActiveIndex] = useState(-1);
+  // This component stays mounted between opens (it renders null when there is
+  // no menu), so its state would otherwise carry over: hover Rename, close,
+  // and the next row's, folder's or header's menu opened with Rename already
+  // lit before the pointer arrived (seen live 2026-09-16). Every open starts
+  // with nothing highlighted and the Move-to submenu closed; a layout effect,
+  // so the reset lands before the menu's first paint.
+  useLayoutEffect(() => {
+    setActiveIndex(-1);
+    setMoveSubmenu(false);
+  }, [ctxMenu]);
   const itemsRef = useRef([]);
   const menuContainerRef = useRef(null);
   // "container" so a pointer-opened menu doesn't paint a :focus-visible ring
@@ -276,11 +298,10 @@ const ContextMenu = memo(function ContextMenu({
               id={`ctx-item-${index}`}
               role="menuitem"
               onClick={item.action}
-              onMouseEnter={(e) => {
-                setActiveIndex(index);
-                hBg(e.currentTarget, BG.hover);
-              }}
-              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              onMouseEnter={() => setActiveIndex(index)}
+              // Leaving clears the index too: it used to clear only the
+              // inline background, and any re-render lit the row again.
+              onMouseLeave={() => setActiveIndex((i) => (i === index ? -1 : i))}
               style={{
                 width: "100%",
                 background: index === activeIndex ? BG.hover : "none",

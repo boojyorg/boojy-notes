@@ -11,7 +11,7 @@ import {
   RedoIcon,
 } from "./Icons";
 import { isElectronMac } from "../utils/platform";
-import { SIDEBAR_HANDLE_W } from "../constants/layout";
+import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, SIDEBAR_HANDLE_W } from "../constants/layout";
 import { PANEL_MS, panelTransition } from "../tokens/motion";
 
 /**
@@ -59,24 +59,15 @@ export const CHROME_INSET = 10;
 /** Top of the chrome row's buttons; centres them on the traffic lights
  *  (main.js trafficLightPosition.y = CHROME_TOP + CHROME_BTN / 2). */
 export const CHROME_TOP = 7;
-export const CHROME_BTN = 32;
-/** Between buttons of one group, and between the two groups. A group reads as
- *  a group only if the step out of it is bigger than the step within it. */
-export const BTN_GAP = 2;
+export {
+  CHROME_BTN,
+  BTN_GAP,
+  MAC_TRAFFIC_INSET,
+  SIDEBAR_HANDLE_W,
+} from "../constants/layout";
 const GROUP_GAP = 12;
 /** Air between the path's band and the control groups either side of it. */
 export const PATH_AIR = 12;
-/** The sidebar's drag handle sits between the sidebar and the editor. */
-export { SIDEBAR_HANDLE_W } from "../constants/layout";
-/**
- * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
- * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
- * the sidebar header's wordmark and the collapsed control group. Pairs with
- * trafficLightPosition in electron/main.js. Judge it at 100% only: the old 70
- * was settled in a dev window Chromium had zoomed to 131%, and at true size
- * the third light sat on the wordmark (measured 2026-09-05).
- */
-export const MAC_TRAFFIC_INSET = 86;
 /**
  * Whether the traffic lights are on screen to be cleared: macOS Electron, and
  * not in full screen, where macOS hides them and the inset would be dead space

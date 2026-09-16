@@ -288,3 +288,54 @@ describe("the header menu", () => {
     expect(props.bulkDeleteNotes).not.toHaveBeenCalled();
   });
 });
+
+// The component stays mounted between opens, so a highlight is state that
+// would carry over: hover Rename, close, and the next menu opened with Rename
+// already lit before the pointer arrived (seen live 2026-09-16 from a row's
+// ···, a folder's and the header's alike). Every open starts with nothing.
+describe("the highlight belongs to one open", () => {
+  // The mock's BG.hover, as jsdom reads it back.
+  const hoverBg = "rgb(85, 85, 85)";
+
+  it("starts a reopened menu with nothing highlighted", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
+    const { getByRole, getByText, rerender } = render(<ContextMenu {...props} />);
+    fireEvent.mouseEnter(getByText("Rename").closest("button"));
+    expect(getByRole("menu")).toHaveAttribute("aria-activedescendant", "ctx-item-0");
+
+    rerender(<ContextMenu {...props} ctxMenu={null} />);
+    rerender(<ContextMenu {...props} ctxMenu={{ type: "folder", id: "f1", x: 10, y: 10 }} />);
+    const menu = getByRole("menu");
+    expect(menu).not.toHaveAttribute("aria-activedescendant");
+    for (const item of menu.querySelectorAll("[role=menuitem]")) {
+      expect(item.style.background).not.toBe(hoverBg);
+    }
+  });
+
+  it("clears the highlight when the pointer leaves the row", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
+    const { getByRole, getByText } = render(<ContextMenu {...props} />);
+    const rename = getByText("Rename").closest("button");
+    fireEvent.mouseEnter(rename);
+    expect(rename.style.background).toBe(hoverBg);
+    fireEvent.mouseLeave(rename);
+    expect(getByRole("menu")).not.toHaveAttribute("aria-activedescendant");
+    expect(rename.style.background).not.toBe(hoverBg);
+  });
+
+  it("closes the Move-to submenu for the next open", () => {
+    const props = baseProps();
+    props.selectedNotes = new Set(["n1", "n2"]);
+    props.selectedCount = 2;
+    props.folderList = ["Work"];
+    props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
+    const { getByText, queryByText, rerender } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("Move to..."));
+    expect(getByText("Work")).toBeInTheDocument();
+    rerender(<ContextMenu {...props} ctxMenu={null} />);
+    rerender(<ContextMenu {...props} ctxMenu={{ type: "note", id: "n2", x: 10, y: 10 }} />);
+    expect(queryByText("Work")).not.toBeInTheDocument();
+  });
+});

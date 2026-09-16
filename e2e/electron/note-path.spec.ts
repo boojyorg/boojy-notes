@@ -154,11 +154,15 @@ test("narrowing the window drops the outer folders first and never puts the path
       shownBefore = shown;
       leftBefore = g.left;
     }
-    // At the minimum the nearest folder is still there when it fits: on macOS the
-    // band is 190px and `… / Archive / Todd's Note` is about 165.
+    // At the minimum the nearest folder is still there, and the name whole: on
+    // macOS the band is 219px (the window minimum follows the sidebar's, 545
+    // since 2026-09-16; it was 190px in a 520 window, where only `… / Archive /
+    // Todd's Note` fitted, and the whole path fits now).
+    await setWidth(h, WINDOW_MIN_W);
     if (process.platform === "darwin") {
-      expect(await folders(h.page)).toEqual(["Archive"]);
-      expect(await ellipses(h.page)).toBe(1);
+      const kept = await folders(h.page);
+      expect(kept[kept.length - 1]).toBe("Archive");
+      expect(await nameCut(h.page)).toBe(false);
     }
     // Widening gives the whole path back.
     await setWidth(h, 1200);

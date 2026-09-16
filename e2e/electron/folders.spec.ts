@@ -158,6 +158,21 @@ test("a row's ··· menu near the bottom of the window opens above the row, wit
     expect(noteMenu.active).toBeNull();
     expect(noteMenu.hovered).toEqual([]);
     expect(noteMenu.bottom).toBeLessThanOrEqual(noteTop);
+
+    // A highlight belongs to one open: hover an item, close, and the next
+    // menu (a folder's here, from a note's) starts with nothing lit. The
+    // component stays mounted between opens, and until 2026-09-16 the last
+    // hovered index carried over to every later menu.
+    await h.page.getByRole("menuitem", { name: "Rename" }).hover();
+    expect((await menuState()).active).toBe("ctx-item-0");
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.getByRole("menu")).toHaveCount(0);
+    await last.hover();
+    await last.locator("[title='Folder actions']").click();
+    await expect(h.page.getByRole("menu")).toBeVisible();
+    const reopened = await menuState();
+    expect(reopened.active).toBeNull();
+    expect(reopened.hovered).toEqual([]);
     await h.page.keyboard.press("Escape");
   } finally {
     await h.close();

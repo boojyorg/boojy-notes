@@ -92,7 +92,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
     setExpanded: _sidebarOverrides.setExpanded ?? vi.fn(),
     filteredTree: _sidebarOverrides.filteredTree ?? [],
     fNotes: _sidebarOverrides.fNotes ?? [],
-    renamingFolder: null,
+    renamingFolder: _sidebarOverrides.renamingFolder ?? null,
     setRenamingFolder: _sidebarOverrides.setRenamingFolder ?? vi.fn(),
     renamingNote: _sidebarOverrides.renamingNote ?? null,
     setRenamingNote: _sidebarOverrides.setRenamingNote ?? vi.fn(),
@@ -267,18 +267,20 @@ describe("Sidebar", () => {
     expect(toggle).toHaveBeenCalledWith("Toggle Folder");
   });
 
-  it("double-click renames a folder and suppresses the second toggle", () => {
+  // No double-click rename on a folder (2026-09-16): the first click of the
+  // pair toggled the folder under the field. Every click toggles; Rename is
+  // the folder menu's.
+  it("double-click on a folder only toggles it, twice, and renames nothing", () => {
     const toggle = vi.fn();
     const setRenamingFolder = vi.fn();
     const filteredTree = [{ name: "Dbl Folder", _path: "Dbl Folder", children: [], notes: [] }];
     const { getByText } = renderSidebar({ filteredTree, toggle, setRenamingFolder });
     const row = getByText("Dbl Folder");
-    // A real double-click is click(detail:1), click(detail:2), dblclick.
     fireEvent.click(row, { detail: 1 });
     fireEvent.click(row, { detail: 2 });
     fireEvent.dblClick(row, { detail: 2 });
-    expect(setRenamingFolder).toHaveBeenCalledWith("Dbl Folder");
-    expect(toggle).toHaveBeenCalledTimes(1);
+    expect(setRenamingFolder).not.toHaveBeenCalled();
+    expect(toggle).toHaveBeenCalledTimes(2);
   });
 
   it("double-click on a note starts the inline rename", () => {
@@ -310,6 +312,56 @@ describe("Sidebar", () => {
     fireEvent.keyDown(input, { key: "Enter", target: { value: "New Name" } });
     expect(renameNote).toHaveBeenCalledWith("n1", "New Name");
     expect(setRenamingNote).toHaveBeenCalledWith(null);
+  });
+
+  // The rename field is invisible (2026-09-16): no border, fill or padding,
+  // the row's own font, so the name does not move when it appears and the
+  // selection is the whole signal; the row stands down under it (the
+  // `is-renaming` hook, which GlobalStyles turns into no pill and no
+  // trailing actions; jsdom cannot evaluate that sheet, so the hook is what
+  // is asserted here).
+  describe("the inline rename field", () => {
+    const invisible = (input) => {
+      expect(input.style.border).toBe("0px");
+      expect(input.style.padding).toBe("0px");
+      expect(input.style.background).toBe("transparent");
+      expect(input.style.fontSize).toBe("14px");
+      expect(input.style.fontWeight).toBe("400");
+    };
+
+    it("is invisible under a note's name and the row stands down", () => {
+      const noteData = buildNoteData([{ id: "n1", title: "Old Name" }]);
+      const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+      const { getByLabelText } = renderSidebar({
+        filteredTree,
+        noteData,
+        expanded: { F: true },
+        renamingNote: "n1",
+      });
+      const input = getByLabelText("Rename note");
+      invisible(input);
+      const row = input.closest('[role="treeitem"]');
+      expect(row.className).toBe("sidebar-note is-renaming");
+      // The whole name is selected, Finder-style, ready to overwrite.
+      expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Old Name".length]);
+    });
+
+    it("is invisible under a folder's name, selects it, and the row stands down", () => {
+      const noteData = buildNoteData([{ id: "n1", title: "Child" }]);
+      const filteredTree = [{ name: "Work", _path: "Work", children: [], notes: ["n1"] }];
+      const { getByLabelText } = renderSidebar({
+        filteredTree,
+        noteData,
+        expanded: { Work: true },
+        renamingFolder: "Work",
+      });
+      const input = getByLabelText("Rename folder");
+      invisible(input);
+      const row = input.closest('[role="treeitem"]');
+      expect(row.className).toBe("sidebar-folder is-renaming");
+      // Until 2026-09-16 the folder field opened with the caret at the end.
+      expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Work".length]);
+    });
   });
 
   it("renders folder rows without a disclosure chevron but keeps aria-expanded", () => {

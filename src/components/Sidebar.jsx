@@ -31,6 +31,7 @@ import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
+  HEADER_RIGHT_INSET,
   ROW_INSET,
   SIDEBAR_TREE_INSET,
   SPINE,
@@ -39,6 +40,7 @@ import {
   TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
+  WORDMARK_H,
 } from "../constants/layout";
 
 const hBg = (el, c) => {
@@ -47,10 +49,11 @@ const hBg = (el, c) => {
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
-/** Left inset of the wordmark from the sidebar edge. */
+/** Left inset of the wordmark from the sidebar edge (web and full screen;
+ *  MAC_TRAFFIC_INSET otherwise). The right inset, the wordmark's size and the
+ *  control box live in constants/layout.js, because the sidebar's minimum
+ *  width is derived from what this row holds. */
 const HEADER_LEFT_INSET = 12;
-/** Breathing room between the toggle's right edge and the sidebar divider. */
-const HEADER_RIGHT_INSET = 6;
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
@@ -102,6 +105,39 @@ const rowMenuAnchor = (btn, row) => ({
  *  4px between them (judged live 2026-09-16: adjacent, the pen's ink sat on
  *  the dots), the note row's single ··· slot twice over. */
 const FOLDER_ACTIONS_W = 44;
+
+/**
+ * The inline rename field is invisible (2026-09-16, judged against ChatGPT's
+ * rows): no border, fill or padding, the row's own font at the row's own
+ * place, so nothing on screen moves when it appears and the selected name is
+ * the whole signal. Before this it was a bordered accent box with 5px of
+ * padding that shifted the name right, and the folder's was drawn at
+ * 12.5px/500 under a 14px/400 label, so the name shrank. The row itself
+ * stands down while it renames (`.is-renaming` in GlobalStyles: no pill,
+ * actions hidden). The height is the row's so the input's centred text sits
+ * on the label's baseline.
+ * @param {{ TEXT: { primary: string } }} theme
+ * @param {number} fontSize
+ */
+const renameFieldStyle = ({ TEXT }, fontSize) => ({
+  background: "transparent",
+  border: 0,
+  borderRadius: 0,
+  padding: 0,
+  margin: 0,
+  outline: "none",
+  boxShadow: "none",
+  color: TEXT.primary,
+  caretColor: TEXT.primary,
+  fontSize,
+  fontFamily: "inherit",
+  fontWeight: 400,
+  lineHeight: "inherit",
+  height: "100%",
+  flex: 1,
+  minWidth: 0,
+  cursor: "text",
+});
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
@@ -463,7 +499,7 @@ const Sidebar = memo(function Sidebar({
         // inline input folders use. The two single-clicks it also fires just
         // open the note, harmlessly.
         onDoubleClick={!isMobile && renamingNote !== nId ? () => setRenamingNote(nId) : undefined}
-        className="sidebar-note"
+        className={renamingNote === nId ? "sidebar-note is-renaming" : "sidebar-note"}
         onContextMenu={(e) => {
           e.preventDefault();
           if (!sel && clearSelection) clearSelection();
@@ -515,6 +551,7 @@ const Sidebar = memo(function Sidebar({
               renameNote(nId, e.target.value);
               setRenamingNote(null);
             }}
+            data-testid="rename-field"
             // The field owns Enter and Escape: prevented, so the app shell
             // never treats them as its own (Escape also closed an overlay
             // sidebar under the field).
@@ -529,19 +566,7 @@ const Sidebar = memo(function Sidebar({
                 setRenamingNote(null);
               }
             }}
-            style={{
-              background: BG.darkest,
-              border: `1px solid ${accentColor}`,
-              borderRadius: 4,
-              color: TEXT.primary,
-              fontSize: mobFont,
-              fontFamily: "inherit",
-              fontWeight: 400,
-              padding: "1px 4px",
-              outline: "none",
-              flex: 1,
-              minWidth: 0,
-            }}
+            style={renameFieldStyle(theme, mobFont)}
           />
         ) : (
           <span
@@ -615,16 +640,15 @@ const Sidebar = memo(function Sidebar({
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
-          className="sidebar-folder"
-          onClick={(e) => {
-            // Desktop double-click renames: the second click is the rename
-            // gesture, so it must not toggle again — the first click's toggle
-            // stands (an open folder behind a rename input is fine; a laggy
-            // single-click from a disambiguation delay would not be).
-            if (!isMobile && e.detail >= 2) return;
-            toggle(folderPath);
-          }}
-          onDoubleClick={!isMobile ? () => setRenamingFolder(folderPath) : undefined}
+          className={
+            renamingFolder === folderPath ? "sidebar-folder is-renaming" : "sidebar-folder"
+          }
+          // A click toggles, every click; no double-click rename (2026-09-16,
+          // Tyr's call): the first click of the pair toggled the folder under
+          // the field, which read as a glitch. A folder is renamed from its
+          // ··· menu, as ChatGPT's projects are. Notes keep double-click, since
+          // a click on a note only opens it.
+          onClick={() => toggle(folderPath)}
           onContextMenu={(e) => {
             e.preventDefault();
             setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folderPath });
@@ -678,7 +702,17 @@ const Sidebar = memo(function Sidebar({
             <input
               autoFocus
               defaultValue={folder.name}
+              aria-label="Rename folder"
+              data-testid="rename-field"
+              // Finder-style, as a note's: the whole name selected, ready to
+              // overwrite (until 2026-09-16 the caret sat at the end and
+              // typing appended). With no border the selection is the only
+              // sign the field is there, so this is not polish.
+              onFocus={(e) => e.currentTarget.select()}
               onClick={(e) => e.stopPropagation()}
+              // Folder rows are draggable too; a press in the field must never
+              // start a drag.
+              onPointerDown={(e) => e.stopPropagation()}
               // Commit once: Enter commits and unmounts the field, and the blur
               // that can follow must not rename the (now moved) directory again.
               onBlur={(e) => {
@@ -700,18 +734,7 @@ const Sidebar = memo(function Sidebar({
                   setRenamingFolder(null);
                 }
               }}
-              style={{
-                background: BG.darkest,
-                border: `1px solid ${accentColor}`,
-                borderRadius: 4,
-                color: TEXT.primary,
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                fontWeight: 500,
-                padding: "1px 4px",
-                outline: "none",
-                width: "100%",
-              }}
+              style={renameFieldStyle(theme, isMobile ? 17 : 14)}
             />
           ) : (
             <span
@@ -736,12 +759,11 @@ const Sidebar = memo(function Sidebar({
               span+role, tabIndex -1, as the note dots: a real button inside
               the treeitem button fails axe nested-interactive; the row stays
               the keyboard path (right-click opens the menu). Clicks stop here
-              so the row does not toggle, and a double-click does not rename. */}
+              so the row does not toggle. */}
           {!isMobile && (
             <span
               className="sidebar-folder-actions"
               onPointerDown={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
               style={{
                 opacity: folderMenuOpen ? 1 : undefined,
                 width: folderMenuOpen ? FOLDER_ACTIONS_W : undefined,
@@ -981,10 +1003,11 @@ const Sidebar = memo(function Sidebar({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            {/* 18px: a label, not a headline — at 20 it out-shouted the note's H1.
-                Drawn in the theme's ink (Wordmark picks the per-theme asset);
-                the 0.92-opacity stand-in for a black asset is gone with it. */}
-            <Wordmark height={18} />
+            {/* WORDMARK_H, 18px: a label, not a headline — at 20 it out-shouted
+                the note's H1. Drawn in the theme's ink (Wordmark picks the
+                per-theme asset); the 0.92-opacity stand-in for a black asset is
+                gone with it. */}
+            <Wordmark height={WORDMARK_H} />
           </button>
           {/* Search and the toggle, one group at the chrome row's own gap
               (2026-09-16; Search sat on the Notes row from 2026-09-12). The
