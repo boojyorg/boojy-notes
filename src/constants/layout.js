@@ -69,8 +69,14 @@ export const TEXT_COL = 34;
 export const ROW_INSET = 4;
 /** Folder-row glyph box on the spine (16px list tier). */
 export const SPINE_ICON = 16;
-/** Each level of nesting steps the row's contents this far right. */
-export const TREE_INDENT = 20;
+/**
+ * Each level of nesting steps the row's contents this far right. It is the
+ * name's own offset from its glyph, never a number of its own (2026-09-16): a
+ * child's contents, glyph or text, then start exactly under its parent's name.
+ * At 20 they sat 2px short of it at every depth, hidden by the glyph's inner
+ * whitespace and given away by a note's text.
+ */
+export const TREE_INDENT = TEXT_COL - SPINE;
 /** Tree rows are this tall, with a 2px rhythm gap. */
 export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;

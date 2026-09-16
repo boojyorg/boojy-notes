@@ -113,7 +113,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
 
 // ── Import component after mocks ──────────────────────────────────────────────
 import Sidebar from "../../src/components/Sidebar.jsx";
-import { ROW_INSET, SPINE, TREE_INDENT } from "../../src/constants/layout.js";
+import { ROW_INSET, SPINE, TEXT_COL, TREE_INDENT } from "../../src/constants/layout.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const noop = () => {};
@@ -561,6 +561,9 @@ describe("Sidebar", () => {
     expect(root.style.paddingLeft).toBe(`${SPINE - ROW_INSET}px`);
     expect(root.style.paddingLeft).toBe(folder.style.paddingLeft);
     expect(nested.style.paddingLeft).toBe(`${SPINE + TREE_INDENT - ROW_INSET}px`);
+    // The step is the name's own offset from its glyph, so a folder's note
+    // starts exactly under the folder's name.
+    expect(TREE_INDENT).toBe(TEXT_COL - SPINE);
   });
 
   it("renders empty search message when searchMode is active but results are empty", () => {

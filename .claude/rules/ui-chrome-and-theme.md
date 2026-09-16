@@ -527,7 +527,7 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
   vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
 - **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through
-  its children (`SPINE + SPINE_ICON / 2 + depth × 20`). In one mixed tree, root notes have no
+  its children (`SPINE + SPINE_ICON / 2 + depth × TREE_INDENT`). In one mixed tree, root notes have no
   glyph and sit on the folder-label column, so without the line they read as children of the
   last open folder; the line ending is what says "this folder ends here". No breath before the
   root notes: the row rhythm stays even. Tree rows are 28px with a 2px gap.
@@ -547,10 +547,12 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   a note's title sat on `TEXT_COL` at its depth, level with the *names* of the folders beside
   it, the text-only row keeping an empty gutter where a glyph would be; read down, that put a
   folder's notes two steps past the folder and the sibling notes level with a sibling folder's
-  name, so loose notes read as tucked under the last folder. Accepted: a nested note lands 2px
-  left of its parent's name (the glyph column steps 20, a name sits 22 past its glyph), the
-  same 2px the tree already has between a folder's name and a child folder's glyph; making the
-  step 22 would fix it at the cost of moving every nested folder. The folder popup
+  name, so loose notes read as tucked under the last folder. **The indent step is the name's
+  offset from its glyph** (`TREE_INDENT = TEXT_COL − SPINE`, 22, the same day): a child's
+  contents, glyph or text, start exactly under its parent's name. At 20 every nested row sat
+  2px short of it, which the glyph's inner whitespace hid and a note's text gave away (Tyr's
+  screenshot: `Sem 1 26-27 Master` a hair left of `Sem 1 26-27`). Closing the glyph gap to 4
+  instead would have moved every label and read cramped. The folder popup
   (`PathTreeMenu`) is deliberately not changed: its note rows stay on `TEXT_COL`, so the two
   trees differ for now; judge the popup live before moving it, and move it by the same
   expression if it follows. The row's pill, inset, height and behaviour are untouched; only
