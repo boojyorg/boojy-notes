@@ -1,10 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
+  BTN_GAP,
+  CHROME_BTN,
   EDITOR_FLOOR_W,
+  HEADER_RIGHT_INSET,
+  MAC_TRAFFIC_INSET,
   SIDEBAR_HANDLE_W,
+  SIDEBAR_HEADER_W,
   SIDEBAR_MIN_W,
   SIDEBAR_MAX_W,
   WINDOW_MIN_W,
+  WORDMARK_W,
   sidebarWidthFor,
 } from "../../src/constants/layout";
 
@@ -30,6 +36,16 @@ describe("sidebarWidthFor", () => {
 
   it("makes the window minimum the two floors and the handle", () => {
     expect(WINDOW_MIN_W).toBe(SIDEBAR_MIN_W + SIDEBAR_HANDLE_W + EDITOR_FLOOR_W);
-    expect(WINDOW_MIN_W).toBe(520);
+  });
+
+  // The minimum is the header row's own width plus air, never a number of its
+  // own: at 200 the row's contents came to 226 on macOS once Search joined the
+  // toggle (2026-09-16), and the toggle was clipped. Add a control to the row
+  // and the minimum follows.
+  it("keeps the header row whole at the sidebar's minimum", () => {
+    expect(SIDEBAR_HEADER_W).toBe(
+      MAC_TRAFFIC_INSET + WORDMARK_W + 2 * CHROME_BTN + BTN_GAP + HEADER_RIGHT_INSET,
+    );
+    expect(SIDEBAR_MIN_W).toBeGreaterThan(SIDEBAR_HEADER_W);
   });
 });

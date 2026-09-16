@@ -138,9 +138,10 @@ hardcoded green); swap them for Lucide when touching those files.
 
 - **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS Electron the
   traffic lights sit inline in the sidebar header, and the wordmark shifts by
-  `MAC_TRAFFIC_INSET` to clear them (move one, re-judge the other, **at 100% page zoom only**:
-  the lights are native and never scale with the page, and macOS 26 draws them 14px on a 23px
-  pitch, so they end at 75px). The header is the window
+  `MAC_TRAFFIC_INSET` to clear them (82 since 2026-09-16, brought in from 86 at Tyr's ask for a
+  wordmark a few pixels nearer the lights; move one, re-judge the other, **at 100% page zoom
+  only**: the lights are native and never scale with the page, and macOS 26 draws them 14px on
+  a 23px pitch, so they end at 75px). The header is the window
   drag region, and so is the editor's chrome row (the path band, below), in both sidebar states;
   the wordmark, the chrome buttons and the path itself opt out. **A drag rectangle must never
   lie under a control that comes before it in the DOM** (2026-09-16): Chromium collects
@@ -1880,12 +1881,21 @@ therefore does not preview the mobile layout; use device emulation.
   sidebar dragged wide: the note was 215px). The dragged width is the preference and a resize
   never rewrites it; what is drawn is `sidebarWidthFor(preference, window.innerWidth)` in
   `constants/layout.js`: the preference capped so the editor keeps `EDITOR_FLOOR_W` (316px,
-  about 268px of text at the gutter floor, some 34 characters), and never below `SIDEBAR_MIN_W`
-  (200px, under which the New note pill and the Notes row's three glyphs fight the panel). The
+  about 268px of text at the gutter floor, some 34 characters), and never below `SIDEBAR_MIN_W`.
+  **The sidebar minimum is the header row's own width plus 2px of air, derived, never a number
+  of its own** (2026-09-16): `SIDEBAR_HEADER_W` = the traffic-light inset + the wordmark's 69px
+  at 18px tall + Search and the toggle at their gap + the right inset, the widest the row ever
+  is (macOS out of full screen), so 225 (`HEADER_AIR`, 8 at first, then 4, then 2 the same day at
+  Tyr's ask: Search's box 2px off the wordmark, its glyph 9). It was a bare 200 until then, sized when the row held
+  one button; Search joined the toggle on 2026-09-16 and the row came to 226, so at the minimum
+  the toggle was clipped by 26px (nothing in the row can shrink and the wrapper clips). The
+  chrome-row constants (`CHROME_BTN`, `BTN_GAP`, `MAC_TRAFFIC_INSET`, `HEADER_RIGHT_INSET`,
+  `WORDMARK_H`/`WORDMARK_W`) live in `constants/layout.js` for that derivation, re-exported by
+  `EditorChrome`; add a control to the row and the minimum follows. The
   drag clamp reads the same cap (`maxWidth` into `usePanelResize`), so the divider stops where
   the window would squeeze the note. **The window minimum is the two floors and the handle,
-  `WINDOW_MIN_W` = 200 + 4 + 316 = 520**, which `electron/main.js` imports; it is not a number of
-  its own, so don't set `minWidth` by hand. `LayoutContext` exposes the drawn `sidebarWidth`;
+  `WINDOW_MIN_W` = `SIDEBAR_MIN_W` + 4 + 316 (545)**, which `electron/main.js` imports; it is not
+  a number of its own, so don't set `minWidth` by hand. `LayoutContext` exposes the drawn `sidebarWidth`;
   the preference is internal. `chrome-row.spec.ts` drags the divider wide, narrows the window
   and measures the cap, the floor and the return in the real app.
 - **The column gives up its air before its text** (2026-09-14): the side gutters ramp from 56px

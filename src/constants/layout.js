@@ -7,10 +7,57 @@
  * `SIDEBAR_MIN_W` in LayoutContext and a bare `200` literal in the drag clamp
  * in `usePanelResize`. LayoutContext imports usePanelResize, so neither file
  * could import the constant from the other without a cycle — hence this module.
+ * It is also read by `electron/main.js`, so it imports nothing.
  */
 
-/** Narrowest the sidebar can be dragged. */
-export const SIDEBAR_MIN_W = 200;
+// ── The chrome row ──────────────────────────────────────────────────────────
+// The sidebar's header and the editor's top row share one control grammar.
+// The numbers live here, not in EditorChrome, because the sidebar's minimum
+// width is derived from them (below) and this module must stay importable
+// from the main process, which reads WINDOW_MIN_W.
+
+/** Control hit box in the chrome rows (the 18px navigation glyph sits in it). */
+export const CHROME_BTN = 32;
+/** Between buttons of one group, and between the two groups. A group reads as
+ *  a group only if the step out of it is bigger than the step within it. */
+export const BTN_GAP = 2;
+/**
+ * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
+ * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
+ * the sidebar header's wordmark and the collapsed control group. Pairs with
+ * trafficLightPosition in electron/main.js. Judge it at 100% only: the old 70
+ * was settled in a dev window Chromium had zoomed to 131%, and at true size
+ * the third light sat on the wordmark (measured 2026-09-05). 86 until
+ * 2026-09-16, brought in 4px at Tyr's ask, to be judged live.
+ */
+export const MAC_TRAFFIC_INSET = 82;
+/** Breathing room between the header's last control and the sidebar divider. */
+export const HEADER_RIGHT_INSET = 6;
+/** The wordmark's drawn height in the sidebar header (a label, not a headline:
+ *  at 20 it out-shouted the note's H1), and its width at that height. The
+ *  asset is 858×226, so 18px tall is 68.3px wide. */
+export const WORDMARK_H = 18;
+export const WORDMARK_W = 69;
+/**
+ * What the sidebar's header row holds on macOS, where it is widest: the
+ * traffic-light inset, the wordmark, Search and the toggle at their gap, and
+ * the right inset. Nothing in the row can shrink, so a narrower sidebar clips
+ * the toggle (seen 2026-09-16, after Search joined the row: the minimum had
+ * been sized for one button).
+ */
+export const SIDEBAR_HEADER_W =
+  MAC_TRAFFIC_INSET + WORDMARK_W + 2 * CHROME_BTN + BTN_GAP + HEADER_RIGHT_INSET;
+/** Air between the wordmark and Search's box when the sidebar is at its
+ *  minimum (the glyph sits 7px inside the box, so the visible gap is 9).
+ *  8 at first, then 4, then 2 the same day at Tyr's ask. */
+export const HEADER_AIR = 2;
+
+/**
+ * Narrowest the sidebar can be dragged: the header row plus HEADER_AIR, so
+ * every control in it stays whole. Derived, never a number of its own: add a
+ * control to the row and the minimum follows.
+ */
+export const SIDEBAR_MIN_W = SIDEBAR_HEADER_W + HEADER_AIR;
 
 /** Widest the sidebar can be dragged. */
 export const SIDEBAR_MAX_W = 400;

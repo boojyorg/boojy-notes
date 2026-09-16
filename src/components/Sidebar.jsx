@@ -31,6 +31,7 @@ import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
+  HEADER_RIGHT_INSET,
   ROW_INSET,
   SIDEBAR_TREE_INSET,
   SPINE,
@@ -39,6 +40,7 @@ import {
   TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
+  WORDMARK_H,
 } from "../constants/layout";
 
 const hBg = (el, c) => {
@@ -47,10 +49,11 @@ const hBg = (el, c) => {
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
-/** Left inset of the wordmark from the sidebar edge. */
+/** Left inset of the wordmark from the sidebar edge (web and full screen;
+ *  MAC_TRAFFIC_INSET otherwise). The right inset, the wordmark's size and the
+ *  control box live in constants/layout.js, because the sidebar's minimum
+ *  width is derived from what this row holds. */
 const HEADER_LEFT_INSET = 12;
-/** Breathing room between the toggle's right edge and the sidebar divider. */
-const HEADER_RIGHT_INSET = 6;
 /** Optical drop for the whole header row (wordmark + toggle together). */
 const HEADER_NUDGE = 4;
 
@@ -981,10 +984,11 @@ const Sidebar = memo(function Sidebar({
             onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
-            {/* 18px: a label, not a headline — at 20 it out-shouted the note's H1.
-                Drawn in the theme's ink (Wordmark picks the per-theme asset);
-                the 0.92-opacity stand-in for a black asset is gone with it. */}
-            <Wordmark height={18} />
+            {/* WORDMARK_H, 18px: a label, not a headline — at 20 it out-shouted
+                the note's H1. Drawn in the theme's ink (Wordmark picks the
+                per-theme asset); the 0.92-opacity stand-in for a black asset is
+                gone with it. */}
+            <Wordmark height={WORDMARK_H} />
           </button>
           {/* Search and the toggle, one group at the chrome row's own gap
               (2026-09-16; Search sat on the Notes row from 2026-09-12). The

@@ -16,7 +16,12 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 
 import { LayoutProvider, useLayout } from "../../src/context/LayoutContext";
-import { EDITOR_FLOOR_W, SIDEBAR_HANDLE_W, SIDEBAR_MIN_W } from "../../src/constants/layout";
+import {
+  EDITOR_FLOOR_W,
+  SIDEBAR_HANDLE_W,
+  SIDEBAR_MIN_W,
+  WINDOW_MIN_W,
+} from "../../src/constants/layout";
 
 const ORIGINAL_WIDTH = window.innerWidth;
 
@@ -103,7 +108,7 @@ describe("LayoutContext sidebar presentation", () => {
       expect(layout.sidebarWidth).toBe(380);
       setWidth(600);
       expect(layout.sidebarWidth).toBe(600 - SIDEBAR_HANDLE_W - EDITOR_FLOOR_W);
-      setWidth(520);
+      setWidth(WINDOW_MIN_W);
       expect(layout.sidebarWidth).toBe(SIDEBAR_MIN_W);
       setWidth(1200);
       expect(layout.sidebarWidth).toBe(380);

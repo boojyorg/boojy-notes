@@ -13,6 +13,9 @@ import { PATH_AIR } from "../../src/components/EditorChrome";
 import { type AppHandle, launchApp } from "./harness";
 import {
   EDITOR_FLOOR_W,
+  HEADER_AIR,
+  HEADER_RIGHT_INSET,
+  MAC_TRAFFIC_INSET,
   SIDEBAR_HANDLE_W,
   SIDEBAR_MIN_W,
   WINDOW_MIN_W,
@@ -81,7 +84,7 @@ async function controlsRight(page: Page, titles: string[]) {
 }
 
 test("the chrome row's controls never overlap the note's name, wide or narrow", async () => {
-  // WINDOW_MIN_W (520px) is the window's minimum (electron/main.js).
+  // WINDOW_MIN_W is the window's minimum (electron/main.js).
   const h = await launchApp({ "Link end.md": "Alpha.\n" });
   try {
     await h.openNote("Link end");
@@ -186,7 +189,7 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     await setWidth(h, 1200);
     const wordmark = h.page.getByTitle("Open Settings");
     const atRest = (await wordmark.boundingBox())!.x;
-    expect(atRest).toBe(86);
+    expect(atRest).toBe(MAC_TRAFFIC_INSET);
 
     // Expanded: the wordmark moves back to the header's own inset...
     await setFullScreen(true);
@@ -202,7 +205,7 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
 
     // Leaving full screen restores the inset in both states.
     await setFullScreen(false);
-    await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(86);
+    await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(MAC_TRAFFIC_INSET);
     await h.page.getByTitle("Show sidebar").click();
     await settled(h.page);
     await expect.poll(() => leftOf("Open Settings")).toBe(atRest);
@@ -249,6 +252,16 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
 
     await setWidth(h, WINDOW_MIN_W);
     await expect.poll(sidebarWidth).toBe(SIDEBAR_MIN_W);
+    // The header row is whole at the minimum: the toggle ends inside the panel
+    // and the wordmark keeps its air before Search (2026-09-16; at a bare 200
+    // the toggle lost 26px past the divider once Search joined the row).
+    const toggle = (await h.page.getByTitle("Hide sidebar").boundingBox())!;
+    expect(toggle.x + toggle.width).toBeLessThanOrEqual(
+      SIDEBAR_MIN_W - HEADER_RIGHT_INSET + SUBPIXEL,
+    );
+    const wordmark = (await h.page.getByTitle("Open Settings").boundingBox())!;
+    const search = (await h.page.getByTitle("Search notes").boundingBox())!;
+    expect(search.x - (wordmark.x + wordmark.width)).toBeGreaterThanOrEqual(HEADER_AIR - SUBPIXEL);
 
     await setWidth(h, 1200);
     await expect.poll(sidebarWidth).toBe(380);
