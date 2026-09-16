@@ -177,14 +177,17 @@ describe("Sidebar", () => {
   });
 
   // Search is a palette over the window (2026-09-05). Its glyph sits on the
-  // Notes row with New folder and the ··· (2026-09-12), not on the window's
-  // own row above; the desktop panel never shows a field or results.
-  it("opens the search palette from the Notes row's Search glyph and shows no field", () => {
+  // window's own row, a chrome button immediately left of the toggle
+  // (2026-09-16; on the Notes row from 2026-09-12); the desktop panel never
+  // shows a field or results.
+  it("opens the search palette from the header's Search button, beside the toggle", () => {
     const onOpenSearch = vi.fn();
-    const { getByLabelText } = renderSidebar({ onOpenSearch });
+    const { getByLabelText, getByTitle } = renderSidebar({ onOpenSearch });
     const search = getByLabelText("Search notes");
-    expect(search.closest(".sidebar-section-header")).not.toBeNull();
+    expect(search.closest(".sidebar-section-header")).toBeNull();
     expect(search.tagName).toBe("BUTTON");
+    expect(search.nextElementSibling).toBe(getByTitle("Hide sidebar"));
+    expect(search.style.width).toBe(getByTitle("Hide sidebar").style.width);
     fireEvent.click(search);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();
@@ -504,13 +507,13 @@ describe("Sidebar", () => {
     expect(onRevealVault).toHaveBeenCalled();
   });
 
-  // The Notes row's three controls are visible at rest (2026-09-12). jsdom
-  // can't compute the stylesheet, so assert the DOM hooks: the shared class,
-  // inside the header its selectors scope to, keyboard-reachable, and no
-  // hover-reveal variant left on any of them.
-  it("keeps all three list controls keyboard-reachable and on the one class", () => {
+  // The Notes row's two controls are visible at rest (2026-09-12; Search
+  // left the row on 2026-09-16). jsdom can't compute the stylesheet, so
+  // assert the DOM hooks: the shared class, inside the header its selectors
+  // scope to, keyboard-reachable, and no hover-reveal variant left on them.
+  it("keeps both list controls keyboard-reachable and on the one class", () => {
     const { getByLabelText } = renderSidebar();
-    for (const name of ["Search notes", "New folder", "List options"]) {
+    for (const name of ["New folder", "List options"]) {
       const btn = getByLabelText(name);
       expect(btn.tabIndex).toBe(0);
       expect(btn.className).toBe("sidebar-section-action");

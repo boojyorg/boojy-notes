@@ -15,6 +15,7 @@ import {
   SidebarToggleIcon,
 } from "./Icons";
 import {
+  BTN_GAP,
   CHROME_TOP,
   CHROME_BTN,
   MAC_TRAFFIC_INSET,
@@ -160,10 +161,11 @@ function SectionHeader({ label, TEXT, first, children, dropRoot }) {
 }
 
 /**
- * A trailing header control (Search, New folder, ···). One component so all
- * wear the same geometry and the same rest/hover ink, muted at rest and full
- * on hover or focus. Never a fourth: three muted glyphs read as a set, four
- * read as a toolbar — anything rarer goes into the ··· menu.
+ * A trailing header control (New folder, ···; Search until 2026-09-16, now
+ * on the window's row). One component so all wear the same geometry and the
+ * same rest/hover ink, muted at rest and full on hover or focus. Never more
+ * than three: muted glyphs in threes read as a set, four read as a toolbar —
+ * anything rarer goes into the ··· menu.
  */
 function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
   return (
@@ -901,13 +903,18 @@ const Sidebar = memo(function Sidebar({
                 the 0.92-opacity stand-in for a black asset is gone with it. */}
             <Wordmark height={18} />
           </button>
-          {/* The window's row carries the window's own control and nothing
-              else (2026-09-12): Search moved down to the list it searches,
-              where it sits beside New folder and the ··· at the list's own
-              tier. Two rows of 18px glyphs stacked read as two toolbars. */}
-          <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
-            <SidebarToggleIcon />
-          </ChromeButton>
+          {/* Search and the toggle, one group at the chrome row's own gap
+              (2026-09-16; Search sat on the Notes row from 2026-09-12). The
+              same two neighbours the collapsed header shows, so Search keeps
+              its place beside the toggle in both sidebar states. */}
+          <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
+            <ChromeButton onClick={onOpenSearch} title="Search notes">
+              <SearchIcon size={18} />
+            </ChromeButton>
+            <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
+              <SidebarToggleIcon />
+            </ChromeButton>
+          </div>
         </div>
       )}
 
@@ -1174,9 +1181,6 @@ const Sidebar = memo(function Sidebar({
                   <div style={{ height: SECTION_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
                   <SectionHeader label="Notes" TEXT={TEXT} dropRoot>
-                    <SectionAction onClick={onOpenSearch} title="Search notes">
-                      <SearchIcon size={16} />
-                    </SectionAction>
                     <SectionAction onClick={() => createFolder(null)} title="New folder">
                       <NewFolderIcon size={16} />
                     </SectionAction>

@@ -496,14 +496,19 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 ### Alignment and rows
 
 - **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
-  (`wordmark … toggle`), the labelled `New note` action, and the `Notes` row carrying Search,
-  New folder and the ··· menu. Reading down, that is *what this app is*, *make one*, *find and
-  organise what is here*.
-- **The chrome row carries the window's own control and nothing else.** Search left it on
-  2026-09-12 for the Notes row, where it sits at the list tier beside the list's other controls:
-  two rows of 18px glyphs stacked read as two toolbars, which is the same reason New note is not
-  there either. The desktop panel never shows a search field or results; the palette owns them.
-  Cmd+N and Cmd+P are unchanged. The `New Note` and `New Folder` tree rows are mobile-only.
+  (`wordmark … Search, toggle`), the labelled `New note` action, and the `Notes` row carrying
+  New folder and the ··· menu. Reading down, that is *what this app is, and find what is here*,
+  *make one*, *organise what is here*.
+- **The chrome row carries the window's own control and Search, one group** (2026-09-16, Tyr's
+  ask): Search is a `ChromeButton` immediately left of the toggle, the same 32px box, 18px glyph
+  and hover surface, at the chrome row's own within-group gap (`BTN_GAP`, 2, exported from
+  `EditorChrome`), so the two are the neighbours they already are in the collapsed header and
+  Search never changes row when the sidebar hides. Same handler, title, label and Cmd+P. Search
+  had left this row on 2026-09-12 for the Notes row, because two rows of 18px glyphs stacked
+  read as two toolbars; with one glyph beside the toggle and two on the Notes row that was
+  judged acceptable. New note is still not here. The desktop panel never shows a search field
+  or results; the palette owns them. Cmd+N and Cmd+P are unchanged. The `New Note` and
+  `New Folder` tree rows are mobile-only.
 - **New note is the sidebar's one labelled action** (`SidebarNewNote`, 2026-09-12): a full-width
   pill in the tree's own row grammar (`BG.hover`, 12px radius, the 4px inset), 32px tall, 14px
   text, the Lucide SquarePen at 18px on the navigation stroke sitting on `SPINE` with the label on
@@ -607,13 +612,14 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   word `Notes` therefore appears twice in the column, once as the wordmark and once as this
   label; they read at different ranks (artwork against 14px muted text), and that repetition was
   judged and kept.
-- **The row carries Search, New folder and the ··· menu, visible at rest, at the 16px row tier**
+- **The row carries New folder and the ··· menu, visible at rest, at the 16px row tier**
   (`SectionAction`, `.sidebar-section-action`, muted at 0.55 and full on hover or focus, all
-  CSS). 16px so they read with the folder glyphs below, not with the 18px chrome row above. They
-  hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
-  always-visible rule): Search is the only route to the palette while the sidebar shows, and a
-  control you must hover to find is not one. **Never a fourth glyph here** — three muted glyphs
-  read as a set, four read as a toolbar. New folder is also the first item of the ··· menu, the
+  CSS; Search was the row's first glyph from 2026-09-12 to 2026-09-16 and is on the window's
+  row now). 16px so they read with the folder glyphs below, not with the 18px chrome row above.
+  They hid at rest until 2026-09-12 (judged live 2026-08-23, which had itself reversed an
+  always-visible rule): a control you must hover to find is not one. **Never more than three
+  glyphs here** — muted glyphs in threes read as a set, four read as a toolbar. New folder is
+  also the first item of the ··· menu, the
   keyboard path to it. Sort and Reveal in Finder follow (`VaultMenu.tsx`, labelled
   `List options`, keyboard grammar as `ContextMenu`); anything rarer goes there too, never onto
   the row. Not in the menu, by decision: Collapse all folders (folders toggle on click and
@@ -629,8 +635,9 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
 
 ## Search is a palette, not a panel
 
-- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the Notes row's Search glyph (the
-  editor header's while the sidebar is away), or a click on an inline `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
+- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the sidebar header's Search button
+  beside the toggle (the editor header's while the sidebar is away), or a click on an inline
+  `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
   2026-09-09; before this both fired and the palette opened over the link popover). Boojy
   Notes has Search, not a command palette: the popup exists only to find and open notes, and
   nothing unrelated goes into it. A
