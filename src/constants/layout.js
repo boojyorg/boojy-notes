@@ -56,8 +56,10 @@ export const SIDEBAR_DEFAULT_W = 240;
 // which is that tree drawn small under a crumb: same spine, same label column,
 // same row height, so the two read as one thing. Two columns: everything
 // structural (folder glyphs, section labels) sits on SPINE, every label on
-// TEXT_COL; root notes carry no glyph, so an empty gutter keeps their titles
-// on the label column. That gutter is alignment, not a missing icon.
+// TEXT_COL. The one exception is the sidebar's root note rows (2026-09-16):
+// they carry no glyph and their titles sit on SPINE, flush with the root
+// folders' glyphs, rather than leaving an empty gutter. Nested notes and the
+// popup's scope notes keep TEXT_COL.
 
 /** Structural spine: the left edge of folder glyphs and section labels. */
 export const SPINE = 12;

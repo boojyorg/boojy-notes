@@ -539,17 +539,23 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   with no separator; a scrolled-only hairline is the fix if that reads smudgy. The block paints
   `chromeBg`, the sidebar's own ground, or rows would show through it.
 - **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
-  folder icons; `TEXT_COL` carries every label. Root note rows are text-only, so an empty
-  gutter sits left of their titles. **That gutter is alignment, not a missing icon. Don't fix
-  it.**
+  folder icons; `TEXT_COL` carries every label, with one exception. **A root note's title sits
+  on `SPINE`, flush with the root folders' glyphs and the `Notes` label** (2026-09-16, Tyr's
+  ask; until then the text-only row kept an empty gutter so its title shared the label
+  column). Nested notes stay on `TEXT_COL` at their depth, level with the names of the folders
+  beside them, so only depth 0 differs. The folder popup (`PathTreeMenu`) is deliberately not
+  changed: its scope notes stay on `TEXT_COL` with the gutter, so the two trees differ at depth
+  0 for now; judge the popup live before moving it, and move it by the same expression if it
+  follows. The row's pill, inset, height and behaviour are untouched; only the text's x moved.
 - Tree rows are pills with neutral `BG.hover` for hover, selection and multi-select alike. The
   active note is primary ink at normal weight; the pill alone carries "active", never bold,
   never accent. Mobile keeps its accent pill and bold title.
 - **Only structure and actions get a glyph.** Note rows carry no file icon. Folders carry only
   the folder icon: no chevron, the whole row toggles, the open-folder glyph plus indented
-  children carry the state, `aria-expanded` is the programmatic signal. Note-row padding still
-  reserves the removed icon's width so titles keep their column under folder names; don't
-  simplify it away. `FileIcon` still ships in search results, which are not tree rows.
+  children carry the state, `aria-expanded` is the programmatic signal. Nested note-row padding
+  still reserves the removed icon's width so titles keep their column under folder names; don't
+  simplify it away (root rows are the exception above). `FileIcon` still ships in search
+  results, which are not tree rows.
 
 ### Note rows: trailing ··· and inline rename
 

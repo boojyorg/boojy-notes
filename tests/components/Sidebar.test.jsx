@@ -113,6 +113,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
 
 // ── Import component after mocks ──────────────────────────────────────────────
 import Sidebar from "../../src/components/Sidebar.jsx";
+import { ROW_INSET, SPINE, TEXT_COL, TREE_INDENT } from "../../src/constants/layout.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const noop = () => {};
@@ -537,6 +538,26 @@ describe("Sidebar", () => {
       // No document glyph — the row's only svg is the trailing ··· action.
       expect(row.querySelector("svg.lucide-file-text")).toBeNull();
     }
+  });
+
+  it("puts a root note's title on the spine and a nested one's on the label column", () => {
+    const noteData = buildNoteData([
+      { id: "r1", title: "Loose Note" },
+      { id: "n1", title: "Nested Note" },
+    ]);
+    const filteredTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const { getByText } = renderSidebar({
+      noteData,
+      fNotes: ["r1"],
+      filteredTree,
+      expanded: { "My Folder": true },
+    });
+    const root = getByText("Loose Note").closest("[data-note-id]");
+    const nested = getByText("Nested Note").closest("[data-note-id]");
+    // The pill is inset ROW_INSET from the panel, so the text lands on SPINE
+    // (root, flush with the folder glyphs) and on TEXT_COL + one indent (nested).
+    expect(root.style.paddingLeft).toBe(`${SPINE - ROW_INSET}px`);
+    expect(nested.style.paddingLeft).toBe(`${TEXT_COL + TREE_INDENT - ROW_INSET}px`);
   });
 
   it("renders empty search message when searchMode is active but results are empty", () => {
