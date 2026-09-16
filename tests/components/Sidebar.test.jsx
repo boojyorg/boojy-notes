@@ -546,14 +546,15 @@ describe("Sidebar", () => {
         children: [{ name: "Client", _path: "Work/Client", children: [], notes: [] }],
       },
     ];
-    const { getAllByLabelText } = renderSidebar({
+    const { getAllByLabelText, getByLabelText } = renderSidebar({
       filteredTree,
       expanded: { Work: true },
       createNote,
       setCtxMenu,
       toggle,
     });
-    const newNotes = getAllByLabelText("New note here");
+    // Named for the folder, never the sidebar pill's own "New note".
+    const newNotes = [getByLabelText("New note in Work"), getByLabelText("New note in Client")];
     const menus = getAllByLabelText("Folder actions");
     // One pair per folder row, nested rows included.
     expect(newNotes).toHaveLength(2);
@@ -569,8 +570,14 @@ describe("Sidebar", () => {
     fireEvent.click(newNotes[1]);
     expect(createNote).toHaveBeenCalledWith("Work/Client");
     fireEvent.click(menus[0]);
+    // The menu is handed the row's rectangle with the gap either side (jsdom
+    // rects are 0×0), so it can flip above the row rather than over it.
     expect(setCtxMenu).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "folder", id: "Work" }),
+      expect.objectContaining({
+        type: "folder",
+        id: "Work",
+        anchor: { top: -4, bottom: 4, left: -8, right: 0 },
+      }),
     );
     expect(toggle).not.toHaveBeenCalled();
   });

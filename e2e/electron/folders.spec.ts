@@ -53,9 +53,9 @@ test("a new folder is a directory at once, can nest, and is still there after a 
     await expect.poll(() => h.vault.exists("Projects")).toBe(true);
     expect(fs.statSync(h.vault.file("Projects")).isDirectory()).toBe(true);
 
-    // New folder inside, from the folder's own menu.
+    // New folder, from the folder's own menu.
     await folderRow(h.page, "Projects").click({ button: "right" });
-    await h.page.getByRole("menuitem", { name: "New folder inside" }).click();
+    await h.page.getByRole("menuitem", { name: "New folder", exact: true }).click();
     await nameNewFolder(h.page, "Client A");
     await expect(folderRow(h.page, "Projects/Client A")).toBeVisible();
     await expect.poll(() => h.vault.exists("Projects/Client A")).toBe(true);
@@ -85,7 +85,7 @@ test("a folder row's New note makes the note inside that folder and opens the fo
 
     // The glyphs are hover-revealed; Playwright hovers the row, then clicks.
     await folderRow(h.page, "Work").hover();
-    await folderRow(h.page, "Work").locator("[title='New note here']").click();
+    await folderRow(h.page, "Work").locator("[title='New note in Work']").click();
     await expect(h.page.getByRole("textbox", { name: "Note title" })).toBeFocused();
     await expect(folderRow(h.page, "Work")).toHaveAttribute("aria-expanded", "true");
     await expect.poll(() => h.vault.exists("Work/Untitled.md")).toBe(true);
@@ -93,7 +93,7 @@ test("a folder row's New note makes the note inside that folder and opens the fo
 
     // The same pair on a nested folder, into that folder.
     await folderRow(h.page, "Work/Sub").hover();
-    await folderRow(h.page, "Work/Sub").locator("[title='New note here']").click();
+    await folderRow(h.page, "Work/Sub").locator("[title='New note in Sub']").click();
     await expect(folderRow(h.page, "Work/Sub")).toHaveAttribute("aria-expanded", "true");
     await expect.poll(() => h.vault.exists("Work/Sub/Untitled.md")).toBe(true);
 
@@ -102,13 +102,63 @@ test("a folder row's New note makes the note inside that folder and opens the fo
     await folderRow(h.page, "Work").locator("[title='Folder actions']").click();
     await expect(h.page.getByRole("menu")).toBeVisible();
     await expect(h.page.getByRole("menuitem")).toHaveText([
-      "New note here",
-      "New folder inside",
+      "New note",
+      "New folder",
       "Rename",
       "Delete folder",
     ]);
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByRole("menu")).toHaveCount(0);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a row's ··· menu near the bottom of the window opens above the row, with nothing highlighted", async () => {
+  // Enough folders that the last ones sit at the bottom of an 800px window.
+  const files: Record<string, string> = {};
+  for (let i = 1; i <= 30; i++) files[`F${String(i).padStart(2, "0")}/n.md`] = "n\n";
+  const h = await launchApp(files);
+  try {
+    const menuState = () =>
+      h.page.evaluate(() => {
+        const menu = document.querySelector("[role=menu]") as HTMLElement;
+        const items = Array.from(menu.querySelectorAll("[role=menuitem]")) as HTMLElement[];
+        return {
+          active: menu.getAttribute("aria-activedescendant"),
+          hovered: items.filter((el) => el.matches(":hover")).map((el) => el.textContent),
+          bottom: menu.getBoundingClientRect().bottom,
+        };
+      });
+
+    // The last folder row: scrolled into view, it sits near the window's
+    // bottom, where a 4-item menu has no room below it.
+    const last = folderRow(h.page, "F30");
+    await last.scrollIntoViewIfNeeded();
+    await last.hover();
+    await last.locator("[title='Folder actions']").click();
+    await expect(h.page.getByRole("menu")).toBeVisible();
+    const rowTop = (await last.boundingBox())!.y;
+    const folderMenu = await menuState();
+    expect(folderMenu.active).toBeNull();
+    expect(folderMenu.hovered).toEqual([]);
+    expect(folderMenu.bottom).toBeLessThanOrEqual(rowTop);
+    await h.page.keyboard.press("Escape");
+
+    // The same from a note row's dots: open the last folder so its note is
+    // the lowest row, then its ···, whose last item is Delete.
+    await last.click();
+    const note = h.page.locator("[data-note-id]").last();
+    await note.scrollIntoViewIfNeeded();
+    await note.hover();
+    await note.locator("[title='Note actions']").click();
+    await expect(h.page.getByRole("menu")).toBeVisible();
+    const noteTop = (await note.boundingBox())!.y;
+    const noteMenu = await menuState();
+    expect(noteMenu.active).toBeNull();
+    expect(noteMenu.hovered).toEqual([]);
+    expect(noteMenu.bottom).toBeLessThanOrEqual(noteTop);
+    await h.page.keyboard.press("Escape");
   } finally {
     await h.close();
   }

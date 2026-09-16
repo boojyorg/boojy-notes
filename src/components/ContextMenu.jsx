@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { CopyIcon, PencilIcon, SettingsIcon, TrashIcon } from "./Icons";
+import { CopyIcon, NewFolderIcon, NewNoteIcon, PencilIcon, SettingsIcon, TrashIcon } from "./Icons";
 import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
@@ -50,12 +50,21 @@ const ContextMenu = memo(function ContextMenu({
   // Keyboard Tab/arrows still move real focus and indicate normally.
   useFocusTrap(menuContainerRef, !!ctxMenu, "container");
 
-  // The click position is a point anchor: the menu opens at it where possible
-  // and flips/clamps into the viewport otherwise (e.g. the note-actions ···
-  // button in the top-right corner). Submenu growth re-measures via reflowKey.
+  // A right-click, or the header's ···, is a point anchor: the menu opens at
+  // it where possible and flips/clamps into the viewport otherwise. A row's
+  // ··· hands a rectangle (`anchor`, the row with the gap either side), so a
+  // flipped menu sits above the row rather than over it (2026-09-16). Submenu
+  // growth re-measures via reflowKey.
   const anchor = useMemo(
     () =>
-      ctxMenu ? { top: ctxMenu.y, bottom: ctxMenu.y, left: ctxMenu.x, right: ctxMenu.x } : null,
+      ctxMenu
+        ? (ctxMenu.anchor ?? {
+            top: ctxMenu.y,
+            bottom: ctxMenu.y,
+            left: ctxMenu.x,
+            right: ctxMenu.x,
+          })
+        : null,
     [ctxMenu],
   );
   const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor, { reflowKey: moveSubmenu });
@@ -181,15 +190,25 @@ const ContextMenu = memo(function ContextMenu({
       : ctxMenu.type === "note"
         ? noteItems(ctxMenu.id)
         : [
+            // Four items, each with its glyph, and no rule (2026-09-16, Tyr's
+            // call): the menu opens from the folder's own row, so "here" and
+            // "inside" said what the anchoring already says; only Delete keeps
+            // its noun, because it can take several notes and confirms first,
+            // unlike the note menu's Delete. The glyphs are the ones the same
+            // actions already wear: the row's and pill's pen, the Notes row's
+            // FolderPlus, the note menu's Pencil and Trash. Reveal in Finder
+            // left the folder menu that day; the vault's ··· still has it.
             {
-              label: "New note here",
+              label: "New note",
+              icon: <NewNoteIcon />,
               action: () => {
                 createNote(ctxMenu.id);
                 setCtxMenu(null);
               },
             },
             {
-              label: "New folder inside",
+              label: "New folder",
+              icon: <NewFolderIcon />,
               action: () => {
                 createFolder(ctxMenu.id);
                 setCtxMenu(null);
@@ -197,16 +216,15 @@ const ContextMenu = memo(function ContextMenu({
             },
             {
               label: "Rename",
+              icon: <PencilIcon />,
               action: () => {
                 setRenamingFolder(ctxMenu.id);
                 setCtxMenu(null);
               },
             },
-            // Four items and no rule (2026-09-16, Tyr's call): New note here,
-            // New folder inside, Rename, Delete folder. Reveal in Finder left
-            // the folder menu that day; the vault's ··· still has it.
             {
               label: "Delete folder",
+              icon: <TrashIcon />,
               action: () => {
                 deleteFolder(ctxMenu.id);
                 setCtxMenu(null);

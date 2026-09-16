@@ -82,6 +82,21 @@ const ACTION_ROW_H = 32;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
+/**
+ * The anchor a row's ··· hands its menu (2026-09-16): the row's own rectangle
+ * with the menu's gap either side, left edge shifted left of the dots. Below
+ * the row when it fits; when it does not, useMenuPosition flips it to sit
+ * ABOVE the row. With a point anchor under the row the flipped menu ended at
+ * the row's bottom edge, over the row, and the pointer still resting on the
+ * dots sat inside its last item, Delete, which took the hover highlight the
+ * moment the menu opened (seen live on a folder low in the window).
+ */
+const rowMenuAnchor = (btn, row) => ({
+  top: row.top - NOTE_MENU_GAP,
+  bottom: row.bottom + NOTE_MENU_GAP,
+  left: btn.left - NOTE_MENU_SHIFT,
+  right: btn.right,
+});
 /** The folder row's two trailing glyph boxes (New note, ···), 20px each with
  *  4px between them (judged live 2026-09-16: adjacent, the pen's ink sat on
  *  the dots), the note row's single ··· slot twice over. */
@@ -555,14 +570,10 @@ const Sidebar = memo(function Sidebar({
               const btn = e.currentTarget.getBoundingClientRect();
               const row = e.currentTarget.closest("[data-note-id]").getBoundingClientRect();
               // Drop below the row, left edge shifted left of the dots, growing
-              // rightward into the editor. useMenuPosition still clamps/flips
-              // near the viewport edges. Right-click keeps cursor placement.
-              setCtxMenu({
-                x: btn.left - NOTE_MENU_SHIFT,
-                y: row.bottom + NOTE_MENU_GAP,
-                type: "note",
-                id: nId,
-              });
+              // rightward into the editor; above the row when there is no room
+              // (rowMenuAnchor). Right-click keeps cursor placement.
+              const anchor = rowMenuAnchor(btn, row);
+              setCtxMenu({ x: anchor.left, y: anchor.bottom, anchor, type: "note", id: nId });
             }}
             style={{
               // Inline styles out-specify the class's collapsed rest state,
@@ -716,7 +727,8 @@ const Sidebar = memo(function Sidebar({
               at rest so a long name truncates against the full row, revealed
               on row hover or focus exactly as a note row's dots are
               (.sidebar-folder-actions in GlobalStyles), held open while this
-              row's menu is up. New note makes the note inside this folder;
+              row's menu is up. New note (named for the folder, so it is never
+              the sidebar pill's own name) makes the note inside this folder;
               ··· opens the same folder menu as right-click, growing rightward.
               span+role, tabIndex -1, as the note dots: a real button inside
               the treeitem button fails axe nested-interactive; the row stays
@@ -735,8 +747,8 @@ const Sidebar = memo(function Sidebar({
               <span
                 role="button"
                 tabIndex={-1}
-                aria-label="New note here"
-                title="New note here"
+                aria-label={`New note in ${folder.name}`}
+                title={`New note in ${folder.name}`}
                 className="sidebar-folder-action"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -755,9 +767,11 @@ const Sidebar = memo(function Sidebar({
                   e.stopPropagation();
                   const btn = e.currentTarget.getBoundingClientRect();
                   const row = e.currentTarget.closest("[data-folder-path]").getBoundingClientRect();
+                  const anchor = rowMenuAnchor(btn, row);
                   setCtxMenu({
-                    x: btn.left - NOTE_MENU_SHIFT,
-                    y: row.bottom + NOTE_MENU_GAP,
+                    x: anchor.left,
+                    y: anchor.bottom,
+                    anchor,
                     type: "folder",
                     id: folderPath,
                   });
