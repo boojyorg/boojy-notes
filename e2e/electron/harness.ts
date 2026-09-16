@@ -299,9 +299,21 @@ export async function rootNoteOrder(page: Page): Promise<string[]> {
   });
 }
 
-/** Rename a sidebar row the way the user does: double-click, type, Enter. */
+/**
+ * Rename a sidebar row the way the user does: a note by double-click, a
+ * folder from its ··· menu (folders have no double-click rename since
+ * 2026-09-16: the first click toggled the folder under the field); then
+ * type and Enter.
+ */
 export async function renameRow(page: Page, title: string, newName: string) {
-  await page.locator('[role="treeitem"]').filter({ hasText: title }).first().dblclick();
+  const row = page.locator('[role="treeitem"]').filter({ hasText: title }).first();
+  if ((await row.getAttribute("data-folder-path")) !== null) {
+    await row.hover();
+    await row.locator("[title='Folder actions']").click();
+    await page.getByRole("menuitem", { name: "Rename" }).click();
+  } else {
+    await row.dblclick();
+  }
   const input = page.locator("input:focus");
   await input.waitFor();
   await page.keyboard.press(`${MOD}+a`);

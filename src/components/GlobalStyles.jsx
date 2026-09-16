@@ -160,6 +160,20 @@ export default function GlobalStyles() {
           transition: color 120ms;
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
+        /* A row renaming stands down (2026-09-16): no pill under the field,
+           however it is hovered, active or selected (the hover pill is an
+           inline write, hence !important), and no trailing actions, whose
+           only effect would be to blur the field. The selected name is the
+           whole signal. */
+        .sidebar-note.is-renaming, .sidebar-folder.is-renaming {
+          background: transparent !important;
+        }
+        .sidebar-note.is-renaming .sidebar-note-more,
+        .sidebar-folder.is-renaming .sidebar-folder-actions {
+          opacity: 0 !important;
+          width: 0 !important;
+          pointer-events: none;
+        }
         /* The Notes row's three controls (Search, New folder, ···) are
            visible at rest and lift on hover or focus. 0.55 is the quiet ink —
            the faintest composite that clears ~3:1 on the DAY ground (0.4 does
