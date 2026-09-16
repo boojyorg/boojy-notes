@@ -251,6 +251,25 @@ describe("EditableBlock", () => {
     expect(img.getAttribute("alt")).toBe("A photo");
   });
 
+  it("an image registers its root, so the gutter grip can lift it and the drop marker sees it", () => {
+    const block = image("photo.png", "A photo");
+    const { container, registerRef } = renderBlock(block);
+    const root = container.querySelector('[data-block-type="image"]');
+    expect(root).toBeInTheDocument();
+    expect(root.getAttribute("contenteditable")).toBe("false");
+    // Before: only text roots registered, and a press on the image's grip
+    // returned silently from the drag with nothing in the map to lift.
+    expect(registerRef).toHaveBeenCalledWith(block.id, root);
+  });
+
+  it("a file block registers its root the same way", () => {
+    const block = { id: "f1", type: "file", src: "notes.pdf", filename: "notes.pdf", text: "" };
+    const { container, registerRef } = renderBlock(block);
+    const root = container.querySelector('[data-block-type="file"]');
+    expect(root).toBeInTheDocument();
+    expect(registerRef).toHaveBeenCalledWith(block.id, root);
+  });
+
   it("calls registerRef on mount with block id", () => {
     const block = paragraph("hi");
     const { registerRef } = renderBlock(block);

@@ -828,6 +828,17 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   neither be edited nor deleted. `frontmatter-order.spec.ts` proves the refused move (bytes untouched,
   Undo still off), an allowed one under it, the drop at the very top and a restart of Boojy
   Notes in the real app; Obsidian's own reading of the file is not exercised by any test.
+- **Every root the grip can show beside must be in the block ref map** (2026-09-16). The
+  handle finds blocks in the DOM (the editor root's children with a `data-block-id`), but the
+  drag, the drop loop and the marker look them up in `blockRefs`; a root that is in one and not
+  the other is a grip that shows and a press that returns silently, and a band the marker
+  skips. Text roots register `elRef`; the divider and the table register their own root; an
+  image and a file register their wrapper through `wholeRef` in `EditableBlock`, a second ref
+  because `elRef`'s repaint effect would paint the block's empty text over the wrapper. Code,
+  callout and embed still register nothing: the paste and caret paths take a registered
+  element for one with text to read (`isEditableBlock` says an embed has some), so those three
+  wait on the same judgement as their selection. `image-block-drag.spec.ts` proves the lift
+  and the band in the real app.
 - **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a
   click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
   reading as a document, not a block-management surface.
