@@ -162,22 +162,45 @@ describe("the header menu", () => {
     return props;
   };
 
-  it("carries the open note's actions and Settings under a separator", () => {
-    const { getByText, getByRole } = render(<ContextMenu {...headerProps("n1")} />);
+  it("carries the open note's actions and Settings, each with a glyph, in one group", () => {
+    const { getByText, getByRole, queryAllByRole } = render(<ContextMenu {...headerProps("n1")} />);
     for (const label of ["Rename", "Duplicate", "Delete", "Settings"]) {
       expect(getByText(label)).toBeInTheDocument();
+      expect(getByText(label).closest("button").querySelector("svg")).toBeInTheDocument();
     }
     expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
-    // Settings is ruled off from the note's own items.
-    expect(getByText("Settings").closest("button").style.borderTopWidth).toBe("1px");
-    // The other items set every edge themselves: an edge left unset by the
-    // inline style showed Chromium's own 2px outset button border and lost
-    // its padding (a `borderTop: undefined` longhand after the shorthand
-    // cleared it, 2026-09-14).
+    // The cog is what sets Settings apart; no rule above it (judged live
+    // 2026-09-16: two rules cut the menu into three compartments), and the
+    // same padding as every row.
+    const settings = getByText("Settings").closest("button");
+    expect(settings.previousElementSibling).toBe(getByText("Delete").closest("button"));
+    expect(settings.style.paddingTop).toBe("7px");
+    // Every edge set on every item: an edge left unset by the inline style
+    // showed Chromium's own 2px outset button border (2026-09-14).
     const rename = getByText("Rename").closest("button");
     expect(rename.style.borderTopWidth).toBe("0px");
-    expect(rename.style.borderTopStyle).toBe("solid");
-    expect(rename.style.paddingTop).toBe("7px");
+    // No counts without them, so no rule at all.
+    expect(queryAllByRole("separator")).toHaveLength(0);
+  });
+
+  it("ends with the note's word count, one muted line under the menu's only rule", () => {
+    const props = headerProps("n1");
+    props.wordCount = 412;
+    const { getByTestId, getAllByRole, queryByRole } = render(<ContextMenu {...props} />);
+    const stats = getByTestId("note-stats");
+    expect(stats).toHaveTextContent("412 words");
+    expect(stats).not.toHaveTextContent("character");
+    expect(stats.previousElementSibling).toHaveAttribute("role", "separator");
+    expect(getAllByRole("separator")).toHaveLength(1);
+    // Not an item: the arrows never land on it.
+    expect(queryByRole("menuitem", { name: /words/ })).toBeNull();
+  });
+
+  it("spells one word in the singular", () => {
+    const props = headerProps("n1");
+    props.wordCount = 1;
+    const { getByTestId } = render(<ContextMenu {...props} />);
+    expect(getByTestId("note-stats")).toHaveTextContent("1 word");
   });
 
   it("opens Settings and closes itself", () => {
@@ -189,8 +212,14 @@ describe("the header menu", () => {
   });
 
   it("holds Settings alone when no note is open", () => {
-    const { getByText, queryByText, getByRole } = render(<ContextMenu {...headerProps(null)} />);
+    const props = headerProps(null);
+    props.wordCount = 0;
+    const { getByText, queryByText, getByRole, queryByTestId, queryByRole } = render(
+      <ContextMenu {...props} />,
+    );
     expect(getByText("Settings")).toBeInTheDocument();
+    expect(queryByTestId("note-stats")).toBeNull();
+    expect(queryByRole("separator")).toBeNull();
     for (const gone of ["Rename", "Duplicate", "Delete"]) {
       expect(queryByText(gone)).not.toBeInTheDocument();
     }

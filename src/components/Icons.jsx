@@ -51,6 +51,7 @@ import {
   Plus as LuPlus,
   Redo2 as LuRedo2,
   Search as LuSearch,
+  Settings as LuSettings,
   SquareCheck as LuSquareCheck,
   SquarePen as LuSquarePen,
   Strikethrough as LuStrikethrough,
@@ -134,6 +135,9 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+export const SettingsIcon = ({ size = ICON_INLINE }) => (
+  <LuSettings {...base} {...navBase} size={size} />
+);
 
 // ── Standalone controls (20px) ────────────────────────────────────────────
 export const SidebarToggleIcon = ({ size = ICON_CONTROL }) => (

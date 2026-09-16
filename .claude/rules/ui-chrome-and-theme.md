@@ -173,7 +173,23 @@ hardcoded green); swap them for Lucide when touching those files.
   never the sidebar's multi-selection, however many rows are selected there; with no active note
   it holds Settings alone and is named `App options` rather than `Note actions`. It renders in
   both sidebar states and with no note open, because app settings must never need a note to
-  reach. No Settings cog anywhere, and no Settings item in a note-row or folder menu.
+  reach. No Settings cog *button* anywhere, and no Settings item in a note-row or folder menu;
+  the menu row itself carries the Lucide cog at the menu tier, because every row of this menu
+  carries a glyph and one without read as a different kind of thing (2026-09-16). **No rule
+  between Delete and Settings**: the cog is what sets it apart, and a rule as well cut the
+  six-row menu into three compartments (judged live 2026-09-16; it had been the Settings
+  button's own top border, which ran the row's full width in the menu's border ink and sat
+  inside the hover pill, with the row's padding faking the gap). **A menu separator, where one
+  is drawn, is its own rule, `MenuRule`, 1px of `BG.divider` inset 6px, the sidebar menu's
+  grammar, never the top border of the item under it.** **The menu ends with the note's word
+  count** when a note is open: `412 words` (`noteStatsLabel`, singular for one; characters were
+  shown too and dropped the same day, nobody writes a note to a character limit) as one muted
+  11px line under the menu's only rule, `note-stats`, never a menu item (the arrows skip it),
+  from the `useNoteStats` count `BoojyNotes` already computes for the touch layout. Notion's
+  place for it, chosen because the desktop has no status bar and the chrome is quiet at rest:
+  the menu is the one surface that costs no pixels until asked. The desktop always has a note
+  open (an empty library opens a draft), so it reads `0 words` over a blank draft.
+  `header-controls.spec.ts` proves the line.
 - **Undo and Redo are chrome buttons before the note's name, in both sidebar states**
   (2026-09-12): Lucide's curved `Undo2`/`Redo2` at 18px on the navigation stroke, in the shared
   32px `ChromeButton`, natively disabled when the open note has nothing to take back. They act
@@ -341,8 +357,9 @@ hardcoded green); swap them for Lucide when touching those files.
   share the profile.
 - **`syncGeneration` is editor plumbing, not cloud sync.** It tells uncontrolled blocks when to
   repaint from state. Don't remove it on the strength of its name.
-- Word count is mobile-only. Undo/redo are keyboard-only on desktop; the touch toolbar carries
-  Undo and Redo buttons at its fixed left edge.
+- On desktop the word count lives at the foot of the note's ··· menu (above); the touch layout
+  shows it in its own ··· menu. The touch toolbar carries Undo and Redo buttons at its fixed left
+  edge.
 - The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
   the left edge.
 
@@ -828,6 +845,17 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   neither be edited nor deleted. `frontmatter-order.spec.ts` proves the refused move (bytes untouched,
   Undo still off), an allowed one under it, the drop at the very top and a restart of Boojy
   Notes in the real app; Obsidian's own reading of the file is not exercised by any test.
+- **Every root the grip can show beside must be in the block ref map** (2026-09-16). The
+  handle finds blocks in the DOM (the editor root's children with a `data-block-id`), but the
+  drag, the drop loop and the marker look them up in `blockRefs`; a root that is in one and not
+  the other is a grip that shows and a press that returns silently, and a band the marker
+  skips. Text roots register `elRef`; the divider and the table register their own root; an
+  image and a file register their wrapper through `wholeRef` in `EditableBlock`, a second ref
+  because `elRef`'s repaint effect would paint the block's empty text over the wrapper. Code,
+  callout and embed still register nothing: the paste and caret paths take a registered
+  element for one with text to read (`isEditableBlock` says an embed has some), so those three
+  wait on the same judgement as their selection. `image-block-drag.spec.ts` proves the lift
+  and the band in the real app.
 - **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a
   click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
   reading as a document, not a block-management surface.

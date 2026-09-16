@@ -952,6 +952,7 @@ export default function BoojyNotes() {
         bulkDeleteNotes={bulkDeleteNotes}
         bulkMoveNotes={bulkMoveNotes}
         folderList={folderList}
+        wordCount={wordCount}
       />
 
       <SlashMenu

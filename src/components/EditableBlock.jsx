@@ -125,6 +125,12 @@ const EditableBlock = memo(
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
     const elRef = useRef(null);
+    // The root of a block that has no text of its own (an image, a file): the
+    // gutter grip and the drop geometry find blocks in the ref map, and a
+    // wrapper that never registered was a grip that showed and a press that
+    // did nothing (2026-09-16). Kept apart from `elRef` on purpose: that ref's
+    // repaint effect paints the block's text, and these carry none.
+    const wholeRef = useRef(null);
 
     // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
     // an outside change) and when the title set changes (a wikilink may have
@@ -166,7 +172,8 @@ const EditableBlock = memo(
     }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke
 
     useLayoutEffect(() => {
-      if (elRef.current) registerRef(block.id, elRef.current);
+      const el = elRef.current || wholeRef.current;
+      if (el) registerRef(block.id, el);
       return () => registerRef(block.id, null);
     }, [block.id]);
 
@@ -185,6 +192,7 @@ const EditableBlock = memo(
     if (block.type === "image") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -215,6 +223,7 @@ const EditableBlock = memo(
     if (block.type === "file") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"

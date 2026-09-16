@@ -175,6 +175,15 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await h.page.locator("button[title='Note actions']").click();
   const menu = h.page.getByRole("menu", { name: "Note actions" });
   await expect(menu).toBeVisible();
+  // The note's length closes its own menu: "Alpha starts here." is three
+  // words. One muted line, never an item.
+  await expect(menu.getByTestId("note-stats")).toHaveText("3 words");
+  expect(await menu.getByRole("menuitem").allTextContents()).toEqual([
+    "Rename",
+    "Duplicate",
+    "Delete",
+    "Settings",
+  ]);
   await menu.getByRole("menuitem", { name: "Settings" }).click();
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await h.page.keyboard.press("Escape");
@@ -188,6 +197,9 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await expect(h.page.getByTitle("Redo")).toBeDisabled();
   await h.page.locator("button[title='Note actions']").click();
   await expect(h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" })).toBeVisible();
+  // The desktop always has a note open (an empty library opens a draft), so
+  // the counts are there and honest.
+  await expect(h.page.getByRole("menu").getByTestId("note-stats")).toHaveText("0 words");
   await h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" }).click();
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 });
