@@ -80,7 +80,8 @@ test("the file's own zero-width space is kept; the caret anchor after a link nev
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe(`zero-width${ZWSP}space [[Beta]] more\n\nnext\n`);
 
-    // A copy of the first block carries neither the anchor nor the icon.
+    // A copy of the first block carries neither the anchor nor the icon; the
+    // wikilink keeps its notation (copy-clipboard.spec.ts has the rest).
     const copied = await h.page.evaluate(() => {
       const block = document.querySelector("[data-block-id]")!;
       const range = document.createRange();
@@ -96,7 +97,7 @@ test("the file's own zero-width space is kept; the caret anchor after a link nev
         );
       return { text: dt.getData("text/plain"), html: dt.getData("text/html") };
     });
-    expect(copied.text).toBe(`zero-width${ZWSP}space Beta more`);
+    expect(copied.text).toBe(`zero-width${ZWSP}space [[Beta]] more`);
     expect(copied.html).not.toContain("caret-anchor");
     expect(copied.html.split(ZWSP).length - 1).toBe(1);
     expect(h.pageErrors).toEqual([]);

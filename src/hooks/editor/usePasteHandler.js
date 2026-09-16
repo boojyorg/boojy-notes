@@ -5,8 +5,9 @@ import {
   sanitizeInlineHtml,
   htmlToInlineMarkdown,
   inlineMarkdownToHtml,
-  stripMarkdownFormatting,
 } from "../../utils/inlineFormatting";
+import { blockCopyPayload, inlineCopyPayload } from "../../utils/clipboardCopy";
+import { listLayout } from "../../utils/listStructure";
 import { genBlockId } from "../../utils/storage";
 import { markdownToBlocks } from "../../utils/markdown";
 import { markdownAfter, markdownBefore } from "../../utils/crossBlockEdit";
@@ -266,32 +267,44 @@ export function usePasteHandler({
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
 
+  /**
+   * Copy writes two public formats and one private one. The public pair
+   * (`text/plain`, `text/html`; `utils/clipboardCopy`) is the visible text
+   * and the inline formatting for an ordinary selection inside a block's
+   * text, and the blocks' Markdown and their structure as block HTML for a
+   * whole-block copy. Which it is follows the private format's own rule:
+   * `text/boojy-blocks` travels whenever the selection spans blocks, and the
+   * paste side treats it as structure only when a block was wholly selected
+   * (`fullBlock`); the public formats say structure in exactly that case.
+   * A selection inside one block is text, however much of the block it
+   * covers, as in every other editor.
+   */
   const handleEditorCopy = useCallback((e) => {
     const sel = window.getSelection();
     if (!sel.rangeCount || sel.isCollapsed) return;
     const range = sel.getRangeAt(0);
 
-    // Clone selected content and serialize to HTML string
+    // The selected DOM, sanitised to the editor's inline HTML.
     const frag = range.cloneContents();
     const wrapper = document.createElement("div");
     wrapper.appendChild(frag);
-    const rawHtml = wrapper.innerHTML;
-
-    // Sanitize and convert to clean formats
-    const cleanHtml = sanitizeInlineHtml(rawHtml);
-    const markdown = htmlToInlineMarkdown(cleanHtml);
-    const plainText = stripMarkdownFormatting(markdown);
+    const inline = inlineCopyPayload(sanitizeInlineHtml(wrapper.innerHTML));
+    const setPublic = ({ text, html }) => {
+      e.clipboardData.setData("text/plain", text);
+      e.clipboardData.setData("text/html", html);
+    };
 
     e.preventDefault();
-    e.clipboardData.setData("text/plain", plainText);
-    e.clipboardData.setData("text/html", cleanHtml);
 
     // Encode block structure for internal paste
     const startInfo = getBlock(range.startContainer);
     const endInfo = getBlock(range.endContainer);
     const noteId = activeNoteRef.current;
     const blocks = noteDataRef.current[noteId]?.content?.blocks;
-    if (!startInfo || !endInfo || !blocks) return;
+    if (!startInfo || !endInfo || !blocks) {
+      setPublic(inline);
+      return;
+    }
 
     const startIdx = startInfo.blockIndex;
     let endIdx = endInfo.blockIndex;
@@ -307,8 +320,15 @@ export function usePasteHandler({
     // editor: it copies as text, not as a block, so pasting the text of a
     // list item onto a blank line gives the text without the list. Structure
     // travels only when the selection spans two or more blocks.
-    if (startIdx === endIdx) return;
+    if (startIdx === endIdx) {
+      setPublic(inline);
+      return;
+    }
     const copiedBlocks = [];
+    // The public Markdown and HTML carry the numbers the list shows; the
+    // private format does not, the destination's numbering is its own.
+    const positions = listLayout(blocks);
+    const numbers = [];
 
     for (let i = startIdx; i <= endIdx; i++) {
       const block = blocks[i];
@@ -367,11 +387,23 @@ export function usePasteHandler({
       const entry = { type: block.type, text, fullBlock };
       if (block.checked !== undefined) entry.checked = block.checked;
       if (block.indent) entry.indent = block.indent;
+      numbers[copiedBlocks.length] = positions[i]?.number;
       copiedBlocks.push(entry);
     }
 
     if (copiedBlocks.length > 0) {
       e.clipboardData.setData("text/boojy-blocks", JSON.stringify(copiedBlocks));
+    }
+    if (copiedBlocks.some((b) => b.fullBlock)) {
+      setPublic(
+        blockCopyPayload(
+          copiedBlocks.map((b, k) =>
+            b.type === "numbered" && numbers[k] !== undefined ? { ...b, num: numbers[k] } : b,
+          ),
+        ),
+      );
+    } else {
+      setPublic(inline);
     }
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks
   }, []);
