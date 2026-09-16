@@ -626,14 +626,34 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   button fails axe `nested-interactive`. The row stays the keyboard path.
 - A pointer-opened menu shows no focus ring on its first item (initial focus parks on the menu
   container) because Chromium treats script focus as `:focus-visible`. Keyboard navigation
-  still indicates normally. Single-note and folder menu items carry glyphs (the folder menu
+  still indicates normally. **And it opens with nothing highlighted** (2026-09-16): `ContextMenu`
+  stays mounted between opens (it renders null with no menu), so its highlight index carried
+  over, and the last item hovered before a close, usually Rename, the top item a row's menu is
+  left through, was lit the moment the next row's, folder's or header's menu opened. The index
+  and the Move-to submenu reset in a layout effect on every `ctxMenu`, and leaving a row clears
+  the index (it used to clear only an inline background, which any re-render lit again); the
+  index is the one owner of a row's hover surface. `folders.spec.ts` reopens a menu after a
+  hover; the unit test beside the component holds the rule. Single-note and folder menu items carry glyphs (the folder menu
   since 2026-09-16); the bulk menu is text-only.
-- **Double-click renames inline**, notes and folders alike, with the same in-place input. A
-  note's name is selected Finder-style; the folder input only autofocuses with the caret at the
-  end, so typing appends (a known gap in the backlog; the intent is Finder-style for both). The
-  ··· Rename falls back to the editor title only when the sidebar is hidden. A folder's first click still toggles it; the double-click just skips the
-  second toggle rather than delaying single-click to disambiguate. Rename from a menu depends
-  on the closing menu leaving focus with the field (see "Keys and focus").
+- **A note renames inline on double-click; a folder from its ··· menu's Rename alone**
+  (2026-09-16, Tyr's call: a folder's first click toggled it under the field, which read as a
+  glitch, so every click on a folder toggles and nothing else; ChatGPT's projects are the same).
+  Both use the same in-place input, and
+  **the field is invisible** (2026-09-16, judged against ChatGPT's rows): no border, fill or
+  padding, the row's own font at the row's own place (`renameFieldStyle` in `Sidebar.jsx`, the
+  row's height so the input's centred text sits on the label's baseline), so nothing on screen
+  moves when it appears, and the selected name, in the system's own selection colour as the
+  editor's is, is the whole signal. The row stands down under it: no pill, however it is
+  hovered, active or selected, and no trailing ··· or folder pair, whose only effect would be to
+  blur the field (`.is-renaming` in GlobalStyles, `!important` over the rows' inline hover
+  writes). One treatment for both row kinds, where ChatGPT has two (a bare chat, a project on
+  its pill), read as drift rather than a decision. Before this the field was a bordered accent
+  box with 5px of padding that shifted the name right, and the folder's was 12.5px/500 under a
+  14px/400 label, so the name shrank. **Both names are selected Finder-style**: with no border
+  an unselected name looks like nothing happened, so the folder field's caret-at-the-end (a
+  backlog item until then) went with the box. The
+  note's ··· Rename falls back to the editor title only when the sidebar is hidden. Rename from
+  a menu depends on the closing menu leaving focus with the field (see "Keys and focus").
 
 ### The Notes row and its one tree
 
