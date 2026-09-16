@@ -7,6 +7,7 @@ import { useEditorHandlers } from "../../src/hooks/useEditorHandlers.js";
 import {
   makeNoteData,
   paragraph,
+  heading,
   bullet,
   checkbox,
   numbered,
@@ -24,7 +25,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 
 vi.mock("../../src/utils/inlineFormatting", () => ({
-  sanitizeInlineHtml: (html) => html,
+  // Block elements unwrap to a line break between them, as the real one does.
+  sanitizeInlineHtml: (html) =>
+    html.replace(/<\/div>\s*<div[^>]*>/g, "<br>").replace(/<\/?div[^>]*>/g, ""),
   htmlToInlineMarkdown: (html) => {
     // Strip tags for simple cases
     return html.replace(/<br\s*\/?>/gi, "").replace(/<[^>]+>/g, "");
@@ -676,6 +679,144 @@ describe("useEditorHandlers", () => {
       expect(JSON.parse(call[1])).toEqual([
         { type: "numbered", text: "one", fullBlock: true },
         { type: "numbered", text: "two", fullBlock: true },
+      ]);
+    });
+
+    const plain = (e) => e.clipboardData.setData.mock.calls.find((c) => c[0] === "text/plain")[1];
+    const html = (e) => e.clipboardData.setData.mock.calls.find((c) => c[0] === "text/html")[1];
+    const boojy = (e) => {
+      const call = e.clipboardData.setData.mock.calls.find((c) => c[0] === "text/boojy-blocks");
+      return call ? JSON.parse(call[1]) : null;
+    };
+
+    // The reported case: five whole blocks copied and pasted into Obsidian
+    // arrived as five plain lines, the headings and the bullet gone.
+    it("whole blocks copy as Markdown in plain text and as block HTML", () => {
+      const s = setup([
+        heading(1, "PSYC327"),
+        heading(2, "Assessments"),
+        paragraph("30% Coursework – Blog"),
+        paragraph("70% Online Exam"),
+        bullet("Psychology module"),
+      ]);
+      selectAcross(s, 0, 0, 4, "Psychology module".length);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe(
+        "# PSYC327\n## Assessments\n30% Coursework – Blog\n\n70% Online Exam\n- Psychology module",
+      );
+      expect(html(e)).toBe(
+        "<h1>PSYC327</h1><h2>Assessments</h2><p>30% Coursework – Blog</p><p>70% Online Exam</p><ul><li>Psychology module</li></ul>",
+      );
+      expect(boojy(e).map((b) => b.fullBlock)).toEqual([true, true, true, true, true]);
+    });
+
+    it("a selection from the middle of one paragraph into the next is text, with no markers added", () => {
+      const s = setup([heading(1, "Title here"), paragraph("after that")]);
+      selectAcross(s, 0, 6, 1, 5);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("here\nafter");
+      expect(html(e)).toBe("here<br>after");
+      // The private format still travels, unchanged: the paste side decides
+      // by the same rule (no block wholly selected means text).
+      expect(boojy(e)).toEqual([
+        { type: "h1", text: "here", fullBlock: false },
+        { type: "p", text: "after", fullBlock: false },
+      ]);
+    });
+
+    it("a partial edge beside a whole block is written as the block it is part of", () => {
+      const s = setup([numbered("one two"), bullet("mid"), paragraph("after")]);
+      selectAcross(s, 0, 4, 2, 3);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("1. two\n- mid\n\naft");
+      expect(html(e)).toBe("<ol><li>two</li></ol><ul><li>mid</li></ul><p>aft</p>");
+    });
+
+    it("a numbered run copied from the middle of a list keeps its numbers", () => {
+      const s = setup([numbered("a"), numbered("b"), numbered("c"), numbered("d")]);
+      selectAcross(s, 2, 0, 3, 1);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("3. c\n4. d");
+      expect(html(e)).toBe('<ol start="3"><li>c</li><li>d</li></ol>');
+      // The private format is what it was: numbering is the destination's.
+      expect(boojy(e)).toEqual([
+        { type: "numbered", text: "c", fullBlock: true },
+        { type: "numbered", text: "d", fullBlock: true },
+      ]);
+    });
+
+    it("a nested list copies nested", () => {
+      const s = setup([bullet("a"), { ...bullet("b"), indent: 1 }, bullet("c")]);
+      selectAcross(s, 0, 0, 2, 1);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("- a\n  - b\n- c");
+      expect(html(e)).toBe("<ul><li>a<ul><li>b</li></ul></li><li>c</li></ul>");
+    });
+
+    it("editor decorations never reach the public formats; a wikilink keeps its notation", () => {
+      const s = setup([paragraph("see [docs](https://x.com) and [[Beta]]"), paragraph("end")]);
+      const [first] = s.getNoteData()[s.noteId].content.blocks;
+      s.blockRefs.current[first.id].innerHTML =
+        'see <a href="https://x.com" class="external-link" data-url="https://x.com">docs<span class="external-link-icon" contenteditable="false">↗</span></a> and <span class="wikilink" data-target="Beta">Beta</span>';
+      // An ordinary selection inside the paragraph: visible text, inline HTML.
+      const el = s.blockRefs.current[first.id];
+      const range = document.createRange();
+      range.setStart(el.firstChild, 0);
+      range.setEnd(el.lastChild.firstChild, 4);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const e = makeCopyEvent();
+
+      act(() => s.result.current.handleEditorCopy(e));
+
+      expect(plain(e)).toBe("see docs and [[Beta]]");
+      expect(html(e)).toBe('see <a href="https://x.com">docs</a> and [[Beta]]');
+      expect(formats(e)).not.toContain("text/boojy-blocks");
+    });
+
+    it("a whole-block copy pasted back into the app is the private format's, not the Markdown's", () => {
+      const source = setup([heading(1, "Title"), bullet("item")]);
+      selectAcross(source, 0, 0, 1, 4);
+      const e = makeCopyEvent();
+      act(() => source.result.current.handleEditorCopy(e));
+      const formatsSet = Object.fromEntries(e.clipboardData.setData.mock.calls);
+      expect(formatsSet["text/plain"]).toBe("# Title\n- item");
+
+      document.body.innerHTML = "";
+      const target = setup([paragraph("")], "note-2");
+      target.placeCursorInBlock(0, 0);
+      const paste = new Event("paste", { bubbles: true, cancelable: true });
+      paste.clipboardData = {
+        // Hand the paste a plain text that says something else, so a paste
+        // that read it would be caught.
+        getData: (type) => (type === "text/plain" ? "# Other" : (formatsSet[type] ?? "")),
+        setData: vi.fn(),
+        files: [],
+      };
+      paste.preventDefault = vi.fn();
+
+      act(() => target.result.current.handleEditorPaste(paste));
+
+      const blocks = target.getNoteData()["note-2"].content.blocks;
+      expect(blocks.map((b) => [b.type, b.text])).toEqual([
+        ["h1", "Title"],
+        ["bullet", "item"],
       ]);
     });
   });

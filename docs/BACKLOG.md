@@ -309,7 +309,9 @@ understands are safe and the rest is preserved", not "switch freely".
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
   keystroke; a save that lands in a pause after the space writes the non-breaking byte
   (`hello world\u00A0`, probed in the real app 2026-09-09; the next character rewrites it as a
-  space). A trailing U+00A0 the file itself holds is indistinguishable from it at read-back,
+  space; a space typed right after a link, on the caret anchor, is held the same way and stays
+  U+00A0 when the next word follows, seen 2026-09-16 in a copy that carried it into Obsidian's
+  file). A trailing U+00A0 the file itself holds is indistinguishable from it at read-back,
   which is why no normalisation was added with the inline-preservation fix; `pre-wrap` was
   rejected earlier for changing how every run of spaces renders. A leading space, or a double
   space, typed in a line reaches the file the same way and, unlike the trailing one, persists
@@ -503,9 +505,12 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 - **Export.** Desktop already exposes the files. A web or mobile build must offer a folder or
   ZIP of Markdown and attachments with working relative links. Importing converts; editing an
   existing Markdown folder preserves.
-- **Copy as Markdown and as formatted text.** Useful clipboard representations for moving
-  content between apps. Define selection, whole-note and attachment behaviour. Whole-note
-  Markdown is the file itself; how rich text is produced is open.
+- **Copy as Markdown and as formatted text.** Selection behaviour shipped on 2026-09-16: a
+  whole-block copy carries the blocks' Markdown as plain text and their structure as block
+  HTML, an ordinary selection its visible text and inline formatting (UI rule, "Paste keeps
+  the block you are in"). Still open: a whole-note copy (the file itself), attachments (an
+  image or file copies as its `![[…]]` reference, never the file), and whether a "Copy as"
+  control earns a place at all.
 
 ### Editor and organisation
 

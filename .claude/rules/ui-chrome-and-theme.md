@@ -1687,6 +1687,34 @@ external multi-line paste paths; single lines paste inline.
   only when the selection spans two or more blocks (a triple-click that ends at the very start of
   the next block still counts as one). Copying a list item's text and pasting it on a blank line
   therefore gives the text without the list. That looks like a missing feature; it is deliberate.
+- **Copy writes two public formats and one private one, and the public pair says structure
+  exactly when the private one does** (2026-09-16, `utils/clipboardCopy.ts`; the handler is
+  `handleEditorCopy`). `text/boojy-blocks` travels whenever the selection spans blocks, and the
+  paste side treats it as structure only when a block was wholly selected (`fullBlock`, the
+  test above). In that case, a *whole-block copy*, `text/plain` is the blocks' Markdown as
+  `blocksToMarkdown` writes it and `text/html` their structure: headings, nested `<ul>`/`<ol>`
+  (a numbered run keeps the number the list shows, as `start`; the private format carries no
+  number, the destination's list numbers it), `<blockquote>`, `<pre><code>`, `<hr>`, `<table>`,
+  a callout as a quote with a bold title; an image, file or embed is its `![[…]]` line as text,
+  a reference into the vault and never the file. A partial edge block beside a whole one is
+  written as the block it is part of (`# 327` from a heading's tail), which is what the private
+  format makes of it too. An *ordinary selection*, inside one block or spanning blocks without
+  wholly covering any, is text: `text/plain` the visible text with no marker added for the
+  formatting it carries, `text/html` the inline formatting as elements. Neither public format
+  carries the ↗ icon or the renderer's classes and data attributes; a wikilink, which has no
+  destination outside the vault, is its `[[target|display]]` notation in both formats rather
+  than its display word; a `#tag` is text; an external link is its text in plain and an `<a>`
+  with its href alone in HTML. Before this the plain text was the words with every marker
+  stripped (`stripMarkdownFormatting`, the word-count helper) and the HTML unwrapped every block
+  to a `<br>`, so a run of headings and a list pasted into Obsidian as flat lines. The Markdown
+  is the app's spelling, not the file's bytes: a `*` bullet is written `-`, an authored `03.` is
+  `3.`, imported list indentation and heading spacing are canonical (the copied entries carry no
+  `indentStr`, `marker`, `numRaw` or `headingSource`), and the writer's blank line between two
+  paragraphs is written whether or not the file had it; special blocks are copied whole and keep
+  their source spelling. `copy-clipboard.spec.ts` proves the payloads and the private-format
+  paste in the real app on the event's own DataTransfer; the suite never touches the OS
+  clipboard, so paste into Obsidian, TextEdit plain and TextEdit rich was checked by hand
+  (2026-09-16) and is not automated.
 - **A paste that keeps a block's id and type must repaint that element directly**
   (`repaintKeptBlock`). The editor skips React renders for text-only changes, so a state-only
   write reaches disk but never the page, and the next keystroke writes the stale page back over it.
