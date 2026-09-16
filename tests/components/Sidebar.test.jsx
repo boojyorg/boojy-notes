@@ -580,7 +580,7 @@ describe("Sidebar", () => {
     const { getByLabelText } = renderSidebar({ filteredTree, ctxMenuFolderId: "Work" });
     const slot = getByLabelText("Folder actions").closest(".sidebar-folder-actions");
     expect(slot.style.opacity).toBe("1");
-    expect(slot.style.width).toBe("40px");
+    expect(slot.style.width).toBe("44px");
   });
 
   it("renders note rows without a file glyph, at any depth", () => {

@@ -82,9 +82,10 @@ const ACTION_ROW_H = 32;
 const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
-/** The folder row's two trailing glyph boxes (New note, ···), 20px each, the
- *  note row's single ··· slot twice over. */
-const FOLDER_ACTIONS_W = 40;
+/** The folder row's two trailing glyph boxes (New note, ···), 20px each with
+ *  4px between them (judged live 2026-09-16: adjacent, the pen's ink sat on
+ *  the dots), the note row's single ··· slot twice over. */
+const FOLDER_ACTIONS_W = 44;
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour

@@ -107,6 +107,25 @@ describe("ContextMenu", () => {
     expect(container.querySelector("[role='separator'], hr")).toBeNull();
   });
 
+  it("divides its placement by the UI scale so it lands under the pointer at 125%", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "f1", x: 200, y: 100 };
+    Object.defineProperty(document.documentElement, "currentCSSZoom", {
+      value: 1.25,
+      configurable: true,
+    });
+    try {
+      const { getByRole } = render(<ContextMenu {...props} />);
+      const menu = getByRole("menu");
+      // jsdom measures every rect as 0, so the hook's answer is the anchor
+      // itself; the write is what is under test.
+      expect(Number.parseFloat(menu.style.left)).toBeCloseTo(160);
+      expect(Number.parseFloat(menu.style.top)).toBeCloseTo(80);
+    } finally {
+      delete document.documentElement.currentCSSZoom;
+    }
+  });
+
   it("New note here creates inside the clicked folder", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };

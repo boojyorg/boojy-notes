@@ -138,6 +138,7 @@ export default function GlobalStyles() {
           overflow: hidden;
           display: flex;
           align-items: center;
+          gap: 4px;
           flex-shrink: 0;
           color: ${theme.TEXT.muted};
           transition: opacity 120ms;
@@ -145,7 +146,7 @@ export default function GlobalStyles() {
         .sidebar-folder:hover .sidebar-folder-actions,
         .sidebar-folder:focus-visible .sidebar-folder-actions {
           opacity: 1;
-          width: 40px;
+          width: 44px;
         }
         .sidebar-folder-action {
           width: 20px;

@@ -589,7 +589,8 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   (`useNoteCrud`, both routes) so it is seen to arrive; ··· opens the folder's own menu, the
   right-click one, growing rightward as a note row's does. Same slot grammar as the note dots:
   zero-width at rest so a long name truncates against the full row (`.sidebar-folder-actions`,
-  40px when revealed, two 20px glyph boxes), revealed on row hover or focus, muted with each
+  44px when revealed, two 20px glyph boxes with 4px between them so the pen's ink stands off
+  the dots), revealed on row hover or focus, muted with each
   glyph primary on its own hover, held open inline while that row's menu is up
   (`ctxMenuFolderId`); `span role="button"` with `tabIndex={-1}`, the row the keyboard path;
   clicks stop at the glyph so the row does not toggle and a double-click does not rename. The
@@ -851,10 +852,13 @@ first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` 
   (`BlockDragHandle`), the drag ghost and the drop marker (`useBlockDrag`) divide every measured
   distance by `cssZoom(el)` (`domHelpers`, `Element.currentCSSZoom`, 1 where unsupported); before
   this the grip drifted down the note by the scale factor at any setting but 100% (3px on the
-  first block, 35px three blocks down at 120%), which Cmd+0 hid. Anything else that writes a
-  measured rect or a `clientX`/`clientY` into a style on a zoomed element (the fixed menus at the
-  pointer, the selection toolbar) is exposed by the same mechanism; not measured and not yet
-  corrected, so judge those at 100% until it is.
+  first block, 35px three blocks down at 120%), which Cmd+0 hid. `ContextMenu` (the note,
+  folder, bulk and header menus, from a row's ··· or a right-click) divides its placement the
+  same way since 2026-09-16 (measured in the real app at 125%: it opened 50px under and 60px
+  right of the folder ···). Anything else that writes a measured rect or a `clientX`/`clientY`
+  into a style on a zoomed element (the link, code block, image and file menus, the table's
+  badge and cell menu, `VaultMenu`, the selection toolbar) is exposed by the same mechanism;
+  not measured and not yet corrected, so judge those at 100% until it is.
 - **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
   on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
   the grip lifts its ink and nothing else: **no hover surface**, so the gutter stays part of
