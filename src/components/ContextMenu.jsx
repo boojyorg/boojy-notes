@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { Fragment, useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
+import { CopyIcon, PencilIcon, SettingsIcon, TrashIcon } from "./Icons";
 import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
@@ -10,6 +10,15 @@ import { isElectronMac } from "../utils/platform";
 const hBg = (el, c) => {
   el.style.background = c;
 };
+
+/** The rule between groups, the sidebar menu's own: 1px, inset 6px. */
+const MenuRule = ({ color }) => (
+  <div role="separator" style={{ height: 1, background: color, margin: "4px 6px" }} />
+);
+
+/** `412 words`: the number a note is measured by. Characters were shown too
+ *  and dropped (2026-09-16): nobody writes a note to a character limit. */
+export const noteStatsLabel = (words) => `${words} word${words === 1 ? "" : "s"}`;
 
 const ContextMenu = memo(function ContextMenu({
   ctxMenu,
@@ -27,6 +36,7 @@ const ContextMenu = memo(function ContextMenu({
   bulkDeleteNotes,
   bulkMoveNotes,
   folderList,
+  wordCount,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
@@ -127,8 +137,10 @@ const ContextMenu = memo(function ContextMenu({
 
   const settingsItem = {
     label: "Settings",
-    // Under a rule: the app's own business, not this note's.
-    separator: true,
+    // The cog is what sets it apart from the note's own items; a rule above
+    // it as well cut a six-row menu into three compartments (judged live
+    // 2026-09-16).
+    icon: <SettingsIcon />,
     action: () => {
       setCtxMenu(null);
       setSettingsOpen(true);
@@ -239,53 +251,71 @@ const ContextMenu = memo(function ContextMenu({
         }}
       >
         {items.map((item, index) => (
-          <button
-            key={item.label}
-            id={`ctx-item-${index}`}
-            role="menuitem"
-            onClick={item.action}
-            onMouseEnter={(e) => {
-              setActiveIndex(index);
-              hBg(e.currentTarget, BG.hover);
-            }}
-            onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-            style={{
-              width: "100%",
-              background: index === activeIndex ? BG.hover : "none",
-              // A separator is a rule above the item, drawn in the menu's own
-              // divider ink and spaced off the items either side of it. One
-              // shorthand per box property, never a shorthand plus a longhand
-              // in the same object: React applies them in key order and an
-              // undefined longhand (`borderTop: undefined`) is written as
-              // `style.borderTop = ""`, which erases the edge the shorthand had
-              // just set and lets Chromium's own 2px outset button border and
-              // zero padding back onto that edge (seen 2026-09-14).
-              borderWidth: item.separator ? "1px 0 0" : 0,
-              borderStyle: "solid",
-              borderColor: BG.divider,
-              borderRadius: 6,
-              marginTop: item.separator ? 4 : undefined,
-              // 10px + the menu's 4px inset keeps the text 14px off the edge.
-              padding: item.separator ? "11px 10px 7px" : "7px 10px",
-              cursor: "pointer",
-              color: item.danger ? SEMANTIC.error : TEXT.primary,
-              fontSize: 12.5,
-              fontFamily: "inherit",
-              textAlign: "left",
-              transition: "background 0.12s",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            {/* Icons inherit the item colour, so Delete's glyph goes red with it. */}
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {item.icon}
-              {item.label}
-            </span>
-            {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}
-          </button>
+          <Fragment key={item.label}>
+            {/* A separator is its own rule between the pills, inset like the
+                sidebar menu's, never an edge of the button below it: drawn
+                as the button's top border it ran the row's full width in the
+                menu's own border ink and sat inside the hover pill, whose
+                padding then had to fake the gap (2026-09-16). */}
+            {item.separator && index > 0 && <MenuRule color={BG.divider} />}
+            <button
+              id={`ctx-item-${index}`}
+              role="menuitem"
+              onClick={item.action}
+              onMouseEnter={(e) => {
+                setActiveIndex(index);
+                hBg(e.currentTarget, BG.hover);
+              }}
+              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              style={{
+                width: "100%",
+                background: index === activeIndex ? BG.hover : "none",
+                // Every edge set, or Chromium's own 2px outset button border
+                // shows on the one left out (seen 2026-09-14).
+                border: 0,
+                borderRadius: 6,
+                // 10px + the menu's 4px inset keeps the text 14px off the edge.
+                padding: "7px 10px",
+                cursor: "pointer",
+                color: item.danger ? SEMANTIC.error : TEXT.primary,
+                fontSize: 12.5,
+                fontFamily: "inherit",
+                textAlign: "left",
+                transition: "background 0.12s",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {/* Icons inherit the item colour, so Delete's glyph goes red with it. */}
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {item.icon}
+                {item.label}
+              </span>
+              {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}
+            </button>
+          </Fragment>
         ))}
+        {isHeader && ctxMenu.id && wordCount != null && (
+          <>
+            <MenuRule color={BG.divider} />
+            {/* The note's length, at the foot of its own menu (Notion's place
+                for it): one muted line, not an item, shown only with a note
+                open. The one desktop surface that costs no pixels at rest. */}
+            <div
+              data-testid="note-stats"
+              style={{
+                padding: "5px 10px 3px",
+                fontSize: 11,
+                color: TEXT.muted,
+                whiteSpace: "nowrap",
+                userSelect: "none",
+              }}
+            >
+              {noteStatsLabel(wordCount)}
+            </div>
+          </>
+        )}
         {moveSubmenu && isBulk && folderList && folderList.length > 0 && (
           <div
             style={{
