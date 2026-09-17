@@ -18,6 +18,10 @@
 
 /** Control hit box in the chrome rows (the 18px navigation glyph sits in it). */
 export const CHROME_BTN = 32;
+/** The name field's hover pill: its side padding, pulled back out with a
+ *  negative margin so the path centres on the letters. Shared with the
+ *  stylesheet, which sizes the empty field to its placeholder plus this. */
+export const LABEL_PAD_X = 5;
 /** Between buttons of one group, and between the two groups. A group reads as
  *  a group only if the step out of it is bigger than the step within it. */
 export const BTN_GAP = 2;

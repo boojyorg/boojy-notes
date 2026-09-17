@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
+import { LABEL_PAD_X } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -59,10 +60,6 @@ const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */
 const MOBILE_LABEL_GAP = 26;
-/**
- * Negative inset so the hover tint can have padding without moving the text.
- */
-const LABEL_PAD_X = 5;
 
 /*
  * The writing column is fluid, because the window is.

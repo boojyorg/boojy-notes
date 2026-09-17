@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { LABEL_PAD_X } from "../constants/layout";
 import { PARAGRAPH_GAP } from "./EditableBlock";
 
 export default function GlobalStyles() {
@@ -689,7 +690,8 @@ export default function GlobalStyles() {
         }
         [data-title]:empty,
         [data-title]:has(> br:only-child) {
-          min-width: var(--title-placeholder-width, 0px);
+          /* border-box, so the pill's padding is inside the minimum. */
+          min-width: calc(var(--title-placeholder-width, 0px) + ${2 * LABEL_PAD_X}px);
         }
         [data-title]:empty::before,
         [data-title]:has(> br:only-child)::before {

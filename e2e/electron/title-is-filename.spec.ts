@@ -60,6 +60,9 @@ test("a new note starts unnamed under the caret, reads Untitled everywhere, and 
           content: s.content,
           padLeft: s.paddingLeft,
           minWidth: el.style.minWidth || getComputedStyle(el).minWidth,
+          // The field is border-box: a minimum that forgets the pill's
+          // padding clips the last letter and, focused, draws a scrollbar.
+          overflows: el.scrollWidth > el.clientWidth,
         };
       });
     const first = await placeholder();
@@ -67,6 +70,7 @@ test("a new note starts unnamed under the caret, reads Untitled everywhere, and 
     // Inherits the field's padding, so it starts under the caret.
     expect(first.padLeft).not.toBe("0px");
     expect(Number.parseFloat(first.minWidth)).toBeGreaterThan(0);
+    expect(first.overflows).toBe(false);
     // The sidebar row is never blank: a muted Untitled until the name lands.
     await expect(h.page.locator('[role="treeitem"]').filter({ hasText: "Untitled" })).toHaveCount(
       1,
@@ -89,6 +93,7 @@ test("a new note starts unnamed under the caret, reads Untitled everywhere, and 
     const emptied = await placeholder();
     expect(emptied.content).toBe('"Untitled"');
     expect(Number.parseFloat(emptied.minWidth)).toBeGreaterThan(0);
+    expect(emptied.overflows).toBe(false);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
