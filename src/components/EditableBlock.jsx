@@ -19,9 +19,10 @@ import SpacerBlock from "./blocks/SpacerBlock";
  * an empty row (Enter twice) adds a whole line on top; the three must read as
  * three. Lists and headings keep their own rhythm. The paragraph's own margin
  * is set in GlobalStyles from this value, beside the rule that gives a
- * paragraph after a list item the same gap; the quote uses it inline.
+ * paragraph after a list item the same gap; the quote uses it inline. 8 since
+ * 2026-09-17 (was 12): at 12 an Enter read as two lines to an Obsidian hand.
  */
-export const PARAGRAPH_GAP = 12;
+export const PARAGRAPH_GAP = 8;
 
 /**
  * Body text size for every text block. Not a preference: the Settings row that
@@ -374,8 +375,7 @@ const EditableBlock = memo(
           <span
             ref={elRef}
             style={{
-              color: TEXT.secondary,
-              fontStyle: "italic",
+              color: TEXT.primary,
               outline: "none",
               display: "block",
               fontSize: EDITOR_FONT_SIZE,

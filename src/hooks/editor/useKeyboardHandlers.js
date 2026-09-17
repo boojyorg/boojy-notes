@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import {
+  caretOnEmptyLastLine,
   findNearestBlock,
   isEditableBlock,
   isSelectableBlock,
@@ -158,6 +159,43 @@ export function useKeyboardHandlers({
       if (tagMenuRef?.current) setTagMenu(null);
       const blockType = blocks[blockIndex].type;
       const isList = LIST_TYPES.has(blockType);
+
+      // A quote continues on Enter (Obsidian's and Notion's quote): the new
+      // line stays inside the same block, as Shift+Enter puts it. The file
+      // could never tell the two apart, since adjacent quote blocks are
+      // written line under line and read back as one, so splitting into a
+      // second block only ever showed a second bar until the note was
+      // reopened. Enter on an empty line at the quote's end leaves it for a
+      // paragraph, the way an empty list item does.
+      if (blockType === "blockquote") {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        if (!caretOnEmptyLastLine(el, sel.getRangeAt(0))) {
+          document.execCommand?.("insertLineBreak");
+          return;
+        }
+        // `text` has the empty last line already dropped (the read-back
+        // ignores the root's final <br> and the trailing newline is stripped).
+        if (text === "") {
+          el.innerHTML = "<br>";
+          commitNoteData((prev) => {
+            const next = { ...prev };
+            const n = { ...next[noteId] };
+            const blks = [...n.content.blocks];
+            blks[blockIndex] = { ...blks[blockIndex], type: "p", text: "" };
+            n.content = { ...n.content, blocks: blks };
+            next[noteId] = n;
+            return next;
+          });
+          focusBlockId.current = blocks[blockIndex].id;
+          focusCursorPos.current = 0;
+          return;
+        }
+        updateBlockText(noteId, blockIndex, text);
+        syncGeneration.current++;
+        insertBlockAfter(noteId, blockIndex, "p", "");
+        return;
+      }
 
       if (isList && text.trim() === "") {
         // If indented, decrease indent instead of converting to paragraph

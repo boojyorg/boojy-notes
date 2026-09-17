@@ -18,7 +18,7 @@ import { htmlToInlineMarkdown, sanitizeInlineHtml } from "./inlineFormatting";
 export const SOFT_BREAK_TYPES = new Set(["p", "bullet", "numbered", "checkbox", "blockquote"]);
 
 /** Blocks that Enter continues as another of their kind rather than a paragraph. */
-export const LIST_TYPES = new Set(["bullet", "numbered", "checkbox", "blockquote"]);
+export const LIST_TYPES = new Set(["bullet", "numbered", "checkbox"]);
 
 export interface BlockPoint {
   blockIndex: number;

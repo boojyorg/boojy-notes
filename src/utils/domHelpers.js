@@ -466,6 +466,30 @@ function selectAnchor(place, link) {
  * factor at any setting but 100%, 2026-09-10). 1 where the browser has no
  * zoom, jsdom included.
  */
+/**
+ * Whether a collapsed caret in a text root sits on an empty last line: nothing
+ * but line breaks and empty elements before it on its line, and nothing but
+ * those after it. The read-back walkers cannot answer this (both drop a
+ * root's final `<br>`, so the empty line the caret is on reads as no line at
+ * all); the DOM either side of the caret is asked directly.
+ */
+export function caretOnEmptyLastLine(el, range) {
+  const html = (from, to) => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    if (from) r.setStart(from.node, from.offset);
+    if (to) r.setEnd(to.node, to.offset);
+    const div = document.createElement("div");
+    div.appendChild(r.cloneContents());
+    return div.innerHTML;
+  };
+  const textOf = (h) => h.replace(/<[^>]*>/g, "").replace(/\u200B/g, "");
+  const before = html(null, { node: range.startContainer, offset: range.startOffset });
+  const after = html({ node: range.endContainer, offset: range.endOffset }, null);
+  const lineBefore = before.split(/<br\s*\/?>/i).pop();
+  return textOf(lineBefore) === "" && textOf(after) === "";
+}
+
 export function cssZoom(el) {
   const z = el?.currentCSSZoom;
   return typeof z === "number" && z > 0 ? z : 1;

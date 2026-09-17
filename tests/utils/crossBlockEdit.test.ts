@@ -328,7 +328,9 @@ describe("applyAcrossBlocks: what the blocks become", () => {
       { kind: "insertParagraph" },
       genId,
     );
-    expect(q?.blocks).toEqual([quote("a", "sa"), quote("fresh", "en")]);
+    // A quote is not a list: Enter across its end leaves it for a paragraph
+    // (inside one block Enter is a soft break; see useKeyboardHandlers).
+    expect(q?.blocks).toEqual([quote("a", "sa"), p("fresh", "en")]);
   });
 
   it("a line break is a newline inside a paragraph, list item or quote, and a split after a heading", () => {
