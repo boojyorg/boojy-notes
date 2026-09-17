@@ -171,8 +171,8 @@ afterEach(() => {
 describe("Sidebar", () => {
   // The header's toggle is the same action as the pinned one in EditorChrome.
   it("puts the panel toggle in the sidebar header and toggles on click", () => {
-    const { getByTitle } = renderSidebar();
-    fireEvent.click(getByTitle("Hide sidebar"));
+    const { getByLabelText } = renderSidebar();
+    fireEvent.click(getByLabelText("Toggle sidebar"));
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
@@ -182,12 +182,12 @@ describe("Sidebar", () => {
   // shows a field or results.
   it("opens the search palette from the header's Search button, beside the toggle", () => {
     const onOpenSearch = vi.fn();
-    const { getByLabelText, getByTitle } = renderSidebar({ onOpenSearch });
+    const { getByLabelText } = renderSidebar({ onOpenSearch });
     const search = getByLabelText("Search notes");
     expect(search.closest(".sidebar-section-header")).toBeNull();
     expect(search.tagName).toBe("BUTTON");
-    expect(search.nextElementSibling).toBe(getByTitle("Hide sidebar"));
-    expect(search.style.width).toBe(getByTitle("Hide sidebar").style.width);
+    expect(search.nextElementSibling).toBe(getByLabelText("Toggle sidebar"));
+    expect(search.style.width).toBe(getByLabelText("Toggle sidebar").style.width);
     fireEvent.click(search);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();

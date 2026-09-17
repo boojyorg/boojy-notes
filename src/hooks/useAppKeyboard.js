@@ -43,8 +43,11 @@ export function useAppKeyboard({
   undo,
   redo,
   createNote,
+  createFolder,
   revealSidebar,
+  toggleSidebar,
   openSearch,
+  openSettings,
   setUiScale,
   cancelBlockDrag,
   cancelSidebarDrag,
@@ -57,7 +60,10 @@ export function useAppKeyboard({
     undo,
     redo,
     createNote,
+    createFolder,
     revealSidebar,
+    toggleSidebar,
+    openSettings,
     openSearch,
     setUiScale,
     cancelBlockDrag,
@@ -93,6 +99,13 @@ export function useAppKeyboard({
         else L.redo();
         return;
       }
+      // Cmd+Shift+N is New folder (Apple Notes' and Finder's key), at the
+      // root; before 2026-09-17 the shell ignored Shift and made a note.
+      if (mod && key === "n" && e.shiftKey) {
+        e.preventDefault();
+        L.createFolder?.(null);
+        return;
+      }
       if (mod && key === "n") {
         e.preventDefault();
         if (L.activeNote && L.noteData[L.activeNote]?._draft) {
@@ -110,6 +123,20 @@ export function useAppKeyboard({
       if (mod && key === "p") {
         e.preventDefault();
         L.openSearch?.();
+        return;
+      }
+      // Cmd+, is Settings, the platform's own key; Cmd+\ toggles the sidebar
+      // (Notion's key; Apple's Option+Cmd+S is three keys, and Cmd+B is Bold
+      // here). Both chosen 2026-09-17. The backslash is matched by the
+      // physical key too, for layouts where the character sits elsewhere.
+      if (mod && e.key === ",") {
+        e.preventDefault();
+        L.openSettings?.();
+        return;
+      }
+      if (mod && (e.key === "\\" || e.code === "Backslash")) {
+        e.preventDefault();
+        L.toggleSidebar?.();
         return;
       }
       // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0

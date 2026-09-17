@@ -115,9 +115,30 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
   is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
 - **Undo and Redo are chrome buttons before the note's name** (Lucide `Undo2`/`Redo2`, 18px,
-  navigation stroke, in `ChromeButton`), natively disabled when the *open note* has nothing to
-  take back. A press keeps the editor's selection (`keepSelection`). Back is not undo: no
-  straight arrows.
+  navigation stroke, in `ChromeButton`), `aria-disabled` when the *open note* has nothing to
+  take back (the attribute, not `disabled`, so the control still takes the pointer and focus
+  and its chip still says `Undo ⌘Z`; the click is dropped in `ChromeButton`). A press keeps
+  the editor's selection (`keepSelection`). Back is not undo: no straight arrows.
+- **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`:
+  the chip, `useTooltip`, `TOOLTIP_REST_MS` 400, `shortcutLabel`). Name 13px/500 in primary
+  ink; the shortcut a step smaller on a `BG.surface` pill in secondary ink; radius 8, the
+  elevated ground, a hairline border and **no shadow** (a shadow reads as a surface to act on;
+  a label is not one), 4px under the control. **Portalled to `body` and fixed**,
+  centred on its control from the control's rect and moved in from the window's edge, the
+  placement divided by `cssZoom`: drawn inside the control it was clipped at the sidebar's
+  edge and hidden under the editor. Below on the window's row and the Notes row, above on the
+  selection toolbar (which flips below when it would clip). `ChromeButton` and `SectionAction`
+  take `label` and `shortcut`; the wordmark's says `Settings`, the toggle's `Toggle sidebar` in
+  both states, Undo's `Undo` greyed or not. Shown after the rest, or at once while a
+  neighbour's chip has just hidden (`TOOLTIP_WARM_MS` 300) or on keyboard focus; a press,
+  Enter, Space or Escape hides it until the pointer leaves and returns. A shortcut is shown
+  only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the map in `useAppKeyboard`;
+  Redo is `Ctrl+Y` off a Mac). **The shell's keys** (2026-09-17): `⌘N` New note, `⇧⌘N` New
+  folder at the root, `⌘P` Search, `⌘,` Settings, `⌘\` Toggle sidebar (Notion's; `⌥⌘S` is three
+  keys and `⌘B` is Bold), `⌘Z`/`⇧⌘Z` history, `⌘±0` UI scale. Sort has none, by decision: a
+  two-option preference opening a menu earns no key. Folder-row and note-row controls keep native titles for now.
+  Specs locate chrome controls by `aria-label`, never `title`. `chrome-tooltips.spec.ts`,
+  `Tooltip.test.jsx`.
 - **The collapsed header carries the sidebar's own three controls** (toggle, Search, New note)
   in front of the history pair, `BTN_GAP` 2 within a group and `GROUP_GAP` 12 between. While the
   sidebar shows it owns those three and the header renders none, so exactly one of each is

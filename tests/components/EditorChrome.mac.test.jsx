@@ -30,7 +30,7 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 
 // macOS Electron: the traffic lights hold the viewport's top-left corner once
 // the sidebar is hidden, so the collapsed group shifts right of them.
-vi.mock("../../src/utils/platform", () => ({ isElectronMac: true }));
+vi.mock("../../src/utils/platform", () => ({ isElectronMac: true, isMac: true }));
 
 import EditorChrome, {
   CHROME_INSET,
@@ -56,7 +56,7 @@ afterEach(() => {
  */
 describe("EditorChrome on macOS with the sidebar hidden", () => {
   it("pins the left group right of the traffic lights and clears its whole width", () => {
-    const { getByTitle } = render(
+    const { getByLabelText } = render(
       <EditorChrome
         activeNote="n1"
         onNoteActions={vi.fn()}
@@ -65,13 +65,13 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
       />,
     );
     // toggle → its own group → the pinned left block.
-    const group = getByTitle("Show sidebar").parentElement.parentElement;
+    const group = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(Number.parseInt(group.style.left, 10)).toBe(MAC_TRAFFIC_INSET);
     expect(chromeControlsLeft(true)).toBe(MAC_TRAFFIC_INSET);
 
     // Five controls in two groups, and the path's band starts past the last of them.
-    const controls = ["Show sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
-      getByTitle(t),
+    const controls = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
+      getByLabelText(t),
     );
     expect(controls).toHaveLength(5);
     // 3 buttons at 32 + two 2px gaps, a 12px step, 2 buttons at 32 + one gap,
@@ -93,7 +93,7 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
 describe("EditorChrome on macOS in full screen", () => {
   it("drops the traffic-light inset", () => {
     layout.fullScreen = true;
-    const { getByTitle, container } = render(
+    const { getByLabelText, container } = render(
       <EditorChrome
         activeNote="n1"
         onNoteActions={vi.fn()}
@@ -101,7 +101,7 @@ describe("EditorChrome on macOS in full screen", () => {
         onOpenSearch={vi.fn()}
       />,
     );
-    const group = getByTitle("Show sidebar").parentElement.parentElement;
+    const group = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(Number.parseInt(group.style.left, 10)).toBe(CHROME_INSET);
     expect(trafficLightsShown(true)).toBe(false);
     expect(trafficLightsShown(false)).toBe(true);

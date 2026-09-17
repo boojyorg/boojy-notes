@@ -25,7 +25,7 @@ import {
 const SUBPIXEL = 0.5;
 
 /** The chrome buttons that sit left of the note's name, in DOM order. */
-const LEFT_CONTROLS = ["Show sidebar", "Search notes", "New note", "Undo", "Redo"];
+const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"];
 
 /**
  * Wait for every running CSS transition and animation to finish. The chrome
@@ -73,7 +73,7 @@ async function controlsRight(page: Page, titles: string[]) {
   let right = 0;
   let mid = 0;
   for (const title of titles) {
-    const box = await page.locator(`[title='${title}']:not([inert] *)`).boundingBox();
+    const box = await page.locator(`[aria-label='${title}']:not([inert] *)`).boundingBox();
     expect(box, `${title} box`).not.toBeNull();
     if (box!.x + box!.width > right) {
       right = box!.x + box!.width;
@@ -94,7 +94,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     for (const width of [1200, WINDOW_MIN_W]) {
       await setWidth(h, width);
       const { right, mid } = await controlsRight(h.page, ["Undo", "Redo"]);
-      const more = await h.page.locator("button[title='Note actions']").boundingBox();
+      const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
       await expect
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left, expanded at ${width}`,
@@ -112,15 +112,15 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     }
     await setWidth(h, 1200);
 
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
-    await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+    await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
 
     // Collapsed: five controls, and the name still starts past the last.
     for (const width of [1200, 700, WINDOW_MIN_W]) {
       await setWidth(h, width);
       const { right, mid } = await controlsRight(h.page, LEFT_CONTROLS);
-      const more = await h.page.locator("button[title='Note actions']").boundingBox();
+      const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
       await expect
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left at ${width}, collapsed`,
@@ -147,11 +147,11 @@ test("a very long name yields to the controls rather than covering them", async 
   const h = await launchApp({ [`${long}.md`]: "Alpha.\n" });
   try {
     await h.openNote(long);
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
     await setWidth(h, WINDOW_MIN_W);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
-    const more = await h.page.locator("button[title='Note actions']").boundingBox();
+    const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
     await expect
       .poll(async () => (await titleBox(h.page)).x)
       .toBeGreaterThanOrEqual(right + PATH_AIR - SUBPIXEL);
@@ -183,21 +183,24 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     h.app.evaluate(({ BrowserWindow }, v) => {
       BrowserWindow.getAllWindows()[0].setFullScreen(v);
     }, on);
-  const leftOf = async (title: string) => (await h.page.getByTitle(title).boundingBox())!.x;
+  const leftOf = async (name: string) =>
+    (await h.page.locator(`[aria-label='${name}']:not([inert] *)`).boundingBox())!.x;
+  const wordmarkLeft = async () =>
+    (await h.page.getByTestId("wordmark-settings-button").boundingBox())!.x;
   try {
     await h.openNote("Alpha");
     await setWidth(h, 1200);
-    const wordmark = h.page.getByTitle("Open Settings");
+    const wordmark = h.page.getByTestId("wordmark-settings-button");
     const atRest = (await wordmark.boundingBox())!.x;
     expect(atRest).toBe(MAC_TRAFFIC_INSET);
 
     // Expanded: the wordmark moves back to the header's own inset...
     await setFullScreen(true);
-    await expect.poll(() => leftOf("Open Settings"), { timeout: 10000 }).toBeLessThan(40);
+    await expect.poll(() => wordmarkLeft(), { timeout: 10000 }).toBeLessThan(40);
     // ...and collapsed, the group starts at the web inset with the name past it.
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
-    await expect.poll(() => leftOf("Show sidebar")).toBe(10);
+    await expect.poll(() => leftOf("Toggle sidebar")).toBe(10);
     await settled(h.page);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
     const n = await titleBox(h.page);
@@ -205,10 +208,10 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
 
     // Leaving full screen restores the inset in both states.
     await setFullScreen(false);
-    await expect.poll(() => leftOf("Show sidebar"), { timeout: 10000 }).toBe(MAC_TRAFFIC_INSET);
-    await h.page.getByTitle("Show sidebar").click();
+    await expect.poll(() => leftOf("Toggle sidebar"), { timeout: 10000 }).toBe(MAC_TRAFFIC_INSET);
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
-    await expect.poll(() => leftOf("Open Settings")).toBe(atRest);
+    await expect.poll(() => wordmarkLeft()).toBe(atRest);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await setFullScreen(false).catch(() => {});
@@ -255,12 +258,16 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     // The header row is whole at the minimum: the toggle ends inside the panel
     // and the wordmark keeps its air before Search (2026-09-16; at a bare 200
     // the toggle lost 26px past the divider once Search joined the row).
-    const toggle = (await h.page.getByTitle("Hide sidebar").boundingBox())!;
+    const toggle = (await h.page
+      .locator("[aria-label='Toggle sidebar']:not([inert] *)")
+      .boundingBox())!;
     expect(toggle.x + toggle.width).toBeLessThanOrEqual(
       SIDEBAR_MIN_W - HEADER_RIGHT_INSET + SUBPIXEL,
     );
-    const wordmark = (await h.page.getByTitle("Open Settings").boundingBox())!;
-    const search = (await h.page.getByTitle("Search notes").boundingBox())!;
+    const wordmark = (await h.page.getByTestId("wordmark-settings-button").boundingBox())!;
+    const search = (await h.page
+      .getByRole("button", { name: "Search notes", exact: true })
+      .boundingBox())!;
     expect(search.x - (wordmark.x + wordmark.width)).toBeGreaterThanOrEqual(HEADER_AIR - SUBPIXEL);
 
     await setWidth(h, 1200);
@@ -329,8 +336,8 @@ test("no window-drag rectangle lies under a chrome button, in either sidebar sta
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByTestId("path-tree")).toHaveCount(0);
     expect(await regionModes()).toEqual(["drag", "drag"]);
-    await h.page.locator("[title='Hide sidebar']:not([inert] *)").click();
-    await h.page.locator("[title='Show sidebar']").waitFor();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").waitFor();
     await settled(h.page);
     await check("collapsed");
     expect(h.pageErrors).toEqual([]);

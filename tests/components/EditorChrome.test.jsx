@@ -69,28 +69,28 @@ describe("EditorChrome", () => {
   // open note's history and its ··· and nothing else.
   it("shows only history and the note menu while the sidebar is open", () => {
     layoutState.sidebarVisible = true;
-    const { container, queryByTitle, getByTitle } = renderChrome();
+    const { container, queryByLabelText, getByLabelText } = renderChrome();
     expect(container.querySelectorAll("button").length).toBe(3);
-    expect(getByTitle("Undo")).toBeInTheDocument();
-    expect(getByTitle("Redo")).toBeInTheDocument();
-    expect(getByTitle("Note actions")).toBeInTheDocument();
-    for (const gone of ["Hide sidebar", "Show sidebar", "Search notes", "New note"]) {
-      expect(queryByTitle(gone)).not.toBeInTheDocument();
+    expect(getByLabelText("Undo")).toBeInTheDocument();
+    expect(getByLabelText("Redo")).toBeInTheDocument();
+    expect(getByLabelText("Note actions")).toBeInTheDocument();
+    for (const gone of ["Toggle sidebar", "Search notes", "New note"]) {
+      expect(queryByLabelText(gone)).not.toBeInTheDocument();
     }
   });
 
   it("adds the sidebar, search and new-note controls when the sidebar is not showing", () => {
     layoutState.sidebarVisible = false;
-    const { getByTitle } = renderChrome();
-    for (const shown of ["Show sidebar", "Search notes", "New note", "Undo", "Redo"]) {
-      expect(getByTitle(shown)).toBeInTheDocument();
+    const { getByLabelText } = renderChrome();
+    for (const shown of ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"]) {
+      expect(getByLabelText(shown)).toBeInTheDocument();
     }
   });
 
   it("goes through the one toggle action, whatever the sidebar's presentation", () => {
     layoutState.sidebarVisible = false;
-    const { getByTitle } = renderChrome();
-    fireEvent.click(getByTitle("Show sidebar"));
+    const { getByLabelText } = renderChrome();
+    fireEvent.click(getByLabelText("Toggle sidebar"));
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
@@ -100,17 +100,17 @@ describe("EditorChrome", () => {
     layoutState.sidebarVisible = false;
     const onNewNote = vi.fn();
     const onOpenSearch = vi.fn();
-    const { getByTitle } = renderChrome({ onNewNote, onOpenSearch, activeNote: null });
-    fireEvent.click(getByTitle("New note"));
-    fireEvent.click(getByTitle("Search notes"));
+    const { getByLabelText } = renderChrome({ onNewNote, onOpenSearch, activeNote: null });
+    fireEvent.click(getByLabelText("New note"));
+    fireEvent.click(getByLabelText("Search notes"));
     expect(onNewNote).toHaveBeenCalledTimes(1);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
   });
 
   it("opens the menu with viewport coordinates anchored to the button", () => {
     const onNoteActions = vi.fn();
-    const { getByTitle } = renderChrome({ onNoteActions });
-    fireEvent.click(getByTitle("Note actions"));
+    const { getByLabelText } = renderChrome({ onNoteActions });
+    fireEvent.click(getByLabelText("Note actions"));
     expect(onNoteActions).toHaveBeenCalledTimes(1);
     const arg = onNoteActions.mock.calls[0][0];
     expect(arg).toHaveProperty("x");
@@ -120,28 +120,28 @@ describe("EditorChrome", () => {
   // Settings must never need an open note, and the menu is the way to it.
   it("keeps the menu with no active note, named for what it then holds", () => {
     const onNoteActions = vi.fn();
-    const { getByTitle, queryByTitle } = renderChrome({ activeNote: null, onNoteActions });
-    expect(queryByTitle("Note actions")).not.toBeInTheDocument();
-    fireEvent.click(getByTitle("App options"));
+    const { getByLabelText, queryByLabelText } = renderChrome({ activeNote: null, onNoteActions });
+    expect(queryByLabelText("Note actions")).not.toBeInTheDocument();
+    fireEvent.click(getByLabelText("App options"));
     expect(onNoteActions).toHaveBeenCalledTimes(1);
   });
 
   // ─── History ──────────────────────────────────────────────────────
   it("disables undo and redo until the open note has something to take back", () => {
-    const { getByTitle } = renderChrome();
-    expect(getByTitle("Undo")).toBeDisabled();
-    expect(getByTitle("Redo")).toBeDisabled();
-    fireEvent.click(getByTitle("Undo"));
+    const { getByLabelText } = renderChrome();
+    expect(getByLabelText("Undo")).toHaveAttribute("aria-disabled", "true");
+    expect(getByLabelText("Redo")).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(getByLabelText("Undo"));
     expect(historyState.undo).not.toHaveBeenCalled();
   });
 
   it("calls the history actions when the open note has them", () => {
     historyState.canUndo = true;
     historyState.canRedo = true;
-    const { getByTitle } = renderChrome();
-    expect(getByTitle("Undo")).not.toBeDisabled();
-    fireEvent.click(getByTitle("Undo"));
-    fireEvent.click(getByTitle("Redo"));
+    const { getByLabelText } = renderChrome();
+    expect(getByLabelText("Undo")).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(getByLabelText("Undo"));
+    fireEvent.click(getByLabelText("Redo"));
     expect(historyState.undo).toHaveBeenCalledTimes(1);
     expect(historyState.redo).toHaveBeenCalledTimes(1);
   });
@@ -150,12 +150,12 @@ describe("EditorChrome", () => {
   // would be restored with nowhere to carry on typing.
   it("keeps the editor's selection when a history button is pressed", () => {
     historyState.canUndo = true;
-    const { getByTitle } = renderChrome();
-    const stolen = fireEvent.mouseDown(getByTitle("Undo"));
+    const { getByLabelText } = renderChrome();
+    const stolen = fireEvent.mouseDown(getByLabelText("Undo"));
     // fireEvent returns false when a listener called preventDefault.
     expect(stolen).toBe(false);
     // The sidebar toggle is ordinary: it may take focus like any button.
-    expect(fireEvent.mouseDown(getByTitle("Note actions"))).toBe(true);
+    expect(fireEvent.mouseDown(getByLabelText("Note actions"))).toBe(true);
   });
 
   // ─── Placement ────────────────────────────────────────────────────
@@ -174,9 +174,9 @@ describe("EditorChrome", () => {
   // clock (2026-09-14): 10 + three 32px buttons with two 2px gaps + 12.
   it("places the history pair past the trio, in its own block, when collapsed", () => {
     layoutState.sidebarVisible = false;
-    const { getByTitle } = renderChrome();
-    const pair = getByTitle("Undo").parentElement;
-    const trio = getByTitle("Show sidebar").parentElement.parentElement;
+    const { getByLabelText } = renderChrome();
+    const pair = getByLabelText("Undo").parentElement;
+    const trio = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(pair).not.toBe(trio);
     expect(pair.style.position).toBe("fixed");
     expect(pair.style.left).toBe("122px");

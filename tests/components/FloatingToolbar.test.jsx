@@ -32,12 +32,8 @@ vi.mock("../../src/hooks/useTheme", () => ({
 vi.mock("../../src/utils/platform", () => ({ isMac: true }));
 
 // ── Import component after mocks ────────────────────────────────────────────
-import FloatingToolbar, {
-  FORMATS,
-  TOOLTIP_REST_MS,
-  chipWouldClip,
-  shortcutLabel,
-} from "../../src/components/FloatingToolbar.jsx";
+import FloatingToolbar, { FORMATS, chipWouldClip } from "../../src/components/FloatingToolbar.jsx";
+import { TOOLTIP_REST_MS, shortcutLabel } from "../../src/components/Tooltip";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const defaultFormats = {
@@ -143,7 +139,7 @@ describe("FloatingToolbar", () => {
     expect(tip.textContent).toBe("Strikethrough⇧⌘S");
     expect(tip.getAttribute("aria-hidden")).toBe("true");
     // Above the toolbar by default.
-    expect(tip.style.bottom).toBe("calc(100% + 6px)");
+    expect(tip.dataset.placement).toBe("above");
     fireEvent.mouseLeave(bold);
     expect(queryByTestId("format-tooltip")).toBeNull();
   });
@@ -185,15 +181,15 @@ describe("FloatingToolbar", () => {
     bar.getBoundingClientRect = () => ({ top: 160 });
     fireEvent.mouseEnter(getByRole("button", { name: "Link" }));
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
-    expect(getByTestId("format-tooltip").style.bottom).toBe("calc(100% + 6px)");
+    // The chip is portalled to body, outside the scroller this test renders into.
+    const chip = () => document.body.querySelector("[data-testid='format-tooltip']");
+    expect(chip().dataset.placement).toBe("above");
     fireEvent.mouseLeave(getByRole("button", { name: "Link" }));
     // Toolbar at the scroller's top: the chip would clip, so it goes below.
     bar.getBoundingClientRect = () => ({ top: 110 });
     fireEvent.mouseEnter(getByRole("button", { name: "Link" }));
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
-    const tip = getByTestId("format-tooltip");
-    expect(tip.style.top).toBe("calc(100% + 6px)");
-    expect(tip.style.bottom).toBe("");
+    expect(chip().dataset.placement).toBe("below");
     scroller.remove();
   });
 

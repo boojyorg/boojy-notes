@@ -102,11 +102,12 @@ History is in git and `CHANGELOG.md`.
 - **Applying a format keeps the toolbar where it is**, and the hook measures the selection once
   when the toolbar appears, never again while on screen (re-measuring slid the strip under the
   pointer as Bold widened the glyphs).
-- Resting on a button for `TOOLTIP_REST_MS` (400, `FloatingToolbar.jsx`) shows a chip with the
-  name and shortcut (12px/500, the app's own chip, not inverted), below only when it would clip
-  (`chipWouldClip` against `.editor-scroll`). `FORMATS` in `FloatingToolbar.jsx` is the one
-  place a shortcut is shown and must match `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S`
-  on a Mac (`isMac`, not `isElectronMac`). `formatting-toolbar.spec.ts`.
+- Resting on a button for `TOOLTIP_REST_MS` (400, `Tooltip.tsx`, the chrome row's chip too)
+  shows a chip with the name and shortcut (12px/500, the app's own chip, not inverted), below
+  only when it would clip (`chipWouldClip` against `.editor-scroll`). `FORMATS` in
+  `FloatingToolbar.jsx` is the one place an editor shortcut is shown and must match
+  `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac (`isMac`, not `isElectronMac`).
+  `formatting-toolbar.spec.ts`.
 
 ## ATX headings share one editor path
 
