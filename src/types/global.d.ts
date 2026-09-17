@@ -69,6 +69,11 @@ declare global {
       renameFolder: (oldRelPath: string, newRelPath: string) => Promise<{ path: string }>;
       /** Removes the directory only if nothing but OS cruft is left in it. */
       deleteFolder: (relPath: string) => Promise<{ removed: boolean }>;
+      /** Copies the directory beside itself as `Name (copy)`, everything in it
+       * included; the copied notes come back read from disk with their own ids. */
+      duplicateFolder: (
+        relPath: string,
+      ) => Promise<{ path: string; folders: string[]; notes: Note[] }>;
       /** A directory appeared or vanished outside the app; re-read the folder list. */
       onFoldersChanged: (callback: () => void) => Unsubscribe;
 

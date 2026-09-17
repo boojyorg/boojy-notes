@@ -180,6 +180,10 @@ app's, made through state.**
   selects a divider, image or table (the next key removes it), and refuses anything else.
   `cross-block-ownership.spec.ts`. Residue: an IME composition over a cross-block selection
   cannot be cancelled; a text drag across blocks copies; Cmd+B across blocks toggles per block.
+- **Backspace in the only, empty block is prevented, never left to Chromium**, whose own
+  deletion on a lone `<p><br></p>` removes the paragraph element itself: a root with no block
+  while state still held one, so nothing repainted and typing went nowhere until the note was
+  reopened. `cross-block-ownership.spec.ts`.
 
 ## Menus own their keys; the editor keeps the caret
 

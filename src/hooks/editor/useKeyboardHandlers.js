@@ -205,8 +205,13 @@ export function useKeyboardHandlers({
           focusCursorPos.current = 0;
           return;
         }
-        if (blocks.length <= 1) return;
+        // The only block, and empty: nothing to merge into, and Chromium
+        // must not have the key. Its own Backspace on a lone `<p><br></p>`
+        // at the root's start removes the paragraph element itself; state
+        // still held one block, so nothing repainted and typing went nowhere
+        // until the note was reopened (2026-09-17).
         e.preventDefault();
+        if (blocks.length <= 1) return;
         const prevIdx = landingBefore(blocks, blockIndex);
         if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
           // A divider or image above: select it rather than stepping over it.

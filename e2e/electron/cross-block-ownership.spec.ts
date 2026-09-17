@@ -262,3 +262,25 @@ test.describe("edits that reach across block roots are owned by the app", () => 
     }
   });
 });
+
+test("Backspace in a note's only, empty block keeps the block, and typing still lands", async () => {
+  // Chromium's own Backspace on a lone `<p><br></p>` at the root's start removed
+  // the paragraph element itself; state still held one block, so nothing
+  // repainted and every keystroke after it went nowhere (2026-09-17).
+  const h = await launchApp({ [NOTE]: "x" });
+  try {
+    await h.openNote("Note");
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Backspace"); // the x
+    await h.page.keyboard.press("Backspace"); // the empty, only block
+    await h.page.keyboard.press("Backspace");
+    expect(await blockTypes(h.page)).toEqual(["p"]);
+    await h.page.keyboard.type("hello");
+    expect(await editorText(h.page)).toBe("hello");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("hello"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

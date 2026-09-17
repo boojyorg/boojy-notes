@@ -734,6 +734,27 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         return finalPath;
       },
       /**
+       * Copy the directory beside itself, everything in it included. Pending
+       * edits under it are flushed first, so the copy holds what is on
+       * screen. The copied notes come back read from disk with ids of their
+       * own and are taken as the disk holds them, never as edits: nothing
+       * becomes dirty and nothing is written again.
+       */
+      duplicate: async (relPath) => {
+        const links = editorLinksRef.current;
+        await flushRef.current(
+          links?.latestNoteDataRef?.current,
+          links?.unflushedNotes ? [...links.unflushedNotes.current] : undefined,
+        );
+        const { path, folders, notes } = await getAPI().duplicateFolder(relPath);
+        setCustomFolders((prev) => {
+          const added = folders.filter((f) => !prev.includes(f));
+          return added.length ? [...prev, ...added] : prev;
+        });
+        for (const note of notes) applyExternal(note);
+        return path;
+      },
+      /**
        * Remove the directory once its notes have reached the Trash, and only
        * if nothing else is left in it; a folder that keeps other files stays,
        * with a toast saying so. With no notes at stake it runs at once.
@@ -757,7 +778,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         else await run();
       },
     };
-  }, [setCustomFolders, afterNextFlush]);
+  }, [setCustomFolders, afterNextFlush, applyExternal]);
 
   return {
     isElectron,

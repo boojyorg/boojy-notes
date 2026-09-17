@@ -317,7 +317,10 @@ function parseNoteFile(filePath, notesDir) {
         break;
       }
     }
-    if (!id) id = migratedId || `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    // A legacy id already indexed at another path is that note's: this file is
+    // a copy of it (Finder, Duplicate folder) and gets an id of its own.
+    if (!id && migratedId && !(migratedId in _idIndex)) id = migratedId;
+    if (!id) id = `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     // Update index
     _idIndex[id] = relPath;
@@ -642,5 +645,6 @@ export {
   saveIndex,
   parseNoteFile,
   readAllNotes,
+  walkNoteFiles,
   registerNoteFileIPC,
 };

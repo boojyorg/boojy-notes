@@ -404,6 +404,80 @@ describe("useNoteCrud", () => {
     });
   });
 
+  describe("duplicateFolder", () => {
+    const seed = () => ({
+      n1: { ...makeNote("n1", "Note"), folder: "Work" },
+      n2: { ...makeNote("n2", "Deep"), folder: "Work/Sub" },
+      n3: { ...makeNote("n3", "Other"), folder: "Elsewhere" },
+      d1: { ...makeNote("d1", ""), folder: "Work", _draft: true },
+    });
+
+    it("web: copies the folder, its subfolders and its notes beside it as `Name (copy)`", () => {
+      const initial = seed();
+      const originalBlockIds = Object.values(initial).flatMap((n) =>
+        n.content.blocks.map((b) => b.id),
+      );
+      const { result, getNoteData, getFolders } = setup(initial, {
+        customFolders: ["Work", "Work/Sub", "Elsewhere"],
+      });
+
+      act(() => {
+        result.current.duplicateFolder("Work");
+      });
+
+      expect(getFolders()).toEqual([
+        "Work",
+        "Work/Sub",
+        "Elsewhere",
+        "Work (copy)",
+        "Work (copy)/Sub",
+      ]);
+      const data = getNoteData();
+      const copies = Object.values(data).filter((n) => n.folder?.startsWith("Work (copy)"));
+      expect(copies.map((n) => [n.title, n.folder]).sort()).toEqual([
+        ["Deep", "Work (copy)/Sub"],
+        ["Note", "Work (copy)"],
+      ]);
+      // Fresh note and block ids; the originals and the other folder untouched;
+      // a draft is never a file, so it is not copied.
+      for (const n of copies) {
+        expect(["n1", "n2"]).not.toContain(n.id);
+        for (const b of n.content.blocks) expect(originalBlockIds).not.toContain(b.id);
+      }
+      expect(data.n1).toBe(initial.n1);
+      expect(data.n3).toBe(initial.n3);
+      expect(Object.keys(data)).toHaveLength(6);
+    });
+
+    it("web: a second copy is `Name (copy)-2`, like a new folder's name", () => {
+      const { result, getFolders } = setup(seed(), {
+        customFolders: ["Work", "Work (copy)"],
+      });
+      act(() => {
+        result.current.duplicateFolder("Work");
+      });
+      expect(getFolders()).toContain("Work (copy)-2");
+    });
+
+    it("desktop: hands the copy to folderOps and reports a failure once", async () => {
+      const duplicate = vi.fn().mockRejectedValue(new Error("disk"));
+      const onError = vi.fn();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { result, commitNoteData, setCustomFolders } = setup(seed(), {
+        folderOps: { duplicate },
+        onError,
+      });
+      act(() => {
+        result.current.duplicateFolder("Work");
+      });
+      expect(duplicate).toHaveBeenCalledWith("Work");
+      await act(async () => {});
+      expect(onError).toHaveBeenCalledWith("Failed to duplicate the folder on disk");
+      expect(commitNoteData).not.toHaveBeenCalled();
+      expect(setCustomFolders).not.toHaveBeenCalled();
+    });
+  });
+
   describe("createDraftNote", () => {
     it("creates a _draft note and sets it active", () => {
       const { result, getNoteData, setActiveNote } = setup();

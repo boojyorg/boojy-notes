@@ -264,6 +264,7 @@ export default function BoojyNotes() {
     moveFolder,
     deleteFolder,
     createFolder,
+    duplicateFolder,
     createDraftNote,
     discardDraft,
   } = useNoteCrud({
@@ -946,6 +947,7 @@ export default function BoojyNotes() {
         duplicateNote={duplicateNote}
         deleteNote={confirmDeleteNote}
         deleteFolder={confirmDeleteFolder}
+        duplicateFolder={duplicateFolder}
         createNote={createNote}
         createFolder={createFolder}
         setRenamingFolder={setRenamingFolder}
