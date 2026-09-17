@@ -1,9 +1,9 @@
 # SPEC: Markdown is the source of truth
 
-**Status:** binding constraint (adopted v0.5.0). This is an architectural rule, not a
-feature request. It governs what blocks and interactions may exist in Boojy Notes, what the app
-owes each piece of Markdown syntax it meets (the support dimensions below), and what that implies
-for the UI. Feature plans, reviews and UI decisions are judged against this document; if a
+**Status:** binding constraint (adopted v0.5.0; last reviewed 2026-09-17). This is an
+architectural rule, not a feature request. It governs what blocks and interactions may exist in
+Boojy Notes, what the app owes each piece of Markdown syntax it meets (the support dimensions
+below), and what that implies for the UI. Feature plans, reviews and UI decisions are judged against this document; if a
 proposal conflicts with it, the proposal changes.
 
 ---
@@ -34,7 +34,7 @@ start another block to a Markdown reader (`# bar`, `- bar`, `1. two`, `---`, a f
 with its marker backslash-escaped (`\# bar`), so the file means the one block that was typed; a
 file that holds the tight form is read as the blocks it means and written back unchanged. Nothing
 is recorded that the file does not say, and reading a file never rewrites it. The exact rules live
-in the UI rule's paragraph-model section.
+in the editor rule's paragraph-model section.
 
 An empty list item or heading is the block its marker says: `- `, `1. `, `- [ ] `, `# ` (what
 the app writes for one left empty) and the bare `-`, `1.`, `- [ ]`, `#` other editors write all
@@ -94,6 +94,23 @@ Allowed *because markdown can express them*:
   for the parent's marker width. **List types only** (`bullet`/`numbered`/`checkbox`) — see
   "Removed" below. Newly edited structure cannot skip levels or leave a child without a parent.
 - Obsidian-flavoured-but-still-text marks already in use: `==highlight==`, `[[wikilinks]]`.
+
+## Recorded serializer decisions
+
+Decisions the spec sanctions; the rule and its test live in the editor rule.
+
+- A newline inside a table cell is written as `<br>`, the line break GitHub and Obsidian read in
+  a cell, and read back only in that exact form; a newline in a callout title is written as a
+  space.
+- Tilde and backtick fences are one block type; a non-default opener or closer, or an absent
+  closer, is carried on the block (`fenceSource`) and written back as authored.
+- `[[Note#Heading]]`, `[[Note#^block]]` and `[[Folder/Note]]` name the note before the `#`, in
+  the folder the path gives; the heading or block is not yet followed, and a click never creates
+  a note for anything but a plain name.
+- Typing `_italic_` or `__bold__` is committed in the star form the renderer speaks; an imported
+  underscore form is left as written and shown literal.
+- Copy writes the app's spelling of the copied blocks (`-` bullets, canonical numbering and
+  indentation), never the file's bytes; the file itself is untouched.
 
 ## Forbidden — do not build (breaks portability)
 

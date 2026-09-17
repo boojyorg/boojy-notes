@@ -1,45 +1,28 @@
 # UI chrome, theme and icons
 
 Design intent and the non-obvious constraints of the visual layer. The code owns the exact
-implementation; this file owns the rules a change must not break, and, where a rule looks like
-a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`.
+implementation; this file owns the rules a change must not break and, where a rule looks like
+a mistake, the one reason it is deliberate. History is in git and `CHANGELOG.md`. Editor
+behaviour is in `editor.md`; files, the watcher and persistence in `files-and-watcher.md`.
 
 ## Theme and colour
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- **Product terminology is Light / Dark / System.** The stored preference keys stay
-  `day` / `night` / `auto`, and the theme objects stay `DAY` / `NIGHT`; renaming either would
-  orphan saved preferences for no user benefit. Copy changes, keys don't. System (`auto`)
-  follows the OS appearance and nothing else; the time-of-day schedule that used to sit under
-  it was removed on 2026-09-05, and a saved `autoMethod` is ignored.
-- Light is the first-run default when nothing is saved; a saved choice always wins.
+- Product terms are Light / Dark / System; the stored keys stay `day` / `night` / `auto` and the
+  objects `DAY` / `NIGHT` (renaming would orphan saved preferences). System follows the OS
+  appearance only; a saved `autoMethod` is ignored. Light is the first-run default.
 - Electron's first-paint `backgroundColor` is Light's ground, so a Dark user sees one brief
-  light flash at launch. Wiring the saved theme back to the main process is the fix if it ever
-  grates.
-- The palettes are neutral, with sibling app Picito's neutral ramp as the family reference and
-  Boojy Notes' cyan as its own identity. Don't introduce gold; it is Picito's brand accent.
-- **Dark is a neutral grey ramp with small steps, not near-black** (2026-09-14, judged live
-  against Obsidian and Notion). The sheet is `#181818` (Notion's, L* 8), the sidebar one step up
-  at `#212121`, the hover/selected row one more at `#2D2D2D`; before this the sheet was `#040412`
-  (L* 1.4) under a blue-violet `#272A38` sidebar sixteen steps above it, which glared and read as
-  two materials, and the muted tier sat at 2.6:1 on the sidebar. Grounds are pure grey; the ink
-  is one step warm (`#E7E6E5`), because DAY's warm tilt read cream on a neutral dark ground and
-  pure neutral read clinical. All three text tiers clear AA on the sidebar. `TEXT.primary` moved,
-  so the dark wordmark was regenerated (see the wordmark bullet). The callout grounds followed
-  the same day (see Known leaks), and the comment and punctuation syntax colours lost their
-  blue; the rest of the syntax set is unchanged.
-- **`?tweak` on a dev build mounts a colour panel** (`dev/ThemeTweaker.jsx`, loaded from
-  `main.jsx` only when `import.meta.env.DEV`; dead code in a production bundle and outside the
-  coverage denominator). It lays token overrides over the active theme through
-  `setThemeOverrides` in `ThemeContext`, keeps them per theme in `localStorage`, and copies the
-  block in `themes.js`'s own shape. Nothing in the product sets an override; `themes.js` stays
-  the only authority, and a judged value goes there, never into the panel's storage.
-- There is no decorative background. The Dark star field was removed on 2026-09-05 (git has
-  it, tag-free); the editor ground is the theme's `BG.editor` and nothing else.
+  light flash at launch. Wiring the saved theme to the main process is the fix if it grates.
+- The palettes are neutral. Boojy Notes' teal is its identity; never gold (Picito's accent).
+  Dark is a grey ramp with small steps (sheet `#181818`, sidebar one step up, hover one more),
+  grounds pure grey, ink one step warm. Every text tier clears AA on the sidebar.
+- `?tweak` on a dev build mounts a colour panel (`dev/ThemeTweaker.jsx`, DEV only) that lays
+  overrides over the active theme via `setThemeOverrides`. A judged value goes into `themes.js`,
+  never into the panel's storage.
+- No decorative background; the editor ground is `BG.editor`.
 
-**Surface roles, Light, in order light → dark.** Use them by role, not by which grey looks
-right; naming greys by darkness is what makes every region read as a separate boxed panel.
+**Surface roles, Light, light → dark.** Use by role, never by which grey looks right.
 
 | Token | Role |
 | --- | --- |
@@ -52,1886 +35,329 @@ right; naming greys by darkness is what makes every region read as a separate bo
 | `BG.hover` | **row/menu** hover AND selected |
 | `BG.divider` | border, ink at 8% |
 
-Text is three steps (`TEXT.primary` / `secondary` / `muted`), all clearing AA on the ground.
+Text is three steps (`TEXT.primary` / `secondary` / `muted`).
 
-**The accent is two tokens, and one of them is shared** (2026-09-14, Tyr's ask: the tick box
-the same colour in both modes). `ACCENT.primary` is the *mark* colour, `MARK` = `#8FC1C6` in
-both themes: the checkbox fill, the quote bar, drop markers, focus rings, the
-selection band, the switch, the confirm button, the info toast, the wordmark's N (the bullet
-marker left this set on 2026-09-16; see "List depth and numbering"). It is the
-misty brand teal (`#A4CACE`, hue 186) two steps deeper, judged live against `#2593A0` (the
-darkest teal that carries a white tick at 3.7:1; Tyr read it as blue and dark: same hue, twice
-the saturation) and `#6FB3BA` (still too far from the brand). At 2.0:1 on white it sits under
-WCAG's 3:1 line for graphical objects, accepted: misty *is* the identity, and a filled 16px
-square still reads; 9:1 on the dark sheet. `ACCENT.onAccent` is `ON_MARK`, **white in both
-themes**, Tyr's call over a dark tick (offered because white on this fill is 2:1): the tick
-and a bold button label are soft by design, never body text. Deepen the mark before ever
-putting body text on it. `ACCENT.text`
-is accent *as ink* and is per theme, because nothing passes 4.5:1 on both white and a dark
-ground: `#2A737D` in Light (5.5:1, the deep teal words need), `#9CC9CE` in Dark (9:1, a step
-off the brand colour); wikilinks, `#tags`, search hits, the active toolbar and slash-menu
-glyph, Settings section labels. The rule for a new use: does it have to be *read*? Then `text`;
-otherwise `primary`, with `onAccent` for anything drawn on it. Before this each theme had one
-accent for both jobs, Dark's a pale `#A4CACE` that read grey-mint and Light's a deep `#2A737D`
-that made the checkbox a different object in each mode; the wordmark's N was `#A4CACE` in both,
-1.76:1 on white. `LayoutContext` hands out both as `accentColor` (marks) and `accentText`.
-(The Updates "Restart & Update" button and the switch's on-state knob were hardcoded white
-until 2026-09-07; the off-state knob is `TEXT.secondary`, since a white dot on the 6% track was
-invisible in Light.)
+**The accent is two tokens.** `ACCENT.primary` is the *mark* colour, `MARK` = `#8FC1C6` in both
+themes: checkbox fill, quote bar, drop markers, focus rings, selection band, switch, confirm
+button, info toast, the wordmark's N. `ACCENT.onAccent` is white in both themes; at 2:1 on the
+mark it is for a tick and a bold button label, never body text. `ACCENT.text` is accent *as
+ink*, per theme (`#2A737D` Light, `#9CC9CE` Dark, both ≥ 4.5:1): wikilinks, `#tags`, search
+hits, the active toolbar and slash-menu glyph, Settings section labels. Rule for a new use:
+does it have to be *read*? Then `text`; otherwise `primary`, with `onAccent` for anything drawn
+on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
 
 - **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
-  hover *and* select to `BG.hover`, so hover previews selection. Every new hover state is one
-  or the other.
-- **Accent is never a desktop surface.** It is identity, focus rings, 2-3px markers, wikilinks
-  and the caret. Desktop selected rows are neutral. The one sanctioned tint is the selected
-  divider's band, a transient selection state and closer to a focus ring than a surface: accent
-  at 10% in Light, 18% in Dark, judged 2026-09-05 against a recoloured rule (which read as "a
-  styled line", not "a selected object") and a neutral `BG.hover` band (which swallowed the
-  rule, two greys three steps apart). Mobile note rows keep a compact
-  accent-tinted pill because the denser layout needs it; that is fixed styling, not an option.
+  hover *and* select to `BG.hover`, so hover previews selection.
+- **Accent is never a desktop surface**: identity, focus rings, 2–3px markers, wikilinks and the
+  caret. Selected rows are neutral. The one tint is the selected divider's band (accent at 10%
+  Light / 18% Dark). Mobile note rows keep an accent pill.
 
-Known leaks, not yet fixed: `theme.overlay()` and about forty leaf tokens use plain black
-alphas rather than ink-tinted ones; callout and syntax colours are hand-picked per theme
-(Dark's callout grounds are the colour at 14% over the sheet since 2026-09-14, the border at
-25%, so that a new type is derived, not picked); `Toast` and the danger `ConfirmDialog` keep
-`#fff` on semantic status colours, deliberately outside the accent scope (the info toast takes
-`onAccent`); `UpdatesTab`, the Appearance theme picker and the mobile action button no longer do.
+Known leaks, not yet fixed: about 26 leaf tokens use plain black alphas (Dark's `overlay()` is a
+white alpha); callout and syntax colours are hand-picked per theme (Dark callout grounds are
+the colour at 14% over the sheet, border 25%); `Toast` and the danger `ConfirmDialog` keep
+`#fff` on semantic status colours, deliberately.
 
 ## Scrollbars
 
-- **Never set `scrollbar-width` or `scrollbar-color` on a bare selector.** Chromium ignores
-  every `::-webkit-scrollbar-*` rule on an element that sets either, silently. The standard
-  properties live only inside `@supports not selector(::-webkit-scrollbar)`, which Chromium
-  skips and Firefox takes.
+- **Never set `scrollbar-width` or `scrollbar-color` on a bare selector.** Chromium then ignores
+  every `::-webkit-scrollbar-*` rule on that element. The standard properties live only inside
+  `@supports not selector(::-webkit-scrollbar)`.
 - The thumb is a slim pill inside a wider transparent-bordered track (`background-clip:
-  padding-box`), so the grab target is generous without thickening the ink. State rules set
-  `background-color`, never the `background` shorthand, which resets the clip and makes the
-  thumb jump to full width.
-- Sidebar and editor share one grammar, visible at rest with a three-step rest → hover →
-  drag ramp per theme. The sidebar thumb hugs the divider (asymmetric border split), pairing
-  with tree pills that stop 2px short of the gutter. No overflow means no gutter; accepted,
+  padding-box`); state rules set `background-color`, never the `background` shorthand, which
+  resets the clip.
+- Sidebar and editor share one grammar (rest → hover → drag). No overflow means no gutter;
   `scrollbar-gutter: stable` is the fix if it grates.
-- `.editor-scroll` stays as a class: `CalloutBlock`, `TableContextMenu` and `useSidebarDrag`
-  query it as a DOM hook.
-- Styled webkit bars are non-overlay on macOS and take layout width. Check that before widening
-  the track.
+- `.editor-scroll` stays as a class: `CalloutBlock`, `TableContextMenu` and `FloatingToolbar`
+  query it.
+- Styled webkit bars are non-overlay on macOS and take layout width.
 
 ## Icons: Lucide only
 
-`src/components/Icons.jsx` wraps `lucide-react` behind the historic export names. Always
-`currentColor`. Don't hand-roll an SVG unless Lucide genuinely lacks it; a hand-drawn set at
-mixed sizes and strokes is what made the UI read as assembled. Known exceptions, not yet
-replaced: the hand-drawn arrows in `FindBar` and two inline SVGs in `CodeBlock` (one with a
-hardcoded green); swap them for Lucide when touching those files.
+`src/components/Icons.jsx` wraps `lucide-react` behind the historic export names, always
+`currentColor`. Don't hand-roll an SVG; a mixed hand-drawn set is what made the UI read as
+assembled. Known exceptions, swap when touching the file: three SVGs in `FindBar` (two arrows,
+a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in `EditableBlock`.
 
-- **Two size tiers:** 16px for repeated list glyphs (folder rows, search results, menu items),
-  18px for navigation (the New note / Search glyphs and standalone controls). Mobile top-bar
-  controls are 20px.
-- **Two stroke tiers:** 1.5 for content (Lucide's default 2 reads busy at 16px among prose),
-  2 for navigation chrome (`ICON_STROKE_NAV`), which balances against 14px labels. The slash
-  menu's glyphs take the navigation stroke at 16px (see the slash menu section).
-- Control hit boxes are 32px (`CHROME_BTN`). Don't flatten the tiers in either direction:
-  rendered weight is `stroke × size / 24`, so equal strokes at equal sizes keeps the ink even.
-- Icons inherit `color`; a wrapper that sets none needs one.
+- **Two size tiers:** 16px for repeated list glyphs (rows, results, menu items), 18px for
+  navigation and standalone controls. Mobile top-bar controls are 20px.
+- **Two stroke tiers:** 1.5 for content, 2 for navigation chrome (`ICON_STROKE_NAV`); the slash
+  menu's glyphs and the table's add bars take the navigation stroke at 16px. The selection
+  toolbar alone uses 2.5 (`ICON_STROKE_TOOLBAR`). Rendered weight is `stroke × size / 24`;
+  don't flatten the tiers.
+- Control hit boxes are 32px (`CHROME_BTN`, `constants/layout.js`). Icons inherit `color`.
 
-## Window chrome and navigation
+## Window chrome
 
-- **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS Electron the
-  traffic lights sit inline in the sidebar header, and the wordmark shifts by
-  `MAC_TRAFFIC_INSET` to clear them (82 since 2026-09-16, brought in from 86 at Tyr's ask for a
-  wordmark a few pixels nearer the lights; move one, re-judge the other, **at 100% page zoom
-  only**: the lights are native and never scale with the page, and macOS 26 draws them 14px on
-  a 23px pitch, so they end at 75px). The header is the window
-  drag region, and so is the editor's chrome row (the path band, below), in both sidebar states;
-  the wordmark, the chrome buttons and the path itself opt out. **A drag rectangle must never
-  lie under a control that comes before it in the DOM** (2026-09-16): Chromium collects
-  `app-region` rectangles in DOM order and applies them in that order, so a later `drag` unions
-  back over an earlier `no-drag`, and macOS then lays a window-move view over the control (no
-  cursor change, the first press moves the window; Playwright's synthetic clicks never see it).
-  `EditorChrome` renders before the editor, so the path band's draggable part is a strip
-  strictly between the two control groups (`note-path-drag`, the row's padding edges), never
-  the row; a full-row drag rect killed Undo, Redo, the ··· and the collapsed trio whenever a
-  note was open. `chrome-row.spec.ts` asserts that no drag rectangle overlaps a chrome button
-  in either state. The collapsed-state drag strip
-  that used to stop above the note label's line box went with the label (2026-09-15). Web and
-  non-mac Electron render none of this.
-  **In full screen the inset goes too** (2026-09-14): macOS hides the lights, so the wordmark,
-  the collapsed group and the path band's inset all fall back to the ordinary inset
-  while it is on. The main process is the one that knows: it answers `is-full-screen` once at
-  mount and sends `full-screen-changed` at every edge; `useFullScreen` holds the answer in
-  `LayoutContext`, and every inset that keys off the lights asks `trafficLightsShown(fullScreen)`
-  (`EditorChrome`), never `isElectronMac` alone. `chrome-row.spec.ts` proves both states in the
-  real app on macOS (a hidden window still enters full screen there; Linux CI skips it).
-- **One active note.** Opening a note replaces it; no tabs, no split view. Restoring tabs means
-  reverting the refactor, not remounting a component. Old persisted `boojy-ui-state` blobs
-  with pane state still migrate in `resolveInitialActiveNote()`; leave that read path alone.
-- Cmd-click on a wikilink is a plain click. Deleting the open note lands on an empty draft
-  (desktop) or the sidebar (mobile).
-- **The wordmark opens Settings directly** (testid `wordmark-settings-button`, tooltip
-  `Open Settings`). There is no app dropdown, About page, Help entry or Recently Deleted surface.
-- **The editor header's ··· is the second route to Settings, under a separator** (2026-09-12,
-  `ctxMenu.type === "header"`). It is the active note's menu — Rename, Duplicate, Delete — and
-  never the sidebar's multi-selection, however many rows are selected there; with no active note
-  it holds Settings alone and is named `App options` rather than `Note actions`. It renders in
-  both sidebar states and with no note open, because app settings must never need a note to
-  reach. No Settings cog *button* anywhere, and no Settings item in a note-row or folder menu;
-  the menu row itself carries the Lucide cog at the menu tier, because every row of this menu
-  carries a glyph and one without read as a different kind of thing (2026-09-16). **No rule
-  between Delete and Settings**: the cog is what sets it apart, and a rule as well cut the
-  six-row menu into three compartments (judged live 2026-09-16; it had been the Settings
-  button's own top border, which ran the row's full width in the menu's border ink and sat
-  inside the hover pill, with the row's padding faking the gap). **A menu separator, where one
-  is drawn, is its own rule, `MenuRule`, 1px of `BG.divider` inset 6px, the sidebar menu's
-  grammar, never the top border of the item under it.** **The menu ends with the note's word
-  count** when a note is open: `412 words` (`noteStatsLabel`, singular for one; characters were
-  shown too and dropped the same day, nobody writes a note to a character limit) as one muted
-  11px line under the menu's only rule, `note-stats`, never a menu item (the arrows skip it),
-  from the `useNoteStats` count `BoojyNotes` already computes for the touch layout. Notion's
-  place for it, chosen because the desktop has no status bar and the chrome is quiet at rest:
-  the menu is the one surface that costs no pixels until asked. The desktop always has a note
-  open (an empty library opens a draft), so it reads `0 words` over a blank draft.
-  `header-controls.spec.ts` proves the line.
-- **Undo and Redo are chrome buttons before the note's name, in both sidebar states**
-  (2026-09-12): Lucide's curved `Undo2`/`Redo2` at 18px on the navigation stroke, in the shared
-  32px `ChromeButton`, natively disabled when the open note has nothing to take back. They act
-  on the open note alone (see "One owner for note state"), so a disabled pair means *this* note
-  is out of history, not the app. A press prevents its mousedown default (`keepSelection`), so
-  the editor's caret and selection survive it and typing carries on; Tab and Enter/Space are
-  untouched. No Unicode arrows and no straight navigation arrows: Back is not undo.
-- **The collapsed header carries the sidebar's own three controls**, in front of the history
-  pair and separated from it by a wider gap (`BTN_GAP` 2 within a group, `GROUP_GAP` 12 between
-  them): the toggle, Search and New note, running the same actions as the sidebar's, never a
-  second, different one. Opening Search or making a note from them does not bring the sidebar
-  back. While the sidebar shows, it owns those three and the header renders none of them, so
-  exactly one of each is reachable. The hidden sidebar keeps its DOM (drag hit-tests and scroll
-  position survive a collapse), so **its chrome row and its sticky action block are `inert`
-  while it is not showing** and are out of the tab order and the accessibility tree. Only those
-  two blocks: `inert` on the whole column also swallowed the second click of a double-click
-  while the panel was animating shut, and the sidebar's inline rename stopped working
-  (`key-ownership.spec.ts` caught it). `header-controls.spec.ts` counts what is exposed in
-  every state, a narrow window included.
-- **Settings is a single pane:** Appearance, Storage (desktop: the path, `Show in Finder` and
-  `Change`), Updates, a one-line version footer. Two routes to it, both already there: the wordmark, and the editor header's ··· . `settingsTab` does not exist; don't reintroduce it in mocks. Spell check has no UI
-  but applies from the stored Electron setting; UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
-  Appearance is the theme picker alone: the font-size row (`settingsFontSize`, 10–24) was
-  removed on 2026-09-05 because the scale shortcuts already size everything, and body text is
-  the fixed `EDITOR_FONT_SIZE` in `EditableBlock`. Don't reintroduce `settingsFontSize` in mocks.
-- **One zoom system: the app's own UI scale.** The View menu carries no `zoomIn` / `zoomOut` /
-  `resetZoom` roles, because a menu role takes the shortcut before the renderer sees it, so the
-  app's scale never fired and Chromium's page zoom ran instead, persisted per origin in the
-  profile and leaving the native traffic lights behind. `main.js` resets Chromium's zoom level
-  to 0 on every `dom-ready` so a stale profile can't reintroduce it. If a dev window ever looks
-  bigger than the installed app, that is page zoom; judge chrome geometry only after Cmd+0.
-- **Edit → Undo / Redo keep their menu roles, and Cmd+Z is the app's own undo.** Checked live
-  in the installed build on 2026-09-07: the keystroke reaches the renderer's `useAppKeyboard`
-  handler (one repaint per step), and the native menu item is a no-op in the editor. Wiring the
-  menu item to the app's undo is unscheduled; don't drop the roles on reasoning alone (Cut, Copy,
-  Paste and Select All must stay in any case).
-- **Delete follows the platform.** Electron sends the `.md` files Boojy Notes manages to the OS Trash;
-  web deletion is permanent behind confirmation. Folder deletion never touches a file that is not
-  a note; the directory itself goes only once nothing is left in it (OS cruft such as `.DS_Store`
-  does not count), and a folder that keeps other files stays, with a toast saying so. **Desktop
-  asks only when the action is more than one recoverable file:** a single note goes at once with
-  a quiet toast; a folder with notes and a bulk selection confirm first, worded as `Move N notes
-  to the Trash?` with the promise that non-note files stay and the folder goes only if emptied; a
-  folder with no notes asks nothing. The desktop wording lives
-  in one place, `utils/deletionPrompt.ts`; don't add a second phrasing (the touch ··· menu still
-  carries its own confirm copy, listed as debt in the backlog). No undo or recovery UI, by
-  decision: the OS Trash is the recovery surface. The retired private `.trash` gets one
-  conservative startup migration into the OS Trash: recognised notes are copied under
-  collision-safe names before the source is removed, ambiguous items are left untouched and
-  reported once per distinct problem set, OS cruft is ignored. Deleting a note that never
-  reached disk is a benign no-op, and the watcher's unlink suppression is event-consumed rather
-  than timed so a slow trash move can't fire a spurious `file-deleted`.
-- **The watcher drops only an event it can trace to the app's own operation** (2026-09-08).
-  Three claims, one per kind of operation, each held until the event that explains it; nothing
-  about a note file is decided on the clock alone. `write-note` hands `claimWrite(path, body)`
-  the text it has just written; the watcher hashes it, and any later `change`/`add` whose file
-  still holds exactly those bytes is dropped as that write's echo, however late. The claim ends
-  at the first event showing other bytes there (the change is delivered) or the file gone (any
-  unlink), so an outside change *back* to those bytes (`git checkout`, Undo in Obsidian, a sync
-  restore) and a note put back from the Trash with the bytes the app last wrote are real and
-  shown; before this the claim lived forever, both were dropped, and the next save wrote the
-  outside version over the revert. An unlink the app causes itself (a Trash move, the old path
-  of a rename, the old name of a case-only rename, which chokidar reports as unlink plus add) is
-  claimed once with `claimUnlink` and consumed by the one unlink it produces; an unclaimed unlink
-  is a real delete however soon after the app's own save it lands, because the app's writes
-  never unlink the path they write (before this a 1.5 s per-path timer dropped it). macOS sends
-  a second `change` for one write 1.5–2.7s later (same mtime and size, only ctime moved:
-  metadata settling), which no fixed window can cover; before the hash check every one of them
-  rebuilt the note from disk mid-typing, caret to the first block, keystrokes since the save
-  lost. Don't replace the bytes with a timer. The one clock-decided suppression left is a folder
-  rename or removal (`claimTree`, 1.5 s over the old and the new directory, which also ends the
-  bytes claims under the old one): an event that escapes re-reads what is already true, and the
-  residue is an outside change under that folder inside the window of the user's own rename of
-  it. `watcher-ownership.spec.ts` proves the revert, the delete inside the old window and both
-  restores in the real app.
-- **A note renamed or moved outside the app is the same note, pending edits included**
-  (2026-09-08, review §2.9). The disk's own identity for a file is its inode: a rename or move
-  within the volume keeps it and nothing else in the vault has it. `noteFileManager` records it,
-  with the hash of the bytes read or written, for every note it parses or writes (`_identity`,
-  in memory only: pending edits never outlive a session), and consults it in one place,
-  `relocateNote`, when the watcher reports an unlink of an indexed path that no claim explains.
-  Found elsewhere in the vault, the index entry follows, the watcher sends `file-moved` with the
-  note as the disk now holds it, and `useFileSystem` adopts the title and folder as a change of
-  record (`adoptNoteData`, the path the filename a write produced takes) and leaves the text
-  alone: a note with edits pending keeps its dirty mark and the ordinary flush writes them at
-  the new path (`write-note` already knows it); one with nothing pending is not rewritten,
-  stamped or moved in the sort. The `add` the rename produces is claimed as the bytes it holds
-  when they are still the ones the app last read or wrote, so it is dropped as the nothing-new it
-  is; a file that also changed is delivered as the change it is (a conflict copy if edits are
-  pending, as any outside edit). Before this the unlink was a delete, the rebuild kept the note
-  because edits were pending, the flush found no index entry and `write-note` recreated the old
-  file, or the old folder, beside the renamed one, holding the pending edit while the renamed
-  file kept the old text. Identity that cannot be established stays the delete it looks like:
-  nothing in the vault holds the inode (a real delete, a move done as copy and delete, a move
-  across volumes, a sync client that recreates files), and the standing rebuild writes the
-  pending edits back under the old name, which loses nothing. A file moved *over* another note
-  (`mv -f`) belongs to the note whose inode it holds; the note it displaced is reported deleted.
-  Not a content match: bytes are compared only to decide whether the add carries news, never to
-  decide identity. `external-rename.spec.ts` proves the rename after a save, the rename before
-  the session's first save, the folder move and the clean rename in the real app.
-- **An outside edit is never silently overwritten** (2026-09-06). The watcher asks the bytes,
-  not the clock: a claimed hash that differs is a real change however soon after the app's
-  own save it lands, one that matches is an echo however late, and a path with no claim is
-  the app's only under a directory it is renaming or removing.
-  In the renderer every note that arrives from disk goes through one path,
-  `applyExternalNote` (useHistory), which updates the history ref and state together; the
-  raw setter is not used for it, because a text commit pending for another note republished
-  the stale ref and wrote the old bytes back over the edit. "Same" is judged by the writer
-  itself (`persistedEquals`: `blocksToMarkdown` plus title, folder and line-ending style),
-  never by a field list. A change to a note with nothing pending is taken at once, and the
-  editor repaints only when it is the open note (a repaint while typing elsewhere would paint
-  lagging state over the live DOM). A change to a note while edits to it are pending keeps
-  both, **whether or not the note is on screen** (2026-09-15; until then the rule ran for the
-  open note alone, so a note typed in and switched away from inside the save window took the
-  disk version and its pending keystrokes were discarded with no copy): the outside bytes stay
-  under the note's name, the local version, pending text included, is written first as `Title
-  (conflicted copy YYYY-MM-DD)` through the ordinary write path, and only once that write has
-  succeeded is the disk version adopted and the copy adopted (dirty, so the ordinary flush
-  rewrites it with any keystrokes typed during the write). For the open note the editor then
-  moves to the copy with the caret's block and offset carried through the focus refs; for any
-  other note the copy is a sidebar row, the toast names it, and nothing jumps
-  (`onExternalConflict`'s `active`). A failed copy replaces nothing and says so once.
-  **The news of an outside version has two sources and one handler**
-  (`takeOutsideVersion` in `useFileSystem`): the watcher's `file-changed`, and a save the main
-  process refused. `write-note` compares the file's bytes with the hash of what the app last
-  read or wrote (`_identity`, the record `relocateNote` already used) and, when they differ,
-  writes and moves nothing and answers `{ stale: true, note }` with the disk version; the
-  flush hands that to the same handler and the note stays dirty until its copy is written.
-  Before this (the last-writer race, reproduced 2026-09-15 in `external-edit.spec.ts`) the
-  save landed over an outside write made inside the ~800 ms commit-plus-debounce window, and
-  the watcher, which reports a write only once the file has been stable for 300 ms, then
-  dropped the change as the save's own echo. Reading the file in the refusal records it as
-  seen, so the write after the copy goes through. The note is remembered as conflicted (`conflicted` in `useFileSystem`) from the moment
-  the conflict is seen, before the copy's write begins and not only once it has failed
-  (2026-09-08, review §2.9): from then on every flush, the debounce, the 5 s retry, blur and
-  quit alike, writes it as the copy and never under its own name, until a copy write succeeds,
-  and a flush that lands while the copy is being written waits for that write (`copyInFlight`)
-  instead of starting a second copy. Before this the entry was made on failure alone, and a blur
-  or quit inside the copy's ~10 ms write re-marked the note from the quit/blur net and wrote the
-  local version over the outside edit. **Once a conflict has been detected, the local version
-  never goes over the outside edit's path.** The one residual: if the copy
-  still cannot be written inside the 2 s the main process holds a quit, the local version is
-  lost with the quit, as any unsaved work is; it is never resolved by overwriting the file.
-  No merging, by decision. Undo entries for a note replaced from disk are dropped. Not
-  covered: two apps writing the same file within the same few milliseconds, which no
-  read-before-write can order; a sync client that recreates files (a new inode) is the
-  `relocateNote` case, not this one.
-- **A dirty mark is cleared only by a write of the version the note holds now** (2026-09-07).
-  `flush` in `useFileSystem` writes dirty notes one after another; after each write it clears
-  the note's mark only if the object written is still what state (`noteDataRef`) or the
-  keystroke ref (`latestNoteDataRef`) holds, and it reads each note as its own turn comes,
-  never from a snapshot taken before the loop. Before this, an edit that landed while the
-  note's own write, or the writes of notes ahead of it in the same flush, was in flight had
-  its mark cleared by the returning write, and the flush that edit had scheduled found
-  nothing to write: newer text on screen, older on disk, until blur or quit (the
-  `unflushedNotes` net) or the next edit to that note. A single write is ~10ms; a bulk move
-  widens it to seconds, which is how `write-in-flight.spec.ts` reproduces it (150 notes
-  dragged into a folder, a keystroke while they are still being written; it failed three of
-  three before the fix). The retry after the loop covers a kept mark with no timer pending.
-- **To see what the editor is doing, trace it, don't theorise.** `BOOJY_TRACE=/path/to/log
-  node_modules/.bin/electron .` (after `pnpm build`; it uses the real profile and vault) appends
-  one line per watcher event, save, external reload, keystroke target, caret move between blocks
-  and block repaint from both processes on one clock (`electron/trace.js`, `src/utils/trace.js`).
-  Everything is a no-op unless the variable is set. Quit the installed app first; two instances
-  share the profile.
-- **`syncGeneration` is editor plumbing, not cloud sync.** It tells uncontrolled blocks when to
-  repaint from state. Don't remove it on the strength of its name.
-- On desktop the word count lives at the foot of the note's ··· menu (above); the touch layout
-  shows it in its own ··· menu. The touch toolbar carries Undo and Redo buttons at its fixed left
-  edge.
-- The sidebar drag handle is gated on `!collapsed`; unconditional, it leaves a hairline down
-  the left edge.
+- **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS the traffic
+  lights sit inline in the sidebar header and the wordmark shifts by `MAC_TRAFFIC_INSET` (82;
+  judge at 100% page zoom only, the lights never scale). In full screen macOS hides the lights
+  and every inset that keys off them falls back to the ordinary inset: the main process answers
+  `is-full-screen` and sends `full-screen-changed`; `useFullScreen` holds it in `LayoutContext`;
+  ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone. Web and non-mac Electron
+  render none of this.
+- **Drag regions.** The sidebar header and the path band's strip between the two control
+  groups (`note-path-drag`) are `app-region: drag`; controls opt out. **A drag rectangle must
+  never lie under a control that comes before it in the DOM**: Chromium applies the rectangles
+  in DOM order, so a later `drag` unions back over an earlier `no-drag` and the first press
+  moves the window (Playwright's synthetic clicks never see it). `chrome-row.spec.ts` asserts no
+  drag rectangle overlaps a chrome button in either sidebar state. While a popup is open the
+  regions stand down (`html.popup-open [data-drag-region]`), so a press on the empty row can
+  close it.
+- **One active note.** Opening a note replaces it; no tabs or split view. Old `boojy-ui-state`
+  blobs with pane state still migrate in `resolveInitialActiveNote()`; leave that read path.
+- **The wordmark opens Settings** (`wordmark-settings-button`). No app dropdown, About, Help or
+  Recently Deleted surface.
+- **The editor header's ··· is the active note's menu and the second route to Settings**
+  (`ctxMenu.type === "header"`): Rename, Duplicate, Delete, then Settings with its cog glyph and
+  no rule before it; never the sidebar's multi-selection. With no note it holds Settings alone
+  (`App options`, not `Note actions`). It ends with the note's word count (`note-stats`, one
+  muted 11px line under the menu's only rule, never a menu item): the desktop has no status bar
+  and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
+  is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
+- **Undo and Redo are chrome buttons before the note's name** (Lucide `Undo2`/`Redo2`, 18px,
+  navigation stroke, in `ChromeButton`), natively disabled when the *open note* has nothing to
+  take back. A press keeps the editor's selection (`keepSelection`). Back is not undo: no
+  straight arrows.
+- **The collapsed header carries the sidebar's own three controls** (toggle, Search, New note)
+  in front of the history pair, `BTN_GAP` 2 within a group and `GROUP_GAP` 12 between. While the
+  sidebar shows it owns those three and the header renders none, so exactly one of each is
+  reachable. The hidden sidebar keeps its DOM; **only its chrome row and sticky action block
+  are `inert`** (`inert` on the whole column swallowed a double-click's second press while the
+  panel animated and broke inline rename). `header-controls.spec.ts` counts what is exposed.
+- **Settings is a single pane:** Appearance (theme picker only), Storage (path, `Show in
+  Finder`, `Change`), Updates, a version footer. `settingsTab` and `settingsFontSize` don't
+  exist; don't reintroduce them in mocks. UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+- **One zoom system: the app's own UI scale.** The View menu carries no zoom roles (a menu role
+  takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
+  `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
+  than the installed app is page zoom; judge chrome geometry after Cmd+0.
+- Edit → Undo / Redo keep their menu roles (Cut, Copy, Paste, Select All must stay); Cmd+Z
+  reaches the renderer's own handler.
+- On desktop the word count lives in the ··· menu; the touch layout shows it in its own ··· menu
+  and carries Undo and Redo at its toolbar's fixed left edge.
+- The sidebar drag handle is gated on the sidebar showing; unconditional, it leaves a hairline.
 
-**The toggle is one slide on one clock** (2026-09-14, `tokens/motion.js`: `PANEL_MS` 280, judged
-live against 200, which read as snapping for a 240px panel; the fades are half of it,
-ease-out `PANEL_EASE`, `panelTransition()`; every element on it carries `.panel-motion`, which a
-reduced-motion user gets with no travel at all). Measured frame by frame before this: the
-wrapper's width tweened to 0 with the sidebar laid out `flex: 1` inside it, so every frame
-re-laid the column out (the New note pill went 234px → 16, rows re-truncated, the Notes row's
-glyphs piled up); the collapsed trio mounted on the first frame over the still-open sidebar and
-the history pair jumped 132px and floated in the editor for 200ms; the note's name jumped to its
-new start and slid back; and the column re-wrapped its prose every frame. Now: **the sidebar's
+### The sidebar toggle is one slide on one clock
+
+`tokens/motion.js`: `PANEL_MS` 280, ease-out `PANEL_EASE`, `panelTransition()`; every element
+on it carries `.panel-motion`, which a reduced-motion user gets with no travel. The sidebar's
 column is its full `sidebarWidth`, never `flex: 1`, and slides out under the window's edge
-(`translateX(-width)`; `none` at rest, never an identity transform, so nothing fixed inside it
-gains a containing block) as the wrapper's width closes over it**, with its contents fading out
-in the first half and in over the last; **the history pair is its own fixed block and
-transitions `left`** between its two positions; **the trio fades in over the last half** of the
-slide, so the sidebar's own toggle leaves and this one arrives; and **the path band's inset and
-its centring bias transition with the pair**, so the note's name glides to its new centre. The
-wrapper and the editor column ease on the same token. Still
-per-frame: the column's prose re-wraps, because its max-width is 720 beside the sidebar and 840
-alone (a product choice; one width would make a wide-window toggle a pure slide). Don't put the
-sidebar back on `flex: 1`, and don't add a second duration. `sidebar-motion.spec.ts` proves the
-clip at rest and the pair's position in the real app.
+(`translateX(-width)`; `none` at rest so nothing fixed inside it gains a containing block) as
+the wrapper's width closes over it, contents fading over the first half; the history pair is a
+fixed block that transitions `left`; the collapsed trio fades in over the last half; the path
+band's inset transitions with the pair. Don't put the sidebar back on `flex: 1` and don't add a
+second duration. The one per-frame cost left is the column re-wrapping its prose (720px beside
+the sidebar, 840 alone; a product choice). `sidebar-motion.spec.ts`.
 
-**The panel toggle moves between states on purpose.** Expanded, it sits in the sidebar header
-opposite the wordmark, so the header reads `wordmark … toggle`. Collapsed, `EditorChrome`
-renders it at the head of the left group. Both use the exported `ChromeButton`.
-**The note's path is centred in the chrome row, between the controls** (2026-09-15, `NotePath`,
-judged on three rendered mockups). `University / Archive / Todd's Note`: the parent folders and
-then the name, in both sidebar states, at the interface size (14px, weight 400, no letter
-spacing): the name in `TEXT.primary`, the folders one step quieter in `TEXT.secondary`, the
-slashes `TEXT.muted`; nothing bold, nothing in the accent, no underline: the folders are
-buttons in the crumb's own ink that lift to `TEXT.primary` on hover (the folder popup, below).
-A root note shows its name alone, never `Notes /`. The name is still the editable file
-label it was in the column: a single click renames in place, Enter goes to the first block, and
-every filename rule and save path is unchanged. **Where it sits is CSS; what it shows is
-JavaScript.** The band is the row's full height and the pane's width, `position: sticky` at the
-top of `.editor-scroll` so the note scrolls under it (it paints `BG.editor` for that reason and
-is invisible at rest); its side padding is `chromePathInset()` on the left (where the visible
-control group ends, `PATH_AIR` = 12 further) and `CHROME_PATH_RIGHT_INSET` on the right (the ···
-and the same air). Two flex spacers share the band: the one on the narrower side starts with the
-difference between the two paddings as its basis, so the path lands on the *pane's* centre when
-it fits there, and that basis is the first thing to shrink when it does not, so the path slides
-toward the band's centre by the least it must and never over a control. No shift cap and no
-second position: the mockups' 40px cap produced a jump at the cap, and centring in the symmetric
-room alone dropped folders the band had room for. What is shown is the richest form that fits the
-band (`utils/pathCrumbs.ts`: full path, then `… /` and the nearest folders, then `… / name`, then
-the name, which truncates only once no folder is left), measured, never estimated: an invisible
-twin of every crumb is laid out beside the path in the same font and a `ResizeObserver` on the
-band re-reads it as the band's width changes, both through `getBoundingClientRect` so the UI
-scale cancels. Because fit is judged against the band alone, the choice is monotonic in the
-window's width: widening never hides a folder. The body column never moved: its top padding is
-what the label's row and gap used to add up to (`COLUMN_TOP`). On a touch device there is no
-chrome row and the name keeps its old place at the head of the column, small and muted. The
-inset was once counted from `CHROME_INSET` alone, so on macOS the glyph sat on the first letters
-of the name at every width (2026-09-07); keep the inset next to the group it measures. Proven in
-`note-path.spec.ts` (both states, a 20px-step narrowing from 1200px to the minimum, a long name
-four folders deep, rename by click) and `chrome-row.spec.ts` (the controls at every width, full
-screen, the sidebar yielding) in the real app; `pathCrumbs.test.ts` and `NotePath.test.jsx` hold
-the rule and the spacers.
+The toggle sits in the sidebar header opposite the wordmark when expanded, and at the head of
+`EditorChrome`'s left group when collapsed; both use `ChromeButton`.
 
-**A folder crumb opens the sidebar's tree, small, under itself** (2026-09-16, `PathTreeMenu`,
-judged on ASCII mockups against two alternatives: a drill-down menu with a parent row, and
-flyout submenus, both rejected as a second surface grammar). The popup shows the clicked
-folder's *parent's* contents with the clicked folder open and every folder under it on the way
-to the open note open too, so the note's row is there on the sidebar's own active pill with the
-highlight on it; a top-level folder shows the root, and the `…` that stands for hidden folders
-shows the root with the whole path open (`crumbScope` in `utils/pathTree.ts`; the ellipsis is a
-crumb like any other, never a list of ancestors and never an Up control). **A root note carries
-a folder glyph in the crumb's slot** before its name (`note-path-root`: a `ChromeButton` like
-the row's other controls, Lucide Folder at 18px on the navigation stroke in the 32px box with
-the same hover, held in that state while its popup is open through the button's `active` prop;
-the box's own 7px either side of the glyph is its air before the name; a 16px glyph in a 24px
-box was judged too small beside the row's controls, 2026-09-16),
-which opens the root with nothing expanded: the path always has one clickable location
-segment, and at the root the glyph stands in for the folder there is not. Visible at rest,
-never hover-revealed (judged 2026-09-16 against a hover/focus reveal that kept the name still,
-and against revealing it during rename): with the sidebar hidden it is the one way to browse
-from the row, and a control you must hover to find is not one. Hover opens nothing; click only.
-Nested notes carry no glyph, their folders are the route, and there is still no `Notes /`.
-**Three states on one pill** (2026-09-16, Tyr's ask in place of a check): the open note keeps
-the sidebar's active row, `BG.hover` in `TEXT.primary`, for as long as the popup is open; the
-pointer's row takes the same pill, as every hover does, so two pills can show at once exactly
-as in the sidebar; and once a key has moved the highlight the highlighted row also carries a
-2px inset accent ring, what `:focus-visible` means everywhere else, so Enter's target is never
-in doubt once the highlight has left the open note. The ring goes the moment the pointer moves
-over a row; a pointer-opened popup paints none. A single click
-anywhere on a folder row opens or closes it in place, as in the sidebar; a note row opens the
-note through the same `openNote` the sidebar's rows use and closes the popup; the path above
-does not change while you browse, only when a note opens. Expansion starts fresh each time the
-popup opens (nothing persisted, nothing shared with the sidebar's `expanded`). The contents are
-the sidebar's own `folderTree` and root list, unfiltered, in the tree's own order: folders
-first, alphabetical, then notes in the sort preference. It is that tree drawn in the sidebar's
-row grammar, whose constants moved to `constants/layout.js` the same day so the two cannot
-drift: the folder glyph on `SPINE`, labels on `TEXT_COL`, 28px pills at the 12px radius, the
-indent guide from an open folder's glyph through its children, root and scope notes text-only.
-The surface is every menu's (elevated ground, divider border, `theme.modalShadow`, 4px inset,
-`useMenuPosition` under the crumb's left edge with the ordinary flip and clamp, the result
-divided by the UI scale before it is written, `cssZoom`, so it lands under the crumb at 120%
-where the pointer menus still drift), **280px wide whatever is open**, so it never breathes as folders toggle, names truncating instead, and at
-most twelve rows tall before it scrolls inside itself; opening scrolls the highlighted row into
-view by the least the list must move (`nearest`), never pinning the note to the top and losing
-the folders above it. Keys are the tree grammar on a document listener (the ContextMenu/SortMenu
-seam): Up and Down through the visible rows, Right opens a closed folder or steps into an open
-one, Left closes an open folder or steps out to the row's folder, Enter and Space open a note
-or toggle a folder, Home and End, Escape closes with focus back on the crumb. **A press outside
-closes it and is not swallowed** (a document `mousedown` in the capture phase, no backdrop): Undo
-with the popup open undoes, a sidebar row opens, a click in the note places the caret, the
-manner of a macOS transient popover rather than of the ··· and list menus, which keep their
-backdrops because a menu is dismissed on purpose; with a backdrop the first press on any
-top-row button only closed the popup and read as a dead button (found live 2026-09-16). The
-crumb that opened it is left to itself, so its click closes the popup, and another crumb's
-click switches straight to that folder. **While it is open the window's drag regions stand
-down** (`html.popup-open [data-drag-region]` in GlobalStyles, `!important` over the inline
-regions; NotePath toggles the class): a press on a drag region goes to the window-move layer
-and never reaches the page, so a click on the empty top row could not close the popup (found
-live 2026-09-16); the first press now closes it and the next one drags. A folder's children
-open and close through the sidebar's own `Collapsible` (moved to its own file that day), so
-the two trees slide alike. Focus rests on the `role="tree"` (initial focus on the container, so a pointer-opened
-popup paints no ring) inside a **non-modal `role="dialog"`**, and `focusOwner` now counts a
-focused dialog as a menu, so Cmd+N and Cmd+P stay quiet over it. Deliberately absent: hover
-expansion, flyouts, a back or parent row, filtering, and every file action (no rename, move,
-delete or new-folder here: it is for reaching notes, and the sidebar and its menus are for
-organising them). Search and the sidebar reach root notes too, as does the popup from any
-nested note. `breadcrumb-tree.spec.ts`
-proves the scoping, the in-place toggle, the keys and the returned focus, the ellipsis in a
-window at its minimum width, and a keystroke pending when another note is chosen reaching the
-first note's file, in the real app; `pathTree.test.ts`, `PathTreeMenu.test.tsx` and
-`NotePath.test.jsx` hold the rule, the rows and the crumbs.
+### The note's path is centred in the chrome row
+
+`NotePath`: `University / Archive / Todd's Note`, folders then name, 14px/400: name in
+`TEXT.primary`, folders `TEXT.secondary` (buttons that lift to primary on hover), slashes
+`TEXT.muted`; nothing bold, nothing accent. A root note shows its name alone, never `Notes /`.
+The name is the editable file label: a click renames in place, Enter goes to the first block.
+
+- **Where it sits is CSS; what it shows is JavaScript.** The band is `position: sticky` at the
+  top of `.editor-scroll` (it paints `BG.editor`, invisible at rest). Its padding is
+  `chromePathInset()` on the left (where the visible control group ends, plus `PATH_AIR` 12)
+  and `CHROME_PATH_RIGHT_INSET` on the right. Two flex spacers: the narrower side's basis is
+  the difference between the paddings, so the path centres on the *pane* when it fits and
+  slides toward the band's centre by the least it must, never over a control. No shift cap and
+  no second position. Keep the inset next to the group it measures.
+- What is shown is the richest form that fits (`utils/pathCrumbs.ts`: full path, then `… /`
+  and the nearest folders, then `… / name`, then the name), measured by an invisible twin of
+  every crumb and a `ResizeObserver`, via `getBoundingClientRect` so the UI scale cancels.
+  Widening never hides a folder.
+- The body column's top padding is `COLUMN_TOP` (`EditorArea`); the column never moved. Touch
+  devices have no chrome row and keep the name at the head of the column.
+- `note-path.spec.ts`, `chrome-row.spec.ts`, `pathCrumbs.test.ts`, `NotePath.test.jsx`.
+
+### A folder crumb opens the sidebar's tree under itself
+
+`PathTreeMenu` shows the clicked folder's *parent's* contents with the path down to the open
+note expanded, so the note's row is there on the sidebar's active pill (`crumbScope` in
+`utils/pathTree.ts`); a top-level folder shows the root; the `…` crumb shows the root with the
+whole path open (never a list of ancestors or an Up control). **A root note carries a folder
+glyph before its name** (`note-path-root`, a `ChromeButton`, Lucide Folder 18px, held active
+while open) that opens the root with nothing expanded, so the path always has one clickable
+location; visible at rest, never hover-revealed. Click only, never hover.
+
+- **Three states on one pill:** the open note keeps the sidebar's active row; the pointer's row
+  takes the same pill; once a key has moved the highlight, the highlighted row also carries a
+  2px inset accent ring, gone the moment the pointer moves.
+- A click on a folder row toggles it in place; a note row opens through the sidebar's own
+  `openNote` and closes the popup. Expansion starts fresh each open (nothing shared with the
+  sidebar's `expanded`). Contents are the sidebar's `folderTree` and root list in the tree's
+  own order, drawn in the sidebar's row grammar (constants in `constants/layout.js` so the
+  two cannot drift; the popup's note rows stay on `TEXT_COL` and its column on the bare
+  `SPINE`, judge live before moving them). Surface is every menu's; **280px wide whatever is
+  open**; at most twelve rows before it scrolls; opens with the highlighted row scrolled into
+  view by the least the list must move; position divided by `cssZoom`.
+- Keys are the tree grammar on a document listener: Up/Down, Right opens or steps in, Left
+  closes or steps out, Enter/Space, Home/End, Escape (focus back on the crumb). **A press
+  outside closes it and is not swallowed** (capture-phase document `mousedown`, no backdrop):
+  with a backdrop the first press on any top-row button read as a dead button. Focus rests on
+  the `role="tree"` inside a non-modal `role="dialog"`; `focusOwner` counts a focused dialog as
+  a menu. Deliberately absent: hover expansion, flyouts, a back row, filtering, every file
+  action (it reaches notes; the sidebar organises them).
+- `breadcrumb-tree.spec.ts`, `pathTree.test.ts`, `PathTreeMenu.test.tsx`.
 
 ## Sidebar
 
-### Alignment and rows
+### Rows and alignment
 
-- **The expanded sidebar is three rows and then the tree** (2026-09-12): the window's row
-  (`wordmark … Search, toggle`), the labelled `New note` action, and the `Notes` row carrying
-  New folder and Sort. Reading down, that is *what this app is, and find what is here*,
-  *make one*, *organise what is here*.
-- **The chrome row carries the window's own control and Search, one group** (2026-09-16, Tyr's
-  ask): Search is a `ChromeButton` immediately left of the toggle, the same 32px box, 18px glyph
-  and hover surface, at the chrome row's own within-group gap (`BTN_GAP`, 2, exported from
-  `EditorChrome`), so the two are the neighbours they already are in the collapsed header and
-  Search never changes row when the sidebar hides. Same handler, title, label and Cmd+P. Search
-  had left this row on 2026-09-12 for the Notes row, because two rows of 18px glyphs stacked
-  read as two toolbars; with one glyph beside the toggle and two on the Notes row that was
-  judged acceptable. New note is still not here. The desktop panel never shows a search field
-  or results; the palette owns them. Cmd+N and Cmd+P are unchanged. The `New Note` and
-  `New Folder` tree rows are mobile-only.
-- **New note is the sidebar's one labelled action** (`SidebarNewNote`, 2026-09-12): a full-width
-  pill in the tree's own row grammar (`BG.hover`, 12px radius, the 4px inset), 32px tall, 14px
-  text, the Lucide SquarePen at 18px on the navigation stroke sitting on `SPINE` with the label on
-  `TEXT_COL`, 12px of air above and below it. Neutral at rest — never a filled accent button or
-  a border: it is the first row of the column, not a button dropped on it. It calls the same
-  root-creation action as Cmd+N and as the collapsed header's SquarePen. The editor header's own New
-  note button went the same day, so the app has one visible way to make a note per state.
-- **Wordmark at 18px, one asset per theme, drawn in the theme's ink** (`Wordmark.tsx`,
-  2026-09-07; mobile draws the same component at 30px). At 20px it out-shouted the note's
-  H1. The artwork is two colours, the N in the mark colour (`MARK`, the same in both themes)
-  and "otes" in `TEXT.primary`; before this the black master was drawn in both themes at 0.92
-  opacity, and in Dark "otes" was near-black on the dark ground. A CSS `invert()` was rejected
-  because it would also turn the N into its complement. The master
-  `assets/boojy-notes-wordmark.png` is never drawn (its N is the old `#A4CACE`, which is what
-  the recolour matches); the two drawn files are generated from it, alpha untouched, and
-  regenerated whenever `MARK` or a theme's `TEXT.primary` moves:
+- **The expanded sidebar is three rows and then the tree:** the window's row (`wordmark …
+  Search, toggle`), the labelled `New note` pill, and the `Notes` row carrying New folder and
+  Sort. Search is a `ChromeButton` immediately left of the toggle at `BTN_GAP`, so the pair
+  never changes row when the sidebar hides. The desktop panel never shows a search field or
+  results; the palette owns them. `New Note` and `New Folder` tree rows are mobile-only.
+- **New note is the sidebar's one labelled action** (`SidebarNewNote`): a full-width pill in
+  the tree's row grammar, 32px, neutral at rest (never a filled accent button), calling the
+  same root creation as Cmd+N and the collapsed header's SquarePen. One visible way to make a
+  note per state.
+- **Wordmark at 18px, one asset per theme** (`Wordmark.tsx`; mobile 30px). The N is `MARK`,
+  "otes" is `TEXT.primary`; the master `assets/boojy-notes-wordmark.png` is never drawn. The two
+  drawn files are regenerated whenever `MARK` or a theme's `TEXT.primary` moves:
   `magick assets/boojy-notes-wordmark.png \( +clone -alpha extract \) \( -clone 0 -alpha off
   -fuzz 12% -fill "<MARK>" -opaque "#A4CACE" +fuzz -fill "<TEXT.primary>" -opaque black \)
   -delete 0 +swap -alpha off -compose CopyOpacity -composite
   assets/boojy-notes-wordmark-<light|dark>.png`.
-  The chrome row's controls sit 6px from the divider (`HEADER_RIGHT_INSET`); the
-  vault header's share that right edge (`SECTION_HEADER_RIGHT` = 6 + 7 − 8) and the 2px step.
-- **Indent guides**: a 1px `BG.divider` line drops from each open folder's glyph centre through
-  its children (`TREE_SPINE + SPINE_ICON / 2 + depth × TREE_INDENT`). In one mixed tree, root notes have no
-  glyph and sit on the folder-label column, so without the line they read as children of the
-  last open folder; the line ending is what says "this folder ends here". No breath before the
-  root notes: the row rhythm stays even. Tree rows are 28px with a 2px gap.
+- **Two-column alignment** (`constants/layout.js`): `SPINE` carries the wordmark, action icons,
+  section labels and folder glyphs; `TEXT_COL` carries labels. **A note's title starts where a
+  folder at the same depth puts its glyph** (`SPINE + depth × TREE_INDENT`), so notes and
+  folders at one depth share a left edge; the indent step is `TREE_INDENT = TEXT_COL − SPINE`,
+  so a child's contents start under its parent's name. The sidebar's column sits
+  `SIDEBAR_TREE_INSET` (6) further in than the shared spine (`TREE_SPINE`); never bake the 6
+  into `SPINE` or `TEXT_COL`, which the popup shares. Rows 28px, 2px gap, 12px radius pills.
+- **Indent guides:** a 1px `BG.divider` line from each open folder's glyph centre through its
+  children; root notes have no glyph, so the line ending is what says the folder ends.
 - **New note and the Notes row are a sticky block inside the sidebar's single scroll
-  container** (2026-09-12; this reversed the 2026-09-05 rule that the header scrolls with the
-  tree). Making a note and reaching Search must not depend on where the list is scrolled. Every
-  sidebar state shares that one scroller so the search field never remounts (and drops focus)
-  mid-typing; don't split states back into separate scrollers. Rows slide under the sticky block
-  with no separator; a scrolled-only hairline is the fix if that reads smudgy. The block paints
-  `chromeBg`, the sidebar's own ground, or rows would show through it.
-- **Two-column alignment:** `SPINE` carries the wordmark, action icons, section labels and
-  folder icons; `TEXT_COL` carries every label, with one exception. **A note's title starts
-  where a folder at the same depth puts its glyph** (`SPINE + depth × TREE_INDENT`, the folder
-  row's own padding; 2026-09-16, Tyr's ask, judged on a screenshot of a three-level tree), so
-  notes and folders at one depth share a left edge: root notes are flush with the root folders'
-  glyphs and the `Notes` label, and a folder's notes sit one step in, under its name. Until then
-  a note's title sat on `TEXT_COL` at its depth, level with the *names* of the folders beside
-  it, the text-only row keeping an empty gutter where a glyph would be; read down, that put a
-  folder's notes two steps past the folder and the sibling notes level with a sibling folder's
-  name, so loose notes read as tucked under the last folder. **The indent step is the name's
-  offset from its glyph** (`TREE_INDENT = TEXT_COL − SPINE`, 22, the same day): a child's
-  contents, glyph or text, start exactly under its parent's name. At 20 every nested row sat
-  2px short of it, which the glyph's inner whitespace hid and a note's text gave away (Tyr's
-  screenshot: `Sem 1 26-27 Master` a hair left of `Sem 1 26-27`). Closing the glyph gap to 4
-  instead would have moved every label and read cramped. **The sidebar's column sits 6px
-  further in than the shared spine** (`SIDEBAR_TREE_INSET`, the same day, judged live in 2px
-  steps): New note, the `Notes` label, every row and the indent guides start at `SPINE + 6`
-  (`TREE_SPINE` in `Sidebar.jsx`), with nesting, the glyph-to-name gap, the pills, the row
-  height and the right-side controls unchanged; the wordmark row keeps its own
-  `HEADER_LEFT_INSET`. Never bake the 6 into `SPINE` or `TEXT_COL`: those are the popup's too.
-  The folder popup
-  (`PathTreeMenu`) is deliberately not changed by either rule: its note rows stay on `TEXT_COL`
-  and its column on the bare `SPINE`, so the two trees differ for now; judge the popup live
-  before moving it, and move it by the same expressions if it follows. The row's pill, inset,
-  height and behaviour are untouched; only the text's x moved.
-- Tree rows are pills with neutral `BG.hover` for hover, selection and multi-select alike. The
-  active note is primary ink at normal weight; the pill alone carries "active", never bold,
-  never accent. Mobile keeps its accent pill and bold title.
-- **Only structure and actions get a glyph.** Note rows carry no file icon. Folders carry only
-  the folder icon: no chevron, the whole row toggles, the open-folder glyph plus indented
-  children carry the state, `aria-expanded` is the programmatic signal. A note row's padding is
-  the folder row's (the alignment bullet above); it reserves no glyph width. `FileIcon` still
-  ships in search results, which are not tree rows.
+  container**, painted in the sidebar's own ground. Every sidebar state shares that scroller
+  so the mobile search field never remounts mid-typing.
+- Tree rows are neutral `BG.hover` pills for hover, selection and multi-select alike; the
+  active note is primary ink at normal weight, never bold or accent. Mobile keeps its accent
+  pill and bold title.
+- **Only structure and actions get a glyph.** Note rows carry no file icon; folders carry the
+  folder icon only, no chevron (the whole row toggles, `aria-expanded` is the signal).
+  `FileIcon` still ships in the mobile search results.
 
-### Note rows: trailing ··· and inline rename
+### Row controls, menus and rename
 
-- Desktop note rows carry a trailing ··· that opens the same menu as right-click, growing
-  rightward into the editor. Right-click keeps cursor placement.
-- **Desktop folder rows carry a trailing New note and ···, at every depth** (2026-09-16, Tyr's
-  ask, after ChatGPT's project rows; judged on ASCII mockups against a ···-only row, whose
-  two-click note lost). The pair is what a folder *does*: write here, organise here. New note
-  (Lucide SquarePen, 16px, named `New note in <folder>` so it is never the sidebar pill's own
-  name, which `header-controls.spec.ts` counts) makes the note inside that folder through the
-  same `createNote` the menu's `New note` calls, and **a note made in a folder opens the folder**
-  (`useNoteCrud`, both routes) so it is seen to arrive; ··· opens the folder's own menu, the
-  right-click one, growing rightward as a note row's does. Same slot grammar as the note dots:
-  zero-width at rest so a long name truncates against the full row (`.sidebar-folder-actions`,
-  44px when revealed, two 20px glyph boxes with 4px between them so the pen's ink stands off
-  the dots), revealed on row hover or focus, muted with each
-  glyph primary on its own hover, held open inline while that row's menu is up
-  (`ctxMenuFolderId`); `span role="button"` with `tabIndex={-1}`, the row the keyboard path;
-  clicks stop at the glyph so the row does not toggle and a double-click does not rename. The
-  right edge is shared across depths. **The folder menu is four items, each with its glyph,
-  and no rule: New note, New folder, Rename, Delete folder** (Tyr's call, the same day; the
-  labels lost `here` and `inside` later that day because the menu opens from the folder's own
-  row and the anchoring already says where; `New folder`, not `New subfolder`, because it is
-  the Notes row's action one level down; only Delete keeps its noun, because it can take
-  several notes to the Trash and confirms first, unlike the note menu's Delete). The glyphs are
-  the ones the same actions already wear: the row's pen, the Notes row's FolderPlus, the note
-  menu's Pencil and Trash (red with its label), at the menu tier; a text-only menu beside the
-  note menu's glyphed one read as a different kind of thing, opened from identical dots.
-  Reveal in Finder left the menu that day, with its `onRevealFolder` prop and the
-  `folderOps.reveal` op; the vault is revealed from Settings → Storage. Anything more is added when
-  it is actually needed. **A row's ··· hands its menu the row's rectangle, not a point**
-  (`rowMenuAnchor` in `Sidebar.jsx`, the row with the menu's gap either side, note and folder
-  rows alike): below the row when it fits, and when it does not `useMenuPosition` flips it to
-  sit above the row. With a point anchor under the row the flipped menu ended at the row's
-  bottom edge, over the row, and the pointer still resting on the dots sat inside its last
-  item, Delete, which took the hover highlight the moment the menu opened (Tyr saw it on a
-  folder low in the window; the header's ··· and a right-click keep their point anchors).
-  `folders.spec.ts` proves the note landing in the folder, and in a nested one, the folder
-  opening, the four items, and a menu from the lowest folder and note rows opening above the
-  row with nothing highlighted, in the real app.
-- **The ··· slot is zero-width at rest** so a long title truncates against the full row width;
-  it re-truncates only while the dots are revealed (row hover/focus, or its menu open). The
-  width change is instant and only the ink fades; a sliding re-truncation reads worse than a
-  snap. Muted on row hover, primary when the dots themselves are hovered. All CSS
-  (`.sidebar-note-more`); the row that opened the menu holds its state until it closes.
-- The dots are a `span role="button"` with `tabIndex={-1}`: a real button nested in the treeitem
-  button fails axe `nested-interactive`. The row stays the keyboard path.
-- A pointer-opened menu shows no focus ring on its first item (initial focus parks on the menu
-  container) because Chromium treats script focus as `:focus-visible`. Keyboard navigation
-  still indicates normally. **And it opens with nothing highlighted** (2026-09-16): `ContextMenu`
-  stays mounted between opens (it renders null with no menu), so its highlight index carried
-  over, and the last item hovered before a close, usually Rename, the top item a row's menu is
-  left through, was lit the moment the next row's, folder's or header's menu opened. The index
-  and the Move-to submenu reset in a layout effect on every `ctxMenu`, and leaving a row clears
-  the index (it used to clear only an inline background, which any re-render lit again); the
-  index is the one owner of a row's hover surface. `folders.spec.ts` reopens a menu after a
-  hover; the unit test beside the component holds the rule. Single-note and folder menu items carry glyphs (the folder menu
-  since 2026-09-16); the bulk menu is text-only.
-- **A note renames inline on double-click; a folder from its ··· menu's Rename alone**
-  (2026-09-16, Tyr's call: a folder's first click toggled it under the field, which read as a
-  glitch, so every click on a folder toggles and nothing else; ChatGPT's projects are the same).
-  Both use the same in-place input, and
-  **the field is invisible** (2026-09-16, judged against ChatGPT's rows): no border, fill or
-  padding, the row's own font at the row's own place (`renameFieldStyle` in `Sidebar.jsx`, the
-  row's height so the input's centred text sits on the label's baseline), so nothing on screen
-  moves when it appears, and the selected name, in the system's own selection colour as the
-  editor's is, is the whole signal. The row stands down under it: no pill, however it is
-  hovered, active or selected, and no trailing ··· or folder pair, whose only effect would be to
-  blur the field (`.is-renaming` in GlobalStyles, `!important` over the rows' inline hover
-  writes). One treatment for both row kinds, where ChatGPT has two (a bare chat, a project on
-  its pill), read as drift rather than a decision. Before this the field was a bordered accent
-  box with 5px of padding that shifted the name right, and the folder's was 12.5px/500 under a
-  14px/400 label, so the name shrank. **Both names are selected Finder-style**: with no border
-  an unselected name looks like nothing happened, so the folder field's caret-at-the-end (a
-  backlog item until then) went with the box. The
-  note's ··· Rename falls back to the editor title only when the sidebar is hidden. Rename from
-  a menu depends on the closing menu leaving focus with the field (see "Keys and focus").
+- **Note rows carry a trailing ···** opening the same menu as right-click, growing rightward.
+  **Folder rows carry New note and ···** at every depth (`.sidebar-folder-actions`, 44px when
+  revealed): New note (labelled `New note in <folder>` so the sidebar pill's own name stays
+  unique for locators) makes the note through `createNote` and **opens the folder**; ··· opens
+  the folder's menu. Both slots are **zero-width at rest** so a long name truncates against
+  the full row, revealed on row hover or focus and held while that row's menu is up
+  (`ctxMenuFolderId`); the width change is instant and only the ink fades. The controls are
+  `span role="button"` with `tabIndex={-1}` (a real button nested in the treeitem fails axe
+  `nested-interactive`); the row is the keyboard path; clicks stop at the glyph.
+- **The folder menu is four glyphed items, no rule: New note, New folder, Rename, Delete
+  folder.** Reveal in Finder is Settings → Storage's. Single-note and folder menus carry
+  glyphs; the bulk menu is text-only.
+- **A row's ··· hands its menu the row's rectangle** (`rowMenuAnchor`), so a menu flipped above
+  a low row sits above it and the pointer on the dots is not inside Delete. The header's ···
+  and right-click keep point anchors. `ContextMenu` stays mounted between opens, so its
+  highlight index and Move-to submenu reset in a layout effect on every `ctxMenu`; the index is
+  the one owner of a row's hover surface, and a pointer-opened menu shows no ring on its first
+  item. It divides its placement by `cssZoom`. `folders.spec.ts`.
+- **A note renames inline on double-click; a folder from its menu's Rename alone** (a folder's
+  first click toggled it under the field). Both use the same invisible field
+  (`renameFieldStyle`: no border, fill or padding, the row's font at the row's place) with the
+  name selected Finder-style; the row stands down under it (`.is-renaming`: no pill, no
+  trailing controls). The rename input commits once: Enter unmounts it and the blur that
+  follows must not rename again. The note's ··· Rename falls back to the editor title only when
+  the sidebar is hidden. Rename from a menu depends on the closing menu leaving focus with the
+  field (`editor.md`, "Keys and focus").
 
-### The Notes row and its one tree
+### The Notes row
 
-- **One header over the list, labelled `Notes`** (2026-09-12), replacing the vault folder's own
-  name, which had replaced the `Folders` and `Notes` sections in turn (2026-09-05). Row height,
-  row size (14px), weight 500, `TEXT.muted`: a label for the list, not a heading over it (judged
-  live against 15px/600/primary, which fought the wordmark). 12px below New note, 2px to the
-  first row. It does not collapse, so no chevron. It is hidden with the tree while a search
-  shows results or none, and it is the tree's accessible name.
-  **The storage folder's name is not shown in the sidebar at all**: it is the path in Settings →
-  Storage, beside the control that changes it, and nothing else in the app needs to say it. The
-  word `Notes` therefore appears twice in the column, once as the wordmark and once as this
-  label; they read at different ranks (artwork against 14px muted text), and that repetition was
-  judged and kept.
-- **The row carries New folder and Sort, hidden at rest and revealed on row hover or focus,
-  at the 16px row tier** (2026-09-16, Tyr's ask, judged on ASCII mockups; `SectionAction`,
-  `.sidebar-section-action`: opacity 0 at rest, 0.55 while the pointer is on the
-  `.sidebar-section-header` or a `:focus-visible` is inside it, each glyph full ink on
-  `BG.surface` on its own hover; the reveal region is the whole row, as a folder row's is, and
-  only the ink fades: the slot keeps its width, so the label never re-truncates). 16px so they
-  read with the folder glyphs below, not with the 18px chrome row above. **This is the row's
-  third flip, on record so there is not a fourth:** hover-revealed on 2026-08-23, visible at
-  rest on 2026-09-12 ("a control you must hover to find is not one"), hidden again now because
-  the folder rows under it reveal their own pair on hover since the same day, so a row that
-  kept its glyphs was the odd one out; the cost, unchanged, is that a new user gets no cue at
-  rest that the row has anything on it (Tab still finds them, and focus reveals them). **Sort is
-  a Lucide ArrowUpDown, the same glyph in both modes** (tooltip `Sort`): the row is hidden at
-  rest, so a per-mode glyph would tell nobody anything, and the menu is what says which mode is
-  on. Its menu (`SortMenu.tsx`, `role="menu"` named `Sort notes`, keyboard grammar as
-  `ContextMenu`, hanging off the glyph's bottom edge and growing rightward into the editor) is
-  the two modes and nothing else, `menuitemradio` each with its glyph at the menu tier (Clock
-  for Most recent, ArrowDownAZ for Alphabetical) and a Lucide Check in the mark colour on the
-  right of the chosen one; no "Sort by" heading, no footnote about folders (the tree shows them
-  staying first within a second of choosing). **The pair is held revealed, and Sort lit, while
-  the menu is open** (`menu-open` on the row, `is-active` on the control; the folder rows'
-  `ctxMenuFolderId` rule), so nothing flickers as the menu closes. Until this the row's second
-  glyph was a ··· (`VaultMenu.tsx`, labelled `List options`) holding New folder as its first
-  item (the keyboard path to the glyph, no longer needed: the glyph is focusable and focus
-  reveals it), a "Sort by" heading with the two modes marked by an accent dot, and Reveal in
-  Finder, which is **Settings → Storage's now** (`Show in Finder`, `Show in folder` off macOS,
-  beside the path and Change: the panel is the vault's one home, and the backlog's "N other
-  files" hint leans on the action existing there). Search was the row's first glyph from
-  2026-09-12 to 2026-09-16 and is on the window's row now. **Never more than three glyphs
-  here** — muted glyphs in threes read as a set, four read as a toolbar; anything rarer than
-  New folder and Sort earns a menu, never a glyph. Not anywhere, by decision: Collapse all
-  folders (folders toggle on click and persist as left; declined again 2026-09-12) and Change
-  vault folder, which is Settings → Storage only, beside the path it changes.
-- **One `role="tree"`, the Notes row a sibling above it, never inside it.** A header inside a
-  tree fails axe `aria-required-children` at critical impact, which the E2E gate catches. The
-  tree element exists only when it has rows, because an empty tree fails axe too; the row stays
-  regardless, since it is the root drop target. Renaming the label changed no path, folder id,
-  drop target or sort order. Folders come first,
-  alphabetical; root notes follow in the sort preference, exactly as inside a folder. **The
-  root is a folder.** Mobile has no header and keeps its own inline rows.
+- **One header over the list, labelled `Notes`**: row height, 14px/500, `TEXT.muted`, a label
+  not a heading; no chevron, it does not collapse. Hidden with the tree while a search shows.
+  It is the tree's accessible name and the root drop target. The storage folder's name is not
+  shown anywhere in the sidebar; it is the path in Settings → Storage.
+- **The row carries New folder and Sort, hidden at rest and revealed on row hover or focus**
+  (`SectionAction`, `.sidebar-section-action`, 16px so they read with the folder glyphs). Only
+  the ink fades; the slot keeps its width. This is the row's third flip (hover-revealed,
+  visible at rest, hidden again because the folder rows under it reveal their own pair); the
+  cost is no cue at rest, accepted. Sort is a Lucide ArrowUpDown (`SortIcon`) in both modes;
+  its menu (`SortMenu.tsx`, `role="menu"` named `Sort notes`, `menuitemradio`, Clock and
+  ArrowDownAZ glyphs, a Check in the mark colour on the chosen one) is the two modes and
+  nothing else. The pair is held revealed and Sort lit while the menu is open (`menu-open`,
+  `is-active`). **Never more than three glyphs here**; anything rarer earns a menu. Not
+  anywhere, by decision: Collapse all folders, Change vault folder (Settings → Storage only).
+- **One `role="tree"`, the Notes row a sibling above it, never inside it** (axe
+  `aria-required-children`). The desktop tree element exists only when it has rows (an empty
+  tree fails axe). Folders first, alphabetical; root notes follow in the sort preference,
+  exactly as inside a folder. **The root is a folder.**
 
 ## Search is a palette, not a panel
 
-- **On desktop, search is `SearchPalette.tsx`**: Cmd+P, the sidebar header's Search button
-  beside the toggle (the editor header's while the sidebar is away), or a click on an inline
-  `#tag`. **Cmd+K is the editor's link shortcut, not Search** (decided
-  2026-09-09; before this both fired and the palette opened over the link popover). Boojy
-  Notes has Search, not a command palette: the popup exists only to find and open notes, and
-  nothing unrelated goes into it. A
-  560px dialog in the top third of the window over a dimmed scrim, results growing downward.
-  Search only: no commands, no recent list, nothing before you type. Escape, Enter or a click
-  outside closes it; closing clears the query.
-- **Version B of the three judged on 2026-09-05**: title hits show the match in the accent and
-  nothing else, even when the body also matched; a body hit shows one muted line of context
-  under the title with the word in the accent; every row carries its folder path, muted, on
-  the right, with ` / ` between segments. No grouping by folder (the path carries that at a
-  quarter of the ink), no "title match" note. A `#` with no results shows the tag chips.
-- **One search, two faces.** The palette reads and writes the sidebar's search state
-  (`SidebarContext`: `search`, `searchResults`, `activeResultIndex`, `navigateResults`), so
-  Enter opens the highlighted result and jumps to its matched block exactly as the sidebar
-  did. The sidebar tree filters behind the scrim while you type; closing clears it. The mobile
-  layout keeps its field and inline results (`isMobile`-gated in `Sidebar.jsx`); the chips and
-  highlighters they share live in `SearchParts.tsx`. Cmd+F in-note find is separate (`FindBar`).
-- **One order: the result list as `searchNotes` returns it, score then recency** (2026-09-09,
-  review §4.3). Both faces draw `searchResults.results` in that order, `activeResultIndex` is a
-  position in it, `getActiveResult` reads it, and the highlighted row carries `aria-current`.
-  Before this a second, folder-grouped order (root first, folders alphabetically) stamped every
-  result with its position in *that* order (`_globalIndex`), the palette highlighted by the
-  stamp while Enter read the position, and any hit inside a folder put the highlight on one row
-  and opened another; the arrows walked the list out of order. The grouping is gone
-  (`groupByFolder`, `searchResults.groups`); the mobile face now draws the flat list with the
-  folder path muted after the title, as the palette does. Don't reintroduce a display order that
-  is not the array's, on either face. `search-active-row.spec.ts` proves it in the real app.
+- Desktop search is `SearchPalette.tsx`: Cmd+P, the Search button, or a click on an inline
+  `#tag`. **Cmd+K is the editor's link shortcut, not Search.** A 560px dialog in the top third
+  over a scrim, search only: no commands, no recent list, nothing before you type. Escape,
+  Enter or a click outside closes and clears the query.
+- Title hits show the match in the accent and nothing else; a body hit shows one muted line of
+  context with the word in the accent; every row carries its folder path muted on the right.
+  No grouping by folder. A `#` with no results shows the tag chips.
+- **One search, two faces.** The palette reads and writes `SidebarContext`'s search state
+  (`search`, `searchResults`, `activeResultIndex`, `navigateResults`), so Enter opens the
+  highlighted result and jumps to its block. The sidebar tree filters behind the scrim; mobile
+  keeps its field and inline results (`isMobile` in `Sidebar.jsx`); shared parts in
+  `SearchParts.tsx`. Cmd+F in-note find is separate (`FindBar`).
+- **One order: the list as `searchNotes` returns it**, score then recency. Both faces draw
+  `searchResults.results` in that order, `activeResultIndex` is a position in it, the
+  highlighted row carries `aria-current`. Never reintroduce a display order that is not the
+  array's. `search-active-row.spec.ts`.
 
 ## Note order is a preference, not a stored arrangement
 
-- One global control orders every list, root and folders alike: Most recent / Alphabetical,
-  persisted in `boojy-note-sort`, default recency. It lives in the vault header's ··· menu as
-  a pair of radio items with the current mode marked; a preference flipped a few times a month
-  does not earn a standing glyph, and the menu has room for a third mode if one ever earns it.
-- **"Most recent" means most recently modified, never opened: `max(edited here this session,
-  file mtime)`** (`recencyOf()` in `utils/noteSort.js`). The file's mtime is the durable truth
-  and orders the vault at launch; it is also the only signal that sees an edit made in another
-  app, which the watcher delivers live. Because the app's own writes don't refresh
-  `lastModified` in state, `useFileSystem` stamps a note in an in-memory "edited at" map the
-  moment it becomes dirty (typing after its commit, a checkbox, a rename, a move, a new or
-  duplicated note). Nothing is persisted by the app and nothing is written to the user's files;
-  the old `boojy-note-opened` key is no longer read.
-- **Opening, selecting or reading a note has no effect on order.** The list never reshuffles
-  under the pointer, which is what makes double-click rename safe in recency mode. Don't
-  reintroduce an open-stamp for any reason.
-- Rename and move count as modification because they rewrite the file; accepted for Beta rather
-  than adding filesystem work to preserve the old mtime.
-- A pure `touch` with no content change does not refresh the order (`onFileChanged` bails when
-  nothing differs; deliberate anti-churn). Notes with no timestamp at all sort alphabetically at
-  the back.
-- `sortNoteIds` returns the same array reference when already ordered, because the sidebar's
-  memo chain compares identities. Alphabetical mode doesn't subscribe to timestamps.
+- One global control orders every list: Most recent / Alphabetical, persisted in
+  `boojy-note-sort`, default recency; the Sort glyph on the Notes row.
+- **"Most recent" means most recently modified, never opened**: `max(edited here this session,
+  file mtime)` (`recencyOf()` in `utils/noteSort.js`). `useFileSystem` stamps a note the moment
+  it becomes dirty; nothing is persisted by the app. Rename and move count as modification.
+  **Opening, selecting or reading a note never reorders**, which is what makes double-click
+  rename safe in recency mode. `boojy-note-opened` is no longer read.
+- A pure `touch` does not refresh the order. `sortNoteIds` returns the same reference when
+  already ordered (the sidebar's memo chain compares identities).
 
 ### Drag means location, not order
 
-- Dragging a note moves the real `.md` file: onto a folder files it there, onto the vault header
-  or the empty space under the tree moves it back out. Drag never sets a position; sort decides
-  display order. Folders are always alphabetical.
-- The ghost is a title-only pill that lifts in; releasing anywhere that isn't a folder or the
-  root area flies it back and nothing changes. **Dropping over the editor does not open the
-  note**; drag never navigates. Every drag ends by suppressing the trailing click so it can't
-  open the lifted row.
-- **Dragging a folder moves its directory**: onto another folder nests it, onto the vault
-  header or the space under the tree moves it back to the root. Never into itself or its own subtree (those rows are not
-  targets; the pointer falls through to the root). Same lift, ghost and cancel grammar as notes.
-- Existing `.boojy-meta.json` files are left untouched; nothing reads their ordering keys.
-  Don't tidy them and don't reintroduce a reader.
-
-### Folders are directories
-
-- **A folder in the sidebar is a directory in the vault**, the way Finder and Obsidian treat it,
-  not "where a note happens to be". Every subdirectory shows, empty or not (your `Resources` of
-  PDFs is a folder); dot-directories and `attachments` are skipped at any depth, matching the
-  note walk. The list comes from `read-folders` at load, after any external delete, on
-  `folders-changed` (chokidar `addDir`/`unlinkDir`, coalesced) and when the vault changes; the
-  new vault's directories replace the old vault's. Web keeps folders in memory (`useNoteCrud`'s
-  fallback); nothing on web makes a directory.
-- **The main process is the only place that knows a folder's final name**, `electron/folders.ts`,
-  the same rule as `write-note` for a note's basename: a *new* last segment is sanitised and
-  de-duplicated (`-2`), a moved folder keeps the name the disk holds (see "A name the app makes is
-  sanitised" under the title rule), a leading dot and the reserved name `attachments` become `_…` because
-  the walk would skip the directory and hide every note in it (2026-09-06), a case-only rename
-  is a rename, a path can never escape the vault, and
-  every operation answers with the vault-relative `/` path the disk holds. The renderer adopts
-  the answer; no input sanitises a folder name.
-- **New folder makes the directory at once** (root from the header, `New folder` from a
-  folder's menu; a folder's *note* comes from the row's New note glyph or its menu's `New note`,
-  and opens the folder), opens the parent, and opens the inline rename. The rename input commits once:
-  Enter unmounts it and the blur that can follow must not rename the moved directory again.
-- **Rename and move are one `renameSync` of the directory**, so notes, subfolders and non-note
-  files travel together. Pending edits under the folder are flushed first, or a late write would
-  land at the old path. The note index is rewritten under the old prefix so IDs (and the open
-  note) survive; the notes' `folder` fields then follow through `remapNoteFolders` (useHistory).
-  Undo never restores a folder (see "One owner for note state"), so no snapshot is rewritten and
-  a later undo of a text edit cannot move a file back into a recreated old directory. Not an
-  edit: nothing becomes dirty, no file is rewritten, no mtime moves, and the rename itself is not
-  undoable. The watcher claims
-  both directories for a short window (`claimTree`); an event that escapes re-reads what is
-  already true.
-- **Delete waits for the Trash.** The notes are removed from state, the debounced flush trashes
-  them, and `afterNextFlush` then asks the main process to remove the directory, which it does
-  only if nothing but OS cruft is left. A folder with no notes skips the flush and goes at once.
-- **A folder outlives its notes** (decision D8, 2026-09-07). Moving the last note out, or
-  deleting it, leaves the directory where it is; only Delete folder removes one. `write-note`
-  used to remove an emptied parent directory, so dragging the last note to the root deleted
-  the folder it came from. `folders.spec.ts` drags the last note out and expects the row.
-- **A chosen vault that is missing is never recreated** (2026-09-07). `getNotesDir` makes
-  only the default vault under Documents; a configured path that is not there (an unmounted
-  volume, a folder moved in Finder) opens empty, every write refuses with the ordinary
-  "Failed to save" toast, and nothing is written to the boot disk. Before this, `read-all-notes`
-  and the watcher each recreated it and new notes went quietly into the empty twin. No
-  "folder not found" surface yet; Settings → Storage is the way out. `vault-root.spec.ts`.
-
-## A note's title is its filename
-
-- **For every persisted desktop note, the title shown equals the Markdown basename.** Drafts are
-  excluded until they become files. The rule is enforced from the persistence side: `write-note`
-  in `electron/noteFileManager.js` is the only place that knows the final name (collision suffix,
-  invalid characters to `_`, trimmed edges, `Untitled` for a blank name, a leading dot to `_`
-  because the vault walk and the watcher skip dot-entries and `.env.md` vanished at the next
-  restart (2026-09-06), the volume's own casing)
-  and answers every write with it. `useFileSystem` hands a differing answer to `useResolvedTitle`,
-  which adopts it into state (`adoptNoteData`: no history entry, so Cmd+Z undoes the rename
-  itself) and repaints the editor's title field, caret preserved when the user is still in it.
-  Nothing in the UI second-guesses filename rules; don't add a sanitiser to an input.
-- **A name the app makes is sanitised; a name the disk holds is kept** (2026-09-08, review
-  §2.3). `noteToFilePath` sanitises the title only when it differs from the basename the note's
-  own file already has (the index entry), so `Why?.md` stays `Why?.md` on every save and only a
-  title the user typed is rewritten. It never touches the folder: a note's `folder` is always a
-  path the disk holds (the folder walk, or a folder operation's answer), so it is only checked to
-  lie inside the vault (`insideVault`; a write outside refuses). `renameFolder` follows the same
-  split: the last segment is sanitised only when it differs from the old name, so a drag keeps a
-  Finder-made `Work: Client` as it is, and only a rename is the app's to spell. Before this every
-  save mapped the title and every folder segment through the sanitiser, so the first edit of a
-  note in `Work: Client` wrote `Work_ Client/Plan.md`, unlinked the original and left the renderer
-  holding `folder: "Work: Client"`; a `Draft ` folder and a `Why?.md` went the same way.
-  `disk-names.spec.ts` proves the save, the move into such a folder, the folder drag and a
-  restart in the real app.
-- **The name is a quiet file label, not a title.** A `#` heading in the body is body text: it
-  never names the file, and the filename is never written into the note as a heading. Decided
-  because altitude implies rank, and a filename cannot hold title rank. Since 2026-09-15 the label
-  sits centred in the chrome row behind its folder path, at interface size in primary ink (see
-  "The note's path is centred in the chrome row"): a document's name in its window's own row, the
-  macOS idiom, still 14px in a toolbar and never a heading.
-- **A note's own file is never a collision.** `ensureUniqueFilePath(target, ownPath)` returns the
-  own path when it is the first free candidate, so a note already at `-2` stays at `-2`. Every
-  other file on disk is a collision, indexed or not.
-- **A blank title under the caret is left alone.** The placeholder already reads `Untitled`, and
-  filling it in would land in front of whatever is typed next; it resolves on the next write, or
-  when the note is next opened. The emptied field's own `<br>` reads as "\n"; `titleFieldText()`
-  is the one reading of the field, shared by the input handler and the adoption hook.
-- **Whitespace the filename trimmed stays under the caret** (2026-09-09, review §2.7). The
-  filename is adopted into state whatever the field holds; while the field is focused, only
-  the characters the filesystem *changed* are painted, at their own offsets, and the field's
-  own trailing whitespace is kept (leading whitespace goes with the paint and the caret shifts
-  with it). Before this the resolved name was painted whole and the caret clamped onto its end,
-  so `Meeting ` written as `Meeting.md` became `Meetingnotes` when `notes` was typed next; the
-  trim is the one rule of `sanitizeFilename` that shortens a name, every other replacement is
-  one character for one. Chromium holds a typed trailing space as U+00A0, which JS `trim()`
-  and the sanitiser's strip alike, so the field's text and the written title agree byte for
-  byte. The field catches up with the name in full the next time it is painted from state (a
-  note switch, or a resolution that lands while it is not focused); until then an invisible
-  trailing space may sit in it, by design. `title-is-filename.spec.ts` proves the space, and a
-  sanitised character beside it, in the real app.
-- The editor title repaints from state when the field is not focused (a sidebar rename of the
-  open note); while focused the field is ahead of state and is never repainted from it.
-- No inline "a note with this name already exists" validation, by decision; correctness first.
-- **A save keeps the file's permission bits** (2026-09-09, review §2.8). `writeFileAtomic` gives
-  the temp file the nine permission bits of the file it replaces before the rename, and
-  `write-note` names the old file as the source when a rename moves a note away from it, so a
-  `chmod 600` note is `0600` after every save and under its new name. A file with nothing to
-  replace is made from the umask alone, and a stale `.name.tmp` from a crash is removed first
-  rather than reopened (it handed its own mode to the new file). Birthtime, Finder tags and
-  other xattrs are still lost on every save, as is a symlinked `.md`; one design decision,
-  deferred in the backlog. Don't fix any of them by writing in place without a decision on the
-  backup strategy. `file-mode.spec.ts` proves the edit, the rename and the new note.
-
-## Block drag: the gutter handle, never the text
-
-- **Text never starts a block drag.** Text is for writing and selecting; a hover-revealed grip
-  in the left gutter moves blocks. That separation is what removes the race where a pause
-  before a drag-to-select reordered the block instead. Keyboard reorder
-  (`Cmd/Ctrl+Shift+↑/↓`) remains the non-pointer path.
-- There is **one floating handle** for the whole editor, not one per block, because every block
-  root is a contentEditable and a control inside it would be inside the text. It sits in the
-  column's existing left padding, so it **never overlaps prose and never shifts layout**, and it
-  centres on the block's first line so it lands where the eye reads first for headings, list
-  rows and multi-line paragraphs alike. Desktop only.
-- **Measured geometry is divided by the UI scale before it becomes a style** (2026-09-10).
-  The scale is CSS `zoom` on `<html>`, and Chromium 128+ and Firefox 126+ report
-  `getBoundingClientRect()` and `clientX`/`clientY` already multiplied by it, while a `top` or
-  `left` on an element inside the zoom is multiplied again on paint. The grip
-  (`BlockDragHandle`), the drag ghost and the drop marker (`useBlockDrag`) divide every measured
-  distance by `cssZoom(el)` (`domHelpers`, `Element.currentCSSZoom`, 1 where unsupported); before
-  this the grip drifted down the note by the scale factor at any setting but 100% (3px on the
-  first block, 35px three blocks down at 120%), which Cmd+0 hid. `ContextMenu` (the note,
-  folder, bulk and header menus, from a row's ··· or a right-click) divides its placement the
-  same way since 2026-09-16 (measured in the real app at 125%: it opened 50px under and 60px
-  right of the folder ···). Anything else that writes a measured rect or a `clientX`/`clientY`
-  into a style on a zoomed element (the link, code block, image and file menus, the table's
-  badge and cell menu, `SortMenu`, the selection toolbar) is exposed by the same mechanism;
-  not measured and not yet corrected, so judge those at 100% until it is.
-- **The editor stays clean at rest.** The grip is invisible until its block is hovered, hides
-  on keydown and during a drag, and doesn't exist at all with fewer than two blocks. Hovering
-  the grip lifts its ink and nothing else: **no hover surface**, so the gutter stays part of
-  the page rather than a control strip. Reveal is CSS; don't add JS opacity handlers. The
-  handle is `aria-hidden`, a pointer-only affordance with the keyboard shortcut as the
-  accessible path.
-- **The drag commits on drop.** While the pointer is down the note does not change: the grabbed
-  block stays put at full opacity, a quiet translucent copy (no card, shadow or lift) follows
-  the pointer, and a 3px accent insertion marker shows where release would put it. Release
-  reorders once, as one history entry, and only if the order changed. Escape, window blur, or
-  release over the sidebar cancel with nothing to undo.
-- The marker sits centred in the gap between blocks, never touching prose. **The no-op position
-  is drawn above the grabbed block**, never through it and never just below it, since "just
-  below" reads as moving down one. The marker holds there until the pointer passes the middle
-  of the next block.
-- A multi-block selection containing the grabbed block drags as one run. The sidebar note pill
-  is the thing that lifts with `theme.dragShadow`; the block ghost deliberately does not.
-- **Frontmatter is the file's head, not a block of the body** (2026-09-15, reproduced on a copy
-  of Tyr's Obsidian vault). Its `---` must stay on line 1 or every reader, this parser included,
-  takes the properties for a paragraph, a setext heading and a divider; a blank line above it is
-  no frontmatter at all. `reorderFloor` in `utils/blockOrder.ts` is the one rule: with
-  frontmatter first the lowest index a reorder may touch is 1, and both reorder paths read it.
-  `moveBlock` refuses a move from or to index 0 as it refuses an out-of-range one; Cmd+Shift+Up
-  on the first block under the frontmatter is the top boundary and pushes no history step;
-  the grip never lifts the frontmatter, a selection run whose range reaches its root takes the
-  body blocks alone (no gesture makes such a range today: Select All starts in the first
-  paragraph's own text and Shift+Arrow never crosses a root, probed in the real app 2026-09-15;
-  the hook's contract does not lean on that), and the drop target is clamped so the marker's
-  highest position is the gap under the frontmatter; `BlockDragHandle` leaves the frontmatter root out of the
-  blocks it locates, so no grip appears over it and a note of frontmatter plus one block has
-  nothing to reorder. Before this the drag was safe only because the frontmatter root registers
-  no element ref, which the drop loop skipped by accident; the hook's tests now mount it with a
-  rect. Not a reorder and unchanged: the block is `contentEditable=false`, `isEditableBlock`
-  says no, and the cross-block seam refuses a range whose end is not a text block, so it can
-  neither be edited nor deleted. `frontmatter-order.spec.ts` proves the refused move (bytes untouched,
-  Undo still off), an allowed one under it, the drop at the very top and a restart of Boojy
-  Notes in the real app; Obsidian's own reading of the file is not exercised by any test.
-- **Every root the grip can show beside must be in the block ref map** (2026-09-16). The
-  handle finds blocks in the DOM (the editor root's children with a `data-block-id`), but the
-  drag, the drop loop and the marker look them up in `blockRefs`; a root that is in one and not
-  the other is a grip that shows and a press that returns silently, and a band the marker
-  skips. Text roots register `elRef`; the divider and the table register their own root; an
-  image and a file register their wrapper through `wholeRef` in `EditableBlock`, a second ref
-  because `elRef`'s repaint effect would paint the block's empty text over the wrapper. Code,
-  callout and embed still register nothing: the paste and caret paths take a registered
-  element for one with text to read (`isEditableBlock` says an embed has some), so those three
-  wait on the same judgement as their selection. `image-block-drag.spec.ts` proves the lift
-  and the band in the real app.
-- **Deliberately absent, don't add:** a "+" beside the grip (the slash menu creates blocks), a
-  click menu on the grip, a handle on mobile, an always-visible handle. The editor must keep
-  reading as a document, not a block-management surface.
-
-## Links: the caret stays outside, the tooltip waits for a rest
-
-- **A caret at the end of a link's text is placed just after the link, on a zero-width space
-  inside a `caret-anchor` span** (`CARET_ANCHOR`, `makeCaretAnchor` in `utils/domHelpers.js`,
-  applied inside `placeCaret`). Chromium canonicalises a caret at a link's edge, or at the
-  boundary before following text, to *inside* the link, and the next keystroke then rewrote a
-  `[[wikilink]]`'s alias; the zero-width space is the one anchor it honours (probed in the real
-  app; an empty text node is not). **The span is what marks it as scaffolding** (2026-09-09,
-  review §3.5): the one DOM→Markdown walker drops the U+200B inside a `caret-anchor` and reads
-  text typed on it (which lands inside the span) as prose, the sanitiser does the same on the
-  copy and Enter-split paths, the caret arithmetic skips only that character, and a repaint from
-  state wipes it. A U+200B anywhere else is a byte the file holds (`escapes-unicode.md` in the
-  preservation corpus) and is kept; before this the walkers stripped every U+200B, so the file's
-  own was deleted on the first edit of its block. Don't add a second caret placement path that
-  bypasses `placeCaret`, and never strip the character by value again.
-- **The browser's own caret is caught at the keystroke, not at the move** (2026-09-06). End, a
-  click past a link or on its right edge, and ArrowRight all leave Chromium's caret at the last
-  offset of the link's text node, inside the span, which `placeCaret` never sees; `See
-  [[Welcome]]` + End + ` after` was saved as `See [[Welcome|Welcome after]]`. A native
-  `beforeinput` listener (`useEditorFocusUX`) runs `caretOutOfLinkEnd` before any insertion
-  outside an IME composition: a collapsed caret at the end of a link's last text node moves onto
-  the same anchor, and the text lands outside. It is deliberately not a `selectionchange`
-  normaliser: probed live, that would re-anchor the caret after every ArrowLeft back into the
-  link (the anchor is one arrow step, then the link's text) and after the Backspace that
-  removes the anchor, so neither could ever reach the link's last character. Nothing about
-  where the caret may rest changed; only where typed text goes.
-- **The start of a link is the end's mirror** (2026-09-09, review §3.7). A block that opens
-  with a link has no text before it for Chromium to prefer, so Home, or a click at the link's
-  left edge, rests the caret at offset 0 of the link's own text, and `placeCaret(el, 0)` (Enter
-  from the title, an arrow key arriving from the block above) set the range on the block's
-  first child, the link span itself; `Y` typed there was saved as `[[Review note|YReview
-  note]]`. Offset 0 of such a block now rests on an anchor *before* the link (`anchorBeforeLink`,
-  reached from `caretRangeAt` through `leadingLink`), and the same `beforeinput` listener runs
-  `caretOutOfLinkStart` beside the end case: a collapsed caret at offset 0 of a link's first
-  text node moves onto that anchor before the text lands. Same limits as the end: insertions
-  only, a caret one step into the link edits the alias, and neither edge of an alias can be
-  typed onto from outside (the end could not before either). The anchor is the same marked
-  span, dropped by the walkers wherever it sits. `wikilink.spec.ts` proves Home and Enter from
-  the title in the real app.
-- Links only (`a`, `.wikilink`). Bold, italic and tags keep the browser's own edge behaviour, so
-  typing at the end of bold text extends it, as in every editor.
-- **A wikilink click opens the note its target names, and creates one only for a plain name**
-  (2026-09-15, `utils/wikilinkTarget.ts`, the one reading of a target for the click, the
-  right-click menu and the renderer's broken mark alike). Obsidian writes `[[Note#Heading]]`,
-  `[[Note#^block]]` and `[[Folder/Note]]` (with or without `.md`); the part before the first `#`
-  names the note, in the folder its path gives when it gives one, and that note is what opens.
-  An explicit path is the path: only the note at `Work/Gamma` answers `[[Work/Gamma]]`, never a
-  Gamma elsewhere, so a stale path is drawn broken and a click says so rather than silently
-  opening a namesake (the title set holds `folder/title` keys beside titles, `noteLinkKeys`, so
-  the renderer and the click read alike). The heading or block is ignored (jumping to it is the Future
-  item in the backlog), and `[[#Heading]]` names the note it sits in, so it is never broken and a
-  click on it only says it can't be followed. A target that resolves to nothing creates a note
-  only when it is a plain name, the ordinary "link first, write later" case; a heading, block or
-  folder-path target creates nothing, an info toast names the missing note, the link's bytes stay
-  as written, and its right-click menu offers Open Note rather than Create Note. Before this the
-  whole target was matched against titles, every one of the three forms failed, and
-  `createNote` wrote `Beta#Intro.md` or `Work_Gamma.md` into the vault root (reproduced
-  2026-09-15 on a copy of Tyr's Obsidian vault; `#` is not in `sanitizeFilename`, and Obsidian
-  refuses both names). A folder-path link to a missing note does not make the folder, by
-  decision: nothing on a click creates a directory. `link-resolution.spec.ts` proves what opens
-  and lists the vault's files after every click in the real app; `wikilinkTarget.test.ts` holds
-  the reading.
-- **A backslash escape is shown as written** (`\*not italic\*` reads exactly so on screen, never
-  as italic), the way Obsidian's live preview shows it. The renderer once hid the backslash; the
-  DOM walkers read text back verbatim, so the escape was gone on the first edit and the text
-  became italic on the next repaint (2026-09-06). Don't hide it again without teaching both
-  walkers to put it back.
-- **The hover tooltip is `useLinkHoverTooltip`**: half a second at rest on a link shows its URL or
-  `[[target]]`; the pending hover is an object holding the timer and the URL, and the callback
-  checks it is still current before showing anything. Never hang data off a timer handle; it is a
-  number in the browser and the assignment throws in strict mode.
-
-- **A bare URL is linked in prose only, read as written** (2026-09-09, review §3.5). The
-  autolink pass takes the rendered HTML a piece at a time (a whole link, code span or wikilink,
-  any other tag, a run of prose) and links only inside prose, decoded back to characters first,
-  so `&gt;` is the `>` it stands for and ends the URL, and `&amp;` is `&`. Before this the regex
-  ran over the escaped HTML: `<https://example.com>` linked `https://example.com&gt` and grew a
-  `;` on every edit, a URL ending in `&` did the same, a URL inside a link's text was linked a
-  second time inside the anchor and read back as two links, and one in a `[[wikilink]]` target
-  rewrote the span's own attribute. The brackets of `<url>` are shown as the text they are:
-  there is no angle-bracket autolink feature, and none is needed for the bytes to hold.
-  `domRoundTrip.test.js` carries the cases; `inline-preservation.spec.ts` the edit in the real
-  app.
-
-## Typed inline formatting converts on the closing marker, and changes no bytes
-
-- **`**bold**`, `*italic*`, `` `code` ``, `~~strike~~`, `==highlight==` and `***both***`
-  become their element the moment the closing marker is typed** (2026-09-10), Notion's model,
-  not Obsidian's syntax reveal (which needs a source-aware renderer: the source-view candidate).
-  The literal run the user typed *is* the Markdown the file holds, and a repaint from state
-  would show it rendered; only the screen was behind. So a conversion is a repaint of the block
-  from its own text plus the caret parked after the new element, and Cmd+Z is the ordinary
-  typing undo: there is no "un-convert", because there is no other version of the bytes to
-  restore. Literal stars are typed as `\*`, shown as written. The one byte change is the
-  underscore forms, `_italic_` and `__bold__`, committed in the star form the renderer and the
-  writer speak; a file made elsewhere that holds `_italic_` is untouched (no keystroke, no
-  trigger) and shows as literal text, because rendering it would have the first edit rewrite
-  the file (backlog).
-- **The trigger is the native InputEvent, never the text alone.** `handleEditorInput` hands
-  `e.nativeEvent` to `handleBlockInput`; `typedFormatHit` (`utils/typedFormatting.js`) fires
-  only on an `insertText` of one marker character outside a composition. Before this gate a
-  Backspace onto the fresh anchor read the block back as `**bold**` and converted it again, so
-  the bold could never be deleted into; paste, autocorrect and IME are out for the same price.
-  The rAF fallback and the keyboard handler pass no event and never trigger.
-- **The matcher is strict so prose is never mangled** (`closingFormatAt(before, after)`, pure,
-  the Markdown either side of the caret from `markdownBefore` / `markdownAfter`). Content is
-  non-empty and neither starts nor ends with whitespace (`2 * 3 * 4`, `a ** b` stay); the
-  opener does not follow a backslash; a star opener does not follow a star, so the first
-  closing star of `**bold*` is not an italic close; an underscore opener does not follow a
-  word character and its closer is not followed by one (CommonMark's intraword rule,
-  `snake_case_name` stays); the closer is not followed by its own marker (the renderer's
-  regexes refuse the same). It fires only with a collapsed caret in the block's plain text:
-  inside an existing formatting element or link nothing fires, and a code block, table cell or
-  callout field never reaches the input handler. A suggestion menu about to open (`/`, `[[`,
-  `#tag`) takes precedence and the run stays literal.
-- **The paint is by hand and verified, never assumed** (`paintTypedFormat`): the tag-completion
-  precedent, no `syncGeneration` bump (the repaint effect would rewrite the DOM and `placeCaret`
-  would put the caret back inside the element; `placeCaret` still anchors only around links, so
-  bold arrowed back into extends, as the rules above say). After `inlineMarkdownToHtml` the new
-  element is located by its Markdown prefix, walking `el.childNodes` with the walker's own
-  `nodeToMarkdown` until the accumulated Markdown equals the text before the caret and the child
-  is the run's tag. The renderer's passes run in a fixed order over the whole block and can pair
-  markers differently from the matcher (`* a *two*` renders `* a *` as the italic), so when no
-  child matches the previous DOM and caret are put back in the same task and the block stays
-  literal; an underscore run is committed in the star form only once it is painted. The paint
-  runs before the bare-URL check on purpose: it already styles a URL, so that check finds
-  nothing to bump. `typed-formatting.spec.ts` proves the markers, the underscore forms, the
-  mid-line run, Backspace after a conversion, Cmd+Z and a restart in the real app;
-  `typedFormatting.test.js` the matcher and the paint.
-
-## The selection toolbar waits for the selection to finish
-
-- **It shows on mouse-up for a pointer selection, and after `TOOLBAR_REST_MS` (300 ms) with no
-  further change for a keyboard one** (`useEditorFocusUX`, 2026-09-10). Measured on every
-  `selectionchange`, it repositioned under each movement of the drag and slid about under the
-  pointer. Nothing is set while `mouseIsDown` is true; a document `mouseup` listener clears
-  that flag (a drag that ends outside the editor never reaches the editor's own handler) and
-  shows at once, except when the mouse-up is on the toolbar itself, which is a format being
-  applied and `applyFormat`'s to handle. Hiding is immediate: a collapsed selection clears it
-  so it never lingers over typing.
-- **Six Lucide glyphs at 16px on a stroke of 2.5, in 28px boxes** (`FormatIcon` in
-  `Icons.jsx`, the `SlashCommandIcon` pattern; `ICON_STROKE_TOOLBAR`, the one tier above the
-  navigation stroke, because these glyphs stand alone with no label and at 2 the B and I read
-  faint, judged 2026-09-10 against Notion's strip). The 32px control tier read chunky hovering
-  over a line of text. Buttons are named by `aria-label` alone. **Active is the glyph in the
-  accent and nothing else**; the grey fill is hover's alone, so a pressed button still lifts on
-  hover and the accent stays ink, never a surface (the accent-tinted fill and the highlight
-  button's mark-coloured fill were dropped the same day).
-- **Applying a format keeps the toolbar where it is, and once shown it holds its position
-  until it hides.** `applyFormat` used to clear it and the rest timer brought it back a beat
-  later, a visible blink on every press; it now sets a fresh state object at the same position
-  so the pressed states re-read and nothing unmounts. The document `mouseup` listener ignores a
-  mouse-up on the toolbar for the same reason. And the hook measures the selection once, when
-  the toolbar appears, never again while it is on screen: re-measured on every change, a
-  pressed Bold (wider glyphs) or Highlight shifted the selection's centre and the strip slid a
-  few pixels under the pointer. A selection extended by keyboard stays under the strip placed
-  over where it began; a collapse hides it and the next selection measures afresh.
-- **Resting on a button for `TOOLTIP_REST_MS` (400 ms) shows its name and shortcut** in a chip
-  above it, `aria-hidden`, the app's own chip (elevated ground, divider border; an inverted
-  Notion-style chip was offered and declined 2026-09-10) at 12px/500 with the shortcut in the
-  UI face a step lighter (the link tooltip's 11px mono is for long URLs; in mono `⌘B` read as
-  code). It goes below only when it would clip: `chipWouldClip` measures the toolbar's top less
-  the chip's room against the `.editor-scroll` container's top at the moment the chip shows.
-  A rule on the toolbar's own position flipped it for the first lines of every note, where the
-  title above leaves room, and put the chip over the selected text. `FORMATS` in `FloatingToolbar.jsx` is the one place a shortcut is shown to the
-  user and must match the map in `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac
-  and `Ctrl+Shift+S` elsewhere (`isMac` in `utils/platform.js`, not the Electron-gated
-  `isElectronMac`). Chrome buttons keep the native `title`; they can adopt the chip if it earns
-  its keep. `formatting-toolbar.spec.ts` proves the timing, the glyphs and the chip in the real
-  app.
-
-## ATX headings share one editor path
-
-H1–H6 render as their native heading elements in `EditableBlock`, with the same editing,
-Enter/Shift+Enter (new paragraph), navigation and history behaviour. New headings use ATX
-markers; imported ATX indentation, marker-to-text spacing, trailing whitespace and optional
-closing markers live in `headingSource` and survive text edits. If newly typed heading text
-ends in a literal hash run, the writer adds a separate closing marker so those hashes remain
-text to both readers; it is not necessary when the imported suffix already closes the heading.
-Setext remains deferred.
-
-The desktop scale uses `TEXT.primary` throughout, against 15px/400 body text.
-Sizes, weights, top/bottom margins (px) and line-height ratios are:
-
-| Level | Size | Weight | Top / bottom | Line height |
-| --- | --- | --- | --- | --- |
-| H1 | 28 | 700 | 8 / 12 | 1.3 |
-| H2 | 22 | 600 | 6 / 10 | 1.35 |
-| H3 | 20 | 600 | 8 / 8 | 1.35 |
-| H4 | 18 | 600 | 8 / 6 | 1.35 |
-| H5 | 16.5 | 600 | 8 / 4 | 1.35 |
-| H6 | 15 | 700 | 8 / 4 | 1.4 |
-
-H1/H2 retain their -0.4px/-0.2px letter spacing; the other levels use normal spacing.
-The existing three heading render branches became one local style lookup, not a new
-typography system. H3 grows from 16.5px so the six levels have room; H6 stays at body size
-and uses bold weight to remain a heading.
-
-## The slash menu is tiered
-
-- `/` opens on eleven commands, including H1–H3. `advanced: true` in `SLASH_COMMANDS` keeps H4–H6, Callout, File
-  attachment and Embed note off the opening screen; typing anything after the slash searches
-  everything, so `/call` still finds Callout. `/h4` and `/heading 4` (likewise 5 and 6)
-  find the deeper headings; those rows carry their Markdown trigger and Lucide heading icon.
-- **The tier rule lives in one place, `filterSlashCommands()`**, used by both the menu and the
-  keyboard navigation. A second copy is how Enter inserts a different block than the one
-  highlighted.
-- Order is the menu's only structure (2026-09-07): the Markdown blocks first, roughly by reach
-  (headings, lists, Quote, Code block, Divider), then Table and Image, whose triggers are the
-  app's own, at the foot. `data.test.js` guards the split.
-- **Each row carries its typed shortcut as a muted hint on the right** (`hint` in
-  `SLASH_COMMANDS`, 12px mono, `TEXT.muted`, muted on the selected row too; only the glyph takes
-  the accent). The hint is what `useInputHandler` turns into the block at the start of an empty
-  block, never the Markdown the block saves as: the old `desc` column showed `| | |` and
-  `![]()` and was removed as noise. Nine hints are plain Markdown (`#`, `-`, `[]`, `>`, `---`,
-  three backticks). **Two are Boojy's own quick keys**, decided 2026-09-07 because no editor
-  has a typed table or image trigger and Tyr wants the menu to be optional: `|||` makes the
-  menu's two-by-two table at once (the three-of-a-symbol grammar of `---` and the backticks;
-  a hand-typed table never starts with three pipes, an empty first cell is `| |`), and `![]`
-  plus a space opens the menu's image picker (the box rhyme with `[]`; it waits for the space
-  so `![alt](url)` can still be typed through it). Both run the menu's own command through
-  `executeSlashCommand`, handed into the input handler, so there is one table shape and one
-  picker path. Tier-2 blocks have no trigger and an empty hint.
-- Labels are plain words, not markup terms: Quote, not Blockquote; To-do list, not Checkbox
-  (the block is a list, and the row then reads with Bullet list and Numbered list). Rows are a
-  Lucide glyph at the navigation stroke (2, at 16px: the glyph is the row's identity beside a
-  500-weight label and the mono hint, and 1.5 read thin against both, judged live 2026-09-07),
-  a label and the hint: no chip, border or group heading. The shadow is `theme.modalShadow`.
-- Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
-  viewport margin, flip to the other side on overflow, clamp last. Route every new popover
-  through it rather than writing a fresh clamp.
-- **The editor column never carries a transform** (2026-09-09, review §3.9). The link, code
-  block, image and file context menus and the table's create badge are `position: fixed` at
-  the pointer's `clientX`/`clientY` and render inside the column; a transformed ancestor is the
-  containing block for a fixed descendant, so the column's fade-in, which lifted it 4px and
-  ended at `translateY(0)`, opened every one of them offset by the column's own left edge and
-  scroll (284px right at the default width, and moving with the page). The fade is opacity
-  alone now. `TableContextMenu` and the callout picker portal to `body` and were never affected.
-  Restoring a lift means portalling those five surfaces first. `editor-menus.spec.ts` measures
-  the link, code and image menus against the pointer in a scrolled note in the real app.
-- Selection is keyboard-first: opening and filtering reset to the first row, and rows take the
-  selection on actual mouse movement, not `mouseenter`, because a menu can mount under a
-  stationary pointer.
-- **The block you chose owns the next keystroke when it has a field of its own** (2026-09-09,
-  review §1.5). Code block focuses its textarea, Callout its title, Table its first cell; Divider,
-  Image, File and Embed have nothing to type into, so the paragraph opened under them takes the
-  caret as before. One rule, in two places: `replaceWithSpecialBlock` (`useSlashCommands`)
-  queues the special block's own id in `focusBlockId` for those three types (`OWNS_CARET`), and
-  the focus effect (`useEditorFocusUX`), finding no text root registered for that id (the three
-  never register one; their fields are their own), focuses the block's first field through
-  `ownedField` in `domHelpers`: the wrapper by `data-block-id`, then its first `textarea` or
-  `contenteditable="true"`. `handleBlockNav` (Escape and the arrows out of a code block or
-  callout) uses the same helper in place of its old code-only textarea query, so it now enters
-  a neighbouring callout or table as well. Before this every special block put the caret in the
-  paragraph after it, and the two lines of code typed after choosing Code block were two
-  paragraphs under an empty fence. No focus API was added to the blocks; the DOM they already
-  render is the handle. `slash-focus.spec.ts` proves the three, and the divider's paragraph-after,
-  in the real app.
-
-## One edit, one block root
-
-The editor is a single contentEditable wrapping every block root, so Chromium is willing to
-merge, split or format across two React-owned roots; the next React commit then meets DOM it
-did not make and throws (the "Something went wrong" screen), or the screen and the file
-quietly part ways. The rule (2026-09-07): **an edit whose reach is not confined to one block
-root is the app's, made through state; Chromium never mutates across roots.**
-
-- **The seam is the native `beforeinput` on the editor root** (`useCrossBlockEdit`), because it
-  is the one event that says which roots an edit is about to touch (`getTargetRanges()`): a
-  forward Delete at the end of a block reports a range into the next block, and a Backspace
-  beside a code block reports a range that swallows it, neither visible at keydown. Every
-  native edit reaches it, whatever produced it (a key, Cut, a menu, autocorrect, a drop). A
-  target range inside one root is left to Chromium; anything else is cancelled and, where it
-  has a meaning in the block model (delete, typed text, Enter, Shift+Enter), made in state.
-  Formatting, history and composition across roots are refused. React's `onBeforeInput` is
-  synthesised from other events and cannot stand in for it.
-- **`execCommand` fires no `beforeinput`**, so every script mutation asks which roots the
-  selection touches first (`scopeOf`, the same resolver): inline formatting is applied to each
-  block within itself and each block alone is read back; Cut is copy plus the owned deletion;
-  a paste across blocks is the owned replacement; a link needs one text block. Don't add an
-  `execCommand`, `surroundContents` or `insertNode` on a selection whose scope has not been
-  checked.
-- **Bold and italic on a selection are structural wraps, like code, strike and highlight**
-  (2026-09-16, `toggleWrappingTag` with `STRONG` / `EM` in `useInlineFormatting`), never
-  `execCommand("bold")`. The command decides its direction from the *computed* style, so in a
-  heading (already 600–700) or a quote (already italic) it removed the format instead, leaving
-  a `font-weight: normal` span that the walker reads as plain text: the heading's word went
-  lighter on screen and the file never got its `**`. A wrap that reaches into an existing run
-  of the same format dissolves the partial clone it drags along, so there is never a
-  `<strong>` inside a `<strong>`. A collapsed caret keeps `execCommand`: the pending style it
-  sets for the next keystroke has no structural equivalent, and in a heading that path still
-  misfires (residue, rare). Bold inside a heading is one step heavier than the heading in
-  `GlobalStyles` (800 in H1 and H6, 700 in H2–H5); the browser's own `bolder` would jump to
-  900. The strike line is the text's own colour, not the accent (the same day).
-  `heading-bold.spec.ts` proves the wrap, the file's bytes, the weight and the second press in
-  the real app.
-- **A block that owns its own field owns its edits.** A selection inside a table cell, a
-  callout or a code block's textarea is that block's; the editor's key, paste, cut and
-  re-read paths keep out (a block with no registered element is never read back into
-  state). A selection reaching from a text block into one of them is refused, nothing
-  changes; deleting the run is not attempted (backlog).
-- **A collapsed Delete or Backspace reaching into a neighbour** merges only with an adjacent
-  text block, selects an adjacent divider or image (the next key removes it), and refuses
-  anything else, so a code block or table beside the caret is never swallowed. Keydown's own
-  Backspace-at-start rules (indent, divider, step over) still run first and prevent the
-  default; the guard sees what escapes them.
-- Proven in `cross-block-ownership.spec.ts` (the real app) and the unit tests beside the two
-  modules. Known residue: an IME composition begun over a cross-block selection cannot be
-  cancelled (`insertCompositionText` is not cancelable); a text drag across blocks copies
-  rather than moves (`deleteByDrag` is refused so the text is never lost between the owned
-  delete and Chromium's insertion); Cmd+B across blocks toggles per block.
-
-## Menus own their keys; the editor keeps the caret
-
-- **A key a menu has already consumed never reaches the editor** (2026-09-07).
-  `handleEditorKeyDown` returns on `defaultPrevented`. The tag and wikilink menus take Enter,
-  the arrows and Escape in a capture-phase `window` listener and prevent the default; before
-  the guard the editor's own Enter handler still ran on the DOM text and split the block under
-  a tag suggestion instead of completing it. One rule for every menu, in place of the
-  wikilink-only guard it retired. Don't add a per-menu special case.
-- **A completion made from a native listener commits structurally and repaints the block
-  itself** (`handleTagSelect`, `handleWikilinkSelect`). The debounced text commit leaves React
-  state behind, and the menu's own close re-renders the editor, whose `syncGen` repaint then
-  paints that stale text back over the block (disk `#review`, screen `#rev`). `commitNoteData`
-  publishes at once; the direct `innerHTML` write is the paint (editor gotcha 2). One undo
-  entry per completion.
-- **The caret after a completed tag is parked on a caret anchor past the ending space.**
-  The space that ends the tag is the block's last character, and under `white-space: normal` a
-  trailing space collapses: a caret placed in it has no width, and Chromium moved the next
-  character into the tag span (`#reviewd`). Typed on the anchor, text lands after the space and
-  outside the tag, and the walkers drop the anchor as they do after a link. The tag handler
-  queues nothing for the focus effect when it painted the block itself, because a repaint and
-  re-placement from state would put the caret back in the collapsed space. Probed and rejected
-  (2026-09-07): a non-breaking space after or inside the span reached the file as U+00A0, and
-  `pre-wrap` would change how every run of spaces renders.
-- **Tab and Shift+Tab keep the caret on its character.** `updateBlockIndent` reads
-  `getCaretOffset` inside the commit, before state changes; the focus effect's default of
-  offset 0 put the next keystroke in front of the item. Re-indenting changes the box, not the
-  text, so the offset is always valid.
-- **The click's caret rescue never takes focus back** (`useMouseHandlers`). A frame after a
-  click or a focus, the editor puts the caret in the nearest block when the selection landed
-  outside any. If something the click opened holds focus by then (a tag click opens the search
-  palette), the rescue steps aside: the palette's field was focused for one frame and Escape
-  and the arrows then went to the editor. Focus resting on the body still gets the rescue.
-
-## Keys and focus: the closest active surface owns them
-
-One keypress acts on the surface the user is looking at and on nothing beneath it (review
-2026-09-07, §1.2, §1.6, §1.13, §4.1, §4.2, §4.6). The convention uses only what the platform
-already gives: `preventDefault`, the active element, and the focus trap.
-
-- **A surface that takes a key prevents its default; one that reads a key checks
-  `defaultPrevented` first.** The app shell's shortcuts (`useAppKeyboard`) are the last
-  listener, a bubble-phase window listener registered at startup, and they act only on a key
-  nobody above has claimed. A surface therefore never listens on the window in the bubble
-  phase: a listener added when it opens runs *after* the shell's and its preventDefault comes
-  too late (ContextMenu and the then VaultMenu, now `SortMenu`, moved to the document on 2026-09-09; before that Escape in
-  either also reached the shell and closed the sidebar overlay of the time under it). Element
-  handlers, document listeners and capture listeners all run before the shell.
-- **An open modal dialog, or a menu that holds focus, owns every key beneath it.**
-  `focusOwner()` asks the DOM: any `[aria-modal="true"]` present, or the active element inside a
-  `[role="menu"]`, and no shell shortcut runs (Cmd+N over Settings made a note behind it; Cmd+K
-  opened the palette above it). A dialog owns the keys from the moment it exists, not from the
-  frame later when its trap places focus: a Cmd+N inside that frame made a note. Each
-  such surface closes itself on Escape, Settings included; the shell knows nothing about which
-  one is open. Escape's order is: an active block or sidebar drag, then whatever surface has
-  taken it; with nothing to take it, Escape is nobody's. It never hides the sidebar (2026-09-14):
-  a panel sitting in the layout is hidden by its toggle alone.
-- **A native text field outside the editor owns its editing keys.** Cmd+Z, Cmd+Shift+Z and
-  Cmd+Y in the palette's field, a rename field or the find bar are the browser's own undo
-  there, not the note's (typing in the palette and pressing Cmd+Z used to take a word out of
-  the note behind it). The title field and a code block's textarea are inside the editor, so
-  the note's undo stays theirs.
-- **Enter activates the focused button, natively.** `ConfirmDialog` takes only Escape. The
-  desktop Trash prompt opens on its action (a move to the Trash is recoverable); a permanent
-  web deletion opens on Cancel, and that choice now protects: before this a window listener
-  confirmed on any Enter. Focus is placed once per dialog (the callbacks are read through a
-  ref), Tab stays inside it.
-- **A closing surface hands focus back only while it still holds it** (`useFocusTrap`
-  cleanup: active element inside the container, or on the body because the container has just
-  left the DOM). Focus another surface has taken meanwhile is that surface's. This is what
-  makes Rename from the ··· or context menu work: the menu closes and the rename field mounts
-  and autofocuses in the same commit, and the menu's cleanup used to put focus back on the row
-  a frame later, so the field blurred, committed the unchanged name and unmounted. The same
-  cleanup took focus off the confirm dialog's button when a menu's Delete opened it. A surface
-  that has already placed its own focus keeps it: the trap's first-item focus skips when focus
-  is already inside.
-- **A suggestion menu under the caret never takes focus and owns a key only while it is
-  offering a completion.** The tag menu listens only while it has rows, never touches Space
-  (the space ends the tag in the text and the input handler closes the menu), and takes Enter
-  only when accepting is a completion: the user has moved the highlight, or the highlighted tag
-  differs from what is typed. `#alpha` typed in full, or `#brandnew` with no match, leaves
-  Enter to the editor, and the editor's Enter closes the menu as the caret leaves the block.
-  Before this the menu ate the space (`#alpha` + ` beta` was `#alphabeta`) and took Enter with
-  nothing on screen. The wikilink menu keeps completing on Enter: an unclosed `[[` has no other
-  meaning for it. The slash menu is opened on purpose and keeps its keys.
-- Proven in `key-ownership.spec.ts` (the real app: the confirm's buttons, Cmd+Z in the palette
-  and a rename field, Escape over the sidebar in a narrow window, Cmd+N and Cmd+P over Settings, Cmd+K
-  against Cmd+P, the typed tag, Rename from the row menu) and the unit tests beside
-  `useAppKeyboard`, `useFocusTrap`, `ConfirmDialog` and `TagMenu`. Not changed: Shift+Arrow
-  selection at a block's edges, ArrowUp into the title, the table's row-selection keys, and
-  the link popover's position on a collapsed caret (review §1.13, §3.11, §1.6 residue).
-
-## One owner for note state
-
-Note state has two copies by design: React state, and `useHistory`'s keystroke ref, which runs
-ahead of state for the 300 ms text-commit debounce and is then published over it. The ref stops
-syncing from state while a commit is pending, so a change written to state alone in that window
-was reverted when the commit fired, and left no undo entry. The rule (2026-09-08): **every
-change to note state goes through a `useHistory` action, which applies it to the ref and state
-together; the raw setter is not exposed.** Six actions, one per kind of change; a seventh is a
-smell.
-
-| Action | For | Undo entry |
-| --- | --- | --- |
-| `commitTextChange` | typing (debounced publish), into a paragraph or a special block's own field; ends a draft at its first character | one per 500 ms burst |
-| `commitNoteData` | a user edit: a block, a checkbox, a rename, a new or deleted note, a block drop | yes |
-| `adoptNoteData` | a change of record: the filename a write produced, a move between folders (drag, Move to) | no |
-| `applyExternalNote` | one note as the disk holds it: an outside edit, a conflict copy | drops the note's entries |
-| `remapNoteFolders` | a directory rename or move | no |
-| `replaceNoteData` | the whole vault as the disk holds it: the initial load, a vault switch, the rebuild after an outside delete | keeps entries for notes that still exist |
-
-- **Undo and redo act on the open note and on no other** (2026-09-12). The stacks were always
-  note-tagged, but `undo` popped the newest entry of any note: an edit in A, a click on B and
-  Cmd+Z restored A behind the user's back, the write debounce put the reverted text on A's file,
-  and `canUndo` described the app rather than the note on screen. Both now take the newest entry
-  *for `activeNoteRef.current`*, scanning backwards and lifting it out (`takeNewestFor`), so an
-  entry belonging to another live note is never spent reaching one of this note's; a new edit
-  ends that note's redo lineage alone; and `canUndo` / `canRedo` are the open note's, re-read
-  through `onActiveNoteChanged` whenever the active note changes. The handlers read the ref at
-  the moment they run, never a rendered flag, because a button can be painted a beat before the
-  note changes. The stacks stay **shared and capped at 50 entries for the session** — one budget,
-  not a cache per note — and entries of a note that is gone are dropped at the next push, since
-  only the active note's are ever reachable. **Navigation is not an edit**: switching notes
-  pushes and drops nothing, it only closes the typing group and re-reads availability.
-  `undo-scope.spec.ts` proves the two files in the real app.
-- **A typing group belongs to one note.** `commitTextChange` opens a 500 ms group; it now records
-  which note the group is for (`historyGroupNote`) and starts a fresh one the moment the active
-  note differs, so typing in B inside A's window is B's own entry. Before this it joined A's and
-  B had nothing to undo. Leaving a note closes its group, so the first keystroke on return is a
-  new entry rather than a continuation of a burst it was never part of.
-- **History is the editor's.** A snapshot restores the title and the blocks and keeps the live
-  `folder`, so undoing the typing that followed a move never writes the file back to its old
-  place; a move is therefore not itself undoable, like a move in Finder is not undoable from
-  inside a document. Undo never conjures a note: entries for a note that is gone (deleted here,
-  or left in another vault) are discarded rather than followed, and a vault switch drops them
-  outright. The OS Trash is the recovery surface.
-- **A draft is a note that has never held text, and it ends in the ref at the keystroke that
-  first gives it a title or a character of body** (2026-09-08, review §2.6). `commitTextChange`
-  strips `_draft` from the active note as soon as it has text, so everything that reads the ref
-  inside the commit window sees a note: the switch that discards a draft (`discardDraft`), the
-  quit and blur flush that skips one, the rebuild after an outside delete. Before this an effect
-  on React state promoted the draft up to 300 ms after the keystroke, and one character typed
-  then a click on another note, or Cmd+Q, deleted it with no undo. Only the *last* keystroke of
-  a burst is inside that window (a second keystroke publishes the first at once), which is why
-  the review traced it and nobody hit it typing a sentence. Undo keeps the live draft state as
-  it keeps the live folder: undoing a written note's first character never makes it a draft
-  again for the next switch to discard while its file stays on disk. There is no `promoteDraft`;
-  `createDraftNote` and `discardDraft` are the whole lifecycle, and a draft with no text is still
-  never written or trashed. `pending-edits-lifecycle.spec.ts` proves the name, the body and the
-  quit in the real app.
-- **The rebuild after an outside delete keeps what exists only here**, taken from the keystroke
-  ref: drafts, and every note with edits not yet written, whether its write is scheduled or its
-  keystrokes are still inside the text commit. Those are marked dirty and written; a note
-  deleted outside while its edits were unsaved comes back as a file rather than being lost, and
-  a clean one goes. A note the user has deleted whose Trash move is still pending stays deleted.
-  Before this, the rebuild inside a pending commit put the deleted note back, dropped
-  keystrokes, and rewrote every note in the vault.
-- **A vault switch flushes, empties, then switches.** `changeNotesDir` writes the old vault's
-  pending edits (the keystroke ref's version) before the picker opens, and the picker is modal;
-  once a folder is chosen the old notes leave state (`replaceNoteData({})`) and the dirty,
-  deleted, conflicted and retry bookkeeping is cleared before the new vault is read, so nothing
-  of the old vault can be written into the new one. What could not be written before the switch
-  is left behind, as at quit.
-- **A version that has been written is not written again.** The flush records the object it
-  wrote as the last version accounted for (`prevNoteData` in `useFileSystem`), so the text
-  commit that later publishes that same object marks nothing dirty. Before this, a blur or quit
-  flush was followed by a second identical write when the commit fired, and after a vault
-  switch that second write would have landed in the new vault.
-- Proven in `note-ownership.spec.ts` (the real app: undo after a move, a block drop inside the
-  commit window, an outside delete while typing, a vault switch with pending edits) and the
-  unit tests beside `useHistory` and `useFileSystem`.
-
-### The DOM is painted from the ref, and a programmatic edit is read back like a keystroke
-
-The live DOM has a second owner while the user types: the browser. React state is behind it
-by the text-commit debounce, and a render can be a keystroke behind the DOM in two ordinary
-ways: the next keystroke publishes the previous one synchronously, and the debounced commit
-publishes in a transition that React may finish after another keystroke. The rule
-(2026-09-09, review §1.1, §1.15, §3.3): **a text block is painted only on a signal, from the
-block as the keystroke ref holds it, never from the render; and a programmatic change to a
-block's text either edits the live DOM and is read back as a keystroke is, or commits with a
-sync-generation bump and lets the block paint itself.**
-
-- **The signals are mount, a `syncGen` bump and a title-set change**, the deps of
-  `EditableBlock`'s repaint effect; a keystroke is never one. The effect reads the block from
-  `noteDataRef` (`latestBlock`, by id), remembers the caret offset and puts the caret back,
-  clamped. Before this it painted the render's `block.text`: the character typed after a
-  `[x](url)` was lost when the link's styling pass bumped the generation and the next
-  keystroke's render carried the text without it (§1.1), and in dev, StrictMode's double
-  invocation of the consume-once `textOnlyEdit` flag recomputed the title set mid-burst and
-  painted the previous keystroke over the field (§1.15). The special blocks' fields follow the
-  same rule through `useOwnedField`.
-- **A bump alone paints nothing; a commit that publishes at once does, from anywhere.** The
-  wikilink completion used to write the block's HTML by hand on the belief that a bump from
-  WikilinkMenu's native listener never repainted; `wikilink.spec.ts` proves it does, and the
-  hand paint is gone. The tag completion still paints by hand, for the caret alone: the
-  repaint puts the caret back at its offset, which for a completed tag is inside the collapsed
-  trailing space, so the handler parks it on the anchor itself.
-- **A text-only commit never repaints, by design**, so a programmatic edit of a block's text
-  goes through the DOM: edit the text on screen, then `domNodeToMarkdown` → `updateBlockText`,
-  exactly as a keystroke is read back (formatting, the link popover, and now Find → Replace).
-  Replace edits the matched text node itself, so the nth *visible* match is the one replaced
-  (the Markdown-index arithmetic it replaced counted a match inside a link's URL), the
-  replacement is text and never a pattern (`$&` was interpreted), and only text blocks are
-  edited: a match inside a table cell, callout or code block is found and highlighted but left
-  alone. Before this Replace rewrote the Markdown in state alone: the file changed, the screen
-  did not, and the next keystroke wrote the old text back over it (§3.3).
-- Proven in `repaint-ownership.spec.ts` (the real app: Replace then typing, Replace All over a
-  link, typing past a fresh Markdown link) and the unit tests beside `EditableBlock` and
-  `FindBar`. Not changed here: the consume-once `textOnlyEdit` flags still exist and still
-  have no margin against a second reader; with the paint taken from the ref, a spurious
-  recompute now costs a repaint, never a keystroke.
-
-## List depth and numbering belong to the Markdown
-
-- **Bullet markers alternate by depth, in primary ink** (2026-09-16, judged on a mockup of
-  four levels in both themes against filled-then-hollow-throughout): a filled dot at the top
-  level, a hollow ring one level in, filled again at the third, and so on, so
-  `Check the release list` and `Delete the leftover draft` three levels down read as the same
-  group; with every nested level hollow they blended. No square at any depth, Notion's third
-  level, which Tyr dislikes. `TEXT.primary` in both themes and never the accent: the marker is
-  typography, the checkbox is a control, and the small rings need the full ink to hold on the
-  dark sheet (secondary and muted were shown and declined). The pair is drawn as boxes
-  (`bulletMarkerStyle` in `EditableBlock`: a 6px dot, a 7px ring with a 1.25px stroke and a
-  transparent centre, both centred ~13px into the line box so a wrapped item keeps its marker
-  on the first line), never as the `●`/`○` glyphs, which differ in size and weight between
-  fonts and platforms and were a 7px-font `●` before this. Presentation only: the file's
-  marker character and indentation are untouched, depth is `block.indent` as the reader
-  recovers it, and Enter, Tab and every list rule below are unchanged. Diameter and stroke
-  are to be judged at actual size in the app before they move.
-- `listLayout` in `utils/listStructure.ts` supplies the editor's numbers and the writer's
-  prefixes. Sibling counters continue across nested lists and blank rows, restart for a new
-  sequence, and respect an imported sequence's starting number. A child starts at its parent's
-  content column: three spaces after `1. `, four after `10. `, two after a bullet marker.
-- The reader recovers depth from source indentation in context, not spaces divided by two.
-  Noncanonical prefixes and authored number spellings remain on the blocks for preservation;
-  a text-only edit does not renumber or re-indent an imported list.
-- `useHistory` applies `reconcileListEdit` at the user structural-commit seam. Enter, deletion,
-  drag, keyboard reorder and indent/outdent repair affected ordered sibling sequences, retaining
-  their existing start when they remain under the same parent. A new child sequence starts at
-  one. A newly pasted independent list retains its authored markers. Unchanged sequences keep
-  their source spelling, including repeated numbers and leading zeros.
-- Structural edits cannot skip depths or create an orphan: indentation stops one level below
-  the preceding item, and children left without their parent are promoted as needed. Descendant
-  prefixes follow a parent whose indentation or marker width changes. Existing unusual source
-  indentation is not repaired merely because its text is edited.
-- Disk adoption bypasses this repair; Undo and Redo restore the original structural snapshots,
-  including source markers. The numbered-list Electron regression covers creation, indentation,
-  reorder, preservation, Undo and restart; independent-parser cases cover mixed lists and wider
-  markers.
-
-## The paragraph model
-
-Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils/markdown.js`).
-
-- **A paragraph block holds every adjacent plain line**, joined by `\n`; a plain line directly
-  under a list item is the item's lazy continuation, unless the item is empty (an empty item
-  has no paragraph to continue, so `- ` over `foo` is an empty item and then a paragraph, as
-  CommonMark reads it). Enter makes a new paragraph, which the
-  serializer separates from a paragraph or list item above it with one blank line. Shift+Enter
-  inserts a soft break (`insertLineBreak`, so Chromium fires `input` and the normal commit path
-  stores it) in paragraphs, list items and quotes, and acts as Enter in a heading.
-- **One blank line is structure, not a row**, only between a paragraph or list item and the
-  paragraph after it, and only when every blank in the run is exactly empty. Every other blank
-  line, including a run holding a whitespace-only line, is an empty paragraph block, a visible
-  row; the file's final newline is the empty last row. Nothing is recorded that the file does
-  not say: no per-block join state, no note-level framing.
-- **Quotes and callouts do not absorb.** A lazy line under a quote stays its own paragraph and
-  gets no separator, because quote lines are written with `> ` and joining it would change bytes
-  on save. That cost, and the blank-line rule's effect on Obsidian-style notes, are the open
-  decisions in `docs/BACKLOG.md`.
-- **On screen a newline is a `<br>`, and a `<br>` reads back as a newline.** `inlineMarkdownToHtml`
-  gives a trailing newline a second `<br>` so the empty last line stays reachable; both
-  DOM→Markdown walkers ignore a block's final `<br>`. Caret arithmetic (`getCaretOffset`,
-  `placeCaret`, `caretLength`) counts a soft-break `<br>` as one character and the trailing one
-  as none; never clamp a caret to `textContent.length`.
-- **Three pitches, in order** (`PARAGRAPH_GAP` in `EditableBlock`, applied in `GlobalStyles`): a
-  soft break is line height alone; Enter adds 12px after a paragraph or quote; an empty row adds
-  a whole line, so Enter twice is twice a paragraph break. A paragraph after a list item gets the
-  same 12px from a sibling rule on `data-block-type`, which every block root carries; the
-  paragraph's margin lives in the stylesheet so that rule can win. The geometry test in
-  `paragraph-model.spec.ts` guards the order, not the pixels.
-
-- **One blank line before a divider is structure too**, after a paragraph or a list item: dropped on
-  read, written on save, the same run rule as the paragraph separator (`takesSeparator`). Without
-  it `---` under a line of text is a setext heading underline to every other reader, so the
-  paragraph became a heading and the rule vanished. A blank *after* a divider stays an empty row
-  (backlog: blank lines around headings). A file with the tight form still opens as a divider and
-  gains the blank on its first save; sanctioned in the spec.
-
-- **A soft-break line that would start a block is written with its marker escaped**
-  (2026-09-09, review §3.5). A paragraph's text, or a list item's continuation, can hold a line
-  that every reader, this parser included, takes for the start of another block: Shift+Enter
-  then `# bar`, `- bar`, `1. two`, `---`, a fence, `> q`, a table row, an image line; a
-  multi-line paste or Find → Replace can make one too. Written raw, `foo\n# bar` came back as
-  a paragraph and a heading, `foo\n---` as a setext heading, and a soft-broken fence swallowed
-  the rest of the note. The serializer (`readsBackAsText` in `markdown.js`) asks its own parser
-  which lines would open a block and writes those with the marker's first punctuation character
-  backslash-escaped (`\# bar`, `\- bar`, `1\. two`, `\---`), the CommonMark escape every
-  reader renders as the character. Nothing is escaped that the parser already reads as text
-  (`#### four`, `1) x`, an escaped line the file holds), so an authored file is never rewritten
-  by reading it, and the app's own output reads back as the one block that was typed. The
-  escape is shown as written after a reopen (`\# bar`), as any backslash escape is, while the
-  screen before the reopen shows `# bar`; that visible difference is the one product question
-  left here (hiding backslashes was rejected on 2026-09-06, and the parser never unescapes).
-  A heading's syntax has no soft break, so a newline in one (two plain lines pasted into it;
-  Shift+Enter there is already refused) is written as a space, as a callout title's is, and the
-  paste joins the lines with a space so the screen matches the file. `paragraph-model.spec.ts`
-  proves the typed case through a restart; `markdown.test.js`, `markdownInterop.test.js` (the
-  escaped form means one paragraph to markdown-it) and the `tight-markers.md` fixture hold the
-  rule.
-
-### A special block's field is a real field
-
-A table cell, a callout's title or body and a code block's textarea are the block's own
-fields: the editor keeps out of them (above), and each behaves like a paragraph's
-contentEditable rather than like a form control bolted on. The rule (2026-09-08, review
-§1.3, §1.4, §3.1, §3.2, §3.4, §3.8): **what the field holds is what state holds, at the text
-grain, and the file never holds a byte sequence the block's syntax cannot.** Four parts, one
-hook for the paint half (`useOwnedField`), the ordinary text action for the commit half.
-
-- **Read with the editor's reader, commit on every input through `commitTextChange`.** A
-  cell and a callout body are read back with `domNodeToMarkdown`, the textarea by its value;
-  a callout title is plain text. `updateBlockText` serves the code textarea and the callout
-  body as it serves a paragraph; `updateCalloutTitle` and `updateTableCell` are the same
-  action for the other two fields. So the keystroke ref runs ahead of state, undo takes a
-  500 ms burst rather than a character, and the editor skips its render (the comparator
-  ignores code text; it repaints a code block's language and a callout's type and title).
-  Before this, the callout committed `innerText` on blur, which stripped every `**bold**`,
-  `[[link]]` and backtick from a body on the first click in and out; the table committed on
-  blur alone; the code block committed every keystroke as a structural change, one undo
-  entry per character and a render of every block.
-- **A field is painted only when it does not already hold the latest committed text, and
-  the keystroke ref decides, never the render** (`useOwnedField`: `latest()` reads the block
-  from `noteDataRef` by id). A text commit publishes in a transition, which React may finish
-  after the next keystroke, so a render can carry a text one keystroke behind the field;
-  judged against that text the cell was repainted and the keystroke lost (`Tea leavs`, seen
-  in the real app while writing the spec). Painted: on mount, when a row is inserted above a
-  cell, when a type change renames a callout, and, forced, on a `syncGen` bump, the one case
-  where the same text must still be repainted. Never on a render that merely caught up with
-  the keystrokes. The code block's textarea is uncontrolled and its highlight overlay is
-  painted from the input handler; a controlled `value` held the field to the state the
-  commit debounce is behind, and the render path once stripped the fence's blank first and
-  last lines, which made Enter at the end of the block a no-op (the newline was written and
-  stripped back) and lost a fence's own blank lines at the first keystroke.
-- **A structural operation on the block is a function of the block as the ref holds it.**
-  `updateTableRows(noteId, blockIndex, reshape)` applies `reshape(rows, alignments)` inside
-  the commit, so a cell edit still pending is inside the rows it reshapes. Before this, every
-  row and column operation computed new rows from the rendered ones and wrote them, and text
-  typed into a cell was gone the moment the cell's own context menu inserted a row (the menu
-  keeps focus in the cell, so it never blurred). `useTableInteractions` reads `dataRef` for
-  geometry and focus only, never for the rows an operation writes.
-- **The serializer enforces the syntax.** A row is one line: a newline inside a cell is
-  written as `<br>`, the line break GitHub and Obsidian read in a cell, and `parseTableRow`
-  maps that exact form back (`<br/>` and `<br />` stay the text they are, so their bytes
-  hold; `table-line-breaks.md` in the preservation corpus). A newline in a callout title is
-  written as a space. Written raw, a cell's newline broke the row and every row below it
-  into a paragraph on the next open. In the cell, Enter moves down a row (a new one after the
-  last) and Shift+Enter is the browser's line break; in the callout title, Enter and
-  Shift+Enter both move to the body.
-- Proven in `special-block-fields.spec.ts` (the real app: the cell line break through a
-  restart, the callout click-through and edit, Enter at the end of a fence with undo by burst,
-  the pending cell edit through a menu row insert) and the unit tests beside the three
-  components, the hook, the serializer and the comparator. Not changed here: Cmd+Z inside a
-  code block's textarea reaches the app's undo as any Cmd+Z does. (Slash insertion into these
-  three lands in the block's own field since 2026-09-09; see the slash menu section.)
-
-### Fenced code keeps its authored boundaries
-
-The visible highlight layer and the transparent textarea share their line geometry. Every
-`.code-line`, including an empty one, takes at least one line-height (`1lh`); otherwise a blank
-line collapses in the highlight layer and every visible line below it targets the wrong text
-when clicked. The real-Electron pointer regression clicks visible digits after leading and
-consecutive blank lines, edits them and checks the saved bytes, with and without highlighting.
-
-Backtick and tilde fences open one code block; its entire body is literal textarea text.
-A closer uses the same character and at least the opener's length. `fenceSource` on the code
-block retains non-default opening and closing lines, including whitespace and an absent
-closer, and distinguishes an empty body from one blank line. The parser and serializer own
-this spelling; the editor does not interpret or normalise code contents. New blocks use
-backticks. An intentional body edit that introduces a closing-looking line grows the fence
-just enough to keep that line code; changing the language changes the info string. An unclosed
-import stays unclosed at EOF, but adding a block after it writes a closer so the new block
-cannot be swallowed on reopen. Preservation and interop tests cover the boundaries;
-`tilde-fences.spec.ts` proves outside and inside edits, Undo/Redo and restart against disk.
-
-### Tables are ragged on disk and stay ragged
-
-- **A row holds exactly the cells its Markdown line holds** (2026-09-07). The parser neither
-  slices a row wider than the header nor pads a shorter one, and the serializer writes each
-  body row with its own cells; the separator row alone follows the header's width. Before
-  this, `| 1 | 2 | 3 |` under a two-column header was written back as `| 1 | 2 |` on any save
-  (review H9), and every short row was rewritten. A GFM reader ignores the extra cells and
-  pads the short rows itself, so the file's meaning outside is unchanged either way; the
-  bytes are what this rule protects.
-- **The grid is drawn as wide as the widest row** (`tableColumnCount` in
-  `utils/tableShape.ts`), header included, and a cell a row does not reach is drawn empty.
-  A row gains cells only when one is written into it (`withCell` pads that row up to the
-  written column and no further). **An explicit column operation may pad a row to the
-  operated visual column, a passive open or save never pads anything**: adding or inserting a
-  column makes that column in every row, so a short row is padded up to it first
-  (`withColumnInserted`; `| Milk |` in a three-wide grid becomes `| Milk |  |  |  |` when
-  column four is added), and a column drag moves what a short row has without leaving a
-  hole (`moveCell`).
-  Don't reintroduce a pad-on-read or a slice-to-header anywhere; keep the table's shape
-  arithmetic in `tableShape.ts` rather than in the component or the hook.
-
-### Dividers and tables are selectable blocks
-
-- **A divider, an image or a table is addressed as a whole, Notion-style** (`isSelectableBlock`
-  in `utils/domHelpers.js`; the state is `selectedBlockId`, one for all three). Selected, a band
-  appears around it, the block's own box with a 4px radius reaching 4px past the text column
-  each side, accent at 10% (Light) / 18% (Dark) (`utils/selectionBand.ts`, theme-scoped by
-  `theme.name`; the divider's rule inside lifts to accent at 40% so it stays visible in the
-  tint); Backspace or Delete removes it (`deleteWholeBlock` in `EditorArea`, which lands the
-  caret at the start of the next text block, or the end of the previous one); Enter opens a
-  paragraph under it, for a table too, by decision (one grammar for every selectable block, and
-  the only keyboard route to a paragraph under a table that ends the note; ArrowUp from that
-  paragraph re-enters the table); Escape deselects and moves nothing; a printable character
-  deselects and types where the caret already is. No hover state, default cursor: the editor
-  stays clean at rest, and the block never changes height. A click selects a divider or an
-  image; a click on a table focuses the cell, and **Escape from a cell selects the table**
-  (`selectWhole` in `TableBlock`: the selection is dropped and the editor root focused, so the
-  next key reaches `handleSelectedBlockKey` and not the cell).
-- **Backspace from the block below and forward Delete from the block above select it first.**
-  Backspace at the start of the block below (empty or not) selects the block instead of merging
-  text across something the user can see; the second Backspace removes it and lands the caret
-  at the start of the next text block (the end of the previous one if there is none), so a third
-  Backspace merges as it always did. Forward Delete at the end of the block above is the mirror
-  (the block-root rule, above; `reachAcross`). Before the table joined (2026-09-10), Backspace
-  under a table stepped over it and deleted *that paragraph* into the one above, forward Delete
-  was refused, and with no Delete table in the menu and the header row and last column
-  undeletable, a table could not be removed at all. Code, callout and file blocks are still
-  stepped over (`landingBefore` / `landingAfter` in `useKeyboardHandlers`); the same rule
-  reaches them once the table has been judged live.
-- **The arrows stop on a divider or image and walk through a table.** ArrowDown from the last
-  line above selects a divider, ArrowDown again puts the caret at the start of the next text
-  block; ArrowUp mirrors it. A table takes the caret instead: ArrowDown from above enters its
-  first cell, ArrowUp from below its last row (`ownedField(…, "end")`), and inside the grid the
-  arrows move between cells only at a cell's edges (first or last line for Up and Down, first
-  or last character for Left and Right, wrapping rows), leaving at the header's top, the last
-  row's bottom, and the first and last cell (`handleCellKeyDown`; `onBlockNav`, which also
-  selects a divider or image neighbour rather than giving it a caret). Inside a cell the arrows
-  are the browser's; Shift+Arrow is never intercepted, and nothing selects a range of cells, by
-  decision. Backspace and Delete never traverse: outside they select the table, inside they
-  edit the cell.
-- **The root registers itself in the block ref map** from its own effect (`SpacerBlock`,
-  `TableBlock`), so the gutter grip can lift it and drop geometry sees it; the grip centres on
-  the divider's rule itself (`firstLineRect` in `BlockDragHandle` takes a block's `hr` as its
-  line), where the text-line fallback sat it 8px low. It must not share `EditableBlock`'s
-  `elRef`: that ref's repaint effect would replace the rule with a `<br>` (a parsed divider
-  carries `text: ""`) and paint a table's empty `text` over its grid. `findNearestBlock` skips
-  non-editable blocks so the mouse-up caret never lands in one.
-- Deliberately absent: a hover treatment on the rule, a block menu, Duplicate or Turn into.
-
-### The table is a compact grid you can enter and leave
-
-- **Content-sized, Obsidian's model, and it shrinks before it scrolls** (2026-09-10). The grid
-  is as wide as its content at the column's left, capped at the column (`width: fit-content;
-  max-width: 100%` on the root). Past the column, auto layout shares the width between the
-  columns in proportion to their content and wraps text, the way Chrome's tabs shrink, down to
-  a **72px floor per cell** (about six characters); only past that does the grid scroll
-  sideways inside its own scroller (`.table-scroller`, `overflow-x: auto`, the app's own pill
-  scrollbar; the page never scrolls). The **240px minimum is the table's** (`min-width` on
-  `.table-block`), so an empty 2×2 still reads as a small grid while eight empty columns fit
-  a 608px column. A 120px per-cell minimum was the first cut and made six columns scroll at
-  once. Markdown holds no column width, so Notion's fixed, resizable columns are out by the
-  spec; the costs are that the grid reflows as you type, and that at the floor a word longer
-  than the cell breaks mid-word (`overflow-wrap: anywhere`, kept so a long URL cannot force a
-  column; `break-word` would trade that the other way). Before this `.table-block { width:
-  100% }` filled the column (606px of 608 for an empty table). The header is bold with no
-  fill; **no focus ring on a cell**: the caret is
-  the signal, as in a paragraph (the 2px accent inset was removed the same day). **One grid,
-  one thickness, square corners**: the cells' collapsed 1px borders are the whole grid, outer
-  edge included; the scroller draws no border of its own (it doubled the edge to 2px) and no
-  radius (judged against Obsidian's grid, 2026-09-10).
-- **The add-row and add-column boxes are Obsidian's**: a bordered box the grid's height past
-  its right edge and its width under its bottom edge (18px, `ADD_BAR`; 28 read too heavy beside
-  a 1px grid and 14 too fussy to hit), sharing the grid's own border line (no left or top border
-  of its own), a Lucide `PlusIcon` at 16px on the navigation stroke (`nav`; the content stroke
-  rendered 1px at that size, the same as the grid line, and vanished) centred, in
-  `TEXT.muted` and `TEXT.primary` on hover. Shown in CSS only while the pointer is on the box
-  itself, past that edge (`.table-add-bar:hover`; never a JS hover state); a table at rest,
-  hovered over its cells or being typed in shows none. Click adds one row or column; drag adds
-  several with the counter badge (`useTableInteractions`). A reveal on table hover or cell
-  focus was built and rejected the same day: the boxes read as chrome on every table you
-  touched.
-- **A new column is empty.** `withColumnInserted` writes `""` into every row, the header
-  included; the `Col N` label it used to write reached the file as text nobody typed.
-- **The row and column strips left of and above the grid stay invisible** (24px, click selects,
-  hold 400ms and drag reorders; Backspace on a selected row or column removes it). **The gutter
-  grip stacks above the row strip** (`Z.BLOCK_HANDLE`, one step over `ELEMENT_OVERLAY`,
-  2026-09-10): the strip's 24px at `left: -24px` is exactly the grip's footprint, and below it
-  the grip was visible but every press selected the header row and the table could not be
-  dragged. The strip keeps the rest of its height. Judged after
-  this pass: if discovering row or column selection is a struggle in daily use, add Obsidian's
-  hover handles; if not, low chrome wins.
-- **The cell menu is the note-row menu's grammar, anchored to the cell** (`TableContextMenu`,
-  2026-09-10): `role="menu"` with the arrows, Enter and Escape on a document listener, the focus
-  trap parked on the container, elevated ground, divider border, `theme.modalShadow`, 12.5px
-  labels in the app face, a Lucide glyph per item at the navigation stroke (the arrow-to-line
-  family for the four inserts, where the direction is the meaning and the "between" glyphs blur
-  at 16px; Trash for the three deletes, red with their labels), and `useMenuPosition`. It opens
-  **under the table, in line with the clicked column: 4px under the grid's bottom edge, left
-  edge on the cell's, flipping above the whole grid when there is no room**, not at the pointer
-  and not under the cell (from a header cell that covered the very column it was about to act
-  on; judged live 2026-09-10): every item acts on that column or the clicked row, and the menu
-  reads as attached to the table rather than floating where the click landed. On a very tall
-  table it can sit a way below the pointer; accepted for the short tables notes hold. It
-  portals to `body`, which is why `body` now carries the
-  app font: portalled to a font-less body it rendered in the browser's serif. It ends with
-  **Delete table** in every context, the discoverable path to what Escape then Backspace also
-  does (`deleteWholeBlock`, so the caret lands under where the table was). The header row
-  cannot be deleted (GFM needs one) and neither can the last column; the table goes as a whole.
-  **No alignment items** (removed 2026-09-10, by decision): a file's `:---:` and `---:` still
-  render the column and round-trip through `alignments`, but the app offers no control to set
-  them; the menu is rows, columns and the table.
-- Deliberately absent: column resizing and a header toggle (Markdown cannot hold either),
-  Shift+Arrow or any cell-range selection, a click on the grid's chrome to select the whole
-  table (the strips select rows and columns; Escape selects the table).
-- Proven in `table-block.spec.ts` (the real app: the typed `|||`, the width, the bars, Escape
-  then Backspace, Cmd+Z, Backspace from below, Delete from above, the arrows in, through and
-  out, Delete table from the menu, the empty added column) and the unit tests beside
-  `TableBlock`, `TableContextMenu`, `tableShape`, `domHelpers` and `crossBlockEdit`.
-
-## Paste keeps the block you are in
-
-The rule lives in `utils/pasteBlocks.ts`, shared by the internal (`text/boojy-blocks`) and
-external multi-line paste paths; single lines paste inline.
-
-- **A block holding text never changes type on paste.** Plain text merges at the caret and keeps
-  the block's type, checked state and indent; plain lines with no blank line between them stay
-  together as soft breaks inside that block, and a blank line in the clipboard starts a new
-  block; structured Markdown becomes its own block beside it
-  (in front when the caret is at the start, splitting the text in the middle). Only an *empty*
-  block is taken over, and only by structure such as `## Heading` or `- [ ] task`. A single
-  structured line does that too; anywhere else a single line pastes inline as text.
-- **One terminal line ending on the clipboard is incidental** and is stripped (LF or CRLF). Most
-  apps copy a whole line with its break, which is why pasting used to look random. A deliberately
-  copied blank line still arrives as a block.
-- **A selection inside one block copies as text**, as in every other editor; structure travels
-  only when the selection spans two or more blocks (a triple-click that ends at the very start of
-  the next block still counts as one). Copying a list item's text and pasting it on a blank line
-  therefore gives the text without the list. That looks like a missing feature; it is deliberate.
-- **Copy writes two public formats and one private one, and the public pair says structure
-  exactly when the private one does** (2026-09-16, `utils/clipboardCopy.ts`; the handler is
-  `handleEditorCopy`). `text/boojy-blocks` travels whenever the selection spans blocks, and the
-  paste side treats it as structure only when a block was wholly selected (`fullBlock`, the
-  test above). In that case, a *whole-block copy*, `text/plain` is the blocks' Markdown as
-  `blocksToMarkdown` writes it and `text/html` their structure: headings, nested `<ul>`/`<ol>`
-  (a numbered run keeps the number the list shows, as `start`; the private format carries no
-  number, the destination's list numbers it), `<blockquote>`, `<pre><code>`, `<hr>`, `<table>`,
-  a callout as a quote with a bold title; an image, file or embed is its `![[…]]` line as text,
-  a reference into the vault and never the file. A partial edge block beside a whole one is
-  written as the block it is part of (`# 327` from a heading's tail), which is what the private
-  format makes of it too. An *ordinary selection*, inside one block or spanning blocks without
-  wholly covering any, is text: `text/plain` the visible text with no marker added for the
-  formatting it carries, `text/html` the inline formatting as elements. Neither public format
-  carries the ↗ icon or the renderer's classes and data attributes; a wikilink, which has no
-  destination outside the vault, is its `[[target|display]]` notation in both formats rather
-  than its display word; a `#tag` is text; an external link is its text in plain and an `<a>`
-  with its href alone in HTML. Before this the plain text was the words with every marker
-  stripped (`stripMarkdownFormatting`, the word-count helper) and the HTML unwrapped every block
-  to a `<br>`, so a run of headings and a list pasted into Obsidian as flat lines. The Markdown
-  is the app's spelling, not the file's bytes: a `*` bullet is written `-`, an authored `03.` is
-  `3.`, imported list indentation and heading spacing are canonical (the copied entries carry no
-  `indentStr`, `marker`, `numRaw` or `headingSource`), and the writer's blank line between two
-  paragraphs is written whether or not the file had it; special blocks are copied whole and keep
-  their source spelling. `copy-clipboard.spec.ts` proves the payloads and the private-format
-  paste in the real app on the event's own DataTransfer; the suite never touches the OS
-  clipboard, so paste into Obsidian, TextEdit plain and TextEdit rich was checked by hand
-  (2026-09-16) and is not automated.
-- **A paste that keeps a block's id and type must repaint that element directly**
-  (`repaintKeptBlock`). The editor skips React renders for text-only changes, so a state-only
-  write reaches disk but never the page, and the next keystroke writes the stale page back over it.
-- **A rich single-line paste is the app's own insertion** (2026-09-09, review §3.6): the
-  clipboard's HTML is sanitised to inline nodes (`sanitizeInlineFragment`: formatting, links,
-  wikilinks, `<br>`; block elements unwrapped to line breaks; never a wrapper element) and put
-  in at the caret with `insertNode`, then the block is read back as after a keystroke. Before
-  this the sanitiser returned a `<div>` that its callers appended as a child, so `<b>bold</b>`
-  became `<strong><div>bold</div></strong>`, `execCommand("insertHTML")` split the paragraph into
-  blocks and everything after the pasted word was lost from the file; and `insertHTML` rewrote
-  the space beside the insertion into a non-breaking space that reached the file as U+00A0.
-  Plain text still goes through `insertText`, as typing does.
-- **The DOM read-back is verbatim; only marked scaffolding is dropped** (2026-09-09, review
-  §3.5). One walker (`walkNode` in `inlineFormatting.js`) serves the live element and serialised
-  HTML alike. Text is read as it is. A formatting element wraps whatever it holds, a space
-  included (`a * * b` renders as `<em> </em>` and reads back as `a * * b`); only one holding
-  nothing, the residue of toggling a format off, is dropped, in the walker and the sanitiser
-  alike. A link is the bare URL only when it is the editor's own autolink (`bare-url` class) and
-  its text still is its URL, so an explicit `[url](url)` (Notion's bookmark form) stays one. The
-  ↗ icon is skipped as the `external-link-icon` span it is; a ↗ typed into link text is text
-  (`linkText` in `domHelpers` reads a link's text without the icon for the popover). The
-  contract is `tests/utils/domRoundTrip.test.js` and `inline-preservation.spec.ts` in the real
-  app. Known residue, the Markdown class rather than the DOM seam: the inline renderer mis-reads
-  `<https://…>` autolinks (the escaped `&gt;` is linked) and autolinks a bare URL inside a
-  link's text, both `it.fails` in the contract; a soft-break line starting with `#`, `-`, `---`
-  or a fence is written as such and re-read as block structure (the serialiser, not the DOM);
-  and a typed trailing space Chromium holds as `&nbsp;` reaches the file as U+00A0 when the
-  save lands before the next keystroke (backlog, Data safety).
+- Dragging a note moves the real `.md` file: onto a folder files it there, onto the Notes row
+  or the empty space under the tree moves it to the root. Drag never sets a position. Folders
+  are always alphabetical. Dragging a folder moves its directory the same way, never into
+  itself or its own subtree.
+- The ghost is a title-only pill with `theme.dragShadow`; releasing anywhere that isn't a
+  target flies it back. **Dropping over the editor does not open the note**; every drag ends
+  by suppressing the trailing click.
+- Existing `.boojy-meta.json` files are untouched and unread; don't reintroduce a reader.
 
 ## Narrow desktop is still desktop
 
-**Width changes how much room Boojy Notes has, not what it is.** The mobile navigation model is a
-touch-device thing, not a width thing. Two separate questions drive layout: is this a touch
-device (`useIsMobile.ts`, misnamed; rename in the backlog), and is the sidebar open (`collapsed`
-in `LayoutContext`, written by the toggle and by nothing else). Narrowing a desktop browser
-therefore does not preview the mobile layout; use device emulation.
+Width changes how much room the app has, not what it is. Two separate questions drive layout:
+is this a touch device (`useIsMobile.ts`, misnamed), and is the sidebar open (`collapsed` in
+`LayoutContext`). Narrowing a browser does not preview mobile; use device emulation.
 
-- **The sidebar has one presentation: in the layout, at every width** (2026-09-14). Shown, it
-  pushes the editor, the way Apple Notes and Obsidian behave at their minimums, and one click on
-  the toggle gives the room back. Until this a window narrower
-  than the sidebar plus a 560px editor floor took the sidebar out of the layout and brought it
-  back as an overlay over the note behind a scrim, with its own open state, a hysteresis band
-  on the threshold, an Escape that closed it and an open-note that dismissed it
-  (`useSidebarFits`, `overlayOpen`, `Z.SIDEBAR_OVERLAY`, all gone). It was a second identity
-  for the same panel, the one desktop surface that floated, and the smoother of the two
-  animations only because nothing beneath it moved. Don't bring it back to make room.
-- **The sidebar yields before the note does** (2026-09-14, judged live by Tyr at 600px with the
-  sidebar dragged wide: the note was 215px). The dragged width is the preference and a resize
-  never rewrites it; what is drawn is `sidebarWidthFor(preference, window.innerWidth)` in
-  `constants/layout.js`: the preference capped so the editor keeps `EDITOR_FLOOR_W` (316px,
-  about 268px of text at the gutter floor, some 34 characters), and never below `SIDEBAR_MIN_W`.
-  **The sidebar minimum is the header row's own width plus 2px of air, derived, never a number
-  of its own** (2026-09-16): `SIDEBAR_HEADER_W` = the traffic-light inset + the wordmark's 69px
-  at 18px tall + Search and the toggle at their gap + the right inset, the widest the row ever
-  is (macOS out of full screen), so 225 (`HEADER_AIR`, 8 at first, then 4, then 2 the same day at
-  Tyr's ask: Search's box 2px off the wordmark, its glyph 9). It was a bare 200 until then, sized when the row held
-  one button; Search joined the toggle on 2026-09-16 and the row came to 226, so at the minimum
-  the toggle was clipped by 26px (nothing in the row can shrink and the wrapper clips). The
-  chrome-row constants (`CHROME_BTN`, `BTN_GAP`, `MAC_TRAFFIC_INSET`, `HEADER_RIGHT_INSET`,
-  `WORDMARK_H`/`WORDMARK_W`) live in `constants/layout.js` for that derivation, re-exported by
-  `EditorChrome`; add a control to the row and the minimum follows. The
-  drag clamp reads the same cap (`maxWidth` into `usePanelResize`), so the divider stops where
-  the window would squeeze the note. **The window minimum is the two floors and the handle,
-  `WINDOW_MIN_W` = `SIDEBAR_MIN_W` + 4 + 316 (545)**, which `electron/main.js` imports; it is not
-  a number of its own, so don't set `minWidth` by hand. `LayoutContext` exposes the drawn `sidebarWidth`;
-  the preference is internal. `chrome-row.spec.ts` drags the divider wide, narrows the window
-  and measures the cap, the floor and the return in the real app.
-- **The column gives up its air before its text** (2026-09-14): the side gutters ramp from 56px
-  at 800px of editor width down to 24px at 560px (they bottomed out at 400px before, so the
-  600px window still carried 45px gutters), and the decorative left offset is spent by 640px.
-  The 24px floor is the block drag grip's (20px plus its 4px gap live in the left padding); the
-  right side matches it because asymmetric gutters read as a mistake. At the minimum the note
-  has 472px of text alone and 268px beside the narrowest sidebar.
+- **The sidebar has one presentation: in the layout, at every width.** Shown, it pushes the
+  editor. The overlay sidebar (`useSidebarFits`, `overlayOpen`, a hysteresis band) is gone;
+  don't bring it back to make room.
+- **The sidebar yields before the note does.** The dragged width is the preference; what is
+  drawn is `sidebarWidthFor(preference, innerWidth)`: capped so the editor keeps
+  `EDITOR_FLOOR_W` (316), never below `SIDEBAR_MIN_W`. **The sidebar minimum is derived from the
+  header row** (`SIDEBAR_HEADER_W` + `HEADER_AIR`, 225): add a control to the row and the
+  minimum follows. **The window minimum is `WINDOW_MIN_W` = `SIDEBAR_MIN_W` + 4 + 316** (545),
+  imported by `electron/main.js`; never set `minWidth` by hand. `chrome-row.spec.ts`.
+- **The column gives up its air before its text:** gutters ramp from 56px at 800px of editor
+  width to 24px at 560 (`EditorArea`); the 24px floor is the block grip's.
 
 ## Testing notes
 
-- `Sidebar.test.jsx` asserts the CSS reveal hooks (class names, tabIndex) rather than computed
-  opacity, because jsdom can't evaluate the GlobalStyles stylesheet. Its note-row test allows
-  the ··· svg and forbids only the file icon.
+- `Sidebar.test.jsx` asserts the CSS reveal hooks (class names, tabIndex), not computed
+  opacity; jsdom can't evaluate the stylesheet.
 - `useActiveNote.test.js` guards the persistence migration; `osTrash.test.ts` the legacy
-  `.trash` migration and managed-file-only deletion; `SlashMenu.test.jsx` the keyboard-first
-  selection against stationary-pointer hover.
-- Theme mocks need `ACCENT.onAccent` or components using it throw. `activeTabBg` and
-  `settingsTab` don't exist; don't reintroduce them in mocks.
+  `.trash` migration; `SlashMenu.test.jsx` keyboard-first selection.
+- Theme mocks should carry `ACCENT.onAccent`. `activeTabBg`, `settingsTab` and
+  `settingsFontSize` don't exist; don't reintroduce them.

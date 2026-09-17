@@ -467,7 +467,7 @@ export default memo(function CodeBlock({
   );
 });
 
-/* ---- Context menu rendered as a portal ---- */
+/* ---- Context menu, position: fixed inside the column (not a portal) ---- */
 function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete }) {
   const [langSub, setLangSub] = useState(false);
   const menuRef = useRef(null);

@@ -19,7 +19,7 @@ import {
  * on the belief that a sync-generation bump from WikilinkMenu's *native*
  * keydown listener never repainted; proven false in the real app on
  * 2026-09-09 (`wikilink.spec.ts`), and the block now paints itself from the
- * keystroke ref like every other programmatic change (the UI rule, "One
+ * keystroke ref like every other programmatic change (the editor rule, "One
  * owner for note state").
  *
  * A click resolves the *note* a target names (`utils/wikilinkTarget`), so
