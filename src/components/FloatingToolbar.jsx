@@ -2,10 +2,8 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { FormatIcon } from "./Icons";
-import { isMac } from "../utils/platform";
+import { TOOLTIP_REST_MS, Tooltip, shortcutLabel } from "./Tooltip";
 
-/** How long the pointer rests on a button before its name and shortcut show. */
-export const TOOLTIP_REST_MS = 400;
 /** Button box. The 32px control tier read chunky hovering over a line of text (judged 2026-09-10). */
 const BTN = 28;
 /**
@@ -20,8 +18,8 @@ const CHIP_ROOM = 36;
 
 /**
  * The strip's order, names and shortcuts. The shortcuts are the map in
- * useKeyboardHandlers; the two must agree, and this is the one place a
- * shortcut is shown to the user.
+ * useKeyboardHandlers; the two must agree, and the chip is the one place a
+ * shortcut is shown to the user (the chrome row shows the shell's the same way).
  */
 export const FORMATS = [
   { id: "bold", label: "Bold", key: "B" },
@@ -32,12 +30,6 @@ export const FORMATS = [
   { id: "link", label: "Link", key: "K" },
 ];
 
-/** `⇧⌘S` on a Mac, `Ctrl+Shift+S` elsewhere: each platform's own modifier order. */
-export function shortcutLabel({ key, shift }, mac = isMac) {
-  if (mac) return `${shift ? "⇧" : ""}⌘${key}`;
-  return `Ctrl+${shift ? "Shift+" : ""}${key}`;
-}
-
 /** Whether a chip above `bar` would fall above the top of the scroll container it lives in. */
 export function chipWouldClip(bar) {
   if (!bar) return false;
@@ -45,46 +37,6 @@ export function chipWouldClip(bar) {
   const scroller = bar.closest(".editor-scroll");
   const limit = scroller ? scroller.getBoundingClientRect().top : 0;
   return top - CHIP_ROOM < limit;
-}
-
-function Tooltip({ label, shortcut, below }) {
-  const { theme } = useTheme();
-  const { BG, TEXT } = theme;
-  return (
-    <div
-      role="tooltip"
-      aria-hidden="true"
-      data-testid="format-tooltip"
-      style={{
-        position: "absolute",
-        left: "50%",
-        transform: "translateX(-50%)",
-        ...(below ? { top: "calc(100% + 6px)" } : { bottom: "calc(100% + 6px)" }),
-        display: "flex",
-        alignItems: "baseline",
-        gap: 8,
-        padding: "4px 8px",
-        borderRadius: 5,
-        background: BG.elevated,
-        border: `1px solid ${BG.divider}`,
-        color: TEXT.primary,
-        // A control's label, read at a glance: 12px/500, a step above the link
-        // tooltip's 11px, which shows long URLs and wants to be quiet. The
-        // shortcut sits in the UI face on the same baseline; in mono `⌘B` read
-        // as a code snippet.
-        fontSize: 12,
-        fontWeight: 500,
-        lineHeight: "16px",
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-        zIndex: Z.TOOLBAR,
-        animation: "fadeIn 0.1s ease-out",
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ color: TEXT.muted, fontWeight: 400 }}>{shortcut}</span>
-    </div>
-  );
 }
 
 function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow }) {
@@ -129,7 +81,14 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
       }}
     >
       <FormatIcon name={format.id} />
-      {tip && <Tooltip label={format.label} shortcut={shortcutLabel(format)} below={tipBelow} />}
+      {tip && (
+        <Tooltip
+          label={format.label}
+          shortcut={shortcutLabel(format)}
+          placement={tipBelow ? "below" : "above"}
+          testId="format-tooltip"
+        />
+      )}
     </button>
   );
 }

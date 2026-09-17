@@ -37,7 +37,7 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(open.column).toBe(open.wrapper);
     expect(open.transform).toBe("none");
 
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
     // Hidden means hidden: once the slide ends the column is
     // `visibility: hidden`, so its rows are neither visible nor focusable.
     await expect(row).toBeHidden();
@@ -56,11 +56,13 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(hidden.transform).not.toBe("none");
 
     // The history pair sits past the trio, one group-gap on, at rest.
-    const trioRight = await h.page.getByTitle("New note", { exact: true }).boundingBox();
-    const undo = await h.page.getByTitle("Undo").boundingBox();
+    const trioRight = await h.page
+      .getByRole("button", { name: "New note", exact: true })
+      .boundingBox();
+    const undo = await h.page.getByRole("button", { name: "Undo", exact: true }).boundingBox();
     expect(undo!.x - (trioRight!.x + trioRight!.width)).toBe(12);
 
-    await h.page.getByTitle("Show sidebar").click();
+    await h.page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
     await expect(row).toBeVisible();
     await expect(newNote).toBeVisible();
     await expect.poll(async () => (await widths()).wrapper).toBe(open.wrapper);

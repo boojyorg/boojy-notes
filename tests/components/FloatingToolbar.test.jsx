@@ -32,12 +32,8 @@ vi.mock("../../src/hooks/useTheme", () => ({
 vi.mock("../../src/utils/platform", () => ({ isMac: true }));
 
 // ── Import component after mocks ────────────────────────────────────────────
-import FloatingToolbar, {
-  FORMATS,
-  TOOLTIP_REST_MS,
-  chipWouldClip,
-  shortcutLabel,
-} from "../../src/components/FloatingToolbar.jsx";
+import FloatingToolbar, { FORMATS, chipWouldClip } from "../../src/components/FloatingToolbar.jsx";
+import { TOOLTIP_REST_MS, shortcutLabel } from "../../src/components/Tooltip";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const defaultFormats = {

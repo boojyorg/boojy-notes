@@ -14,7 +14,7 @@ import { WINDOW_MIN_W } from "../../src/constants/layout";
 import { type AppHandle, expandAllFolders, launchApp, MOD, waitForFile } from "./harness";
 
 const SUBPIXEL = 0.5;
-const LEFT_CONTROLS = ["Show sidebar", "Search notes", "New note", "Undo", "Redo"];
+const LEFT_CONTROLS = ["Expand sidebar", "Search notes", "New note", "Undo", "Redo"];
 
 async function settled(page: Page) {
   await page.evaluate(async () => {
@@ -42,13 +42,13 @@ async function setWidth(h: AppHandle, width: number) {
 async function rowGeometry(page: Page, controls: string[]) {
   const path = await page.getByTestId("note-path").boundingBox();
   const pane = await page.locator(".editor-scroll").boundingBox();
-  const more = await page.locator("button[title='Note actions']").boundingBox();
+  const more = await page.locator("button[aria-label='Note actions']").boundingBox();
   expect(path, "path box").not.toBeNull();
   expect(pane, "pane box").not.toBeNull();
   expect(more, "··· box").not.toBeNull();
   let controlsRight = 0;
   for (const title of controls) {
-    const box = await page.locator(`[title='${title}']:not([inert] *)`).boundingBox();
+    const box = await page.locator(`[aria-label='${title}']:not([inert] *)`).boundingBox();
     expect(box, `${title} box`).not.toBeNull();
     controlsRight = Math.max(controlsRight, box!.x + box!.width);
   }
@@ -88,16 +88,16 @@ test("the path shows the note's folders before its name, centred on the pane, in
     expect(g.right).toBeLessThanOrEqual(g.moreLeft - PATH_AIR + SUBPIXEL);
 
     // Collapsed: the same path, still on the pane's centre (the pane is the window now).
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
     await settled(h.page);
-    await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+    await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
     expect(await folders(h.page)).toEqual(["University", "Archive"]);
     g = await rowGeometry(h.page, LEFT_CONTROLS);
     expect(Math.abs(g.centre - g.paneCentre)).toBeLessThanOrEqual(1);
     expect(g.left).toBeGreaterThanOrEqual(g.controlsRight + PATH_AIR - SUBPIXEL);
 
     // A root note is its name alone: no folder, no ellipsis, no `Notes /`.
-    await h.page.getByTitle("Show sidebar").click();
+    await h.page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
     await settled(h.page);
     await h.openNote("Job Application");
     expect(await folders(h.page)).toEqual([]);
@@ -115,9 +115,9 @@ test("narrowing the window drops the outer folders first and never puts the path
     await expandAllFolders(h.page);
     await h.openNote("Todd's Note");
     await setWidth(h, 1200);
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
     await settled(h.page);
-    await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+    await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
 
     // Continuously, not at a few fixed widths: every 20px from wide to the minimum.
     let shownBefore = Number.POSITIVE_INFINITY;
@@ -182,9 +182,9 @@ test("a long name in a deep folder gives up its folders before a letter of itsel
     await expandAllFolders(h.page);
     await h.openNote(name);
     await setWidth(h, 1200);
-    await h.page.getByTitle("Hide sidebar").click();
+    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
     await settled(h.page);
-    await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+    await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
     // Wide: the whole path.
     expect(await folders(h.page)).toHaveLength(3);
     expect(await nameCut(h.page)).toBe(false);

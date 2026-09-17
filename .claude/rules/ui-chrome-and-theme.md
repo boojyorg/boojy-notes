@@ -115,9 +115,20 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
   is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
 - **Undo and Redo are chrome buttons before the note's name** (Lucide `Undo2`/`Redo2`, 18px,
-  navigation stroke, in `ChromeButton`), natively disabled when the *open note* has nothing to
-  take back. A press keeps the editor's selection (`keepSelection`). Back is not undo: no
-  straight arrows.
+  navigation stroke, in `ChromeButton`), `aria-disabled` when the *open note* has nothing to
+  take back (the attribute, not `disabled`, so the control still takes the pointer and focus
+  and its chip can say `Nothing to undo`; the click is dropped in `ChromeButton`). A press keeps
+  the editor's selection (`keepSelection`). Back is not undo: no straight arrows.
+- **Every chrome control names itself with the toolbar's chip, never a native `title`**
+  (`Tooltip.tsx`: the chip, `useTooltip`, `TOOLTIP_REST_MS` 400, `shortcutLabel`). `ChromeButton`
+  takes `label`, `shortcut` and `disabledLabel`; the wordmark's chip says `Settings`; the toggle's
+  `Collapse sidebar` / `Expand sidebar`. Below the control on the window's row, above on the
+  selection toolbar; shifted in from the window's edge, the shift divided by `cssZoom`. Shown
+  after the rest, or at once while a neighbour's chip has just hidden (`TOOLTIP_WARM_MS` 300) or
+  on keyboard focus; a press, Enter, Space or Escape hides it until the pointer leaves and
+  returns. A shortcut is shown only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the
+  map in `useAppKeyboard`; Redo is `Ctrl+Y` off a Mac). A `title` beside the chip shows both.
+  `chrome-tooltips.spec.ts`, `Tooltip.test.jsx`.
 - **The collapsed header carries the sidebar's own three controls** (toggle, Search, New note)
   in front of the history pair, `BTN_GAP` 2 within a group and `GROUP_GAP` 12 between. While the
   sidebar shows it owns those three and the header renders none, so exactly one of each is

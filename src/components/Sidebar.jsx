@@ -21,8 +21,10 @@ import {
   CHROME_BTN,
   MAC_TRAFFIC_INSET,
   ChromeButton,
+  SHORTCUTS,
   trafficLightsShown,
 } from "./EditorChrome";
+import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
 import Collapsible from "./Collapsible";
 import { isElectronMac } from "../utils/platform";
@@ -401,6 +403,7 @@ const Sidebar = memo(function Sidebar({
   const hiddenControls = !isMobile && !sidebarVisible;
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
+  const wordmarkTip = useTooltip();
   const { BG, TEXT, ACCENT } = theme;
   const { noteData } = useNoteData();
   const {
@@ -989,8 +992,8 @@ const Sidebar = memo(function Sidebar({
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Notes — open Settings"
-            title="Open Settings"
             style={{
+              position: "relative",
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -1000,24 +1003,40 @@ const Sidebar = memo(function Sidebar({
               flexShrink: 0,
               WebkitAppRegion: "no-drag",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.75";
+              wordmarkTip.handlers.onMouseEnter();
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+              wordmarkTip.handlers.onMouseLeave();
+            }}
+            onMouseDown={wordmarkTip.handlers.onMouseDown}
+            onMouseUp={wordmarkTip.handlers.onMouseUp}
+            onFocus={wordmarkTip.handlers.onFocus}
+            onBlur={wordmarkTip.handlers.onBlur}
+            onKeyDown={wordmarkTip.handlers.onKeyDown}
           >
             {/* WORDMARK_H, 18px: a label, not a headline — at 20 it out-shouted
                 the note's H1. Drawn in the theme's ink (Wordmark picks the
                 per-theme asset); the 0.92-opacity stand-in for a black asset is
                 gone with it. */}
             <Wordmark height={WORDMARK_H} />
+            {/* The wordmark is the one control nothing marks as clickable: the
+                chip is what says it opens Settings. */}
+            {wordmarkTip.shown && (
+              <Tooltip label="Settings" placement="below" testId="chrome-tooltip" />
+            )}
           </button>
           {/* Search and the toggle, one group at the chrome row's own gap
               (2026-09-16; Search sat on the Notes row from 2026-09-12). The
               same two neighbours the collapsed header shows, so Search keeps
               its place beside the toggle in both sidebar states. */}
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
-            <ChromeButton onClick={onOpenSearch} title="Search notes">
+            <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
               <SearchIcon size={18} />
             </ChromeButton>
-            <ChromeButton onClick={toggleSidebar} title="Hide sidebar">
+            <ChromeButton onClick={toggleSidebar} label="Collapse sidebar">
               <SidebarToggleIcon />
             </ChromeButton>
           </div>

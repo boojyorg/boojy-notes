@@ -13,6 +13,7 @@ import {
 import { isElectronMac } from "../utils/platform";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, SIDEBAR_HANDLE_W } from "../constants/layout";
 import { PANEL_MS, panelTransition } from "../tokens/motion";
+import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
 
 /**
  * The editor's own chrome: two fixed corners, no horizontal strip.
@@ -106,9 +107,31 @@ export const chromePathInset = (collapsed, fullScreen = false) =>
 /** Where the path's band ends, measured from the editor's right edge: the ··· and its air. */
 export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + CHROME_BTN + PATH_AIR;
 
+/**
+ * The shell's shortcuts as the chips show them: the map in useAppKeyboard,
+ * and the two must agree. Redo is ⇧⌘Z on a Mac and Ctrl+Y elsewhere; the
+ * handler takes both.
+ */
+export const SHORTCUTS = {
+  undo: shortcutLabel({ key: "Z" }),
+  redo: shortcutLabel({ key: "Z", shift: true, win: { key: "Y" } }),
+  newNote: shortcutLabel({ key: "N" }),
+  search: shortcutLabel({ key: "P" }),
+};
+
+/**
+ * A 32px chrome control. Its name is a chip under it (Tooltip), never a
+ * native `title`: `label` is the chip and the accessible name, `shortcut` the
+ * muted text beside it, `disabledLabel` what the chip says while the control
+ * has nothing to do ("Nothing to undo"). Disabled is `aria-disabled`, not the
+ * attribute, so the control still takes the pointer and keyboard focus and
+ * can say why it is grey; the click is dropped here.
+ */
 export function ChromeButton({
   onClick,
-  title,
+  label,
+  shortcut,
+  disabledLabel,
   ariaLabel,
   disabled,
   keepSelection,
@@ -121,20 +144,31 @@ export function ChromeButton({
 }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
+  const tip = useTooltip();
   return (
     <button
       type="button"
       {...rest}
-      onClick={onClick}
-      disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled || undefined}
       // A press on a history button must not take the editor's selection with
       // it: preventing the mousedown default leaves the caret and any selected
       // run exactly where they were, so typing continues after the undo.
       // Keyboard focus and Enter/Space are untouched by this.
-      onMouseDown={keepSelection ? (e) => e.preventDefault() : undefined}
-      title={title}
-      aria-label={ariaLabel || title}
+      onMouseDown={(e) => {
+        if (keepSelection) e.preventDefault();
+        tip.handlers.onMouseDown();
+      }}
+      onMouseUp={tip.handlers.onMouseUp}
+      onFocus={tip.handlers.onFocus}
+      onBlur={tip.handlers.onBlur}
+      onKeyDown={(e) => {
+        tip.handlers.onKeyDown(e);
+        if (disabled && (e.key === "Enter" || e.key === " ")) e.preventDefault();
+      }}
+      aria-label={ariaLabel || label}
       style={{
+        position: "relative",
         width: CHROME_BTN,
         height: CHROME_BTN,
         background: active ? BG.surface : "none",
@@ -156,17 +190,27 @@ export function ChromeButton({
         ...style,
       }}
       onMouseEnter={(e) => {
+        tip.handlers.onMouseEnter();
         if (disabled) return;
         e.currentTarget.style.background = BG.surface;
         e.currentTarget.style.color = TEXT.primary;
       }}
       onMouseLeave={(e) => {
+        tip.handlers.onMouseLeave();
         if (disabled || active) return;
         e.currentTarget.style.background = "transparent";
         e.currentTarget.style.color = TEXT.muted;
       }}
     >
       {children}
+      {tip.shown && (
+        <Tooltip
+          label={disabled ? disabledLabel || label : label}
+          shortcut={disabled ? undefined : shortcut}
+          placement="below"
+          testId="chrome-tooltip"
+        />
+      )}
     </button>
   );
 }
@@ -202,13 +246,13 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
-            <ChromeButton onClick={toggleSidebar} title="Show sidebar">
+            <ChromeButton onClick={toggleSidebar} label="Expand sidebar">
               <SidebarToggleIcon />
             </ChromeButton>
-            <ChromeButton onClick={onOpenSearch} title="Search notes">
+            <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
               <SearchIcon size={18} />
             </ChromeButton>
-            <ChromeButton onClick={onNewNote} title="New note">
+            <ChromeButton onClick={onNewNote} label="New note" shortcut={SHORTCUTS.newNote}>
               <NewNoteIcon size={18} />
             </ChromeButton>
           </div>
@@ -227,10 +271,24 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           transition: panelTransition("left"),
         }}
       >
-        <ChromeButton onClick={undo} disabled={!canUndo} keepSelection title="Undo">
+        <ChromeButton
+          onClick={undo}
+          disabled={!canUndo}
+          keepSelection
+          label="Undo"
+          shortcut={SHORTCUTS.undo}
+          disabledLabel="Nothing to undo"
+        >
           <UndoIcon />
         </ChromeButton>
-        <ChromeButton onClick={redo} disabled={!canRedo} keepSelection title="Redo">
+        <ChromeButton
+          onClick={redo}
+          disabled={!canRedo}
+          keepSelection
+          label="Redo"
+          shortcut={SHORTCUTS.redo}
+          disabledLabel="Nothing to redo"
+        >
           <RedoIcon />
         </ChromeButton>
       </div>
@@ -252,7 +310,7 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
             // Anchor the menu under the button, right-aligned to it.
             onNoteActions({ x: r.right, y: r.bottom + 4 });
           }}
-          title={activeNote ? "Note actions" : "App options"}
+          label={activeNote ? "Note actions" : "App options"}
         >
           <MoreHorizontalIcon />
         </ChromeButton>

@@ -30,13 +30,14 @@ test.afterEach(async () => {
   await h?.close();
 });
 
-const hideSidebar = () => h.page.getByTitle("Hide sidebar").click();
+const hideSidebar = () =>
+  h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
 
 test("the buttons undo and redo the open note, and the file follows", async () => {
   h = await launchApp({ [A]: `${A_TEXT}\n` });
   await h.openNote("Alpha");
-  const undo = h.page.getByTitle("Undo");
-  const redo = h.page.getByTitle("Redo");
+  const undo = h.page.getByRole("button", { name: "Undo", exact: true });
+  const redo = h.page.getByRole("button", { name: "Redo", exact: true });
 
   // Nothing has been edited in this note, so neither button offers anything.
   await expect(undo).toBeDisabled();
@@ -77,14 +78,14 @@ test("a button press changes the open note and leaves the other note's file alon
 
   // Beta has nothing of its own to undo, and Alpha's entry is not Beta's.
   await h.openNote("Beta");
-  await expect(h.page.getByTitle("Undo")).toBeDisabled();
+  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
   await sleep(SETTLE_MS);
   expect(h.vault.read(A).trimEnd()).toBe(`${A_TEXT} edited`);
   expect(h.vault.read(B).trimEnd()).toBe(B_TEXT);
 
   await h.openNote("Alpha");
-  await expect(h.page.getByTitle("Undo")).toBeEnabled();
-  await h.page.getByTitle("Undo").click();
+  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
+  await h.page.getByRole("button", { name: "Undo", exact: true }).click();
   await waitForFile(h.vault.file(A), (t) => !t.includes(" edited"), {
     label: "Alpha undo to save",
   });
@@ -93,7 +94,7 @@ test("a button press changes the open note and leaves the other note's file alon
   // History is the session's; the files are what survives a restart.
   await h.restart();
   await h.openNote("Alpha");
-  await expect(h.page.getByTitle("Undo")).toBeDisabled();
+  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
   expect(await noteText(h.page)).toBe(A_TEXT);
   expectNoTempFiles(h.vault);
 });
@@ -119,10 +120,10 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
 
   // Expanded: the sidebar owns navigation and creation; the header carries the
   // note's history and its ··· .
-  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "Sort"]) {
+  for (const name of ["Search notes", "New note", "Collapse sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  expect(await exposed("Show sidebar")).toBe(0);
+  expect(await exposed("Expand sidebar")).toBe(0);
   for (const name of ["Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(1);
   }
@@ -130,10 +131,10 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   await hideSidebar();
 
   // Collapsed: the header takes the trio over, still one of each.
-  for (const name of ["Search notes", "New note", "Show sidebar", "Undo", "Redo"]) {
+  for (const name of ["Search notes", "New note", "Expand sidebar", "Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  for (const name of ["Hide sidebar", "New folder", "Sort"]) {
+  for (const name of ["Collapse sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(0);
   }
 
@@ -143,12 +144,12 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
     BrowserWindow.getAllWindows()[0].setSize(700, 800);
   });
   await expect.poll(() => h.page.evaluate(() => window.innerWidth)).toBe(700);
-  await h.page.locator("[title='Show sidebar']:not([inert] *)").click();
-  await expect(h.page.getByTitle("Hide sidebar")).toBeVisible();
-  for (const name of ["Search notes", "New note", "Hide sidebar", "New folder", "Sort"]) {
+  await h.page.locator("[aria-label='Expand sidebar']:not([inert] *)").click();
+  await expect(h.page.getByRole("button", { name: "Collapse sidebar", exact: true })).toBeVisible();
+  for (const name of ["Search notes", "New note", "Collapse sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), `narrow: ${name}`).toBe(1);
   }
-  expect(await exposed("Show sidebar")).toBe(0);
+  expect(await exposed("Expand sidebar")).toBe(0);
   expect(await exposed("Undo")).toBe(1);
 });
 
@@ -157,22 +158,22 @@ test("the collapsed header's New note and Search are the sidebar's own actions",
   await h.openNote("Alpha");
   await hideSidebar();
 
-  await h.page.locator("[title='Search notes']:not([inert] *)").click();
+  await h.page.locator("[aria-label='Search notes']:not([inert] *)").click();
   await expect(h.page.getByPlaceholder(/search/i)).toBeVisible();
   // Opening Search does not bring the sidebar back.
-  await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+  await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
   await h.page.keyboard.press("Escape");
 
-  await h.page.locator("[title='New note']:not([inert] *)").click();
+  await h.page.locator("[aria-label='New note']:not([inert] *)").click();
   await expect(h.page.getByRole("textbox", { name: "Note title" })).toBeFocused();
-  await expect(h.page.getByTitle("Show sidebar")).toBeVisible();
+  await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
 });
 
 test("Settings is in the header menu, with a note open and with none", async () => {
   h = await launchApp({ [A]: `${A_TEXT}\n` });
   await h.openNote("Alpha");
 
-  await h.page.locator("button[title='Note actions']").click();
+  await h.page.locator("button[aria-label='Note actions']").click();
   const menu = h.page.getByRole("menu", { name: "Note actions" });
   await expect(menu).toBeVisible();
   // The note's length closes its own menu: "Alpha starts here." is three
@@ -193,9 +194,9 @@ test("Settings is in the header menu, with a note open and with none", async () 
   // inactive, and Settings is still one click away.
   await h.close();
   h = await launchApp({});
-  await expect(h.page.getByTitle("Undo")).toBeDisabled();
-  await expect(h.page.getByTitle("Redo")).toBeDisabled();
-  await h.page.locator("button[title='Note actions']").click();
+  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  await expect(h.page.getByRole("button", { name: "Redo", exact: true })).toBeDisabled();
+  await h.page.locator("button[aria-label='Note actions']").click();
   await expect(h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" })).toBeVisible();
   // The desktop always has a note open (an empty library opens a draft), so
   // the counts are there and honest.

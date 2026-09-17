@@ -258,7 +258,7 @@ export default function NotePath({
   const rootGlyph = (
     <ChromeButton
       data-testid="note-path-root"
-      ariaLabel="Browse notes"
+      label="Browse notes"
       aria-haspopup="dialog"
       aria-expanded={rootOpen}
       active={rootOpen}
