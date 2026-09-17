@@ -48,6 +48,8 @@ import {
   List as LuList,
   ListOrdered as LuListOrdered,
   Minus as LuMinus,
+  Monitor as LuMonitor,
+  Moon as LuMoon,
   MoreHorizontal as LuMoreHorizontal,
   PanelLeft as LuPanelLeft,
   Paperclip as LuPaperclip,
@@ -59,10 +61,12 @@ import {
   SquareCheck as LuSquareCheck,
   SquarePen as LuSquarePen,
   Strikethrough as LuStrikethrough,
+  Sun as LuSun,
   Table as LuTable,
   TextQuote as LuTextQuote,
   Trash2 as LuTrash2,
   Undo2 as LuUndo2,
+  X as LuX,
 } from "lucide-react";
 
 const ICON_INLINE = 16;
@@ -150,6 +154,15 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+// ── Settings and setup ────────────────────────────────────────────────────
+/** The three appearance pills: content stroke at 16px, beside 14px labels. */
+export const SunIcon = ({ size = ICON_INLINE }) => <LuSun {...base} size={size} />;
+export const MoonIcon = ({ size = ICON_INLINE }) => <LuMoon {...base} size={size} />;
+export const MonitorIcon = ({ size = ICON_INLINE }) => <LuMonitor {...base} size={size} />;
+/** Before `Change folder…` and `Choose folder…`: another step follows the button. */
+export const FolderOpenIcon = ({ size = ICON_INLINE }) => <LuFolderOpen {...base} size={size} />;
+/** A dialog's close, in a chrome button: navigation stroke like the other controls. */
+export const CloseIcon = ({ size = ICON_CONTROL }) => <LuX {...base} {...navBase} size={size} />;
 export const SettingsIcon = ({ size = ICON_INLINE }) => (
   <LuSettings {...base} {...navBase} size={size} />
 );

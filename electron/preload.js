@@ -3,6 +3,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electronAPI", {
   getNotesDir: () => ipcRenderer.invoke("get-notes-dir"),
   chooseNotesDir: () => ipcRenderer.invoke("choose-notes-dir"),
+  // First-run setup: shown only on a launch that has never had a folder.
+  getSetupState: () => ipcRenderer.invoke("get-setup-state"),
+  // Ends setup however it ended; answers with the folder, made if it is the default.
+  completeSetup: () => ipcRenderer.invoke("complete-setup"),
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
   saveImage: (data) => ipcRenderer.invoke("save-image", data),

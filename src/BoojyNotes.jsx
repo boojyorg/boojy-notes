@@ -19,6 +19,8 @@ import { useEditorHandlers } from "./hooks/useEditorHandlers";
 import { useTheme } from "./hooks/useTheme";
 import { Z } from "./constants/zIndex";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
+const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
+import { FolderOpenIcon } from "./components/Icons";
 import ContextMenu from "./components/ContextMenu";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
@@ -42,7 +44,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
-import { getCaretOffset } from "./utils/domHelpers";
+import { getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
@@ -226,6 +228,66 @@ export default function BoojyNotes() {
   const revealVault = useCallback(() => {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
+
+  // Settings → Change folder… says first that the current notes stay where
+  // they are, then opens the picker; the app never moves notes (2026-09-17).
+  // Setup skips the question: a first launch has no notes to leave behind.
+  const changeNotesDirFromSettings = useCallback(async () => {
+    const ok = await requestConfirm({
+      title: "Change notes folder?",
+      message: "Your current notes will stay where they are.",
+      confirmLabel: "Choose folder…",
+      confirmIcon: <FolderOpenIcon />,
+    });
+    if (ok) changeNotesDir();
+  }, [requestConfirm, changeNotesDir]);
+
+  // ── First-run setup ──────────────────────────────────────────────────
+  // Shown once, on a launch that has never had a notes folder (the main
+  // process decides; an existing user's config is settled before the window
+  // exists). Every way out saves the choice on screen and lands in the draft
+  // note the empty app already opened: Create note puts the caret in its
+  // body, a dismissal in its name, as Cmd+N does. Nothing is written until
+  // the first keystroke.
+  const [firstRun, setFirstRun] = useState(false);
+  const [setupFolderExists, setSetupFolderExists] = useState(false);
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.getSetupState) return;
+    let cancelled = false;
+    window.electronAPI.getSetupState().then((state) => {
+      if (!cancelled && state?.firstRun) setFirstRun(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const chooseFolderInSetup = useCallback(async () => {
+    await changeNotesDir();
+    // A chosen folder is a real one: its path can show it from now on.
+    setSetupFolderExists(true);
+  }, [changeNotesDir]);
+  const finishSetup = useCallback(
+    async (how) => {
+      setFirstRun(false);
+      try {
+        await window.electronAPI?.completeSetup?.();
+      } catch (err) {
+        console.error("completeSetup failed", err);
+      }
+      requestAnimationFrame(() => {
+        const id = activeNoteRef.current;
+        const first = id ? noteDataRef.current[id]?.content?.blocks?.[0] : null;
+        const el = first ? blockRefs.current[first.id] : null;
+        if (how === "create" && el) {
+          el.closest('[contenteditable="true"]')?.focus();
+          placeCaret(el, 0);
+        } else {
+          titleRef.current?.focus();
+        }
+      });
+    },
+    [activeNoteRef, noteDataRef],
+  );
   const toggle = useCallback((n) => setExpanded((p) => ({ ...p, [n]: !p[n] })), [setExpanded]);
   // Opening is side-effect-free for ordering: "Most recent" means most
   // recently modified, and the row must not move under the pointer.
@@ -651,6 +713,7 @@ export default function BoojyNotes() {
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div
+      data-testid="app-ground"
       style={{
         width: "100%",
         height: `${10000 / uiScale}vh`,
@@ -1012,9 +1075,18 @@ export default function BoojyNotes() {
           isMobile={isMobile}
           isDesktop={isDesktop}
           notesDir={notesDir}
-          changeNotesDir={changeNotesDir}
+          changeNotesDir={changeNotesDirFromSettings}
           revealNotesDir={isElectron ? revealVault : undefined}
         />
+        {firstRun && !isMobile && (
+          <SetupDialog
+            notesDir={notesDir}
+            folderExists={setupFolderExists}
+            onChooseFolder={chooseFolderInSetup}
+            onReveal={revealVault}
+            onDone={finishSetup}
+          />
+        )}
       </React.Suspense>
 
       <GlobalStyles />

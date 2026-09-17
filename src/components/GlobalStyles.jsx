@@ -1,6 +1,7 @@
 import { useTheme } from "../hooks/useTheme";
 import { LABEL_PAD_X } from "../constants/layout";
 import { PARAGRAPH_GAP } from "./EditableBlock";
+import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
   const { theme } = useTheme();
@@ -639,6 +640,9 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.secondary};
           white-space: pre-wrap;
         }
+        /* Settings and setup: hover lifts ink, focus is the inset ring
+           (settings/SettingsPrimitives.jsx). */
+        ${settingsStyles(theme)}
         /* The paragraph pitch (EditableBlock.PARAGRAPH_GAP): a soft break is
            line height alone, Enter adds this, an empty row adds a whole line.
            A paragraph after a list item is its own structure now (the file

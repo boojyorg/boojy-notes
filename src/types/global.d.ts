@@ -32,6 +32,10 @@ declare global {
       // Files / vault
       getNotesDir: () => Promise<string>;
       chooseNotesDir: () => Promise<string | null>;
+      /** First-run setup: `firstRun` only on a launch that has never had a folder. */
+      getSetupState: () => Promise<{ firstRun: boolean }>;
+      /** Ends setup however it ended; answers with the notes folder, made if it is the default. */
+      completeSetup: () => Promise<string>;
       readAllNotes: () => Promise<Record<string, Note>>;
       /** `title` is the basename the file actually got, which the title adopts. */
       /**

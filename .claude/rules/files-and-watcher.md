@@ -115,8 +115,17 @@ mark with no timer pending. `write-in-flight.spec.ts`.
   (`parseNoteFile`). Not undoable. Web copies in memory. `folders.spec.ts`, `folders.test.ts`.
 - **A chosen vault that is missing is never recreated**: `getNotesDir` makes only the default
   vault under Documents; a configured path that is not there opens empty and every write refuses
-  with the ordinary toast. Settings → Storage is the way out. `vault-root.spec.ts`,
+  with the ordinary toast. Settings → Notes folder is the way out. `vault-root.spec.ts`,
   `folders.spec.ts`.
+- **The default folder waits for setup** (2026-09-17). `settleSetupState` runs once at ready: a
+  config naming a folder, or `Documents/Boojy/Notes` already on disk, is an existing user and
+  gains `setupDone` silently; only a launch with neither is a first run, and then `getNotesDir`
+  names the default folder without making it (the app opens it as the empty folder it is) until
+  `complete-setup` writes the flag and makes it, so a user who chose another folder in setup is
+  not left with an empty one in Documents. The test harness writes a config for every launch,
+  so no existing spec sees setup; `firstRun` in `launchApp` points Documents at a temp directory
+  (`BOOJY_TEST_DOCUMENTS`, applied by the test wrapper only). `first-run.spec.ts`,
+  `settingsManager.test.js`.
 
 ## A note's title is its filename
 

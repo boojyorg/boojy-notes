@@ -1,11 +1,8 @@
 import { useCallback, type ComponentType } from "react";
+import { version as appVersion } from "../../../package.json";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
-import { useLayout } from "../../context/LayoutContext";
-import { spacing } from "../../tokens/spacing";
-import { radius } from "../../tokens/radius";
-import { fontSize, fontWeight } from "../../tokens/typography";
-import { buttonBase } from "../../styles/buttons";
+import { SmallButton } from "./SettingsPrimitives";
 
 interface UpdatesTabProps {
   isDesktop: boolean;
@@ -21,22 +18,26 @@ interface UpdateStatus {
 
 interface UpdatesTheme {
   TEXT: { primary: string; secondary: string; muted: string };
-  ACCENT: { primary: string; text: string; onAccent: string };
+  ACCENT: { primary: string; text: string; onAccent: string; onAccentText: string };
   SEMANTIC: { error: string };
-  overlay: (alpha: number) => string;
+  BG: { hover: string };
 }
 
+/**
+ * Settings → Updates: the automatic-updates switch, then one status line and
+ * one button (2026-09-17). The button says what it is doing (`Checking…`,
+ * `Downloading…`, disabled), the line says what was found; only the ready
+ * state changes the button's look, because it is the one that needs a
+ * decision. An error keeps its feedback in the error ink with `Try again`.
+ */
 export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps) {
   const { autoUpdateEnabled, setAutoUpdateEnabled, updateStatus } = useSettings() as {
     autoUpdateEnabled: boolean;
     setAutoUpdateEnabled: (enabled: boolean) => void;
     updateStatus: UpdateStatus | null;
   };
-
-  const { accentColor } = useLayout() as { accentColor: string };
-
   const { theme } = useTheme() as { theme: UpdatesTheme };
-  const { TEXT, ACCENT, SEMANTIC } = theme;
+  const { TEXT, ACCENT, SEMANTIC, BG } = theme;
 
   const handleToggleAutoUpdate = useCallback(
     (enabled: boolean) => {
@@ -45,44 +46,81 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
     },
     [setAutoUpdateEnabled],
   );
-
-  const handleCheckForUpdate = useCallback(() => {
+  const check = useCallback(() => {
     window.electronAPI?.checkForUpdate?.();
   }, []);
-
-  const handleInstallUpdate = useCallback(() => {
+  const install = useCallback(() => {
     window.electronAPI?.installUpdate?.();
   }, []);
 
   if (!isDesktop) return null;
 
+  const state = updateStatus?.state ?? "idle";
+  let status: string;
+  let statusColor = TEXT.muted;
+  let button: React.ReactNode;
+  switch (state) {
+    case "checking":
+      status = "Checking for updates…";
+      button = <SmallButton kind="disabled">Checking…</SmallButton>;
+      break;
+    case "up-to-date":
+      status = `Up to date · v${appVersion} is the latest version`;
+      button = <SmallButton onClick={check}>Check for updates</SmallButton>;
+      break;
+    case "available":
+      status = `v${updateStatus?.version} available · downloading`;
+      button = <SmallButton kind="disabled">Downloading…</SmallButton>;
+      break;
+    case "downloading":
+      status = `Downloading update · ${updateStatus?.percent ?? 0}%`;
+      button = <SmallButton kind="disabled">Downloading…</SmallButton>;
+      break;
+    case "downloaded":
+      status = `v${updateStatus?.version} is ready to install`;
+      statusColor = TEXT.primary;
+      button = (
+        <SmallButton kind="accent" onClick={install}>
+          Restart to update
+        </SmallButton>
+      );
+      break;
+    case "error":
+      status = "Couldn’t check for updates. Try again later.";
+      statusColor = SEMANTIC.error;
+      button = <SmallButton onClick={check}>Try again</SmallButton>;
+      break;
+    default:
+      status = autoUpdateEnabled ? "Checks for updates when the app starts" : "Not checked yet";
+      button = <SmallButton onClick={check}>Check for updates</SmallButton>;
+  }
+
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <SectionHeader title="Updates" />
 
-      {/* Auto-update toggle */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "2px 0",
+          height: 30,
         }}
       >
-        <span style={{ fontSize: fontSize.md, color: TEXT.muted }}>Auto-update</span>
+        <div style={{ fontSize: 14, color: TEXT.primary }}>Automatic updates</div>
         <button
           type="button"
           role="switch"
           aria-checked={autoUpdateEnabled}
-          aria-label="Auto-update"
+          aria-label="Automatic updates"
           onClick={() => handleToggleAutoUpdate(!autoUpdateEnabled)}
           style={{
-            width: 36,
-            height: 20,
+            width: 40,
+            height: 22,
             boxSizing: "border-box",
-            borderRadius: 10,
-            background: autoUpdateEnabled ? accentColor : theme.overlay(0.06),
-            border: `1px solid ${autoUpdateEnabled ? accentColor : theme.overlay(0.08)}`,
+            borderRadius: 11,
+            background: autoUpdateEnabled ? ACCENT.primary : BG.hover,
+            border: `1px solid ${autoUpdateEnabled ? ACCENT.primary : BG.hover}`,
             position: "relative",
             cursor: "pointer",
             transition: "background 0.15s",
@@ -93,121 +131,34 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
           <span
             aria-hidden="true"
             style={{
-              width: 14,
-              height: 14,
+              width: 18,
+              height: 18,
               borderRadius: "50%",
-              // On the accent fill the knob takes the accent's own ink; off,
-              // a secondary-ink dot on the neutral track. A white knob was
-              // invisible on Light's pale off-track and on Dark's pale accent.
+              // The knob is a shape, so it keeps the white of the tick on the
+              // mark; off, a secondary-ink dot on the neutral track.
               background: autoUpdateEnabled ? ACCENT.onAccent : TEXT.secondary,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
               position: "absolute",
-              top: 3,
-              left: autoUpdateEnabled ? 19 : 3,
+              top: 1,
+              left: autoUpdateEnabled ? 19 : 1,
               transition: "left 0.15s",
             }}
           />
         </button>
       </div>
 
-      {/* Update status */}
-      <div style={{ padding: "10px 0 2px" }}>
-        {updateStatus?.state === "checking" && (
-          <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>Checking for updates...</span>
-        )}
-        {updateStatus?.state === "up-to-date" && (
-          <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>Up to date</span>
-        )}
-        {updateStatus?.state === "available" && (
-          <span style={{ fontSize: fontSize.sm, color: ACCENT.text }}>
-            Update available: v{updateStatus.version}
-          </span>
-        )}
-        {updateStatus?.state === "downloading" && (
-          <div>
-            <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>
-              Downloading... {updateStatus.percent}%
-            </span>
-            <div
-              style={{
-                marginTop: 6,
-                height: 4,
-                borderRadius: 2,
-                background: theme.overlay(0.06),
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${updateStatus.percent}%`,
-                  height: "100%",
-                  background: accentColor,
-                  borderRadius: 2,
-                  transition: "width 0.3s",
-                }}
-              />
-            </div>
-          </div>
-        )}
-        {updateStatus?.state === "downloaded" && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span style={{ fontSize: fontSize.sm, color: ACCENT.text }}>
-              v{updateStatus.version} ready to install
-            </span>
-            <button
-              onClick={handleInstallUpdate}
-              style={{
-                ...buttonBase,
-                background: accentColor,
-                color: ACCENT.onAccent,
-                padding: `${spacing.xs}px ${spacing.md}px`,
-                fontSize: fontSize.sm,
-              }}
-            >
-              Restart & Update
-            </button>
-          </div>
-        )}
-        {updateStatus?.state === "error" && (
-          <span style={{ fontSize: fontSize.sm, color: SEMANTIC?.error || "#f44" }}>
-            Update error: {updateStatus.message}
-          </span>
-        )}
-        {(!updateStatus || updateStatus.state === "idle") && (
-          <span style={{ fontSize: fontSize.sm, color: TEXT.muted }}>No update check yet</span>
-        )}
-      </div>
-
-      {/* Check for Updates button */}
-      <div style={{ padding: "8px 0" }}>
-        <button
-          onClick={handleCheckForUpdate}
-          disabled={updateStatus?.state === "checking" || updateStatus?.state === "downloading"}
-          style={{
-            background: theme.overlay(0.05),
-            border: `1px solid ${theme.overlay(0.08)}`,
-            borderRadius: radius.default,
-            color: TEXT.secondary,
-            fontSize: fontSize.sm,
-            fontWeight: fontWeight.medium,
-            padding: "5px 14px",
-            cursor:
-              updateStatus?.state === "checking" || updateStatus?.state === "downloading"
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              updateStatus?.state === "checking" || updateStatus?.state === "downloading" ? 0.5 : 1,
-            transition: "background 0.15s",
-            fontFamily: "inherit",
-          }}
-        >
-          Check for Updates
-        </button>
+      <div
+        data-testid="update-status"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          minHeight: 30,
+        }}
+      >
+        <div style={{ fontSize: 13, lineHeight: "20px", color: statusColor }}>{status}</div>
+        {button}
       </div>
     </div>
   );

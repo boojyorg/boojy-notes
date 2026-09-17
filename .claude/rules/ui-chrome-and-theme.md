@@ -40,7 +40,9 @@ Text is three steps (`TEXT.primary` / `secondary` / `muted`).
 **The accent is two tokens.** `ACCENT.primary` is the *mark* colour, `MARK` = `#8FC1C6` in both
 themes: checkbox fill, quote bar, drop markers, focus rings, selection band, switch, confirm
 button, info toast, the wordmark's N. `ACCENT.onAccent` is white in both themes; at 2:1 on the
-mark it is for a tick and a bold button label, never body text. `ACCENT.text` is accent *as
+mark it is for a tick or a switch knob, a shape, never a word. **A label on the mark takes
+`ACCENT.onAccentText`**, the dark ink (about 9.7:1; 2026-09-17): Create note, Restart to update,
+a confirm dialog's button. `ACCENT.text` is accent *as
 ink*, per theme (`#2A737D` Light, `#9CC9CE` Dark, both ≥ 4.5:1): wikilinks, `#tags`, search
 hits, the active toolbar and slash-menu glyph, Settings section labels. Rule for a new use:
 does it have to be *read*? Then `text`; otherwise `primary`, with `onAccent` for anything drawn
@@ -145,9 +147,34 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   reachable. The hidden sidebar keeps its DOM; **only its chrome row and sticky action block
   are `inert`** (`inert` on the whole column swallowed a double-click's second press while the
   panel animated and broke inline rename). `header-controls.spec.ts` counts what is exposed.
-- **Settings is a single pane:** Appearance (theme picker only), Storage (path, `Show in
-  Finder`, `Change`), Updates, a version footer. `settingsTab` and `settingsFontSize` don't
-  exist; don't reintroduce them in mocks. UI scale is keyboard-only (`Cmd+Plus/Minus/0`).
+- **Settings is a single pane on the palette's surface** (2026-09-17: `BG.elevated`, hairline,
+  12px radius, the 30% scrim with no blur, 540 wide): a cog and the title with a `Close` chrome
+  button; then Appearance, Notes folder and Updates parted by rules, then `Boojy Notes v0.7.0 ·
+  boojy.org/notes`. Section titles are the `Notes` row's grammar (14px/500 muted), never
+  uppercase or accent. **Appearance is three pills** (`ThemePills`, a radiogroup: Sun Light, Moon
+  Dark, Monitor System; the chosen one on `BG.hover` in primary ink, never the accent). **The
+  folder glyph and the path are one control that shows the folder** (`FolderPathControl`: no
+  surface, ink lifts on hover, the chip says Show in Finder after the rest, the inset accent ring
+  on focus; a path with no folder yet is the same text and no control); `Change folder…` with
+  the open-folder glyph is separate and **asks first** (`Change notes folder?` / `Your current
+  notes will stay where they are.` / Cancel, `Choose folder…`) because the app never moves
+  notes; setup skips the question. The path wraps at its separators and the button drops under
+  a long one (`flex-wrap`), never squeezing it. **Updates is the `Automatic updates` switch, one
+  status line and one button** whose label is its state (`Check for updates`, `Checking…`,
+  `Downloading…`, the accent `Restart to update`, `Try again` under an error in the error ink).
+  Bordered buttons (`SmallButton`) take `theme.button`: Dark gives an enabled one a surface a
+  step above the ground so it is told from a disabled one before hover. `settingsTab` and
+  `settingsFontSize` don't exist; don't reintroduce them in mocks. UI scale is keyboard-only
+  (`Cmd+Plus/Minus/0`). `settings-dialog.spec.ts`, the `tests/components/settings` suite.
+- **First-run setup is the same surface over the empty app** (`SetupDialog`, 480 wide:
+  `Welcome to Boojy Notes`, one sentence, the Notes folder row with `Choose folder…`, the pills,
+  a centred accent `Create note`). It shows only on a launch that has never had a folder (the
+  main process decides, `files-and-watcher.md`). **Every way out ends it the same way**: the
+  choice on screen is saved and it never shows again; Create note puts the caret in the draft's
+  body, ×, Escape and a click outside put it in the name, as Cmd+N does; nothing is written
+  until the first keystroke, so a dismissal leaves no `Untitled.md`. A fresh install starts on
+  System; an existing user keeps whatever they had, Light included. Choosing a folder switches
+  the app behind the scrim live and the pills apply as clicked. `first-run.spec.ts`.
 - **One zoom system: the app's own UI scale.** The View menu carries no zoom roles (a menu role
   takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
@@ -290,7 +317,7 @@ location; visible at rest, never hover-revealed. Click only, never hover.
 - **The folder menu is five glyphed items, no rule: New note, New folder, Rename, Duplicate
   folder, Delete folder.** Duplicate copies the directory beside itself as `Name (copy)`,
   everything in it included, and the copy appears closed beside the original (files rule).
-  Reveal in Finder is Settings → Storage's. Single-note and folder menus carry glyphs; the
+  Reveal in Finder is Settings → Notes folder's. Single-note and folder menus carry glyphs; the
   bulk menu is text-only.
 - **A row's ··· hands its menu the row's rectangle** (`rowMenuAnchor`), so a menu flipped above
   a low row sits above it and the pointer on the dots is not inside Delete. The header's ···
@@ -312,7 +339,7 @@ location; visible at rest, never hover-revealed. Click only, never hover.
 - **One header over the list, labelled `Notes`**: row height, 14px/500, `TEXT.muted`, a label
   not a heading; no chevron, it does not collapse. Hidden with the tree while a search shows.
   It is the tree's accessible name and the root drop target. The storage folder's name is not
-  shown anywhere in the sidebar; it is the path in Settings → Storage.
+  shown anywhere in the sidebar; it is the path in Settings → Notes folder.
 - **The row carries New folder and Sort, hidden at rest and revealed on row hover or focus**
   (`SectionAction`, `.sidebar-section-action`, 16px so they read with the folder glyphs). Only
   the ink fades; the slot keeps its width. This is the row's third flip (hover-revealed,
@@ -322,7 +349,7 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   ArrowDownAZ glyphs, a Check in the mark colour on the chosen one) is the two modes and
   nothing else. The pair is held revealed and Sort lit while the menu is open (`menu-open`,
   `is-active`). **Never more than three glyphs here**; anything rarer earns a menu. Not
-  anywhere, by decision: Collapse all folders, Change vault folder (Settings → Storage only).
+  anywhere, by decision: Collapse all folders, Change vault folder (Settings → Notes folder only).
 - **One `role="tree"`, the Notes row a sibling above it, never inside it** (axe
   `aria-required-children`). The desktop tree element exists only when it has rows (an empty
   tree fails axe). Folders first, alphabetical; root notes follow in the sort preference,

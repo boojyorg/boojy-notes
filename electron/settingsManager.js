@@ -25,18 +25,44 @@ function saveConfig(cfg) {
   writeFileAtomic(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 }
 
+const defaultNotesDir = () => path.join(app.getPath("documents"), "Boojy", "Notes");
+
+/**
+ * Whether this launch is the app's first on this machine: no folder was ever
+ * chosen and the default folder has never been made. Everything else is an
+ * existing user, whose config gains `setupDone` here so the question is never
+ * asked again; only a launch with neither shows setup. Called once at ready.
+ */
+function settleSetupState() {
+  const cfg = loadConfig();
+  if (cfg.setupDone) return false;
+  if (cfg.notesDir || fs.existsSync(defaultNotesDir())) {
+    saveConfig({ ...cfg, setupDone: true });
+    return false;
+  }
+  return true;
+}
+
+const isFirstRun = () => {
+  const cfg = loadConfig();
+  return !cfg.setupDone && !cfg.notesDir;
+};
+
 /**
  * The vault path. With no choice saved, the default vault under Documents is
- * the app's own to make, and it is made here the first time it is asked for.
- * A vault the user chose is never made: if it is missing (an unmounted
- * volume, a folder moved in Finder) the app opens it empty and every write
- * refuses, rather than quietly building an empty twin on the boot disk.
+ * the app's own to make, and it is made here the first time it is asked for,
+ * once setup is done: on a first launch it is only named, so a user who
+ * chooses another folder in setup is not left with an empty one in Documents
+ * (the app opens a missing folder as empty until then). A vault the user
+ * chose is never made: if it is missing (an unmounted volume, a folder moved
+ * in Finder) the app opens it empty and every write refuses, rather than
+ * quietly building an empty twin on the boot disk.
  */
 function getNotesDir() {
   const cfg = loadConfig();
   if (cfg.notesDir) return cfg.notesDir;
-  const fallback = path.join(app.getPath("documents"), "Boojy", "Notes");
-  if (!fs.existsSync(fallback)) {
+  const fallback = defaultNotesDir();
+  if (cfg.setupDone && !fs.existsSync(fallback)) {
     try {
       fs.mkdirSync(fallback, { recursive: true });
     } catch {
@@ -44,6 +70,13 @@ function getNotesDir() {
     }
   }
   return fallback;
+}
+
+/** Setup ended, by its button or by dismissal alike: the folder on screen is the folder. */
+function completeSetup() {
+  const cfg = loadConfig();
+  if (!cfg.setupDone) saveConfig({ ...cfg, setupDone: true });
+  return getNotesDir();
 }
 
 // ─── Settings ───
@@ -114,6 +147,15 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     return dir;
   });
 
+  // First-run setup (the renderer's SetupDialog): whether to show it, and
+  // its end, which makes the default folder if that is still the choice.
+  ipcMain.handle("get-setup-state", () => ({ firstRun: isFirstRun() }));
+  ipcMain.handle("complete-setup", () => {
+    const dir = completeSetup();
+    restartWatcher();
+    return dir;
+  });
+
   ipcMain.on("set-window-title", (_, title) => {
     const win = getMainWindow();
     if (win) win.setTitle(title);
@@ -162,6 +204,8 @@ export {
   loadConfig,
   saveConfig,
   getNotesDir,
+  settleSetupState,
+  completeSetup,
   loadSettings,
   saveSettings,
   setupAutoUpdater,
