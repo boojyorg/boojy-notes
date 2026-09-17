@@ -32,6 +32,16 @@ const EDGE = 8;
 
 let warmUntil = 0;
 
+/** Whether the browser would draw a focus ring on `el`: keyboard focus, not a click's. */
+function focusVisible(el: Element): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    // An engine without the selector (jsdom) cannot tell; treat focus as keyboard focus.
+    return true;
+  }
+}
+
 export interface ShortcutSpec {
   key: string;
   shift?: boolean;
@@ -143,7 +153,7 @@ export interface TooltipHandlers {
   onMouseLeave: () => void;
   onMouseDown: () => void;
   onMouseUp: () => void;
-  onFocus: () => void;
+  onFocus: (e: { currentTarget: Element }) => void;
   onBlur: () => void;
   onKeyDown: (e: { key: string }) => void;
 }
@@ -151,11 +161,14 @@ export interface TooltipHandlers {
 /**
  * When a control's chip shows. Hover: after TOOLTIP_REST_MS at rest, or at
  * once while a neighbour's chip has just hidden (warm). Keyboard focus: at
- * once, since the user is on the control on purpose; focus that a press gave
- * is not keyboard focus and shows nothing. A press, Enter, Space or Escape
- * hides it, and it stays hidden until the pointer leaves and returns or the
- * control is focused again, so a toggle never flashes its old name after it
- * has acted.
+ * once, since the user is on the control on purpose. Focus that a press gave,
+ * and focus a closing menu or dialog hands back to the button that opened it,
+ * is not keyboard focus and shows nothing: the browser's own `:focus-visible`
+ * is the judge (false when the last interaction was a pointer), which is what
+ * kept the chip up after Settings or the Sort menu closed with the pointer
+ * elsewhere (2026-09-17). A press, Enter, Space or Escape hides it, and it
+ * stays hidden until the pointer leaves and returns or the control is focused
+ * again, so a toggle never flashes its old name after it has acted.
  */
 export function useTooltip(): { shown: boolean; handlers: TooltipHandlers } {
   const [shown, setShown] = useState(false);
@@ -197,8 +210,8 @@ export function useTooltip(): { shown: boolean; handlers: TooltipHandlers } {
     onMouseUp: () => {
       pointerDown.current = false;
     },
-    onFocus: () => {
-      if (pointerDown.current) return;
+    onFocus: (e) => {
+      if (pointerDown.current || !focusVisible(e.currentTarget)) return;
       cancel();
       setShown(true);
     },

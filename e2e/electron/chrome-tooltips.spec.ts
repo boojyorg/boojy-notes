@@ -115,10 +115,48 @@ test("keyboard focus shows the chip at once, and activating hides it", async () 
   await h.openNote("Alpha");
   const chip = h.page.getByTestId("chrome-tooltip");
   const search = h.page.locator("[aria-label='Search notes']:not([inert] *)");
-  await search.focus();
+  // Reached by Tab, as a keyboard user reaches it: focus a script moves after
+  // a click is not keyboard focus to the browser, and shows nothing.
+  await h.page.getByTestId("wordmark-settings-button").focus();
+  await h.page.keyboard.press("Tab");
+  await expect(search).toBeFocused();
   await expect(chip).toHaveText(/^Search notes/, { timeout: TOOLTIP_REST_MS / 2 });
   await h.page.keyboard.press("Escape");
   await expect(chip).toHaveCount(0);
   await expect(search).toBeFocused();
+  expect(h.pageErrors).toEqual([]);
+});
+
+// Hover, click, and the button's chip is up; the menu or dialog that opened
+// takes focus and, closing, hands it back to the button with the pointer
+// elsewhere. That focus is a click's, not the keyboard's, and shows nothing
+// (before this the chip stayed up after Settings or the Sort menu closed).
+test("a chip does not come back when a closing menu or dialog hands focus to its button", async () => {
+  h = await launchApp({ "Alpha.md": "Alpha starts here.\n" });
+  await h.openNote("Alpha");
+  const chip = h.page.getByTestId("chrome-tooltip");
+
+  const wordmark = h.page.getByTestId("wordmark-settings-button");
+  await wordmark.hover();
+  await expect(chip).toHaveText(/^Settings/);
+  await wordmark.click();
+  const settings = h.page.getByRole("dialog", { name: "Settings" });
+  await expect(settings).toBeVisible();
+  await expect(chip).toHaveCount(0);
+  await h.page.getByRole("button", { name: "Close settings" }).click();
+  await expect(settings).toBeHidden();
+  await expect(wordmark).toBeFocused();
+  await expect(chip).toHaveCount(0);
+
+  const sort = h.page.getByRole("button", { name: "Sort", exact: true });
+  await sort.hover();
+  await expect(chip).toHaveText(/^Sort/);
+  await sort.click();
+  const menu = h.page.getByRole("menu", { name: "Sort notes" });
+  await expect(menu).toBeVisible();
+  await expect(chip).toHaveCount(0);
+  await h.page.mouse.click(600, 400);
+  await expect(menu).toBeHidden();
+  await expect(chip).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
 });

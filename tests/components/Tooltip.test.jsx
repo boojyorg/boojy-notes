@@ -26,8 +26,20 @@ import { TOOLTIP_REST_MS, TOOLTIP_WARM_MS, shortcutLabel } from "../../src/compo
 
 const chip = (q) => q.queryByTestId("chrome-tooltip");
 
+// jsdom answers `:focus-visible` with false whatever holds focus, so the
+// tests say what the browser would: keyboard focus by default, a click's or a
+// closing menu's focus when a test sets `focusVisible` false. Focus itself is
+// real (`el.focus()`), so the element must hold it for the selector to match.
+let focusVisible = true;
+const realMatches = Element.prototype.matches;
+Element.prototype.matches = function (sel) {
+  if (sel === ":focus-visible") return focusVisible && this === document.activeElement;
+  return realMatches.call(this, sel);
+};
+
 afterEach(() => {
   cleanup();
+  focusVisible = true;
   // The warm window is module state: let it lapse so the next test starts cold.
   if (vi.isFakeTimers()) {
     act(() => vi.advanceTimersByTime(TOOLTIP_WARM_MS + 1));
@@ -113,18 +125,34 @@ describe("ChromeButton's chip", () => {
   it("shows at once on keyboard focus and hides on blur or an activating key", () => {
     const q = renderPair();
     const undo = q.getByLabelText("Undo");
-    fireEvent.focus(undo);
+    act(() => undo.focus());
     expect(chip(q).textContent).toBe("Undo⌘Z");
     fireEvent.keyDown(undo, { key: "Enter" });
     expect(chip(q)).toBeNull();
-    fireEvent.blur(undo);
-    fireEvent.focus(undo);
+    act(() => undo.blur());
+    act(() => undo.focus());
     expect(chip(q)).not.toBeNull();
     fireEvent.keyDown(undo, { key: "Escape" });
     expect(chip(q)).toBeNull();
-    fireEvent.focus(undo);
-    fireEvent.blur(undo);
+    act(() => undo.focus());
+    act(() => undo.blur());
     expect(chip(q)).toBeNull();
+  });
+
+  // A closing menu or dialog hands focus back to the button that opened it,
+  // with the pointer elsewhere. The browser reports that focus as not
+  // keyboard-visible, and the chip stays away; it kept showing after Settings
+  // or the Sort menu closed before this.
+  it("shows nothing for focus the browser does not mark as keyboard focus", () => {
+    const q = renderPair();
+    const undo = q.getByLabelText("Undo");
+    focusVisible = false;
+    act(() => undo.focus());
+    expect(chip(q)).toBeNull();
+    act(() => undo.blur());
+    focusVisible = true;
+    act(() => undo.focus());
+    expect(chip(q)).not.toBeNull();
   });
 
   // Disabled is `aria-disabled` so the control still takes the pointer and
@@ -141,7 +169,7 @@ describe("ChromeButton's chip", () => {
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
     expect(chip(q).textContent).toBe("Undo⌘Z");
     fireEvent.mouseLeave(undo);
-    fireEvent.focus(undo);
+    act(() => undo.focus());
     expect(chip(q).textContent).toBe("Undo⌘Z");
   });
 
@@ -150,7 +178,7 @@ describe("ChromeButton's chip", () => {
   it("draws the chip at the top of the page with the shortcut on a pill", () => {
     const q = renderPair();
     const undo = q.getByLabelText("Undo");
-    fireEvent.focus(undo);
+    act(() => undo.focus());
     const c = chip(q);
     expect(c.parentElement).toBe(document.body);
     expect(c.style.position).toBe("fixed");
