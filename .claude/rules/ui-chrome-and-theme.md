@@ -177,7 +177,9 @@ The toggle sits in the sidebar header opposite the wordmark when expanded, and a
 
 `NotePath`: `University / Archive / Todd's Note`, folders then name, 14px/400: name in
 `TEXT.primary`, folders `TEXT.secondary` (buttons that lift to primary on hover), slashes
-`TEXT.muted`; nothing bold, nothing accent. A root note shows its name alone, never `Notes /`.
+`TEXT.muted`; **the name alone is 500** (`NAME_WEIGHT`, 2026-09-17: the row stands in for a
+title bar and the name is the one place you are; the twin measures it at that weight), never
+bolder, nothing accent. A root note shows its name alone, never `Notes /`.
 The name is the editable file label: a click renames in place, Enter goes to the first block.
 **The empty field's placeholder is CSS on the DOM** (`[data-title]:has(> br:only-child)`, as the
 block's), never a class from the debounced title; it inherits the field's padding so it starts

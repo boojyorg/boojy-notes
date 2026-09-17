@@ -22,8 +22,8 @@ import { FolderIcon } from "./Icons";
  *
  * `University / Archive / Todd's Note`: the parent folders and then the name,
  * which is the same editable file label it was when it sat in the column, at
- * interface size (14px, regular weight) and in the theme's primary ink, with
- * the folders one step quieter and the slashes muted. A root note shows its
+ * interface size (14px; the name medium, the folders regular) and in the
+ * theme's primary ink, with the folders one step quieter and the slashes muted. A root note shows its
  * name alone; there is no `Notes /` in front of it, and no control of its own.
  *
  * Each folder crumb, and the `…` that stands for hidden ones, is a button
@@ -89,6 +89,13 @@ const BIAS_SHRINK = 1000;
 
 /** The path's font: interface size, regular weight, no letter spacing. */
 export const PATH_FONT = { fontSize: 14, fontWeight: 400, lineHeight: "20px" };
+/** The name alone is medium (2026-09-17, Tyr: it makes the note's name the
+ *  obvious thing in the row): the row stands in for a title bar, whose title
+ *  is the heavier item, and the mobile label already sits at 500. Folders
+ *  stay regular in secondary ink. 500 is a real cut in any Inter and in the
+ *  system font; 450 would be a guess about the reader's font. The twin's
+ *  name spans carry it so the fit is measured with the heavier glyphs. */
+export const NAME_WEIGHT = 500;
 /** The root glyph is a chrome button like the row's others (judged live 2026-09-16:
  *  an 18px glyph in the 32px box, same hover), so its 7px of box either side of
  *  the glyph is most of its air before the name; the gap adds a touch more. */
@@ -416,8 +423,8 @@ export default function NotePath({
               separator's margins are part of what it takes up. */}
           <span style={{ padding: `0 ${SEP_MX}px` }}>/</span>
           <span>…</span>
-          <span>{name || "Untitled"}</span>
-          <span>Untitled</span>
+          <span style={{ fontWeight: NAME_WEIGHT }}>{name || "Untitled"}</span>
+          <span style={{ fontWeight: NAME_WEIGHT }}>Untitled</span>
         </div>
       </div>
     </div>

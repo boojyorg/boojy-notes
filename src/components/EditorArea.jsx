@@ -7,7 +7,7 @@ import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
-import NotePath, { PATH_FONT } from "./NotePath";
+import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -647,6 +647,7 @@ const EditorArea = memo(
                 // pill's padding is pulled back out with a negative margin so the
                 // path centres on the letters, not on the pill.
                 ...PATH_FONT,
+                fontWeight: NAME_WEIGHT,
                 color: restColor,
                 margin: `0 ${-LABEL_PAD_X}px`,
                 padding: `0 ${LABEL_PAD_X}px`,
