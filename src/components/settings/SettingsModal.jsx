@@ -4,13 +4,17 @@ import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { spacing } from "../../tokens/spacing";
-import { radius } from "../../tokens/radius";
-import { fontSize, fontWeight } from "../../tokens/typography";
+import { fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
 import UpdatesTab from "./UpdatesTab";
-import ExportTab from "./ExportTab";
+import StorageTab from "./StorageTab";
 import SettingsFooter from "./SettingsFooter";
-import { ChevronLeftIcon } from "../Icons";
+import { SCRIM, SectionTitle, SettingsRule, dialogSurface } from "./SettingsPrimitives";
+import { ChevronLeftIcon, CloseIcon, SettingsIcon } from "../Icons";
+import { ChromeButton } from "../EditorChrome";
+
+/** Settings' width: room for a long notes-folder path beside its button. */
+export const SETTINGS_WIDTH = 540;
 
 export default function SettingsModal({
   isMobile,
@@ -26,7 +30,7 @@ export default function SettingsModal({
 
   const modalRef = useRef(null);
 
-  useFocusTrap(modalRef, settingsOpen);
+  useFocusTrap(modalRef, settingsOpen, "container");
 
   // Settings closes itself on Escape, as every other surface does; the app
   // shell's handler never needs to know it is open. On the document, so it
@@ -45,35 +49,6 @@ export default function SettingsModal({
 
   if (!settingsOpen) return null;
 
-  const SectionHeader = ({ title, first }) => (
-    // Each desktop section self-spaces from the one above via marginTop (the
-    // first header is flush — the content area pads the top). Mobile passes
-    // SectionHeader={() => null}, so this never affects the mobile layout.
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        marginTop: first ? 0 : spacing.xxxl,
-        marginBottom: spacing.lg,
-      }}
-    >
-      <span
-        style={{
-          fontSize: fontSize.xs,
-          fontWeight: fontWeight.semibold,
-          color: ACCENT.text,
-          textTransform: "uppercase",
-          letterSpacing: 1.5,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {title}
-      </span>
-      <div style={{ flex: 1, height: 1, background: `${ACCENT.primary}33` }} />
-    </div>
-  );
-
   // Mobile card wrapper for grouped settings rows
   const MobileCard = ({ children }) => (
     <div
@@ -82,6 +57,7 @@ export default function SettingsModal({
         borderRadius: 12,
         overflow: "hidden",
         marginBottom: spacing.sm,
+        padding: `${spacing.sm}px ${spacing.md}px`,
       }}
     >
       {children}
@@ -112,6 +88,7 @@ export default function SettingsModal({
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
+        tabIndex={-1}
         style={{
           position: "fixed",
           inset: 0,
@@ -120,6 +97,7 @@ export default function SettingsModal({
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          outline: "none",
         }}
       >
         {/* Header */}
@@ -165,20 +143,17 @@ export default function SettingsModal({
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          {/* Appearance */}
           <MobileSectionHeader title="Appearance" />
           <MobileCard>
             <AppearanceTab SectionHeader={() => null} />
           </MobileCard>
 
-          {/* Storage (desktop only) */}
           {isDesktop && (
             <>
-              <MobileSectionHeader title="Storage" />
+              <MobileSectionHeader title="Notes folder" />
               <MobileCard>
-                <ExportTab
+                <StorageTab
                   isDesktop={isDesktop}
-                  isMobile={isMobile}
                   notesDir={notesDir}
                   changeNotesDir={changeNotesDir}
                   revealNotesDir={revealNotesDir}
@@ -188,7 +163,6 @@ export default function SettingsModal({
             </>
           )}
 
-          {/* Updates (desktop only) */}
           {isDesktop && (
             <>
               <MobileSectionHeader title="Updates" />
@@ -207,30 +181,24 @@ export default function SettingsModal({
   }
 
   // ── Desktop layout ────────────────────────────────────────────────
-  // Single pane: Appearance, then Storage/Updates on desktop, then a quiet
-  // version/credit line. No navigation sidebar and no branding block — there is nothing
-  // to navigate between, and the app already says which app it is.
+  // One pane on the search palette's surface (2026-09-17): Appearance, the
+  // notes folder and Updates, parted by rules, then the quiet version line.
+  // No navigation and no branding block; the cog beside the title is the one
+  // glyph, the same one the ··· menu gives Settings.
   return (
     <>
-      {/* Backdrop */}
+      {/* Scrim: the palette's, no blur */}
       <div
         onClick={() => setSettingsOpen(false)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: Z.SETTINGS,
-          background: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
+        style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
       />
 
-      {/* Modal */}
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "fixed",
@@ -238,15 +206,16 @@ export default function SettingsModal({
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: Z.SETTINGS_INNER,
-          width: 440,
-          maxHeight: "min(560px, calc(100vh - 48px))",
-          background: theme.modalBg,
-          border: `1px solid ${theme.overlay(0.06)}`,
-          borderRadius: radius.xl,
-          boxShadow: theme.modalShadow,
+          width: SETTINGS_WIDTH,
+          maxWidth: "calc(100vw - 32px)",
+          maxHeight: "calc(100vh - 48px)",
+          boxSizing: "border-box",
+          padding: "20px 28px",
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
+          overflowY: "auto",
+          outline: "none",
+          ...dialogSurface(theme),
         }}
       >
         {/* Header */}
@@ -254,67 +223,52 @@ export default function SettingsModal({
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            padding: spacing.lg,
-            position: "relative",
-            borderBottom: `1px solid ${theme.overlay(0.06)}`,
+            justifyContent: "space-between",
+            height: 32,
+            margin: "0 -8px 20px 0",
             flexShrink: 0,
           }}
         >
-          <span
-            style={{ fontSize: fontSize.xxl, fontWeight: fontWeight.semibold, color: TEXT.primary }}
-          >
-            Settings
-          </span>
-          <button
-            onClick={() => setSettingsOpen(false)}
-            aria-label="Close settings"
+          <div
             style={{
-              position: "absolute",
-              right: spacing.md,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 32,
-              height: 32,
-              borderRadius: radius.md,
-              background: "none",
-              border: "none",
-              color: TEXT.muted,
-              fontSize: fontSize.xl,
-              cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              transition: "color 0.15s",
+              gap: 10,
+              fontSize: 17,
+              fontWeight: fontWeight.semibold,
+              color: TEXT.primary,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TEXT.secondary)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TEXT.muted)}
           >
-            {"✕"}
-          </button>
+            <span style={{ display: "inline-flex", color: TEXT.secondary }}>
+              <SettingsIcon size={18} />
+            </span>
+            <span>Settings</span>
+          </div>
+          <ChromeButton
+            label="Close"
+            ariaLabel="Close settings"
+            onClick={() => setSettingsOpen(false)}
+          >
+            <CloseIcon />
+          </ChromeButton>
         </div>
 
-        {/* Content */}
-        <div
-          style={{
-            padding: spacing.xxl,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <AppearanceTab SectionHeader={(props) => <SectionHeader {...props} first />} />
-          <ExportTab
-            isDesktop={isDesktop}
-            isMobile={false}
-            notesDir={notesDir}
-            changeNotesDir={changeNotesDir}
-            revealNotesDir={revealNotesDir}
-            SectionHeader={SectionHeader}
-          />
-          <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionHeader} />
-          <SettingsFooter />
-        </div>
+        <AppearanceTab SectionHeader={SectionTitle} />
+        {isDesktop && (
+          <>
+            <SettingsRule />
+            <StorageTab
+              isDesktop={isDesktop}
+              notesDir={notesDir}
+              changeNotesDir={changeNotesDir}
+              revealNotesDir={revealNotesDir}
+              SectionHeader={SectionTitle}
+            />
+            <SettingsRule />
+            <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
+          </>
+        )}
+        <SettingsFooter />
       </div>
     </>
   );

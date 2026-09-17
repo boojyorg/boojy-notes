@@ -18,8 +18,16 @@ vi.mock("electron-updater", () => ({
 }));
 
 const { ipcMain } = await import("electron");
-const { getNotesDir, loadConfig, loadSettings, registerSettingsIPC, saveConfig, saveSettings } =
-  await import("../../electron/settingsManager.js");
+const {
+  completeSetup,
+  getNotesDir,
+  loadConfig,
+  loadSettings,
+  registerSettingsIPC,
+  saveConfig,
+  saveSettings,
+  settleSetupState,
+} = await import("../../electron/settingsManager.js");
 
 const SETTINGS = path.join(userData, "settings.json");
 const CONFIG = path.join(userData, "config.json");
@@ -65,11 +73,42 @@ describe("config and settings persistence is atomic", () => {
 // in Finder) must not come back as an empty directory on the boot disk with
 // new notes quietly going into it. Only the default vault is the app's to make.
 describe("getNotesDir", () => {
-  it("makes the default vault under Documents when nothing is configured", () => {
-    const dir = getNotesDir();
+  it("names the default vault under Documents on a first launch, and makes it once setup is done", () => {
+    const expected = path.join(documents, "Boojy", "Notes");
+    expect(settleSetupState()).toBe(true);
 
-    expect(dir).toBe(path.join(documents, "Boojy", "Notes"));
-    expect(fs.statSync(dir).isDirectory()).toBe(true);
+    // First launch: named, not made, so a user who picks another folder in
+    // setup is not left with an empty one in Documents.
+    expect(getNotesDir()).toBe(expected);
+    expect(fs.existsSync(expected)).toBe(false);
+
+    expect(completeSetup()).toBe(expected);
+    expect(fs.statSync(expected).isDirectory()).toBe(true);
+    expect(loadConfig()).toEqual({ setupDone: true });
+    // A later launch: made on demand as before, never asked again.
+    fs.rmSync(expected, { recursive: true });
+    expect(settleSetupState()).toBe(false);
+    expect(getNotesDir()).toBe(expected);
+    expect(fs.statSync(expected).isDirectory()).toBe(true);
+  });
+
+  it("treats a configured folder, or a default folder already on disk, as an existing user", () => {
+    saveConfig({ notesDir: "/Volumes/Vault/Notes" });
+    expect(settleSetupState()).toBe(false);
+    expect(loadConfig()).toEqual({ notesDir: "/Volumes/Vault/Notes", setupDone: true });
+
+    fs.rmSync(CONFIG);
+    fs.mkdirSync(path.join(documents, "Boojy", "Notes"), { recursive: true });
+    expect(settleSetupState()).toBe(false);
+    expect(loadConfig()).toEqual({ setupDone: true });
+  });
+
+  it("chooses a folder in setup without a flag, and completeSetup then keeps that folder", () => {
+    expect(settleSetupState()).toBe(true);
+    saveConfig({ ...loadConfig(), notesDir: path.join(documents, "Chosen") });
+    expect(completeSetup()).toBe(path.join(documents, "Chosen"));
+    expect(fs.existsSync(path.join(documents, "Boojy"))).toBe(false);
+    expect(loadConfig().setupDone).toBe(true);
   });
 
   it("never makes a configured vault that is missing", () => {

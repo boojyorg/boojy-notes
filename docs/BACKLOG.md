@@ -243,7 +243,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   `src` or `width` (review §3.8 residue).
 - [ ] **Tag chips harvest `#include` and `color: #fff`** from code blocks and frontmatter
   (review §3.5); the same missing boundary as the `#` inside a word, above.
-- [ ] **Settings → Storage truncates the vault path twice** (review §4.6).
 - [ ] **Search snippets join blocks with a single space** (`…#tagonehere. first item…`), so a
   heading and the line under it read as one sentence (review §7.9); one separator.
 - **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
@@ -406,7 +405,6 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 - **`tests/electron/markdown.test.js` is misfiled** — it tests `src/utils/markdown.js`; move it
   beside `tests/utils/markdown.test.js` and drop its round-trip block, which duplicates
   `LOSSLESS_CASES` there (no overlapping test names otherwise).
-- **`ExportTab.jsx` renders Storage** — export was removed; rename to `StorageTab`.
 - **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename), the
   `boojy-att://` traversal guard, and a pending title at quit. No layer covers them today.
 - **Confirmed deletion never runs in CI** — both Trash journeys and the case-only rename skip

@@ -26,6 +26,7 @@ import {
 } from "./fileWatcher.js";
 import {
   getNotesDir,
+  settleSetupState,
   loadSettings,
   saveSettings,
   setupAutoUpdater,
@@ -221,6 +222,9 @@ setupAutoUpdater(getMainWindow);
 
 app.whenReady().then(async () => {
   app.setName("Boojy Notes");
+  // An existing user is settled before anything asks for the folder; a first
+  // launch leaves the default folder unmade until setup ends.
+  settleSetupState();
   trace("M", "start notesDir", getNotesDir());
   // No Dock icon either while hidden for tests, or launching would still pull
   // focus to the app on macOS.

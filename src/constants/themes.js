@@ -9,6 +9,10 @@
 // on both grounds — so that is `ACCENT.text`, per theme.
 export const MARK = "#8FC1C6";
 export const ON_MARK = "#FFFFFF";
+/** A label read on the mark (Create note, Restart to update, a confirm button):
+ *  the dark ink is about 9.7:1 on the teal where white is 2:1 (2026-09-17).
+ *  `ON_MARK` stays for the tick, which is a shape, not a word. */
+export const ON_MARK_TEXT = "#14110F";
 
 export const NIGHT = {
   name: "night",
@@ -34,6 +38,7 @@ export const NIGHT = {
     primary: MARK, // marks and fills: the one teal, shared with DAY
     text: "#9CC9CE", // accent as ink on the ground: misty, 9:1 on the sheet
     onAccent: ON_MARK,
+    onAccentText: ON_MARK_TEXT,
   },
   SEMANTIC: {
     warning: "#FFC107",
@@ -97,6 +102,9 @@ export const NIGHT = {
   codeSelection: "rgba(255,255,255,0.12)",
   caretColor: "#fff",
   searchInputBg: "#181818",
+  /** Settings' bordered buttons: a step above the elevated ground so an enabled
+   *  button reads as one before hover (on the divider alone it read disabled). */
+  button: { bg: "#2F2F2F", border: "rgba(255,255,255,0.16)" },
   modalBg: "rgba(35,35,35,0.96)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.2)",
   /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */
@@ -139,6 +147,7 @@ export const DAY = {
     primary: MARK, // marks and fills: the one teal, shared with NIGHT
     text: "#2A737D", // accent as ink on the ground: 5.5:1 on the sheet, 4.6:1 on a selected row
     onAccent: ON_MARK,
+    onAccentText: ON_MARK_TEXT,
   },
   SEMANTIC: {
     warning: "#D4920A",
@@ -200,6 +209,7 @@ export const DAY = {
   codeSelection: "rgba(0,0,0,0.12)",
   caretColor: "#14110F",
   searchInputBg: "#FFFFFF",
+  button: { bg: "transparent", border: "#DCDCDC" },
   modalBg: "rgba(255,255,255,0.97)",
   modalShadow: "0 24px 48px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08)",
   /** Lifted-while-dragging objects (block ghost, sidebar pill, drag tooltip). */

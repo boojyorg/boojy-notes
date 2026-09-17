@@ -17,7 +17,8 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         hover: "#555",
         darkest: "#111",
       },
-      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF" },
+      ACCENT: { primary: "#A4CACE", text: "#A4CACE", onAccent: "#FFFFFF", onAccentText: "#111" },
+      button: { bg: "transparent", border: "#444" },
       SEMANTIC: {},
       modalBg: "#1a1a1e",
       modalShadow: "0 0 20px rgba(0,0,0,0.5)",
@@ -51,11 +52,11 @@ vi.mock("../../../src/components/settings/AppearanceTab", () => ({
 vi.mock("../../../src/components/settings/UpdatesTab", () => ({
   default: ({ isDesktop }) => (isDesktop ? <div data-testid="updates-tab">Updates</div> : null),
 }));
-vi.mock("../../../src/components/settings/ExportTab", () => ({
+vi.mock("../../../src/components/settings/StorageTab", () => ({
   default: ({ isDesktop, revealNotesDir }) =>
     isDesktop ? (
-      <div data-testid="export-tab" data-reveal={revealNotesDir ? "yes" : "no"}>
-        Export
+      <div data-testid="storage-tab" data-reveal={revealNotesDir ? "yes" : "no"}>
+        Storage
       </div>
     ) : null,
 }));
@@ -129,9 +130,9 @@ describe("SettingsModal", () => {
   it("renders Appearance, Storage and Updates content plus the quiet footer on desktop", () => {
     renderModal();
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
-    expect(screen.getByTestId("export-tab")).toBeInTheDocument();
+    expect(screen.getByTestId("storage-tab")).toBeInTheDocument();
     // Show in Finder reaches the Storage section through the modal.
-    expect(screen.getByTestId("export-tab").dataset.reveal).toBe("yes");
+    expect(screen.getByTestId("storage-tab").dataset.reveal).toBe("yes");
     expect(screen.getByTestId("updates-tab")).toBeInTheDocument();
     expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
   });
@@ -139,16 +140,25 @@ describe("SettingsModal", () => {
   it("hides the desktop-only sections on web", () => {
     renderModal({ isDesktop: false });
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
-    expect(screen.queryByTestId("export-tab")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("storage-tab")).not.toBeInTheDocument();
     expect(screen.queryByTestId("updates-tab")).not.toBeInTheDocument();
   });
 
   it("renders the close button on desktop and calls setSettingsOpen(false)", () => {
     renderModal();
-    // The close button renders the unicode cross character
-    const closeBtn = screen.getByText("✕");
+    // A chrome button with a Lucide X, named for the reader; no ✕ typed as text.
+    const closeBtn = screen.getByRole("button", { name: "Close settings" });
+    expect(closeBtn.querySelector("svg")).not.toBeNull();
+    expect(screen.queryByText("✕")).toBeNull();
     fireEvent.click(closeBtn);
     expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);
+  });
+
+  it("carries the Settings cog beside its title and no section rule in the accent", () => {
+    renderModal();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelectorAll('[role="separator"]').length).toBe(2);
+    expect(dialog.querySelector("svg.lucide-settings")).not.toBeNull();
   });
 
   it("renders back arrow instead of close button on mobile", () => {

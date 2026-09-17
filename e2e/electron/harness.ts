@@ -101,6 +101,8 @@ export interface AppHandle {
   page: Page;
   vault: Vault;
   userData: string;
+  /** The Documents directory the app was given (`firstRun`), where its default folder goes. */
+  documents: string;
   /** Console errors and uncaught page errors seen since launch. */
   pageErrors: string[];
   /** Click a note row in the sidebar by its visible title. */
@@ -116,7 +118,7 @@ export interface AppHandle {
   close(): Promise<void>;
 }
 
-async function launchElectron(userData: string) {
+async function launchElectron(userData: string, documents?: string) {
   const app = await _electron.launch({
     args: [
       path.join(here, "main-wrapper.mjs"),
@@ -127,6 +129,7 @@ async function launchElectron(userData: string) {
     env: {
       ...process.env,
       BOOJY_TEST_USERDATA: userData,
+      ...(documents ? { BOOJY_TEST_DOCUMENTS: documents } : {}),
       BOOJY_TEST_HIDDEN: process.env.BOOJY_TEST_HEADED === "1" || process.env.CI ? "0" : "1",
     },
   });
@@ -160,34 +163,51 @@ export async function launchApp(
     prepare,
     vaultDir: vaultRel = "vault",
     createVault = true,
+    firstRun = false,
+    defaultFolderExists = false,
   }: {
     prepare?: (vault: Vault) => void;
     /** Where the vault sits under the temp root; a dot-segment makes a hidden parent. */
     vaultDir?: string;
     /** `false` points the config at a vault that does not exist, as an unmounted volume does. */
     createVault?: boolean;
+    /**
+     * No config at all, as a fresh install has: the app names its default
+     * folder under a temp Documents (`handle.documents`) and shows setup.
+     * `vault` then points at that default folder; `files` seed it only with
+     * `defaultFolderExists`, which is an existing user who never chose.
+     */
+    firstRun?: boolean;
+    defaultFolderExists?: boolean;
   } = {},
 ): Promise<AppHandle> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-e2e-"));
-  const vaultDir = path.join(root, vaultRel);
+  const documents = path.join(root, "Documents");
+  const vaultDir = firstRun ? path.join(documents, "Boojy", "Notes") : path.join(root, vaultRel);
   const userData = path.join(root, "userData");
-  if (createVault) fs.mkdirSync(vaultDir, { recursive: true });
+  if (firstRun) {
+    fs.mkdirSync(documents, { recursive: true });
+    if (defaultFolderExists) fs.mkdirSync(vaultDir, { recursive: true });
+    else if (Object.keys(files).length > 0)
+      throw new Error("firstRun takes files only with defaultFolderExists");
+  } else if (createVault) fs.mkdirSync(vaultDir, { recursive: true });
   else if (Object.keys(files).length > 0) throw new Error("createVault: false takes no files");
   fs.mkdirSync(userData, { recursive: true });
   const vault = makeVault(vaultDir);
   for (const [rel, content] of Object.entries(files)) vault.write(rel, content);
   prepare?.(vault);
-  fs.writeFileSync(path.join(userData, "config.json"), JSON.stringify({ notesDir: vaultDir }));
+  if (!firstRun)
+    fs.writeFileSync(path.join(userData, "config.json"), JSON.stringify({ notesDir: vaultDir }));
   // Keep the test offline: no update check against GitHub.
   fs.writeFileSync(path.join(userData, "settings.json"), JSON.stringify({ autoUpdate: false }));
 
-  const handle = { vault, userData } as AppHandle;
+  const handle = { vault, userData, documents } as AppHandle;
   const attach = (launched: Awaited<ReturnType<typeof launchElectron>>) => {
     handle.app = launched.app;
     handle.page = launched.page;
     handle.pageErrors = launched.pageErrors;
   };
-  attach(await launchElectron(userData));
+  attach(await launchElectron(userData, firstRun ? documents : undefined));
 
   handle.openNote = async (title) => {
     // Rows are buttons whose accessible name also carries the ··· menu label,
@@ -205,7 +225,7 @@ export async function launchApp(
   };
   handle.restart = async () => {
     await handle.quit();
-    attach(await launchElectron(userData));
+    attach(await launchElectron(userData, firstRun ? documents : undefined));
     running = true;
   };
   handle.close = async () => {
@@ -245,6 +265,14 @@ export async function waitForFile(
  * zero-width space the editor parks the caret on after a link has no glyph
  * and never reaches Markdown, so it is not part of what the user reads.
  */
+/** The app ground's colour (`BG.darkest`): Light `rgb(252, 252, 252)`, Dark `rgb(28, 28, 28)`. */
+export async function appGround(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const el = document.querySelector('[data-testid="app-ground"]');
+    return el ? getComputedStyle(el).backgroundColor : "";
+  });
+}
+
 export async function editorText(page: Page): Promise<string> {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll("[data-block-id]"))

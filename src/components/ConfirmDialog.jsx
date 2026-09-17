@@ -8,7 +8,9 @@ import { Z } from "../constants/zIndex";
  * Driven by the Overlay context's `confirmState` + `resolveConfirm`.
  * Resolves the pending requestConfirm() promise with true (confirm) or false (cancel).
  *
- * confirm shape: { title, message, confirmLabel?, cancelLabel?, danger? }
+ * confirm shape: { title, message, confirmLabel?, cancelLabel?, danger?, confirmIcon? }
+ * `confirmIcon` is a glyph drawn before the confirm label (Change notes folder
+ * carries the open folder its next step shows).
  *
  * Enter activates the focused button, natively (review 2026-09-07, §4.1): a
  * destructive dialog opens with Cancel focused, so Enter cancels until the
@@ -109,14 +111,17 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
           <button
             ref={cancelRef}
             onClick={onCancel}
+            className="settings-button"
             style={{
-              padding: "8px 20px",
+              height: 34,
+              padding: "0 20px",
               borderRadius: 8,
-              border: `1px solid ${theme.BG.divider}`,
-              background: "transparent",
-              color: theme.TEXT.secondary,
+              border: `1px solid ${theme.button.border}`,
+              background: theme.button.bg,
+              color: theme.TEXT.primary,
               fontSize: 13,
               fontWeight: 500,
+              fontFamily: "inherit",
               cursor: "pointer",
             }}
           >
@@ -125,18 +130,26 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
           <button
             ref={confirmRef}
             onClick={onConfirm}
+            className="settings-button is-accent"
             style={{
-              padding: "8px 20px",
+              height: 34,
+              padding: "0 20px",
               borderRadius: 8,
               border: "none",
               background: confirmBg,
-              // danger uses SEMANTIC.error (dark in both themes); accent needs the themed pair
-              color: danger ? "#fff" : theme.ACCENT.onAccent,
+              // danger uses SEMANTIC.error (dark in both themes) under white;
+              // the mark takes the dark label ink (2:1 for white on the teal).
+              color: danger ? "#fff" : theme.ACCENT.onAccentText,
               fontSize: 13,
               fontWeight: 600,
+              fontFamily: "inherit",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
+            {confirm.confirmIcon}
             {confirm.confirmLabel || "Confirm"}
           </button>
         </div>

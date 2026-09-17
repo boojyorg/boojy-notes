@@ -182,9 +182,11 @@ test("switching vault with unsaved edits writes them into the old vault, and und
     await h.page.locator("[data-block-id]").first().click();
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" A");
-    // Straight to Settings → Storage → Change, inside the write debounce.
+    // Straight to Settings → Notes folder → Change folder…, inside the write
+    // debounce; the app asks first (the notes stay where they are).
     await h.page.getByTestId("wordmark-settings-button").click();
-    await h.page.getByRole("button", { name: "Change" }).click();
+    await h.page.getByRole("button", { name: "Change folder…" }).click();
+    await h.page.getByRole("alertdialog").getByRole("button", { name: "Choose folder…" }).click();
 
     await expect.poll(() => sidebarNoteTitles(h.page), { timeout: 5_000 }).toEqual(["Theirs"]);
     // The old vault got the edit before the switch.
