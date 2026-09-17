@@ -202,7 +202,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   the third attempt. The hold is also the cause of a 2px twitch-to-root, a swallowed slow click
   and a stale target under auto-scroll (review §4.4); Finder, Notion and Obsidian lift after
   ~5px of movement and never on a timer, and a displacement threshold fixes all four at once.
-- [ ] **A cleared title shows a blank sidebar row** until the next write adopts `Untitled`.
 - [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
   up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`

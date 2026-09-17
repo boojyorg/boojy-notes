@@ -33,6 +33,68 @@ const mdFiles = (vault: Vault) =>
     .filter((f) => f.endsWith(".md"))
     .sort();
 
+/**
+ * A new note starts unnamed: the field is empty under the caret with
+ * `Untitled` as a placeholder (nothing selected to type over), the sidebar
+ * row reads Untitled rather than standing blank, and the file is
+ * `Untitled.md` at once. Typing names it. The placeholder is read from the
+ * DOM, so a Backspace that empties a real name shows it in the same frame,
+ * starting where the caret does. (Before 2026-09-17 the note was a real
+ * `Untitled` selected whole; emptying it showed a bare pill for 300 ms and
+ * then the placeholder 5px behind the caret.)
+ */
+test("a new note starts unnamed under the caret, reads Untitled everywhere, and is named by typing", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.getByRole("button", { name: "New note", exact: true }).click();
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await expect(title).toBeFocused();
+    await expect(title).toHaveText("");
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("");
+    const placeholder = () =>
+      h.page.evaluate(() => {
+        const el = document.querySelector("[data-title]") as HTMLElement;
+        const s = getComputedStyle(el, "::before");
+        return {
+          content: s.content,
+          padLeft: s.paddingLeft,
+          minWidth: el.style.minWidth || getComputedStyle(el).minWidth,
+        };
+      });
+    const first = await placeholder();
+    expect(first.content).toBe('"Untitled"');
+    // Inherits the field's padding, so it starts under the caret.
+    expect(first.padLeft).not.toBe("0px");
+    expect(Number.parseFloat(first.minWidth)).toBeGreaterThan(0);
+    // The sidebar row is never blank: a muted Untitled until the name lands.
+    await expect(h.page.locator('[role="treeitem"]').filter({ hasText: "Untitled" })).toHaveCount(
+      1,
+    );
+    await expect.poll(() => h.vault.exists("Untitled.md")).toBe(true);
+
+    await h.page.keyboard.type("Meeting");
+    await waitForFile(h.vault.file("Meeting.md"), (t) => t === "", {
+      label: "the new note under the name typed",
+    });
+    await sleep(SETTLE_MS);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md", "Meeting.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+    expect((await placeholder()).content).toBe("none");
+
+    // Emptying a real name shows the placeholder in the same frame, not
+    // after the title's 300 ms commit.
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.press("Backspace");
+    const emptied = await placeholder();
+    expect(emptied.content).toBe('"Untitled"');
+    expect(Number.parseFloat(emptied.minWidth)).toBeGreaterThan(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a moved namesake takes the resolved filename and keeps it across saves and restarts", async () => {
   const h = await launchApp({
     "Work/Meeting notes.md": "In Work.\n",

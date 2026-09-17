@@ -548,7 +548,6 @@ const EditorArea = memo(
         data-placeholder="Untitled"
         role="textbox"
         aria-label="Note title"
-        className={note.title ? undefined : "empty-title"}
         onInput={(e) => {
           const newTitle = titleFieldText(e.currentTarget);
           commitTextChange((prev) => {
@@ -648,7 +647,8 @@ const EditorArea = memo(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                minWidth: 0,
+                // min-width is the stylesheet's: 0, or the placeholder's
+                // width while the field is empty (GlobalStyles, [data-title]).
                 flex: "1 1 auto",
                 transition: "background 0.12s, color 0.12s",
               }

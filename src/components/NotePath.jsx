@@ -115,7 +115,6 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
       const w = (i) => spans[i].getBoundingClientRect().width;
       const n = parents.length;
       const zoom = cssZoom(band);
-      const nameW = w(n + 2);
       // A root note's glyph sits in front of the name and takes its room; a
       // style value, so scaled up to the measured pixels it is compared with.
       const glyphW = n === 0 ? ROOT_GLYPH_W * zoom : 0;
@@ -123,14 +122,18 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
         parents: Array.from({ length: n }, (_, i) => w(i)),
         sep: w(n),
         ellipsis: w(n + 1),
-        name: nameW + glyphW,
+        name: w(n + 2) + glyphW,
       };
       const available = band.getBoundingClientRect().width;
       const form = pickCrumbForm(widths, available);
       // The empty field is as wide as its placeholder, so `Untitled` is
       // centred like a name. Measured under the UI scale, written as a style:
-      // divided by the zoom, as every measured distance is (domHelpers).
-      const placeholderWidth = name ? 0 : Math.ceil(nameW / zoom);
+      // divided by the zoom, as every measured distance is (domHelpers). The
+      // stylesheet applies it only while the field is empty on screen, so it
+      // is measured whatever the name is: a Backspace that empties the field
+      // must not wait 300 ms for the title to commit before the pill has its
+      // width (the placeholder was clipped to a sliver until then).
+      const placeholderWidth = Math.ceil(w(n + 3) / zoom);
       setFit((prev) =>
         prev.form.keep === form.keep &&
         prev.form.ellipsis === form.ellipsis &&
@@ -368,9 +371,10 @@ export default function NotePath({
           <span
             style={{
               display: "flex",
-              minWidth: name ? 0 : placeholderWidth,
+              minWidth: 0,
               maxWidth: "100%",
               flex: form.truncated ? "1 1 0px" : "0 1 auto",
+              "--title-placeholder-width": `${placeholderWidth}px`,
             }}
           >
             {children}
@@ -413,6 +417,7 @@ export default function NotePath({
           <span style={{ padding: `0 ${SEP_MX}px` }}>/</span>
           <span>…</span>
           <span>{name || "Untitled"}</span>
+          <span>Untitled</span>
         </div>
       </div>
     </div>

@@ -168,11 +168,20 @@ describe("NotePath", () => {
     expect(right.style.flexGrow).toBe("1");
   });
 
-  it("gives an empty name its placeholder's width so `Untitled` centres too", () => {
-    const { container } = mount(["A"], "");
-    const path = container.querySelector("[data-testid='note-path']");
-    const wrapper = path.lastElementChild;
-    expect(wrapper.style.minWidth).toBe(`${"Untitled".length * 8}px`);
+  it("hands the field its placeholder's width, whatever the name, so an emptied field holds it", () => {
+    // The stylesheet applies it only while the field is empty on screen;
+    // measured always, so a Backspace that empties the field never waits on
+    // the title's commit for the pill's width.
+    for (const name of ["", "Some name"]) {
+      const { container, unmount } = mount(["A"], name);
+      const path = container.querySelector("[data-testid='note-path']");
+      const wrapper = path.lastElementChild;
+      expect(wrapper.style.getPropertyValue("--title-placeholder-width")).toBe(
+        `${"Untitled".length * 8}px`,
+      );
+      expect(wrapper.style.minWidth).toBe("0px");
+      unmount();
+    }
   });
 
   describe("the folder popup", () => {

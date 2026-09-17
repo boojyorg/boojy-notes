@@ -589,9 +589,18 @@ const Sidebar = memo(function Sidebar({
           />
         ) : (
           <span
-            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              // An unnamed note (a new one under the caret, a cleared name)
+              // reads `Untitled` a step quieter, so the row is never blank
+              // and a note really called Untitled still looks named.
+              color: n.title ? undefined : TEXT.muted,
+            }}
           >
-            {n.title}
+            {n.title || "Untitled"}
           </span>
         )}
         {/* Trailing ··· opens the same note menu as right-click. The slot is

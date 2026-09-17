@@ -225,6 +225,26 @@ describe("Sidebar", () => {
     expect(getByText("Second Note")).toBeInTheDocument();
   });
 
+  it("reads an unnamed note as a muted `Untitled`, never a blank row", () => {
+    const noteData = buildNoteData([
+      { id: "n1", title: "" },
+      { id: "n2", title: "Untitled" },
+    ]);
+    const filteredTree = [
+      { name: "My Folder", _path: "My Folder", children: [], notes: ["n1", "n2"] },
+    ];
+    const { getAllByText } = renderSidebar({
+      filteredTree,
+      noteData,
+      expanded: { "My Folder": true },
+    });
+    const [unnamed, named] = getAllByText("Untitled");
+    expect(unnamed.closest("[data-note-id]")).toHaveAttribute("data-note-id", "n1");
+    expect(unnamed).toHaveStyle({ color: "#666" });
+    expect(named.closest("[data-note-id]")).toHaveAttribute("data-note-id", "n2");
+    expect(named.style.color).toBe("");
+  });
+
   it("hides note titles when folder is collapsed", () => {
     const noteData = buildNoteData([{ id: "n1", title: "Hidden Note" }]);
     const filteredTree = [

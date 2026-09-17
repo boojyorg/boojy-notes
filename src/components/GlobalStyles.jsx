@@ -674,13 +674,32 @@ export default function GlobalStyles() {
           position: absolute;
           pointer-events: none;
         }
-        .empty-title::before {
+        /* The name's placeholder follows the same rule as the block's: it
+           shows while the field is empty on screen (nothing, or the <br>
+           the sync paints for the caret), read from the DOM and never from
+           the debounced title, which showed an empty pill for 300 ms after a
+           Backspace. Absolute, as the block's is, because Chromium draws the
+           caret after an in-flow ::before; it inherits the field's padding
+           so the text starts where the caret does rather than 5px behind
+           it, which put the caret through the U. While empty the field is
+           as wide as the placeholder (NotePath measures it), so the pill
+           holds its width and the path stays centred. */
+        [data-title] {
+          min-width: 0;
+        }
+        [data-title]:empty,
+        [data-title]:has(> br:only-child) {
+          min-width: var(--title-placeholder-width, 0px);
+        }
+        [data-title]:empty::before,
+        [data-title]:has(> br:only-child)::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
-          opacity: 0.35;
+          opacity: 0.4;
           position: absolute;
           top: 0;
           left: 0;
+          padding: inherit;
           pointer-events: none;
         }
       `}</style>
