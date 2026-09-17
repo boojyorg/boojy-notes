@@ -15,63 +15,21 @@ test.afterEach(async () => {
 
 const TOOLTIP_REST_MS = 400;
 
-/** TEMP diagnostic for the Linux runner: record the events a control sees around a hover. */
-const armProbe = (page: import("@playwright/test").Page) =>
-  page.evaluate(() => {
-    const w = window as unknown as { __probe?: string[] };
-    w.__probe = [];
-    const name = (t: EventTarget | null) => {
-      const el = t as Element | null;
-      if (!el || !el.tagName) return String(t);
-      return `${el.tagName.toLowerCase()}[${el.getAttribute("aria-label") || el.getAttribute("class") || el.getAttribute("data-testid") || ""}]`;
-    };
-    for (const type of [
-      "mouseover",
-      "mouseout",
-      "mousedown",
-      "mouseup",
-      "focusin",
-      "focusout",
-      "keydown",
-      "blur",
-    ]) {
-      window.addEventListener(
-        type,
-        (e) => {
-          const me = e as MouseEvent;
-          w.__probe?.push(
-            `${Math.round(performance.now())} ${type} ${name(e.target)} rel=${name((me as MouseEvent).relatedTarget ?? null)} xy=${me.clientX},${me.clientY}`,
-          );
-          if (w.__probe && w.__probe.length > 60) w.__probe.shift();
-        },
-        true,
-      );
-    }
-  });
-const dumpProbe = async (page: import("@playwright/test").Page, label: string) => {
-  const lines = await page.evaluate(
-    () => (window as unknown as { __probe?: string[] }).__probe ?? [],
-  );
-  const state = await page.evaluate(() => {
-    const el = document.querySelector("[aria-label='New folder'], [aria-label='Sort']");
-    const chip = document.querySelector("[data-testid='chrome-tooltip']");
-    const r = el?.getBoundingClientRect();
-    const under = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
-    return {
-      hover: [...document.querySelectorAll("[aria-label='New folder'], [aria-label='Sort']")].map(
-        (b) => `${b.getAttribute("aria-label")}:${b.matches(":hover")}`,
-      ),
-      chip: chip?.textContent ?? null,
-      active: document.activeElement?.tagName,
-      under: under
-        ? `${under.tagName}[${under.getAttribute("aria-label") || under.getAttribute("class") || ""}]`
-        : null,
-      inner: `${window.innerWidth}x${window.innerHeight}`,
-      focus: document.hasFocus(),
-    };
-  });
-  console.log(`PROBE ${label}\n${lines.join("\n")}\nSTATE ${JSON.stringify(state)}`);
-};
+/**
+ * Hover a control until its chip reads `text`. On the Linux runner the X
+ * pointer sits at the screen's centre, and when another worker's window
+ * appears Chromium receives a real `mouseout` to that point (probed
+ * 2026-09-17: `mouseout … rel=null xy=600,373` some 500 ms after the hover),
+ * which is a mouseleave to the control and cancels the chip's rest. A user's
+ * pointer would not have moved; the test's has, so it hovers again.
+ */
+async function hoverForChip(control: import("@playwright/test").Locator, text: RegExp | string) {
+  const chip = control.page().getByTestId("chrome-tooltip");
+  await expect(async () => {
+    await control.hover();
+    await expect(chip).toHaveText(text, { timeout: TOOLTIP_REST_MS * 3 });
+  }).toPass({ timeout: 10_000 });
+}
 
 /**
  * Whether the point is painted by the chip: what a user sees, clipping and
@@ -108,8 +66,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   );
 
   const toggle = h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)");
-  await toggle.hover();
-  await expect(chip).toHaveText(/^Toggle sidebar(⌘\\|Ctrl\+\\)$/);
+  await hoverForChip(toggle, /^Toggle sidebar(⌘\\|Ctrl\+\\)$/);
   const toggleBox = (await toggle.boundingBox())!;
   const chipBox = (await chip.boundingBox())!;
   // Under the control, centred on it.
@@ -124,8 +81,10 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   expect(await chipAt(chipBox.x + chipBox.width - 3, chipBox.y + chipBox.height / 2)).toBe(true);
 
   // The shortcut sits beside the name on its own pill.
-  await h.page.locator("[aria-label='Search notes']:not([inert] *)").hover();
-  await expect(chip).toHaveText(/^Search notes(⌘P|Ctrl\+P)$/);
+  await hoverForChip(
+    h.page.locator("[aria-label='Search notes']:not([inert] *)"),
+    /^Search notes(⌘P|Ctrl\+P)$/,
+  );
   const pill = chip.locator("span").last();
   await expect(pill).toHaveText(/⌘P|Ctrl\+P/);
   expect(await pill.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
@@ -133,8 +92,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   );
 
   // The wordmark's says what the wordmark does, and leaving hides it.
-  await h.page.getByTestId("wordmark-settings-button").hover();
-  await expect(chip).toHaveText(/^Settings(⌘,|Ctrl\+,)$/);
+  await hoverForChip(h.page.getByTestId("wordmark-settings-button"), /^Settings(⌘,|Ctrl\+,)$/);
   await h.page.mouse.move(400, 300);
   await expect(chip).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
@@ -145,25 +103,21 @@ test("the Notes row's pair name themselves, a greyed Undo keeps its name, and th
   await h.openNote("Alpha");
   const chip = h.page.getByTestId("chrome-tooltip");
 
-  await armProbe(h.page);
-  await h.page.getByRole("button", { name: "New folder", exact: true }).hover();
-  await h.page.waitForTimeout(700);
-  await dumpProbe(h.page, "new-folder");
-  await expect(chip).toHaveText(/^New folder(⇧⌘N|Ctrl\+Shift\+N)$/);
-  await h.page.getByRole("button", { name: "Sort", exact: true }).hover();
-  await expect(chip).toHaveText("Sort");
+  await hoverForChip(
+    h.page.getByRole("button", { name: "New folder", exact: true }),
+    /^New folder(⇧⌘N|Ctrl\+Shift\+N)$/,
+  );
+  await hoverForChip(h.page.getByRole("button", { name: "Sort", exact: true }), "Sort");
 
   const undo = h.page.getByRole("button", { name: "Undo", exact: true });
   await expect(undo).toBeDisabled();
-  await undo.hover();
-  await expect(chip).toHaveText(/^Undo(⌘Z|Ctrl\+Z)$/);
+  await hoverForChip(undo, /^Undo(⌘Z|Ctrl\+Z)$/);
   await h.page.mouse.move(400, 300);
   await expect(chip).toHaveCount(0);
 
   // The ··· sits 10px from the right edge; its chip shifts in rather than clipping.
   // (The row's ··· is a span with the same name; the header's is the button.)
-  await h.page.locator("button[aria-label='Note actions']").hover();
-  await expect(chip).toHaveText("Note actions");
+  await hoverForChip(h.page.locator("button[aria-label='Note actions']"), "Note actions");
   const box = (await chip.boundingBox())!;
   const width = await h.page.evaluate(() => window.innerWidth);
   expect(box.x + box.width).toBeLessThanOrEqual(width - 8 + 0.5);
@@ -198,8 +152,7 @@ test("a chip does not come back when a closing menu or dialog hands focus to its
   const chip = h.page.getByTestId("chrome-tooltip");
 
   const wordmark = h.page.getByTestId("wordmark-settings-button");
-  await wordmark.hover();
-  await expect(chip).toHaveText(/^Settings/);
+  await hoverForChip(wordmark, /^Settings/);
   await wordmark.click();
   const settings = h.page.getByRole("dialog", { name: "Settings" });
   await expect(settings).toBeVisible();
@@ -210,11 +163,7 @@ test("a chip does not come back when a closing menu or dialog hands focus to its
   await expect(chip).toHaveCount(0);
 
   const sort = h.page.getByRole("button", { name: "Sort", exact: true });
-  await armProbe(h.page);
-  await sort.hover();
-  await h.page.waitForTimeout(700);
-  await dumpProbe(h.page, "sort-after-settings");
-  await expect(chip).toHaveText(/^Sort/);
+  await hoverForChip(sort, /^Sort/);
   await sort.click();
   const menu = h.page.getByRole("menu", { name: "Sort notes" });
   await expect(menu).toBeVisible();
