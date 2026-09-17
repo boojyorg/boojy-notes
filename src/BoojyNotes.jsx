@@ -113,9 +113,6 @@ export default function BoojyNotes() {
   const {
     ctxMenu,
     setCtxMenu,
-    dragTooltip,
-    setDragTooltip,
-    dragTooltipCount,
     lightbox,
     setLightbox,
     slashMenu,
@@ -347,8 +344,6 @@ export default function BoojyNotes() {
     noteDataRef,
     adoptNoteData,
     sidebarScrollRef,
-    setDragTooltip,
-    dragTooltipCount,
     selectedNotesRef: multiSelectRef,
     clearSelectionRef: clearSelectionRef,
     moveFolder,
@@ -996,32 +991,6 @@ export default function BoojyNotes() {
             onDismiss={() => setTagMenu(null)}
           />
         </>
-      )}
-
-      {/* Drag tooltip */}
-      {dragTooltip && (
-        <div
-          style={{
-            position: "fixed",
-            top: dragTooltip.y,
-            left: dragTooltip.x,
-            transform: "translateX(-50%)",
-            background: theme.BG.elevated,
-            border: `1px solid ${theme.BG.divider}`,
-            borderRadius: 6,
-            padding: "5px 12px",
-            fontSize: 12,
-            color: theme.TEXT.primary,
-            fontWeight: 500,
-            zIndex: Z.OVERLAY,
-            pointerEvents: "none",
-            animation: "fadeIn 0.2s ease",
-            boxShadow: theme.dragShadow,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {dragTooltip.text}
-        </div>
       )}
 
       {lightbox && (

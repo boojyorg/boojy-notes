@@ -35,7 +35,6 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     theme = DAY;
-    localStorage.setItem("boojy-drag-tooltip-sidebar", "1");
     scroller = document.createElement("div");
     scroller.setAttribute("role", "tree");
     scroller.getBoundingClientRect = () => rectAt(0, 400);
@@ -60,8 +59,6 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
         noteDataRef: { current: { n1: { id: "n1", title: "Plan", folder: "" } } },
         adoptNoteData: vi.fn(),
         sidebarScrollRef: { current: scroller },
-        setDragTooltip: vi.fn(),
-        dragTooltipCount: { current: { sidebar: 0 } },
         selectedNotesRef: { current: new Set() },
         clearSelectionRef: { current: null },
         moveFolder: vi.fn(),

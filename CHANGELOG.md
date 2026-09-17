@@ -50,6 +50,7 @@
 
 ### Removed
 
+- **The "Hold and drag to move into a folder" tip** — On the third press on a sidebar row a small box appeared for three seconds explaining that holding and dragging moves a note or folder. It popped up mid-click over whatever you were reading, once per install, and taught a gesture the drop feedback already shows. Gone; nothing else changes about dragging.
 - **The `Notes` row's ··· menu** (`List options`). Its two sort modes are the row's own Sort glyph now, New folder is the row's other glyph, and Reveal in Finder is `Show in Finder` in Settings → Storage, beside the path it reveals. Reveal in Finder left the folder menu the same way.
 - **The editor header's New note button.** The sidebar's labelled New note, each folder row's own New note, Cmd+N and the collapsed header's glyph are the routes; one visible way per state.
 - **The overlay sidebar.** In a window narrower than about 800px the sidebar used to float over the note behind a grey wash, with its own open state, an Escape that closed it and a threshold that flipped between the two; it now stays in the layout at every width (Improvements above).
