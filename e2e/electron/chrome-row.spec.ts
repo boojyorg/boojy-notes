@@ -25,7 +25,7 @@ import {
 const SUBPIXEL = 0.5;
 
 /** The chrome buttons that sit left of the note's name, in DOM order. */
-const LEFT_CONTROLS = ["Expand sidebar", "Search notes", "New note", "Undo", "Redo"];
+const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"];
 
 /**
  * Wait for every running CSS transition and animation to finish. The chrome
@@ -112,9 +112,9 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     }
     await setWidth(h, 1200);
 
-    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
-    await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
+    await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
 
     // Collapsed: five controls, and the name still starts past the last.
     for (const width of [1200, 700, WINDOW_MIN_W]) {
@@ -147,7 +147,7 @@ test("a very long name yields to the controls rather than covering them", async 
   const h = await launchApp({ [`${long}.md`]: "Alpha.\n" });
   try {
     await h.openNote(long);
-    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
     await setWidth(h, WINDOW_MIN_W);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
@@ -184,7 +184,7 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
       BrowserWindow.getAllWindows()[0].setFullScreen(v);
     }, on);
   const leftOf = async (name: string) =>
-    (await h.page.getByRole("button", { name, exact: true }).boundingBox())!.x;
+    (await h.page.locator(`[aria-label='${name}']:not([inert] *)`).boundingBox())!.x;
   const wordmarkLeft = async () =>
     (await h.page.getByTestId("wordmark-settings-button").boundingBox())!.x;
   try {
@@ -198,9 +198,9 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
     await setFullScreen(true);
     await expect.poll(() => wordmarkLeft(), { timeout: 10000 }).toBeLessThan(40);
     // ...and collapsed, the group starts at the web inset with the name past it.
-    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
-    await expect.poll(() => leftOf("Expand sidebar")).toBe(10);
+    await expect.poll(() => leftOf("Toggle sidebar")).toBe(10);
     await settled(h.page);
     const { right } = await controlsRight(h.page, LEFT_CONTROLS);
     const n = await titleBox(h.page);
@@ -208,8 +208,8 @@ test("full screen drops the traffic-light inset and leaving it brings it back", 
 
     // Leaving full screen restores the inset in both states.
     await setFullScreen(false);
-    await expect.poll(() => leftOf("Expand sidebar"), { timeout: 10000 }).toBe(MAC_TRAFFIC_INSET);
-    await h.page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+    await expect.poll(() => leftOf("Toggle sidebar"), { timeout: 10000 }).toBe(MAC_TRAFFIC_INSET);
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
     await expect.poll(() => wordmarkLeft()).toBe(atRest);
     expect(h.pageErrors).toEqual([]);
@@ -259,7 +259,7 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     // and the wordmark keeps its air before Search (2026-09-16; at a bare 200
     // the toggle lost 26px past the divider once Search joined the row).
     const toggle = (await h.page
-      .getByRole("button", { name: "Collapse sidebar", exact: true })
+      .locator("[aria-label='Toggle sidebar']:not([inert] *)")
       .boundingBox())!;
     expect(toggle.x + toggle.width).toBeLessThanOrEqual(
       SIDEBAR_MIN_W - HEADER_RIGHT_INSET + SUBPIXEL,
@@ -336,8 +336,8 @@ test("no window-drag rectangle lies under a chrome button, in either sidebar sta
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByTestId("path-tree")).toHaveCount(0);
     expect(await regionModes()).toEqual(["drag", "drag"]);
-    await h.page.locator("[aria-label='Collapse sidebar']:not([inert] *)").click();
-    await h.page.locator("[aria-label='Expand sidebar']").waitFor();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").waitFor();
     await settled(h.page);
     await check("collapsed");
     expect(h.pageErrors).toEqual([]);

@@ -39,10 +39,10 @@ const renderPair = (props = {}) => {
   vi.useFakeTimers();
   return render(
     <div>
-      <ChromeButton label="Undo" shortcut="⌘Z" disabledLabel="Nothing to undo" {...props}>
+      <ChromeButton label="Undo" shortcut="⌘Z" {...props}>
         u
       </ChromeButton>
-      <ChromeButton label="Redo" shortcut="⇧⌘Z" disabledLabel="Nothing to redo">
+      <ChromeButton label="Redo" shortcut="⇧⌘Z">
         r
       </ChromeButton>
     </div>,
@@ -67,7 +67,7 @@ describe("ChromeButton's chip", () => {
     expect(chip(q)).toBeNull();
     act(() => vi.advanceTimersByTime(1));
     expect(chip(q).textContent).toBe("Undo⌘Z");
-    expect(chip(q).style.top).toBe("calc(100% + 6px)");
+    expect(chip(q).dataset.placement).toBe("below");
     fireEvent.mouseLeave(undo);
     expect(chip(q)).toBeNull();
   });
@@ -128,9 +128,8 @@ describe("ChromeButton's chip", () => {
   });
 
   // Disabled is `aria-disabled` so the control still takes the pointer and
-  // focus and can say why it is grey; the click is dropped and the shortcut
-  // is not offered.
-  it("says what a disabled control has to offer, and drops its click", () => {
+  // focus and still names itself, shortcut included; only the click is dropped.
+  it("still names a disabled control, and drops its click", () => {
     const onClick = vi.fn();
     const q = renderPair({ disabled: true, onClick });
     const undo = q.getByLabelText("Undo");
@@ -140,10 +139,27 @@ describe("ChromeButton's chip", () => {
     expect(onClick).not.toHaveBeenCalled();
     fireEvent.mouseEnter(undo);
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
-    expect(chip(q).textContent).toBe("Nothing to undo");
+    expect(chip(q).textContent).toBe("Undo⌘Z");
     fireEvent.mouseLeave(undo);
     fireEvent.focus(undo);
-    expect(chip(q).textContent).toBe("Nothing to undo");
+    expect(chip(q).textContent).toBe("Undo⌘Z");
+  });
+
+  // The chip is portalled to body and fixed, so the sidebar's overflow never
+  // clips it and it sits over the note; the shortcut is its own pill.
+  it("draws the chip at the top of the page with the shortcut on a pill", () => {
+    const q = renderPair();
+    const undo = q.getByLabelText("Undo");
+    fireEvent.focus(undo);
+    const c = chip(q);
+    expect(c.parentElement).toBe(document.body);
+    expect(c.style.position).toBe("fixed");
+    expect(c.style.borderRadius).toBe("8px");
+    expect(c.style.fontSize).toBe("13px");
+    const pill = c.lastElementChild;
+    expect(pill.textContent).toBe("⌘Z");
+    expect(pill.style.fontSize).toBe("11px");
+    expect(pill.style.background).not.toBe("");
   });
 });
 

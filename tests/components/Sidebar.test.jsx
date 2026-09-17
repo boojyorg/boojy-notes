@@ -172,7 +172,7 @@ describe("Sidebar", () => {
   // The header's toggle is the same action as the pinned one in EditorChrome.
   it("puts the panel toggle in the sidebar header and toggles on click", () => {
     const { getByLabelText } = renderSidebar();
-    fireEvent.click(getByLabelText("Collapse sidebar"));
+    fireEvent.click(getByLabelText("Toggle sidebar"));
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
@@ -186,8 +186,8 @@ describe("Sidebar", () => {
     const search = getByLabelText("Search notes");
     expect(search.closest(".sidebar-section-header")).toBeNull();
     expect(search.tagName).toBe("BUTTON");
-    expect(search.nextElementSibling).toBe(getByLabelText("Collapse sidebar"));
-    expect(search.style.width).toBe(getByLabelText("Collapse sidebar").style.width);
+    expect(search.nextElementSibling).toBe(getByLabelText("Toggle sidebar"));
+    expect(search.style.width).toBe(getByLabelText("Toggle sidebar").style.width);
     fireEvent.click(search);
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();

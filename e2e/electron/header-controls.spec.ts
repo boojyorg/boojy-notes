@@ -30,8 +30,7 @@ test.afterEach(async () => {
   await h?.close();
 });
 
-const hideSidebar = () =>
-  h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+const hideSidebar = () => h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
 
 test("the buttons undo and redo the open note, and the file follows", async () => {
   h = await launchApp({ [A]: `${A_TEXT}\n` });
@@ -120,10 +119,9 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
 
   // Expanded: the sidebar owns navigation and creation; the header carries the
   // note's history and its ··· .
-  for (const name of ["Search notes", "New note", "Collapse sidebar", "New folder", "Sort"]) {
+  for (const name of ["Search notes", "New note", "Toggle sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  expect(await exposed("Expand sidebar")).toBe(0);
   for (const name of ["Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(1);
   }
@@ -131,10 +129,10 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   await hideSidebar();
 
   // Collapsed: the header takes the trio over, still one of each.
-  for (const name of ["Search notes", "New note", "Expand sidebar", "Undo", "Redo"]) {
+  for (const name of ["Search notes", "New note", "Toggle sidebar", "Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  for (const name of ["Collapse sidebar", "New folder", "Sort"]) {
+  for (const name of ["New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(0);
   }
 
@@ -144,12 +142,11 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
     BrowserWindow.getAllWindows()[0].setSize(700, 800);
   });
   await expect.poll(() => h.page.evaluate(() => window.innerWidth)).toBe(700);
-  await h.page.locator("[aria-label='Expand sidebar']:not([inert] *)").click();
-  await expect(h.page.getByRole("button", { name: "Collapse sidebar", exact: true })).toBeVisible();
-  for (const name of ["Search notes", "New note", "Collapse sidebar", "New folder", "Sort"]) {
+  await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
+  await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
+  for (const name of ["Search notes", "New note", "Toggle sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), `narrow: ${name}`).toBe(1);
   }
-  expect(await exposed("Expand sidebar")).toBe(0);
   expect(await exposed("Undo")).toBe(1);
 });
 
@@ -161,12 +158,12 @@ test("the collapsed header's New note and Search are the sidebar's own actions",
   await h.page.locator("[aria-label='Search notes']:not([inert] *)").click();
   await expect(h.page.getByPlaceholder(/search/i)).toBeVisible();
   // Opening Search does not bring the sidebar back.
-  await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
+  await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
   await h.page.keyboard.press("Escape");
 
   await h.page.locator("[aria-label='New note']:not([inert] *)").click();
   await expect(h.page.getByRole("textbox", { name: "Note title" })).toBeFocused();
-  await expect(h.page.getByRole("button", { name: "Expand sidebar", exact: true })).toBeVisible();
+  await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
 });
 
 test("Settings is in the header menu, with a note open and with none", async () => {

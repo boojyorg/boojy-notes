@@ -74,7 +74,7 @@ describe("EditorChrome", () => {
     expect(getByLabelText("Undo")).toBeInTheDocument();
     expect(getByLabelText("Redo")).toBeInTheDocument();
     expect(getByLabelText("Note actions")).toBeInTheDocument();
-    for (const gone of ["Collapse sidebar", "Expand sidebar", "Search notes", "New note"]) {
+    for (const gone of ["Toggle sidebar", "Search notes", "New note"]) {
       expect(queryByLabelText(gone)).not.toBeInTheDocument();
     }
   });
@@ -82,7 +82,7 @@ describe("EditorChrome", () => {
   it("adds the sidebar, search and new-note controls when the sidebar is not showing", () => {
     layoutState.sidebarVisible = false;
     const { getByLabelText } = renderChrome();
-    for (const shown of ["Expand sidebar", "Search notes", "New note", "Undo", "Redo"]) {
+    for (const shown of ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"]) {
       expect(getByLabelText(shown)).toBeInTheDocument();
     }
   });
@@ -90,7 +90,7 @@ describe("EditorChrome", () => {
   it("goes through the one toggle action, whatever the sidebar's presentation", () => {
     layoutState.sidebarVisible = false;
     const { getByLabelText } = renderChrome();
-    fireEvent.click(getByLabelText("Expand sidebar"));
+    fireEvent.click(getByLabelText("Toggle sidebar"));
     expect(layoutState.toggleSidebar).toHaveBeenCalledTimes(1);
   });
 
@@ -176,7 +176,7 @@ describe("EditorChrome", () => {
     layoutState.sidebarVisible = false;
     const { getByLabelText } = renderChrome();
     const pair = getByLabelText("Undo").parentElement;
-    const trio = getByLabelText("Expand sidebar").parentElement.parentElement;
+    const trio = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(pair).not.toBe(trio);
     expect(pair.style.position).toBe("fixed");
     expect(pair.style.left).toBe("122px");

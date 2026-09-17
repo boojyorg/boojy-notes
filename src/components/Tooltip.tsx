@@ -1,15 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Z } from "../constants/zIndex";
 import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
 import { isMac } from "../utils/platform";
 
 /**
- * The app's one tooltip: a chip naming a control, with its shortcut in muted
- * ink where one exists. The selection toolbar drew it first (2026-09-10); the
- * chrome row's buttons and the wordmark took it on 2026-09-17 in place of the
- * browser's own `title` tooltip, which arrives a second late, unstyled and
- * without the shortcut. A control that shows the chip carries no `title`.
+ * The app's one tooltip: a chip naming a control, with its shortcut in a small
+ * grey pill where one exists. The selection toolbar drew it first (2026-09-10);
+ * the chrome row's buttons, the wordmark and the Notes row's pair took it on
+ * 2026-09-17 in place of the browser's own `title` tooltip, which arrives a
+ * second late, unstyled and without the shortcut. A control that shows the chip
+ * carries no `title`.
  */
 
 /** How long the pointer rests on a control before its chip shows. */
@@ -20,6 +22,9 @@ export const TOOLTIP_REST_MS = 400;
  * a group, not once per button.
  */
 export const TOOLTIP_WARM_MS = 300;
+/** Air between the control and the chip, and between the chip and the window's edge. */
+const GAP = 6;
+const EDGE = 8;
 
 let warmUntil = 0;
 
@@ -40,61 +45,68 @@ export function shortcutLabel(spec: ShortcutSpec, mac: boolean = isMac): string 
 interface TooltipProps {
   label: string;
   shortcut?: string;
+  /** The control the chip names; the chip is centred on it. */
+  anchor: HTMLElement | null;
   /** Above for a control mid-page (the toolbar); below for one on the window's top row. */
   placement?: "above" | "below";
   testId?: string;
 }
 
 /**
- * The chip itself, absolutely positioned against its control (which must be
- * `position: relative`), centred, and shifted inward when centring would put
- * it past the window's edge (the ··· sits 10px from the right edge; "Expand
- * sidebar" is wider than the toggle). The rect Chromium reports is already
- * multiplied by the UI scale and the shift is applied inside it, so it is
- * divided by the zoom before it becomes a style (see the editor rule).
+ * The chip itself. Portalled to `body` and fixed, so it sits over the sidebar
+ * and the note alike (drawn inside its control it was clipped at the sidebar's
+ * edge and hidden under the editor). Measured once when it appears: centred on
+ * the control, then moved in from the window's edge by the least it must. The
+ * rects Chromium reports are already multiplied by the UI scale and a fixed
+ * element inside the zoom is multiplied again on paint, so the placement is
+ * divided by the zoom before it becomes a style (the menus do the same).
  */
-export function Tooltip({ label, shortcut, placement = "above", testId }: TooltipProps) {
-  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
+export function Tooltip({ label, shortcut, anchor, placement = "above", testId }: TooltipProps) {
+  const { theme } = useTheme() as {
+    theme: Record<string, Record<string, string>> & { dragShadow: string };
+  };
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
-  const [shift, setShift] = useState(0);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0) return;
-    const margin = 8;
-    let dx = 0;
-    if (r.left < margin) dx = margin - r.left;
-    else if (r.right > window.innerWidth - margin) dx = window.innerWidth - margin - r.right;
-    if (dx !== 0) setShift(dx / cssZoom(el));
-  }, []);
-  return (
+    if (!el || !anchor) return;
+    const a = anchor.getBoundingClientRect();
+    const c = el.getBoundingClientRect();
+    const maxLeft = Math.max(EDGE, window.innerWidth - EDGE - c.width);
+    const left = Math.min(maxLeft, Math.max(EDGE, a.left + a.width / 2 - c.width / 2));
+    const top = placement === "below" ? a.bottom + GAP : a.top - GAP - c.height;
+    const zoom = cssZoom(document.documentElement);
+    setPos({ left: left / zoom, top: top / zoom });
+  }, [anchor, placement]);
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <span
       ref={ref}
       role="tooltip"
       aria-hidden="true"
       data-testid={testId}
+      data-placement={placement}
       style={{
-        position: "absolute",
-        left: `calc(50% + ${shift}px)`,
-        transform: "translateX(-50%)",
-        ...(placement === "below" ? { top: "calc(100% + 6px)" } : { bottom: "calc(100% + 6px)" }),
+        position: "fixed",
+        left: pos?.left ?? 0,
+        top: pos?.top ?? 0,
+        visibility: pos ? "visible" : "hidden",
         display: "flex",
-        alignItems: "baseline",
+        alignItems: "center",
         gap: 8,
-        padding: "4px 8px",
-        borderRadius: 5,
+        padding: shortcut ? "5px 6px 5px 10px" : "5px 10px",
+        borderRadius: 8,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
+        boxShadow: theme.dragShadow,
         color: TEXT.primary,
-        // A control's label, read at a glance: 12px/500, a step above the link
-        // tooltip's 11px, which shows long URLs and wants to be quiet. The
-        // shortcut sits in the UI face on the same baseline; in mono `⌘B` read
-        // as a code snippet.
-        fontSize: 12,
+        // A control's label, read at a glance: 13px/500 in the primary ink.
+        // The shortcut is a step smaller on a grey pill (the content-hover
+        // grey, secondary ink), so it reads as a key and never as prose.
+        fontSize: 13,
         fontWeight: 500,
-        lineHeight: "16px",
+        lineHeight: "18px",
         whiteSpace: "nowrap",
         pointerEvents: "none",
         zIndex: Z.TOOLBAR,
@@ -102,8 +114,23 @@ export function Tooltip({ label, shortcut, placement = "above", testId }: Toolti
       }}
     >
       <span>{label}</span>
-      {shortcut && <span style={{ color: TEXT.muted, fontWeight: 400 }}>{shortcut}</span>}
-    </span>
+      {shortcut && (
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            lineHeight: "14px",
+            padding: "1px 5px",
+            borderRadius: 5,
+            background: BG.surface,
+            color: TEXT.secondary,
+          }}
+        >
+          {shortcut}
+        </span>
+      )}
+    </span>,
+    document.body,
   );
 }
 

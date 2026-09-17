@@ -37,7 +37,7 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(open.column).toBe(open.wrapper);
     expect(open.transform).toBe("none");
 
-    await h.page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     // Hidden means hidden: once the slide ends the column is
     // `visibility: hidden`, so its rows are neither visible nor focusable.
     await expect(row).toBeHidden();
@@ -62,7 +62,7 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     const undo = await h.page.getByRole("button", { name: "Undo", exact: true }).boundingBox();
     expect(undo!.x - (trioRight!.x + trioRight!.width)).toBe(12);
 
-    await h.page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await expect(row).toBeVisible();
     await expect(newNote).toBeVisible();
     await expect.poll(async () => (await widths()).wrapper).toBe(open.wrapper);

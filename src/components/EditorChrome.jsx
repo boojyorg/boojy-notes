@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
@@ -122,16 +123,14 @@ export const SHORTCUTS = {
 /**
  * A 32px chrome control. Its name is a chip under it (Tooltip), never a
  * native `title`: `label` is the chip and the accessible name, `shortcut` the
- * muted text beside it, `disabledLabel` what the chip says while the control
- * has nothing to do ("Nothing to undo"). Disabled is `aria-disabled`, not the
- * attribute, so the control still takes the pointer and keyboard focus and
- * can say why it is grey; the click is dropped here.
+ * pill beside it. Disabled is `aria-disabled`, not the attribute, so a greyed
+ * Undo still takes the pointer and keyboard focus and still says `Undo ⌘Z`
+ * (a natively disabled button shows nothing); the click is dropped here.
  */
 export function ChromeButton({
   onClick,
   label,
   shortcut,
-  disabledLabel,
   ariaLabel,
   disabled,
   keepSelection,
@@ -145,10 +144,12 @@ export function ChromeButton({
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const tip = useTooltip();
+  const ref = useRef(null);
   return (
     <button
       type="button"
       {...rest}
+      ref={ref}
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled || undefined}
       // A press on a history button must not take the editor's selection with
@@ -205,8 +206,9 @@ export function ChromeButton({
       {children}
       {tip.shown && (
         <Tooltip
-          label={disabled ? disabledLabel || label : label}
-          shortcut={disabled ? undefined : shortcut}
+          label={label}
+          shortcut={shortcut}
+          anchor={ref.current}
           placement="below"
           testId="chrome-tooltip"
         />
@@ -246,7 +248,7 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
-            <ChromeButton onClick={toggleSidebar} label="Expand sidebar">
+            <ChromeButton onClick={toggleSidebar} label="Toggle sidebar">
               <SidebarToggleIcon />
             </ChromeButton>
             <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
@@ -277,7 +279,6 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           keepSelection
           label="Undo"
           shortcut={SHORTCUTS.undo}
-          disabledLabel="Nothing to undo"
         >
           <UndoIcon />
         </ChromeButton>
@@ -287,7 +288,6 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           keepSelection
           label="Redo"
           shortcut={SHORTCUTS.redo}
-          disabledLabel="Nothing to redo"
         >
           <RedoIcon />
         </ChromeButton>

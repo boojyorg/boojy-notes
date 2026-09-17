@@ -43,8 +43,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
   const { theme } = useTheme();
   const { ACCENT, TEXT } = theme;
   const [hovered, setHovered] = useState(false);
+  const ref = useRef(null);
   return (
     <button
+      ref={ref}
       aria-pressed={active}
       aria-label={format.label}
       data-testid={`format-${format.id}`}
@@ -85,6 +87,7 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         <Tooltip
           label={format.label}
           shortcut={shortcutLabel(format)}
+          anchor={ref.current}
           placement={tipBelow ? "below" : "above"}
           testId="format-tooltip"
         />

@@ -134,11 +134,11 @@ test("a folder crumb opens its parent's contents, the path expanded and the open
     // A click outside closes it and still lands: the sidebar toggle both
     // closes the popup and hides the sidebar in one press. And expansion
     // starts fresh next time.
-    await h.page.locator("[aria-label='Collapse sidebar']").click();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await expect(popup(h.page)).toHaveCount(0);
-    await expect(h.page.locator("[aria-label='Expand sidebar']")).toBeVisible();
-    await h.page.locator("[aria-label='Expand sidebar']").click();
-    await expect(h.page.locator("[aria-label='Collapse sidebar']:not([inert] *)")).toBeVisible();
+    await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
+    await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
+    await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
     await crumb(h.page, "Archive").click();
     await expect(popup(h.page)).toBeVisible();
     // The open crumb's own click closes it.

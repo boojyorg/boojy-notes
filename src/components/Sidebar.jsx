@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo } from "react";
+import { useEffect, useMemo, useState, memo, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -233,14 +233,19 @@ function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
  * `active` is the control whose menu is open: full ink on its hover surface
  * until the menu closes.
  */
-function SectionAction({ onClick, title, ariaLabel, active, children, ...rest }) {
+function SectionAction({ onClick, label, ariaLabel, active, children, ...rest }) {
+  // The row's controls name themselves with the chrome's chip (2026-09-17),
+  // after the same rest, so brushing across the row on the way to a folder
+  // shows nothing.
+  const tip = useTooltip();
+  const ref = useRef(null);
   return (
     <button
       type="button"
+      ref={ref}
       className={active ? "sidebar-section-action is-active" : "sidebar-section-action"}
       onClick={onClick}
-      title={title}
-      aria-label={ariaLabel || title}
+      aria-label={ariaLabel || label}
       style={{
         width: SECTION_BTN,
         height: SECTION_BTN,
@@ -253,8 +258,12 @@ function SectionAction({ onClick, title, ariaLabel, active, children, ...rest })
         cursor: "pointer",
       }}
       {...rest}
+      {...tip.handlers}
     >
       {children}
+      {tip.shown && (
+        <Tooltip label={label} anchor={ref.current} placement="below" testId="chrome-tooltip" />
+      )}
     </button>
   );
 }
@@ -404,6 +413,7 @@ const Sidebar = memo(function Sidebar({
   const { setSettingsOpen } = useSettings();
   const { theme } = useTheme();
   const wordmarkTip = useTooltip();
+  const wordmarkRef = useRef(null);
   const { BG, TEXT, ACCENT } = theme;
   const { noteData } = useNoteData();
   const {
@@ -989,6 +999,7 @@ const Sidebar = memo(function Sidebar({
         >
           <button
             data-testid="wordmark-settings-button"
+            ref={wordmarkRef}
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label="Notes — open Settings"
@@ -1025,7 +1036,12 @@ const Sidebar = memo(function Sidebar({
             {/* The wordmark is the one control nothing marks as clickable: the
                 chip is what says it opens Settings. */}
             {wordmarkTip.shown && (
-              <Tooltip label="Settings" placement="below" testId="chrome-tooltip" />
+              <Tooltip
+                label="Settings"
+                anchor={wordmarkRef.current}
+                placement="below"
+                testId="chrome-tooltip"
+              />
             )}
           </button>
           {/* Search and the toggle, one group at the chrome row's own gap
@@ -1036,7 +1052,7 @@ const Sidebar = memo(function Sidebar({
             <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
               <SearchIcon size={18} />
             </ChromeButton>
-            <ChromeButton onClick={toggleSidebar} label="Collapse sidebar">
+            <ChromeButton onClick={toggleSidebar} label="Toggle sidebar">
               <SidebarToggleIcon />
             </ChromeButton>
           </div>
@@ -1311,12 +1327,12 @@ const Sidebar = memo(function Sidebar({
                     dropRoot
                     menuOpen={sortMenuAnchor !== null}
                   >
-                    <SectionAction onClick={() => createFolder(null)} title="New folder">
+                    <SectionAction onClick={() => createFolder(null)} label="New folder">
                       <NewFolderIcon size={16} />
                     </SectionAction>
                     <SectionAction
                       onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                      title="Sort"
+                      label="Sort"
                       aria-haspopup="menu"
                       aria-expanded={sortMenuAnchor !== null}
                       active={sortMenuAnchor !== null}

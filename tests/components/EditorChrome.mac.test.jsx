@@ -65,12 +65,12 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
       />,
     );
     // toggle → its own group → the pinned left block.
-    const group = getByLabelText("Expand sidebar").parentElement.parentElement;
+    const group = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(Number.parseInt(group.style.left, 10)).toBe(MAC_TRAFFIC_INSET);
     expect(chromeControlsLeft(true)).toBe(MAC_TRAFFIC_INSET);
 
     // Five controls in two groups, and the path's band starts past the last of them.
-    const controls = ["Expand sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
+    const controls = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
       getByLabelText(t),
     );
     expect(controls).toHaveLength(5);
@@ -101,7 +101,7 @@ describe("EditorChrome on macOS in full screen", () => {
         onOpenSearch={vi.fn()}
       />,
     );
-    const group = getByLabelText("Expand sidebar").parentElement.parentElement;
+    const group = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(Number.parseInt(group.style.left, 10)).toBe(CHROME_INSET);
     expect(trafficLightsShown(true)).toBe(false);
     expect(trafficLightsShown(false)).toBe(true);
