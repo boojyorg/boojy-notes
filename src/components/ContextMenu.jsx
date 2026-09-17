@@ -219,7 +219,7 @@ const ContextMenu = memo(function ContextMenu({
             // unlike the note menu's Delete. The glyphs are the ones the same
             // actions already wear: the row's and pill's pen, the Notes row's
             // FolderPlus, the note menu's Pencil and Trash. Reveal in Finder
-            // left the folder menu that day; the vault's ··· still has it.
+            // left the folder menu that day; it is Settings → Storage's now.
             {
               label: "New note",
               icon: <NewNoteIcon />,

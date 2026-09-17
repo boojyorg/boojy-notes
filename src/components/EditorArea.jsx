@@ -79,8 +79,8 @@ const LABEL_PAD_X = 5;
  * column only gets narrower. The gutter floor is the drag grip's: 20px plus
  * its 4px gap live in the left padding, and the right side matches it. The
  * sidebar stays in the layout at every width and yields before the note does
- * (`EDITOR_FLOOR_W`), so at the 520px window minimum the editor has 316px
- * beside the narrowest sidebar and 520px alone: prose keeps reading either
+ * (`EDITOR_FLOOR_W`), so at the 545px window minimum the editor has 316px
+ * beside the narrowest sidebar and 545px alone: prose keeps reading either
  * way, and one click on the toggle gives the room back.
  *
  * Driven by viewport math rather than container queries on purpose:

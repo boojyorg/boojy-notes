@@ -7,12 +7,11 @@ change needs; the incidents behind them are in git.
 
 - Pushing a `v*` tag runs `release.yml`: a macOS and a Windows job, each running
   `pnpm build:electron` and uploading through electron-builder's GitHub publisher. macOS
-  signs and notarises when the five certificate secrets are set (`MACOS_CERTIFICATE`,
-  `MACOS_CERTIFICATE_PWD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`; notarisation is
-  electron-builder's own, triggered by the three Apple variables) and builds unsigned
-  otherwise. **Set on 2026-09-11** for the v0.7.0 release; every published macOS build before it
-  (v0.5.0 included) is unsigned, and electron-updater refuses to update an unsigned app with
-  the error swallowed, so Settings → Updates only works from a signed build onward. Two things
+  signs when `MACOS_CERTIFICATE` is set (`MACOS_CERTIFICATE_PWD` unlocks the `.p12`), notarises
+  with the API key described below, and builds unsigned otherwise. **Set on 2026-09-11** for the
+  v0.7.0 release; every published macOS build before it (v0.5.0 included) is unsigned, and
+  electron-updater refuses to update an unsigned app with the error swallowed, so Settings →
+  Updates only works from a signed build onward. Two things
   the first signed run taught, each a silent failure until found (`docs/private/code-signing.md`,
   local, has the commands): **the `.p12` must be legacy-encoded** (`openssl pkcs12 -export
   -legacy -nomaciter -descert -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES`); an OpenSSL 3
@@ -31,9 +30,8 @@ change needs; the incidents behind them are in git.
   Developer is role enough. `@electron/notarize` wants **a filesystem path** to the `.p8`, not
   its contents, so `release.yml` decodes the secret into `RUNNER_TEMP` before the build and
   removes it after (outside the workspace, so no `files` glob can pack it). And `APPLE_ID` and
-  `APPLE_APP_SPECIFIC_PASSWORD` must stay **out** of that step's env: electron-builder checks
-  the Apple ID pair first and returns early, so their presence silently reinstates the dead
-  path. Check credentials against Apple before spending a run:
+  `APPLE_APP_SPECIFIC_PASSWORD` must stay **out** of that step's env, for the reason above. Check
+  credentials against Apple before spending a run:
   `xcrun notarytool history --key <p8> --key-id <id> --issuer <uuid>`.
 - **Releases land as drafts, and one tag can produce two of them** with the assets split
   between them (seen 2026-09-11 from the Windows job alone: EXE and `latest.yml` in one,

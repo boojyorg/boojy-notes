@@ -21,7 +21,9 @@ the map: stack, layout, the invariants, the editor traps, and where the detailed
 | What may exist: blocks, Markdown support dimensions, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
 | Direction, Beta requirements and candidates, what is known-broken, what comes after Beta | `docs/BACKLOG.md` |
 | What shipped, and what was removed | `CHANGELOG.md` |
-| How the UI is built, and which oddities are deliberate | `.claude/rules/ui-chrome-and-theme.md` |
+| How the chrome, theme and sidebar are built, and which oddities are deliberate | `.claude/rules/ui-chrome-and-theme.md` |
+| The editor's invariants: block drag, links, keys, history, paint, paragraphs, tables, paste | `.claude/rules/editor.md` |
+| Files, the watcher, outside edits, folders, the title-is-filename rule | `.claude/rules/files-and-watcher.md` |
 | CI, build, release, dependency policy | `.claude/rules/ci-build-deploy.md` |
 
 The rules files are kept accurate in the same commit as the code they describe. When this
@@ -41,7 +43,7 @@ pnpm dev:web          # browser only (ELECTRON_DISABLE=1)
 pnpm test             # unit tests
 pnpm test:coverage    # unit tests with the CI coverage gate; run before pushing
 pnpm test:e2e         # Playwright, Chromium (web build)
-pnpm test:electron    # real-Electron core journeys against a throwaway vault, window hidden
+pnpm test:electron    # real-Electron core journeys against a throwaway vault; window hidden locally, shown on CI
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
 pnpm build:electron   # web build + desktop installers into release/
@@ -58,7 +60,7 @@ src/
 ├── hooks/              # app hooks; editor/ holds keyboard, paste, drag, slash commands
 ├── services/           # getAPI(): the Electron or web API
 ├── utils/              # markdown.js (the converters), storage, search, platform, …
-├── constants/          # themes.js (the only colour authority), slash commands, z-index
+├── constants/          # themes.js (the only colour authority), layout.js (chrome + sidebar geometry), slash commands, z-index
 ├── styles/             # shared inline style fragments (buttons)
 ├── tokens/             # spacing, radius, typography, shadows
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
@@ -82,7 +84,7 @@ dev/                    # dev-only tooling (the ?tweak colour panel); never bund
   got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once;
   nothing in the UI re-implements filename rules. Only a name the app makes is sanitised; a name
   the disk already holds (a Finder-made folder, a note that was already there) is kept exactly.
-  Details and the caret rule: UI rule.
+  Details and the caret rule: the files rule.
 - **The editor is a custom, uncontrolled `contentEditable`.** No ProseMirror, TipTap or editor
   library. Text lives as markdown in `block.text` and is rendered through
   `inlineMarkdownToHtml()` into `innerHTML`.
@@ -93,7 +95,7 @@ dev/                    # dev-only tooling (the ?tweak colour panel); never bund
   actions; refs carry anything that must not trigger renders. **Note state has one owner:**
   every change goes through a `useHistory` action (the raw setter is not exposed), and undo
   restores text in the note the user has open, never another note, a location, or a note that no
-  longer exists. Which action for which change: UI rule, "One owner for note state".
+  longer exists. Which action for which change: the editor rule, "One owner for note state".
 - **Styling is inline from `useTheme()`** (`BG`, `TEXT`, `ACCENT`, `SEMANTIC`), never a
   hardcoded hex. Tokens live in `src/tokens/`. Roles, grammar and known leaks: UI rule.
 - **Icons are Lucide only**, via `src/components/Icons.jsx`, always `currentColor`. Size and
@@ -165,7 +167,7 @@ Each of these has caused a real bug. Read before touching the editor.
    block remounts, the caret jumps to the top and the unsaved keystroke is lost. The rules for a
    real outside change (never silently overwritten; a conflicted copy when edits are pending, on
    screen or not; a save is refused when the file changed since the app last saw it) are in the
-   UI rule. Reproduce
+   files rule. Reproduce
    desktop-only bugs in the real Electron build (Playwright `_electron`, temp `userData` and
    vault), not jsdom.
 
@@ -202,7 +204,8 @@ Each of these has caused a real bug. Read before touching the editor.
   and what is persisted describe the same note. There is no test-only bridge into React state;
   add one only if an important invariant genuinely cannot be proven from the outside. The app
   runs with its window hidden (`BOOJY_TEST_HIDDEN`, main process) so routine runs never steal
-  focus; `BOOJY_TEST_HEADED=1` shows it for watching a run. Nothing in the suite needs real OS
+  focus; `BOOJY_TEST_HEADED=1` shows it for watching a run, and CI always shows it, because a hidden
+  window on the Linux runner ticks no animation frames (CI rule). Nothing in the suite needs real OS
   focus, the clipboard or native menus, and there is no headed test bucket.
 - **Correctness fixes include a regression test that fails before the fix**, at the lowest
   trustworthy layer practical: pure logic in Vitest, component-only behaviour in jsdom, anything
@@ -241,7 +244,7 @@ One planning file (`docs/BACKLOG.md`) and one history file (`CHANGELOG.md`); the
 deliberately no roadmap, feature tracker or current-target file. The backlog holds the
 direction and the post-Beta ideas too, in tiers (release requirements, Beta candidates,
 future), so that no separate direction document is needed; a preference recorded there is not
-a task. A change to UI behaviour updates the UI rule in the same commit; a release bumps the
+a task. A change to UI or editor behaviour updates its rules file in the same commit; a release bumps the
 version and `CHANGELOG.md` and runs the docs pass above.
 
 `.claude/settings.json` runs `.claude/hooks/post-edit-validation.sh` after every

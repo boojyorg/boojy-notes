@@ -20,11 +20,13 @@ to use on a folder you care about. The full contract is in
 
 ## Features
 
-- Block editor with headings, lists, checkboxes, tables, images, code and quotes
-- Slash commands and typed Markdown shortcuts (`#`, `-`, `>` and a space, or a code fence)
+- Block editor with six heading levels, lists and to-dos, tables, images, code and quotes
+- Slash commands and typed Markdown shortcuts: `#`, `-`, `>` and a space, a code fence,
+  `**bold**` as you type, `|||` for a table, `![]` for an image
 - Notes are `.md` files in a folder you choose, including an existing Obsidian vault
 - Wikilinks, tags, callouts and frontmatter understood without extra chrome
-- Folder tree and search, sorted by most recent or by name
+- A folder tree sorted by most recent or by name, and a search palette on Cmd+P
+- The note's folder path in the top row, with Undo, Redo and a word count beside it
 - One note open at a time
 - Light, Dark and System appearance
 
@@ -49,7 +51,7 @@ handy for tests, and its notes live in browser storage rather than on disk.
 | `dev`                  | Vite dev server + Electron                                  |
 | `dev:web`              | Vite dev server (browser only)                              |
 | `build`                | Production build (web)                                      |
-| `build:electron`       | Production build + desktop installers                       |
+| `build:electron`       | Production build + desktop installers, into `release/`      |
 | `test`                 | Unit tests (Vitest)                                         |
 | `test:coverage`        | Unit tests with the CI coverage floor                       |
 | `test:e2e`             | Web end-to-end tests (Playwright)                           |
@@ -68,10 +70,11 @@ tests, Biome for lint and format, pnpm for packages.
 
 ## Status
 
-Boojy Notes is preparing for its first desktop Beta. Beta starts when the local desktop app
-feels complete enough for ordinary daily use that I no longer feel limited by missing core
-features. It isn't there yet. I use it every day, and what I bump into decides what gets
-finished next.
+Boojy Notes is in early access ahead of its first desktop Beta: v0.7.0, the first signed and
+notarised macOS build, was published on 2026-09-11 and is the build
+[boojy.org](https://boojy.org) offers. Beta starts when the local desktop app feels complete
+enough for ordinary daily use that I no longer feel limited by missing core features. It isn't
+there yet. I use it every day, and what I bump into decides what gets finished next.
 
 Several things were built and then removed to keep the product small: cloud sync and sign-in,
 PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in

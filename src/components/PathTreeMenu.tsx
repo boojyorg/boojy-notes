@@ -52,7 +52,7 @@ import Collapsible from "./Collapsible";
  * or Space opens a note or toggles a folder, Home and End reach the edges,
  * Escape closes and focus goes back to the crumb. Focus is parked on the
  * container (a pointer-opened surface paints no ring) and a document listener
- * takes the keys, the ContextMenu/VaultMenu grammar; the container is a
+ * takes the keys, the ContextMenu/SortMenu grammar; the container is a
  * non-modal `dialog`, so the shell's shortcuts stay quiet while it is open
  * (`focusOwner`). Nothing here moves, renames or deletes.
  */
@@ -224,7 +224,7 @@ export default function PathTreeMenu({
     [active, rows, toggle, activate, onClose],
   );
 
-  // On the document, as ContextMenu and VaultMenu: a window listener added on
+  // On the document, as ContextMenu and SortMenu: a window listener added on
   // open would run after the app shell's startup listener, too late to claim
   // Escape and the arrows from it.
   useEffect(() => {

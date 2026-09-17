@@ -1,14 +1,14 @@
 # Boojy Notes — Backlog
 
 Direction, what is left to do and what is known to be broken, checked against master on
-2026-09-11. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
+2026-09-17. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
 daily-drive Boojy Notes, and let observed friction decide what deserves to exist next. Nothing
 is added because it sounds plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-12,
-for the v0.7.0 release, closing out the whole-app review of 2026-09-07 (its fixes are in
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-17, a docs
+prune. The 2026-09-12 pass for the v0.7.0 release closed out the whole-app review of 2026-09-07 (its fixes are in
 `CHANGELOG.md` v0.7.0, PRs #144–#158; the residue is here, marked *review §n* where it came
 from that file's B and C lists).
 
@@ -79,8 +79,6 @@ missing core features no longer limit it. Worked one item at a time, each judged
 list is the product scope the release waits for; the CI gates and any serious data-loss bug
 found on the way gate it as well, without needing a line here.
 
-- [ ] **Copy pass on Quote and Checklist.** The rest of the subtraction pass landed on
-  2026-09-05 (`CHANGELOG.md`, Removed).
 - [ ] **Preservation blocker** — the table-alignment mutation marked under Data safety below.
 - [ ] **Visual polish and a Windows smoke test.** Before Windows testers: a
   `requestSingleInstanceLock` in `main.js` (a second launch opens a second instance today, which
@@ -90,8 +88,8 @@ found on the way gate it as well, without needing a line here.
   dictionaries download from Google's CDN on first launch (no
   `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
 - [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early
-  access, the first tag since v0.5.0, and the first signed and notarised macOS build (the five
-  secrets are set; the two traps the first run hit are in the CI rule and
+  access, the first tag since v0.5.0, and the first signed and notarised macOS build (the signing and
+  notarisation secrets are set; the two traps the first run hit are in the CI rule and
   `docs/private/code-signing.md`). Testers and boojy.org only ever see the last *published*
   release, so Beta too is a tag and a published release, never a build that lives only in
   `/Applications`; every release runs the docs pass in `AGENTS.md` and the draft-release steps
@@ -177,7 +175,7 @@ none blocks the release. The shared question comes first because three candidate
   results. The rule it must keep is the sort's: opening a note is not editing it, so appearing
   in this list never moves a note in "Most recent" or touches its timestamp. How the list is
   persisted, how long it is, and whether it survives a restart belong to the feature.
-  **A muted "N other files" hint** on folders holding files the app cannot open
+- **A muted "N other files" hint** on folders holding files the app cannot open
   (Show in Finder in Settings → Storage answers it for now).
 - **More New Note entry points** (a global shortcut; a share action on mobile later) run the
   same workflow. Initial focus, location and the moment an empty note becomes a file are
@@ -214,7 +212,7 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   alone, since those blocks own their fields; replacing inside them is a decision to make once
   it has been felt.
 - [ ] **Edits across a block boundary that the app refuses rather than makes** (the block-root
-  rule in the UI rule, 2026-09-07): a selection reaching from a text block into a table, callout
+  rule in the editor rule): a selection reaching from a text block into a table, callout
   or code block, then Backspace or typing, changes nothing (deleting the run is not attempted);
   a text drag across blocks copies rather than moves; Cmd+B across blocks toggles each block on
   its own; an IME composition begun over a selection spanning blocks cannot be intercepted
@@ -227,8 +225,7 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   warning, full `TEXT.muted` for the empty state, a 2px ring at 60% would still be quiet.
 - [ ] **Shift-click never ranges after a plain click**; the anchor is set only by Cmd-click
   (review §4.6). Not re-verified.
-- [ ] **The editor's ··· shows the sidebar's bulk menu** while a sidebar multi-selection stands,
-  and Rename, Duplicate and Delete on an empty draft misbehave (review §4.5). Not re-verified.
+- [ ] **Rename, Duplicate and Delete on an empty draft misbehave** (review §4.5). Not re-verified.
 - [ ] **Enter and Backspace placement** (review §1.11): Enter at the start of a heading leaves an
   empty heading above and demotes the text; a Backspace-merge caret lands mid-word when the
   block above ends in bold or a link; Enter at the end of a soft-broken first line gives the
@@ -238,7 +235,7 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   is a dead key, so the title is unreachable by keyboard (review §1.13).
 - [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
 - [ ] **Block drag on code and callout blocks**: the grip shows and drags nothing, and the
-  marker draws through a code block, which the UI rule forbids (review §3.10). The table joined
+  marker draws through a code block, which the editor rule forbids (review §3.10). The table joined
   the draggable set on 2026-09-10, the image and the file attachment on 2026-09-16 (their
   wrappers now register in the block ref map); code and callout wait on the same judgement as
   their whole-block selection, because the paste and caret paths take a registered element for
@@ -368,15 +365,6 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three
   migrations (about 210 lines) once every tester has installed a post-0.5 build, not before.
 
-**A trailing space typed at the end of a line is saved as U+00A0** while the caret rests after
-it (found 2026-09-07 while fixing Enter on a tag suggestion). Chromium writes a space typed at
-the end of a line as a non-breaking space so it renders, and turns it back into a plain space
-once a character follows; a save that lands in between reads the DOM verbatim and writes
-`Notes\u00A0`. The walkers keep U+00A0 on purpose (a file's own non-breaking spaces must
-survive an edit), so the fix is narrower than a global normalisation: probably a block-final
-U+00A0 read as a space at commit time, weighed against a file that genuinely ends a block with
-one. Nothing is lost on screen; the byte is wrong only until the next keystroke in that block.
-
 ### Accessibility
 
 E2E axe only catches critical violations on the initial screen. Known gaps below that:
@@ -386,8 +374,8 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 - [ ] **Context menus are `<div onClick>`** (Link/Image/Slash/CalloutPicker): not
   keyboard-reachable, no roles or focus traps. SlashMenu's `aria-selected` on `menuitem` is
   invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
-  grammar); the note, vault and table menus now carry three copies of that grammar, and one
-  shared menu primitive is the cleanup that would also fix the four above.
+  grammar); the note, sort and table menus and the folder popup carry four copies of that grammar, and
+  one shared menu primitive is the cleanup that would also fix the four above.
 - [ ] **NIGHT `TEXT.muted` fails AA contrast** (`themes.js`); DAY was fixed, NIGHT was left for
   a later pass.
 - [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`
@@ -406,8 +394,8 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   `GlobalStyles` renders inside the boundary. The toasts, empty state and focus ring are under
   Known issues.
 - **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
-  implemented six times (`ContextMenu`, `SortMenu`, `WikilinkMenu`, `TagMenu`, `CalloutBlock`,
-  `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
+  implemented seven times (`ContextMenu`, `SortMenu`, `PathTreeMenu`, `WikilinkMenu`, `TagMenu`,
+  `CalloutBlock`, `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
   three ways (`CodeBlock` keeps a hand-rolled clamp). One `useMenuKeyboard`/`useDismiss` pair
   is worth it only because the accessibility pass touches every one of them anyway.
 
@@ -482,7 +470,9 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   `GlobalStyles.jsx` beside the `Z` scale; the `index.html` viewport meta is PWA residue; the
   crash screen's `boojy-error-backup` is written but nothing reads it back; a bad `%` in a
   `boojy-att://` URL throws in `decodeURIComponent`; the UI rule's known colour leaks (plain
-  black alphas, per-theme callout and syntax colours) and Dark's first-paint flash.
+  black alphas, per-theme callout and syntax colours), Dark's first-paint flash, and the
+  consume-once `textOnlyEdit` flags in `useHistory`, which have no margin against a second
+  reader (a spurious recompute costs a repaint, never a keystroke).
 
 ## Future, after Beta
 
@@ -508,7 +498,7 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   existing Markdown folder preserves.
 - **Copy as Markdown and as formatted text.** Selection behaviour shipped on 2026-09-16: a
   whole-block copy carries the blocks' Markdown as plain text and their structure as block
-  HTML, an ordinary selection its visible text and inline formatting (UI rule, "Paste keeps
+  HTML, an ordinary selection its visible text and inline formatting (editor rule, "Paste keeps
   the block you are in"). Still open: a whole-note copy (the file itself), attachments (an
   image or file copies as its `![[…]]` reference, never the file), and whether a "Copy as"
   control earns a place at all.
