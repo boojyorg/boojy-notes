@@ -44,6 +44,7 @@ const baseProps = () => ({
   duplicateNote: vi.fn(),
   deleteNote: vi.fn(),
   deleteFolder: vi.fn(),
+  duplicateFolder: vi.fn(),
   createNote: vi.fn(),
   createFolder: vi.fn(),
   setRenamingFolder: vi.fn(),
@@ -94,7 +95,16 @@ describe("ContextMenu", () => {
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 
-  it("the folder menu is exactly four glyphed items in order, with no rule (2026-09-16)", () => {
+  it("Duplicate folder copies the clicked folder", () => {
+    const props = baseProps();
+    props.ctxMenu = { type: "folder", id: "Uni/Sem 1", x: 100, y: 100 };
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("Duplicate folder"));
+    expect(props.duplicateFolder).toHaveBeenCalledWith("Uni/Sem 1");
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+  });
+
+  it("the folder menu is exactly five glyphed items in order, with no rule (2026-09-17)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
     const { getAllByRole, container } = render(<ContextMenu {...props} />);
@@ -103,6 +113,7 @@ describe("ContextMenu", () => {
       "New note",
       "New folder",
       "Rename",
+      "Duplicate folder",
       "Delete folder",
     ]);
     // Every row carries a Lucide glyph, as the note menu's rows do.

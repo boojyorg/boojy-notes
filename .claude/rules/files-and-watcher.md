@@ -33,8 +33,8 @@ that explains it; nothing about a note file is decided on the clock alone.
   rename) is claimed once (`claimUnlink`) and consumed by the one unlink it produces. An
   unclaimed unlink is a real delete however soon it lands, because the app's writes never unlink
   the path they write.
-- **A folder rename or removal is the one clock-decided suppression** (`claimTree`, 1.5 s over
-  the old and new directory); an event that escapes re-reads what is already true.
+- **A folder rename, removal or copy is the one clock-decided suppression** (`claimTree`, 1.5 s
+  over the old and new directory); an event that escapes re-reads what is already true.
 - `watcher-ownership.spec.ts`.
 
 ## A note renamed or moved outside the app is the same note, pending edits included
@@ -106,6 +106,13 @@ mark with no timer pending. `write-in-flight.spec.ts`.
 - **Delete waits for the Trash**: notes leave state, the flush trashes them, `afterNextFlush`
   asks the main process to remove the directory if only cruft is left.
 - **A folder outlives its notes** (decision D8): only Delete folder removes one.
+- **Duplicate folder is one directory copy** (`duplicateFolder` in `electron/folders.ts`):
+  `Name (copy)` beside the original, de-duplicated like a new folder, everything inside
+  included and the notes' names kept. Pending edits under it are flushed first, so the copy
+  holds what is on screen. The copied notes come back read from disk with ids of their own and
+  are adopted as the disk holds them (`applyExternalNote`), so nothing becomes dirty and
+  nothing is written twice; a legacy frontmatter id already indexed elsewhere is never reused
+  (`parseNoteFile`). Not undoable. Web copies in memory. `folders.spec.ts`, `folders.test.ts`.
 - **A chosen vault that is missing is never recreated**: `getNotesDir` makes only the default
   vault under Documents; a configured path that is not there opens empty and every write refuses
   with the ordinary toast. Settings → Storage is the way out. `vault-root.spec.ts`,

@@ -1,7 +1,13 @@
 import { ipcMain } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-import { getIdIndex, sanitizeFilename, saveIndex } from "./noteFileManager.js";
+import {
+  getIdIndex,
+  parseNoteFile,
+  sanitizeFilename,
+  saveIndex,
+  walkNoteFiles,
+} from "./noteFileManager.js";
 
 /**
  * Folders are directories.
@@ -204,6 +210,51 @@ export function renameFolder(
   return { path: realRelPath(notesDir, finalAbs) };
 }
 
+/** What a folder copy answers with: the path the disk holds, every folder
+ * under it, and the notes it now holds, read from disk with ids of their own. */
+export interface FolderCopy {
+  path: string;
+  folders: string[];
+  notes: Record<string, unknown>[];
+}
+
+/**
+ * Copy a directory beside itself as `Name (copy)`, everything in it included:
+ * notes, nested folders, attachments and any other file, the way Finder
+ * duplicates a folder. The name is de-duplicated like a new folder's
+ * (`Name (copy)-2`). The copied notes are read at once and answered with
+ * fresh ids, so the renderer takes them as the disk holds them rather than
+ * waiting for the watcher; the new tree is claimed so the copy's own `add`
+ * events are not delivered as outside changes (a copy large enough to outlast
+ * the claim delivers notes the renderer already holds, which it ignores).
+ */
+export function duplicateFolder(
+  notesDir: string,
+  rel: string,
+  guard: FolderWatcherGuard = NO_GUARD,
+): FolderCopy {
+  const srcAbs = resolveVaultDir(notesDir, rel);
+  if (!srcAbs || !isDirectory(srcAbs)) throw new Error("The folder does not exist");
+  const targetAbs = ensureUniqueDirPath(`${srcAbs} (copy)`);
+  guard.suppressTree(targetAbs);
+  fs.cpSync(srcAbs, targetAbs, { recursive: true });
+
+  const notes: Record<string, unknown>[] = [];
+  walkNoteFiles(targetAbs, (filePath: string) => {
+    const note = parseNoteFile(filePath, notesDir);
+    if (!note) return;
+    const { _filePath, ...rest } = note;
+    notes.push(rest);
+  });
+  saveIndex(notesDir);
+
+  const newRel = realRelPath(notesDir, targetAbs);
+  const folders = readAllFolders(notesDir).filter(
+    (f) => f === newRel || f.startsWith(`${newRel}/`),
+  );
+  return { path: newRel, folders, notes };
+}
+
 /** True when a directory holds nothing but OS cruft and directories that are themselves empty. */
 function isEffectivelyEmpty(abs: string): boolean {
   for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
@@ -245,5 +296,8 @@ export function registerFolderIPC(getNotesDir: () => string, guard: FolderWatche
   );
   ipcMain.handle("delete-folder", (_event, rel: string) =>
     deleteFolderIfEmpty(getNotesDir(), rel, guard),
+  );
+  ipcMain.handle("duplicate-folder", (_event, rel: string) =>
+    duplicateFolder(getNotesDir(), rel, guard),
   );
 }

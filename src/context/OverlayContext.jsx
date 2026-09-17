@@ -24,8 +24,6 @@ export function OverlayProvider({ children }) {
     resolve?.(result);
   }, []);
 
-  const [dragTooltip, setDragTooltip] = useState(null);
-  const dragTooltipCount = useRef({ sidebar: 0 });
   const [lightbox, setLightbox] = useState(null);
   const [slashMenu, setSlashMenu] = useState(null);
   const slashMenuRef = useRef(null);
@@ -41,9 +39,6 @@ export function OverlayProvider({ children }) {
     () => ({
       ctxMenu,
       setCtxMenu,
-      dragTooltip,
-      setDragTooltip,
-      dragTooltipCount,
       lightbox,
       setLightbox,
       slashMenu,
@@ -61,7 +56,6 @@ export function OverlayProvider({ children }) {
     }),
     [
       ctxMenu,
-      dragTooltip,
       lightbox,
       slashMenu,
       wikilinkMenu,

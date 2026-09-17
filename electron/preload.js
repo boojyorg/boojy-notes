@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   renameFolder: (oldRelPath, newRelPath) =>
     ipcRenderer.invoke("rename-folder", oldRelPath, newRelPath),
   deleteFolder: (relPath) => ipcRenderer.invoke("delete-folder", relPath),
+  // One directory copy beside the original; answers with the copy's path,
+  // its folders and its notes read from disk.
+  duplicateFolder: (relPath) => ipcRenderer.invoke("duplicate-folder", relPath),
   onFoldersChanged: (callback) => {
     const handler = () => callback();
     ipcRenderer.on("folders-changed", handler);

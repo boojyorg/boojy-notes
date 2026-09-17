@@ -97,7 +97,7 @@ test("a folder row's New note makes the note inside that folder and opens the fo
     await expect(folderRow(h.page, "Work/Sub")).toHaveAttribute("aria-expanded", "true");
     await expect.poll(() => h.vault.exists("Work/Sub/Untitled.md")).toBe(true);
 
-    // ··· opens the folder's own menu: four items, nothing else.
+    // ··· opens the folder's own menu: five items, nothing else.
     await folderRow(h.page, "Work").hover();
     await folderRow(h.page, "Work").locator("[title='Folder actions']").click();
     await expect(h.page.getByRole("menu")).toBeVisible();
@@ -105,6 +105,7 @@ test("a folder row's New note makes the note inside that folder and opens the fo
       "New note",
       "New folder",
       "Rename",
+      "Duplicate folder",
       "Delete folder",
     ]);
     await h.page.keyboard.press("Escape");
@@ -343,6 +344,49 @@ test("moving the last note out of a folder leaves the folder, on screen and on d
     expect(h.vault.exists("Work/Only.md")).toBe(false);
     expect(fs.statSync(h.vault.file("Work")).isDirectory()).toBe(true);
     await expect(folderRow(h.page, "Work")).toBeVisible();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Duplicate folder copies the directory beside itself: pending edits, subfolders and other files included, nothing written twice", async () => {
+  const h = await launchApp({
+    "Work/Note.md": "Original.\n",
+    "Work/Sub/Deep.md": "Deep.\n",
+    "Work/budget.pdf": "pdf",
+  });
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote("Note");
+    await h.page.locator("[data-block-type='p']").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.type(" Edited.");
+    // At once, inside the write debounce: the copy must hold what is on screen.
+    await folderRow(h.page, "Work").click({ button: "right" });
+    await h.page.getByRole("menuitem", { name: "Duplicate folder" }).click();
+
+    await expect(folderRow(h.page, "Work (copy)")).toBeVisible();
+    await expect.poll(() => h.vault.exists("Work (copy)/Sub/Deep.md")).toBe(true);
+    expect(h.vault.read("Work (copy)/Note.md")).toContain("Original. Edited.");
+    expect(h.vault.read("Work (copy)/budget.pdf")).toBe("pdf");
+    expect(h.vault.read("Work/Note.md")).toContain("Original. Edited.");
+
+    // The copy's notes are rows of their own, under their own names.
+    await expandAllFolders(h.page);
+    const titles = await sidebarNoteTitles(h.page);
+    expect(titles.filter((t) => t === "Note")).toHaveLength(2);
+    expect(titles.filter((t) => t === "Deep")).toHaveLength(2);
+
+    // Taken as the disk holds them: the copied files are not written again.
+    const mtime = h.vault.mtimeMs("Work (copy)/Note.md");
+    await sleep(SETTLE_MS);
+    expect(h.vault.mtimeMs("Work (copy)/Note.md")).toBe(mtime);
+
+    await h.restart();
+    await expandAllFolders(h.page);
+    await expect(folderRow(h.page, "Work (copy)/Sub")).toBeVisible();
+    await expectTitlesMatchFiles(h.page, h.vault);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

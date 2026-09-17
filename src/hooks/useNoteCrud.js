@@ -215,6 +215,44 @@ export function useNoteCrud({
     reveal(path);
   };
 
+  // Copy a folder beside itself as `Name (copy)`, everything in it included
+  // and the notes' names kept, the way Finder duplicates a folder. Desktop:
+  // one directory copy; the disk names it and the copied notes come back read
+  // from it with ids of their own. Web: the same in memory. The copy appears
+  // closed beside the original, whose parent is already open.
+  const duplicateFolder = (folderPath) => {
+    if (folderOps) {
+      folderOps.duplicate(folderPath).catch((err) => {
+        console.error("useNoteCrud: folder duplicate failed", err);
+        onError?.("Failed to duplicate the folder on disk");
+      });
+      return;
+    }
+    const existing = new Set(customFolders);
+    let target = `${folderPath} (copy)`;
+    for (let i = 2; existing.has(target); i++) target = `${folderPath} (copy)-${i}`;
+    const remap = remapPaths(folderPath, target);
+    const under = (p) => p === folderPath || p.startsWith(`${folderPath}/`);
+    setCustomFolders((prev) => [...prev, ...new Set([target, ...prev.filter(under).map(remap)])]);
+    commitNoteData((prev) => {
+      const next = { ...prev };
+      for (const n of Object.values(prev)) {
+        if (n._draft || !n.folder || !under(n.folder)) continue;
+        const id = genNoteId();
+        next[id] = {
+          ...n,
+          id,
+          folder: remap(n.folder),
+          content: {
+            ...n.content,
+            blocks: n.content.blocks.map((b) => ({ ...b, id: genBlockId() })),
+          },
+        };
+      }
+      return next;
+    });
+  };
+
   const createDraftNote = () => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
@@ -248,6 +286,7 @@ export function useNoteCrud({
     moveFolder,
     deleteFolder,
     createFolder,
+    duplicateFolder,
     createDraftNote,
     discardDraft,
   };

@@ -9,8 +9,6 @@ export function useSidebarDrag({
   noteDataRef,
   adoptNoteData,
   sidebarScrollRef,
-  setDragTooltip,
-  dragTooltipCount,
   selectedNotesRef,
   clearSelectionRef,
   moveFolder,
@@ -368,19 +366,6 @@ export function useSidebarDrag({
 
     // Prevent browser scroll takeover on touch devices
     if (e.pointerType === "touch") e.preventDefault();
-
-    if (!localStorage.getItem("boojy-drag-tooltip-sidebar")) {
-      dragTooltipCount.current.sidebar++;
-      if (dragTooltipCount.current.sidebar === 3) {
-        localStorage.setItem("boojy-drag-tooltip-sidebar", "1");
-        setDragTooltip({
-          x: e.clientX,
-          y: e.clientY - 40,
-          text: "Hold and drag to move into a folder",
-        });
-        setTimeout(() => setDragTooltip(null), 3000);
-      }
-    }
 
     const type = rowEl.dataset.noteId ? "note" : "folder";
     const id = type === "note" ? rowEl.dataset.noteId : rowEl.dataset.folderPath;

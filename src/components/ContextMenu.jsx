@@ -35,6 +35,7 @@ const ContextMenu = memo(function ContextMenu({
   duplicateNote,
   deleteNote,
   deleteFolder,
+  duplicateFolder,
   createNote,
   createFolder,
   setRenamingFolder,
@@ -212,14 +213,15 @@ const ContextMenu = memo(function ContextMenu({
       : ctxMenu.type === "note"
         ? noteItems(ctxMenu.id)
         : [
-            // Four items, each with its glyph, and no rule (2026-09-16, Tyr's
+            // Five items, each with its glyph, and no rule (2026-09-16, Tyr's
             // call): the menu opens from the folder's own row, so "here" and
-            // "inside" said what the anchoring already says; only Delete keeps
-            // its noun, because it can take several notes and confirms first,
-            // unlike the note menu's Delete. The glyphs are the ones the same
-            // actions already wear: the row's and pill's pen, the Notes row's
-            // FolderPlus, the note menu's Pencil and Trash. Reveal in Finder
-            // left the folder menu that day; it is Settings → Storage's now.
+            // "inside" said what the anchoring already says; Duplicate and
+            // Delete keep their noun, because each takes the whole tree, notes
+            // and other files alike, unlike the note menu's pair. The glyphs
+            // are the ones the same actions already wear: the row's and pill's
+            // pen, the Notes row's FolderPlus, the note menu's Pencil, Copy and
+            // Trash. Reveal in Finder left the folder menu that day; it is
+            // Settings → Storage's now. Duplicate folder arrived 2026-09-17.
             {
               label: "New note",
               icon: <NewNoteIcon />,
@@ -241,6 +243,14 @@ const ContextMenu = memo(function ContextMenu({
               icon: <PencilIcon />,
               action: () => {
                 setRenamingFolder(ctxMenu.id);
+                setCtxMenu(null);
+              },
+            },
+            {
+              label: "Duplicate folder",
+              icon: <CopyIcon />,
+              action: () => {
+                duplicateFolder(ctxMenu.id);
                 setCtxMenu(null);
               },
             },

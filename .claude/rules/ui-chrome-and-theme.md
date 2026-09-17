@@ -275,9 +275,11 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   (`ctxMenuFolderId`); the width change is instant and only the ink fades. The controls are
   `span role="button"` with `tabIndex={-1}` (a real button nested in the treeitem fails axe
   `nested-interactive`); the row is the keyboard path; clicks stop at the glyph.
-- **The folder menu is four glyphed items, no rule: New note, New folder, Rename, Delete
-  folder.** Reveal in Finder is Settings → Storage's. Single-note and folder menus carry
-  glyphs; the bulk menu is text-only.
+- **The folder menu is five glyphed items, no rule: New note, New folder, Rename, Duplicate
+  folder, Delete folder.** Duplicate copies the directory beside itself as `Name (copy)`,
+  everything in it included, and the copy appears closed beside the original (files rule).
+  Reveal in Finder is Settings → Storage's. Single-note and folder menus carry glyphs; the
+  bulk menu is text-only.
 - **A row's ··· hands its menu the row's rectangle** (`rowMenuAnchor`), so a menu flipped above
   a low row sits above it and the pointer on the dots is not inside Delete. The header's ···
   and right-click keep point anchors. `ContextMenu` stays mounted between opens, so its

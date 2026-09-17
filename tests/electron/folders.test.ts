@@ -17,8 +17,14 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { createFolder, deleteFolderIfEmpty, readAllFolders, renameFolder, resolveVaultDir } =
-  await import("../../electron/folders");
+const {
+  createFolder,
+  deleteFolderIfEmpty,
+  duplicateFolder,
+  readAllFolders,
+  renameFolder,
+  resolveVaultDir,
+} = await import("../../electron/folders");
 const { getIdIndex, readAllNotes, setIndexDir } = await import("../../electron/noteFileManager.js");
 
 let notesDir: string;
@@ -266,5 +272,65 @@ describe("delete-folder — the directory goes only when nothing is left in it",
   it("treats a directory that is already gone as removed, and refuses paths outside the vault", () => {
     expect(deleteFolderIfEmpty(notesDir, "Gone")).toEqual({ removed: true });
     expect(() => deleteFolderIfEmpty(notesDir, "../Outside")).toThrow();
+  });
+});
+
+describe("duplicate-folder — one directory copy beside the original", () => {
+  type Copied = { id: string; title: string; folder: string | null; _filePath?: string };
+
+  it("copies notes, nested folders and other files as `Name (copy)`, the notes with ids of their own", () => {
+    write("Work/Note.md", "note");
+    write("Work/Deep/Other.md", "other");
+    write("Work/budget.pdf", "pdf");
+    const originalIds = Object.keys(readAllNotes(notesDir)).sort();
+    const g = guard();
+
+    const result = duplicateFolder(notesDir, "Work", g);
+
+    expect(result.path).toBe("Work (copy)");
+    expect(result.folders).toEqual(["Work (copy)", "Work (copy)/Deep"]);
+    expect(fs.readFileSync(path.join(notesDir, "Work (copy)", "Note.md"), "utf-8")).toBe("note");
+    expect(exists("Work (copy)/Deep/Other.md")).toBe(true);
+    expect(fs.readFileSync(path.join(notesDir, "Work (copy)", "budget.pdf"), "utf-8")).toBe("pdf");
+    // The copy's own events are the app's, not an outside change.
+    expect(g.suppressTree).toHaveBeenCalledWith(path.join(notesDir, "Work (copy)"));
+
+    // The copied notes answer read from disk, under ids nothing else holds,
+    // with no absolute path in the answer.
+    const copies = result.notes as Copied[];
+    expect(copies.map((n) => [n.title, n.folder]).sort()).toEqual([
+      ["Note", "Work (copy)"],
+      ["Other", "Work (copy)/Deep"],
+    ]);
+    for (const n of copies) {
+      expect(originalIds).not.toContain(n.id);
+      expect(n._filePath).toBeUndefined();
+    }
+    // The originals keep their ids; the index holds both sets.
+    const index = getIdIndex();
+    for (const id of originalIds) expect(index[id].startsWith(`Work${path.sep}`)).toBe(true);
+    expect(Object.keys(readAllNotes(notesDir)).sort()).toEqual(
+      [...originalIds, ...copies.map((n) => n.id)].sort(),
+    );
+  });
+
+  it("de-duplicates the copy's name like a new folder's, and refuses a missing or escaping path", () => {
+    write("Work/Note.md");
+    expect(duplicateFolder(notesDir, "Work").path).toBe("Work (copy)");
+    expect(duplicateFolder(notesDir, "Work").path).toBe("Work (copy)-2");
+    expect(readAllFolders(notesDir)).toEqual(["Work", "Work (copy)", "Work (copy)-2"]);
+    expect(() => duplicateFolder(notesDir, "Missing")).toThrow();
+    expect(() => duplicateFolder(notesDir, "../Work")).toThrow();
+  });
+
+  it("a copied legacy note never takes the original's frontmatter id", () => {
+    write("Work/Legacy.md", "---\nid: note-1-abcd\n---\nbody\n");
+    expect(Object.keys(readAllNotes(notesDir))).toEqual(["note-1-abcd"]);
+
+    const { notes } = duplicateFolder(notesDir, "Work");
+
+    expect((notes[0] as Copied).id).not.toBe("note-1-abcd");
+    expect(getIdIndex()["note-1-abcd"]).toBe(path.join("Work", "Legacy.md"));
+    expect(Object.keys(readAllNotes(notesDir))).toHaveLength(2);
   });
 });
