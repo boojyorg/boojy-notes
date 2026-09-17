@@ -77,7 +77,14 @@ test("a new note starts unnamed under the caret, reads Untitled everywhere, and 
     );
     await expect.poll(() => h.vault.exists("Untitled.md")).toBe(true);
 
-    await h.page.keyboard.type("Meeting");
+    // A short name keeps the placeholder's width under the caret; the field
+    // fits the name once the caret has left.
+    const widthOf = () =>
+      h.page.evaluate(() => document.querySelector("[data-title]")!.clientWidth);
+    const emptyWidth = await widthOf();
+    await h.page.keyboard.type("M");
+    expect(await widthOf()).toBe(emptyWidth);
+    await h.page.keyboard.type("eeting");
     await waitForFile(h.vault.file("Meeting.md"), (t) => t === "", {
       label: "the new note under the name typed",
     });

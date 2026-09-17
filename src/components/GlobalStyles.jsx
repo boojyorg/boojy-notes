@@ -688,9 +688,15 @@ export default function GlobalStyles() {
         [data-title] {
           min-width: 0;
         }
+        /* While empty, and while focused: a short name typed into a new note
+           keeps the placeholder's width under it instead of snapping to a
+           one-letter pill and re-centring the path on every keystroke
+           (judged 2026-09-17). The field fits the name and re-centres once,
+           when the caret leaves. border-box, so the pill's padding is inside
+           the minimum. */
         [data-title]:empty,
-        [data-title]:has(> br:only-child) {
-          /* border-box, so the pill's padding is inside the minimum. */
+        [data-title]:has(> br:only-child),
+        [data-title]:focus {
           min-width: calc(var(--title-placeholder-width, 0px) + ${2 * LABEL_PAD_X}px);
         }
         [data-title]:empty::before,
