@@ -31,7 +31,13 @@ function setup(
       adoptNoteData,
     }),
   );
-  return { resolve: result.current, el, adoptNoteData, noteDataRef };
+  return {
+    resolve: result.current.onTitleResolved,
+    settle: result.current.settleTitle,
+    el,
+    adoptNoteData,
+    noteDataRef,
+  };
 }
 
 function placeAt(el: HTMLElement, offset: number) {
@@ -92,6 +98,44 @@ describe("useResolvedTitle", () => {
     resolve("n1", written, "Draft-2");
 
     expect(adoptNoteData).not.toHaveBeenCalled();
+  });
+
+  it("holds the answer to a blank name under the caret and adopts it once the caret leaves", () => {
+    const written = note("");
+    const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
+    el.innerHTML = "<br>";
+    el.focus();
+
+    resolve("n1", written, "Untitled-2");
+    expect(adoptNoteData).not.toHaveBeenCalled();
+    expect(el.textContent).toBe("");
+
+    el.blur();
+    settle();
+    expect(noteDataRef.current.n1.title).toBe("Untitled-2");
+    expect(noteDataRef.current.n1.content.title).toBe("Untitled-2");
+    expect(el.textContent).toBe("Untitled-2");
+
+    // Settled once; a second blur has nothing to adopt.
+    settle();
+    expect(adoptNoteData).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a held answer when a name was typed before the caret left", () => {
+    const written = note("");
+    const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
+    el.innerHTML = "<br>";
+    el.focus();
+    resolve("n1", written, "Untitled");
+
+    // The name typed since is in state (its own write will resolve it).
+    noteDataRef.current = { ...noteDataRef.current, n1: note("Meeting") };
+    el.textContent = "Meeting";
+    el.blur();
+    settle();
+
+    expect(adoptNoteData).not.toHaveBeenCalled();
+    expect(noteDataRef.current.n1.title).toBe("Meeting");
   });
 
   it("keeps the caret where it was when the title field is focused", () => {

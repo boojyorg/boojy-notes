@@ -133,11 +133,13 @@ mark with no timer pending. `write-in-flight.spec.ts`.
 - **The name is a quiet file label, not a title.** A `#` heading in the body never names the
   file and the filename is never written as a heading; 14px in the chrome row, never a heading.
 - **A note's own file is never a collision** (`ensureUniqueFilePath(target, ownPath)`).
-- **A blank title under the caret is left alone**; it resolves on the next write or open.
-  `titleFieldText()` is the one reading of the field. **A new note starts blank** (2026-09-17,
-  `createNote` as `createDraftNote`): the caret in the empty field, `Untitled` as its placeholder,
-  nothing selected; the file is `Untitled.md` at once and the name is adopted once the caret has
-  left. It was a real `Untitled` selected whole, and the wash read as a warning.
+- **A blank title under the caret is left alone, and settles the moment the caret leaves**: the
+  write's answer (`Untitled`, `Untitled-2`) is held by `useResolvedTitle` and `settleTitle`
+  adopts it on the field's blur (2026-09-17; it used to wait for the note's next write, so a
+  blank note walked away from kept a blank name until edited again). `titleFieldText()` is the
+  one reading of the field. **A new note starts blank** (`createNote` as `createDraftNote`): the
+  caret in the empty field, `Untitled` as its placeholder, nothing selected; the file is
+  `Untitled.md` at once. It was a real `Untitled` selected whole, and the wash read as a warning.
 - **Whitespace the filename trimmed stays under the caret**: while the field is focused only the
   characters the filesystem *changed* are painted at their offsets; the field catches up in
   full the next time it is painted from state. Chromium holds a typed trailing space as U+00A0,

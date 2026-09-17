@@ -124,6 +124,7 @@ const EditorArea = memo(
     setLightbox,
     openNote: openNoteProp,
     onEditorClick,
+    onTitleBlur,
   }) {
     const {
       editorRef,
@@ -606,6 +607,8 @@ const EditorArea = memo(
         }}
         onBlur={(e) => {
           e.currentTarget.removeAttribute("data-placeholder-floor");
+          // A blank name takes the filename the write answered with, now.
+          onTitleBlur?.();
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.color = restColor;
           e.currentTarget.style.textOverflow = "ellipsis";

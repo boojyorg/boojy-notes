@@ -222,13 +222,21 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
     await expect.poll(() => editorTitle(h.page)).toBe("padded");
 
     // A cleared title is left alone while the caret is still in it (the
-    // placeholder already reads Untitled), then becomes the file's `Untitled`
-    // once the user moves on and edits. The emptied field's own line break
-    // must not become the title: that made a file called `_.md`.
+    // placeholder already reads Untitled), even once the write has landed
+    // under `Untitled.md`; it becomes the file's name the moment the caret
+    // leaves, with no further edit (2026-09-17: it used to wait for the next
+    // write). The emptied field's own line break must not become the title:
+    // that made a file called `_.md`.
     await h.page.getByRole("textbox", { name: "Note title" }).click();
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.press("Backspace");
+    await expect.poll(() => h.vault.exists("Untitled.md")).toBe(true);
+    await sleep(SETTLE_MS);
+    // (innerText reads the empty field's own <br> as a newline.)
+    expect((await editorTitle(h.page)).trim()).toBe("");
     await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(() => editorTitle(h.page)).toBe("Untitled");
+    await expectTitlesMatchFiles(h.page, h.vault);
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" more");
     await waitForFile(h.vault.file("Untitled.md"), (t) => t === "Body. more\n", {
