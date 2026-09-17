@@ -233,7 +233,7 @@ function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
  * `active` is the control whose menu is open: full ink on its hover surface
  * until the menu closes.
  */
-function SectionAction({ onClick, label, ariaLabel, active, children, ...rest }) {
+function SectionAction({ onClick, label, shortcut, ariaLabel, active, children, ...rest }) {
   // The row's controls name themselves with the chrome's chip (2026-09-17),
   // after the same rest, so brushing across the row on the way to a folder
   // shows nothing.
@@ -262,7 +262,13 @@ function SectionAction({ onClick, label, ariaLabel, active, children, ...rest })
     >
       {children}
       {tip.shown && (
-        <Tooltip label={label} anchor={ref.current} placement="below" testId="chrome-tooltip" />
+        <Tooltip
+          label={label}
+          shortcut={shortcut}
+          anchor={ref.current}
+          placement="below"
+          testId="chrome-tooltip"
+        />
       )}
     </button>
   );
@@ -1038,6 +1044,7 @@ const Sidebar = memo(function Sidebar({
             {wordmarkTip.shown && (
               <Tooltip
                 label="Settings"
+                shortcut={SHORTCUTS.settings}
                 anchor={wordmarkRef.current}
                 placement="below"
                 testId="chrome-tooltip"
@@ -1052,7 +1059,11 @@ const Sidebar = memo(function Sidebar({
             <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
               <SearchIcon size={18} />
             </ChromeButton>
-            <ChromeButton onClick={toggleSidebar} label="Toggle sidebar">
+            <ChromeButton
+              onClick={toggleSidebar}
+              label="Toggle sidebar"
+              shortcut={SHORTCUTS.toggleSidebar}
+            >
               <SidebarToggleIcon />
             </ChromeButton>
           </div>
@@ -1327,7 +1338,11 @@ const Sidebar = memo(function Sidebar({
                     dropRoot
                     menuOpen={sortMenuAnchor !== null}
                   >
-                    <SectionAction onClick={() => createFolder(null)} label="New folder">
+                    <SectionAction
+                      onClick={() => createFolder(null)}
+                      label="New folder"
+                      shortcut={SHORTCUTS.newFolder}
+                    >
                       <NewFolderIcon size={16} />
                     </SectionAction>
                     <SectionAction

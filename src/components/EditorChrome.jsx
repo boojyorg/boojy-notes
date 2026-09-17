@@ -117,7 +117,10 @@ export const SHORTCUTS = {
   undo: shortcutLabel({ key: "Z" }),
   redo: shortcutLabel({ key: "Z", shift: true, win: { key: "Y" } }),
   newNote: shortcutLabel({ key: "N" }),
+  newFolder: shortcutLabel({ key: "N", shift: true }),
   search: shortcutLabel({ key: "P" }),
+  settings: shortcutLabel({ key: "," }),
+  toggleSidebar: shortcutLabel({ key: "\\" }),
 };
 
 /**
@@ -248,7 +251,11 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP }}>
-            <ChromeButton onClick={toggleSidebar} label="Toggle sidebar">
+            <ChromeButton
+              onClick={toggleSidebar}
+              label="Toggle sidebar"
+              shortcut={SHORTCUTS.toggleSidebar}
+            >
               <SidebarToggleIcon />
             </ChromeButton>
             <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>

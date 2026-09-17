@@ -51,7 +51,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
 
   const toggle = h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)");
   await toggle.hover();
-  await expect(chip).toHaveText("Toggle sidebar");
+  await expect(chip).toHaveText(/^Toggle sidebar(⌘\\|Ctrl\+\\)$/);
   const toggleBox = (await toggle.boundingBox())!;
   const chipBox = (await chip.boundingBox())!;
   // Under the control, centred on it.
@@ -76,7 +76,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
 
   // The wordmark's says what the wordmark does, and leaving hides it.
   await h.page.getByTestId("wordmark-settings-button").hover();
-  await expect(chip).toHaveText("Settings");
+  await expect(chip).toHaveText(/^Settings(⌘,|Ctrl\+,)$/);
   await h.page.mouse.move(400, 300);
   await expect(chip).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
@@ -88,7 +88,7 @@ test("the Notes row's pair name themselves, a greyed Undo keeps its name, and th
   const chip = h.page.getByTestId("chrome-tooltip");
 
   await h.page.getByRole("button", { name: "New folder", exact: true }).hover();
-  await expect(chip).toHaveText("New folder");
+  await expect(chip).toHaveText(/^New folder(⇧⌘N|Ctrl\+Shift\+N)$/);
   await h.page.getByRole("button", { name: "Sort", exact: true }).hover();
   await expect(chip).toHaveText("Sort");
 

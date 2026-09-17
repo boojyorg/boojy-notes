@@ -14,8 +14,11 @@ function makeDeps(overrides = {}) {
     undo: vi.fn(),
     redo: vi.fn(),
     createNote: vi.fn(),
+    createFolder: vi.fn(),
     revealSidebar: vi.fn(),
+    toggleSidebar: vi.fn(),
     openSearch: vi.fn(),
+    openSettings: vi.fn(),
     setUiScale: vi.fn(),
     cancelBlockDrag: vi.fn(),
     cancelSidebarDrag: vi.fn(),
@@ -98,6 +101,38 @@ describe("useAppKeyboard", () => {
     key("n", { metaKey: true });
     expect(deps.createNote).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(titleEl);
+  });
+
+  // Cmd+Shift+N is New folder (Apple Notes, Finder); Cmd+, is Settings; Cmd+\
+  // toggles the sidebar (2026-09-17). Cmd+N alone is still New note.
+  it("Cmd+Shift+N makes a folder and not a note; Cmd+, opens Settings; Cmd+\\ toggles the sidebar", () => {
+    const deps = makeDeps();
+    renderHook(() => useAppKeyboard(deps));
+
+    let e = key("n", { metaKey: true, shiftKey: true });
+    expect(deps.createFolder).toHaveBeenCalledWith(null);
+    expect(deps.createNote).not.toHaveBeenCalled();
+    expect(e.defaultPrevented).toBe(true);
+    key("N", { metaKey: true, shiftKey: true });
+    expect(deps.createFolder).toHaveBeenCalledTimes(2);
+    key("n", { metaKey: true });
+    expect(deps.createNote).toHaveBeenCalledTimes(1);
+
+    e = key(",", { ctrlKey: true });
+    expect(deps.openSettings).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(true);
+
+    e = key("\\", { metaKey: true });
+    expect(deps.toggleSidebar).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(true);
+    // A layout that puts the character elsewhere: the physical key counts.
+    key("ü", { metaKey: true, code: "Backslash" });
+    expect(deps.toggleSidebar).toHaveBeenCalledTimes(2);
+    // Without a modifier the characters are typing.
+    key(",");
+    key("\\");
+    expect(deps.openSettings).toHaveBeenCalledTimes(1);
+    expect(deps.toggleSidebar).toHaveBeenCalledTimes(2);
   });
 
   it("zoom shortcuts step through SCALE_OPTIONS from the current scale", () => {

@@ -191,6 +191,37 @@ test("Cmd+N and Cmd+P do nothing while Settings is open; Escape closes it", asyn
   }
 });
 
+test("Cmd+\\ toggles the sidebar, Cmd+, opens Settings, and Cmd+Shift+N makes a folder, not a note", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    const panel = h.page.locator(".sidebar-action-row");
+    await expect(panel).toBeVisible();
+    await h.page.keyboard.press(`${MOD}+\\`);
+    await expect(panel).toBeHidden();
+    await h.page.keyboard.press(`${MOD}+\\`);
+    await expect(panel).toBeVisible();
+
+    const settings = h.page.getByRole("dialog", { name: "Settings" });
+    await h.page.keyboard.press(`${MOD}+,`);
+    await expect(settings).toBeVisible();
+    await h.page.keyboard.press("Escape");
+    await expect(settings).toBeHidden();
+
+    // Shift+N is a folder at the root, opened for renaming; Enter keeps the
+    // default name. The note count is unchanged: no draft was made.
+    await h.page.keyboard.press(`${MOD}+Shift+n`);
+    const field = h.page.getByRole("textbox", { name: "Rename folder" });
+    await expect(field).toBeVisible();
+    await h.page.keyboard.press("Enter");
+    await expect.poll(() => h.vault.exists("Untitled Folder")).toBe(true);
+    await expect(h.page.locator("[data-note-id]")).toHaveCount(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("Cmd+K is the link editor and Cmd+P is Search", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha body\n" });
   try {

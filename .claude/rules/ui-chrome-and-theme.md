@@ -133,7 +133,10 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   neighbour's chip has just hidden (`TOOLTIP_WARM_MS` 300) or on keyboard focus; a press,
   Enter, Space or Escape hides it until the pointer leaves and returns. A shortcut is shown
   only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the map in `useAppKeyboard`;
-  Redo is `Ctrl+Y` off a Mac). Folder-row and note-row controls keep native titles for now.
+  Redo is `Ctrl+Y` off a Mac). **The shell's keys** (2026-09-17): `⌘N` New note, `⇧⌘N` New
+  folder at the root, `⌘P` Search, `⌘,` Settings, `⌘\` Toggle sidebar (Notion's; `⌥⌘S` is three
+  keys and `⌘B` is Bold), `⌘Z`/`⇧⌘Z` history, `⌘±0` UI scale. Sort has none, by decision: a
+  two-option preference opening a menu earns no key. Folder-row and note-row controls keep native titles for now.
   Specs locate chrome controls by `aria-label`, never `title`. `chrome-tooltips.spec.ts`,
   `Tooltip.test.jsx`.
 - **The collapsed header carries the sidebar's own three controls** (toggle, Search, New note)

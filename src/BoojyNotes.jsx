@@ -80,12 +80,13 @@ export default function BoojyNotes() {
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { uiScale, setUiScale } = useSettings();
+  const { uiScale, setUiScale, setSettingsOpen } = useSettings();
 
   const {
     sidebarWidth,
     sidebarVisible,
     revealSidebar,
+    toggleSidebar,
     chromeBg,
     accentColor,
     sidebarHandles,
@@ -458,8 +459,11 @@ export default function BoojyNotes() {
     undo,
     redo,
     createNote,
+    createFolder,
     revealSidebar,
+    toggleSidebar,
     openSearch,
+    openSettings: () => setSettingsOpen(true),
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
