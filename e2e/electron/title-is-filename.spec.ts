@@ -196,19 +196,18 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
 
     // Leading and trailing whitespace is not part of a filename either. Typed
     // in the editor's title field, which (unlike the sidebar rename) trims
-    // nothing itself and stays focused while the write resolves: the sidebar
-    // shows the real name at once, the leading spaces are painted away, and
-    // the trailing ones stay under the caret so typing on can continue (the
-    // trailing-space test below).
+    // nothing itself: the file is written trimmed, and the name shows trimmed
+    // once the caret has left the field (the field is the user's while the
+    // caret is in it; the test below).
     await h.page.getByRole("textbox", { name: "Note title" }).click();
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.type("  Padded  ");
     await waitForFile(h.vault.file("Padded.md"), (t) => t === "Body.\n", {
       label: "renamed file under its trimmed name",
     });
+    await h.page.locator("[data-block-id]").first().click();
     await expectTitlesMatchFiles(h.page, h.vault);
-    // (Chromium holds a typed trailing space as U+00A0; `\s` covers both.)
-    await expect.poll(() => editorTitle(h.page)).toMatch(/^Padded\s\s$/);
+    await expect.poll(() => editorTitle(h.page)).toBe("Padded");
 
     // A change of letter case alone renames the file too (on a
     // case-insensitive volume that is the note's own file under a new name).
@@ -265,7 +264,60 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
  * whitespace at the edges alone is adopted into state (the sidebar and the
  * next write use the real name) and the focused field is left as typed.
  */
-test("a trailing space typed into the title survives the write resolving under the caret", async () => {
+/**
+ * The name field is the user's while the caret is in it (2026-09-17). A write
+ * goes out under a name still being typed, and its answer may be a collision
+ * suffix (`Tyr` on the way to `Tyres`, beside `Tyr.md`, comes back `Tyr-2`),
+ * a sanitised character or trimmed whitespace. None of it is painted under
+ * the caret: the answer waits for Enter or a click away, and a name typed on
+ * in the meantime wins. Before this, `Tyr-2` appeared mid-word.
+ */
+test("a name typed over an existing one is not suffixed under the caret; the answer waits for the caret to leave", async () => {
+  const h = await launchApp({ "Tyr.md": "Tyr.\n", "Plain.md": "Body.\n" });
+  try {
+    await h.openNote("Plain");
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await title.click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.type("Tyr");
+    // The write lands under the suffixed name; the field keeps what was typed.
+    await expect.poll(() => h.vault.exists("Tyr-2.md")).toBe(true);
+    await sleep(SETTLE_MS);
+    expect(await editorTitle(h.page)).toBe("Tyr");
+    expect(h.vault.read("Tyr.md")).toBe("Tyr.\n");
+
+    // Typing on: the next write takes the full name and the suffix never shows.
+    await h.page.keyboard.type("es");
+    await waitForFile(h.vault.file("Tyres.md"), (t) => t === "Body.\n", {
+      label: "renamed file under the full name",
+    });
+    await sleep(SETTLE_MS);
+    expect(await editorTitle(h.page)).toBe("Tyres");
+    await h.page.locator("[data-block-id]").first().click();
+    await sleep(SETTLE_MS);
+    expect(await editorTitle(h.page)).toBe("Tyres");
+    expect(mdFiles(h.vault)).toEqual(["Tyr.md", "Tyres.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+
+    // Leaving with the colliding name: the suffix is adopted then, at once.
+    await title.click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.type("Tyr");
+    await expect.poll(() => h.vault.exists("Tyr-2.md")).toBe(true);
+    await sleep(SETTLE_MS);
+    expect(await editorTitle(h.page)).toBe("Tyr");
+    await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(() => editorTitle(h.page)).toBe("Tyr-2");
+    expect(mdFiles(h.vault)).toEqual(["Tyr-2.md", "Tyr.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+    expectNoTempFiles(h.vault);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("whitespace and characters the filesystem changes are not painted under the caret", async () => {
   const h = await launchApp({ "Plain.md": "Body.\n" });
   try {
     await h.openNote("Plain");
@@ -275,35 +327,37 @@ test("a trailing space typed into the title survives the write resolving under t
     await waitForFile(h.vault.file("Meeting.md"), (t) => t === "Body.\n", {
       label: "renamed file under its trimmed name",
     });
-    await expectTitlesMatchFiles(h.page, h.vault);
     await sleep(SETTLE_MS);
-
+    // The field still holds the space, so typing on continues the name.
+    // (Chromium holds a typed trailing space as U+00A0; `\s` covers both.)
+    expect(await editorTitle(h.page)).toMatch(/^Meeting\s$/);
     await h.page.keyboard.type("notes");
     await waitForFile(h.vault.file("Meeting notes.md"), (t) => t === "Body.\n", {
       label: "renamed file under the full name",
     });
     await sleep(SETTLE_MS);
     expect(mdFiles(h.vault)).toEqual(["Meeting notes.md"]);
-    await expectTitlesMatchFiles(h.page, h.vault);
     expect(await editorTitle(h.page)).toBe("Meeting notes");
-    expectNoTempFiles(h.vault);
 
-    // A character the filesystem rewrites is painted in place, and the
-    // trailing space beside it still survives.
+    // A character the filesystem rewrites shows rewritten once the caret
+    // has left, and the space beside it survived the typing.
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.type("a/b ");
     await waitForFile(h.vault.file("a_b.md"), (t) => t === "Body.\n", {
       label: "renamed file under its sanitised name",
     });
     await sleep(SETTLE_MS);
+    expect(await editorTitle(h.page)).toMatch(/^a\/b\s$/);
     await h.page.keyboard.type("notes");
     await waitForFile(h.vault.file("a_b notes.md"), (t) => t === "Body.\n", {
       label: "renamed file under the full sanitised name",
     });
     await sleep(SETTLE_MS);
     expect(mdFiles(h.vault)).toEqual(["a_b notes.md"]);
+    expect(await editorTitle(h.page)).toBe("a/b notes");
+    await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(() => editorTitle(h.page)).toBe("a_b notes");
     await expectTitlesMatchFiles(h.page, h.vault);
-    expect(await editorTitle(h.page)).toBe("a_b notes");
 
     await h.restart();
     await h.openNote("a_b notes");

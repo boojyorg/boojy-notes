@@ -305,6 +305,12 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   non-empty list item is its lazy continuation. Enter makes a new paragraph; Shift+Enter
   inserts a soft break (`insertLineBreak`) in paragraphs, list items and quotes, and acts as
   Enter in a heading.
+- **Enter in a quote is a soft break, and Enter on an empty last line leaves the quote** for a
+  paragraph, as an empty list item does (Obsidian's and Notion's quote; `quote-enter.spec.ts`).
+  A second quote block was never a second quote on disk: adjacent quote blocks are written line
+  under line and read back as one, so the split showed a second bar only until the reopen.
+  `LIST_TYPES` therefore no longer holds `blockquote`. Quote text is upright in primary ink,
+  the bar alone marking it; italic hid a quote's own emphasis.
 - **One blank line is structure, not a row**, only between a paragraph or list item and the
   paragraph or divider after it (`takesSeparator`), and only when every blank in the run is
   exactly empty. Every other blank line is an empty paragraph block, a visible row. Without the
@@ -317,7 +323,7 @@ Blocks are Markdown structure, not source lines (`structureParagraphs` in `utils
   a soft-break `<br>` as one character and the trailing one as none; never clamp a caret to
   `textContent.length`.
 - **Three pitches, in order** (`PARAGRAPH_GAP`, applied in `GlobalStyles`): a soft break is line
-  height alone; Enter adds 12px after a paragraph or quote (and after a list item, via a
+  height alone; Enter adds 8px after a paragraph or quote (and after a list item, via a
   sibling rule on `data-block-type`); an empty row adds a whole line.
 - **A soft-break line that would start a block is written with its marker escaped**
   (`readsBackAsText`: `\# bar`, `\- bar`, `1\. two`, `\---`), asking the app's own parser which

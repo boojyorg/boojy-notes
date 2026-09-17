@@ -170,7 +170,7 @@ export function useInlineFormatting({
   // Bold and italic wrap the selection structurally, as code, strike and
   // highlight do, never through execCommand("bold") on a selection
   // (2026-09-16): the command decides its direction from the computed style,
-  // so inside a heading (already weight 600–700) or a quote (already italic)
+  // so inside a heading (already weight 600–700), or a quote while it was italic,
   // it *removed* the format, leaving a `font-weight: normal` span the walker
   // reads as plain text: the heading's word went lighter on screen and the
   // file never got its `**`. A collapsed caret keeps execCommand: the pending

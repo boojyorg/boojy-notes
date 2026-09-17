@@ -1,6 +1,5 @@
 import { type RefObject, useCallback, useRef } from "react";
 import type { Note, NoteData } from "../types/notes";
-import { getCaretOffset, placeCaret, titleFieldText } from "../utils/domHelpers";
 
 type NoteDataUpdater = (prev: NoteData) => NoteData;
 
@@ -14,6 +13,12 @@ interface ResolvedTitleDeps {
   adoptNoteData: (updater: NoteDataUpdater) => void;
 }
 
+interface HeldAnswer {
+  noteId: string;
+  written: Note;
+  finalTitle: string;
+}
+
 /**
  * The renderer's half of "a persisted note's title is its filename".
  *
@@ -24,25 +29,21 @@ interface ResolvedTitleDeps {
  * renderer never guesses at filename rules; it takes the answer.
  *
  * Nothing is adopted when the user has renamed the note since the write went
- * out (the newer title is in flight, and its own write will resolve again),
- * and a blank title left under the caret keeps its placeholder rather than
- * filling in `Untitled` in front of whatever is typed next. That answer is
- * held, not dropped (2026-09-17), and `settleTitle`, called when the field
- * loses focus, adopts it then if the name is still blank: the name settles
- * on Enter or a click away, on the beat the pill does. Before this it waited
- * for the note's next write, which needed a further edit, so a note left
- * blank and walked away from kept a blank name over an `Untitled-2.md` until
- * it was edited again or the app restarted. A write landing after the caret
- * has left takes the ordinary path and is adopted at once.
+ * out (the newer title is in flight, and its own write will resolve again).
  *
- * While the caret is in the field, whitespace the filename trimmed from the
- * end stays in the field: `Meeting ` written as `Meeting.md` used to be
- * painted back as `Meeting` with the caret clamped onto the end, and `notes`
- * typed next made `Meetingnotes`. The name is adopted; only the characters
- * the filesystem changed are painted, at their own offsets, so what is typed
- * next lands where it would have. Leading whitespace goes with the paint (the
- * caret shifts with it, nothing after it moves), and the field catches up
- * with the name in full the next time it is painted from state.
+ * The field is the user's while the caret is in it (2026-09-17). A write
+ * goes out under a name that is still being typed, and its answer can name a
+ * note the user has not finished naming: `Tyr` on the way to `Tyres` collides
+ * with `Tyr.md` and came back as `Tyr-2`, painted under the caret before
+ * Enter. So while the field is focused every differing answer is held, not
+ * adopted, and `settleTitle`, called when the field loses focus, adopts the
+ * last one if the name is still what was written: the name settles on Enter
+ * or a click away, on the beat the pill does. A blank name becomes `Untitled`
+ * the same way, and a sanitised character (`/` to `_`) or trimmed whitespace
+ * shows once the caret has left rather than being painted in place; the
+ * offset-preserving paint that did that (review 2026-09-07, §2.7) is gone
+ * with the reason for it. A write landing after the caret has left is
+ * adopted at once.
  */
 export function useResolvedTitle({
   titleRef,
@@ -50,21 +51,17 @@ export function useResolvedTitle({
   noteDataRef,
   adoptNoteData,
 }: ResolvedTitleDeps) {
-  /** The answer a focused blank field refused, for `settleTitle`. */
-  const held = useRef<{ noteId: string; written: Note; finalTitle: string } | null>(null);
+  /** The answer a focused field refused, for `settleTitle`. */
+  const held = useRef<HeldAnswer | null>(null);
   const onTitleResolved = useCallback(
     (noteId: string, written: Note, finalTitle: string) => {
       const latest = noteDataRef.current?.[noteId];
       if (!latest || latest._draft || latest.title !== written.title) return;
 
       const el = noteId === activeNoteRef.current ? titleRef.current : null;
-      const focused = !!el && document.activeElement === el;
-      if (focused) {
-        if (titleFieldText(el) !== written.title) return;
-        if (written.title.trim() === "") {
-          held.current = { noteId, written, finalTitle };
-          return;
-        }
+      if (el && document.activeElement === el) {
+        held.current = { noteId, written, finalTitle };
+        return;
       }
 
       adoptNoteData((prev) => {
@@ -75,26 +72,13 @@ export function useResolvedTitle({
           [noteId]: { ...note, title: finalTitle, content: { ...note.content, title: finalTitle } },
         };
       });
-
-      if (!el) return;
-      if (!focused) {
-        el.textContent = finalTitle;
-        return;
-      }
-      const leading = written.title.length - written.title.trimStart().length;
-      const painted = finalTitle + written.title.slice(written.title.trimEnd().length);
-      if (painted === titleFieldText(el)) return;
-      const offset = getCaretOffset(el);
-      el.textContent = painted;
-      placeCaret(
-        el,
-        offset < 0 ? painted.length : Math.max(0, Math.min(offset - leading, painted.length)),
-      );
+      if (el) el.textContent = finalTitle;
     },
     [titleRef, activeNoteRef, noteDataRef, adoptNoteData],
   );
   // The guards inside re-check the note: a name typed since the answer was
-  // held wins, and a note that is no longer open is adopted in state alone.
+  // held wins (its own write answers again), and a note that is no longer
+  // open is adopted in state alone.
   const settleTitle = useCallback(() => {
     const h = held.current;
     held.current = null;

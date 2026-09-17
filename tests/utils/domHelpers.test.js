@@ -3,6 +3,7 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import {
+  caretOnEmptyLastLine,
   CARET_ANCHOR,
   CARET_ANCHOR_CLASS,
   caretLength,
@@ -426,6 +427,49 @@ describe("caretOutOfLinkStart — a browser-placed caret at the start of a link 
     expect(caretOutOfLinkEnd(root())).toBe(false);
     expect(caretOutOfLinkStart(root())).toBe(true);
     expect(el.textContent).toBe(`${CARET_ANCHOR}Welcome${CARET_ANCHOR} first`);
+  });
+});
+
+describe("caretOnEmptyLastLine — the Enter that leaves a quote", () => {
+  const rootWith = (html) => {
+    const el = document.createElement("div");
+    el.innerHTML = html;
+    document.body.appendChild(el);
+    return el;
+  };
+  const rangeAt = (node, offset) => {
+    const r = document.createRange();
+    r.setStart(node, offset);
+    r.collapse(true);
+    return r;
+  };
+
+  it("is true between the break and the placeholder <br> of an empty last line", () => {
+    const el = rootWith("Quote<br>Second<br><br>");
+    // Chromium's caret after a line break at the end: between the two <br>s.
+    expect(caretOnEmptyLastLine(el, rangeAt(el, 4))).toBe(true);
+    // Before the first of them the caret is still at the end of "Second".
+    expect(caretOnEmptyLastLine(el, rangeAt(el, 3))).toBe(false);
+  });
+
+  it("is true in an empty root, and on an empty line held by an empty element", () => {
+    expect(caretOnEmptyLastLine(rootWith("<br>"), rangeAt(rootWith("<br>"), 0))).toBe(true);
+    const el = rootWith("Quote<br><em></em><br>");
+    expect(caretOnEmptyLastLine(el, rangeAt(el.querySelector("em"), 0))).toBe(true);
+  });
+
+  it("is false at the end of a line that holds text, and on an empty line that is not the last", () => {
+    const el = rootWith("Quote<br>Second<br>");
+    expect(caretOnEmptyLastLine(el, rangeAt(el.childNodes[2], 6))).toBe(false);
+    const mid = rootWith("Quote<br><br>Third");
+    expect(caretOnEmptyLastLine(mid, rangeAt(mid, 2))).toBe(false);
+    const start = rootWith("Quote<br>Second<br>");
+    expect(caretOnEmptyLastLine(start, rangeAt(start.childNodes[2], 0))).toBe(false);
+  });
+
+  it("ignores a caret anchor's zero-width space", () => {
+    const el = rootWith('Quote<br><span class="caret-anchor">\u200B</span><br>');
+    expect(caretOnEmptyLastLine(el, rangeAt(el.querySelector("span").firstChild, 1))).toBe(true);
   });
 });
 

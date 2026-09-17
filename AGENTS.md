@@ -81,7 +81,8 @@ dev/                    # dev-only tooling (the ?tweak colour panel); never bund
   cannot express, columns or JSON-blob blocks. Evaluate read/render, edit/write and preservation
   independently; read the spec's definitions before planning a feature or changing a block type.
 - **A persisted note's title is its filename.** The write reports the basename the file actually
-  got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once;
+  got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once,
+  or once the caret has left the name field when the user is still typing in it;
   nothing in the UI re-implements filename rules. Only a name the app makes is sanitised; a name
   the disk already holds (a Finder-made folder, a note that was already there) is kept exactly.
   Details and the caret rule: the files rule.
