@@ -22,8 +22,12 @@ export const TOOLTIP_REST_MS = 400;
  * a group, not once per button.
  */
 export const TOOLTIP_WARM_MS = 300;
-/** Air between the control and the chip, and between the chip and the window's edge. */
-const GAP = 6;
+/**
+ * Air between the control and the chip (4: at 6 the chip floated as its own
+ * object; at 4 it reads as attached to the button it names, judged 2026-09-17),
+ * and between the chip and the window's edge.
+ */
+const GAP = 4;
 const EDGE = 8;
 
 let warmUntil = 0;
@@ -62,9 +66,7 @@ interface TooltipProps {
  * divided by the zoom before it becomes a style (the menus do the same).
  */
 export function Tooltip({ label, shortcut, anchor, placement = "above", testId }: TooltipProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { dragShadow: string };
-  };
+  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -98,8 +100,10 @@ export function Tooltip({ label, shortcut, anchor, placement = "above", testId }
         padding: shortcut ? "5px 6px 5px 10px" : "5px 10px",
         borderRadius: 8,
         background: BG.elevated,
+        // A hairline and no shadow: a shadow says "a surface you can act on",
+        // which the menus are and a label is not. The border draws the edge on
+        // both grounds (judged 2026-09-17).
         border: `1px solid ${BG.divider}`,
-        boxShadow: theme.dragShadow,
         color: TEXT.primary,
         // A control's label, read at a glance: 13px/500 in the primary ink.
         // The shortcut is a step smaller on a grey pill (the content-hover

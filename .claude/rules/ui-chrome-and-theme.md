@@ -122,7 +122,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`:
   the chip, `useTooltip`, `TOOLTIP_REST_MS` 400, `shortcutLabel`). Name 13px/500 in primary
   ink; the shortcut a step smaller on a `BG.surface` pill in secondary ink; radius 8, the
-  elevated ground, `dragShadow`, a hairline border for Dark. **Portalled to `body` and fixed**,
+  elevated ground, a hairline border and **no shadow** (a shadow reads as a surface to act on;
+  a label is not one), 4px under the control. **Portalled to `body` and fixed**,
   centred on its control from the control's rect and moved in from the window's edge, the
   placement divided by `cssZoom`: drawn inside the control it was clipped at the sidebar's
   edge and hidden under the editor. Below on the window's row and the Notes row, above on the
