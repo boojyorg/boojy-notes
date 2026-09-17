@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
+import { LABEL_PAD_X } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
-import NotePath, { PATH_FONT } from "./NotePath";
+import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -59,10 +60,6 @@ const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */
 const MOBILE_LABEL_GAP = 26;
-/**
- * Negative inset so the hover tint can have padding without moving the text.
- */
-const LABEL_PAD_X = 5;
 
 /*
  * The writing column is fluid, because the window is.
@@ -127,6 +124,7 @@ const EditorArea = memo(
     setLightbox,
     openNote: openNoteProp,
     onEditorClick,
+    onTitleBlur,
   }) {
     const {
       editorRef,
@@ -548,9 +546,9 @@ const EditorArea = memo(
         data-placeholder="Untitled"
         role="textbox"
         aria-label="Note title"
-        className={note.title ? undefined : "empty-title"}
         onInput={(e) => {
           const newTitle = titleFieldText(e.currentTarget);
+          if (newTitle === "") e.currentTarget.setAttribute("data-placeholder-floor", "");
           commitTextChange((prev) => {
             const next = { ...prev };
             const n = { ...next[activeNote] };
@@ -593,6 +591,14 @@ const EditorArea = memo(
           document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
         }}
         onFocus={(e) => {
+          // The placeholder's width holds under the caret from the moment
+          // the placeholder has shown in this editing session (a new note, a
+          // name cleared and retyped) until the caret leaves, so a short name
+          // typed over it never snaps the pill narrow and re-centres the path
+          // per letter. A rename that never empties follows its text, as a
+          // rename field should (judged 2026-09-17). GlobalStyles reads it.
+          if (titleFieldText(e.currentTarget) === "")
+            e.currentTarget.setAttribute("data-placeholder-floor", "");
           // Truncation is a display concern — editing reveals the whole name.
           e.currentTarget.style.background = BG.surface;
           e.currentTarget.style.color = TEXT.primary;
@@ -600,6 +606,9 @@ const EditorArea = memo(
           e.currentTarget.style.overflowX = "auto";
         }}
         onBlur={(e) => {
+          e.currentTarget.removeAttribute("data-placeholder-floor");
+          // A blank name takes the filename the write answered with, now.
+          onTitleBlur?.();
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.color = restColor;
           e.currentTarget.style.textOverflow = "ellipsis";
@@ -638,6 +647,7 @@ const EditorArea = memo(
                 // pill's padding is pulled back out with a negative margin so the
                 // path centres on the letters, not on the pill.
                 ...PATH_FONT,
+                fontWeight: NAME_WEIGHT,
                 color: restColor,
                 margin: `0 ${-LABEL_PAD_X}px`,
                 padding: `0 ${LABEL_PAD_X}px`,
@@ -648,7 +658,8 @@ const EditorArea = memo(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                minWidth: 0,
+                // min-width is the stylesheet's: 0, or the placeholder's
+                // width while the field is empty (GlobalStyles, [data-title]).
                 flex: "1 1 auto",
                 transition: "background 0.12s, color 0.12s",
               }

@@ -81,7 +81,7 @@ function setup(initialNoteData = {}, opts = {}) {
 
 describe("useNoteCrud", () => {
   describe("createNote", () => {
-    it("creates a note with ID, title, first block, and sets it active", () => {
+    it("creates an unnamed note with ID, first block, and sets it active", () => {
       const { result, getNoteData, setActiveNote } = setup();
 
       act(() => {
@@ -91,7 +91,10 @@ describe("useNoteCrud", () => {
       const data = getNoteData();
       const noteId = "note-1";
       expect(data[noteId]).toBeDefined();
-      expect(data[noteId].title).toBe("Untitled");
+      // Unnamed: the field shows its placeholder under the caret and the
+      // write makes the file `Untitled.md`; nothing is selected to type over.
+      expect(data[noteId].title).toBe("");
+      expect(data[noteId].content.title).toBe("");
       expect(data[noteId].content.blocks).toHaveLength(1);
       expect(data[noteId].content.blocks[0].id).toBe("blk-1");
       expect(data[noteId].content.blocks[0].type).toBe("p");

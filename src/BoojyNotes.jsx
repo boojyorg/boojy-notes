@@ -164,7 +164,12 @@ export default function BoojyNotes() {
 
   // A persisted note's title is its filename: when a write lands under
   // another basename, the title follows it, in state and in the title field.
-  const onTitleResolved = useResolvedTitle({ titleRef, activeNoteRef, noteDataRef, adoptNoteData });
+  const { onTitleResolved, settleTitle } = useResolvedTitle({
+    titleRef,
+    activeNoteRef,
+    noteDataRef,
+    adoptNoteData,
+  });
 
   // The open note changed on disk while edits were pending, and the local
   // version has just been saved as a conflict copy. Continue in the copy: it
@@ -882,6 +887,7 @@ export default function BoojyNotes() {
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}
+              onTitleBlur={settleTitle}
             />
             {isMobile && (
               <MobileToolbar

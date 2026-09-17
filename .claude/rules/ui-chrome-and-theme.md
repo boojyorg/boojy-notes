@@ -177,8 +177,18 @@ The toggle sits in the sidebar header opposite the wordmark when expanded, and a
 
 `NotePath`: `University / Archive / Todd's Note`, folders then name, 14px/400: name in
 `TEXT.primary`, folders `TEXT.secondary` (buttons that lift to primary on hover), slashes
-`TEXT.muted`; nothing bold, nothing accent. A root note shows its name alone, never `Notes /`.
+`TEXT.muted`; **the name alone is 500** (`NAME_WEIGHT`, 2026-09-17: the row stands in for a
+title bar and the name is the one place you are; the twin measures it at that weight), never
+bolder, nothing accent. A root note shows its name alone, never `Notes /`.
 The name is the editable file label: a click renames in place, Enter goes to the first block.
+**The empty field's placeholder is CSS on the DOM** (`[data-title]:has(> br:only-child)`, as the
+block's), never a class from the debounced title; it inherits the field's padding so it starts
+under the caret, and the field takes the placeholder's measured width
+(`--title-placeholder-width`, set by `NotePath`) while empty **and for the rest of an editing
+session in which the placeholder has shown** (`data-placeholder-floor`, set on focus and input,
+cleared on blur), so a short name typed over it does not snap the pill narrow and re-centre the
+path per keystroke; a rename that never empties follows its text; the field fits the name once
+the caret leaves. Longer names still grow both ways (Finder's rename).
 
 - **Where it sits is CSS; what it shows is JavaScript.** The band is `position: sticky` at the
   top of `.editor-scroll` (it paints `BG.editor`, invisible at rest). Its padding is
@@ -259,7 +269,9 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   so the mobile search field never remounts mid-typing.
 - Tree rows are neutral `BG.hover` pills for hover, selection and multi-select alike; the
   active note is primary ink at normal weight, never bold or accent. Mobile keeps its accent
-  pill and bold title.
+  pill and bold title. **An unnamed note reads `Untitled` in `TEXT.muted`**, never a blank row
+  (a new note under the caret, a cleared name); a note really called Untitled is in the row's
+  ink.
 - **Only structure and actions get a glyph.** Note rows carry no file icon; folders carry the
   folder icon only, no chevron (the whole row toggles, `aria-expanded` is the signal).
   `FileIcon` still ships in the mobile search results.

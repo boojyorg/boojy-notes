@@ -33,6 +33,94 @@ const mdFiles = (vault: Vault) =>
     .filter((f) => f.endsWith(".md"))
     .sort();
 
+/**
+ * A new note starts unnamed: the field is empty under the caret with
+ * `Untitled` as a placeholder (nothing selected to type over), the sidebar
+ * row reads Untitled rather than standing blank, and the file is
+ * `Untitled.md` at once. Typing names it. The placeholder is read from the
+ * DOM, so a Backspace that empties a real name shows it in the same frame,
+ * starting where the caret does. (Before 2026-09-17 the note was a real
+ * `Untitled` selected whole; emptying it showed a bare pill for 300 ms and
+ * then the placeholder 5px behind the caret.)
+ */
+test("a new note starts unnamed under the caret, reads Untitled everywhere, and is named by typing", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.getByRole("button", { name: "New note", exact: true }).click();
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await expect(title).toBeFocused();
+    await expect(title).toHaveText("");
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("");
+    const placeholder = () =>
+      h.page.evaluate(() => {
+        const el = document.querySelector("[data-title]") as HTMLElement;
+        const s = getComputedStyle(el, "::before");
+        return {
+          content: s.content,
+          padLeft: s.paddingLeft,
+          minWidth: el.style.minWidth || getComputedStyle(el).minWidth,
+          // The field is border-box: a minimum that forgets the pill's
+          // padding clips the last letter and, focused, draws a scrollbar.
+          overflows: el.scrollWidth > el.clientWidth,
+        };
+      });
+    const first = await placeholder();
+    expect(first.content).toBe('"Untitled"');
+    // Inherits the field's padding, so it starts under the caret.
+    expect(first.padLeft).not.toBe("0px");
+    expect(Number.parseFloat(first.minWidth)).toBeGreaterThan(0);
+    expect(first.overflows).toBe(false);
+    // The sidebar row is never blank: a muted Untitled until the name lands.
+    await expect(h.page.locator('[role="treeitem"]').filter({ hasText: "Untitled" })).toHaveCount(
+      1,
+    );
+    await expect.poll(() => h.vault.exists("Untitled.md")).toBe(true);
+
+    // A short name keeps the placeholder's width under the caret; the field
+    // fits the name once the caret has left.
+    const widthOf = () =>
+      h.page.evaluate(() => document.querySelector("[data-title]")!.clientWidth);
+    const emptyWidth = await widthOf();
+    await h.page.keyboard.type("M");
+    expect(await widthOf()).toBe(emptyWidth);
+    await h.page.keyboard.type("eeting");
+    await waitForFile(h.vault.file("Meeting.md"), (t) => t === "", {
+      label: "the new note under the name typed",
+    });
+    await sleep(SETTLE_MS);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md", "Meeting.md"]);
+    await expectTitlesMatchFiles(h.page, h.vault);
+    expect((await placeholder()).content).toBe("none");
+
+    // A rename that never empties follows its text: deleting `Meeting` down
+    // to `Me` narrows the field below the placeholder's width.
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.getByRole("textbox", { name: "Note title" }).click();
+    await h.page.keyboard.press("End");
+    for (let i = 0; i < 5; i++) await h.page.keyboard.press("Backspace");
+    await expect.poll(() => editorTitle(h.page)).toBe("Me");
+    expect(await widthOf()).toBeLessThan(emptyWidth);
+
+    // Emptying a real name shows the placeholder in the same frame, not
+    // after the title's 300 ms commit, and from then on its width holds
+    // under whatever is typed next until the caret leaves.
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.keyboard.press("Backspace");
+    const emptied = await placeholder();
+    expect(emptied.content).toBe('"Untitled"');
+    expect(Number.parseFloat(emptied.minWidth)).toBeGreaterThan(0);
+    expect(emptied.overflows).toBe(false);
+    await h.page.keyboard.type("h");
+    expect(await widthOf()).toBe(emptyWidth);
+    await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(widthOf).toBeLessThan(emptyWidth);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("a moved namesake takes the resolved filename and keeps it across saves and restarts", async () => {
   const h = await launchApp({
     "Work/Meeting notes.md": "In Work.\n",
@@ -134,13 +222,21 @@ test("a name the filesystem cannot hold shows as the name the file got, immediat
     await expect.poll(() => editorTitle(h.page)).toBe("padded");
 
     // A cleared title is left alone while the caret is still in it (the
-    // placeholder already reads Untitled), then becomes the file's `Untitled`
-    // once the user moves on and edits. The emptied field's own line break
-    // must not become the title: that made a file called `_.md`.
+    // placeholder already reads Untitled), even once the write has landed
+    // under `Untitled.md`; it becomes the file's name the moment the caret
+    // leaves, with no further edit (2026-09-17: it used to wait for the next
+    // write). The emptied field's own line break must not become the title:
+    // that made a file called `_.md`.
     await h.page.getByRole("textbox", { name: "Note title" }).click();
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.press("Backspace");
+    await expect.poll(() => h.vault.exists("Untitled.md")).toBe(true);
+    await sleep(SETTLE_MS);
+    // (innerText reads the empty field's own <br> as a newline.)
+    expect((await editorTitle(h.page)).trim()).toBe("");
     await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(() => editorTitle(h.page)).toBe("Untitled");
+    await expectTitlesMatchFiles(h.page, h.vault);
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" more");
     await waitForFile(h.vault.file("Untitled.md"), (t) => t === "Body. more\n", {

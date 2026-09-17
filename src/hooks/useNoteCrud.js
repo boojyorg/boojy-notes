@@ -20,10 +20,18 @@ export function useNoteCrud({
   // duplicated note still rises to the top, because it becomes dirty the moment
   // it exists and useFileSystem stamps it as edited on the way to disk.
   const open = (id) => setActiveNote(id);
+  // A new note starts unnamed (2026-09-17): the field is empty under the
+  // caret with `Untitled` as its faint placeholder, the grammar the body's
+  // "Type / for commands..." already teaches, and the draft note's own
+  // model. It used to be a real `Untitled` selected whole so typing replaced
+  // it, and the selection wash read as a warning rather than an invitation
+  // (the same wash was dropped from Rename on 2026-08-23). The file is
+  // `Untitled.md` either way: the write turns a blank name into that and the
+  // renderer adopts it once the caret has left the field (useResolvedTitle).
   const createNote = (folder = null, title = null) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
-    const noteTitle = title || "Untitled";
+    const noteTitle = title || "";
     const newNote = {
       id,
       title: noteTitle,
@@ -36,14 +44,7 @@ export function useNoteCrud({
     if (folder) setExpanded((prev) => (prev[folder] ? prev : { ...prev, [folder]: true }));
     open(id);
     setTimeout(() => {
-      if (titleRef.current) {
-        titleRef.current.focus();
-        const range = document.createRange();
-        range.selectNodeContents(titleRef.current);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
+      titleRef.current?.focus();
     }, 50);
   };
 

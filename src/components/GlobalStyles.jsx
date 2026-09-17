@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { LABEL_PAD_X } from "../constants/layout";
 import { PARAGRAPH_GAP } from "./EditableBlock";
 
 export default function GlobalStyles() {
@@ -674,13 +675,41 @@ export default function GlobalStyles() {
           position: absolute;
           pointer-events: none;
         }
-        .empty-title::before {
+        /* The name's placeholder follows the same rule as the block's: it
+           shows while the field is empty on screen (nothing, or the <br>
+           the sync paints for the caret), read from the DOM and never from
+           the debounced title, which showed an empty pill for 300 ms after a
+           Backspace. Absolute, as the block's is, because Chromium draws the
+           caret after an in-flow ::before; it inherits the field's padding
+           so the text starts where the caret does rather than 5px behind
+           it, which put the caret through the U. While empty the field is
+           as wide as the placeholder (NotePath measures it), so the pill
+           holds its width and the path stays centred. */
+        [data-title] {
+          min-width: 0;
+        }
+        /* While empty, and for the rest of an editing session in which the
+           placeholder has shown (data-placeholder-floor, set by the field on
+           focus and on input, cleared on blur): a short name typed over the
+           placeholder keeps its width instead of snapping to a one-letter
+           pill and re-centring the path on every keystroke; a rename that
+           never empties follows its text (judged 2026-09-17). The field fits
+           the name and re-centres once, when the caret leaves. border-box,
+           so the pill's padding is inside the minimum. */
+        [data-title]:empty,
+        [data-title]:has(> br:only-child),
+        [data-title][data-placeholder-floor] {
+          min-width: calc(var(--title-placeholder-width, 0px) + ${2 * LABEL_PAD_X}px);
+        }
+        [data-title]:empty::before,
+        [data-title]:has(> br:only-child)::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
-          opacity: 0.35;
+          opacity: 0.4;
           position: absolute;
           top: 0;
           left: 0;
+          padding: inherit;
           pointer-events: none;
         }
       `}</style>
