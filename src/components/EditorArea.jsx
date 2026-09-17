@@ -547,6 +547,7 @@ const EditorArea = memo(
         aria-label="Note title"
         onInput={(e) => {
           const newTitle = titleFieldText(e.currentTarget);
+          if (newTitle === "") e.currentTarget.setAttribute("data-placeholder-floor", "");
           commitTextChange((prev) => {
             const next = { ...prev };
             const n = { ...next[activeNote] };
@@ -589,6 +590,14 @@ const EditorArea = memo(
           document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
         }}
         onFocus={(e) => {
+          // The placeholder's width holds under the caret from the moment
+          // the placeholder has shown in this editing session (a new note, a
+          // name cleared and retyped) until the caret leaves, so a short name
+          // typed over it never snaps the pill narrow and re-centres the path
+          // per letter. A rename that never empties follows its text, as a
+          // rename field should (judged 2026-09-17). GlobalStyles reads it.
+          if (titleFieldText(e.currentTarget) === "")
+            e.currentTarget.setAttribute("data-placeholder-floor", "");
           // Truncation is a display concern — editing reveals the whole name.
           e.currentTarget.style.background = BG.surface;
           e.currentTarget.style.color = TEXT.primary;
@@ -596,6 +605,7 @@ const EditorArea = memo(
           e.currentTarget.style.overflowX = "auto";
         }}
         onBlur={(e) => {
+          e.currentTarget.removeAttribute("data-placeholder-floor");
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.color = restColor;
           e.currentTarget.style.textOverflow = "ellipsis";

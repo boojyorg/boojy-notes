@@ -688,15 +688,17 @@ export default function GlobalStyles() {
         [data-title] {
           min-width: 0;
         }
-        /* While empty, and while focused: a short name typed into a new note
-           keeps the placeholder's width under it instead of snapping to a
-           one-letter pill and re-centring the path on every keystroke
-           (judged 2026-09-17). The field fits the name and re-centres once,
-           when the caret leaves. border-box, so the pill's padding is inside
-           the minimum. */
+        /* While empty, and for the rest of an editing session in which the
+           placeholder has shown (data-placeholder-floor, set by the field on
+           focus and on input, cleared on blur): a short name typed over the
+           placeholder keeps its width instead of snapping to a one-letter
+           pill and re-centring the path on every keystroke; a rename that
+           never empties follows its text (judged 2026-09-17). The field fits
+           the name and re-centres once, when the caret leaves. border-box,
+           so the pill's padding is inside the minimum. */
         [data-title]:empty,
         [data-title]:has(> br:only-child),
-        [data-title]:focus {
+        [data-title][data-placeholder-floor] {
           min-width: calc(var(--title-placeholder-width, 0px) + ${2 * LABEL_PAD_X}px);
         }
         [data-title]:empty::before,

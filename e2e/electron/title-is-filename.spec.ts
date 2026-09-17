@@ -93,14 +93,28 @@ test("a new note starts unnamed under the caret, reads Untitled everywhere, and 
     await expectTitlesMatchFiles(h.page, h.vault);
     expect((await placeholder()).content).toBe("none");
 
+    // A rename that never empties follows its text: deleting `Meeting` down
+    // to `Me` narrows the field below the placeholder's width.
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.getByRole("textbox", { name: "Note title" }).click();
+    await h.page.keyboard.press("End");
+    for (let i = 0; i < 5; i++) await h.page.keyboard.press("Backspace");
+    await expect.poll(() => editorTitle(h.page)).toBe("Me");
+    expect(await widthOf()).toBeLessThan(emptyWidth);
+
     // Emptying a real name shows the placeholder in the same frame, not
-    // after the title's 300 ms commit.
+    // after the title's 300 ms commit, and from then on its width holds
+    // under whatever is typed next until the caret leaves.
     await h.page.keyboard.press(`${MOD}+a`);
     await h.page.keyboard.press("Backspace");
     const emptied = await placeholder();
     expect(emptied.content).toBe('"Untitled"');
     expect(Number.parseFloat(emptied.minWidth)).toBeGreaterThan(0);
     expect(emptied.overflows).toBe(false);
+    await h.page.keyboard.type("h");
+    expect(await widthOf()).toBe(emptyWidth);
+    await h.page.locator("[data-block-id]").first().click();
+    await expect.poll(widthOf).toBeLessThan(emptyWidth);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

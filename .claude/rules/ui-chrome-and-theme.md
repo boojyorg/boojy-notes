@@ -182,9 +182,11 @@ The name is the editable file label: a click renames in place, Enter goes to the
 **The empty field's placeholder is CSS on the DOM** (`[data-title]:has(> br:only-child)`, as the
 block's), never a class from the debounced title; it inherits the field's padding so it starts
 under the caret, and the field takes the placeholder's measured width
-(`--title-placeholder-width`, set by `NotePath`) while empty **and while focused**, so a short name
-typed into a new note does not snap the pill narrow and re-centre the path per keystroke; the
-field fits the name once the caret leaves. Longer names still grow both ways (Finder's rename).
+(`--title-placeholder-width`, set by `NotePath`) while empty **and for the rest of an editing
+session in which the placeholder has shown** (`data-placeholder-floor`, set on focus and input,
+cleared on blur), so a short name typed over it does not snap the pill narrow and re-centre the
+path per keystroke; a rename that never empties follows its text; the field fits the name once
+the caret leaves. Longer names still grow both ways (Finder's rename).
 
 - **Where it sits is CSS; what it shows is JavaScript.** The band is `position: sticky` at the
   top of `.editor-scroll` (it paints `BG.editor`, invisible at rest). Its padding is
