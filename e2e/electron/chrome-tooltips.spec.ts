@@ -15,6 +15,64 @@ test.afterEach(async () => {
 
 const TOOLTIP_REST_MS = 400;
 
+/** TEMP diagnostic for the Linux runner: record the events a control sees around a hover. */
+const armProbe = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => {
+    const w = window as unknown as { __probe?: string[] };
+    w.__probe = [];
+    const name = (t: EventTarget | null) => {
+      const el = t as Element | null;
+      if (!el || !el.tagName) return String(t);
+      return `${el.tagName.toLowerCase()}[${el.getAttribute("aria-label") || el.getAttribute("class") || el.getAttribute("data-testid") || ""}]`;
+    };
+    for (const type of [
+      "mouseover",
+      "mouseout",
+      "mousedown",
+      "mouseup",
+      "focusin",
+      "focusout",
+      "keydown",
+      "blur",
+    ]) {
+      window.addEventListener(
+        type,
+        (e) => {
+          const me = e as MouseEvent;
+          w.__probe?.push(
+            `${Math.round(performance.now())} ${type} ${name(e.target)} rel=${name((me as MouseEvent).relatedTarget ?? null)} xy=${me.clientX},${me.clientY}`,
+          );
+          if (w.__probe && w.__probe.length > 60) w.__probe.shift();
+        },
+        true,
+      );
+    }
+  });
+const dumpProbe = async (page: import("@playwright/test").Page, label: string) => {
+  const lines = await page.evaluate(
+    () => (window as unknown as { __probe?: string[] }).__probe ?? [],
+  );
+  const state = await page.evaluate(() => {
+    const el = document.querySelector("[aria-label='New folder'], [aria-label='Sort']");
+    const chip = document.querySelector("[data-testid='chrome-tooltip']");
+    const r = el?.getBoundingClientRect();
+    const under = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+    return {
+      hover: [...document.querySelectorAll("[aria-label='New folder'], [aria-label='Sort']")].map(
+        (b) => `${b.getAttribute("aria-label")}:${b.matches(":hover")}`,
+      ),
+      chip: chip?.textContent ?? null,
+      active: document.activeElement?.tagName,
+      under: under
+        ? `${under.tagName}[${under.getAttribute("aria-label") || under.getAttribute("class") || ""}]`
+        : null,
+      inner: `${window.innerWidth}x${window.innerHeight}`,
+      focus: document.hasFocus(),
+    };
+  });
+  console.log(`PROBE ${label}\n${lines.join("\n")}\nSTATE ${JSON.stringify(state)}`);
+};
+
 /**
  * Whether the point is painted by the chip: what a user sees, clipping and
  * stacking included. The chip is `pointer-events: none`, which hit-testing
@@ -87,7 +145,10 @@ test("the Notes row's pair name themselves, a greyed Undo keeps its name, and th
   await h.openNote("Alpha");
   const chip = h.page.getByTestId("chrome-tooltip");
 
+  await armProbe(h.page);
   await h.page.getByRole("button", { name: "New folder", exact: true }).hover();
+  await h.page.waitForTimeout(700);
+  await dumpProbe(h.page, "new-folder");
   await expect(chip).toHaveText(/^New folder(⇧⌘N|Ctrl\+Shift\+N)$/);
   await h.page.getByRole("button", { name: "Sort", exact: true }).hover();
   await expect(chip).toHaveText("Sort");
@@ -149,7 +210,10 @@ test("a chip does not come back when a closing menu or dialog hands focus to its
   await expect(chip).toHaveCount(0);
 
   const sort = h.page.getByRole("button", { name: "Sort", exact: true });
+  await armProbe(h.page);
   await sort.hover();
+  await h.page.waitForTimeout(700);
+  await dumpProbe(h.page, "sort-after-settings");
   await expect(chip).toHaveText(/^Sort/);
   await sort.click();
   const menu = h.page.getByRole("menu", { name: "Sort notes" });
