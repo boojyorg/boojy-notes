@@ -33,6 +33,12 @@ change needs; the incidents behind them are in git.
   `APPLE_APP_SPECIFIC_PASSWORD` must stay **out** of that step's env, for the reason above. Check
   credentials against Apple before spending a run:
   `xcrun notarytool history --key <p8> --key-id <id> --issuer <uuid>`.
+- **The macOS target is `dmg` and `zip`, and the zip is the updater's** (2026-09-17). electron-updater
+  installs a macOS update from a zip only (`MacUpdater` throws `ZIP file not provided` when
+  `latest-mac.yml` lists no zip), so a dmg-only release, which v0.7.0 was, can be found but never
+  installed; the check itself passes at equal versions, which is why "Up to date" proved nothing.
+  Keep both targets: the DMG is the website download, the zip is what a running app fetches. Verified
+  by updating the installed 0.7.0 to 0.8.0 through Settings.
 - **Releases land as drafts, and one tag can produce two of them** with the assets split
   between them (seen 2026-09-11 from the Windows job alone: EXE and `latest.yml` in one,
   the blockmap in the other; the matrix adds the same race across jobs). electron-builder

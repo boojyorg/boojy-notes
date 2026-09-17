@@ -1,7 +1,7 @@
 {
   "name": "boojy-notes",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Boojy Notes",
   "author": "Tyr Bujac",
   "type": "module",
@@ -90,7 +90,8 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "icon": "assets/boojy-notes-app-icon.png",
       "category": "public.app-category.productivity"

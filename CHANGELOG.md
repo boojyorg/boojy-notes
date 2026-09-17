@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.8.0 — 2026-09-17
 
 ### Improvements
 
@@ -37,6 +37,7 @@
 
 ### Bug Fixes
 
+- **Updates can now install on macOS** — Settings → Updates could find a newer version but never install it: the release carried only a DMG, and the updater installs a macOS update from a zip, so the download failed the moment one was found and Settings showed `Try again`. Every release now publishes the zip beside the DMG. The DMG is still what boojy.org offers; the zip is what a running app fetches. This is the first release the installed app can update itself to, so v0.7.0 is the first version that updates in place.
 - **Typing a name that another note already has no longer gets `-2` stuck on mid-word** — Writing `Tyres` in the name field, with a note called `Tyr` beside it, turned into `Tyr-2` the moment you paused after `Tyr`, and carried on from there. The app saves as you type and the file did need a different name for that instant, but the name in the field is yours until you press Enter or click away: it now keeps exactly what you typed, and only takes the file's real name (`Tyr-2` if you really did stop at `Tyr`, or a version with characters a filename cannot hold replaced) once you leave the field.
 - **Backspace in an empty note no longer breaks the editor** — In a note with nothing in it, a new one or one you had just emptied, pressing Backspace made the `Type / for commands...` hint vanish, and everything typed after it went nowhere until you opened another note and came back. Chromium was deleting the note's only line itself. The key now does nothing there, as it should.
 - **The sidebar's panel toggle is never cut off at the narrowest width** — Drag the sidebar to its minimum and the toggle in its top row lost most of itself past the divider: the row holds the traffic-light gap, the wordmark, Search and the toggle, and those add up to more than the 200px the sidebar could shrink to. The minimum is now worked out from what the row holds, so every control in it stays whole, and the window's own minimum width follows it (545px, from 520). The wordmark also sits four pixels nearer the traffic lights.
