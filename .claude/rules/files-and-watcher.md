@@ -142,17 +142,17 @@ mark with no timer pending. `write-in-flight.spec.ts`.
 - **The name is a quiet file label, not a title.** A `#` heading in the body never names the
   file and the filename is never written as a heading; 14px in the chrome row, never a heading.
 - **A note's own file is never a collision** (`ensureUniqueFilePath(target, ownPath)`).
-- **A blank title under the caret is left alone, and settles the moment the caret leaves**: the
-  write's answer (`Untitled`, `Untitled-2`) is held by `useResolvedTitle` and `settleTitle`
-  adopts it on the field's blur (2026-09-17; it used to wait for the note's next write, so a
-  blank note walked away from kept a blank name until edited again). `titleFieldText()` is the
-  one reading of the field. **A new note starts blank** (`createNote` as `createDraftNote`): the
+- **The name field is the user's while the caret is in it**: every differing answer a write
+  brings back (a collision suffix, a sanitised character, trimmed whitespace, `Untitled` for a
+  blank) is held by `useResolvedTitle` and `settleTitle` adopts the newest on the field's blur
+  (2026-09-17: `Tyr` on the way to `Tyres` came back `Tyr-2` under the caret; a blank name used to
+  wait for the note's next write). A name typed on since wins. `titleFieldText()` is the one
+  reading of the field. **A new note starts blank** (`createNote` as `createDraftNote`): the
   caret in the empty field, `Untitled` as its placeholder, nothing selected; the file is
   `Untitled.md` at once. It was a real `Untitled` selected whole, and the wash read as a warning.
-- **Whitespace the filename trimmed stays under the caret**: while the field is focused only the
-  characters the filesystem *changed* are painted at their offsets; the field catches up in
-  full the next time it is painted from state. Chromium holds a typed trailing space as U+00A0,
-  which `trim()` and the sanitiser strip alike. `title-is-filename.spec.ts`.
+- Nothing is painted into a focused field; the offset-preserving paint of changed characters
+  (review 2026-09-07, §2.7) went with the reason for it. Chromium holds a typed trailing space as
+  U+00A0, which `trim()` and the sanitiser strip alike. `title-is-filename.spec.ts`.
 - The title repaints from state only when unfocused. No inline "name exists" validation.
 - **A save keeps the file's permission bits** (`writeFileAtomic` copies the nine bits onto the
   temp file; a stale `.tmp` is removed first, never reopened). Birthtime, xattrs and a

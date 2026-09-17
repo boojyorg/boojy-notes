@@ -40,15 +40,6 @@ function setup(
   };
 }
 
-function placeAt(el: HTMLElement, offset: number) {
-  const sel = window.getSelection();
-  const range = document.createRange();
-  range.setStart(el.firstChild as Text, offset);
-  range.collapse(true);
-  sel?.removeAllRanges();
-  sel?.addRange(range);
-}
-
 beforeEach(() => {
   document.body.innerHTML = "";
 });
@@ -100,7 +91,60 @@ describe("useResolvedTitle", () => {
     expect(adoptNoteData).not.toHaveBeenCalled();
   });
 
-  it("holds the answer to a blank name under the caret and adopts it once the caret leaves", () => {
+  // `Tyr` on the way to `Tyres` collides with an existing `Tyr.md`; the
+  // suffix must not appear under the caret before Enter (2026-09-17).
+  it("holds a collision suffix while the caret is in the field and adopts it once the caret leaves", () => {
+    const written = note("Tyr");
+    const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
+    el.focus();
+
+    resolve("n1", written, "Tyr-2");
+    expect(adoptNoteData).not.toHaveBeenCalled();
+    expect(el.textContent).toBe("Tyr");
+
+    el.blur();
+    settle();
+    expect(noteDataRef.current.n1.title).toBe("Tyr-2");
+    expect(noteDataRef.current.n1.content.title).toBe("Tyr-2");
+    expect(el.textContent).toBe("Tyr-2");
+
+    // Settled once; a second blur has nothing to adopt.
+    settle();
+    expect(adoptNoteData).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a held answer when the name was typed on before the caret left", () => {
+    const written = note("Tyr");
+    const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
+    el.focus();
+    resolve("n1", written, "Tyr-2");
+
+    // `es` typed since: the newer name is in state and its own write will
+    // answer again (with `Tyres`, which needs no adoption).
+    noteDataRef.current = { ...noteDataRef.current, n1: note("Tyres") };
+    el.textContent = "Tyres";
+    el.blur();
+    settle();
+
+    expect(adoptNoteData).not.toHaveBeenCalled();
+    expect(noteDataRef.current.n1.title).toBe("Tyres");
+    expect(el.textContent).toBe("Tyres");
+  });
+
+  it("holds the newest answer only", () => {
+    const { resolve, settle, el, noteDataRef } = setup(note("a/b "));
+    el.focus();
+    resolve("n1", note("a/b"), "a_b");
+    noteDataRef.current = { ...noteDataRef.current, n1: note("a/b ") };
+    resolve("n1", note("a/b "), "a_b");
+
+    el.blur();
+    settle();
+    expect(noteDataRef.current.n1.title).toBe("a_b");
+    expect(el.textContent).toBe("a_b");
+  });
+
+  it("holds the answer to a blank name and adopts Untitled once the caret leaves", () => {
     const written = note("");
     const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
     el.innerHTML = "<br>";
@@ -113,133 +157,16 @@ describe("useResolvedTitle", () => {
     el.blur();
     settle();
     expect(noteDataRef.current.n1.title).toBe("Untitled-2");
-    expect(noteDataRef.current.n1.content.title).toBe("Untitled-2");
     expect(el.textContent).toBe("Untitled-2");
-
-    // Settled once; a second blur has nothing to adopt.
-    settle();
-    expect(adoptNoteData).toHaveBeenCalledTimes(1);
   });
 
-  it("drops a held answer when a name was typed before the caret left", () => {
-    const written = note("");
-    const { resolve, settle, el, adoptNoteData, noteDataRef } = setup(written);
-    el.innerHTML = "<br>";
-    el.focus();
-    resolve("n1", written, "Untitled");
-
-    // The name typed since is in state (its own write will resolve it).
-    noteDataRef.current = { ...noteDataRef.current, n1: note("Meeting") };
-    el.textContent = "Meeting";
-    el.blur();
-    settle();
-
-    expect(adoptNoteData).not.toHaveBeenCalled();
-    expect(noteDataRef.current.n1.title).toBe("Meeting");
-  });
-
-  it("keeps the caret where it was when the title field is focused", () => {
-    const written = note("Notes: ab");
-    const { resolve, el, noteDataRef } = setup(written);
-    el.focus();
-    const sel = window.getSelection();
-    const range = document.createRange();
-    range.setStart(el.firstChild as Text, 7); // after "Notes: "
-    range.collapse(true);
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-
-    resolve("n1", written, "Notes_ ab");
-
-    expect(noteDataRef.current.n1.title).toBe("Notes_ ab");
-    expect(el.textContent).toBe("Notes_ ab");
-    expect(document.activeElement).toBe(el);
-    expect(window.getSelection()?.anchorOffset).toBe(7);
-  });
-
-  // Review 2026-09-07, §2.7: `Meeting ` written as `Meeting.md` was painted
-  // back as `Meeting` with the caret clamped onto the end, and `notes` typed
-  // next made `Meetingnotes`. The name is adopted; the field keeps the space.
-  it("leaves a trailing space under the caret alone and adopts the trimmed name", () => {
-    const written = note("Meeting ");
-    const { resolve, el, noteDataRef } = setup(written);
-    el.focus();
-    placeAt(el, "Meeting ".length);
-
-    resolve("n1", written, "Meeting");
-
-    expect(noteDataRef.current.n1.title).toBe("Meeting");
-    expect(noteDataRef.current.n1.content.title).toBe("Meeting");
-    expect(el.textContent).toBe("Meeting ");
-    expect(window.getSelection()?.anchorOffset).toBe("Meeting ".length);
-  });
-
-  it("keeps the trailing space when it also paints a sanitised character", () => {
-    const written = note("a/b ");
-    const { resolve, el, noteDataRef } = setup(written);
-    el.focus();
-    placeAt(el, "a/b ".length);
-
-    resolve("n1", written, "a_b");
-
-    expect(noteDataRef.current.n1.title).toBe("a_b");
-    expect(el.textContent).toBe("a_b ");
-    expect(window.getSelection()?.anchorOffset).toBe("a_b ".length);
-  });
-
-  it("paints leading whitespace away and moves the caret with it", () => {
-    const written = note("  Padded  ");
-    const { resolve, el, noteDataRef } = setup(written);
-    el.focus();
-    placeAt(el, "  Padded  ".length);
-
-    resolve("n1", written, "Padded");
-
-    expect(noteDataRef.current.n1.title).toBe("Padded");
-    expect(el.textContent).toBe("Padded  ");
-    expect(window.getSelection()?.anchorOffset).toBe("Padded  ".length);
-  });
-
-  it("paints the whole name once the field is left", () => {
-    const written = note("Meeting ");
+  it("paints the whole name, whitespace trimmed, once the field is left", () => {
+    const written = note("  Meeting ");
     const { resolve, el, noteDataRef } = setup(written);
 
     resolve("n1", written, "Meeting");
 
     expect(noteDataRef.current.n1.title).toBe("Meeting");
     expect(el.textContent).toBe("Meeting");
-  });
-
-  it("does not repaint a focused field the user has typed into since the write", () => {
-    const written = note("Notes: a");
-    const { resolve, el, adoptNoteData } = setup(written);
-    el.focus();
-    el.textContent = "Notes: ab"; // typed, commit still pending
-
-    resolve("n1", written, "Notes_ a");
-
-    expect(adoptNoteData).not.toHaveBeenCalled();
-    expect(el.textContent).toBe("Notes: ab");
-  });
-
-  it("does not fill Untitled into a blank field the user is still in", () => {
-    const written = note("");
-    const { resolve, el, adoptNoteData } = setup(written);
-    el.focus();
-
-    resolve("n1", written, "Untitled");
-
-    expect(adoptNoteData).not.toHaveBeenCalled();
-    expect(el.textContent).toBe("");
-  });
-
-  it("does adopt Untitled for a blank title once the field is left", () => {
-    const written = note("");
-    const { resolve, el, noteDataRef } = setup(written);
-
-    resolve("n1", written, "Untitled");
-
-    expect(noteDataRef.current.n1.title).toBe("Untitled");
-    expect(el.textContent).toBe("Untitled");
   });
 });
