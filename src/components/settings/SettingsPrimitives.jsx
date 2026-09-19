@@ -207,6 +207,8 @@ export const settingsStyles = (theme) => `
   .settings-button:not([aria-disabled="true"]):not(.is-accent):hover { background: ${theme.BG.surface} !important; }
   .settings-button.is-accent:hover { filter: brightness(0.96); }
   .settings-button:focus-visible { outline: none; box-shadow: 0 0 0 2px ${theme.ACCENT.primary}; }
+  .settings-reset:hover { color: ${theme.TEXT.primary} !important; }
+  .settings-reset:focus-visible { outline: none; box-shadow: 0 0 0 2px ${theme.ACCENT.primary}; border-radius: 6px; }
   .theme-pill:not([aria-checked="true"]):hover { background: ${theme.BG.surface} !important; color: ${theme.TEXT.primary} !important; }
   .theme-pill:focus-visible { outline: none; box-shadow: inset 0 0 0 2px ${theme.ACCENT.primary}; }
 `;

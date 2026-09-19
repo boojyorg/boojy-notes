@@ -194,19 +194,29 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   Bordered buttons (`SmallButton`) take `theme.button`: Dark gives an enabled one a surface a
   step above the ground so it is told from a disabled one before hover. `settingsTab` and
   `settingsFontSize` don't exist; don't reintroduce them in mocks.
-  **Appearance's second row is `Interface size`** (2026-09-19), the Updates switch's row with a
-  button at its right showing the scale in use (`120% ⌄`) and opening `ScaleMenu`. **A menu, not
-  a stepper**: the scale redraws the whole app, Settings included, so a control pressed
-  repeatedly moved out from under the pointer between presses (judged live, Tyr). Sort's rows
-  and grammar; `100%` carries a muted `Default`; choosing applies at once and closes, and
-  **nothing previews on hover or under the arrows**, since a preview would move the menu while
-  it was being read. `Custom…` at the foot swaps the button for a field on the scale in use,
-  applied on Enter or `Apply` and **never while it is typed** (the field would resize under the
-  caret); Escape leaves the scale alone and `preventDefault`s, or the dialog's own Escape would
-  close Settings behind it. `Reset` shows only off the default. The range is `SCALE_OPTIONS`,
-  and a custom value is held inside it (`utils/uiScale.ts`, which also holds `stepScale`, so
-  `Cmd+±` from a custom 93% goes to the nearest preset either side). `settings-dialog.spec.ts`,
-  `interface-size.spec.ts`, the `tests/components/settings` suite.
+  **Appearance's second row is `Interface size`** (2026-09-19), the Updates switch's row with
+  **one segmented control** at its right: `−`, the figure and `+` in a single pill with hairline
+  dividers (`Segment` in `AppearanceTab`). Three separate buttons read as three things, and a
+  dropdown of the sizes was built and rejected live (picking a neighbouring size became a
+  two-press job).
+- **A press moves the figure at once and the app `SCALE_SETTLE_MS` (350) after the last one.**
+  The scale redraws the whole window, Settings included, so applying per press moved the button
+  out from under the pointer between presses; waiting for the end of a run makes that one move
+  rather than four. **A pending press never lands on top of something newer**: Reset, a typed
+  value and any scale the row did not ask for cancel it (an effect compares the scale with the
+  one the row last asked for), and closing Settings inside the wait **applies** it, because
+  leaving is not cancelling. The shell's shortcuts stand down while Settings is open, so the
+  keyboard cannot race the stepper until the dialog has gone.
+- **The figure is a control**: clicking it types a whole percentage in the same range, applied on
+  Enter or the tick that `+` becomes, and never while it is typed (the field would resize under
+  the caret); `−` stands down meanwhile. Escape leaves the scale alone and `preventDefault`s, or
+  the dialog's own Escape would close Settings behind it. **`Reset` shows only off the default**
+  — at 100% there is nothing to go back to — with no surface of its own (the notes folder path's
+  grammar), and it sits to the **left**, so `−` and `+` never move when it appears. The range and
+  the presets are `SCALE_OPTIONS`, a custom value is held inside them, and `stepScale`
+  (`utils/uiScale.ts`) is the one rule the row and `Cmd+±` share: from a custom 93% the keys go
+  to the nearest preset either side. `interface-size.spec.ts`, the `tests/components/settings`
+  suite.
 - **`vw` and `vh` ignore the UI scale, so anything sized against the viewport divides by it**
   (`atScale()` in `utils/uiScale`, against the `--ui-scale` custom property `SettingsContext`
   writes beside the zoom). Measured 2026-09-19: a `100vh` box is 1520px tall in a 760px window
