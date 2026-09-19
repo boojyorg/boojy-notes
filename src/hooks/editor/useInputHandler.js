@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { cleanOrphanNodes, placeCaret } from "../../utils/domHelpers";
+import { cleanOrphanNodes, hasOwnField, placeCaret } from "../../utils/domHelpers";
 import { domNodeToMarkdown } from "../../utils/inlineFormatting";
 import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
 import { genBlockId } from "../../utils/storage";
@@ -86,7 +86,15 @@ export function useInputHandler({
   // handler and the rAF fallback below pass nothing and never trigger it.
   const handleBlockInput = useCallback((noteId, blockIndex, native = null) => {
     const blocks = noteDataRef.current[noteId].content.blocks;
-    const el = blockRefs.current[blocks[blockIndex]?.id];
+    const block = blocks[blockIndex];
+    // A block that keeps its own field owns its edits: a callout's body and a
+    // code block's textarea commit through the block, at the text grain. This
+    // path would read the whole wrapper — for a callout, its title and body as
+    // one run — and commit that as the block's text. Until 2026-09-19 the ref
+    // lookup below said so by accident, because these roots registered
+    // nothing; they register now, for the gutter grip, so the rule is stated.
+    if (hasOwnField(block)) return;
+    const el = blockRefs.current[block?.id];
     if (!el) return;
     let text = trimEdgeNewlines(domNodeToMarkdown(el));
 

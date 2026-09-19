@@ -33,8 +33,13 @@ import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
+  ACTION_ROW_H,
+  COLUMN_HEAD_GAP,
   HEADER_RIGHT_INSET,
+  NOTES_ROW_GAP,
   ROW_INSET,
+  ROW_LABEL_LINE_HEIGHT,
+  ROW_LABEL_SIZE,
   SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
@@ -78,9 +83,6 @@ const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
 // neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
 // 28px with a 2px rhythm gap; the vault header is the same height.
-/** The labelled New note row: a touch taller than a tree row, as the one
- *  action among a list of names. */
-const ACTION_ROW_H = 32;
 // ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
 // just below the note row and grows rightward into the editor, its left edge
 // slightly left of the ··· button.
@@ -147,9 +149,9 @@ const renameFieldStyle = ({ TEXT }, fontSize) => ({
 // row. The trailing button's 16px glyph lands 12px from the right edge,
 // mirroring the spine. No chevrons — the sections do not collapse.
 //
-// One spacing rule for every section: SECTION_GAP above the header, then
-// SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
-// action group's own bottom padding, which is set to the same 12.
+// The head of the column is New note and the Notes row, one above the other:
+// COLUMN_HEAD_GAP of air under the chrome row, then the action, then
+// NOTES_ROW_GAP, then the label, then SECTION_CONTENT_GAP down to its first row.
 const SECTION_HEADER_H = TREE_ROW_H;
 const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
@@ -157,7 +159,6 @@ const SECTION_HEADER_LEFT = TREE_SPINE;
 const SECTION_HEADER_RIGHT = 5;
 /** Header controls share the chrome row's 32px hit box and 18px nav glyph. */
 const SECTION_BTN = 32;
-const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
@@ -178,7 +179,7 @@ const SECTION_CONTENT_GAP = 2;
  * not the storage folder's name, which lives in Settings → Storage beside the
  * control that changes it (2026-09-12).
  */
-function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
+function SectionHeader({ label, TEXT, children, dropRoot, menuOpen }) {
   return (
     <div
       role="presentation"
@@ -197,8 +198,7 @@ function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
         boxSizing: "border-box",
         paddingLeft: SECTION_HEADER_LEFT,
         paddingRight: SECTION_HEADER_RIGHT,
-        // A first header sits a touch below the chrome row rather than on it.
-        marginTop: first ? 10 : SECTION_GAP,
+        marginTop: NOTES_ROW_GAP,
         marginBottom: SECTION_CONTENT_GAP,
         flexShrink: 0,
       }}
@@ -304,7 +304,9 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         cursor: "pointer",
         color: TEXT.secondary,
         fontFamily: "inherit",
-        fontSize: 14,
+        fontSize: ROW_LABEL_SIZE,
+        // Stated, not `normal`: the note's first line is set on this baseline.
+        lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
         transition: "background 0.12s, color 0.12s",
       }}
@@ -1339,7 +1341,7 @@ const Sidebar = memo(function Sidebar({
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ height: SECTION_GAP }} />
+                  <div style={{ height: COLUMN_HEAD_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
                   <SectionHeader
                     label="Notes"

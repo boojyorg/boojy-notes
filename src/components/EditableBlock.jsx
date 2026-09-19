@@ -4,6 +4,7 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
+import { baselineFromTop } from "../utils/typeBaseline";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -30,9 +31,31 @@ export const PARAGRAPH_GAP = 8;
  * already scale the whole app and one knob is enough.
  */
 export const EDITOR_FONT_SIZE = 15;
+/** The line box of a paragraph, list row or quote: the editor's own rhythm.
+ *  Exported because the column's top padding is measured against it — the
+ *  note's first line sits on the sidebar's New note row (`EditorArea`). */
+export const EDITOR_LINE_HEIGHT = 1.7;
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
+/**
+ * The checkbox is two elements: the square you see, and the hit area around it
+ * that takes the click.
+ *
+ * A press within about a pixel of the square's edge used to animate and change
+ * nothing: `:active` scales the square to 0.85, Chromium hit-tests against the
+ * transformed box, and a held press pulled every edge 1.2px in from under the
+ * pointer — so the release landed on the row, and the click fired there rather
+ * than on the box (2026-09-19). What fixes it is an element that covers the
+ * square's footprint and never transforms; the press animation belongs to the
+ * square inside it.
+ *
+ * The hit area is that footprint and no more. A padded one was tried the same
+ * day and rejected live: the target is the box you can see, and 4px of slop
+ * around it ticked tasks the pointer was not on.
+ */
+/** Air between the drawn box and the task's text. */
+const CHECKBOX_TEXT_GAP = 9;
 
 // One render path for all heading levels; the smaller levels keep body-sized
 // text and use weight/spacing to remain headings. No extra editor chrome.
@@ -58,6 +81,35 @@ const HEADING_STYLES = {
 };
 
 const INDENT_PX = 24;
+
+/** Padding a row carries above its own first line, which sits between the
+ *  block's top edge and its baseline like leading does. */
+const ROW_PAD_TOP = { bullet: 2, numbered: 2, checkbox: 2.5 };
+
+/**
+ * How far a block that opens a note reaches up from the note's first baseline.
+ *
+ * The note's first line is set on the sidebar's New note row and the column's
+ * padding is one number for every note (`COLUMN_TOP` in EditorArea), so a block
+ * that opens a note does not push that line down to make room for itself: it
+ * takes the difference between the body's first baseline and its own. Negative
+ * for a heading bigger than the body — it reaches up — positive for H6, whose
+ * line is tighter than the body's, and zero for a paragraph.
+ */
+function firstBlockLift(type) {
+  const heading = HEADING_STYLES[type];
+  const size = heading ? heading.fontSize : EDITOR_FONT_SIZE;
+  const lineHeight = heading
+    ? heading.lineHeight
+    : type === "checkbox"
+      ? CHECKBOX_LINE_HEIGHT
+      : EDITOR_LINE_HEIGHT;
+  return (
+    baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT) -
+    (ROW_PAD_TOP[type] ?? 0) -
+    baselineFromTop(size, lineHeight)
+  );
+}
 
 /**
  * Bullet markers alternate by depth: a filled dot at the top level, a hollow
@@ -126,11 +178,16 @@ const EditableBlock = memo(
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
     const elRef = useRef(null);
-    // The root of a block that has no text of its own (an image, a file): the
-    // gutter grip and the drop geometry find blocks in the ref map, and a
-    // wrapper that never registered was a grip that showed and a press that
-    // did nothing (2026-09-16). Kept apart from `elRef` on purpose: that ref's
-    // repaint effect paints the block's text, and these carry none.
+    // The root of a block that has no text of its own, or that keeps its text
+    // in a field of its own: an image, a file, a code block, a callout, an
+    // embed. The gutter grip and the drop geometry find blocks in the ref map,
+    // and a wrapper that never registered was a grip that showed and a press
+    // that did nothing (images 2026-09-16, code, callout and embed
+    // 2026-09-19 — a code block could not be moved at all, since the keyboard
+    // reorder needs a caret the block's own field never gives the editor).
+    // Kept apart from `elRef` on purpose: that ref's repaint effect paints the
+    // block's text, and these carry none. Registration is for the grip; whole-
+    // block selection for these three is still deferred (`isSelectableBlock`).
     const wholeRef = useRef(null);
 
     // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
@@ -247,6 +304,7 @@ const EditableBlock = memo(
     if (block.type === "code") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -285,6 +343,7 @@ const EditableBlock = memo(
     if (block.type === "callout") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -334,6 +393,7 @@ const EditableBlock = memo(
     if (block.type === "embed") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -369,7 +429,7 @@ const EditableBlock = memo(
             borderLeft: `3px solid ${accentColor}`,
             paddingLeft: 14 + indentPad,
             margin: `0 0 ${PARAGRAPH_GAP}px`,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
           }}
         >
           <span
@@ -400,7 +460,7 @@ const EditableBlock = memo(
             // Vertical rhythm lives in GlobalStyles (the paragraph pitch and the
             // gap after a list item), where a sibling rule can reach it.
             contain: "content",
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             color: TEXT.primary,
             fontSize: EDITOR_FONT_SIZE,
             outline: "none",
@@ -422,6 +482,11 @@ const EditableBlock = memo(
           style={{
             contain: "content",
             ...style,
+            // A heading that opens a note reaches up to the note's first
+            // baseline rather than pushing it down, and its top margin — the
+            // air between it and a block above, of which it has none — goes
+            // with it. Every other heading keeps its rhythm. 2026-09-19.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
             color: TEXT.primary,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
@@ -445,8 +510,10 @@ const EditableBlock = memo(
             gap: 9,
             padding: "2px 0",
             fontSize: EDITOR_FONT_SIZE,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: depth * INDENT_PX || undefined,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
           }}
         >
           <span
@@ -479,8 +546,10 @@ const EditableBlock = memo(
             gap: 9,
             padding: "2px 0",
             fontSize: EDITOR_FONT_SIZE,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
           }}
         >
           <span
@@ -519,15 +588,20 @@ const EditableBlock = memo(
             // Top-aligned, like the bullet and number markers: the box sits on
             // the first line of a wrapped task, not the middle of the block.
             alignItems: "flex-start",
-            gap: 9,
+            gap: CHECKBOX_TEXT_GAP,
             padding: "2.5px 0",
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: CHECKBOX_LINE_HEIGHT,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
+          {/* The hit area, not the drawn box: the same footprint as the square,
+              but it never transforms, so the press animation cannot move the
+              target out from under the pointer. */}
           <div
-            className="checkbox-box"
+            className="checkbox-hit"
             role="checkbox"
             aria-checked={!!block.checked}
             contentEditable="false"
@@ -541,37 +615,51 @@ const EditableBlock = memo(
               height: CHECKBOX_SIZE,
               // Centre the box on the first line's height, whatever the font size.
               marginTop: (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
-              borderRadius: 3.5,
               flexShrink: 0,
               cursor: "pointer",
-              border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
-              background: block.checked ? accentColor : "transparent",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "all 0.15s",
               userSelect: "none",
             }}
           >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
+            <div
+              className="checkbox-box"
+              aria-hidden="true"
               style={{
-                opacity: block.checked ? 1 : 0,
-                transform: block.checked ? "scale(1)" : "scale(0.5)",
-                transition: "opacity 0.15s, transform 0.15s",
+                width: CHECKBOX_SIZE,
+                height: CHECKBOX_SIZE,
+                borderRadius: 3.5,
+                boxSizing: "border-box",
+                flexShrink: 0,
+                border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
+                background: block.checked ? accentColor : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.15s",
               }}
             >
-              <path
-                d="M2 5L4.2 7.2L8 3"
-                stroke={ACCENT.onAccent}
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+                style={{
+                  opacity: block.checked ? 1 : 0,
+                  transform: block.checked ? "scale(1)" : "scale(0.5)",
+                  transition: "opacity 0.15s, transform 0.15s",
+                }}
+              >
+                <path
+                  d="M2 5L4.2 7.2L8 3"
+                  stroke={ACCENT.onAccent}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </div>
           <span
             ref={elRef}

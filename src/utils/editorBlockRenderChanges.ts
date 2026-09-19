@@ -11,6 +11,13 @@ interface EditorRenderBlock {
   alignments?: string[];
   calloutType?: string;
   title?: string;
+  src?: string;
+  alt?: string;
+  width?: number;
+  filename?: string;
+  size?: number | null;
+  target?: string;
+  heading?: string | null;
 }
 
 /**
@@ -20,6 +27,12 @@ interface EditorRenderBlock {
  * own highlight overlay as it is typed into. What React paints is the
  * structure around a field: a table's rows, a code block's language, a
  * callout's type and the title that follows a type change.
+ *
+ * A media block has no field of its own, so React paints all of it: a resized
+ * image's width, a replaced image's src. Left out, the commit reached state and
+ * the file while the block kept the props it had, and the *next* resize read
+ * its start size from those — the image jumped back to the size before the
+ * first drag (2026-09-19). Replace image changed nothing on screen at all.
  */
 export function haveEditorBlockRenderChanges(
   previous: readonly EditorRenderBlock[] | undefined,
@@ -49,6 +62,31 @@ export function haveEditorBlockRenderChanges(
       previousBlock.type === "callout" &&
       (previousBlock.calloutType !== nextBlock.calloutType ||
         previousBlock.title !== nextBlock.title)
+    ) {
+      return true;
+    }
+
+    if (
+      previousBlock.type === "image" &&
+      (previousBlock.src !== nextBlock.src ||
+        previousBlock.alt !== nextBlock.alt ||
+        previousBlock.width !== nextBlock.width)
+    ) {
+      return true;
+    }
+
+    if (
+      previousBlock.type === "file" &&
+      (previousBlock.src !== nextBlock.src ||
+        previousBlock.filename !== nextBlock.filename ||
+        previousBlock.size !== nextBlock.size)
+    ) {
+      return true;
+    }
+
+    if (
+      previousBlock.type === "embed" &&
+      (previousBlock.target !== nextBlock.target || previousBlock.heading !== nextBlock.heading)
     ) {
       return true;
     }

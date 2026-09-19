@@ -1,7 +1,13 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
-import { LABEL_PAD_X } from "../constants/layout";
+import {
+  ACTION_ROW_H,
+  COLUMN_HEAD_GAP,
+  LABEL_PAD_X,
+  ROW_LABEL_LINE_HEIGHT,
+  ROW_LABEL_SIZE,
+} from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -9,7 +15,7 @@ import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
-import EditableBlock from "./EditableBlock";
+import EditableBlock, { EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT } from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
@@ -28,6 +34,7 @@ import {
   titleFieldText,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
+import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
@@ -50,13 +57,28 @@ import { panelTransition } from "../tokens/motion";
  * there is no chrome row, so the name keeps its place at the head of the
  * column, small and muted.
  */
-/** The column's own top padding on the desktop, under the chrome row's 39px:
- *  exactly what the name's row and its gap added up to when they were part
- *  of the column (14px of padding, a 13.5px × 1.4 line box, a 26px gap, less
- *  the row), so the first block did not move by a tenth of a pixel when the
- *  name left. Two specs click the centre of a two-line block and land on its
- *  first line by that tenth; keep the fraction. */
-const COLUMN_TOP = 14 + 13.5 * 1.4 + 26 - 39;
+/**
+ * The column's own top padding on the desktop, under the chrome row.
+ *
+ * **The note's first line and the sidebar's New note row share a baseline.**
+ * The two columns start level — the sidebar's header and the path band are the
+ * same height — so the row's label is the line the note's first line is set on:
+ * the air above the row, plus the label's baseline inside it, less the note
+ * body's own baseline inside its first line.
+ *
+ * The padding is one number for every note, whatever block opens it. A heading
+ * does not push its first line down to make room for itself; it reaches *up*
+ * from this baseline, through a lift it works out from its own type
+ * (`EditableBlock`). So the line you read first never moves — not between
+ * notes, and not when `# ` turns the first paragraph into a heading.
+ *
+ * Tops agreeing and centres agreeing were the two answers before this, on the
+ * same day; a baseline is the line the eye actually reads two words as sharing.
+ */
+const COLUMN_TOP =
+  COLUMN_HEAD_GAP +
+  baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
+  baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT);
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

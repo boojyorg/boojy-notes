@@ -38,13 +38,23 @@ export const HANDLE_GAP = 4;
 
 /**
  * The first line box of a block: the rect of its first rendered text line
- * (so headings, list rows, quotes and code all centre the grip on the line
- * the eye reads first); a divider's is its rule, so the grip centres on the
- * line itself; otherwise the element's own line-height, for empty blocks and
- * media that have no text line. Always viewport pixels: the computed
- * line-height and padding are CSS pixels and are scaled by `zoom` to match.
+ * (so headings, list rows, quotes and callouts all centre the grip on the line
+ * the eye reads first); otherwise the element's own line-height, for empty
+ * blocks and media that have no text line. Always viewport pixels: the
+ * computed line-height and padding are CSS pixels and are scaled by `zoom` to
+ * match.
+ *
+ * A block that draws its own rows is asked first, because the text walk below
+ * skips whitespace and a row of its own may hold none: a code block's first
+ * line is a row even when it is blank, and a fence opening on one put the grip
+ * on the first line with characters in it — two rows down and 40px low
+ * (2026-09-19). A divider's rule is the same question: the one row it has.
  */
+const OWN_FIRST_ROW = ".code-line, hr";
+
 function firstLineRect(el, zoom) {
+  const ownRow = el.querySelector(OWN_FIRST_ROW);
+  if (ownRow) return ownRow.getBoundingClientRect();
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
     acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
   });
@@ -56,8 +66,6 @@ function firstLineRect(el, zoom) {
     const rects = typeof range.getClientRects === "function" ? range.getClientRects() : [];
     if (rects.length) return rects[0];
   }
-  const rule = el.querySelector("hr");
-  if (rule) return rule.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   const lh = parseFloat(cs.lineHeight);

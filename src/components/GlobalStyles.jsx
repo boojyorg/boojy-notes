@@ -225,7 +225,11 @@ export default function GlobalStyles() {
         /* Sidebar action rows opt out of the global 25%-alpha ring for a solid 2px accent. */
         .sidebar-action-row:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 12px; }
         .sidebar-section-action:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 6px; }
-        .checkbox-box:active { transform: scale(0.85); }
+        /* The press squeezes the drawn box; the hit area around it never
+           transforms. On .checkbox-box itself the scale pulled the element's
+           own edges 1.2px in from under the pointer, so a press near an edge
+           animated and then released onto the row instead (2026-09-19). */
+        .checkbox-hit:active .checkbox-box { transform: scale(0.85); }
         [data-block-id] code {
           background: ${theme.inlineCode.bg};
           border: 1px solid ${theme.inlineCode.border};

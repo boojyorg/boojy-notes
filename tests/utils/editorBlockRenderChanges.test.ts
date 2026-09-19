@@ -48,4 +48,32 @@ describe("haveEditorBlockRenderChanges", () => {
     expect(haveEditorBlockRenderChanges(note, warning)).toBe(true);
     expect(haveEditorBlockRenderChanges(note, retitled)).toBe(true);
   });
+
+  // A media block has no field of its own: every pixel of it is React's. The
+  // drag wrote the new width onto the DOM itself, so the first resize looked
+  // right and the file was correct, but the block kept its old props — and the
+  // second drag started from the size before the first one (2026-09-19).
+  it("repaints an image whose width, src or alt changed", () => {
+    const wide = [{ id: "i", type: "image" as const, src: "a.png", alt: "A", width: 100 }];
+    const narrow = [{ id: "i", type: "image" as const, src: "a.png", alt: "A", width: 60 }];
+    const replaced = [{ id: "i", type: "image" as const, src: "b.png", alt: "A", width: 100 }];
+    const realt = [{ id: "i", type: "image" as const, src: "a.png", alt: "B", width: 100 }];
+
+    expect(haveEditorBlockRenderChanges(wide, narrow)).toBe(true);
+    expect(haveEditorBlockRenderChanges(wide, replaced)).toBe(true);
+    expect(haveEditorBlockRenderChanges(wide, realt)).toBe(true);
+    expect(haveEditorBlockRenderChanges(wide, [...wide])).toBe(false);
+  });
+
+  it("repaints a file block whose name, path or size changed, and an embed's target", () => {
+    const file = [{ id: "f", type: "file" as const, src: "a.pdf", filename: "a.pdf", size: 10 }];
+    const renamed = [{ id: "f", type: "file" as const, src: "a.pdf", filename: "b.pdf", size: 10 }];
+    const resized = [{ id: "f", type: "file" as const, src: "a.pdf", filename: "a.pdf", size: 20 }];
+    const embed = [{ id: "e", type: "embed" as const, target: "Note", heading: null }];
+    const retargeted = [{ id: "e", type: "embed" as const, target: "Other", heading: null }];
+
+    expect(haveEditorBlockRenderChanges(file, renamed)).toBe(true);
+    expect(haveEditorBlockRenderChanges(file, resized)).toBe(true);
+    expect(haveEditorBlockRenderChanges(embed, retargeted)).toBe(true);
+  });
 });

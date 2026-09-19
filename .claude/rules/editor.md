@@ -31,10 +31,13 @@ History is in git and `CHANGELOG.md`.
   target is clamped under it. It is `contentEditable=false` and the cross-block seam refuses a
   range ending in it. `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside must be in `blockRefs`.** Text roots register `elRef`;
-  divider and table register their own root; image and file register their wrapper via
-  `wholeRef` (a second ref, because `elRef`'s repaint effect would paint empty text over the
-  wrapper). Code, callout and embed register nothing and wait on the same judgement as their
-  whole-block selection. `image-block-drag.spec.ts`.
+  divider and table register their own root; image, file, code, callout and embed register their
+  wrapper via `wholeRef` (a second ref, because `elRef`'s repaint effect would paint empty text
+  over the wrapper). Only frontmatter is out, and the grip never shows beside it. A registered
+  root is also a band the drop geometry can see, so a block can land above one; unregistered,
+  the last three could not be moved *at all*, since the keyboard reorder needs a caret their own
+  field keeps (2026-09-19). Registration is the grip's, not selection's: `isSelectableBlock` still
+  leaves code, callout and file out. `image-block-drag.spec.ts`, `code-block-drag.spec.ts`.
 - **Deliberately absent:** a "+" beside the grip, a click menu on it, a handle on mobile, an
   always-visible handle.
 

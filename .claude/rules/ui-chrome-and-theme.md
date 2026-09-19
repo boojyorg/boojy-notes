@@ -228,8 +228,26 @@ the caret leaves. Longer names still grow both ways (Finder's rename).
   and the nearest folders, then `… / name`, then the name), measured by an invisible twin of
   every crumb and a `ResizeObserver`, via `getBoundingClientRect` so the UI scale cancels.
   Widening never hides a folder.
-- The body column's top padding is `COLUMN_TOP` (`EditorArea`); the column never moved. Touch
-  devices have no chrome row and keep the name at the head of the column.
+- **The note's first line and the New note row share a baseline, whatever block opens the note.**
+  The two columns start level (the sidebar header and the path band are both
+  `CHROME_TOP + CHROME_BTN`), so `COLUMN_TOP` (`EditorArea`) is the air above that row, plus the
+  row label's baseline inside it, less the body's own baseline inside its line — all three from
+  `utils/typeBaseline.ts`, whose one constant is the app face's ascent minus its descent, fitted
+  to Chromium's layout and carrying its measurements in a table. **The padding is one number for
+  every note**: a block that opens a note does not push the line down to make room for itself but
+  reaches *up* to it (`firstBlockLift` in `EditableBlock`, the difference between the body's first
+  baseline and its own, its top margin included, since there is no block above it to be parted
+  from). So the line you read first never moves — between notes, or when `# ` turns the first
+  paragraph into a heading — and every gap below the first block is the one it always was
+  (measured: heading→body 38.4px at the top of a note and mid-note alike). Measured against the
+  row's baseline, 2026-09-19: H1 +0.04, H2 +0.10, H3 +0.19, H4 −0.23, H5 −0.17, H6 +0.02,
+  paragraph, quote, bullet and numbered +0.27, task +0.02; and within 0.6px at 120%, 125% and
+  133% UI scale. Tops agreeing and centres agreeing were the two answers before it, the same day;
+  a baseline is the line the eye reads two words as sharing. **A baseline is not a canvas
+  `fontBoundingBoxAscent`** — that was wrong by 5.75px on this very row and cost a round of
+  judging. Probe it: wrap the text node in a span and read the top of a
+  `display:inline-block;width:0;height:0;vertical-align:baseline` beside it. Touch devices have no
+  chrome row and keep the name at the head of the column.
 - `note-path.spec.ts`, `chrome-row.spec.ts`, `pathCrumbs.test.ts`, `NotePath.test.jsx`.
 
 ### A folder crumb opens the sidebar's tree under itself
