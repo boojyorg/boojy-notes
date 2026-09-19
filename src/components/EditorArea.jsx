@@ -1023,6 +1023,14 @@ const EditorArea = memo(
     // edit to the checks below — and those exist to *skip* the repaint.
     if (prev.syncGen !== next.syncGen) return false;
 
+    // The selection toolbar is an interaction, not a keystroke, and it must
+    // paint now: applying a format re-reads the block (which sets the
+    // text-only flag below) and *then* asks the toolbar to re-read its pressed
+    // state. Skipped here, the pressed glyph waited for the 300ms text commit
+    // to publish, so Bold lit a beat after the press (2026-09-19). The flag is
+    // left for the render that commit brings.
+    if (prev.toolbarState !== next.toolbarState) return false;
+
     // Fast path: text-only edits don't change block structure, and the
     // contentEditable DOM is already correct — skip the block loop entirely.
     if (next.textOnlyEditForEditor?.current) {
@@ -1038,7 +1046,7 @@ const EditorArea = memo(
     const result =
       prev.activeNote === next.activeNote &&
       prev.editorFadeIn === next.editorFadeIn &&
-      prev.toolbarState === next.toolbarState &&
+      // toolbarState is decided above, before the text-only fast path.
       prev.noteTitleSet === next.noteTitleSet &&
       prev.linkPopover === next.linkPopover &&
       prev.selectedBlockId === next.selectedBlockId &&

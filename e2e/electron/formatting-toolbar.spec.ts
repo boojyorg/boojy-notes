@@ -100,6 +100,63 @@ test("the buttons are named Lucide glyphs, and resting on one shows its shortcut
   expect(h.pageErrors).toEqual([]);
 });
 
+// The scroller is overflow-x: hidden, so a strip centred on the first word of
+// a line used to have its left half scissored off (2026-09-19). A narrow
+// window puts the column's gutter at its floor, where there is no room for the
+// strip's 94px half.
+test("the toolbar steps inside the column rather than being cut off at its edge", async () => {
+  await h.app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(640, 800);
+  });
+  await expect
+    .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5_000 })
+    .toBe(640);
+  // The column's padding and width ease to their new size; a strip placed
+  // mid-transition is placed against a column that is still moving.
+  await h.page.evaluate(async () => {
+    for (let round = 0; round < 10; round++) {
+      const running = document.getAnimations();
+      if (running.length === 0) return;
+      await Promise.allSettled(running.map((a) => a.finished));
+    }
+  });
+  const first = await charX(h.page, 1);
+  await h.page.mouse.dblclick(first.x, first.y);
+  const bar = toolbar(h.page);
+  await expect(bar).toBeVisible({ timeout: 2_000 });
+  expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("The");
+  const box = (await bar.boundingBox())!;
+  const scroller = await h.page
+    .locator(".editor-scroll")
+    .evaluate((el) => el.getBoundingClientRect().toJSON());
+  // Whole, and inside: centred on the word it would start left of the column.
+  expect(box.x).toBeGreaterThanOrEqual(scroller.left);
+  expect(box.x + box.width).toBeLessThanOrEqual(scroller.right);
+  expect(box.x).toBeGreaterThan(first.x - box.width / 2);
+  expect(h.pageErrors).toEqual([]);
+});
+
+// The pressed glyph used to wait for the 300ms text commit to publish, because
+// the editor's text-only render skip swallowed the toolbar's own refresh.
+test("a pressed format lights with the press, not a beat later", async () => {
+  const word = await charX(h.page, 5);
+  await h.page.mouse.dblclick(word.x, word.y);
+  const bar = toolbar(h.page);
+  await expect(bar).toBeVisible({ timeout: 2_000 });
+  // The press and the read are one turn of the page's own event loop: React
+  // flushes a discrete event's update in the microtask after the dispatch, so
+  // this is the first moment the eye could see anything. Before the fix it
+  // read `false` here and flipped 300ms later, with the debounced text commit.
+  const pressed = await bar.getByRole("button", { name: "Bold" }).evaluate(async (el) => {
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    return el.getAttribute("aria-pressed");
+  });
+  expect(pressed).toBe("true");
+  await expect(h.page.locator("[data-block-id] strong")).toHaveText("quick");
+  expect(h.pageErrors).toEqual([]);
+});
+
 test("pressing Italic formats the selection and writes it to disk", async () => {
   await h.page.locator("[data-block-id]").first().click();
   await h.page.keyboard.press("Home");

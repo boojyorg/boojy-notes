@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
+import { cssZoom } from "../utils/domHelpers";
 import { FormatIcon } from "./Icons";
 import { TOOLTIP_REST_MS, Tooltip, shortcutLabel } from "./Tooltip";
 
@@ -15,6 +16,8 @@ const BTN = 28;
  * over the selected text (2026-09-10).
  */
 const CHIP_ROOM = 36;
+/** The room the strip keeps from the scroller's edges when it has to step inwards. */
+const EDGE = 8;
 
 /**
  * The strip's order, names and shortcuts. The shortcuts are the map in
@@ -37,6 +40,35 @@ export function chipWouldClip(bar) {
   const scroller = bar.closest(".editor-scroll");
   const limit = scroller ? scroller.getBoundingClientRect().top : 0;
   return top - CHIP_ROOM < limit;
+}
+
+/**
+ * `left` (the selection's centre, in the column's own pixels) moved in far
+ * enough that the whole strip stays inside the editor scroller.
+ *
+ * The scroller is `overflow-x: hidden`, so a strip centred on a selection at
+ * the start of a line was not merely off-centre: the half hanging past the
+ * column was scissored off (2026-09-19). Every other popover clamps through
+ * `positionMenu` against the viewport; this one is absolute inside the
+ * scrolling column, so it clamps against the scroller's box and returns a
+ * centre in the offset parent's coordinates. Measured distances are divided
+ * by the UI scale, as every measured placement is (`domHelpers`).
+ */
+export function clampedLeft(bar, left) {
+  const scroller = bar?.closest?.(".editor-scroll");
+  const parent = bar?.offsetParent;
+  if (!scroller || !parent) return left;
+  const zoom = cssZoom(bar);
+  const barRect = bar.getBoundingClientRect();
+  if (!barRect.width) return left;
+  const parentRect = parent.getBoundingClientRect();
+  const scrollerRect = scroller.getBoundingClientRect();
+  const half = barRect.width / zoom / 2;
+  const min = (scrollerRect.left - parentRect.left) / zoom + EDGE + half;
+  const max = (scrollerRect.right - parentRect.left) / zoom - EDGE - half;
+  // A column narrower than the strip: centre it rather than pin it to an edge.
+  if (max < min) return (min + max) / 2;
+  return Math.min(Math.max(left, min), max);
 }
 
 function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow }) {
@@ -79,7 +111,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         // and the accent stays ink, never a surface (judged 2026-09-10).
         background: hovered ? theme.overlay(0.08) : "transparent",
         color: active ? ACCENT.text : TEXT.primary,
-        transition: "background 0.1s, color 0.1s",
+        // The ink is not animated: a pressed glyph that fades into the accent
+        // reads as the press taking a moment to land (2026-09-19). The fill is
+        // hover's, and hover is what a ramp is for.
+        transition: "background 0.1s",
       }}
     >
       <FormatIcon name={format.id} />
@@ -99,9 +134,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
 /**
  * The selection toolbar: six Lucide glyphs in one pill, shown over a finished
  * selection (useEditorFocusUX decides when) and kept there while a format is
- * applied, its pressed state refreshed. Resting on a button for
- * TOOLTIP_REST_MS shows its name and shortcut above it, or below when the
- * toolbar sits too near the top of the column for the chip to fit.
+ * applied, its pressed state refreshed. It is centred on the selection, or as
+ * near the centre as it can be and stay whole (`clampedLeft`). Resting on a
+ * button for TOOLTIP_REST_MS shows its name and shortcut above it, or below
+ * when the toolbar sits too near the top of the column for the chip to fit.
  */
 const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats, onFormat }) {
   const { theme } = useTheme();
@@ -109,6 +145,10 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   // The button whose chip shows, and whether it goes below (no room above).
   const [tip, setTip] = useState(null);
   const [tipBelow, setTipBelow] = useState(false);
+  // The centre actually drawn: the selection's, stepped inside the scroller's
+  // edges. Measured in a layout effect, so the clamped position is the first
+  // one painted.
+  const [left, setLeft] = useState(position?.left ?? 0);
   const barRef = useRef(null);
   // The pending rest, as an object so a late timer can check it is still current.
   const pending = useRef(null);
@@ -131,6 +171,9 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
     setTip(null);
   };
   useEffect(() => cancelRest, [cancelRest]);
+  useLayoutEffect(() => {
+    if (position) setLeft(clampedLeft(barRef.current, position.left));
+  }, [position]);
   // A hidden toolbar shows no tip when it comes back.
   useEffect(() => {
     if (!position) {
@@ -148,7 +191,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
       style={{
         position: "absolute",
         top: position.top,
-        left: position.left,
+        left,
         transform: "translateX(-50%)",
         display: "flex",
         gap: 2,

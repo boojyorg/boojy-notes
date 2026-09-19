@@ -32,7 +32,11 @@ vi.mock("../../src/hooks/useTheme", () => ({
 vi.mock("../../src/utils/platform", () => ({ isMac: true }));
 
 // ── Import component after mocks ────────────────────────────────────────────
-import FloatingToolbar, { FORMATS, chipWouldClip } from "../../src/components/FloatingToolbar.jsx";
+import FloatingToolbar, {
+  FORMATS,
+  chipWouldClip,
+  clampedLeft,
+} from "../../src/components/FloatingToolbar.jsx";
 import { TOOLTIP_REST_MS, shortcutLabel } from "../../src/components/Tooltip";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -207,6 +211,32 @@ describe("FloatingToolbar", () => {
     loose.getBoundingClientRect = () => ({ top: 20 });
     expect(chipWouldClip(loose)).toBe(true);
     expect(chipWouldClip(null)).toBe(false);
+  });
+
+  // The scroller is overflow-x: hidden, so a strip hanging past the column is
+  // scissored, not merely off-centre: it steps inwards instead.
+  it("clampedLeft steps the strip inside the scroller's edges", () => {
+    const scroller = document.createElement("div");
+    scroller.className = "editor-scroll";
+    scroller.getBoundingClientRect = () => ({ left: 0, right: 600 });
+    const parent = document.createElement("div");
+    parent.getBoundingClientRect = () => ({ left: 100 });
+    const bar = document.createElement("div");
+    bar.getBoundingClientRect = () => ({ width: 188 });
+    scroller.appendChild(parent);
+    parent.appendChild(bar);
+    Object.defineProperty(bar, "offsetParent", { value: parent });
+    // In the parent's own pixels the scroller spans -100 to 500, and the strip
+    // needs 94 either side of its centre plus 8 of air.
+    expect(clampedLeft(bar, 200)).toBe(200);
+    expect(clampedLeft(bar, -90)).toBe(2);
+    expect(clampedLeft(bar, 480)).toBe(398);
+    // A column narrower than the strip centres it rather than pinning an edge.
+    scroller.getBoundingClientRect = () => ({ left: 0, right: 200 });
+    expect(clampedLeft(bar, 0)).toBe(0);
+    // Nothing to measure against: the centre as given.
+    expect(clampedLeft(null, 10)).toBe(10);
+    expect(clampedLeft(document.createElement("div"), 10)).toBe(10);
   });
 
   it("drops a pending tip when the toolbar hides", () => {
