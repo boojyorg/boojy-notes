@@ -29,3 +29,11 @@ export const PANEL_FADE_MS = PANEL_MS / 2;
  */
 export const panelTransition = (...props) =>
   props.map((p) => `${p} ${PANEL_MS}ms ${PANEL_EASE}`).join(", ");
+
+/**
+ * How long a row the app has just made wears the sidebar's row pill (Duplicate
+ * folder). Long enough to find the copy among its neighbours after the eye has
+ * travelled to the tree, short enough that it is gone before it becomes a
+ * state the user has to reason about; hovering the row takes it off at once.
+ */
+export const NEW_ROW_MS = 2400;

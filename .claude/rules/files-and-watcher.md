@@ -112,7 +112,13 @@ mark with no timer pending. `write-in-flight.spec.ts`.
   holds what is on screen. The copied notes come back read from disk with ids of their own and
   are adopted as the disk holds them (`applyExternalNote`), so nothing becomes dirty and
   nothing is written twice; a legacy frontmatter id already indexed elsewhere is never reused
-  (`parseNoteFile`). Not undoable. Web copies in memory. `folders.spec.ts`, `folders.test.ts`.
+  (`parseNoteFile`). Not undoable. Web copies in memory. **The copy is shown, never announced**
+  (2026-09-19): the folder it lands in is opened, the tree scrolls its row into view and the row
+  wears the sidebar's own pill for `NEW_ROW_MS`, because a copy lands in alphabetical order
+  beside its original and is otherwise one more row among its neighbours. The desktop marks the
+  name the disk answered with, not the one the app asked for. New folder needs none of this: its
+  rename field is already the cue. A duplicated *note* needs none either — it opens, and the
+  path shows `(copy)`. `folders.spec.ts`, `folders.test.ts`, `useNoteCrud.test.js`.
 - **A chosen vault that is missing is never recreated**: `getNotesDir` makes only the default
   vault under Documents; a configured path that is not there opens empty and every write refuses
   with the ordinary toast. Settings → Notes folder is the way out. `vault-root.spec.ts`,

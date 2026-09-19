@@ -439,6 +439,7 @@ const Sidebar = memo(function Sidebar({
     setRenamingFolder,
     renamingNote,
     setRenamingNote,
+    newFolder,
     searchMode,
     searchResults,
     activeResultIndex,
@@ -670,9 +671,15 @@ const Sidebar = memo(function Sidebar({
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
-          className={
-            renamingFolder === folderPath ? "sidebar-folder is-renaming" : "sidebar-folder"
-          }
+          className={[
+            "sidebar-folder",
+            renamingFolder === folderPath ? "is-renaming" : "",
+            // A folder the app has just made wears the row pill for a beat, so
+            // the copy is found rather than hunted for (SidebarContext).
+            newFolder === folderPath ? "is-new" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           // A click toggles, every click; no double-click rename (2026-09-16,
           // Tyr's call): the first click of the pair toggled the folder under
           // the field, which read as a glitch. A folder is renamed from its
@@ -943,6 +950,17 @@ const Sidebar = memo(function Sidebar({
   useEffect(() => {
     if (sidebarScrollRef.current) sidebarScrollRef.current.scrollTop = 0;
   }, [searchMode, sidebarScrollRef]);
+
+  // A folder the app has just made brings itself into view, by the least the
+  // list has to move: a copy lands in alphabetical order, which may be off
+  // screen in a long tree.
+  useEffect(() => {
+    if (!newFolder) return;
+    const row = sidebarScrollRef.current?.querySelector(
+      `[data-folder-path="${CSS.escape(newFolder)}"]`,
+    );
+    row?.scrollIntoView({ block: "nearest" });
+  }, [newFolder, sidebarScrollRef]);
 
   // Auto-scroll active search result into view
   useEffect(() => {

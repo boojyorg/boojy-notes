@@ -170,6 +170,13 @@ export default function GlobalStyles() {
         .sidebar-note.is-renaming, .sidebar-folder.is-renaming {
           background: transparent !important;
         }
+        /* A folder the app has just made (Duplicate folder) wears the row's own
+           pill for NEW_ROW_MS, so the copy is found among its alphabetical
+           neighbours instead of announced in a message. Same !important reason
+           as above: the row's hover is an inline write. */
+        .sidebar-folder.is-new {
+          background: ${theme.BG.hover} !important;
+        }
         .sidebar-note.is-renaming .sidebar-note-more,
         .sidebar-folder.is-renaming .sidebar-folder-actions {
           opacity: 0 !important;

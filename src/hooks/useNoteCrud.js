@@ -10,6 +10,9 @@ export function useNoteCrud({
   setExpanded,
   titleRef,
   setRenamingFolder,
+  // Marks the row a folder copy landed in, so it can be found among its
+  // alphabetical neighbours (SidebarContext).
+  markNewFolder,
   // Desktop: useFileSystem's directory operations (create / rename / remove),
   // each answering with the path the disk holds. Null on web, where folders
   // live in memory beside the notes.
@@ -222,11 +225,23 @@ export function useNoteCrud({
   // from it with ids of their own. Web: the same in memory. The copy appears
   // closed beside the original, whose parent is already open.
   const duplicateFolder = (folderPath) => {
+    // The copy is only useful if it can be found: the parent is opened (it is
+    // already, for the menu to have been reached, except at the root), the row
+    // is marked and the tree scrolls it into view. The disk names it, so the
+    // desktop marks it when the answer comes back.
+    const landed = (path) => {
+      const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : null;
+      if (parent) setExpanded((prev) => (prev[parent] ? prev : { ...prev, [parent]: true }));
+      markNewFolder?.(path);
+    };
     if (folderOps) {
-      folderOps.duplicate(folderPath).catch((err) => {
-        console.error("useNoteCrud: folder duplicate failed", err);
-        onError?.("Failed to duplicate the folder on disk");
-      });
+      folderOps
+        .duplicate(folderPath)
+        .then(landed)
+        .catch((err) => {
+          console.error("useNoteCrud: folder duplicate failed", err);
+          onError?.("Failed to duplicate the folder on disk");
+        });
       return;
     }
     const existing = new Set(customFolders);
@@ -252,6 +267,7 @@ export function useNoteCrud({
       }
       return next;
     });
+    landed(target);
   };
 
   const createDraftNote = () => {

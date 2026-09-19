@@ -225,7 +225,9 @@ describe("useFileSystem — initial load", () => {
 
     expect(writeNote).toHaveBeenCalledExactlyOnceWith(edited);
     expect(onError).toHaveBeenCalledExactlyOnceWith(
-      "Failed to save note to disk — Boojy will keep retrying",
+      "Failed to save note to disk — Boojy Notes will keep retrying",
+      "error",
+      { key: "save" },
     );
 
     await act(async () => {
@@ -239,7 +241,14 @@ describe("useFileSystem — initial load", () => {
       await vi.advanceTimersByTimeAsync(5000);
     });
     expect(writeNote).toHaveBeenCalledTimes(2);
-    expect(onError).toHaveBeenCalledTimes(1);
+    // The retry went through, so the notice that saving had failed is no longer
+    // true: it is replaced, under its own key, by a receipt that fades. Without
+    // that the user would be left with a persistent warning about a save that
+    // has since landed.
+    expect(onError).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenLastCalledWith("Saved — your edits reached the disk", "done", {
+      key: "save",
+    });
   });
 
   it("does not send an unsaved draft to the system Trash", async () => {
@@ -869,6 +878,8 @@ describe("useFileSystem — outside edits", () => {
 
     expect(onError).toHaveBeenCalledExactlyOnceWith(
       expect.stringContaining("could not be saved as a copy"),
+      "error",
+      { key: "save" },
     );
     expect(links.applyExternalNote).not.toHaveBeenCalled();
     expect(links.adoptNoteData).not.toHaveBeenCalled();
