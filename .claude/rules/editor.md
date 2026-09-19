@@ -373,6 +373,23 @@ and distinguishes an empty body from one blank line; the editor never normalises
 edit that introduces a closing-looking line grows the fence; adding a block after an unclosed
 import writes a closer. `tilde-fences.spec.ts`.
 
+- **A fence typed as ``` takes the caret into its own field**, as the slash menu's Code does
+  (`useInputHandler`; before 2026-09-19 it left the caret in the paragraph under the block, so
+  the first line of code landed as prose beneath the empty block). The conversion fires on the
+  third backtick, so a language typed after it (` ```js `) lands as the first line of the body:
+  a fence that waits for Enter is the open question, not a bug to patch here.
+  `slash-focus.spec.ts`.
+- **The language is one list, in the app's menu grammar** (`CodeLangMenu`, from the block's
+  label or its ···): Sort's rows, a check in the mark colour, `align: "end"` on `positionMenu`
+  because the label sits at the block's right edge, and a letter jumps to a language. Plain
+  first, then alphabetical — one editorial exception and a mechanical rule for whatever is
+  added. **No glyph column**: Lucide ships no language marks, and a second icon set of brand
+  logos beside a line set is what makes a UI read as assembled. **It portals to `body` and takes
+  its keys on its own element.** Inside the editor's contentEditable the caret rescue pulled
+  focus straight back (it only stands aside for focus that has left the editor), and a portal
+  leaves the DOM but not the React tree, so Enter reached the editor's `onKeyDown` first and
+  opened a block instead of choosing. `code-language.spec.ts`, `CodeLangMenu.test.tsx`.
+
 ### Tables are ragged on disk and stay ragged
 
 - **A row holds exactly the cells its Markdown line holds**: the parser neither slices nor pads,

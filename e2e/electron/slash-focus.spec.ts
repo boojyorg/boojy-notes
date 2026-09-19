@@ -42,6 +42,31 @@ test("Code block from the slash menu takes the next keystroke into its textarea"
   }
 });
 
+// The same rule for the typed fence: ``` made the block and put the caret in
+// the paragraph under it, so the first line of code landed as prose beneath
+// the empty block you had just asked for (2026-09-19).
+test("a code block typed as ``` takes the next keystroke into its textarea", async () => {
+  const h = await launchApp({ [NOTE]: "Intro.\n" });
+  try {
+    await h.openNote("Note");
+    await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("```");
+    await expect(h.page.locator("textarea.code-textarea")).toBeFocused();
+    await h.page.keyboard.type("const a = 1;");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("const a"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toContain("```\nconst a = 1;\n```");
+    expect(await h.page.locator("[data-block-type='p']").allInnerTexts()).not.toContain(
+      "const a = 1;",
+    );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("Callout from the slash menu takes the next keystroke into its title", async () => {
   const h = await launchApp({ [NOTE]: "Intro.\n" });
   try {

@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+### Improvements
+
+- **The code block's language list is the same menu as everything else** — Clicking the language at the bottom right of a code block used to drop a list of its own making: smaller, greyer text than the app's other menus, a typed `✓` in front of the chosen one, no keyboard at all, and it opened upward over the code you were looking at. It is now the menu the sidebar's Sort control uses, opening under the label with the chosen language ticked in the app's teal. Arrow keys move, Enter chooses, Escape closes, and typing a letter jumps to a language, so `t` then Enter is TypeScript. The order is Plain, then alphabetical, rather than a running order of how often each is used. The label itself now shows a small chevron when you point at it, which is the only thing that ever said it was a control. Right-clicking a block still offers Change language, and it opens the same menu rather than a second copy of the list in a submenu; that menu's three items read as sentences now (`Copy code`, `Change language`, `Delete block`).
+
 ### Bug Fixes
 
+- **Typing ``` puts the caret inside the code block** — It used to make the block and leave the caret in the paragraph below it, so the first line you typed landed as ordinary text underneath an empty code block, and you had to click into the block to start. The caret now goes into the block, exactly as it does when you make one from the `/` menu.
 - **The formatting strip stays whole at the edge of the column** — Select the first word of a line and the little bar of B, I, S and the rest is centred over it, which put half of it past the left edge of the note, where it was cut off rather than shown: in a narrow window the B could be missing altogether. It now steps in far enough to stay whole, sitting as near the centre of your selection as it can, and it does the same at the right edge; in a column narrower than the bar itself, it centres. It also sits where it should when the interface is scaled: at anything but 100% its position was scaled a second time, so it drifted further from the selection the further down the note you were.
 - **Bold and Italic light up with the press** — Pressing B or I in the formatting strip formatted the text at once, but the button itself only turned teal about a third of a second later, waiting on the note's next save, so the strip read as sluggish even though the word was already bold. The button now changes with the press, and its colour no longer fades in over it.
 

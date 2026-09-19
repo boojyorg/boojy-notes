@@ -15,23 +15,30 @@
  *   The anchor's viewport rect. A point anchor (e.g. a right-click position)
  *   passes the same value for top/bottom and left/right.
  * @param {{ width: number, height: number }} size The menu's rendered size.
- * @param {{ margin?: number, gapY?: number, viewport?: { width: number, height: number } }} [opts]
+ * @param {{ margin?: number, gapY?: number, align?: "start" | "end", viewport?: { width: number, height: number } }} [opts]
  *   `margin` — minimum distance from the viewport edges (default 8).
  *   `gapY` — vertical gap between anchor and menu (default 0).
+ *   `align` — which of the menu's edges meets the anchor's. `"start"`
+ *   (default) puts the menu's left edge on the anchor's left; `"end"` puts its
+ *   right edge on the anchor's right, for a trigger that sits at the right of
+ *   what it belongs to (the code block's language label). Either flips to the
+ *   other when it overflows, then clamps.
  *   `viewport` — injectable for tests; defaults to the window size.
  * @returns {{ left: number, top: number }}
  */
 export function positionMenu(anchor, size, opts = {}) {
-  const { margin = 8, gapY = 0 } = opts;
+  const { margin = 8, gapY = 0, align = "start" } = opts;
   const vw = opts.viewport?.width ?? window.innerWidth;
   const vh = opts.viewport?.height ?? window.innerHeight;
 
   const clamp = (value, max) => Math.min(Math.max(value, margin), Math.max(margin, max));
 
-  // Horizontal: prefer left-aligned to the anchor; flip to right-aligned when
-  // that overflows the right edge, then clamp.
-  let left = anchor.left;
-  if (left + size.width > vw - margin) {
+  // Horizontal: honour the requested edge; flip to the other when that
+  // overflows, then clamp.
+  let left = align === "end" ? anchor.right - size.width : anchor.left;
+  if (align === "end") {
+    if (left < margin) left = anchor.left;
+  } else if (left + size.width > vw - margin) {
     left = anchor.right - size.width;
   }
   left = clamp(left, vw - size.width - margin);

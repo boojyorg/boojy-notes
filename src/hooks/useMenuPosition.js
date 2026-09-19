@@ -10,12 +10,13 @@ import { positionMenu } from "../utils/menuPosition";
  * @param {{ current: HTMLElement | null }} ref The menu element.
  * @param {boolean} open Whether the menu is showing.
  * @param {{ top: number, bottom: number, left: number, right: number } | null} anchor
- * @param {{ margin?: number, gapY?: number, reflowKey?: unknown }} [opts]
+ * @param {{ margin?: number, gapY?: number, align?: "start" | "end", reflowKey?: unknown }} [opts]
+ *   `align` — which edge meets the anchor's (`positionMenu`).
  *   `reflowKey` — pass anything that changes the menu's size (item count,
  *   an open submenu) so the position is recomputed.
  */
 export function useMenuPosition(ref, open, anchor, opts = {}) {
-  const { margin, gapY, reflowKey } = opts;
+  const { margin, gapY, align, reflowKey } = opts;
   const [pos, setPos] = useState(null);
 
   useLayoutEffect(() => {
@@ -24,7 +25,7 @@ export function useMenuPosition(ref, open, anchor, opts = {}) {
       return;
     }
     const { width, height } = ref.current.getBoundingClientRect();
-    const next = positionMenu(anchor, { width, height }, { margin, gapY });
+    const next = positionMenu(anchor, { width, height }, { margin, gapY, align });
     setPos((prev) => (prev && prev.left === next.left && prev.top === next.top ? prev : next));
   }, [
     ref,
@@ -35,6 +36,7 @@ export function useMenuPosition(ref, open, anchor, opts = {}) {
     anchor?.right,
     margin,
     gapY,
+    align,
     reflowKey,
   ]);
 

@@ -25,6 +25,7 @@ import {
   ArrowUpToLine as LuArrowUpToLine,
   Bold as LuBold,
   Check as LuCheck,
+  ChevronDown as LuChevronDown,
   ChevronLeft as LuChevronLeft,
   Clock as LuClock,
   Code as LuCode,
@@ -80,6 +81,7 @@ const navBase = { strokeWidth: ICON_STROKE_NAV };
 
 // ── Disclosure ────────────────────────────────────────────────────────────
 export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
+export const ChevronDownIcon = ({ size = ICON_INLINE }) => <LuChevronDown {...base} size={size} />;
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {

@@ -420,6 +420,12 @@ export default function GlobalStyles() {
           z-index: 2;
         }
         .code-lang {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          border: none;
+          background: none;
+          padding: 0;
           font-size: 11px;
           color: ${theme.codeLang.color};
           font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -427,41 +433,21 @@ export default function GlobalStyles() {
           cursor: pointer;
           transition: color 0.15s;
         }
-        .code-lang:hover {
+        .code-lang:hover, .code-lang:focus-visible, .code-lang-open {
           color: ${theme.codeLang.hoverColor};
         }
-        .code-lang-dropdown {
-          position: absolute;
-          bottom: calc(100% + 6px);
-          right: 0;
-          min-width: 140px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-          max-height: 260px;
-          overflow-y: auto;
-        }
-        .code-lang-option {
+        /* The chevron is the label's only affordance: it takes its width at
+           rest so the label never shifts, and only its ink fades in, as the
+           sidebar's row controls do. */
+        .code-lang-chevron {
           display: flex;
-          align-items: center;
-          width: 100%;
-          padding: 6px 12px;
-          border: none;
-          background: none;
-          color: ${theme.TEXT.secondary};
-          font-size: 12px;
-          font-family: inherit;
-          cursor: pointer;
-          text-align: left;
+          opacity: 0;
+          transition: opacity 0.15s;
         }
-        .code-lang-option:hover {
-          background: ${theme.codeLangOption.hoverBg};
-          color: ${theme.TEXT.primary};
-        }
-        .code-lang-option-active {
-          color: ${theme.TEXT.primary};
+        .code-lang:hover .code-lang-chevron,
+        .code-lang:focus-visible .code-lang-chevron,
+        .code-lang-open .code-lang-chevron {
+          opacity: 1;
         }
         /* Code block context menu */
         .code-ctx-menu {
@@ -493,25 +479,10 @@ export default function GlobalStyles() {
         }
         .code-ctx-danger { color: ${theme.SEMANTIC.error}; }
         .code-ctx-danger:hover { background: ${theme.SEMANTIC.error}18; }
-        .code-ctx-active { color: ${theme.ACCENT.text}; }
         .code-ctx-sep {
           height: 1px;
           background: ${theme.BG.divider};
           margin: 4px 0;
-        }
-        .code-ctx-submenu-trigger {
-          position: relative;
-        }
-        .code-ctx-submenu {
-          position: absolute;
-          left: 100%;
-          top: 0;
-          min-width: 150px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: ${theme.syntax.comment}; font-style: italic; }
