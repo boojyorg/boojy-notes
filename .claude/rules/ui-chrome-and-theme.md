@@ -164,8 +164,13 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   `Downloading…`, the accent `Restart to update`, `Try again` under an error in the error ink).
   Bordered buttons (`SmallButton`) take `theme.button`: Dark gives an enabled one a surface a
   step above the ground so it is told from a disabled one before hover. `settingsTab` and
-  `settingsFontSize` don't exist; don't reintroduce them in mocks. UI scale is keyboard-only
-  (`Cmd+Plus/Minus/0`). `settings-dialog.spec.ts`, the `tests/components/settings` suite.
+  `settingsFontSize` don't exist; don't reintroduce them in mocks.
+  **Appearance's second row is `Interface size`** (2026-09-19), the Updates switch's row with a
+  stepper at its right: `SmallButton` Smaller and Larger around the figure in a 44px column
+  (`tabular-nums`, so the row does not shift), `aria-disabled` at either end of `SCALE_OPTIONS`.
+  `Reset` shows only off 100% and sits to the **left** of the stepper, so the buttons being
+  pressed repeatedly never move out from under the pointer. `settings-dialog.spec.ts`,
+  `interface-size.spec.ts`, the `tests/components/settings` suite.
 - **First-run setup is the same surface over the empty app** (`SetupDialog`, 480 wide:
   `Welcome to Boojy Notes`, one sentence, the Notes folder row with `Choose folder…`, the pills,
   a centred accent `Create note`). It shows only on a launch that has never had a folder (the
@@ -179,6 +184,15 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
   than the installed app is page zoom; judge chrome geometry after Cmd+0.
+- **A scale shortcut answers, always** (`UiScaleChip`, 2026-09-19). `Cmd+±` and `Cmd+0` raise a
+  chip at the foot of the editor for `SCALE_HINT_MS` (1400) saying `Interface size 120%`, with
+  the reset key on a pill beside it while the scale is off 100%; at 100% there is nothing to
+  reset to, so it is the figure alone. It is the tooltip chip's grammar with the menus' shadow,
+  because it floats free over the sheet rather than labelling a control. **A press at either end
+  of the range still answers** with the scale it is on (`useAppKeyboard` sets the scale it
+  already holds, a no-op for state): the chip is the scale's whole feedback and silence there
+  reads as a missed keystroke. Settings' own stepper raises none — the figure is beside the
+  buttons. `interface-size.spec.ts`, `UiScaleChip.test.tsx`.
 - Edit → Undo / Redo keep their menu roles (Cut, Copy, Paste, Select All must stay); Cmd+Z
   reaches the renderer's own handler.
 - On desktop the word count lives in the ··· menu; the touch layout shows it in its own ··· menu

@@ -139,17 +139,19 @@ export function useAppKeyboard({
         L.toggleSidebar?.();
         return;
       }
-      // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0
+      // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0. A press at either end of
+      // the range still answers, with the scale it is already on: the readout
+      // it raises is the whole feedback the scale has, and saying nothing reads
+      // as a missed keystroke rather than a limit (2026-09-19). Setting the
+      // scale it already holds is a no-op for state.
       if (mod && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
-        const next = SCALE_OPTIONS.find((s) => s > L.uiScale);
-        if (next) L.setUiScale(next);
+        L.setUiScale(SCALE_OPTIONS.find((s) => s > L.uiScale) ?? L.uiScale);
         return;
       }
       if (mod && e.key === "-") {
         e.preventDefault();
-        const next = [...SCALE_OPTIONS].reverse().find((s) => s < L.uiScale);
-        if (next) L.setUiScale(next);
+        L.setUiScale([...SCALE_OPTIONS].reverse().find((s) => s < L.uiScale) ?? L.uiScale);
         return;
       }
       if (mod && e.key === "0") {
