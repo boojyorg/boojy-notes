@@ -6,6 +6,9 @@ import { useInputHandler } from "../../../src/hooks/editor/useInputHandler";
 vi.mock("../../../src/utils/domHelpers", () => ({
   cleanOrphanNodes: vi.fn(),
   isEditableBlock: () => true,
+  // The real rule: a code block, a callout or a table commits through its own
+  // field, so this path leaves them alone. These tests are all text blocks.
+  hasOwnField: (b) => b?.type === "code" || b?.type === "callout" || b?.type === "table",
   placeCaret: vi.fn(() => true),
 }));
 
@@ -82,6 +85,27 @@ describe("useInputHandler", () => {
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
     expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "Hello world");
+  });
+
+  // A callout's body and a code block's textarea commit through the block
+  // itself, at the text grain. This path reads the whole block root, so for a
+  // callout it would take the title and the body as one run and commit that as
+  // the block's text — the title came back as a first body line (2026-09-19,
+  // after these roots joined the ref map so the gutter grip could lift them).
+  it("leaves a block that keeps its own field to commit its own edits", () => {
+    const wrapper = document.createElement("div");
+    wrapper.textContent = "Note\nbody with **bold**";
+    deps.noteDataRef.current["note-1"].content.blocks[0] = {
+      id: "b1",
+      type: "callout",
+      text: "body with **bold**",
+      title: "Note",
+    };
+    deps.blockRefs.current.b1 = wrapper;
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.updateBlockText).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
   it("detects markdown heading shortcut (# )", () => {

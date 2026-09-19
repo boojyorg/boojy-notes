@@ -144,11 +144,16 @@ const EditableBlock = memo(
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
     const elRef = useRef(null);
-    // The root of a block that has no text of its own (an image, a file): the
-    // gutter grip and the drop geometry find blocks in the ref map, and a
-    // wrapper that never registered was a grip that showed and a press that
-    // did nothing (2026-09-16). Kept apart from `elRef` on purpose: that ref's
-    // repaint effect paints the block's text, and these carry none.
+    // The root of a block that has no text of its own, or that keeps its text
+    // in a field of its own: an image, a file, a code block, a callout, an
+    // embed. The gutter grip and the drop geometry find blocks in the ref map,
+    // and a wrapper that never registered was a grip that showed and a press
+    // that did nothing (images 2026-09-16, code, callout and embed
+    // 2026-09-19 — a code block could not be moved at all, since the keyboard
+    // reorder needs a caret the block's own field never gives the editor).
+    // Kept apart from `elRef` on purpose: that ref's repaint effect paints the
+    // block's text, and these carry none. Registration is for the grip; whole-
+    // block selection for these three is still deferred (`isSelectableBlock`).
     const wholeRef = useRef(null);
 
     // Paint the text on mount, on a sync-generation bump (undo, redo, a paste,
@@ -265,6 +270,7 @@ const EditableBlock = memo(
     if (block.type === "code") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -303,6 +309,7 @@ const EditableBlock = memo(
     if (block.type === "callout") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
@@ -352,6 +359,7 @@ const EditableBlock = memo(
     if (block.type === "embed") {
       return (
         <div
+          ref={wholeRef}
           data-block-id={block.id}
           data-block-type={block.type}
           contentEditable="false"
