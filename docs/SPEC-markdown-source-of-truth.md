@@ -103,7 +103,10 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
   a cell, and read back only in that exact form; a newline in a callout title is written as a
   space.
 - Tilde and backtick fences are one block type; a non-default opener or closer, or an absent
-  closer, is carried on the block (`fenceSource`) and written back as authored.
+  closer, is carried on the block (`fenceSource`) and written back as authored. **A fence's info
+  string is kept exactly as typed or imported** — ` ```js ` stays `js`, never normalised to
+  `javascript` — and is resolved only for reading it back to the user (`canonicalLang`); a word
+  the app does not know is kept and read as written.
 - `[[Note#Heading]]`, `[[Note#^block]]` and `[[Folder/Note]]` name the note before the `#`, in
   the folder the path gives; the heading or block is not yet followed, and a click never creates
   a note for anything but a plain name.

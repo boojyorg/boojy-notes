@@ -118,10 +118,11 @@ none blocks the release. The shared question comes first because three candidate
   selection is a struggle in daily use, add the handles; if not, low chrome wins.
 - **Whole-block selection for code, callout and file blocks.** The table joined the divider
   and image as a block addressed as a whole on 2026-09-10 (Escape selects, Backspace from
-  below and forward Delete from above select rather than step over). The other three still
-  step over, so Backspace under a code block deletes the paragraph into the one above it.
-  Extend the same rule once the table has been judged live; one block type at a time was the
-  decision.
+  below and forward Delete from above select rather than step over). **The arrows caught up on
+  2026-09-19**: they walk into any block that keeps a field of its own, code and callout
+  included. Deletion did not, deliberately — Backspace merges text, so it may only land where
+  text can go, and Backspace under a code block still deletes the paragraph into the one above
+  it. That is the half left to judge; a file block, which has no field, is stepped over by both.
 - **Note information** at the bottom of the note's ··· menu. The word count half shipped on
   2026-09-16 (`428 words`, one muted line under the menu's only rule, counting written content
   rather than Markdown punctuation; a character count was shown and dropped, since nobody writes
@@ -228,8 +229,9 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Enter and Backspace placement** (review §1.11): Enter at the start of a heading leaves an
   empty heading above and demotes the text; a Backspace-merge caret lands mid-word when the
   block above ends in bold or a link; Enter at the end of a soft-broken first line gives the
-  new block a leading newline; ArrowDown from an empty row above a divider skips it
-  (reproduced live).
+  new block a leading newline. (ArrowDown from an empty row above a divider skipping it was
+  fixed on 2026-09-19: a collapsed caret in an empty text node has no rect, and the arrows'
+  first/last-line questions were asked of it — `caretRect`.)
 - [ ] **Shift+Arrow at a block edge collapses the selection**, and ArrowUp from the first block
   is a dead key, so the title is unreachable by keyboard (review §1.13).
 - [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
