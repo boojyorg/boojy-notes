@@ -208,6 +208,28 @@ describe("EditableBlock", () => {
     expect(el.querySelector(".checkbox-box")).toBeInTheDocument();
   });
 
+  // The press animation scales the drawn square, and Chromium hit-tests the
+  // transformed box: pressed, its edges pull 1.2px in from under the pointer,
+  // so a press near an edge released onto the row and toggled nothing
+  // (2026-09-19). The element that takes the click must therefore be the one
+  // that never transforms, and it must cover the square.
+  it("takes the toggle on the hit area around the drawn box, not on the box itself", () => {
+    const block = checkbox("todo", false);
+    const onCheckToggle = vi.fn();
+    const { container } = renderBlock(block, { onCheckToggle });
+
+    const hit = container.querySelector(".checkbox-hit");
+    const box = container.querySelector(".checkbox-box");
+    expect(hit).toBeInTheDocument();
+    expect(hit.getAttribute("role")).toBe("checkbox");
+    expect(hit.contains(box)).toBe(true);
+    // The animated square is scenery; it carries no role of its own.
+    expect(box.getAttribute("role")).toBeNull();
+
+    fireEvent.click(hit);
+    expect(onCheckToggle).toHaveBeenCalledWith("note-1", 0);
+  });
+
   it("renders spacer block as hr", () => {
     const block = spacer();
     const { container } = renderBlock(block);

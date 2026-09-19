@@ -33,6 +33,27 @@ export const EDITOR_FONT_SIZE = 15;
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
+/**
+ * The transparent margin around the drawn box that is still the checkbox.
+ *
+ * The square is 16px, and a press within about a pixel of its edge used to
+ * animate and change nothing: `:active` scaled the square to 0.85, Chromium
+ * hit-tests against the transformed box, and the shrink pulled every edge
+ * 1.2px in from under the pointer — so the release landed on the row and the
+ * click fired there (2026-09-19). What fixes that is the hit element covering
+ * the square's own footprint and never transforming; the press animation moved
+ * to the square inside it. This padding is the forgiveness on top of it,
+ * bringing the target to 24px tall, the smallest that is comfortable.
+ *
+ * It is not applied on the left: the row carries `contain: content`, so
+ * anything past its left edge is clipped and takes no pointer either — the
+ * overhang measured as dead space, not as target (probed live 2026-09-19).
+ * Top, bottom and right are inside the row and real. The square keeps its
+ * exact place, and the gap to the text gives up what the right pad takes.
+ */
+const CHECKBOX_HIT_PAD = 4;
+/** Air between the drawn box and the task's text. */
+const CHECKBOX_TEXT_GAP = 9;
 
 // One render path for all heading levels; the smaller levels keep body-sized
 // text and use weight/spacing to remain headings. No extra editor chrome.
@@ -519,15 +540,18 @@ const EditableBlock = memo(
             // Top-aligned, like the bullet and number markers: the box sits on
             // the first line of a wrapped task, not the middle of the block.
             alignItems: "flex-start",
-            gap: 9,
+            gap: CHECKBOX_TEXT_GAP - CHECKBOX_HIT_PAD,
             padding: "2.5px 0",
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: CHECKBOX_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
+          {/* The hit area, not the drawn box: it takes the click and never
+              transforms, so the press animation cannot move the target out
+              from under the pointer. */}
           <div
-            className="checkbox-box"
+            className="checkbox-hit"
             role="checkbox"
             aria-checked={!!block.checked}
             contentEditable="false"
@@ -537,41 +561,58 @@ const EditableBlock = memo(
               onCheckToggle(noteId, blockIndex);
             }}
             style={{
-              width: CHECKBOX_SIZE,
-              height: CHECKBOX_SIZE,
-              // Centre the box on the first line's height, whatever the font size.
-              marginTop: (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
-              borderRadius: 3.5,
+              width: CHECKBOX_SIZE + CHECKBOX_HIT_PAD,
+              height: CHECKBOX_SIZE + CHECKBOX_HIT_PAD * 2,
+              // The drawn box centres on the first line's height, whatever the
+              // font size; the hit box is that position less its own padding,
+              // so the square sits exactly where it always did.
+              marginTop:
+                (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2 - CHECKBOX_HIT_PAD,
               flexShrink: 0,
               cursor: "pointer",
-              border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
-              background: block.checked ? accentColor : "transparent",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.15s",
+              justifyContent: "flex-start",
               userSelect: "none",
             }}
           >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
+            <div
+              className="checkbox-box"
+              aria-hidden="true"
               style={{
-                opacity: block.checked ? 1 : 0,
-                transform: block.checked ? "scale(1)" : "scale(0.5)",
-                transition: "opacity 0.15s, transform 0.15s",
+                width: CHECKBOX_SIZE,
+                height: CHECKBOX_SIZE,
+                borderRadius: 3.5,
+                boxSizing: "border-box",
+                flexShrink: 0,
+                border: block.checked ? `1.5px solid ${accentColor}` : `1.5px solid ${TEXT.muted}`,
+                background: block.checked ? accentColor : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.15s",
               }}
             >
-              <path
-                d="M2 5L4.2 7.2L8 3"
-                stroke={ACCENT.onAccent}
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+                style={{
+                  opacity: block.checked ? 1 : 0,
+                  transform: block.checked ? "scale(1)" : "scale(0.5)",
+                  transition: "opacity 0.15s, transform 0.15s",
+                }}
+              >
+                <path
+                  d="M2 5L4.2 7.2L8 3"
+                  stroke={ACCENT.onAccent}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </div>
           <span
             ref={elRef}
