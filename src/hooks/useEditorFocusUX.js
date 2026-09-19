@@ -8,6 +8,7 @@ import {
   ownedField,
   placeCaret,
 } from "../utils/domHelpers";
+import { inlineFieldFor } from "../utils/inlineFormatCommands";
 
 /** How long a keyboard selection must rest before the toolbar shows over it. */
 export const TOOLBAR_REST_MS = 300;
@@ -70,6 +71,16 @@ export function useEditorFocusUX({
         el = el.parentElement;
       }
       if (!el || el === editorRef.current) return null;
+      // Where the strip may show at all. A text block: always. A block that
+      // owns its fields: only inside a field that holds inline Markdown (a
+      // table cell, a callout's body), and only while both ends of the
+      // selection are in that one field, because a format cannot be applied
+      // to a range that leaves it. A callout's title, a code block's body and
+      // a selection across two cells therefore show nothing, rather than six
+      // glyphs that would do nothing (2026-09-19).
+      const field = inlineFieldFor(range.startContainer, editorRef.current);
+      if (field !== inlineFieldFor(range.endContainer, editorRef.current)) return null;
+      if (!field && el.getAttribute("contenteditable") === "false") return null;
       // The distance from the editor's corner to the selection, in the
       // column's own pixels: both rects are already multiplied by the UI
       // scale (CSS zoom on <html>) and a top/left written inside it is
@@ -80,6 +91,8 @@ export function useEditorFocusUX({
       return {
         top: (rect.top - editorRect.top) / zoom - 44,
         left: (rect.left - editorRect.left + rect.width / 2) / zoom,
+        // In a field the strip is the formats a field can carry, Link apart.
+        field: !!field,
       };
     };
     let timer = null;
