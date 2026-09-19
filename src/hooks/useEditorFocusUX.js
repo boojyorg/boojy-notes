@@ -3,6 +3,7 @@ import {
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   cleanOrphanNodes,
+  cssZoom,
   getBlockFromNode,
   ownedField,
   placeCaret,
@@ -69,9 +70,16 @@ export function useEditorFocusUX({
         el = el.parentElement;
       }
       if (!el || el === editorRef.current) return null;
+      // The distance from the editor's corner to the selection, in the
+      // column's own pixels: both rects are already multiplied by the UI
+      // scale (CSS zoom on <html>) and a top/left written inside it is
+      // multiplied again, so the measurement is divided by the zoom before it
+      // becomes a style, as every measured placement is (domHelpers). The
+      // 44px lift above the selection is a style already.
+      const zoom = cssZoom(editorRef.current);
       return {
-        top: rect.top - editorRect.top - 44,
-        left: rect.left - editorRect.left + rect.width / 2,
+        top: (rect.top - editorRect.top) / zoom - 44,
+        left: (rect.left - editorRect.left + rect.width / 2) / zoom,
       };
     };
     let timer = null;

@@ -22,9 +22,9 @@ History is in git and `CHANGELOG.md`.
 - **Measured geometry is divided by the UI scale before it becomes a style.** The scale is CSS
   `zoom` on `<html>`; Chromium reports rects and `clientX/Y` already multiplied, and a `top` on
   an element inside the zoom is multiplied again. `cssZoom(el)` (`domHelpers`) is applied by
-  the grip, the ghost and marker (`useBlockDrag`), `ContextMenu`, `PathTreeMenu` and `NotePath`.
-  Not yet: the link, code, image and file menus, the table's badge and cell menu, `SortMenu`,
-  the selection toolbar; judge those at 100%.
+  the grip, the ghost and marker (`useBlockDrag`), `ContextMenu`, `PathTreeMenu`, `NotePath` and
+  the selection toolbar. Not yet: the link, code, image and file menus, the table's badge and
+  cell menu, `SortMenu`; judge those at 100%.
 - **Frontmatter is the file's head, not a block of the body.** `reorderFloor` in
   `utils/blockOrder.ts` is the one rule (with frontmatter first, the lowest index a reorder may
   touch is 1); `moveBlock` refuses a move from or to index 0; the grip never lifts it; the drop
@@ -102,6 +102,16 @@ History is in git and `CHANGELOG.md`.
 - **Applying a format keeps the toolbar where it is**, and the hook measures the selection once
   when the toolbar appears, never again while on screen (re-measuring slid the strip under the
   pointer as Bold widened the glyphs).
+- **It is centred on the selection, or as near the centre as it can be and stay whole**
+  (`clampedLeft`, measured in a layout effect so the clamped centre is the first one painted).
+  The scroller is `overflow-x: hidden`, so the half hanging past a narrow column was scissored,
+  not merely off-centre: the strip keeps `EDGE` (8) inside the scroller's edges, and centres
+  itself in a column narrower than it is.
+- **The pressed glyph outranks the editor's text-only render skip.** Applying a format re-reads
+  the block, which sets `textOnlyEditForEditor`, and *then* refreshes the toolbar's state, so
+  `EditorArea`'s comparator decides `toolbarState` before that fast path; skipped, the accent
+  waited for the 300 ms text commit to publish. The glyph's ink is not transitioned for the same
+  reason (the fill's ramp is hover's).
 - Resting on a button for `TOOLTIP_REST_MS` (400, `Tooltip.tsx`, the chrome row's chip too)
   shows a chip with the name and shortcut (12px/500, the app's own chip, not inverted), below
   only when it would clip (`chipWouldClip` against `.editor-scroll`). `FORMATS` in
