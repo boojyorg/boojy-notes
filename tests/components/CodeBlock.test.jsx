@@ -31,6 +31,19 @@ vi.mock("prismjs/components/prism-bash", () => ({}));
 vi.mock("prismjs/components/prism-sql", () => ({}));
 vi.mock("prismjs/components/prism-markup", () => ({}));
 
+// The language menu carries the theme; the block itself takes none.
+vi.mock("../../src/hooks/useTheme", () => ({
+  useTheme: () => ({
+    theme: {
+      TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#7A736C" },
+      BG: { elevated: "#FFFFFF", divider: "#E9E9E9", hover: "#ECECEC", surface: "#F4F4F5" },
+      ACCENT: { primary: "#8FC1C6", text: "#2A737D", onAccent: "#FFFFFF" },
+      modalShadow: "none",
+    },
+    isDark: false,
+  }),
+}));
+
 import CodeBlock from "../../src/components/CodeBlock";
 
 describe("CodeBlock", () => {
@@ -85,24 +98,41 @@ describe("CodeBlock", () => {
     expect(defaultProps.onUpdateCode).toHaveBeenCalledWith("note-1", 0, "new code");
   });
 
-  it("opens language dropdown when language label is clicked", () => {
+  // The menu is the app's own (CodeLangMenu), portalled to body.
+  it("opens the language menu when the language label is clicked", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
     const langLabel = container.querySelector(".code-lang");
+    expect(langLabel.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(langLabel);
-    const dropdown = container.querySelector(".code-lang-dropdown");
-    expect(dropdown).toBeInTheDocument();
+    const menu = document.body.querySelector("[data-testid='code-lang-menu']");
+    expect(menu).toBeInTheDocument();
+    expect(langLabel.getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("calls onUpdateLang when a language is selected from dropdown", () => {
+  it("calls onUpdateLang when a language is chosen from the menu", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
-    const langLabel = container.querySelector(".code-lang");
-    fireEvent.click(langLabel);
-    const options = container.querySelectorAll(".code-lang-option");
-    // Find the Python option and click it
-    const pythonOption = Array.from(options).find((o) => o.textContent.includes("Python"));
-    expect(pythonOption).toBeTruthy();
-    fireEvent.click(pythonOption);
+    fireEvent.click(container.querySelector(".code-lang"));
+    const menu = document.body.querySelector("[data-testid='code-lang-menu']");
+    const python = Array.from(menu.querySelectorAll("[role='menuitemradio']")).find((o) =>
+      o.textContent.includes("Python"),
+    );
+    fireEvent.click(python);
     expect(defaultProps.onUpdateLang).toHaveBeenCalledWith("note-1", 0, "python");
+    expect(document.body.querySelector("[data-testid='code-lang-menu']")).toBeNull();
+  });
+
+  // One list: the ··· menu's row opens the same menu rather than a second copy
+  // of the languages in a hover submenu (2026-09-19).
+  it("opens the same menu from the context menu's Change language", () => {
+    const { container } = render(<CodeBlock {...defaultProps} />);
+    fireEvent.contextMenu(container.querySelector(".code-block"));
+    const item = Array.from(container.querySelectorAll(".code-ctx-item")).find(
+      (b) => b.textContent === "Change language",
+    );
+    expect(item).toBeTruthy();
+    fireEvent.click(item);
+    expect(document.body.querySelector("[data-testid='code-lang-menu']")).toBeInTheDocument();
+    expect(container.querySelector(".code-ctx-menu")).toBeNull();
   });
 
   it("shows copy button on hover", () => {

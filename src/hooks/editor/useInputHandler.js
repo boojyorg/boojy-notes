@@ -109,7 +109,12 @@ export function useInputHandler({
             next[noteId] = n;
             return next;
           });
-          focusBlockId.current = paraBlock.id;
+          // The block you asked for owns the next keystroke: the caret goes
+          // into the fence's own field, not the paragraph under it, exactly
+          // as the slash menu's Code does (OWNS_CARET in useSlashCommands).
+          // The focus effect finds no text root for a code block and focuses
+          // its textarea through `ownedField`.
+          focusBlockId.current = codeBlock.id;
           focusCursorPos.current = 0;
           return;
         }

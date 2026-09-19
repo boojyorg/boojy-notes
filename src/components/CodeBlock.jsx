@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
+import CodeLangMenu from "./CodeLangMenu";
+import { ChevronDownIcon } from "./Icons";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -10,16 +12,23 @@ import "prismjs/components/prism-bash";
 import "prismjs/components/prism-sql";
 import "prismjs/components/prism-markup";
 
+/**
+ * The languages offered, Plain then alphabetical: one editorial exception,
+ * because Plain is the absence of a language, and a mechanical rule for every
+ * language added after it (2026-09-19; before, the order was roughly by how
+ * often each is used, which had to be re-judged on each addition). Each is a
+ * Prism grammar imported above; adding a row means adding its grammar.
+ */
 const LANGUAGES = [
   { value: "", label: "Plain" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "typescript", label: "TypeScript" },
-  { value: "python", label: "Python" },
-  { value: "html", label: "HTML" },
-  { value: "css", label: "CSS" },
-  { value: "json", label: "JSON" },
   { value: "bash", label: "Bash" },
+  { value: "css", label: "CSS" },
+  { value: "html", label: "HTML" },
+  { value: "javascript", label: "JavaScript" },
+  { value: "json", label: "JSON" },
+  { value: "python", label: "Python" },
   { value: "sql", label: "SQL" },
+  { value: "typescript", label: "TypeScript" },
 ];
 
 // Map common aliases to Prism grammar keys
@@ -87,11 +96,12 @@ export default memo(function CodeBlock({
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [ctxMenu, setCtxMenu] = useState(null);
-  const [langDropdown, setLangDropdown] = useState(false);
+  // The language menu's anchor: the label's rect while it is open, null otherwise.
+  const [langMenu, setLangMenu] = useState(null);
   const textareaRef = useRef(null);
   const overlayRef = useRef(null);
   const overlayCodeRef = useRef(null);
-  const langDropdownRef = useRef(null);
+  const langLabelRef = useRef(null);
 
   // The fence's text exactly as the file holds it, blank first and last
   // lines included. Stripping them here made Enter at the end of the block
@@ -318,40 +328,26 @@ export default memo(function CodeBlock({
     };
   }, [ctxMenu, closeCtxMenu]);
 
-  // Close lang dropdown on outside click / Escape
-  useEffect(() => {
-    if (!langDropdown) return;
-    const handleKey = (e) => {
-      if (e.key === "Escape") setLangDropdown(false);
-    };
-    const handleClick = (e) => {
-      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
-        setLangDropdown(false);
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    window.addEventListener("mousedown", handleClick);
-    return () => {
-      window.removeEventListener("keydown", handleKey);
-      window.removeEventListener("mousedown", handleClick);
-    };
-  }, [langDropdown]);
+  /** Open the language menu under the label, wherever it was asked for. */
+  const openLangMenu = useCallback(() => {
+    const rect = langLabelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setLangMenu({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right });
+  }, []);
+  const closeLangMenu = useCallback(() => setLangMenu(null), []);
 
   const handleLangChange = useCallback(
     (newLang) => {
       onUpdateLang(noteId, blockIndex, newLang);
-      closeCtxMenu();
-    },
-    [noteId, blockIndex, onUpdateLang, closeCtxMenu],
-  );
-
-  const handleLangDropdownSelect = useCallback(
-    (newLang) => {
-      onUpdateLang(noteId, blockIndex, newLang);
-      setLangDropdown(false);
     },
     [noteId, blockIndex, onUpdateLang],
   );
+
+  /** The context menu's own row: it closes and hands the menu to the label. */
+  const handleChangeLangFromMenu = useCallback(() => {
+    closeCtxMenu();
+    openLangMenu();
+  }, [closeCtxMenu, openLangMenu]);
 
   const handleDeleteBlock = useCallback(() => {
     closeCtxMenu();
@@ -425,42 +421,50 @@ export default memo(function CodeBlock({
         </button>
       </div>
 
-      {/* Language label — bottom right, click to change */}
-      <div className="code-lang-anchor" ref={langDropdownRef}>
-        <span
-          className="code-lang"
+      {/* Language label — bottom right, click to change. The chevron is the
+          only thing that says the label is a control, and it shows on hover or
+          while the menu is open: the block is quiet at rest, as the gutter grip
+          and the row controls are. */}
+      <div className="code-lang-anchor">
+        <button
+          type="button"
+          ref={langLabelRef}
+          className={`code-lang${langMenu ? " code-lang-open" : ""}`}
+          aria-haspopup="menu"
+          aria-expanded={!!langMenu}
+          aria-label="Code language"
           onClick={(e) => {
             e.stopPropagation();
-            setLangDropdown((v) => !v);
+            if (langMenu) closeLangMenu();
+            else openLangMenu();
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {displayLabel || "Plain"}
-        </span>
-        {langDropdown && (
-          <div className="code-lang-dropdown" onMouseDown={(e) => e.stopPropagation()}>
-            {LANGUAGES.map((l) => (
-              <button
-                key={l.value}
-                className={`code-lang-option${l.value === lang ? " code-lang-option-active" : ""}`}
-                onClick={() => handleLangDropdownSelect(l.value)}
-              >
-                {l.value === lang && <span style={{ marginRight: 6, fontSize: 11 }}>✓</span>}
-                {l.label}
-              </button>
-            ))}
-          </div>
-        )}
+          <span className="code-lang-chevron" aria-hidden="true">
+            <ChevronDownIcon size={12} />
+          </span>
+        </button>
       </div>
 
       {/* Context menu */}
       {ctxMenu && (
         <CodeCtxMenu
           position={ctxMenu}
-          currentLang={lang}
           onCopy={handleCopy}
-          onChangeLang={handleLangChange}
+          onChangeLang={handleChangeLangFromMenu}
           onDelete={handleDeleteBlock}
+        />
+      )}
+
+      {/* Language menu — the app's menu grammar, from the label or the ··· */}
+      {langMenu && (
+        <CodeLangMenu
+          anchor={langMenu}
+          languages={LANGUAGES}
+          lang={lang}
+          onSelect={handleLangChange}
+          onClose={closeLangMenu}
         />
       )}
     </div>
@@ -468,10 +472,14 @@ export default memo(function CodeBlock({
 });
 
 /* ---- Context menu, position: fixed inside the column (not a portal) ---- */
-function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete }) {
-  const [langSub, setLangSub] = useState(false);
+/**
+ * The code block's own menu: Copy code, Change language, Delete block. The
+ * language list used to live here a second time, in a hover submenu with its
+ * own viewport clamping (2026-09-19): one list, in `CodeLangMenu`, which this
+ * row now opens under the block's label.
+ */
+function CodeCtxMenu({ position, onCopy, onChangeLang, onDelete }) {
   const menuRef = useRef(null);
-  const subRef = useRef(null);
 
   // Adjust position so menu stays within viewport
   const [pos, setPos] = useState(position);
@@ -487,20 +495,6 @@ function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete }) 
     setPos({ top, left });
   }, [position]);
 
-  // Adjust submenu position
-  useEffect(() => {
-    if (!langSub || !subRef.current) return;
-    const rect = subRef.current.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight) {
-      subRef.current.style.top = "auto";
-      subRef.current.style.bottom = "0";
-    }
-    if (rect.right > window.innerWidth) {
-      subRef.current.style.left = "auto";
-      subRef.current.style.right = "100%";
-    }
-  }, [langSub]);
-
   return (
     <div
       ref={menuRef}
@@ -509,33 +503,14 @@ function CodeCtxMenu({ position, currentLang, onCopy, onChangeLang, onDelete }) 
       onMouseDown={(e) => e.stopPropagation()}
     >
       <button className="code-ctx-item" onClick={onCopy}>
-        Copy Code
+        Copy code
       </button>
-      <div
-        className="code-ctx-item code-ctx-submenu-trigger"
-        onMouseEnter={() => setLangSub(true)}
-        onMouseLeave={() => setLangSub(false)}
-      >
-        <span>Change Language</span>
-        <span style={{ marginLeft: "auto", opacity: 0.4, fontSize: 10 }}>▶</span>
-        {langSub && (
-          <div ref={subRef} className="code-ctx-submenu">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l.value}
-                className={`code-ctx-item${l.value === currentLang ? " code-ctx-active" : ""}`}
-                onClick={() => onChangeLang(l.value)}
-              >
-                {l.value === currentLang && <span style={{ marginRight: 6, fontSize: 11 }}>✓</span>}
-                {l.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <button className="code-ctx-item" onClick={onChangeLang}>
+        Change language
+      </button>
       <div className="code-ctx-sep" />
       <button className="code-ctx-item code-ctx-danger" onClick={onDelete}>
-        Delete Block
+        Delete block
       </button>
     </div>
   );

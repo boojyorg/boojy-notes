@@ -49,4 +49,28 @@ describe("positionMenu", () => {
     const pos = positionMenu(point(995, 595), size, { viewport, margin: 16 });
     expect(pos).toEqual({ left: 1000 - 200 - 16, top: 600 - 300 - 16 });
   });
+
+  // `align: "end"` is for a trigger at the right of what it belongs to: the
+  // code block's language label, where left-aligning hung the menu off the
+  // block's right edge into the page margin (2026-09-19).
+  describe('align: "end"', () => {
+    const label = { top: 200, bottom: 216, left: 540, right: 600 };
+
+    it("puts the menu's right edge on the anchor's", () => {
+      const pos = positionMenu(label, size, { viewport, align: "end", gapY: 4 });
+      expect(pos).toEqual({ left: 400, top: 220 });
+    });
+
+    it("flips to left-aligned when the menu would run off the left edge", () => {
+      const nearLeft = { top: 200, bottom: 216, left: 40, right: 100 };
+      const pos = positionMenu(nearLeft, size, { viewport, align: "end" });
+      expect(pos.left).toBe(40);
+    });
+
+    it("clamps when neither edge fits", () => {
+      const wide = { width: 990, height: 300 };
+      const pos = positionMenu(label, wide, { viewport, align: "end" });
+      expect(pos.left).toBe(8);
+    });
+  });
 });
