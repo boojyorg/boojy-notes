@@ -27,6 +27,7 @@ import {
   Check as LuCheck,
   ChevronDown as LuChevronDown,
   ChevronLeft as LuChevronLeft,
+  CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Code as LuCode,
   Copy as LuCopy,
@@ -66,6 +67,7 @@ import {
   Table as LuTable,
   TextQuote as LuTextQuote,
   Trash2 as LuTrash2,
+  TriangleAlert as LuTriangleAlert,
   Undo2 as LuUndo2,
   X as LuX,
 } from "lucide-react";
@@ -237,4 +239,22 @@ const ICON_STROKE_TOOLBAR = 2.5;
 export const FormatIcon = ({ name, size = ICON_INLINE }) => {
   const Glyph = FORMAT_GLYPHS[name];
   return Glyph ? <Glyph strokeWidth={ICON_STROKE_TOOLBAR} size={size} /> : null;
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────
+// One glyph per toast, keyed by the name `useToast` carries: the kind's own
+// mark, or the one the message asks for (a trashed note says Trash2, which is
+// more use than a tick). Content stroke at 16px: a toast is a line of prose
+// with a mark beside it, not a control.
+const TOAST_GLYPHS = {
+  check: LuCheck,
+  trash: LuTrash2,
+  info: LuInfo,
+  warning: LuTriangleAlert,
+  error: LuCircleAlert,
+};
+
+export const ToastIcon = ({ name, size = ICON_INLINE }) => {
+  const Glyph = TOAST_GLYPHS[name];
+  return Glyph ? <Glyph {...base} size={size} /> : null;
 };

@@ -7,6 +7,7 @@ import {
 } from "../utils/domHelpers";
 import { domNodeToMarkdown } from "../utils/inlineFormatting";
 import { rangeScope } from "../utils/crossBlockEdit";
+import { applyDomFormat, formatInlineField, inlineFieldFor } from "../utils/inlineFormatCommands";
 
 /** No inline format active — what the toolbars show when there is no selection. */
 export const EMPTY_FORMATS = {
@@ -17,19 +18,6 @@ export const EMPTY_FORMATS = {
   strikethrough: false,
   highlight: false,
 };
-
-/** The first and last non-empty text nodes under `root`, or nulls. */
-function textEdges(root) {
-  let first = null;
-  let last = null;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
-    if (!t.length) continue;
-    if (!first) first = t;
-    last = t;
-  }
-  return [first, last];
-}
 
 export function useInlineFormatting({
   blockRefs,
@@ -59,129 +47,6 @@ export function useInlineFormatting({
     },
     [blockRefs, editorRef, noteDataRef, updateBlockText],
   );
-
-  const toggleInlineCode = useCallback(
-    (sel) => {
-      if (!sel.rangeCount || sel.isCollapsed) return;
-      const range = sel.getRangeAt(0);
-      let node = sel.anchorNode;
-      let codeEl = null;
-      while (node && node !== editorRef.current) {
-        if (node.nodeName === "CODE") {
-          codeEl = node;
-          break;
-        }
-        node = node.parentNode;
-      }
-      if (codeEl) {
-        const textNode = document.createTextNode(codeEl.textContent);
-        codeEl.parentNode.replaceChild(textNode, codeEl);
-        const r = document.createRange();
-        r.selectNodeContents(textNode);
-        sel.removeAllRanges();
-        sel.addRange(r);
-      } else {
-        const code = document.createElement("code");
-        try {
-          range.surroundContents(code);
-        } catch {
-          const frag = range.extractContents();
-          code.appendChild(frag);
-          range.insertNode(code);
-        }
-        const r = document.createRange();
-        r.selectNodeContents(code);
-        sel.removeAllRanges();
-        sel.addRange(r);
-      }
-    },
-    [editorRef],
-  );
-
-  const toggleWrappingTag = useCallback(
-    (sel, tagName) => {
-      if (!sel.rangeCount || sel.isCollapsed) return;
-      const range = sel.getRangeAt(0);
-      let node = sel.anchorNode;
-      let existing = null;
-      while (node && node !== editorRef.current) {
-        if (node.nodeName === tagName) {
-          existing = node;
-          break;
-        }
-        node = node.parentNode;
-      }
-      if (existing) {
-        // Unwrap (move children out) rather than flattening to textContent, so any
-        // nested formatting (e.g. **bold** inside ~~strike~~) survives toggling off.
-        const parent = existing.parentNode;
-        const r = document.createRange();
-        if (existing.firstChild) {
-          const first = existing.firstChild;
-          const last = existing.lastChild;
-          while (existing.firstChild) parent.insertBefore(existing.firstChild, existing);
-          parent.removeChild(existing);
-          r.setStartBefore(first);
-          r.setEndAfter(last);
-        } else {
-          const placeholder = document.createTextNode("");
-          parent.replaceChild(placeholder, existing);
-          r.selectNodeContents(placeholder);
-        }
-        sel.removeAllRanges();
-        sel.addRange(r);
-      } else {
-        const el = document.createElement(tagName.toLowerCase());
-        try {
-          range.surroundContents(el);
-        } catch {
-          const frag = range.extractContents();
-          el.appendChild(frag);
-          range.insertNode(el);
-        }
-        // A selection that reaches into an existing run of the same format
-        // brings a partial clone of it along; one element of the format is
-        // what the wrap means, so any nested copy is dissolved into it.
-        for (const inner of Array.from(el.querySelectorAll(tagName.toLowerCase()))) {
-          while (inner.firstChild) inner.parentNode.insertBefore(inner.firstChild, inner);
-          inner.remove();
-        }
-        // Reselect on text boundaries, as Chromium's own commands do. An
-        // element-boundary range, (em, 0)–(em, 1), is canonicalised against
-        // the empty text node the split leaves beside the element and
-        // collapses to the block's start (probed live 2026-09-16), so the
-        // toolbar read no format and a second press wrapped nothing.
-        el.parentNode?.normalize();
-        const [first, last] = textEdges(el);
-        const r = document.createRange();
-        if (first && last) {
-          r.setStart(first, 0);
-          r.setEnd(last, last.length);
-        } else {
-          r.selectNodeContents(el);
-        }
-        sel.removeAllRanges();
-        sel.addRange(r);
-      }
-    },
-    [editorRef],
-  );
-
-  // Bold and italic wrap the selection structurally, as code, strike and
-  // highlight do, never through execCommand("bold") on a selection
-  // (2026-09-16): the command decides its direction from the computed style,
-  // so inside a heading (already weight 600–700), or a quote while it was italic,
-  // it *removed* the format, leaving a `font-weight: normal` span the walker
-  // reads as plain text: the heading's word went lighter on screen and the
-  // file never got its `**`. A collapsed caret keeps execCommand: the pending
-  // style it sets for the next keystroke has no structural equivalent.
-  const toggleBold = useCallback((sel) => toggleWrappingTag(sel, "STRONG"), [toggleWrappingTag]);
-  const toggleItalic = useCallback((sel) => toggleWrappingTag(sel, "EM"), [toggleWrappingTag]);
-  const toggleStrikethrough = useCallback(
-    (sel) => toggleWrappingTag(sel, "DEL"),
-    [toggleWrappingTag],
-  );
-  const toggleHighlight = useCallback((sel) => toggleWrappingTag(sel, "MARK"), [toggleWrappingTag]);
 
   /**
    * Which block roots a range touches, when the app may format there: the
@@ -251,6 +116,18 @@ export function useInlineFormatting({
     (format) => {
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
+      // A field that holds inline Markdown owns its own formatting: the format
+      // is applied inside the field and the field commits it as it commits a
+      // keystroke (`formatInlineField`). The editor reads no block back here —
+      // a cell's text is the cell's, not the table block's — and Link is not
+      // offered, so the toolbar shows no glyph for it.
+      const field = inlineFieldFor(sel.anchorNode, editorRef.current);
+      if (field) {
+        if (formatInlineField(sel, format, field)) {
+          setToolbarState((prev) => (prev ? { ...prev } : prev));
+        }
+        return;
+      }
       if (format === "link") {
         // Open link editor popover instead of using prompt()
         onOpenLinkEditor?.();
@@ -260,12 +137,16 @@ export function useInlineFormatting({
       const scope = textBlockScope(range);
       if (!scope) return;
       const run = () => {
-        if (format === "bold") sel.isCollapsed ? document.execCommand("bold") : toggleBold(sel);
-        else if (format === "italic")
-          sel.isCollapsed ? document.execCommand("italic") : toggleItalic(sel);
-        else if (format === "code") toggleInlineCode(sel);
-        else if (format === "strikethrough") toggleStrikethrough(sel);
-        else if (format === "highlight") toggleHighlight(sel);
+        // A collapsed caret keeps `execCommand`: the pending style it sets for
+        // the next keystroke has no structural equivalent (residue, rare).
+        // Everything else is a structural wrap (`applyDomFormat`), because the
+        // command decides its direction from the computed style and un-bolded
+        // a heading's word.
+        if (sel.isCollapsed && (format === "bold" || format === "italic")) {
+          document.execCommand(format);
+        } else {
+          applyDomFormat(sel, format, editorRef.current);
+        }
         reReadBlockFromDom(sel);
       };
       if (scope.kind === "block") {
@@ -308,16 +189,7 @@ export function useInlineFormatting({
       // position. Clearing it here made it vanish and come back a beat later.
       setToolbarState((prev) => (prev ? { ...prev } : prev));
     },
-    [
-      reReadBlockFromDom,
-      toggleBold,
-      toggleItalic,
-      toggleInlineCode,
-      toggleStrikethrough,
-      toggleHighlight,
-      onOpenLinkEditor,
-      setToolbarState,
-    ],
+    [reReadBlockFromDom, editorRef, onOpenLinkEditor, setToolbarState],
   );
 
   const detectActiveFormats = useCallback(() => {
@@ -341,5 +213,5 @@ export function useInlineFormatting({
     };
   }, [editorRef]);
 
-  return { applyFormat, detectActiveFormats, reReadBlockFromDom, toggleInlineCode, getLinkContext };
+  return { applyFormat, detectActiveFormats, reReadBlockFromDom, getLinkContext };
 }

@@ -15,7 +15,17 @@
  * lost by a row operation from the cell's own context menu (§3.4).
  */
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, MOD, SETTLE_MS, editorText, launchApp, sleep, waitForFile } from "./harness";
+import {
+  type AppHandle,
+  END_OF_LINE,
+  MOD,
+  SETTLE_MS,
+  START_OF_LINE,
+  editorText,
+  launchApp,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 const NOTE = "Note.md";
 
@@ -154,6 +164,125 @@ test("text typed into a table cell is kept by a row operation from the cell's ow
     expect(h.vault.read(NOTE)).toBe(
       "| Name | Qty |\n| --- | --- |\n| Tea leaves | 2 |\n|  |  |\n| Milk | 1 |\n",
     );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+/** How long a keyboard selection rests before the strip shows, and then some. */
+const TOOLBAR_REST = 700;
+
+/** Select the line the caret is in, the one selection every field allows. */
+async function selectFieldText(h: AppHandle) {
+  await h.page.keyboard.press(START_OF_LINE);
+  await h.page.keyboard.press(`Shift+${END_OF_LINE}`);
+}
+
+/**
+ * A field that holds inline Markdown owns its own formatting. The selection is
+ * wrapped inside the field and the field commits the result on the input event
+ * that follows, so the file gets the Markdown and nothing else in the note is
+ * touched. Chromium's own Cmd+B must never run there: it decides from the
+ * computed style, so in a header cell (600) it wrote a `font-weight: normal`
+ * span the walker reads as plain text and the `**` never reached the file
+ * (2026-09-19).
+ */
+test("a format in a table cell reaches the file, from the keyboard and the strip", async () => {
+  const md = "| Name | Qty |\n| --- | --- |\n| Tea | 2 |\n";
+  const h = await launchApp({ [NOTE]: md });
+  try {
+    await h.openNote("Note");
+    // The header cell: the one Chromium's own command got wrong. The word is
+    // selected with the keyboard, because Playwright's synthetic double-click
+    // leaves a collapsed caret in a cell where a real one selects the word.
+    await h.page.locator("table.table-block th").first().click();
+    await selectFieldText(h);
+    await h.page.keyboard.press(`${MOD}+b`);
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("**Name**"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toBe("| **Name** | Qty |\n| --- | --- |\n| Tea | 2 |\n");
+    expect(await h.page.locator("table.table-block th strong").innerText()).toBe("Name");
+
+    // A body cell through the strip, whose pressed glyph follows the selection.
+    const cell = h.page.locator("table.table-block tbody td").first();
+    await cell.click();
+    await selectFieldText(h);
+    const bar = h.page.getByRole("toolbar", { name: "Text formatting" });
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "Highlight" }).click();
+    await expect(bar.getByRole("button", { name: "Highlight" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("==Tea=="));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toBe("| **Name** | Qty |\n| --- | --- |\n| ==Tea== | 2 |\n");
+
+    // A second press takes it off again, and the file loses the marker.
+    await bar.getByRole("button", { name: "Highlight" }).click();
+    await waitForFile(h.vault.file(NOTE), (t) => !t.includes("=="));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toBe("| **Name** | Qty |\n| --- | --- |\n| Tea | 2 |\n");
+
+    // The formats survive the reopen as elements, not as literal markers.
+    await h.restart();
+    await h.openNote("Note");
+    expect(await h.page.locator("table.table-block th strong").innerText()).toBe("Name");
+    expect(await editorText(h.page)).not.toContain("**");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a format in a callout's body reaches the file; its title takes none", async () => {
+  const md = "> [!note] Note\n> keep this safe\n";
+  const h = await launchApp({ [NOTE]: md });
+  try {
+    await h.openNote("Note");
+    const bar = h.page.getByRole("toolbar", { name: "Text formatting" });
+
+    // The body holds inline Markdown, so the strip shows over it — five glyphs,
+    // because Link is the editor's alone in a field and a glyph that cannot act
+    // is worse than no glyph.
+    await h.page.locator(".callout-body").click();
+    await selectFieldText(h);
+    await expect(bar).toBeVisible();
+    expect(await bar.getByRole("button").evaluateAll((els) => els.length)).toBe(5);
+    await expect(bar.getByRole("button", { name: "Link" })).toHaveCount(0);
+    await h.page.keyboard.press(`${MOD}+i`);
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("*"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read(NOTE)).toBe("> [!note] Note\n> *keep this safe*\n");
+
+    // The title is plain text: nothing to format, so nothing is offered, even
+    // with its text selected and rested on.
+    await h.page.locator(".callout-title").click();
+    await selectFieldText(h);
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("Note");
+    await sleep(TOOLBAR_REST);
+    await expect(bar).toHaveCount(0);
+    expect(h.vault.read(NOTE)).toBe("> [!note] Note\n> *keep this safe*\n");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a code block's body is literal: no strip over it, and Cmd+B changes nothing", async () => {
+  const md = "```js\nconst bold = 1;\n```\n";
+  const h = await launchApp({ [NOTE]: md });
+  try {
+    await h.openNote("Note");
+    const ta = h.page.locator(".code-block textarea, textarea").first();
+    await ta.click();
+    await ta.press(`${MOD}+a`);
+    await expect(h.page.getByRole("toolbar", { name: "Text formatting" })).toHaveCount(0);
+    await h.page.keyboard.press(`${MOD}+b`);
+    await sleep(SETTLE_MS);
+    expect(await ta.inputValue()).toBe("const bold = 1;");
+    expect(h.vault.read(NOTE)).toBe(md);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

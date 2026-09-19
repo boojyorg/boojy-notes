@@ -88,6 +88,14 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   const writeTimer = useRef(null);
   const retryTimer = useRef(null);
   const reportedWriteFailures = useRef(new Set());
+  /**
+   * The key every "could not write" notice carries. Such a notice waits to be
+   * dismissed rather than fading (a save failure on a timer is a save failure
+   * nobody saw), so two failing notes must not stack two of them, and the
+   * notice must end when it stops being true: the first write that succeeds
+   * with nothing else failing replaces it with a receipt (`writeRecovered`).
+   */
+  const SAVE_KEY = "save";
   const isExternalUpdate = useRef(false);
   // Notes whose next state change came from disk: skipped by the dirty scan
   // one at a time, so a keystroke that shares a render with an outside change
@@ -98,6 +106,18 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   noteDataRef.current = noteData;
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  /**
+   * A write for `noteId` went through. If that note had reported a failure and
+   * nothing else is failing any more, the notice that said so is no longer
+   * true: it is replaced, under the same key, by a receipt that fades. So the
+   * user sees the problem end instead of being left with a stale warning to
+   * dismiss by hand.
+   */
+  const writeRecovered = useCallback((noteId) => {
+    if (!reportedWriteFailures.current.delete(noteId)) return;
+    if (reportedWriteFailures.current.size > 0) return;
+    onErrorRef.current?.("Saved — your edits reached the disk", "done", { key: SAVE_KEY });
+  }, []);
   const notesDirRef = useRef(notesDir);
   notesDirRef.current = notesDir;
   const editorLinksRef = useRef(editorLinks);
@@ -287,6 +307,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
             reportedWriteFailures.current.add(id);
             onErrorRef.current?.(
               `"${external.title}" changed outside Boojy Notes and your edits could not be saved as a copy. They are still here, unsaved; Boojy Notes will keep trying.`,
+              "error",
+              { key: SAVE_KEY },
             );
           }
           scheduleRetry();
@@ -439,14 +461,16 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               `${Math.round(performance.now() - t0)}ms`,
               written?.title !== note.title ? `TITLE-ADOPT "${written?.title}"` : "",
             );
-            reportedWriteFailures.current.delete(noteId);
+            writeRecovered(noteId);
             if (typeof written?.title === "string" && written.title !== note.title)
               editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
           } catch (err) {
             console.error("useFileSystem: write failed", noteId, err);
             if (!reportedWriteFailures.current.has(noteId)) {
               reportedWriteFailures.current.add(noteId);
-              onError?.("Failed to save note to disk — Boojy will keep retrying");
+              onError?.("Failed to save note to disk — Boojy Notes will keep retrying", "error", {
+                key: SAVE_KEY,
+              });
             }
             continue;
           }
@@ -771,7 +795,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           const name = relPath.split("/").pop();
           onErrorRef.current?.(
             `"${name}" still holds files that are not notes, so it stays on disk`,
-            "info",
+            "notice",
           );
         };
         if (hasNotes) afterNextFlush(run);

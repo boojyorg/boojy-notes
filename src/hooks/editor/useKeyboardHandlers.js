@@ -9,6 +9,7 @@ import {
   isSelectableBlock,
   placeCaret,
 } from "../../utils/domHelpers";
+import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
 
 /**
  * The nearest block in `step`'s direction that `stops` accepts, or -1.
@@ -435,7 +436,24 @@ export function useKeyboardHandlers({
     // caret by a range left in another block, and a letter typed there landed
     // in the note's first block with the page scrolled to the top.
     const active = document.activeElement;
-    if (active && active !== editorRef.current && editorRef.current?.contains(active)) return;
+    if (active && active !== editorRef.current && editorRef.current?.contains(active)) {
+      // One exception, and only for an inline format: a field that holds
+      // Markdown (a table cell, a callout's body) has the document selection
+      // inside itself, so `applyFormat` can act on it — and it is the one
+      // applier, which is what keeps the toolbar's pressed glyph right whether
+      // the format came from the strip or the keyboard. The field commits the
+      // result itself. Chromium's own Cmd+B must not run instead: it decides
+      // from the computed style, so in a header cell (600) it wrote a
+      // `font-weight: normal` span the walker reads as plain text and the file
+      // never got its `**` (2026-09-19). A code block's textarea is not such a
+      // field; there the selection really is stale and the key is dropped.
+      const fieldFormat = inlineFieldFor(active, editorRef.current) ? inlineFormatForKey(e) : null;
+      if (fieldFormat) {
+        e.preventDefault();
+        applyFormat(fieldFormat);
+      }
+      return;
+    }
     const currentNote = activeNoteRef.current;
     const sel = window.getSelection();
     if (!sel.rangeCount) {
@@ -455,13 +473,9 @@ export function useKeyboardHandlers({
     const getBlockAt = (i) => noteDataRef.current[currentNote]?.content?.blocks?.[i];
 
     // Inline formatting goes through applyFormat, which knows which block
-    // roots the selection touches and formats each of them within itself.
-    const mod = e.ctrlKey || e.metaKey;
-    const format = !mod
-      ? null
-      : e.shiftKey
-        ? { S: "strikethrough", s: "strikethrough", H: "highlight", h: "highlight" }[e.key]
-        : { b: "bold", i: "italic", "`": "code", k: "link", K: "link" }[e.key];
+    // roots the selection touches and formats each of them within itself. The
+    // key map lives in `inlineFormatCommands`, where a field reads the same one.
+    const format = inlineFormatForKey(e);
     if (format) {
       e.preventDefault();
       applyFormat(format);

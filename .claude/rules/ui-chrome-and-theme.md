@@ -56,8 +56,37 @@ on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
 
 Known leaks, not yet fixed: about 26 leaf tokens use plain black alphas (Dark's `overlay()` is a
 white alpha); callout and syntax colours are hand-picked per theme (Dark callout grounds are
-the colour at 14% over the sheet, border 25%); `Toast` and the danger `ConfirmDialog` keep
-`#fff` on semantic status colours, deliberately.
+the colour at 14% over the sheet, border 25%); the danger `ConfirmDialog` keeps `#fff` on the
+error colour, deliberately.
+
+## Notifications are a quiet surface with one coloured mark
+
+`Toast` is the menus' own ground (`BG.elevated`, a `BG.divider` hairline, radius 12, the
+menus' `modalShadow`), the message in `TEXT.primary` at 13px, and one 16px Lucide glyph on
+the content stroke (`ToastIcon`). **The meaning is the glyph's colour and nothing else**:
+`TEXT.muted` for a receipt, `ACCENT.text` for a notice, the semantic ink for a warning or an
+error. Until 2026-09-19 an info toast was a 360px fill of `ACCENT.primary` with white on it —
+the largest accent surface in the app, against the rule above, and about 2:1 to read. The
+shadow is the one place this parts from the tooltip chip's grammar: a chip labels the control
+it points at, while a toast floats free, and in Light the elevated ground *is* the sheet's
+white.
+
+- **The kind decides how long it stays** (`useToast`): `done` is a receipt and fades after
+  `DONE_MS` (3200), and a click anywhere on it takes it early; `notice`, `warning` and `error`
+  wait to be dismissed, because a timer on a save failure is a save failure nobody saw. What
+  waits carries its own ×, and a click on the message does nothing, so a half-read error is
+  not lost to a stray click. A receipt is `role="status"` and polite; the rest are
+  `role="alert"` and assertive.
+- **Notices about one condition share a key, and the newer one replaces the older**, so a
+  retry storm is one notice on screen. **A keyed notice ends when it stops being true**: the
+  first write that succeeds with nothing else failing replaces the save-failure notice with a
+  receipt (`writeRecovered` in `useFileSystem`), which then fades. Nothing else may be left on
+  screen saying something that is no longer so.
+- **The stack stands at the foot of the editor, not of the window** (`bottom: 24`, `left: 24`
+  plus the sidebar's width), and travels with the panel on `panelTransition("left")`. The
+  sidebar is the one surface whose rows a toast could hide, and the row a deletion just took
+  away is the worst thing to cover. It is never wider than the pane it stands in.
+- `toasts.spec.ts`, `Toast.test.tsx`, `useToast.test.ts`.
 
 ## Scrollbars
 

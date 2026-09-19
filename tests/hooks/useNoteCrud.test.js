@@ -48,6 +48,7 @@ function setup(initialNoteData = {}, opts = {}) {
   });
   const titleRef = { current: null };
   const setRenamingFolder = vi.fn();
+  const markNewFolder = vi.fn();
   const { result } = renderHook(() =>
     useNoteCrud({
       commitNoteData,
@@ -59,6 +60,7 @@ function setup(initialNoteData = {}, opts = {}) {
       setExpanded,
       titleRef,
       setRenamingFolder,
+      markNewFolder,
       folderOps: opts.folderOps ?? null,
       onError: opts.onError,
     }),
@@ -76,6 +78,7 @@ function setup(initialNoteData = {}, opts = {}) {
     setCustomFolders,
     setExpanded,
     setRenamingFolder,
+    markNewFolder,
   };
 }
 
@@ -462,11 +465,41 @@ describe("useNoteCrud", () => {
       expect(getFolders()).toContain("Work (copy)-2");
     });
 
+    // The copy lands in alphabetical order beside its original, one more row
+    // among its neighbours: it is marked and opened so it can be found, rather
+    // than announced in a message.
+    it("web: marks the copied row so the sidebar can point at it", () => {
+      const { result, markNewFolder, getExpanded } = setup(seed(), {
+        customFolders: ["Work", "Work/Sub", "Elsewhere"],
+      });
+      act(() => {
+        result.current.duplicateFolder("Work");
+      });
+      expect(markNewFolder).toHaveBeenCalledWith("Work (copy)");
+
+      // A copy inside a folder opens the folder it lands in.
+      act(() => {
+        result.current.duplicateFolder("Work/Sub");
+      });
+      expect(markNewFolder).toHaveBeenCalledWith("Work/Sub (copy)");
+      expect(getExpanded().Work).toBe(true);
+    });
+
+    it("desktop: marks the row the disk named, not the one the app asked for", async () => {
+      const duplicate = vi.fn().mockResolvedValue("Work (copy)-2");
+      const { result, markNewFolder } = setup(seed(), { folderOps: { duplicate } });
+      act(() => {
+        result.current.duplicateFolder("Work");
+      });
+      await act(async () => {});
+      expect(markNewFolder).toHaveBeenCalledWith("Work (copy)-2");
+    });
+
     it("desktop: hands the copy to folderOps and reports a failure once", async () => {
       const duplicate = vi.fn().mockRejectedValue(new Error("disk"));
       const onError = vi.fn();
       vi.spyOn(console, "error").mockImplementation(() => {});
-      const { result, commitNoteData, setCustomFolders } = setup(seed(), {
+      const { result, commitNoteData, setCustomFolders, markNewFolder } = setup(seed(), {
         folderOps: { duplicate },
         onError,
       });
@@ -478,6 +511,7 @@ describe("useNoteCrud", () => {
       expect(onError).toHaveBeenCalledWith("Failed to duplicate the folder on disk");
       expect(commitNoteData).not.toHaveBeenCalled();
       expect(setCustomFolders).not.toHaveBeenCalled();
+      expect(markNewFolder).not.toHaveBeenCalled();
     });
   });
 

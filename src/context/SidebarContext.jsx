@@ -1,4 +1,12 @@
-import { createContext, useState, useRef, useContext, useMemo, useEffect } from "react";
+import {
+  createContext,
+  useState,
+  useRef,
+  useContext,
+  useMemo,
+  useEffect,
+  useCallback,
+} from "react";
 import { useNoteData, useNoteDataActions } from "./NoteDataContext";
 import { useSearch } from "../hooks/useSearch";
 import { loadFromStorage } from "../utils/storage";
@@ -12,6 +20,7 @@ import {
 } from "../utils/sidebarTree";
 import { compareNotes, sortNoteIds, SORT_RECENT } from "../utils/noteSort";
 import { useNoteSort } from "../hooks/useNoteSort";
+import { NEW_ROW_MS } from "../tokens/motion";
 
 const SidebarContext = createContext(null);
 
@@ -45,6 +54,22 @@ export function SidebarProvider({ children }) {
   });
 
   const [renamingFolder, setRenamingFolder] = useState(null);
+  /**
+   * The folder row just made by Duplicate folder. A copy lands beside its
+   * original in alphabetical order, where it is one more row among its
+   * neighbours, so for NEW_ROW_MS it wears the sidebar's own row pill and the
+   * tree scrolls it into view: the feedback is the thing itself, not a message
+   * about it. New folder needs none of this — its rename field is already the
+   * cue. One row at a time; a second copy takes the mark from the first.
+   */
+  const [newFolder, setNewFolder] = useState(null);
+  const newFolderTimer = useRef(null);
+  const markNewFolder = useCallback((path) => {
+    if (newFolderTimer.current) clearTimeout(newFolderTimer.current);
+    setNewFolder(path);
+    newFolderTimer.current = setTimeout(() => setNewFolder(null), NEW_ROW_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(newFolderTimer.current), []);
   // Note id whose sidebar row is showing the inline rename input (the note
   // counterpart of renamingFolder — same grammar, same input treatment).
   const [renamingNote, setRenamingNote] = useState(null);
@@ -157,6 +182,8 @@ export function SidebarProvider({ children }) {
       setRenamingFolder,
       renamingNote,
       setRenamingNote,
+      newFolder,
+      markNewFolder,
       searchMode,
       searchResults,
       activeResultIndex,
@@ -181,6 +208,8 @@ export function SidebarProvider({ children }) {
       customFolders,
       renamingFolder,
       renamingNote,
+      newFolder,
+      markNewFolder,
       searchMode,
       searchResults,
       activeResultIndex,

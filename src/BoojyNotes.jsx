@@ -107,6 +107,7 @@ export default function BoojyNotes() {
     setCustomFolders,
     setRenamingFolder,
     setRenamingNote,
+    markNewFolder,
     filteredTree,
     fNotes,
     folderList,
@@ -199,7 +200,7 @@ export default function BoojyNotes() {
       }
       showToast(
         `"${title}" changed outside Boojy Notes. Your edits were kept in "${copyTitle}".`,
-        "info",
+        "notice",
       );
     },
     [setActiveNote, showToast],
@@ -342,6 +343,7 @@ export default function BoojyNotes() {
     setExpanded,
     titleRef,
     setRenamingFolder,
+    markNewFolder,
     folderOps,
     onError: showToast,
   });
@@ -686,7 +688,7 @@ export default function BoojyNotes() {
       const note = noteDataRef.current?.[id];
       if (!(await askBeforeDeleting("note", { count: 1, name: note?.title }))) return false;
       deleteNote(id);
-      if (!isWeb) showToast(trashedToast(note?.title), "info");
+      if (!isWeb) showToast(trashedToast(note?.title), "done", { icon: "trash" });
       return true;
     },
     [deleteNote, askBeforeDeleting, noteDataRef, showToast],
@@ -1125,10 +1127,19 @@ export default function BoojyNotes() {
 
       {toasts.length > 0 && (
         <div
+          className={isMobile ? undefined : "panel-motion"}
           style={{
             position: "fixed",
             bottom: 24,
-            left: 24,
+            // At the foot of the editor, not of the window: the sidebar is the
+            // one surface whose rows a toast could hide, and the row a
+            // deletion just took away is the worst thing to cover. It travels
+            // with the panel on the panel's own clock.
+            left: 24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth),
+            // Never wider than the pane it stands in: at the window's minimum
+            // the editor is 316px and a 360px toast would hang off the edge.
+            maxWidth: `calc(100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px)`,
+            transition: isMobile ? undefined : panelTransition("left"),
             display: "flex",
             flexDirection: "column",
             gap: 8,
@@ -1139,7 +1150,8 @@ export default function BoojyNotes() {
             <Toast
               key={t.id}
               message={t.message}
-              type={t.type}
+              kind={t.kind}
+              icon={t.icon}
               theme={theme}
               onDismiss={() => dismissToast(t.id)}
             />
