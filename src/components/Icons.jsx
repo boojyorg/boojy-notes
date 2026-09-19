@@ -137,6 +137,8 @@ export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
 export const PlusIcon = ({ size = ICON_INLINE, nav = false }) => (
   <LuPlus {...(nav ? navBase : base)} size={size} />
 );
+/** Its pair, for a stepper (Settings → Interface size). */
+export const MinusIcon = ({ size = ICON_INLINE }) => <LuMinus {...base} size={size} />;
 /** The table cell menu's insert glyphs: the direction is the meaning (nav stroke, as
  *  every context-menu glyph). */
 export const ArrowUpToLineIcon = ({ size = ICON_INLINE }) => (

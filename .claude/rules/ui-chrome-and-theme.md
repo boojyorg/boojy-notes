@@ -193,8 +193,58 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   `Downloading…`, the accent `Restart to update`, `Try again` under an error in the error ink).
   Bordered buttons (`SmallButton`) take `theme.button`: Dark gives an enabled one a surface a
   step above the ground so it is told from a disabled one before hover. `settingsTab` and
-  `settingsFontSize` don't exist; don't reintroduce them in mocks. UI scale is keyboard-only
-  (`Cmd+Plus/Minus/0`). `settings-dialog.spec.ts`, the `tests/components/settings` suite.
+  `settingsFontSize` don't exist; don't reintroduce them in mocks.
+  **Appearance's second row is `Interface size`** (2026-09-19), the Updates switch's row with
+  **one segmented control** at its right: `−`, the figure and `+` in a single pill with hairline
+  dividers (`Segment` in `AppearanceTab`). Three separate buttons read as three things, and a
+  dropdown of the sizes was built and rejected live (picking a neighbouring size became a
+  two-press job).
+- **Every press applies at once, and the pane is what holds still.** Settings keeps the size and
+  place it opened with while the app resizes behind it (below), so the button stays under the
+  pointer without a timer anywhere. A debounced apply was built and judged twice: the controls
+  still moved once per run, and the pending value it needed could land on top of a newer one.
+  **There is no timer in this row.**
+- **The figure is a control**: clicking it types a whole percentage in the same range, applied on
+  Enter or on leaving the field and never while it is typed (the field would resize under the
+  caret). Escape cancels — and so does a scale that arrives from anywhere else, so an unfinished
+  edit can never overwrite something newer; the blur that Escape or a press on Reset causes
+  commits nothing (`cancelledRef`). **`Reset` shows only off the default** — at 100% there is
+  nothing to go back to — with no surface of its own (the notes folder path's grammar), to the
+  **left** of the pill so `−` and `+` never move when it appears. The range and the presets are
+  `SCALE_OPTIONS`, a custom value is held inside them, and `stepScale` (`utils/uiScale.ts`) is
+  the one rule the row and `Cmd+±` share: from a custom 93% the keys go to the nearest preset
+  either side. `interface-size.spec.ts`, the `tests/components/settings` suite.
+- **Settings keeps the scale it opened with, and nothing else does** (`SettingsModal`,
+  2026-09-19). The pane carries `zoom: openedAt / uiScale` and a local `--ui-scale`, so while it
+  is open the app resizes under every press and the pane does not move at all; closing and
+  reopening draws it at the scale of the day, so it is never excluded from the scale. `zoom`
+  nests multiplicatively and `cssZoom` reads `currentCSSZoom`, the effective product, so
+  measurements inside the pane are right at either scale; the one chip that is portalled out of
+  it (the notes-folder path's) divides by the document's zoom, which is its own. The pane is
+  centred by a **wrapper** rather than by `translate(-50%, -50%)` on itself — a transform would
+  make it the containing block for anything `fixed` inside it, and a percentage offset would
+  fight its zoom. `interface-size.spec.ts` proves the pane's box at 50%, 100% and 200%, through
+  a window resize, and that its controls, its portalled chip and its focus trap still work.
+- **The scale keys are the one shortcut that works over Settings** (`useAppKeyboard`,
+  `settingsHoldsKeys`): the app resizes behind the open pane, so the keys that resize it belong
+  there, and the row's figure follows while `UiScaleChip` stands down (the row says the number).
+  The test is which modal is *on screen*, not where focus is — the pane's trap places focus a
+  frame after it opens and a key pressed inside that frame is still Settings'. A confirm dialog
+  above the pane, or a menu inside it, takes the keys back. Every other shortcut still stands
+  down over every modal.
+- **`vw` and `vh` ignore the UI scale, so anything sized against the viewport divides by it**
+  (`atScale()` in `utils/uiScale`, against the `--ui-scale` custom property `SettingsContext`
+  writes beside the zoom). Measured 2026-09-19: a `100vh` box is 1520px tall in a 760px window
+  at 200%, so Settings' `maxHeight: calc(100vh - 48px)` was twice the window and its title and
+  Close sat above the top edge. Settings, the setup dialog and the toast stack divide; the
+  editor column's fluid gutters (`EditorArea`, `100vw - sidebar`) still do not, so they are a
+  little roomier than intended above 100% (known, judged at 100%).
+- **A menu opened from inside Settings is portalled to `body`** (`Z.SETTINGS_MENU`), because the
+  pane is centred with `transform: translate(-50%, -50%)` and a transformed ancestor becomes the
+  containing block for anything `fixed` inside it: the menu was placed against the pane and
+  stretched its scroll area. It divides its placement by `cssZoom` as every measured placement
+  does, and takes its keys in the **capture** phase, because Settings' own Escape listener was
+  registered first and would otherwise close the dialog out from under the menu.
 - **First-run setup is the same surface over the empty app** (`SetupDialog`, 480 wide:
   `Welcome to Boojy Notes`, one sentence, the Notes folder row with `Choose folder…`, the pills,
   a centred accent `Create note`). It shows only on a launch that has never had a folder (the
@@ -208,6 +258,15 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
   than the installed app is page zoom; judge chrome geometry after Cmd+0.
+- **A scale shortcut answers, always** (`UiScaleChip`, 2026-09-19). `Cmd+±` and `Cmd+0` raise a
+  chip at the foot of the editor for `SCALE_HINT_MS` (1400) saying `Interface size 120%`, with
+  the reset key on a pill beside it while the scale is off 100%; at 100% there is nothing to
+  reset to, so it is the figure alone. It is the tooltip chip's grammar with the menus' shadow,
+  because it floats free over the sheet rather than labelling a control. **A press at either end
+  of the range still answers** with the scale it is on (`useAppKeyboard` sets the scale it
+  already holds, a no-op for state): the chip is the scale's whole feedback and silence there
+  reads as a missed keystroke. Settings' own stepper raises none — the figure is beside the
+  buttons. `interface-size.spec.ts`, `UiScaleChip.test.tsx`.
 - Edit → Undo / Redo keep their menu roles (Cut, Copy, Paste, Select All must stay); Cmd+Z
   reaches the renderer's own handler.
 - On desktop the word count lives in the ··· menu; the touch layout shows it in its own ··· menu

@@ -12,6 +12,7 @@ import {
   dialogSurface,
 } from "./SettingsPrimitives";
 import { CloseIcon, FolderOpenIcon, NewNoteIcon } from "../Icons";
+import { atScale } from "../../utils/uiScale";
 import { ChromeButton } from "../EditorChrome";
 
 /** Setup's width: Settings' minus a step, enough for the default path and its button on one line. */
@@ -73,8 +74,8 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
           transform: "translate(-50%, -50%)",
           zIndex: Z.SETTINGS_INNER,
           width: SETUP_WIDTH,
-          maxWidth: "calc(100vw - 32px)",
-          maxHeight: "calc(100vh - 48px)",
+          maxWidth: atScale("100vw - 32px"),
+          maxHeight: atScale("100vh - 48px"),
           boxSizing: "border-box",
           padding: "20px 28px 28px",
           display: "flex",

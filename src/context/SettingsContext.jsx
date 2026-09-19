@@ -15,9 +15,15 @@ export function SettingsProvider({ children }) {
     return saved ? Number(saved) : 100;
   });
 
-  // Apply zoom and persist when scale changes
+  // Apply zoom and persist when scale changes. `--ui-scale` goes on the same
+  // element: `vw` and `vh` are *not* divided by `zoom` (measured 2026-09-19: a
+  // `100vh` box is 1520px tall in a 760px window at 200%), so anything sized
+  // against the viewport has to divide by the scale itself — `atScale()` in
+  // `utils/uiScale`. Settings sized `maxHeight: calc(100vh - 48px)` was twice
+  // the window at 200% and its title and Close sat above the top edge.
   useEffect(() => {
     document.documentElement.style.zoom = `${uiScale}%`;
+    document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
     document.documentElement.style.minHeight = uiScale !== 100 ? `${10000 / uiScale}vh` : "";
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);

@@ -39,6 +39,8 @@ import Toast from "./components/Toast";
 import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
+import UiScaleChip from "./components/UiScaleChip";
+import { atScale } from "./utils/uiScale";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
@@ -82,7 +84,7 @@ export default function BoojyNotes() {
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { uiScale, setUiScale, setSettingsOpen } = useSettings();
+  const { uiScale, setUiScale, settingsOpen, setSettingsOpen } = useSettings();
 
   const {
     sidebarWidth,
@@ -518,6 +520,20 @@ export default function BoojyNotes() {
     else el.textContent = openNoteTitle;
   }, [openNoteTitle]);
 
+  // The scale's own feedback: a shortcut says what it changed the scale to,
+  // Cmd+0 included, and a press at either end of the range answers with the
+  // scale it is on. Settings' own control needs none of this — the figure is
+  // beside the buttons — so only the keyboard path raises it.
+  const [scaleHint, setScaleHint] = useState(null);
+  const hideScaleHint = useCallback(() => setScaleHint(null), []);
+  const setUiScaleByKey = useCallback(
+    (next) => {
+      setUiScale(next);
+      setScaleHint({ at: Date.now(), scale: next });
+    },
+    [setUiScale],
+  );
+
   useAppKeyboard({
     activeNote,
     noteData,
@@ -533,7 +549,7 @@ export default function BoojyNotes() {
     toggleSidebar,
     openSearch,
     openSettings: () => setSettingsOpen(true),
-    setUiScale,
+    setUiScale: setUiScaleByKey,
     cancelBlockDrag,
     cancelSidebarDrag,
   });
@@ -1104,6 +1120,14 @@ export default function BoojyNotes() {
         onCancel={() => resolveConfirm(false)}
       />
 
+      <UiScaleChip
+        // Settings says the figure itself, so the chip stands down while it is
+        // open: two readouts of one number, one of them floating over the app.
+        hint={settingsOpen ? null : scaleHint}
+        onHide={hideScaleHint}
+        left={24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth)}
+      />
+
       {toasts.length > 0 && (
         <div
           className={isMobile ? undefined : "panel-motion"}
@@ -1117,7 +1141,9 @@ export default function BoojyNotes() {
             left: 24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth),
             // Never wider than the pane it stands in: at the window's minimum
             // the editor is 316px and a 360px toast would hang off the edge.
-            maxWidth: `calc(100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px)`,
+            // Divided by the UI scale, because `vw` ignores the zoom it is
+            // made of (`atScale`).
+            maxWidth: atScale(`100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px`),
             transition: isMobile ? undefined : panelTransition("left"),
             display: "flex",
             flexDirection: "column",

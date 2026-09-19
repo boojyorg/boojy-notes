@@ -38,6 +38,7 @@ vi.mock("../../../src/hooks/useFocusTrap", () => ({
 const settingsState = {
   settingsOpen: true,
   setSettingsOpen: vi.fn(),
+  uiScale: 100,
 };
 
 vi.mock("../../../src/context/SettingsContext", () => ({
@@ -86,6 +87,7 @@ function renderModal(overrides = {}) {
 beforeEach(() => {
   settingsState.settingsOpen = true;
   settingsState.setSettingsOpen = vi.fn();
+  settingsState.uiScale = 100;
 });
 
 afterEach(() => {
@@ -173,5 +175,55 @@ describe("SettingsModal", () => {
     renderModal({ isMobile: true });
     expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
     expect(screen.queryByText("About Boojy Notes")).not.toBeInTheDocument();
+  });
+
+  // The pane keeps the size and place it opened with while the app resizes
+  // behind it: a panel that grows as you press the button inside it moves that
+  // button out from under the pointer (judged live, Tyr, 2026-09-19). It is not
+  // excluded from the scale — the next time it opens it is drawn at whatever
+  // the scale is then.
+  describe("its own scale", () => {
+    const pane = () => screen.getByRole("dialog");
+
+    it("carries no zoom of its own at the scale it opened with", () => {
+      renderModal();
+      expect(pane().style.zoom).toBe("");
+      expect(pane().style.getPropertyValue("--ui-scale")).toBe("1");
+    });
+
+    it("cancels the difference when the scale changes while it is open", () => {
+      const { rerender } = renderModal();
+      settingsState.uiScale = 200;
+      rerender(<SettingsModal {...defaultProps} />);
+      // 100 / 200: the pane is drawn at the size it opened with.
+      expect(pane().style.zoom).toBe("0.5");
+      expect(pane().style.getPropertyValue("--ui-scale")).toBe("1");
+
+      settingsState.uiScale = 50;
+      rerender(<SettingsModal {...defaultProps} />);
+      expect(pane().style.zoom).toBe("2");
+    });
+
+    it("opens at the scale of the day, so reopening picks up the new one", () => {
+      const { rerender } = renderModal();
+      settingsState.uiScale = 150;
+      rerender(<SettingsModal {...defaultProps} />);
+      expect(Number(pane().style.zoom)).toBeCloseTo(100 / 150, 5);
+
+      // Closed, then opened again at 150.
+      settingsState.settingsOpen = false;
+      rerender(<SettingsModal {...defaultProps} />);
+      settingsState.settingsOpen = true;
+      rerender(<SettingsModal {...defaultProps} />);
+      expect(pane().style.zoom).toBe("");
+      expect(pane().style.getPropertyValue("--ui-scale")).toBe("1.5");
+    });
+
+    // The shell's scale shortcuts are the one thing allowed to act over
+    // Settings, and they find the pane by this attribute (`useAppKeyboard`).
+    it("names itself so the scale shortcuts can tell it from any other modal", () => {
+      renderModal();
+      expect(pane()).toHaveAttribute("data-settings-pane");
+    });
   });
 });
