@@ -59,6 +59,57 @@ export function useBlockOperations({
     focusCursorPos.current = 0;
   };
 
+  /**
+   * Turn the block at `blockIndex` into a code block in `lang`, with a fresh
+   * paragraph under it and the caret in the block's own field. The one owner
+   * of what a typed fence does, from the space and from Enter alike; the
+   * slash menu's Code reaches the same shape through
+   * `replaceWithSpecialBlock`. The caller clears the typed text from the DOM,
+   * since it holds the element.
+   */
+  const openCodeBlock = (noteId, blockIndex, lang = "") => {
+    const paraBlock = { id: genBlockId(), type: "p", text: "" };
+    let codeId = null;
+    commitNoteData((prev) => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      const codeBlock = { ...blocks[blockIndex], text: "", type: "code", lang };
+      delete codeBlock.checked;
+      delete codeBlock.indent;
+      codeId = codeBlock.id;
+      blocks.splice(blockIndex, 1, codeBlock, paraBlock);
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+    focusBlockId.current = codeId;
+    focusCursorPos.current = 0;
+  };
+
+  /**
+   * Turn the block at `blockIndex` into a divider, with a fresh paragraph
+   * under it holding the caret: what `--- ` and Enter on a bare `---` both
+   * do. A divider carries no text of its own, so the block's own text, check
+   * state and indent go with it.
+   */
+  const openDivider = (noteId, blockIndex) => {
+    commitNoteData((prev) => {
+      const next = { ...prev };
+      const n = { ...next[noteId] };
+      const blocks = [...n.content.blocks];
+      const divider = { ...blocks[blockIndex], type: "spacer" };
+      delete divider.text;
+      delete divider.checked;
+      delete divider.indent;
+      blocks[blockIndex] = divider;
+      n.content = { ...n.content, blocks };
+      next[noteId] = n;
+      return next;
+    });
+    insertBlockAfter(noteId, blockIndex, "p", "");
+  };
+
   const deleteBlock = (noteId, blockIndex) => {
     commitNoteData((prev) => {
       const next = { ...prev };
@@ -322,6 +373,8 @@ export function useBlockOperations({
   return {
     updateBlockText,
     insertBlockAfter,
+    openCodeBlock,
+    openDivider,
     deleteBlock,
     updateBlockProperty,
     saveAndInsertImage,

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
+import { hasOwnField } from "../../utils/domHelpers";
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
@@ -8,7 +9,6 @@ const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".
 // cell). Chosen from the menu, one of these owns the next keystroke: the
 // focus effect finds its first field (`ownedField`). Every other special
 // block has nothing to type into, so the paragraph after it takes the caret.
-const OWNS_CARET = new Set(["code", "callout", "table"]);
 
 export function useSlashCommands({
   noteDataRef,
@@ -19,7 +19,10 @@ export function useSlashCommands({
   insertBlockAfter,
   onError,
 }) {
-  const executeSlashCommand = useCallback(async (noteId, blockIndex, command) => {
+  // `opts.columns` is the typed table trigger's: a run of pipes is the row it
+  // draws, so `||||` asks for three columns. The menu's Table passes nothing
+  // and keeps the smallest useful shape.
+  const executeSlashCommand = useCallback(async (noteId, blockIndex, command, opts = {}) => {
     const blocks = noteDataRef.current[noteId].content.blocks;
     const block = blocks[blockIndex];
     const el = blockRefs.current[block.id];
@@ -44,7 +47,7 @@ export function useSlashCommands({
     const replaceWithSpecialBlock = (special) => {
       const paraBlock = { id: genBlockId(), type: "p", text: "" };
       updateBlocks((blks) => blks.splice(blockIndex, 1, special, paraBlock));
-      focusBlockId.current = OWNS_CARET.has(special.type) ? special.id : paraBlock.id;
+      focusBlockId.current = hasOwnField(special) ? special.id : paraBlock.id;
       focusCursorPos.current = 0;
     };
 
@@ -157,16 +160,15 @@ export function useSlashCommands({
     }
 
     if (command.type === "table") {
+      // Smallest useful table, no placeholder text: header cells you must first
+      // clear are friction, and the edge zones make growing it cheap.
+      const columns = Math.max(2, opts.columns ?? 2);
+      const emptyRow = () => Array.from({ length: columns }, () => "");
       replaceWithSpecialBlock({
         ...block,
         text: "",
         type: "table",
-        // Smallest useful table, no placeholder text: header cells you must first
-        // clear are friction, and the edge zones make growing it cheap.
-        rows: [
-          ["", ""],
-          ["", ""],
-        ],
+        rows: [emptyRow(), emptyRow()],
       });
       return;
     }

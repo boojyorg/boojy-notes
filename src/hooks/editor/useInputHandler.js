@@ -4,6 +4,13 @@ import { domNodeToMarkdown } from "../../utils/inlineFormatting";
 import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
 import { genBlockId } from "../../utils/storage";
 import { SLASH_COMMANDS } from "../../constants/data";
+import {
+  TYPED_DIVIDER_RE,
+  TYPED_FENCE_RE,
+  TYPED_TABLE_RE,
+  typedFenceLang,
+  typedTableColumns,
+} from "../../utils/blockTriggers";
 
 // Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
 const S = "[\\s\\u00a0]";
@@ -19,19 +26,23 @@ const MD_PATTERNS = [
   { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
   { regex: new RegExp(`^1\\.${S}$`), type: "numbered" },
   { regex: new RegExp(`^>${S}$`), type: "blockquote" },
-  { regex: /^---$/, type: "spacer" },
-  { regex: /^```/, type: "code" },
+  // Every marker waits for its space, these two included (2026-09-19): a
+  // marker that fires on its last character can never be given an argument,
+  // which is what kept ```js from opening a JavaScript block and `||||` from
+  // asking for a third column, and what made all three untypable as text.
+  { regex: TYPED_DIVIDER_RE, type: "spacer" },
+  { regex: TYPED_FENCE_RE, type: "code" },
 ];
 
 /**
- * Typed triggers for the two blocks the menu makes through its own path (a table
- * needs a shape, an image a picker), so they run the menu's command rather than
- * a second copy of it. `|||` fires at once, like `---`: no hand-typed table ever
- * starts with three pipes (an empty first cell is `| |`). `![]` waits for the
- * space so `![alt](url)`, matched below, can still be typed through it.
+ * Typed triggers for the two blocks the menu makes through its own path (a
+ * table needs a shape, an image a picker), so they run the menu's command
+ * rather than a second copy of it. Both wait for the space: the table's pipes
+ * are the row it draws, and `![]` waits so `![alt](url)`, matched below, can
+ * still be typed through it.
  */
 const MENU_TRIGGERS = [
-  { regex: /^\|\|\|$/, id: "table" },
+  { regex: TYPED_TABLE_RE, id: "table" },
   { regex: new RegExp(`^!\\[\\]${S}$`), id: "image" },
 ];
 
@@ -63,7 +74,8 @@ export function useInputHandler({
   setTagMenu,
   syncGeneration,
   updateBlockText,
-  insertBlockAfter,
+  openCodeBlock,
+  openDivider,
   getBlock,
   executeSlashCommand,
   noteTitleSetRef,
@@ -97,51 +109,36 @@ export function useInputHandler({
         // Code block auto-conversion
         if (pat.type === "code") {
           el.innerHTML = "<br>";
-          const lang = text.slice(3).trim();
-          const codeBlock = { ...currentBlock, text: "", type: "code", lang };
-          const paraBlock = { id: genBlockId(), type: "p", text: "" };
-          commitNoteData((prev) => {
-            const next = { ...prev };
-            const n = { ...next[noteId] };
-            const blks = [...n.content.blocks];
-            blks.splice(blockIndex, 1, codeBlock, paraBlock);
-            n.content = { ...n.content, blocks: blks };
-            next[noteId] = n;
-            return next;
-          });
-          // The block you asked for owns the next keystroke: the caret goes
-          // into the fence's own field, not the paragraph under it, exactly
-          // as the slash menu's Code does (OWNS_CARET in useSlashCommands).
-          // The focus effect finds no text root for a code block and focuses
-          // its textarea through `ownedField`.
-          focusBlockId.current = codeBlock.id;
-          focusCursorPos.current = 0;
+          // The info string is kept as it was typed — ```js stays `js` in the
+          // file, and the corner reads JavaScript (`canonicalLang`). The block
+          // owns the next keystroke: the caret goes into its own field, not
+          // the paragraph under it, exactly as the slash menu's Code does.
+          openCodeBlock(noteId, blockIndex, typedFenceLang(text) ?? "");
           return;
         }
 
         el.innerHTML = "<br>";
+        // A divider holds no text and takes no caret, so it ends in a fresh
+        // paragraph; `openDivider` is that operation, shared with the Enter
+        // that opens one.
+        if (pat.type === "spacer") {
+          openDivider(noteId, blockIndex);
+          return;
+        }
         commitNoteData((prev) => {
           const next = { ...prev };
           const n = { ...next[noteId] };
           const blks = [...n.content.blocks];
           const updated = { ...blks[blockIndex], text: "", type: pat.type };
           if (pat.type === "checkbox") updated.checked = false;
-          if (pat.type === "spacer") {
-            delete updated.text;
-            delete updated.checked;
-          }
           if (pat.type !== "checkbox") delete updated.checked;
           blks[blockIndex] = updated;
           n.content = { ...n.content, blocks: blks };
           next[noteId] = n;
           return next;
         });
-        if (pat.type === "spacer") {
-          insertBlockAfter(noteId, blockIndex, "p", "");
-        } else {
-          focusBlockId.current = currentBlock.id;
-          focusCursorPos.current = 0;
-        }
+        focusBlockId.current = currentBlock.id;
+        focusCursorPos.current = 0;
         return;
       }
     }
@@ -149,7 +146,12 @@ export function useInputHandler({
     for (const trig of MENU_TRIGGERS) {
       if (trig.regex.test(text)) {
         const command = SLASH_COMMANDS.find((c) => c.id === trig.id);
-        if (command) executeSlashCommand(noteId, blockIndex, command);
+        // The pipes are the row being drawn: `|||` is two columns, `||||`
+        // three. Nothing else carries an argument here.
+        if (command)
+          executeSlashCommand(noteId, blockIndex, command, {
+            columns: typedTableColumns(text) ?? undefined,
+          });
         return;
       }
     }

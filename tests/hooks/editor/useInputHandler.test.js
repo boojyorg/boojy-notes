@@ -64,6 +64,8 @@ describe("useInputHandler", () => {
       syncGeneration: { current: 0 },
       updateBlockText: vi.fn(),
       insertBlockAfter: vi.fn(),
+      openCodeBlock: vi.fn(),
+      openDivider: vi.fn(),
       getBlock: vi.fn(),
       executeSlashCommand: vi.fn(),
       noteTitleSetRef: { current: new Set(["Welcome"]) },
@@ -110,26 +112,48 @@ describe("useInputHandler", () => {
     expect(deps.commitNoteData).toHaveBeenCalled();
   });
 
-  it("detects code block trigger (```)", () => {
-    mockEl.textContent = "```";
+  // A fence waits for its space, as every marker carrying an argument does;
+  // the conversion itself is openCodeBlock's, shared with the Enter form.
+  it("opens a plain code block on ``` and a space", () => {
+    mockEl.textContent = "``` ";
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
+    expect(deps.openCodeBlock).toHaveBeenCalledWith("note-1", 0, "");
   });
 
-  it("detects code block with language (```python)", () => {
+  it("takes the language from ```python and a space", () => {
+    mockEl.textContent = "```python ";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.openCodeBlock).toHaveBeenCalledWith("note-1", 0, "python");
+  });
+
+  it("leaves a fence with no space as text", () => {
     mockEl.textContent = "```python";
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
+    expect(deps.openCodeBlock).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
-  it("detects horizontal rule shortcut (---)", () => {
-    mockEl.textContent = "---";
+  it("opens a divider on --- and a space, however long the run", () => {
+    mockEl.textContent = "--- ";
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
-    // Spacer type triggers insertBlockAfter
-    expect(deps.insertBlockAfter).toHaveBeenCalledWith("note-1", 0, "p", "");
+    expect(deps.openDivider).toHaveBeenCalledWith("note-1", 0);
+
+    deps.openDivider.mockClear();
+    mockEl.textContent = "---------- ";
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.openDivider).toHaveBeenCalledWith("note-1", 0);
+  });
+
+  it("leaves a run of dashes with no space as text", () => {
+    mockEl.textContent = "----------";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.openDivider).not.toHaveBeenCalled();
+    expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
   it("detects blockquote shortcut (> )", () => {
@@ -139,16 +163,33 @@ describe("useInputHandler", () => {
     expect(deps.commitNoteData).toHaveBeenCalled();
   });
 
-  it("||| runs the menu's Table command at once, like ---", () => {
-    mockEl.textContent = "|||";
+  // The pipes are the row being drawn: a row of N cells is written with N+1
+  // pipes, so ||| is two columns and |||| is three.
+  it("||| and a space runs the menu's Table command, the pipes its columns", () => {
+    mockEl.textContent = "||| ";
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
     expect(deps.executeSlashCommand).toHaveBeenCalledWith(
       "note-1",
       0,
       expect.objectContaining({ id: "table", type: "table" }),
+      { columns: 2 },
     );
     expect(deps.commitNoteData).not.toHaveBeenCalled();
+
+    deps.executeSlashCommand.mockClear();
+    mockEl.textContent = "|||| ";
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).toHaveBeenCalledWith("note-1", 0, expect.anything(), {
+      columns: 3,
+    });
+  });
+
+  it("leaves a run of pipes with no space as text", () => {
+    mockEl.textContent = "|||||";
+    const { result } = renderHook(() => useInputHandler(deps));
+    result.current.handleBlockInput("note-1", 0);
+    expect(deps.executeSlashCommand).not.toHaveBeenCalled();
   });
 
   it("a hand-typed table row is not a trigger", () => {
@@ -168,6 +209,8 @@ describe("useInputHandler", () => {
       "note-1",
       0,
       expect.objectContaining({ id: "image", type: "image" }),
+      // Only the table trigger carries an argument; the image's is undefined.
+      { columns: undefined },
     );
   });
 

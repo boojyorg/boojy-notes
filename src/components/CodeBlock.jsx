@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from 
 import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
+import { canonicalLang, sameLang } from "../utils/codeLanguage";
 import { ChevronDownIcon } from "./Icons";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
@@ -338,9 +339,12 @@ export default memo(function CodeBlock({
 
   const handleLangChange = useCallback(
     (newLang) => {
+      // Choosing the language the block already has writes nothing: a file
+      // that says ```js keeps saying `js` when JavaScript is picked again.
+      if (sameLang(newLang, lang)) return;
       onUpdateLang(noteId, blockIndex, newLang);
     },
-    [noteId, blockIndex, onUpdateLang],
+    [noteId, blockIndex, onUpdateLang, lang],
   );
 
   /** The context menu's own row: it closes and hands the menu to the label. */
@@ -354,7 +358,11 @@ export default memo(function CodeBlock({
     if (onDelete) onDelete(blockIndex);
   }, [blockIndex, onDelete, closeCtxMenu]);
 
-  const displayLabel = LANG_DISPLAY[lang] || (lang && !["", "plain"].includes(lang) ? lang : "");
+  // What the corner reads and what the menu ticks: the language the info
+  // string names, not the string itself. A file's ```js is JavaScript here and
+  // stays `js` on disk; a word the app does not know reads as it was written.
+  const canonical = canonicalLang(lang);
+  const displayLabel = LANG_DISPLAY[canonical] || canonical;
 
   return (
     <div
@@ -462,7 +470,7 @@ export default memo(function CodeBlock({
         <CodeLangMenu
           anchor={langMenu}
           languages={LANGUAGES}
-          lang={lang}
+          lang={canonical}
           onSelect={handleLangChange}
           onClose={closeLangMenu}
         />
