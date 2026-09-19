@@ -34,24 +34,21 @@ export const EDITOR_FONT_SIZE = 15;
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
 /**
- * The transparent margin around the drawn box that is still the checkbox.
+ * The checkbox is two elements: the square you see, and the hit area around it
+ * that takes the click.
  *
- * The square is 16px, and a press within about a pixel of its edge used to
- * animate and change nothing: `:active` scaled the square to 0.85, Chromium
- * hit-tests against the transformed box, and the shrink pulled every edge
- * 1.2px in from under the pointer — so the release landed on the row and the
- * click fired there (2026-09-19). What fixes that is the hit element covering
- * the square's own footprint and never transforming; the press animation moved
- * to the square inside it. This padding is the forgiveness on top of it,
- * bringing the target to 24px tall, the smallest that is comfortable.
+ * A press within about a pixel of the square's edge used to animate and change
+ * nothing: `:active` scales the square to 0.85, Chromium hit-tests against the
+ * transformed box, and a held press pulled every edge 1.2px in from under the
+ * pointer — so the release landed on the row, and the click fired there rather
+ * than on the box (2026-09-19). What fixes it is an element that covers the
+ * square's footprint and never transforms; the press animation belongs to the
+ * square inside it.
  *
- * It is not applied on the left: the row carries `contain: content`, so
- * anything past its left edge is clipped and takes no pointer either — the
- * overhang measured as dead space, not as target (probed live 2026-09-19).
- * Top, bottom and right are inside the row and real. The square keeps its
- * exact place, and the gap to the text gives up what the right pad takes.
+ * The hit area is that footprint and no more. A padded one was tried the same
+ * day and rejected live: the target is the box you can see, and 4px of slop
+ * around it ticked tasks the pointer was not on.
  */
-const CHECKBOX_HIT_PAD = 4;
 /** Air between the drawn box and the task's text. */
 const CHECKBOX_TEXT_GAP = 9;
 
@@ -540,16 +537,16 @@ const EditableBlock = memo(
             // Top-aligned, like the bullet and number markers: the box sits on
             // the first line of a wrapped task, not the middle of the block.
             alignItems: "flex-start",
-            gap: CHECKBOX_TEXT_GAP - CHECKBOX_HIT_PAD,
+            gap: CHECKBOX_TEXT_GAP,
             padding: "2.5px 0",
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: CHECKBOX_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
-          {/* The hit area, not the drawn box: it takes the click and never
-              transforms, so the press animation cannot move the target out
-              from under the pointer. */}
+          {/* The hit area, not the drawn box: the same footprint as the square,
+              but it never transforms, so the press animation cannot move the
+              target out from under the pointer. */}
           <div
             className="checkbox-hit"
             role="checkbox"
@@ -561,18 +558,15 @@ const EditableBlock = memo(
               onCheckToggle(noteId, blockIndex);
             }}
             style={{
-              width: CHECKBOX_SIZE + CHECKBOX_HIT_PAD,
-              height: CHECKBOX_SIZE + CHECKBOX_HIT_PAD * 2,
-              // The drawn box centres on the first line's height, whatever the
-              // font size; the hit box is that position less its own padding,
-              // so the square sits exactly where it always did.
-              marginTop:
-                (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2 - CHECKBOX_HIT_PAD,
+              width: CHECKBOX_SIZE,
+              height: CHECKBOX_SIZE,
+              // Centre the box on the first line's height, whatever the font size.
+              marginTop: (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
               flexShrink: 0,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-start",
+              justifyContent: "center",
               userSelect: "none",
             }}
           >
