@@ -465,6 +465,7 @@ export default memo(function CalloutBlock({
         ref={bodyRef}
         contentEditable
         suppressContentEditableWarning
+        data-inline-field="callout-body"
         data-placeholder="Type callout content..."
         onInput={handleBodyInput}
         onKeyDown={handleBodyKeyDown}

@@ -62,6 +62,7 @@ function TableCell({
         cellRefs.current[`${rowIdx}-${colIdx}`] = el;
       }}
       scope={Tag === "th" ? "col" : undefined}
+      data-inline-field="cell"
       contentEditable
       suppressContentEditableWarning
       onInput={(e) => onInput(e, rowIdx, colIdx)}

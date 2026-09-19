@@ -65,7 +65,6 @@ describe("useInlineFormatting", () => {
     expect(typeof result.current.applyFormat).toBe("function");
     expect(typeof result.current.detectActiveFormats).toBe("function");
     expect(typeof result.current.reReadBlockFromDom).toBe("function");
-    expect(typeof result.current.toggleInlineCode).toBe("function");
     expect(typeof result.current.getLinkContext).toBe("function");
   });
 
@@ -223,6 +222,67 @@ describe("useInlineFormatting", () => {
     document.body.removeChild(editorEl);
   });
 
+  // A field that holds inline Markdown owns its own formatting: the format is
+  // applied inside the field and the field commits it on the input event that
+  // follows. The editor reads no block back — a cell's text is the cell's.
+  it("applyFormat in a field formats the field and lets the field commit it", () => {
+    const updateBlockText = vi.fn();
+    const setToolbarState = vi.fn();
+    const { deps, editorEl } = setup({ updateBlockText, setToolbarState });
+    document.body.appendChild(editorEl);
+
+    const field = document.createElement("td");
+    field.setAttribute("data-inline-field", "cell");
+    field.textContent = "one word";
+    editorEl.appendChild(field);
+    const onInput = vi.fn();
+    field.addEventListener("input", onInput);
+    const range = document.createRange();
+    range.setStart(field.firstChild, 4);
+    range.setEnd(field.firstChild, 8);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+
+    const { result } = renderHook(() => useInlineFormatting(deps));
+    act(() => {
+      result.current.applyFormat("bold");
+    });
+
+    expect(field.innerHTML).toBe("one <strong>word</strong>");
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(updateBlockText).not.toHaveBeenCalled();
+    expect(setToolbarState).toHaveBeenCalledWith(expect.any(Function));
+
+    document.body.removeChild(editorEl);
+  });
+
+  // Link is the editor's alone in a field: the toolbar drops the glyph, and the
+  // popover never opens over a cell.
+  it("applyFormat for link in a field opens no popover and changes nothing", () => {
+    const onOpenLinkEditor = vi.fn();
+    const { deps, editorEl } = setup({ onOpenLinkEditor });
+    document.body.appendChild(editorEl);
+
+    const field = document.createElement("td");
+    field.setAttribute("data-inline-field", "cell");
+    field.textContent = "one word";
+    editorEl.appendChild(field);
+    const range = document.createRange();
+    range.selectNodeContents(field.firstChild);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+
+    const { result } = renderHook(() => useInlineFormatting(deps));
+    act(() => {
+      result.current.applyFormat("link");
+    });
+
+    expect(onOpenLinkEditor).not.toHaveBeenCalled();
+    expect(field.innerHTML).toBe("one word");
+
+    document.body.removeChild(editorEl);
+  });
+
   it("detectActiveFormats returns all false when no selection", () => {
     const { deps } = setup();
     const { result } = renderHook(() => useInlineFormatting(deps));
@@ -296,7 +356,7 @@ describe("useInlineFormatting", () => {
     document.body.removeChild(editorEl);
   });
 
-  it("toggleInlineCode wraps selected text in code element", () => {
+  it("applyFormat wraps a selection in <code>", () => {
     const { deps, editorEl } = setup();
     document.body.appendChild(editorEl);
 
@@ -312,7 +372,7 @@ describe("useInlineFormatting", () => {
     const { result } = renderHook(() => useInlineFormatting(deps));
 
     act(() => {
-      result.current.toggleInlineCode(sel);
+      result.current.applyFormat("code");
     });
 
     expect(editorEl.querySelector("code")).not.toBe(null);
