@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
-import { ACTION_ROW_H, COLUMN_HEAD_GAP, LABEL_PAD_X } from "../constants/layout";
+import { COLUMN_HEAD_GAP, LABEL_PAD_X } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -9,7 +9,7 @@ import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
-import EditableBlock, { EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT } from "./EditableBlock";
+import EditableBlock from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
@@ -53,25 +53,31 @@ import { panelTransition } from "../tokens/motion";
 /**
  * The column's own top padding on the desktop, under the chrome row.
  *
- * **The note's first line sits on the sidebar's New note row.** The two
- * columns start level — the sidebar's header and the path band are the same
- * height — so the sidebar's own first row decides where the note's first line
- * belongs: `COLUMN_HEAD_GAP` of air, then half the action row, is where that
- * row's words are, and the note's first line is centred on the same y by
- * giving up half its own line box. Line boxes, not their tops: a 15px
- * paragraph's box is 25.5px tall against the 14px row's 16.5px, and glyphs sit
- * in the middle of their box, so the two lines' *tops* agreeing (which is what
- * the old value did, to a tenth of a pixel) left the words 4.6px apart
- * (measured 2026-09-19).
+ * **The note's first line and the sidebar's New note row share a baseline.**
+ * The two columns start level — the sidebar's header and the path band are the
+ * same height — so the row's own words are the line the note's first line is
+ * set on: the air above the row, plus the distance from the row's top to its
+ * baseline, less the same distance inside the note's first block.
  *
- * A note opening on a heading still starts lower, by that heading's own top
- * margin, which is the rhythm a heading is entitled to.
+ * Both distances are measured rather than derived, because each is the font's
+ * ascent and only the browser knows it (measured at 100% on 2026-09-19).
  *
- * Before this it was what the name's row and its gap added up to when the name
- * was part of the column, kept so the first block did not move when the name
- * left it (2026-09-15).
+ * **One offset cannot serve every first block**: a baseline sits further down a
+ * tall line box than a short one. Measured against the row's baseline when the
+ * paragraph was the block that agreed — H1 +10px, H2 +4, H3 +2, paragraph
+ * +0.5, H6 −2. It is set for H1, the heading a note usually opens with, judged
+ * live; a paragraph-first note carries that 10px the other way. The
+ * alternative, a padding that depends on the first block's type, is refused:
+ * the column would jump the moment `# ` was typed into the first line.
+ *
+ * Tops agreeing is not baselines agreeing, and centres are a third answer
+ * again; all three were tried live the same day, in that order.
  */
-const COLUMN_TOP = COLUMN_HEAD_GAP + ACTION_ROW_H / 2 - (EDITOR_FONT_SIZE * EDITOR_LINE_HEIGHT) / 2;
+/** New note's top edge to the baseline of its label. */
+const ROW_BASELINE = 21.75;
+/** The first block's top edge to the baseline of its first line, for an H1. */
+const FIRST_BLOCK_BASELINE = 28.5;
+const COLUMN_TOP = COLUMN_HEAD_GAP + ROW_BASELINE - FIRST_BLOCK_BASELINE;
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

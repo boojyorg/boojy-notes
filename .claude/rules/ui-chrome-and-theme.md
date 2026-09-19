@@ -228,21 +228,21 @@ the caret leaves. Longer names still grow both ways (Finder's rename).
   and the nearest folders, then `… / name`, then the name), measured by an invisible twin of
   every crumb and a `ResizeObserver`, via `getBoundingClientRect` so the UI scale cancels.
   Widening never hides a folder.
-- **The note's first line sits on the sidebar's New note row, whatever block it is.** The two
-  columns start level (the sidebar header and the path band are both `CHROME_TOP + CHROME_BTN`),
-  so `COLUMN_TOP` (`EditorArea`) is derived from the sidebar's own first row —
-  `COLUMN_HEAD_GAP` plus half `ACTION_ROW_H`, less half the editor's line box — and the sidebar
-  constants live in `constants/layout.js` so the two cannot drift. Line boxes, not their tops:
-  glyphs sit in the middle of their box, and a 15px paragraph's is 25.5px against the 14px row's
-  16.5px, so the tops agreeing (which is what the value before 2026-09-19 did, to a tenth of a
-  pixel) left the words 4.6px apart. **A heading needed two more things** (judged live the same
-  day): the note's first block is given no top margin, since that margin is the air between a
-  heading and the block above and there is none, and `COLUMN_HEAD_GAP` went 12 → 14 to meet it
-  halfway. Measured after: cap tops within 0.2px of the row's for a paragraph *and* an H1, with
-  no padding that depends on the block's type — the column must not jump when `# ` is typed into
-  the first line. The head of the sidebar tightened to match (`NOTES_ROW_GAP` 8), so the Notes
-  row rose 2px as New note fell 2px. Touch devices have no chrome row and keep the name at the
-  head of the column.
+- **The note's first line and the New note row share a baseline, set for an H1.** The two columns
+  start level (the sidebar header and the path band are both `CHROME_TOP + CHROME_BTN`), so
+  `COLUMN_TOP` (`EditorArea`) is the air above that row plus the row's top-to-baseline distance,
+  less the first block's own; both distances are the font's ascent, so they are measured at 100%
+  rather than derived, and the sidebar constants live in `constants/layout.js` so the two cannot
+  drift. The note's first block is also given no top margin — that margin is the air between a
+  heading and the block above, and there is none.
+  **One offset cannot serve every first block**, because a baseline sits further down a tall line
+  box than a short one: with H1 on the row, H2 is 6px high, H3 8, a bullet 7.5, a paragraph 9.5
+  (measured 2026-09-19). H1 is the one chosen, judged live over tops agreeing and centres
+  agreeing, which were the two answers before it the same day. A padding that depends on the
+  first block's type is refused: the column would jump the moment `# ` was typed into the first
+  line. `COLUMN_HEAD_GAP` (12 → 14 → 18) carries half of it, and `NOTES_ROW_GAP` (8 → 4) gives up
+  what it takes, so the Notes row and the list below it never move. Touch devices have no chrome
+  row and keep the name at the head of the column.
 - `note-path.spec.ts`, `chrome-row.spec.ts`, `pathCrumbs.test.ts`, `NotePath.test.jsx`.
 
 ### A folder crumb opens the sidebar's tree under itself
