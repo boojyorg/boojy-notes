@@ -145,6 +145,16 @@ export const ACTION_RADIUS = 12;
 /** The labelled New note row: a touch taller than a tree row, as the one
  *  action among a list of names. */
 export const ACTION_ROW_H = 32;
-/** Above a section header, and above the New note row that opens the column.
- *  One spacing rule for every section. */
-export const SECTION_GAP = 12;
+/**
+ * Air under the chrome row before the first row of a column — the sidebar's
+ * New note row, and with it the note's first line, which is measured from this
+ * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, when 2px more brought
+ * the pair down onto a note opening with a heading.
+ */
+export const COLUMN_HEAD_GAP = 14;
+/**
+ * Between the New note row and the Notes row. Tighter than the air above them,
+ * so the action and the list's name read as one head to the column rather than
+ * as two sections — and so the Notes row rises as New note moves down.
+ */
+export const NOTES_ROW_GAP = 8;

@@ -34,8 +34,9 @@ import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
   ACTION_ROW_H,
+  COLUMN_HEAD_GAP,
   HEADER_RIGHT_INSET,
-  SECTION_GAP,
+  NOTES_ROW_GAP,
   ROW_INSET,
   SIDEBAR_TREE_INSET,
   SPINE,
@@ -146,9 +147,9 @@ const renameFieldStyle = ({ TEXT }, fontSize) => ({
 // row. The trailing button's 16px glyph lands 12px from the right edge,
 // mirroring the spine. No chevrons — the sections do not collapse.
 //
-// One spacing rule for every section: SECTION_GAP above the header, then
-// SECTION_CONTENT_GAP down to its first row. `Folders` gets its top gap from the
-// action group's own bottom padding, which is set to the same 12.
+// The head of the column is New note and the Notes row, one above the other:
+// COLUMN_HEAD_GAP of air under the chrome row, then the action, then
+// NOTES_ROW_GAP, then the label, then SECTION_CONTENT_GAP down to its first row.
 const SECTION_HEADER_H = TREE_ROW_H;
 const SECTION_HEADER_LEFT = TREE_SPINE;
 /** The header's 16px glyphs share a right edge with the chrome row's 18px ones:
@@ -176,7 +177,7 @@ const SECTION_CONTENT_GAP = 2;
  * not the storage folder's name, which lives in Settings → Storage beside the
  * control that changes it (2026-09-12).
  */
-function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
+function SectionHeader({ label, TEXT, children, dropRoot, menuOpen }) {
   return (
     <div
       role="presentation"
@@ -195,8 +196,7 @@ function SectionHeader({ label, TEXT, first, children, dropRoot, menuOpen }) {
         boxSizing: "border-box",
         paddingLeft: SECTION_HEADER_LEFT,
         paddingRight: SECTION_HEADER_RIGHT,
-        // A first header sits a touch below the chrome row rather than on it.
-        marginTop: first ? 10 : SECTION_GAP,
+        marginTop: NOTES_ROW_GAP,
         marginBottom: SECTION_CONTENT_GAP,
         flexShrink: 0,
       }}
@@ -1337,7 +1337,7 @@ const Sidebar = memo(function Sidebar({
                     flexShrink: 0,
                   }}
                 >
-                  <div style={{ height: SECTION_GAP }} />
+                  <div style={{ height: COLUMN_HEAD_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
                   <SectionHeader
                     label="Notes"

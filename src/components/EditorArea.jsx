@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
-import { ACTION_ROW_H, LABEL_PAD_X, SECTION_GAP } from "../constants/layout";
+import { ACTION_ROW_H, COLUMN_HEAD_GAP, LABEL_PAD_X } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -56,7 +56,7 @@ import { panelTransition } from "../tokens/motion";
  * **The note's first line sits on the sidebar's New note row.** The two
  * columns start level — the sidebar's header and the path band are the same
  * height — so the sidebar's own first row decides where the note's first line
- * belongs: `SECTION_GAP` of air, then half the action row, is where that
+ * belongs: `COLUMN_HEAD_GAP` of air, then half the action row, is where that
  * row's words are, and the note's first line is centred on the same y by
  * giving up half its own line box. Line boxes, not their tops: a 15px
  * paragraph's box is 25.5px tall against the 14px row's 16.5px, and glyphs sit
@@ -71,7 +71,7 @@ import { panelTransition } from "../tokens/motion";
  * was part of the column, kept so the first block did not move when the name
  * left it (2026-09-15).
  */
-const COLUMN_TOP = SECTION_GAP + ACTION_ROW_H / 2 - (EDITOR_FONT_SIZE * EDITOR_LINE_HEIGHT) / 2;
+const COLUMN_TOP = COLUMN_HEAD_GAP + ACTION_ROW_H / 2 - (EDITOR_FONT_SIZE * EDITOR_LINE_HEIGHT) / 2;
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

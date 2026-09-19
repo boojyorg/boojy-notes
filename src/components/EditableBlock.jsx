@@ -452,6 +452,11 @@ const EditableBlock = memo(
           style={{
             contain: "content",
             ...style,
+            // A heading's top margin is the air between it and the block above.
+            // The note's first block has none above it, so those pixels only
+            // pushed a note that opens on a heading off the line the column is
+            // measured to (2026-09-19). Every other heading keeps its rhythm.
+            ...(blockIndex === 0 ? { marginTop: 0 } : null),
             color: TEXT.primary,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
