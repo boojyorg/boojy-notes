@@ -4,6 +4,7 @@ import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { spacing } from "../../tokens/spacing";
+import { atScale } from "../../utils/uiScale";
 import { fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
 import UpdatesTab from "./UpdatesTab";
@@ -207,8 +208,11 @@ export default function SettingsModal({
           transform: "translate(-50%, -50%)",
           zIndex: Z.SETTINGS_INNER,
           width: SETTINGS_WIDTH,
-          maxWidth: "calc(100vw - 32px)",
-          maxHeight: "calc(100vh - 48px)",
+          // Divided by the scale: `vw`/`vh` ignore the zoom the UI scale is
+          // made of, so at 200% this pane was twice the window and its header
+          // sat above the top edge (2026-09-19).
+          maxWidth: atScale("100vw - 32px"),
+          maxHeight: atScale("100vh - 48px"),
           boxSizing: "border-box",
           padding: "20px 28px",
           display: "flex",

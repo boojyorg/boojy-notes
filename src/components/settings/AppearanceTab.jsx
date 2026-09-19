@@ -1,8 +1,10 @@
+import { useCallback, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
-import { SCALE_OPTIONS } from "../../constants/data";
-import { MinusIcon, MonitorIcon, MoonIcon, PlusIcon, SunIcon } from "../Icons";
+import { SCALE_DEFAULT, parseScale } from "../../utils/uiScale";
+import { ChevronDownIcon, MonitorIcon, MoonIcon, SunIcon } from "../Icons";
 import { SmallButton } from "./SettingsPrimitives";
+import ScaleMenu from "./ScaleMenu";
 
 /** Stored keys stay "day"/"night"/"auto" so every saved preference keeps
  *  working; the product words are Light / Dark / System. */
@@ -63,36 +65,38 @@ export function ThemePills() {
   );
 }
 
-/** The scale one step either way, or the one it is already on at the ends. */
-export function stepScale(scale, direction) {
-  const next =
-    direction > 0
-      ? SCALE_OPTIONS.find((s) => s > scale)
-      : [...SCALE_OPTIONS].reverse().find((s) => s < scale);
-  return next ?? scale;
-}
-
 /**
- * Settings → Appearance → Interface size: how big everything is drawn, the
- * `Cmd+±` scale given a control (2026-09-19). It was keyboard-only, which
- * meant nothing in the app said the feature existed, nothing said what scale
- * you were on, and nothing said `Cmd+0` was the way back.
+ * Settings → Appearance → Interface size: how big the app draws everything,
+ * the `Cmd+±` scale given a control (2026-09-19). It was keyboard-only, so
+ * nothing in the app said the feature existed, nothing said what scale you
+ * were on, and nothing said `Cmd+0` was the way back.
  *
- * The Updates switch's row: the label at 14px in the primary ink, the control
- * at the right. Two bordered buttons with the figure between them, in a fixed
- * column so the row does not shift as the figure changes width. `Reset` appears
- * only off 100%, because at 100% there is nothing to reset to, and it appears
- * to the *left* of the stepper so that the buttons being pressed repeatedly
- * never move out from under the pointer. A button at the end of the range is
- * `aria-disabled`, the chrome row's grammar: it keeps the pointer and focus and
- * answers nothing.
+ * **It is a menu, not a stepper** (judged live, Tyr): the scale redraws the
+ * whole app, Settings included, so a control pressed repeatedly moved out from
+ * under the pointer between presses. A menu is one press to open and one to
+ * choose, and the app resizes once, after the choice. `Custom…` takes a whole
+ * percentage inside the same range; it is applied on Enter or Apply and never
+ * while it is being typed, because the field would resize under the caret.
+ * Escape leaves the value as it was. `Reset` shows only off the default.
  */
 function InterfaceSize() {
   const { theme } = useTheme();
-  const { TEXT } = theme;
+  const { TEXT, BG } = theme;
   const { uiScale, setUiScale } = useSettings();
-  const atMin = uiScale <= SCALE_OPTIONS[0];
-  const atMax = uiScale >= SCALE_OPTIONS[SCALE_OPTIONS.length - 1];
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [custom, setCustom] = useState(null);
+
+  const openMenu = (e) => setMenuAnchor(e.currentTarget.getBoundingClientRect());
+  const closeMenu = useCallback(() => setMenuAnchor(null), []);
+  // The field opens on the scale in use, so a nudge from 120 to 125 is two
+  // keystrokes rather than a fresh number.
+  const startCustom = useCallback(() => setCustom(String(uiScale)), [uiScale]);
+  const commitCustom = () => {
+    const next = parseScale(custom);
+    if (next !== null) setUiScale(next);
+    setCustom(null);
+  };
+
   return (
     <div
       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 30 }}
@@ -100,46 +104,73 @@ function InterfaceSize() {
       <div id="interface-size-label" style={{ fontSize: 14, color: TEXT.primary }}>
         Interface size
       </div>
-      <div
-        role="group"
-        aria-labelledby="interface-size-label"
-        style={{ display: "flex", alignItems: "center", gap: 8 }}
-      >
-        {uiScale !== 100 && (
-          <SmallButton onClick={() => setUiScale(100)} style={{ marginRight: 4 }}>
-            Reset
-          </SmallButton>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {custom === null ? (
+          <>
+            {uiScale !== SCALE_DEFAULT && (
+              <SmallButton onClick={() => setUiScale(SCALE_DEFAULT)}>Reset</SmallButton>
+            )}
+            <SmallButton
+              aria-haspopup="menu"
+              aria-expanded={!!menuAnchor}
+              aria-labelledby="interface-size-label"
+              data-testid="ui-scale-value"
+              onClick={openMenu}
+              style={{ gap: 6, minWidth: 86, justifyContent: "space-between" }}
+            >
+              {`${uiScale}%`}
+              <ChevronDownIcon size={14} />
+            </SmallButton>
+          </>
+        ) : (
+          <>
+            <input
+              // Opened on purpose, from the menu's own Custom… row.
+              autoFocus
+              inputMode="numeric"
+              aria-label="Interface size, per cent"
+              data-testid="ui-scale-input"
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitCustom();
+                } else if (e.key === "Escape") {
+                  // The dialog's own Escape would close Settings behind this.
+                  e.preventDefault();
+                  setCustom(null);
+                }
+              }}
+              style={{
+                width: 64,
+                height: 30,
+                boxSizing: "border-box",
+                padding: "0 8px",
+                borderRadius: 8,
+                border: `1px solid ${theme.button.border}`,
+                background: BG.elevated,
+                color: TEXT.primary,
+                fontSize: 13,
+                fontFamily: "inherit",
+                outline: "none",
+              }}
+            />
+            <span style={{ fontSize: 14, color: TEXT.muted, marginLeft: -2 }}>%</span>
+            <SmallButton onClick={commitCustom}>Apply</SmallButton>
+          </>
         )}
-        <SmallButton
-          kind={atMin ? "disabled" : "normal"}
-          aria-label="Smaller"
-          onClick={() => setUiScale(stepScale(uiScale, -1))}
-          style={{ padding: "0 8px" }}
-        >
-          <MinusIcon />
-        </SmallButton>
-        <span
-          aria-live="polite"
-          data-testid="ui-scale-value"
-          style={{
-            fontSize: 14,
-            color: TEXT.primary,
-            minWidth: 44,
-            textAlign: "center",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {uiScale}%
-        </span>
-        <SmallButton
-          kind={atMax ? "disabled" : "normal"}
-          aria-label="Larger"
-          onClick={() => setUiScale(stepScale(uiScale, 1))}
-          style={{ padding: "0 8px" }}
-        >
-          <PlusIcon />
-        </SmallButton>
       </div>
+      {menuAnchor && (
+        <ScaleMenu
+          anchor={menuAnchor}
+          scale={uiScale}
+          onChoose={setUiScale}
+          onCustom={startCustom}
+          onClose={closeMenu}
+        />
+      )}
     </div>
   );
 }

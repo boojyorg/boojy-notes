@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { SCALE_OPTIONS } from "../constants/data";
+import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -143,20 +143,22 @@ export function useAppKeyboard({
       // the range still answers, with the scale it is already on: the readout
       // it raises is the whole feedback the scale has, and saying nothing reads
       // as a missed keystroke rather than a limit (2026-09-19). Setting the
-      // scale it already holds is a no-op for state.
+      // scale it already holds is a no-op for state. From a custom scale the
+      // keys move to the nearest preset on the side they point (`stepScale`),
+      // so 93% goes up to 100 and down to 90.
       if (mod && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
-        L.setUiScale(SCALE_OPTIONS.find((s) => s > L.uiScale) ?? L.uiScale);
+        L.setUiScale(stepScale(L.uiScale, 1));
         return;
       }
       if (mod && e.key === "-") {
         e.preventDefault();
-        L.setUiScale([...SCALE_OPTIONS].reverse().find((s) => s < L.uiScale) ?? L.uiScale);
+        L.setUiScale(stepScale(L.uiScale, -1));
         return;
       }
       if (mod && e.key === "0") {
         e.preventDefault();
-        L.setUiScale(100);
+        L.setUiScale(SCALE_DEFAULT);
         return;
       }
     };

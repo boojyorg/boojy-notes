@@ -195,11 +195,31 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   step above the ground so it is told from a disabled one before hover. `settingsTab` and
   `settingsFontSize` don't exist; don't reintroduce them in mocks.
   **Appearance's second row is `Interface size`** (2026-09-19), the Updates switch's row with a
-  stepper at its right: `SmallButton` Smaller and Larger around the figure in a 44px column
-  (`tabular-nums`, so the row does not shift), `aria-disabled` at either end of `SCALE_OPTIONS`.
-  `Reset` shows only off 100% and sits to the **left** of the stepper, so the buttons being
-  pressed repeatedly never move out from under the pointer. `settings-dialog.spec.ts`,
+  button at its right showing the scale in use (`120% ⌄`) and opening `ScaleMenu`. **A menu, not
+  a stepper**: the scale redraws the whole app, Settings included, so a control pressed
+  repeatedly moved out from under the pointer between presses (judged live, Tyr). Sort's rows
+  and grammar; `100%` carries a muted `Default`; choosing applies at once and closes, and
+  **nothing previews on hover or under the arrows**, since a preview would move the menu while
+  it was being read. `Custom…` at the foot swaps the button for a field on the scale in use,
+  applied on Enter or `Apply` and **never while it is typed** (the field would resize under the
+  caret); Escape leaves the scale alone and `preventDefault`s, or the dialog's own Escape would
+  close Settings behind it. `Reset` shows only off the default. The range is `SCALE_OPTIONS`,
+  and a custom value is held inside it (`utils/uiScale.ts`, which also holds `stepScale`, so
+  `Cmd+±` from a custom 93% goes to the nearest preset either side). `settings-dialog.spec.ts`,
   `interface-size.spec.ts`, the `tests/components/settings` suite.
+- **`vw` and `vh` ignore the UI scale, so anything sized against the viewport divides by it**
+  (`atScale()` in `utils/uiScale`, against the `--ui-scale` custom property `SettingsContext`
+  writes beside the zoom). Measured 2026-09-19: a `100vh` box is 1520px tall in a 760px window
+  at 200%, so Settings' `maxHeight: calc(100vh - 48px)` was twice the window and its title and
+  Close sat above the top edge. Settings, the setup dialog and the toast stack divide; the
+  editor column's fluid gutters (`EditorArea`, `100vw - sidebar`) still do not, so they are a
+  little roomier than intended above 100% (known, judged at 100%).
+- **A menu opened from inside Settings is portalled to `body`** (`Z.SETTINGS_MENU`), because the
+  pane is centred with `transform: translate(-50%, -50%)` and a transformed ancestor becomes the
+  containing block for anything `fixed` inside it: the menu was placed against the pane and
+  stretched its scroll area. It divides its placement by `cssZoom` as every measured placement
+  does, and takes its keys in the **capture** phase, because Settings' own Escape listener was
+  registered first and would otherwise close the dialog out from under the menu.
 - **First-run setup is the same surface over the empty app** (`SetupDialog`, 480 wide:
   `Welcome to Boojy Notes`, one sentence, the Notes folder row with `Choose folder…`, the pills,
   a centred accent `Create note`). It shows only on a launch that has never had a folder (the

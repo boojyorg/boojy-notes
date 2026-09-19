@@ -26,7 +26,7 @@ vi.mock("../../../src/context/SettingsContext", () => ({
   useSettings: () => ({ uiScale: mocks.uiScale, setUiScale: mocks.setUiScale }),
 }));
 
-import AppearanceTab, { stepScale } from "../../../src/components/settings/AppearanceTab";
+import AppearanceTab from "../../../src/components/settings/AppearanceTab";
 
 // Three pills with a glyph and a word; the chosen one on the row-hover
 // ground in primary ink, never the accent (accent is never a desktop surface).
@@ -60,56 +60,103 @@ describe("AppearanceTab", () => {
     expect(mocks.setThemeMode).toHaveBeenCalledWith("night");
   });
 
-  // Interface size: the Cmd+± scale, given a control. Before 2026-09-19 it was
-  // keyboard-only, so nothing in the app said it existed or what scale you
-  // were on.
+  // Interface size: the Cmd+± scale, given a control. It is a menu rather than
+  // a stepper because the scale redraws the whole app, Settings included, so a
+  // control pressed repeatedly moved out from under the pointer (Tyr, live,
+  // 2026-09-19).
   describe("Interface size", () => {
-    const value = () => screen.getByTestId("ui-scale-value").textContent;
+    const trigger = () => screen.getByTestId("ui-scale-value");
+    const open = () => fireEvent.click(trigger());
 
-    it("shows the scale and steps it through SCALE_OPTIONS", () => {
-      mocks.uiScale = 110;
+    it("shows the scale on a button that opens the menu", () => {
+      mocks.uiScale = 120;
       render(<AppearanceTab SectionHeader={() => null} />);
-      expect(value()).toBe("110%");
-      fireEvent.click(screen.getByRole("button", { name: "Larger" }));
-      expect(mocks.setUiScale).toHaveBeenCalledWith(120);
-      fireEvent.click(screen.getByRole("button", { name: "Smaller" }));
-      expect(mocks.setUiScale).toHaveBeenCalledWith(100);
+      expect(trigger()).toHaveTextContent("120%");
+      expect(trigger()).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("menu")).toBeNull();
+
+      open();
+      expect(screen.getByRole("menu", { name: "Interface size" })).toBeInTheDocument();
+      const sizes = screen.getAllByRole("menuitemradio").map((r) => r.textContent);
+      expect(sizes[0]).toBe("50%");
+      expect(sizes.at(-1)).toBe("200%");
+      // The size the app opens at says so, and the one in use is checked.
+      expect(sizes.find((t) => t?.startsWith("100%"))).toContain("Default");
+      expect(screen.getByRole("menuitemradio", { checked: true })).toHaveTextContent("120%");
     });
 
-    it("offers Reset only off 100%, and it goes back to 100", () => {
+    it("choosing a size applies it at once and closes the menu", () => {
+      render(<AppearanceTab SectionHeader={() => null} />);
+      open();
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /133%/ }));
+      expect(mocks.setUiScale).toHaveBeenCalledWith(133);
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("nothing is applied by pointing at a row: the app would resize under the menu", () => {
+      render(<AppearanceTab SectionHeader={() => null} />);
+      open();
+      fireEvent.mouseEnter(screen.getByRole("menuitemradio", { name: /150%/ }));
+      expect(mocks.setUiScale).not.toHaveBeenCalled();
+    });
+
+    it("Custom… takes a whole percentage, on Enter or Apply, never while typing", () => {
+      mocks.uiScale = 120;
+      render(<AppearanceTab SectionHeader={() => null} />);
+      open();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Custom…" }));
+
+      // The field opens on the scale in use, and typing changes nothing yet.
+      const field = screen.getByTestId("ui-scale-input");
+      expect(field).toHaveValue("120");
+      fireEvent.change(field, { target: { value: "93" } });
+      expect(mocks.setUiScale).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(field, { key: "Enter" });
+      expect(mocks.setUiScale).toHaveBeenCalledWith(93);
+      expect(screen.queryByTestId("ui-scale-input")).toBeNull();
+
+      // Apply commits the same way.
+      open();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Custom…" }));
+      fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "145" } });
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+      expect(mocks.setUiScale).toHaveBeenLastCalledWith(145);
+
+      // Out of range is held inside it rather than refused.
+      open();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Custom…" }));
+      fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "900" } });
+      fireEvent.keyDown(screen.getByTestId("ui-scale-input"), { key: "Enter" });
+      expect(mocks.setUiScale).toHaveBeenLastCalledWith(200);
+    });
+
+    it("Escape in the field leaves the scale as it was, and Settings open", () => {
+      render(<AppearanceTab SectionHeader={() => null} />);
+      open();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Custom…" }));
+      const field = screen.getByTestId("ui-scale-input");
+      fireEvent.change(field, { target: { value: "77" } });
+      const notSwallowed = fireEvent.keyDown(field, { key: "Escape", cancelable: true });
+      expect(mocks.setUiScale).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("ui-scale-input")).toBeNull();
+      // Prevented, so the dialog's own Escape handler stands down.
+      expect(notSwallowed).toBe(false);
+    });
+
+    it("a custom scale checks Custom…, and Reset shows only off the default", () => {
       const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
       expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
 
-      mocks.uiScale = 133;
+      mocks.uiScale = 93;
       rerender(<AppearanceTab SectionHeader={() => null} />);
+      expect(trigger()).toHaveTextContent("93%");
       fireEvent.click(screen.getByRole("button", { name: "Reset" }));
       expect(mocks.setUiScale).toHaveBeenCalledWith(100);
-    });
 
-    it("says so at the ends of the range, and answers nothing there", () => {
-      mocks.uiScale = 200;
-      const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
-      const larger = screen.getByRole("button", { name: "Larger" });
-      // aria-disabled, the chrome row's grammar: it keeps the pointer and focus.
-      expect(larger).toHaveAttribute("aria-disabled", "true");
-      expect(screen.getByRole("button", { name: "Smaller" })).not.toHaveAttribute("aria-disabled");
-      fireEvent.click(larger);
-      expect(mocks.setUiScale).not.toHaveBeenCalled();
-
-      mocks.uiScale = 50;
-      rerender(<AppearanceTab SectionHeader={() => null} />);
-      expect(screen.getByRole("button", { name: "Smaller" })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
-      expect(screen.getByRole("button", { name: "Larger" })).not.toHaveAttribute("aria-disabled");
-    });
-
-    it("stepScale stops at the ends rather than falling off them", () => {
-      expect(stepScale(100, 1)).toBe(110);
-      expect(stepScale(100, -1)).toBe(90);
-      expect(stepScale(200, 1)).toBe(200);
-      expect(stepScale(50, -1)).toBe(50);
+      open();
+      expect(screen.queryByRole("menuitemradio", { checked: true })).toBeNull();
+      expect(screen.getByTestId("scale-check").closest("button")).toHaveTextContent("Custom…");
     });
   });
 });

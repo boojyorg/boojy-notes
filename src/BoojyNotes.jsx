@@ -40,6 +40,7 @@ import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
 import UiScaleChip from "./components/UiScaleChip";
+import { atScale } from "./utils/uiScale";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
@@ -1138,7 +1139,9 @@ export default function BoojyNotes() {
             left: 24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth),
             // Never wider than the pane it stands in: at the window's minimum
             // the editor is 316px and a 360px toast would hang off the edge.
-            maxWidth: `calc(100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px)`,
+            // Divided by the UI scale, because `vw` ignores the zoom it is
+            // made of (`atScale`).
+            maxWidth: atScale(`100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px`),
             transition: isMobile ? undefined : panelTransition("left"),
             display: "flex",
             flexDirection: "column",

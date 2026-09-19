@@ -165,6 +165,19 @@ describe("useAppKeyboard", () => {
     expect(bottom.setUiScale).toHaveBeenCalledWith(50);
   });
 
+  // A scale typed into Settings' Custom… field sits between two presets; the
+  // keys take it to the nearest one on the side they point.
+  it("from a custom scale, the keys move to the nearest preset either side", () => {
+    const deps = makeDeps({ uiScale: 93 });
+    renderHook(() => useAppKeyboard(deps));
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(100);
+    key("-", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(90);
+    key("0", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(100);
+  });
+
   it("redo answers Cmd+Shift+Z whether Chromium reports the key as z or Z, and Cmd+Y", () => {
     const deps = makeDeps();
     renderHook(() => useAppKeyboard(deps));
