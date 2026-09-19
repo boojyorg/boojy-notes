@@ -39,6 +39,7 @@ import Toast from "./components/Toast";
 import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { useToast } from "./hooks/useToast";
+import UiScaleChip from "./components/UiScaleChip";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
@@ -516,6 +517,20 @@ export default function BoojyNotes() {
     else el.textContent = openNoteTitle;
   }, [openNoteTitle]);
 
+  // The scale's own feedback: a shortcut says what it changed the scale to,
+  // Cmd+0 included, and a press at either end of the range answers with the
+  // scale it is on. Settings' own control needs none of this — the figure is
+  // beside the buttons — so only the keyboard path raises it.
+  const [scaleHint, setScaleHint] = useState(null);
+  const hideScaleHint = useCallback(() => setScaleHint(null), []);
+  const setUiScaleByKey = useCallback(
+    (next) => {
+      setUiScale(next);
+      setScaleHint({ at: Date.now(), scale: next });
+    },
+    [setUiScale],
+  );
+
   useAppKeyboard({
     activeNote,
     noteData,
@@ -531,7 +546,7 @@ export default function BoojyNotes() {
     toggleSidebar,
     openSearch,
     openSettings: () => setSettingsOpen(true),
-    setUiScale,
+    setUiScale: setUiScaleByKey,
     cancelBlockDrag,
     cancelSidebarDrag,
   });
@@ -1100,6 +1115,12 @@ export default function BoojyNotes() {
         accentColor={accentColor}
         onConfirm={() => resolveConfirm(true)}
         onCancel={() => resolveConfirm(false)}
+      />
+
+      <UiScaleChip
+        hint={scaleHint}
+        onHide={hideScaleHint}
+        left={24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth)}
       />
 
       {toasts.length > 0 && (

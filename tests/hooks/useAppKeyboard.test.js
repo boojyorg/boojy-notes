@@ -149,6 +149,22 @@ describe("useAppKeyboard", () => {
     expect(next.setUiScale).toHaveBeenCalledWith(100);
   });
 
+  // The readout the shortcut raises is the scale's whole feedback, so a press
+  // at either end of the range must still answer, with the scale it is on;
+  // silence there reads as a missed keystroke (2026-09-19). Setting the scale
+  // it already holds is a no-op for state.
+  it("a scale key at the end of the range answers with the scale it is on", () => {
+    const top = makeDeps({ uiScale: 200 });
+    const { rerender } = renderHook((props) => useAppKeyboard(props), { initialProps: top });
+    key("=", { metaKey: true });
+    expect(top.setUiScale).toHaveBeenCalledWith(200);
+
+    const bottom = makeDeps({ uiScale: 50 });
+    rerender(bottom);
+    key("-", { metaKey: true });
+    expect(bottom.setUiScale).toHaveBeenCalledWith(50);
+  });
+
   it("redo answers Cmd+Shift+Z whether Chromium reports the key as z or Z, and Cmd+Y", () => {
     const deps = makeDeps();
     renderHook(() => useAppKeyboard(deps));
