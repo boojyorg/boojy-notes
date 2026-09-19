@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
-import { LABEL_PAD_X } from "../constants/layout";
+import { ACTION_ROW_H, LABEL_PAD_X, SECTION_GAP } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -9,7 +9,7 @@ import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
-import EditableBlock from "./EditableBlock";
+import EditableBlock, { EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT } from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
@@ -50,13 +50,28 @@ import { panelTransition } from "../tokens/motion";
  * there is no chrome row, so the name keeps its place at the head of the
  * column, small and muted.
  */
-/** The column's own top padding on the desktop, under the chrome row's 39px:
- *  exactly what the name's row and its gap added up to when they were part
- *  of the column (14px of padding, a 13.5px × 1.4 line box, a 26px gap, less
- *  the row), so the first block did not move by a tenth of a pixel when the
- *  name left. Two specs click the centre of a two-line block and land on its
- *  first line by that tenth; keep the fraction. */
-const COLUMN_TOP = 14 + 13.5 * 1.4 + 26 - 39;
+/**
+ * The column's own top padding on the desktop, under the chrome row.
+ *
+ * **The note's first line sits on the sidebar's New note row.** The two
+ * columns start level — the sidebar's header and the path band are the same
+ * height — so the sidebar's own first row decides where the note's first line
+ * belongs: `SECTION_GAP` of air, then half the action row, is where that
+ * row's words are, and the note's first line is centred on the same y by
+ * giving up half its own line box. Line boxes, not their tops: a 15px
+ * paragraph's box is 25.5px tall against the 14px row's 16.5px, and glyphs sit
+ * in the middle of their box, so the two lines' *tops* agreeing (which is what
+ * the old value did, to a tenth of a pixel) left the words 4.6px apart
+ * (measured 2026-09-19).
+ *
+ * A note opening on a heading still starts lower, by that heading's own top
+ * margin, which is the rhythm a heading is entitled to.
+ *
+ * Before this it was what the name's row and its gap added up to when the name
+ * was part of the column, kept so the first block did not move when the name
+ * left it (2026-09-15).
+ */
+const COLUMN_TOP = SECTION_GAP + ACTION_ROW_H / 2 - (EDITOR_FONT_SIZE * EDITOR_LINE_HEIGHT) / 2;
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

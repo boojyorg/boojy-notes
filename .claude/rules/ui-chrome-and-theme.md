@@ -228,8 +228,15 @@ the caret leaves. Longer names still grow both ways (Finder's rename).
   and the nearest folders, then `… / name`, then the name), measured by an invisible twin of
   every crumb and a `ResizeObserver`, via `getBoundingClientRect` so the UI scale cancels.
   Widening never hides a folder.
-- The body column's top padding is `COLUMN_TOP` (`EditorArea`); the column never moved. Touch
-  devices have no chrome row and keep the name at the head of the column.
+- **The note's first line sits on the sidebar's New note row.** The two columns start level (the
+  sidebar header and the path band are both `CHROME_TOP + CHROME_BTN`), so `COLUMN_TOP`
+  (`EditorArea`) is derived from the sidebar's own first row — `SECTION_GAP` plus half
+  `ACTION_ROW_H`, less half the editor's line box — and both constants moved to
+  `constants/layout.js` so the two cannot drift. Line boxes, not their tops: glyphs sit in the
+  middle of their box, and a 15px paragraph's is 25.5px against the 14px row's 16.5px, so the
+  tops agreeing (which is what the old value did, to a tenth of a pixel) left the words 4.6px
+  apart (2026-09-19). A note opening on a heading still starts lower, by that heading's own top
+  margin. Touch devices have no chrome row and keep the name at the head of the column.
 - `note-path.spec.ts`, `chrome-row.spec.ts`, `pathCrumbs.test.ts`, `NotePath.test.jsx`.
 
 ### A folder crumb opens the sidebar's tree under itself

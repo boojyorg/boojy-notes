@@ -30,6 +30,10 @@ export const PARAGRAPH_GAP = 8;
  * already scale the whole app and one knob is enough.
  */
 export const EDITOR_FONT_SIZE = 15;
+/** The line box of a paragraph, list row or quote: the editor's own rhythm.
+ *  Exported because the column's top padding is measured against it — the
+ *  note's first line sits on the sidebar's New note row (`EditorArea`). */
+export const EDITOR_LINE_HEIGHT = 1.7;
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
@@ -395,7 +399,7 @@ const EditableBlock = memo(
             borderLeft: `3px solid ${accentColor}`,
             paddingLeft: 14 + indentPad,
             margin: `0 0 ${PARAGRAPH_GAP}px`,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
           }}
         >
           <span
@@ -426,7 +430,7 @@ const EditableBlock = memo(
             // Vertical rhythm lives in GlobalStyles (the paragraph pitch and the
             // gap after a list item), where a sibling rule can reach it.
             contain: "content",
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             color: TEXT.primary,
             fontSize: EDITOR_FONT_SIZE,
             outline: "none",
@@ -471,7 +475,7 @@ const EditableBlock = memo(
             gap: 9,
             padding: "2px 0",
             fontSize: EDITOR_FONT_SIZE,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: depth * INDENT_PX || undefined,
           }}
         >
@@ -505,7 +509,7 @@ const EditableBlock = memo(
             gap: 9,
             padding: "2px 0",
             fontSize: EDITOR_FONT_SIZE,
-            lineHeight: 1.7,
+            lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >

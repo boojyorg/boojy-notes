@@ -33,7 +33,9 @@ import Wordmark from "./Wordmark";
 import { PANEL_FADE_MS, PANEL_MS, panelTransition } from "../tokens/motion";
 import {
   ACTION_RADIUS,
+  ACTION_ROW_H,
   HEADER_RIGHT_INSET,
+  SECTION_GAP,
   ROW_INSET,
   SIDEBAR_TREE_INSET,
   SPINE,
@@ -78,9 +80,6 @@ const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
 // neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
 // 28px with a 2px rhythm gap; the vault header is the same height.
-/** The labelled New note row: a touch taller than a tree row, as the one
- *  action among a list of names. */
-const ACTION_ROW_H = 32;
 // ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
 // just below the note row and grows rightward into the editor, its left edge
 // slightly left of the ··· button.
@@ -157,7 +156,6 @@ const SECTION_HEADER_LEFT = TREE_SPINE;
 const SECTION_HEADER_RIGHT = 5;
 /** Header controls share the chrome row's 32px hit box and 18px nav glyph. */
 const SECTION_BTN = 32;
-const SECTION_GAP = 12;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting

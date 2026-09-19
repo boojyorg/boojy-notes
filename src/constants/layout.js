@@ -142,3 +142,9 @@ export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;
 /** The pill radius of every tree and action row. */
 export const ACTION_RADIUS = 12;
+/** The labelled New note row: a touch taller than a tree row, as the one
+ *  action among a list of names. */
+export const ACTION_ROW_H = 32;
+/** Above a section header, and above the New note row that opens the column.
+ *  One spacing rule for every section. */
+export const SECTION_GAP = 12;
