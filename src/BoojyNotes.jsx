@@ -84,7 +84,7 @@ export default function BoojyNotes() {
     unflushedNotes,
   } = useNoteDataActions();
 
-  const { uiScale, setUiScale, setSettingsOpen } = useSettings();
+  const { uiScale, setUiScale, settingsOpen, setSettingsOpen } = useSettings();
 
   const {
     sidebarWidth,
@@ -1121,7 +1121,9 @@ export default function BoojyNotes() {
       />
 
       <UiScaleChip
-        hint={scaleHint}
+        // Settings says the figure itself, so the chip stands down while it is
+        // open: two readouts of one number, one of them floating over the app.
+        hint={settingsOpen ? null : scaleHint}
         onHide={hideScaleHint}
         left={24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth)}
       />

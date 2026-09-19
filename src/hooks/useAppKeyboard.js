@@ -87,6 +87,19 @@ export function useAppKeyboard({
       }
       if (e.defaultPrevented) return;
       const owner = focusOwner();
+      // The scale keys are the one shortcut Settings does not stand in front
+      // of (2026-09-19, Tyr): the app resizes behind the open pane, so the keys
+      // that resize it belong there too, and the row's figure follows. Every
+      // other shortcut still stands down over every modal, and these stand down
+      // over any other modal — including a confirm dialog opened *from*
+      // Settings, which holds the focus the test below asks about.
+      if ((e.ctrlKey || e.metaKey) && SCALE_KEYS.has(e.key)) {
+        if (owner !== "modal" || settingsHoldsKeys()) {
+          e.preventDefault();
+          L.setUiScale(scaleFor(e.key, L.uiScale));
+          return;
+        }
+      }
       if (owner === "modal") return;
       // Escape never reaches the sidebar: a panel the user can see sitting in
       // the layout is hidden by its toggle and by nothing else.
@@ -139,32 +152,41 @@ export function useAppKeyboard({
         L.toggleSidebar?.();
         return;
       }
-      // Zoom shortcuts: Cmd+Plus / Cmd+Minus / Cmd+0. A press at either end of
-      // the range still answers, with the scale it is already on: the readout
-      // it raises is the whole feedback the scale has, and saying nothing reads
-      // as a missed keystroke rather than a limit (2026-09-19). Setting the
-      // scale it already holds is a no-op for state. From a custom scale the
-      // keys move to the nearest preset on the side they point (`stepScale`),
-      // so 93% goes up to 100 and down to 90.
-      if (mod && (e.key === "=" || e.key === "+")) {
-        e.preventDefault();
-        L.setUiScale(stepScale(L.uiScale, 1));
-        return;
-      }
-      if (mod && e.key === "-") {
-        e.preventDefault();
-        L.setUiScale(stepScale(L.uiScale, -1));
-        return;
-      }
-      if (mod && e.key === "0") {
-        e.preventDefault();
-        L.setUiScale(SCALE_DEFAULT);
-        return;
-      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+}
+
+/** The keys that change the UI scale, with `+` in both its spellings. */
+const SCALE_KEYS = new Set(["=", "+", "-", "0"]);
+
+/**
+ * The scale a key asks for. A press at either end of the range answers with
+ * the scale it is already on: the chip it raises is the whole feedback the
+ * scale has, and saying nothing reads as a missed keystroke rather than a
+ * limit (2026-09-19). Setting the scale already held is a no-op for state.
+ * From a custom scale the keys move to the nearest preset on the side they
+ * point, so 93% goes up to 100 and down to 90.
+ */
+function scaleFor(key, current) {
+  if (key === "0") return SCALE_DEFAULT;
+  return stepScale(current, key === "-" ? -1 : 1);
+}
+
+/**
+ * Whether the Settings pane is the modal on screen — the one place a scale key
+ * may act over a modal. The test is which modal is *there*, not where focus
+ * happens to be: the pane's focus trap places focus a frame after it opens,
+ * and a key pressed inside that frame is still Settings' (measured
+ * 2026-09-19). A confirm dialog opened from Settings is a second modal above
+ * it, and a menu inside Settings holds the keys itself; the scale keys stand
+ * down for both.
+ */
+function settingsHoldsKeys() {
+  const modals = document.querySelectorAll('[aria-modal="true"]');
+  if (modals.length !== 1 || !modals[0].hasAttribute("data-settings-pane")) return false;
+  return !document.activeElement?.closest?.('[role="menu"]');
 }
 
 /**

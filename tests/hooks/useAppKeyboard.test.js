@@ -219,6 +219,67 @@ describe("key ownership", () => {
     key("n", { metaKey: true });
     key("Escape");
     expect(deps.createNote).not.toHaveBeenCalled();
+    // The scale keys included: they are Settings' exception, not every modal's.
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).not.toHaveBeenCalled();
+  });
+
+  // The app resizes behind the open Settings pane, so the keys that resize it
+  // belong there too (2026-09-19). Every other shortcut still stands down.
+  it("the scale keys are the one shortcut that works over Settings", () => {
+    const deps = makeDeps({ uiScale: 100 });
+    renderHook(() => useAppKeyboard(deps));
+
+    mount(
+      '<div role="dialog" aria-modal="true" data-settings-pane=""><button>ok</button></div>',
+      "button",
+    );
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(110);
+    key("0", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(100);
+    // And nothing else does.
+    key("n", { metaKey: true });
+    key("p", { metaKey: true });
+    expect(deps.createNote).not.toHaveBeenCalled();
+    expect(deps.openSearch).not.toHaveBeenCalled();
+  });
+
+  // The pane's focus trap places focus a frame after it opens, and a key
+  // pressed inside that frame is still Settings'.
+  it("the scale keys work before the pane's trap has placed focus", () => {
+    const deps = makeDeps({ uiScale: 100 });
+    renderHook(() => useAppKeyboard(deps));
+    const host = document.createElement("div");
+    host.innerHTML = '<div role="dialog" aria-modal="true" data-settings-pane=""></div>';
+    document.body.appendChild(host);
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).toHaveBeenCalledWith(110);
+  });
+
+  it("a menu inside Settings takes the scale keys back", () => {
+    const deps = makeDeps({ uiScale: 100 });
+    renderHook(() => useAppKeyboard(deps));
+    document.body.innerHTML =
+      '<div role="dialog" aria-modal="true" data-settings-pane="">' +
+      '<div role="menu"><button id="row">100%</button></div></div>';
+    document.getElementById("row").focus();
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).not.toHaveBeenCalled();
+  });
+
+  it("a dialog on top of Settings takes the scale keys back", () => {
+    const deps = makeDeps({ uiScale: 100 });
+    renderHook(() => useAppKeyboard(deps));
+
+    // The confirm dialog Settings opens for "Change notes folder?" holds the
+    // focus, so the pane below it is no longer the surface being used.
+    document.body.innerHTML =
+      '<div role="dialog" aria-modal="true" data-settings-pane=""></div>' +
+      '<div role="alertdialog" aria-modal="true"><button id="confirm">Choose</button></div>';
+    document.getElementById("confirm").focus();
+    key("=", { metaKey: true });
+    expect(deps.setUiScale).not.toHaveBeenCalled();
   });
 
   it("a native text field outside the editor keeps its own undo and redo; the rest still runs", () => {

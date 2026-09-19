@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
@@ -24,7 +24,21 @@ export default function SettingsModal({
   changeNotesDir,
   revealNotesDir,
 }) {
-  const { settingsOpen, setSettingsOpen } = useSettings();
+  const { settingsOpen, setSettingsOpen, uiScale } = useSettings();
+
+  // The scale the pane opened at. While it is open the app resizes under every
+  // press of Interface size, but the pane itself keeps the size and place it
+  // opened with: a panel that grows as you press the button inside it moves
+  // that button out from under the pointer (judged live twice, Tyr,
+  // 2026-09-19). It is not excluded from the scale — the next time it opens it
+  // is drawn at whatever the scale is then. Captured in a layout effect, so the
+  // first paint of an open pane is already at its own scale.
+  const [openedAt, setOpenedAt] = useState(uiScale);
+  useLayoutEffect(() => {
+    if (settingsOpen) setOpenedAt(uiScale);
+    // Deliberately not on uiScale: the capture is the *opening*, and a scale
+    // change while the pane is open must not move it.
+  }, [settingsOpen]);
 
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
@@ -194,85 +208,107 @@ export default function SettingsModal({
         style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
       />
 
+      {/* The pane is centred by a wrapper rather than by `translate(-50%, -50%)`
+          on itself: a transform would make the pane the containing block for
+          anything `fixed` inside it, and the wrapper is also what lets the pane
+          carry a zoom of its own without fighting percentage offsets. It takes
+          no pointer events, so a click beside the pane still reaches the scrim
+          and closes Settings. */}
       <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
         style={{
           position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
+          inset: 0,
           zIndex: Z.SETTINGS_INNER,
-          width: SETTINGS_WIDTH,
-          // Divided by the scale: `vw`/`vh` ignore the zoom the UI scale is
-          // made of, so at 200% this pane was twice the window and its header
-          // sat above the top edge (2026-09-19).
-          maxWidth: atScale("100vw - 32px"),
-          maxHeight: atScale("100vh - 48px"),
-          boxSizing: "border-box",
-          padding: "20px 28px",
           display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-          outline: "none",
-          ...dialogSurface(theme),
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
         }}
       >
-        {/* Header */}
         <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+          data-settings-pane=""
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
           style={{
+            pointerEvents: "auto",
+            // Its own scale, held at the one it opened with: `zoom` nests
+            // multiplicatively, so this cancels the difference exactly (measured
+            // 2026-09-19: 540×200 at the same place at 50%, 100% and 200%). The
+            // local `--ui-scale` keeps the viewport-unit maths below resolving
+            // against the pane's own scale rather than the app's (`atScale`).
+            zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
+            "--ui-scale": openedAt / 100,
+            width: SETTINGS_WIDTH,
+            // Divided by the scale: `vw`/`vh` ignore the zoom the UI scale is
+            // made of, so at 200% this pane was twice the window and its header
+            // sat above the top edge (2026-09-19).
+            maxWidth: atScale("100vw - 32px"),
+            maxHeight: atScale("100vh - 48px"),
+            boxSizing: "border-box",
+            padding: "20px 28px",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 32,
-            margin: "0 -8px 20px 0",
-            flexShrink: 0,
+            flexDirection: "column",
+            overflowY: "auto",
+            outline: "none",
+            ...dialogSurface(theme),
           }}
         >
+          {/* Header */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              fontSize: 17,
-              fontWeight: fontWeight.semibold,
-              color: TEXT.primary,
+              justifyContent: "space-between",
+              height: 32,
+              margin: "0 -8px 20px 0",
+              flexShrink: 0,
             }}
           >
-            <span style={{ display: "inline-flex", color: TEXT.secondary }}>
-              <SettingsIcon size={18} />
-            </span>
-            <span>Settings</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontSize: 17,
+                fontWeight: fontWeight.semibold,
+                color: TEXT.primary,
+              }}
+            >
+              <span style={{ display: "inline-flex", color: TEXT.secondary }}>
+                <SettingsIcon size={18} />
+              </span>
+              <span>Settings</span>
+            </div>
+            <ChromeButton
+              label="Close"
+              ariaLabel="Close settings"
+              onClick={() => setSettingsOpen(false)}
+            >
+              <CloseIcon />
+            </ChromeButton>
           </div>
-          <ChromeButton
-            label="Close"
-            ariaLabel="Close settings"
-            onClick={() => setSettingsOpen(false)}
-          >
-            <CloseIcon />
-          </ChromeButton>
-        </div>
 
-        <AppearanceTab SectionHeader={SectionTitle} />
-        {isDesktop && (
-          <>
-            <SettingsRule />
-            <StorageTab
-              isDesktop={isDesktop}
-              notesDir={notesDir}
-              changeNotesDir={changeNotesDir}
-              revealNotesDir={revealNotesDir}
-              SectionHeader={SectionTitle}
-            />
-            <SettingsRule />
-            <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
-          </>
-        )}
-        <SettingsFooter />
+          <AppearanceTab SectionHeader={SectionTitle} />
+          {isDesktop && (
+            <>
+              <SettingsRule />
+              <StorageTab
+                isDesktop={isDesktop}
+                notesDir={notesDir}
+                changeNotesDir={changeNotesDir}
+                revealNotesDir={revealNotesDir}
+                SectionHeader={SectionTitle}
+              />
+              <SettingsRule />
+              <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
+            </>
+          )}
+          <SettingsFooter />
+        </div>
       </div>
     </>
   );

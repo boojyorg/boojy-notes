@@ -17,15 +17,6 @@ export const SCALE_MAX = SCALE_OPTIONS[SCALE_OPTIONS.length - 1];
 /** The scale the app opens at, and what Reset goes back to. */
 export const SCALE_DEFAULT = 100;
 
-/**
- * How long the stepper waits after the last press before the app is redrawn.
- * Pressing + changes the figure at once but not the scale, so a run of presses
- * is one resize at the end of it rather than the row moving out from under the
- * pointer between them (judged live, Tyr, 2026-09-19). Long enough to catch a
- * second press, short enough that a single one does not feel ignored.
- */
-export const SCALE_SETTLE_MS = 350;
-
 /** A whole percentage inside the range. */
 export const clampScale = (n: number) => Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(n)));
 

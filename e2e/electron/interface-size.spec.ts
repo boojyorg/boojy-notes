@@ -3,10 +3,11 @@
  * Chromium's page zoom, which the main process pins at 0). It was
  * keyboard-only until 2026-09-19, with nothing in the app to say it existed,
  * nothing to say what scale you were on, and nothing to say `Cmd+0` was the
- * way back. Settings now carries a stepper whose figure moves at once and
- * whose app moves a beat after the last press, because the scale redraws
- * Settings too and applying per press moved the button out from under the
- * pointer; and a shortcut says what it did.
+ * way back. Settings now carries a stepper that applies at once, and the pane
+ * itself keeps the size and place it opened with while the app resizes behind
+ * it — a panel that grows as you press the button inside it moves that button
+ * out from under the pointer (judged live twice, Tyr). A shortcut says what it
+ * did, and the scale keys are the one shortcut that works over Settings.
  *
  * Needs the real app: the scale is written to `<html>` and read back from
  * storage on the next launch.
@@ -22,21 +23,19 @@ async function openSettings(h: Awaited<ReturnType<typeof launchApp>>) {
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 }
 
-test("Settings carries the scale: a stepper that settles, a typed value, Reset, and a restart", async () => {
+test("the stepper applies at once, takes a typed value, and resets", async () => {
   const h = await launchApp({ "Note.md": "One.\n" });
   try {
     await openSettings(h);
     const figure = h.page.getByTestId("ui-scale-value");
     await expect(figure).toHaveText("100%");
-    // At the default there is nothing to go back to.
     await expect(h.page.getByRole("button", { name: "Reset" })).toHaveCount(0);
 
-    // A run of presses moves the figure at once and the app once, at the end.
+    // Every press lands as it is made — no timer, nothing pending.
     await h.page.getByRole("button", { name: "Larger" }).click();
+    expect(await scale(h.page)).toBe("110%");
     await h.page.getByRole("button", { name: "Larger" }).click();
-    await expect(figure).toHaveText("120%");
-    expect(await scale(h.page)).toBe("100%");
-    await expect.poll(() => scale(h.page), { timeout: 2_000 }).toBe("120%");
+    expect(await scale(h.page)).toBe("120%");
     await expect(figure).toHaveText("120%");
 
     // The figure is a control: a typed percentage the presets do not hold,
@@ -46,24 +45,28 @@ test("Settings carries the scale: a stepper that settles, a typed value, Reset, 
     await field.fill("93");
     expect(await scale(h.page)).toBe("120%");
     await field.press("Enter");
-    await expect.poll(() => scale(h.page)).toBe("93%");
+    expect(await scale(h.page)).toBe("93%");
     await expect(figure).toHaveText("93%");
+
+    // Leaving the field commits it too.
+    await figure.click();
+    await h.page.getByTestId("ui-scale-input").fill("125");
+    await h.page.getByTestId("ui-scale-input").press("Tab");
+    await expect.poll(() => scale(h.page)).toBe("125%");
 
     // Escape leaves the scale alone and Settings open.
     await figure.click();
-    await h.page.getByTestId("ui-scale-input").fill("150");
+    await h.page.getByTestId("ui-scale-input").fill("60");
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByTestId("ui-scale-input")).toHaveCount(0);
     await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
-    expect(await scale(h.page)).toBe("93%");
+    expect(await scale(h.page)).toBe("125%");
 
-    // Reset lands at once.
     await h.page.getByRole("button", { name: "Reset" }).click();
-    await expect.poll(() => scale(h.page)).toBe("100%");
+    expect(await scale(h.page)).toBe("100%");
 
     // The scale is a preference: it is still there on the next launch.
     await h.page.getByRole("button", { name: "Larger" }).click();
-    await expect.poll(() => scale(h.page), { timeout: 2_000 }).toBe("110%");
     await h.restart();
     expect(await scale(h.page)).toBe("110%");
     await openSettings(h);
@@ -74,67 +77,178 @@ test("Settings carries the scale: a stepper that settles, a typed value, Reset, 
   }
 });
 
-test("closing Settings inside the wait applies the press, and a shortcut then lands on top", async () => {
+test("the pane holds its size and place while the app resizes behind it", async () => {
   const h = await launchApp({ "Note.md": "One.\n" });
   try {
     await openSettings(h);
+    const pane = h.page.getByRole("dialog", { name: "Settings" });
+    const sidebarWidth = () =>
+      h.page.evaluate(
+        () => (document.querySelector("[role=tree]") as HTMLElement).getBoundingClientRect().width,
+      );
+    const before = await pane.boundingBox();
+    const sidebarBefore = await sidebarWidth();
 
-    // Leaving is not cancelling: a press inside the wait is applied on the way
-    // out. (The shell's shortcuts stand down while Settings is open, so the
-    // keyboard cannot race the stepper until the dialog has gone.)
-    await h.page.getByRole("button", { name: "Larger" }).click();
+    // Six presses to 200%: the app grows under every one of them, the pane
+    // does not move at all.
+    for (let i = 0; i < 6; i++) {
+      await h.page.getByRole("button", { name: "Larger" }).click();
+      const box = await pane.boundingBox();
+      expect(box?.x).toBeCloseTo(before?.x ?? 0, 0);
+      expect(box?.y).toBeCloseTo(before?.y ?? 0, 0);
+      expect(box?.width).toBeCloseTo(before?.width ?? 0, 0);
+    }
+    expect(await scale(h.page)).toBe("200%");
+    expect(await sidebarWidth()).toBeGreaterThan(sidebarBefore * 1.9);
+
+    // Reopening is drawn at the scale of the day.
     await h.page.keyboard.press("Escape");
-    await expect(h.page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
-    await expect.poll(() => scale(h.page)).toBe("110%");
-
-    // And a shortcut straight after is what stands: nothing lands on top of it
-    // a beat later.
-    await h.page.keyboard.press(`${MOD}+0`);
-    expect(await scale(h.page)).toBe("100%");
-    await sleep(SETTLE_MS);
-    expect(await scale(h.page)).toBe("100%");
     await openSettings(h);
-    await expect(h.page.getByTestId("ui-scale-value")).toHaveText("100%");
+    const reopened = await pane.boundingBox();
+    expect(reopened?.width ?? 0).toBeCloseTo((before?.width ?? 0) * 2, 0);
+
+    // The same holds going the other way, and the pane stays on screen.
+    for (let i = 0; i < 10; i++) await h.page.getByRole("button", { name: "Smaller" }).click();
+    expect(await scale(h.page)).toBe("50%");
+    const small = await pane.boundingBox();
+    expect(small?.width).toBeCloseTo(reopened?.width ?? 0, 0);
+    const win = await h.page.evaluate(() => ({
+      w: globalThis.innerWidth,
+      h: globalThis.innerHeight,
+    }));
+    expect(small?.x).toBeGreaterThanOrEqual(-1);
+    expect(small?.y).toBeGreaterThanOrEqual(-1);
+    expect((small?.x ?? 0) + (small?.width ?? 0)).toBeLessThanOrEqual(win.w + 1);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
   }
 });
 
-test("Settings is usable at either end of the range", async () => {
+test("opened at 50%, 100% and 200%: the pane fits the window and its controls work", async () => {
+  const h = await launchApp({ "Note.md": "One.\n" });
+  try {
+    for (const size of [50, 200, 100]) {
+      // Set the scale with the keyboard, from outside Settings.
+      await h.page.keyboard.press(`${MOD}+0`);
+      const steps = size === 50 ? 5 : size === 200 ? 6 : 0;
+      const key = size === 50 ? `${MOD}+-` : `${MOD}+=`;
+      for (let i = 0; i < steps; i++) await h.page.keyboard.press(key);
+      expect(await scale(h.page)).toBe(`${size}%`);
+
+      await openSettings(h);
+      const pane = h.page.getByRole("dialog", { name: "Settings" });
+      const box = await pane.boundingBox();
+      const win = await h.page.evaluate(() => ({
+        w: globalThis.innerWidth,
+        h: globalThis.innerHeight,
+      }));
+      expect(box?.x).toBeGreaterThanOrEqual(-1);
+      expect(box?.y).toBeGreaterThanOrEqual(-1);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(win.w + 1);
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(win.h + 1);
+      // Opened at that scale, the pane carries no zoom of its own.
+      expect(await pane.evaluate((el) => (el as HTMLElement).style.zoom)).toBe("");
+      await expect(h.page.getByTestId("ui-scale-value")).toHaveText(`${size}%`);
+
+      // Its controls still work at that size: the theme pills and the chip on
+      // the notes-folder path, which is portalled out of the pane.
+      await h.page.getByRole("radio", { name: "Dark" }).click();
+      await expect(h.page.getByRole("radio", { name: "Dark" })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      await h.page.getByTestId("notes-folder-path").hover();
+      await expect(h.page.getByTestId("path-tooltip")).toBeVisible({ timeout: 3_000 });
+      const chip = await h.page.getByTestId("path-tooltip").boundingBox();
+      const anchor = await h.page.getByTestId("notes-folder-path").boundingBox();
+      // The chip is drawn at the app's scale, under the control it names.
+      expect(Math.abs((chip?.x ?? 0) - (anchor?.x ?? 0))).toBeLessThan((box?.width ?? 0) / 2);
+      expect(chip?.y ?? 0).toBeGreaterThan(anchor?.y ?? 0);
+
+      // Keyboard focus still lands inside the pane.
+      await h.page.keyboard.press("Tab");
+      expect(
+        await h.page.evaluate(() =>
+          document.querySelector("[data-settings-pane]")?.contains(document.activeElement),
+        ),
+      ).toBe(true);
+      await h.page.getByRole("radio", { name: "Light" }).click();
+      await h.page.keyboard.press("Escape");
+      await expect(pane).toHaveCount(0);
+    }
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("the window can be resized while Settings is open, at any scale", async () => {
+  const h = await launchApp({ "Note.md": "One.\n" });
+  try {
+    await openSettings(h);
+    for (let i = 0; i < 4; i++) await h.page.getByRole("button", { name: "Larger" }).click();
+    expect(await scale(h.page)).toBe("150%");
+
+    const pane = h.page.getByRole("dialog", { name: "Settings" });
+    for (const [w, hh] of [
+      [900, 620],
+      [1400, 900],
+    ] as const) {
+      await h.app.evaluate(
+        async ({ BrowserWindow }, size) => {
+          BrowserWindow.getAllWindows()[0].setSize(size[0], size[1]);
+        },
+        [w, hh],
+      );
+      await sleep(300);
+      const box = await pane.boundingBox();
+      const win = await h.page.evaluate(() => ({
+        w: globalThis.innerWidth,
+        h: globalThis.innerHeight,
+      }));
+      // Still centred and still inside the window it now has.
+      expect((box?.x ?? 0) + (box?.width ?? 0) / 2).toBeCloseTo(win.w / 2, 0);
+      expect(box?.y).toBeGreaterThanOrEqual(-1);
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(win.h + 1);
+    }
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("the scale keys work over Settings, and the chip stands down there", async () => {
   const h = await launchApp({ "Note.md": "One.\n" });
   try {
     await openSettings(h);
     const figure = h.page.getByTestId("ui-scale-value");
-    const dialog = h.page.getByRole("dialog", { name: "Settings" });
 
-    // The presets, walked to each end: 100 → 200 is six presses, 200 → 50 ten.
-    for (const [size, presses, direction] of [
-      [200, 6, "Larger"],
-      [50, 10, "Smaller"],
-    ] as const) {
-      for (let i = 0; i < presses; i++)
-        await h.page.getByRole("button", { name: direction }).click();
-      await expect.poll(() => scale(h.page), { timeout: 3_000 }).toBe(`${size}%`);
+    // The one shortcut Settings does not stand in front of: the row follows it,
+    // and the floating readout stays away because the row says the number.
+    await h.page.keyboard.press(`${MOD}+=`);
+    expect(await scale(h.page)).toBe("110%");
+    await expect(figure).toHaveText("110%");
+    await expect(h.page.getByTestId("ui-scale-chip")).toHaveCount(0);
 
-      // The pane is still on screen and its controls can still be reached.
-      const box = await dialog.boundingBox();
-      const window = await h.page.evaluate(() => ({
-        w: globalThis.innerWidth,
-        h: globalThis.innerHeight,
-      }));
-      expect(box).not.toBeNull();
-      if (box) {
-        expect(box.x).toBeGreaterThanOrEqual(-1);
-        expect(box.y).toBeGreaterThanOrEqual(-1);
-        expect(box.x + box.width).toBeLessThanOrEqual(window.w + 1);
-      }
-      await expect(figure).toHaveText(`${size}%`);
-      await expect(h.page.getByRole("button", { name: "Reset" })).toBeVisible();
-    }
+    // An unfinished typed value cannot land on top of a shortcut.
+    await figure.click();
+    await h.page.getByTestId("ui-scale-input").fill("77");
+    await h.page.keyboard.press(`${MOD}+0`);
+    expect(await scale(h.page)).toBe("100%");
+    await expect(h.page.getByTestId("ui-scale-input")).toHaveCount(0);
+    await expect(figure).toHaveText("100%");
+    await sleep(SETTLE_MS);
+    expect(await scale(h.page)).toBe("100%");
 
-    await h.page.getByRole("button", { name: "Reset" }).click();
-    await expect.poll(() => scale(h.page)).toBe("100%");
+    // Every other shortcut still stands down over the pane.
+    await h.page.keyboard.press(`${MOD}+n`);
+    await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+
+    // Outside Settings the chip comes back.
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press(`${MOD}+=`);
+    await expect(h.page.getByTestId("ui-scale-chip")).toBeVisible();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

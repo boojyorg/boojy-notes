@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
-import { SCALE_DEFAULT, SCALE_SETTLE_MS, parseScale, stepScale } from "../../utils/uiScale";
+import { SCALE_DEFAULT, parseScale, stepScale } from "../../utils/uiScale";
 import { SCALE_MAX, SCALE_MIN } from "../../utils/uiScale";
-import { CheckIcon, MinusIcon, MonitorIcon, MoonIcon, PlusIcon, SunIcon } from "../Icons";
+import { MinusIcon, MonitorIcon, MoonIcon, PlusIcon, SunIcon } from "../Icons";
 
 /** Stored keys stay "day"/"night"/"auto" so every saved preference keeps
  *  working; the product words are Light / Dark / System. */
@@ -109,93 +109,60 @@ function Segment({ divider, disabled, children, style, ...rest }) {
  * nothing in the app said the feature existed, nothing said what scale you
  * were on, and nothing said `Cmd+0` was the way back.
  *
- * **One segmented control**, `−` and `+` around the figure in a single pill:
- * three separate buttons read as three things, and a dropdown of sizes (built
- * and rejected live) made picking a neighbouring size a two-press job.
- *
- * **A press moves the figure at once and the app a beat later**
- * (`SCALE_SETTLE_MS`): the scale redraws the whole window, Settings included,
- * so applying per press moved the button out from under the pointer between
- * presses. Waiting for the last press of a run makes that one move, not four.
- * **A pending change never lands on top of a newer one**: a keyboard shortcut,
- * Reset or a typed value cancels it (the effect below watches the scale for a
- * change the row did not ask for), and closing Settings flushes it rather than
- * dropping what was asked for.
+ * **One segmented control** — `−`, the figure and `+` in a single pill — and
+ * **every press applies at once**. It is the pane that holds still, not the
+ * scale: Settings keeps the size it opened with (`SettingsModal`), so the app
+ * behind it resizes under each press while the button stays under the pointer.
+ * A debounce was tried first and judged twice: the controls still moved once
+ * per run, and the timer brought a pending value that could land on top of a
+ * newer one. There is no timer here.
  *
  * **The figure is a control**: clicking it types a whole percentage in the same
- * range, applied on Enter or the tick and never while it is being typed (the
- * field would resize under the caret); Escape leaves the scale alone and
- * prevents the default, or the dialog's own Escape would close Settings behind
- * it. `Reset` shows only off the default — at 100% there is nothing to go back
- * to — and sits to the *left*, so `−` and `+` never move when it appears.
+ * range, applied on Enter or on leaving the field and never while it is typed
+ * (the field would resize under the caret). Escape cancels, and so does a scale
+ * that arrives from anywhere else — a shortcut or Reset — so an unfinished edit
+ * can never overwrite something newer. `Reset` shows only off the default (at
+ * 100% there is nothing to go back to), with no surface of its own, and sits to
+ * the left so `−` and `+` never move when it appears.
  */
 function InterfaceSize() {
   const { theme } = useTheme();
   const { TEXT } = theme;
   const { uiScale, setUiScale } = useSettings();
-  // The figure on screen while a press waits to be applied, and the scale the
-  // row itself last asked for (so an outside change is told from its own).
-  const [pending, setPending] = useState(null);
   const [typing, setTyping] = useState(null);
-  const pendingRef = useRef(null);
+  // The scale the row itself last asked for, so one that arrives from anywhere
+  // else can be told apart — and take an unfinished edit with it.
   const askedRef = useRef(uiScale);
-  const timer = useRef(null);
-
-  const shown = pending ?? uiScale;
-
-  const cancelPending = useCallback(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    pendingRef.current = null;
-    setPending(null);
-  }, []);
+  // Escape unmounts the field, and the blur that follows must not commit it.
+  const cancelledRef = useRef(false);
 
   const apply = useCallback(
     (next) => {
-      cancelPending();
       askedRef.current = next;
       setUiScale(next);
-    },
-    [cancelPending, setUiScale],
-  );
-
-  const bump = (direction) => {
-    const next = stepScale(shown, direction);
-    if (next === shown) return;
-    if (timer.current) clearTimeout(timer.current);
-    pendingRef.current = next;
-    setPending(next);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      pendingRef.current = null;
-      setPending(null);
-      askedRef.current = next;
-      setUiScale(next);
-    }, SCALE_SETTLE_MS);
-  };
-
-  // A scale the row did not ask for — a keyboard shortcut, or Settings being
-  // reopened after one — takes the pending press with it.
-  useEffect(() => {
-    if (uiScale === askedRef.current) return;
-    askedRef.current = uiScale;
-    cancelPending();
-  }, [uiScale, cancelPending]);
-
-  // Closing Settings inside the wait applies what was asked for: leaving is
-  // not cancelling.
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      if (pendingRef.current !== null) setUiScale(pendingRef.current);
     },
     [setUiScale],
   );
 
+  useEffect(() => {
+    if (uiScale === askedRef.current) return;
+    askedRef.current = uiScale;
+    setTyping(null);
+  }, [uiScale]);
+
   const commitTyped = () => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
     const next = parseScale(typing);
     setTyping(null);
-    if (next !== null) apply(next);
+    if (next !== null && next !== uiScale) apply(next);
+  };
+
+  const bump = (direction) => {
+    const next = stepScale(uiScale, direction);
+    if (next !== uiScale) apply(next);
   };
 
   return (
@@ -208,10 +175,16 @@ function InterfaceSize() {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {/* No surface, as the notes folder path: information until the pointer
             reaches it (`settingsStyles`). Only off the default. */}
-        {shown !== SCALE_DEFAULT && (
+        {uiScale !== SCALE_DEFAULT && (
           <button
             type="button"
             className="settings-reset"
+            onMouseDown={(e) => {
+              // Before the field's blur, so a half-typed value cannot land
+              // after the reset it was abandoned for.
+              e.preventDefault();
+              cancelledRef.current = true;
+            }}
             onClick={() => {
               setTyping(null);
               apply(SCALE_DEFAULT);
@@ -244,11 +217,7 @@ function InterfaceSize() {
             overflow: "hidden",
           }}
         >
-          <Segment
-            aria-label="Smaller"
-            disabled={shown <= SCALE_MIN || typing !== null}
-            onClick={() => bump(-1)}
-          >
+          <Segment aria-label="Smaller" disabled={uiScale <= SCALE_MIN} onClick={() => bump(-1)}>
             <MinusIcon size={14} />
           </Segment>
           {typing === null ? (
@@ -256,10 +225,10 @@ function InterfaceSize() {
               divider
               aria-label="Set a custom size"
               data-testid="ui-scale-value"
-              onClick={() => setTyping(String(shown))}
+              onClick={() => setTyping(String(uiScale))}
               style={{ minWidth: 62, fontVariantNumeric: "tabular-nums" }}
             >
-              {`${shown}%`}
+              {`${uiScale}%`}
             </Segment>
           ) : (
             <div
@@ -282,13 +251,16 @@ function InterfaceSize() {
                 value={typing}
                 onChange={(e) => setTyping(e.target.value)}
                 onFocus={(e) => e.currentTarget.select()}
+                onBlur={commitTyped}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     commitTyped();
                   } else if (e.key === "Escape") {
-                    // The dialog's own Escape would close Settings behind this.
+                    // The dialog's own Escape would close Settings behind this,
+                    // and the blur that follows must not commit what was typed.
                     e.preventDefault();
+                    cancelledRef.current = true;
                     setTyping(null);
                   }
                 }}
@@ -308,20 +280,14 @@ function InterfaceSize() {
               <span style={{ color: TEXT.muted }}>%</span>
             </div>
           )}
-          {typing === null ? (
-            <Segment
-              divider
-              aria-label="Larger"
-              disabled={shown >= SCALE_MAX}
-              onClick={() => bump(1)}
-            >
-              <PlusIcon size={14} />
-            </Segment>
-          ) : (
-            <Segment divider aria-label="Apply" onClick={commitTyped}>
-              <CheckIcon size={14} />
-            </Segment>
-          )}
+          <Segment
+            divider
+            aria-label="Larger"
+            disabled={uiScale >= SCALE_MAX}
+            onClick={() => bump(1)}
+          >
+            <PlusIcon size={14} />
+          </Segment>
         </div>
       </div>
     </div>

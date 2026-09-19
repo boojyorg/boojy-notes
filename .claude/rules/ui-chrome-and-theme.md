@@ -199,24 +199,39 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   dividers (`Segment` in `AppearanceTab`). Three separate buttons read as three things, and a
   dropdown of the sizes was built and rejected live (picking a neighbouring size became a
   two-press job).
-- **A press moves the figure at once and the app `SCALE_SETTLE_MS` (350) after the last one.**
-  The scale redraws the whole window, Settings included, so applying per press moved the button
-  out from under the pointer between presses; waiting for the end of a run makes that one move
-  rather than four. **A pending press never lands on top of something newer**: Reset, a typed
-  value and any scale the row did not ask for cancel it (an effect compares the scale with the
-  one the row last asked for), and closing Settings inside the wait **applies** it, because
-  leaving is not cancelling. The shell's shortcuts stand down while Settings is open, so the
-  keyboard cannot race the stepper until the dialog has gone.
+- **Every press applies at once, and the pane is what holds still.** Settings keeps the size and
+  place it opened with while the app resizes behind it (below), so the button stays under the
+  pointer without a timer anywhere. A debounced apply was built and judged twice: the controls
+  still moved once per run, and the pending value it needed could land on top of a newer one.
+  **There is no timer in this row.**
 - **The figure is a control**: clicking it types a whole percentage in the same range, applied on
-  Enter or the tick that `+` becomes, and never while it is typed (the field would resize under
-  the caret); `−` stands down meanwhile. Escape leaves the scale alone and `preventDefault`s, or
-  the dialog's own Escape would close Settings behind it. **`Reset` shows only off the default**
-  — at 100% there is nothing to go back to — with no surface of its own (the notes folder path's
-  grammar), and it sits to the **left**, so `−` and `+` never move when it appears. The range and
-  the presets are `SCALE_OPTIONS`, a custom value is held inside them, and `stepScale`
-  (`utils/uiScale.ts`) is the one rule the row and `Cmd+±` share: from a custom 93% the keys go
-  to the nearest preset either side. `interface-size.spec.ts`, the `tests/components/settings`
-  suite.
+  Enter or on leaving the field and never while it is typed (the field would resize under the
+  caret). Escape cancels — and so does a scale that arrives from anywhere else, so an unfinished
+  edit can never overwrite something newer; the blur that Escape or a press on Reset causes
+  commits nothing (`cancelledRef`). **`Reset` shows only off the default** — at 100% there is
+  nothing to go back to — with no surface of its own (the notes folder path's grammar), to the
+  **left** of the pill so `−` and `+` never move when it appears. The range and the presets are
+  `SCALE_OPTIONS`, a custom value is held inside them, and `stepScale` (`utils/uiScale.ts`) is
+  the one rule the row and `Cmd+±` share: from a custom 93% the keys go to the nearest preset
+  either side. `interface-size.spec.ts`, the `tests/components/settings` suite.
+- **Settings keeps the scale it opened with, and nothing else does** (`SettingsModal`,
+  2026-09-19). The pane carries `zoom: openedAt / uiScale` and a local `--ui-scale`, so while it
+  is open the app resizes under every press and the pane does not move at all; closing and
+  reopening draws it at the scale of the day, so it is never excluded from the scale. `zoom`
+  nests multiplicatively and `cssZoom` reads `currentCSSZoom`, the effective product, so
+  measurements inside the pane are right at either scale; the one chip that is portalled out of
+  it (the notes-folder path's) divides by the document's zoom, which is its own. The pane is
+  centred by a **wrapper** rather than by `translate(-50%, -50%)` on itself — a transform would
+  make it the containing block for anything `fixed` inside it, and a percentage offset would
+  fight its zoom. `interface-size.spec.ts` proves the pane's box at 50%, 100% and 200%, through
+  a window resize, and that its controls, its portalled chip and its focus trap still work.
+- **The scale keys are the one shortcut that works over Settings** (`useAppKeyboard`,
+  `settingsHoldsKeys`): the app resizes behind the open pane, so the keys that resize it belong
+  there, and the row's figure follows while `UiScaleChip` stands down (the row says the number).
+  The test is which modal is *on screen*, not where focus is — the pane's trap places focus a
+  frame after it opens and a key pressed inside that frame is still Settings'. A confirm dialog
+  above the pane, or a menu inside it, takes the keys back. Every other shortcut still stands
+  down over every modal.
 - **`vw` and `vh` ignore the UI scale, so anything sized against the viewport divides by it**
   (`atScale()` in `utils/uiScale`, against the `--ui-scale` custom property `SettingsContext`
   writes beside the zoom). Measured 2026-09-19: a `100vh` box is 1520px tall in a 760px window

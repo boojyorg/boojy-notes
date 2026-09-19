@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SCALE_SETTLE_MS } from "../../../src/utils/uiScale";
 
 const mocks = vi.hoisted(() => ({
   setThemeMode: vi.fn(),
@@ -65,31 +64,25 @@ describe("AppearanceTab", () => {
     expect(mocks.setThemeMode).toHaveBeenCalledWith("night");
   });
 
-  // Interface size: the Cmd+± scale, given a control. One segmented stepper,
-  // and a press moves the figure at once but the app a beat later — the scale
-  // redraws Settings too, so applying per press moved the button out from
-  // under the pointer between presses (judged live, Tyr, 2026-09-19).
+  // Interface size: the Cmd+± scale, given a control. Every press applies at
+  // once — it is the Settings pane that holds still while the app resizes
+  // behind it (SettingsModal), not the scale that waits (judged live twice,
+  // Tyr, 2026-09-19; a debounce moved the controls once per run and brought a
+  // pending value that could land on top of a newer one).
   describe("Interface size", () => {
     const figure = () => screen.getByTestId("ui-scale-value");
     const larger = () => screen.getByRole("button", { name: "Larger" });
     const smaller = () => screen.getByRole("button", { name: "Smaller" });
 
-    it("shows the scale, and a press moves the figure before it moves the app", () => {
+    it("applies every press at once, with no timer behind it", () => {
       render(<AppearanceTab SectionHeader={() => null} />);
       expect(figure()).toHaveTextContent("100%");
 
       fireEvent.click(larger());
-      // The figure is already there; the app has not been redrawn yet.
-      expect(figure()).toHaveTextContent("110%");
-      expect(mocks.setUiScale).not.toHaveBeenCalled();
-
-      // A run of presses accumulates into one change at the end of it.
-      fireEvent.click(larger());
-      fireEvent.click(larger());
-      expect(figure()).toHaveTextContent("133%");
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 10));
+      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(110);
+      // Nothing is waiting to happen later.
+      act(() => vi.advanceTimersByTime(2_000));
       expect(mocks.setUiScale).toHaveBeenCalledTimes(1);
-      expect(mocks.setUiScale).toHaveBeenCalledWith(133);
     });
 
     it("steps through the presets and says so at the ends of the range", () => {
@@ -97,11 +90,9 @@ describe("AppearanceTab", () => {
       const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
       expect(larger()).toHaveAttribute("aria-disabled", "true");
       fireEvent.click(larger());
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 10));
       expect(mocks.setUiScale).not.toHaveBeenCalled();
-
       fireEvent.click(smaller());
-      expect(figure()).toHaveTextContent("170%");
+      expect(mocks.setUiScale).toHaveBeenCalledWith(170);
 
       mocks.uiScale = 50;
       rerender(<AppearanceTab SectionHeader={() => null} />);
@@ -109,44 +100,17 @@ describe("AppearanceTab", () => {
       expect(larger()).not.toHaveAttribute("aria-disabled");
     });
 
-    it("a keyboard shortcut cancels a press that has not landed", () => {
-      const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
-      fireEvent.click(larger());
-      expect(figure()).toHaveTextContent("110%");
-
-      // Cmd+0 elsewhere in the app: the scale changed without the row asking.
-      mocks.uiScale = 150;
-      rerender(<AppearanceTab SectionHeader={() => null} />);
-      expect(figure()).toHaveTextContent("150%");
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 50));
-      expect(mocks.setUiScale).not.toHaveBeenCalled();
-    });
-
-    it("Reset lands at once and takes a pending press with it", () => {
-      mocks.uiScale = 133;
-      render(<AppearanceTab SectionHeader={() => null} />);
-      fireEvent.click(larger());
-      expect(figure()).toHaveTextContent("150%");
-
-      fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(100);
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 50));
-      expect(mocks.setUiScale).toHaveBeenCalledTimes(1);
-    });
-
-    it("Reset is offered only off the default, where there is something to go back to", () => {
+    it("Reset is offered only off the default, and goes back to it", () => {
       const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
       expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
-      // It follows the figure, so it appears with the press rather than after it.
-      fireEvent.click(larger());
-      expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
 
-      mocks.uiScale = 93;
+      mocks.uiScale = 133;
       rerender(<AppearanceTab SectionHeader={() => null} />);
-      expect(screen.getByRole("button", { name: "Reset" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(100);
     });
 
-    it("the figure takes a typed percentage, on Enter or the tick, never while typing", () => {
+    it("the figure takes a typed percentage, on Enter or on leaving the field", () => {
       mocks.uiScale = 120;
       render(<AppearanceTab SectionHeader={() => null} />);
       fireEvent.click(figure());
@@ -154,51 +118,59 @@ describe("AppearanceTab", () => {
       const field = screen.getByTestId("ui-scale-input");
       expect(field).toHaveValue("120");
       fireEvent.change(field, { target: { value: "93" } });
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 50));
+      // Nothing while it is being typed: the field would resize under the caret.
       expect(mocks.setUiScale).not.toHaveBeenCalled();
-      // − stands down while the field is open; + is the tick that applies.
-      expect(smaller()).toHaveAttribute("aria-disabled", "true");
 
       fireEvent.keyDown(field, { key: "Enter" });
       expect(mocks.setUiScale).toHaveBeenCalledWith(93);
       expect(screen.queryByTestId("ui-scale-input")).toBeNull();
 
-      // The tick commits the same way, and a value outside the range is held
-      // inside it rather than refused.
+      // Leaving the field commits it too, and a value outside the range is
+      // held inside it rather than refused.
       fireEvent.click(figure());
       fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "900" } });
-      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+      fireEvent.blur(screen.getByTestId("ui-scale-input"));
       expect(mocks.setUiScale).toHaveBeenLastCalledWith(200);
     });
 
-    it("a typed value takes a pending press with it", () => {
-      render(<AppearanceTab SectionHeader={() => null} />);
-      fireEvent.click(larger());
-      fireEvent.click(figure());
-      fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "93" } });
-      fireEvent.keyDown(screen.getByTestId("ui-scale-input"), { key: "Enter" });
-      act(() => vi.advanceTimersByTime(SCALE_SETTLE_MS + 50));
-      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(93);
-    });
-
-    it("Escape leaves the scale as it was, and Settings open", () => {
+    it("Escape cancels the edit, and the blur it causes commits nothing", () => {
       render(<AppearanceTab SectionHeader={() => null} />);
       fireEvent.click(figure());
       const field = screen.getByTestId("ui-scale-input");
       fireEvent.change(field, { target: { value: "77" } });
       const notSwallowed = fireEvent.keyDown(field, { key: "Escape", cancelable: true });
+      fireEvent.blur(field);
       expect(mocks.setUiScale).not.toHaveBeenCalled();
       expect(screen.queryByTestId("ui-scale-input")).toBeNull();
       // Prevented, so the dialog's own Escape handler stands down.
       expect(notSwallowed).toBe(false);
     });
 
-    it("closing Settings inside the wait applies what was asked for", () => {
-      const { unmount } = render(<AppearanceTab SectionHeader={() => null} />);
-      fireEvent.click(larger());
+    // An unfinished edit must never land on top of something newer: a shortcut
+    // (which works while Settings is open) or Reset takes it with it.
+    it("a scale from anywhere else cancels an unfinished edit", () => {
+      const { rerender } = render(<AppearanceTab SectionHeader={() => null} />);
+      fireEvent.click(figure());
+      fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "77" } });
+
+      mocks.uiScale = 150;
+      rerender(<AppearanceTab SectionHeader={() => null} />);
+      expect(screen.queryByTestId("ui-scale-input")).toBeNull();
+      expect(figure()).toHaveTextContent("150%");
       expect(mocks.setUiScale).not.toHaveBeenCalled();
-      unmount();
-      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(110);
+    });
+
+    it("pressing Reset with the field open resets, and drops what was typed", () => {
+      mocks.uiScale = 133;
+      render(<AppearanceTab SectionHeader={() => null} />);
+      fireEvent.click(figure());
+      fireEvent.change(screen.getByTestId("ui-scale-input"), { target: { value: "77" } });
+      const reset = screen.getByRole("button", { name: "Reset" });
+      // The pointer press comes before the field's blur, and claims it.
+      fireEvent.mouseDown(reset);
+      fireEvent.blur(screen.getByTestId("ui-scale-input"));
+      fireEvent.click(reset);
+      expect(mocks.setUiScale).toHaveBeenCalledExactlyOnceWith(100);
     });
   });
 });
