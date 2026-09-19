@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { cssZoom } from "../utils/domHelpers";
+import { FIELD_FORMATS } from "../utils/inlineFormatCommands";
 import { FormatIcon } from "./Icons";
 import { TOOLTIP_REST_MS, Tooltip, shortcutLabel } from "./Tooltip";
 
@@ -32,6 +33,9 @@ export const FORMATS = [
   { id: "code", label: "Inline code", key: "`" },
   { id: "link", label: "Link", key: "K" },
 ];
+
+/** The same strip in a field, which carries every format but Link. */
+const FIELD_FORMATS_ONLY = FORMATS.filter((f) => FIELD_FORMATS.includes(f.id));
 
 /** Whether a chip above `bar` would fall above the top of the scroll container it lives in. */
 export function chipWouldClip(bar) {
@@ -138,6 +142,10 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
  * near the centre as it can be and stay whole (`clampedLeft`). Resting on a
  * button for TOOLTIP_REST_MS shows its name and shortcut above it, or below
  * when the toolbar sits too near the top of the column for the chip to fit.
+ *
+ * In a field that owns its own text (a table cell, a callout's body) it is
+ * five: Link is the editor's alone for now, and a glyph that cannot act is
+ * worse than no glyph.
  */
 const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats, onFormat }) {
   const { theme } = useTheme();
@@ -204,7 +212,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         animation: "fadeInToolbar 0.12s ease-out",
       }}
     >
-      {FORMATS.map((format) => (
+      {(position.field ? FIELD_FORMATS_ONLY : FORMATS).map((format) => (
         <ToolbarBtn
           key={format.id}
           format={format}

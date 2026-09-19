@@ -102,6 +102,13 @@ History is in git and `CHANGELOG.md`.
 - Six Lucide glyphs at 16px on `ICON_STROKE_TOOLBAR` (2.5) in 28px boxes (`FormatIcon`); named
   by `aria-label`. **Active is the glyph in the accent and nothing else**; the grey fill is
   hover's alone.
+- **It shows only where it can act, and shows only what can act** (2026-09-19). A text block:
+  always. A block that owns its fields: only inside a field that holds inline Markdown, and only
+  while both ends of the selection are in that one field — so a callout's title, a code block's
+  body and a selection across two cells show nothing. In a field it is **five** glyphs: Link is
+  the editor's alone for now, and the strip drops the glyph rather than offer one that cannot
+  act. Before this the strip appeared over a cell with all six live and every one of them did
+  nothing (`measure()` only needed an ancestor with `data-block-id`, which the table root has).
 - **Applying a format keeps the toolbar where it is**, and the hook measures the selection once
   when the toolbar appears, never again while on screen (re-measuring slid the strip under the
   pointer as Bold widened the glyphs).
@@ -195,7 +202,11 @@ app's, made through state.**
   textarea holds focus (2026-09-19: an arrow pressed in a code block took focus out of it by a
   range left in another block, and a letter landed in the note's first block). The cost, taken
   knowingly: `Cmd+Shift+↑/↓` no longer reorders from inside a cell — use the grip, or the caret
-  outside the block.
+  outside the block. **One exception, and only for an inline format** (2026-09-19): a field that
+  holds Markdown has the document selection inside itself, so `Cmd+B` and its kin go to
+  `applyFormat` before the guard returns, because it is the one applier and that is what keeps
+  the strip's pressed glyph right whichever way the format was asked for. A code block's
+  textarea is not such a field, so there the key is still dropped.
 - **A collapsed Delete or Backspace reaching into a neighbour** merges only with a text block,
   selects a divider, image or table (the next key removes it), and refuses anything else.
   `cross-block-ownership.spec.ts`. Residue: an IME composition over a cross-block selection
@@ -361,6 +372,21 @@ a byte sequence the block's syntax cannot.**
 - **Read with the editor's reader, commit on every input through `commitTextChange`**
   (`updateBlockText` for the code textarea and callout body, `updateCalloutTitle`,
   `updateTableCell`), so undo takes a 500 ms burst and the editor skips its render.
+- **A field that holds inline Markdown owns its own formatting, and says so with
+  `data-inline-field`** (a table cell, a callout's body; 2026-09-19). The format is wrapped
+  around the selection inside the field and the field is then told with the `input` event a
+  keystroke fires (`formatInlineField` in `utils/inlineFormatCommands.ts`), so the field's own
+  handler is the only thing that commits it — one commit path per field, the one typing uses.
+  The editor reads no block back there (a cell's text is the cell's, not the table block's), a
+  selection with an end outside the field is refused, and a collapsed caret formats nothing (the
+  pending style `execCommand` leaves is a text block's residue). A callout's **title** and a code
+  block's textarea carry no attribute, because a `**` in either is literal. Chromium's own
+  `Cmd+B` must never run in a field: it decides from the computed style, so in a header cell
+  (600) it wrote a `font-weight: normal` span the walker reads as plain text and the file never
+  got its `**`, while in a body cell it bolded by accident — the two halves of one bug.
+  `inlineFormatCommands` holds the toggles, the shortcut map that `FORMATS` must match, and the
+  one list of the formats a field carries. `special-block-fields.spec.ts`,
+  `inlineFormatCommands.test.ts`.
 - **A field is painted only when it does not already hold the latest committed text, and the
   keystroke ref decides** (`useOwnedField`; judged against the render, a cell was repainted and
   the keystroke lost). Forced on a `syncGen` bump. The code textarea is uncontrolled; its
