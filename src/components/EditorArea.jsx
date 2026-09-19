@@ -1,7 +1,13 @@
 import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
-import { COLUMN_HEAD_GAP, LABEL_PAD_X } from "../constants/layout";
+import {
+  ACTION_ROW_H,
+  COLUMN_HEAD_GAP,
+  LABEL_PAD_X,
+  ROW_LABEL_LINE_HEIGHT,
+  ROW_LABEL_SIZE,
+} from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
 import { useEditorContext } from "../context/EditorContext";
@@ -9,7 +15,7 @@ import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
-import EditableBlock from "./EditableBlock";
+import EditableBlock, { EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT } from "./EditableBlock";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
@@ -28,6 +34,7 @@ import {
   titleFieldText,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
+import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
@@ -55,29 +62,23 @@ import { panelTransition } from "../tokens/motion";
  *
  * **The note's first line and the sidebar's New note row share a baseline.**
  * The two columns start level — the sidebar's header and the path band are the
- * same height — so the row's own words are the line the note's first line is
- * set on: the air above the row, plus the distance from the row's top to its
- * baseline, less the same distance inside the note's first block.
+ * same height — so the row's label is the line the note's first line is set on:
+ * the air above the row, plus the label's baseline inside it, less the note
+ * body's own baseline inside its first line.
  *
- * Both distances are measured rather than derived, because each is the font's
- * ascent and only the browser knows it (measured at 100% on 2026-09-19).
+ * The padding is one number for every note, whatever block opens it. A heading
+ * does not push its first line down to make room for itself; it reaches *up*
+ * from this baseline, through a lift it works out from its own type
+ * (`EditableBlock`). So the line you read first never moves — not between
+ * notes, and not when `# ` turns the first paragraph into a heading.
  *
- * **One offset cannot serve every first block**: a baseline sits further down a
- * tall line box than a short one. Measured against the row's baseline when the
- * paragraph was the block that agreed — H1 +10px, H2 +4, H3 +2, paragraph
- * +0.5, H6 −2. It is set for H1, the heading a note usually opens with, judged
- * live; a paragraph-first note carries that 10px the other way. The
- * alternative, a padding that depends on the first block's type, is refused:
- * the column would jump the moment `# ` was typed into the first line.
- *
- * Tops agreeing is not baselines agreeing, and centres are a third answer
- * again; all three were tried live the same day, in that order.
+ * Tops agreeing and centres agreeing were the two answers before this, on the
+ * same day; a baseline is the line the eye actually reads two words as sharing.
  */
-/** New note's top edge to the baseline of its label. */
-const ROW_BASELINE = 21.75;
-/** The first block's top edge to the baseline of its first line, for an H1. */
-const FIRST_BLOCK_BASELINE = 28.5;
-const COLUMN_TOP = COLUMN_HEAD_GAP + ROW_BASELINE - FIRST_BLOCK_BASELINE;
+const COLUMN_TOP =
+  COLUMN_HEAD_GAP +
+  baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
+  baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT);
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

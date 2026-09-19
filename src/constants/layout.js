@@ -148,14 +148,24 @@ export const ACTION_ROW_H = 32;
 /**
  * Air under the chrome row before the first row of a column — the sidebar's
  * New note row, and with it the note's first line, which is measured from this
- * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, then 14, then 18 as the
- * row came down to meet a heading's baseline halfway.
+ * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, then 14 at Tyr's ask;
+ * it briefly carried half of a baseline correction too, which the first block
+ * now makes for itself.
  */
-export const COLUMN_HEAD_GAP = 18;
+export const COLUMN_HEAD_GAP = 14;
 /**
  * Between the New note row and the Notes row. Tighter than the air above them,
  * so the action and the list's name read as one head to the column rather than
  * as two sections. It gives up what `COLUMN_HEAD_GAP` takes, which is what
  * holds the Notes row and the list below it still while New note moves down.
  */
-export const NOTES_ROW_GAP = 4;
+export const NOTES_ROW_GAP = 8;
+/**
+ * The New note row's label. Its line height is stated rather than left to the
+ * browser's `normal`, because the note's first line is set on this label's
+ * baseline and that sum should be readable from the app's own numbers
+ * (`baselineInRow`, `COLUMN_TOP`). The label is centred in the row, so the
+ * value only moves the baseline, by a tenth of a pixel against `normal`.
+ */
+export const ROW_LABEL_SIZE = 14;
+export const ROW_LABEL_LINE_HEIGHT = 1.2;

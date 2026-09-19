@@ -38,6 +38,8 @@ import {
   HEADER_RIGHT_INSET,
   NOTES_ROW_GAP,
   ROW_INSET,
+  ROW_LABEL_LINE_HEIGHT,
+  ROW_LABEL_SIZE,
   SIDEBAR_TREE_INSET,
   SPINE,
   SPINE_ICON,
@@ -302,7 +304,9 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         cursor: "pointer",
         color: TEXT.secondary,
         fontFamily: "inherit",
-        fontSize: 14,
+        fontSize: ROW_LABEL_SIZE,
+        // Stated, not `normal`: the note's first line is set on this baseline.
+        lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
         transition: "background 0.12s, color 0.12s",
       }}

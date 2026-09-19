@@ -4,6 +4,7 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
+import { baselineFromTop } from "../utils/typeBaseline";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -80,6 +81,35 @@ const HEADING_STYLES = {
 };
 
 const INDENT_PX = 24;
+
+/** Padding a row carries above its own first line, which sits between the
+ *  block's top edge and its baseline like leading does. */
+const ROW_PAD_TOP = { bullet: 2, numbered: 2, checkbox: 2.5 };
+
+/**
+ * How far a block that opens a note reaches up from the note's first baseline.
+ *
+ * The note's first line is set on the sidebar's New note row and the column's
+ * padding is one number for every note (`COLUMN_TOP` in EditorArea), so a block
+ * that opens a note does not push that line down to make room for itself: it
+ * takes the difference between the body's first baseline and its own. Negative
+ * for a heading bigger than the body — it reaches up — positive for H6, whose
+ * line is tighter than the body's, and zero for a paragraph.
+ */
+function firstBlockLift(type) {
+  const heading = HEADING_STYLES[type];
+  const size = heading ? heading.fontSize : EDITOR_FONT_SIZE;
+  const lineHeight = heading
+    ? heading.lineHeight
+    : type === "checkbox"
+      ? CHECKBOX_LINE_HEIGHT
+      : EDITOR_LINE_HEIGHT;
+  return (
+    baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT) -
+    (ROW_PAD_TOP[type] ?? 0) -
+    baselineFromTop(size, lineHeight)
+  );
+}
 
 /**
  * Bullet markers alternate by depth: a filled dot at the top level, a hollow
@@ -452,11 +482,11 @@ const EditableBlock = memo(
           style={{
             contain: "content",
             ...style,
-            // A heading's top margin is the air between it and the block above.
-            // The note's first block has none above it, so those pixels only
-            // pushed a note that opens on a heading off the line the column is
-            // measured to (2026-09-19). Every other heading keeps its rhythm.
-            ...(blockIndex === 0 ? { marginTop: 0 } : null),
+            // A heading that opens a note reaches up to the note's first
+            // baseline rather than pushing it down, and its top margin — the
+            // air between it and a block above, of which it has none — goes
+            // with it. Every other heading keeps its rhythm. 2026-09-19.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
             color: TEXT.primary,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
@@ -482,6 +512,8 @@ const EditableBlock = memo(
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: depth * INDENT_PX || undefined,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
           }}
         >
           <span
@@ -516,6 +548,8 @@ const EditableBlock = memo(
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: EDITOR_LINE_HEIGHT,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
           }}
         >
           <span
@@ -558,6 +592,8 @@ const EditableBlock = memo(
             padding: "2.5px 0",
             fontSize: EDITOR_FONT_SIZE,
             lineHeight: CHECKBOX_LINE_HEIGHT,
+            // Reaches up to the note's first baseline when it opens the note.
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
