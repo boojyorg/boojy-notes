@@ -26,6 +26,8 @@ export function useEditorHandlers({
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
+  openCodeBlock,
+  openDivider,
   deleteBlock,
   saveAndInsertImage,
   reReadBlockFromDom,
@@ -75,7 +77,8 @@ export function useEditorHandlers({
     tagMenuRef,
     setTagMenu,
     updateBlockText,
-    insertBlockAfter,
+    openCodeBlock,
+    openDivider,
     executeSlashCommand,
   });
   const { handleEditorKeyDown } = useKeyboardHandlers({
@@ -87,6 +90,8 @@ export function useEditorHandlers({
     wikilinkMenuRef,
     updateBlockText,
     insertBlockAfter,
+    openCodeBlock,
+    openDivider,
     deleteBlock,
     applyFormat,
     scopeOf,

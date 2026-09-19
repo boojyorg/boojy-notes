@@ -1,30 +1,55 @@
 import { useCallback } from "react";
 import {
   caretOnEmptyLastLine,
+  caretRect,
   findNearestBlock,
+  focusOwnedField,
+  hasOwnField,
   isEditableBlock,
   isSelectableBlock,
-  ownedField,
   placeCaret,
 } from "../../utils/domHelpers";
 
 /**
- * Where Backspace at the start of a block, or ArrowUp from its first line,
- * lands: the nearest block above that holds a caret or is addressed as a whole
- * (a divider, an image, a table). -1 at the top. Blocks that are neither
- * (code, callout, file) are stepped over as before.
+ * The nearest block in `step`'s direction that `stops` accepts, or -1.
+ *
+ * Deletion and the arrows want different answers, which is why this takes the
+ * rule rather than holding one. **Backspace merges text**, so it may only land
+ * where text can go: a code block in its path is stepped over, exactly as
+ * before. **The arrows only move the caret**, so they land on a block that
+ * keeps a field of its own and walk into it (2026-09-19; a code block and a
+ * callout had been stepped over since the table's walk-in was built, so the
+ * arrows passed over a code block in both directions and the only ways in were
+ * the pointer and the block that made it).
  */
+function landing(blocks, index, step, stops) {
+  let i = index + step;
+  while (i >= 0 && i < blocks.length && !stops(blocks[i])) i += step;
+  return i >= 0 && i < blocks.length ? i : -1;
+}
+
+/** Text or a whole-block neighbour: where a merge or a removal may land. */
+const takesText = (b) => isEditableBlock(b) || isSelectableBlock(b);
+/** The same, plus the blocks the arrows can walk into. */
+const takesCaret = (b) => takesText(b) || hasOwnField(b);
+
 function landingBefore(blocks, index) {
-  let i = index - 1;
-  while (i >= 0 && !isEditableBlock(blocks[i]) && !isSelectableBlock(blocks[i])) i--;
-  return i;
+  return landing(blocks, index, -1, takesText);
 }
 
 /** The ArrowDown counterpart of landingBefore. -1 at the bottom. */
 function landingAfter(blocks, index) {
-  let i = index + 1;
-  while (i < blocks.length && !isEditableBlock(blocks[i]) && !isSelectableBlock(blocks[i])) i++;
-  return i < blocks.length ? i : -1;
+  return landing(blocks, index, 1, takesText);
+}
+
+/** Where ArrowUp lands: a code block or callout above is entered, not skipped. */
+function caretLandingBefore(blocks, index) {
+  return landing(blocks, index, -1, takesCaret);
+}
+
+/** Where ArrowDown lands. */
+function caretLandingAfter(blocks, index) {
+  return landing(blocks, index, 1, takesCaret);
 }
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
 import {
@@ -33,7 +58,8 @@ import {
   markdownAfter,
   markdownBefore,
 } from "../../utils/crossBlockEdit";
-import { filterSlashCommands } from "../../constants/data";
+import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
+import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
 import { reorderFloor } from "../../utils/blockOrder";
 
 export function useKeyboardHandlers({
@@ -51,6 +77,8 @@ export function useKeyboardHandlers({
   syncGeneration,
   updateBlockText,
   insertBlockAfter,
+  openCodeBlock,
+  openDivider,
   deleteBlock,
   applyFormat,
   scopeOf,
@@ -159,6 +187,33 @@ export function useKeyboardHandlers({
       if (tagMenuRef?.current) setTagMenu(null);
       const blockType = blocks[blockIndex].type;
       const isList = LIST_TYPES.has(blockType);
+
+      // A marker on its own line opens its block on Enter as well as on the
+      // space (2026-09-19): ```js then Enter is the motion every Markdown
+      // editor teaches, and Enter on a bare `---` or `|||` must not leave a
+      // paragraph that the next open reads as the block anyway. Paragraphs
+      // only — Enter inside a list item means a new item, and hijacking it
+      // there would be a surprise.
+      if (blockType === "p") {
+        const fenceLang = bareFenceLang(text);
+        if (fenceLang !== null) {
+          el.innerHTML = "<br>";
+          openCodeBlock(noteId, blockIndex, fenceLang);
+          return;
+        }
+        if (isBareDivider(text)) {
+          el.innerHTML = "<br>";
+          openDivider(noteId, blockIndex);
+          return;
+        }
+        const columns = bareTableColumns(text);
+        if (columns !== null) {
+          el.innerHTML = "<br>";
+          const command = SLASH_COMMANDS.find((c) => c.id === "table");
+          if (command) executeSlashCommand(noteId, blockIndex, command, { columns });
+          return;
+        }
+      }
 
       // A quote continues on Enter (Obsidian's and Notion's quote): the new
       // line stays inside the same block, as Shift+Enter puts it. The file
@@ -308,7 +363,9 @@ export function useKeyboardHandlers({
       const sel = window.getSelection();
       if (sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+        // `caretRect`, never the range's own: a collapsed caret in an empty
+        // paragraph has no rect at all, and this question is asked of it.
+        const rect = caretRect(range, el);
         const elRect = el.getBoundingClientRect();
         if (rect.top - elRect.top < 5) {
           e.preventDefault();
@@ -316,11 +373,12 @@ export function useKeyboardHandlers({
             const titleEl = editorRef.current?.parentElement?.querySelector("h1[contenteditable]");
             if (titleEl) titleEl.focus();
           } else {
-            const prevIdx = landingBefore(blocks, blockIndex);
-            if (prevIdx >= 0 && blocks[prevIdx].type === "table") {
-              // The arrows walk a table's cells rather than stopping on it:
-              // arriving from below lands in its last row.
-              ownedField(editorRef.current, blocks[prevIdx].id, "end")?.focus();
+            const prevIdx = caretLandingBefore(blocks, blockIndex);
+            if (prevIdx >= 0 && hasOwnField(blocks[prevIdx])) {
+              // The arrows walk into a block that keeps its own field rather
+              // than stopping on it: arriving from below lands at its end —
+              // a table's last row, a code block's last line.
+              focusOwnedField(editorRef.current, blocks[prevIdx].id, "end");
             } else if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
               selectBlock(blocks[prevIdx].id);
             } else if (prevIdx >= 0) {
@@ -337,15 +395,16 @@ export function useKeyboardHandlers({
       const sel = window.getSelection();
       if (sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+        const rect = caretRect(range, el);
         const elRect = el.getBoundingClientRect();
         if (elRect.bottom - rect.bottom < 5) {
-          const nextIdx = landingAfter(blocks, blockIndex);
+          const nextIdx = caretLandingAfter(blocks, blockIndex);
           if (nextIdx >= 0) {
             e.preventDefault();
-            if (blocks[nextIdx].type === "table") {
-              // Into the first cell; the arrows then walk the grid.
-              ownedField(editorRef.current, blocks[nextIdx].id)?.focus();
+            if (hasOwnField(blocks[nextIdx])) {
+              // Into its first field: a table's first cell, a code block's
+              // first line. The arrows then walk it.
+              focusOwnedField(editorRef.current, blocks[nextIdx].id);
             } else if (isSelectableBlock(blocks[nextIdx])) {
               selectBlock(blocks[nextIdx].id);
             } else {
@@ -368,6 +427,15 @@ export function useKeyboardHandlers({
     // block instead of completing the tag (review 2026-09-06, H3). One rule
     // for every menu, in place of a per-menu guard.
     if (e.defaultPrevented) return;
+    // A block that keeps its own field owns every key pressed in it. The field
+    // is the active element and the editor root is only what the event bubbles
+    // through, so acting here means acting on the document selection — which,
+    // while a textarea has focus, is stale or empty. Measured 2026-09-19: an
+    // arrow pressed inside a code block took focus out of it and moved the
+    // caret by a range left in another block, and a letter typed there landed
+    // in the note's first block with the page scrolled to the top.
+    const active = document.activeElement;
+    if (active && active !== editorRef.current && editorRef.current?.contains(active)) return;
     const currentNote = activeNoteRef.current;
     const sel = window.getSelection();
     if (!sel.rangeCount) {

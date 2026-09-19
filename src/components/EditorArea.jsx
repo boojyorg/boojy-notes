@@ -22,7 +22,8 @@ import {
   caretLength,
   isEditableBlock,
   isSelectableBlock,
-  ownedField,
+  hasOwnField,
+  focusOwnedField,
   linkText,
   titleFieldText,
 } from "../utils/domHelpers";
@@ -322,8 +323,10 @@ const EditorArea = memo(
         }
         if (targetIndex >= blocks.length) return;
         const target = blocks[targetIndex];
-        if (target.type === "table") {
-          ownedField(editorRef.current, target.id, direction === "prev" ? "end" : "start")?.focus();
+        if (hasOwnField(target)) {
+          // A table, a code block or a callout: its own field takes focus, at
+          // the edge the caret arrived from.
+          focusOwnedField(editorRef.current, target.id, direction === "prev" ? "end" : "start");
           return;
         }
         if (isSelectableBlock(target)) {
@@ -334,8 +337,7 @@ const EditorArea = memo(
         if (el) {
           placeCaret(el, direction === "prev" ? caretLength(el) : 0);
         } else {
-          // A code block or callout: its own first field takes focus.
-          ownedField(editorRef.current, target.id)?.focus();
+          focusOwnedField(editorRef.current, target.id, direction === "prev" ? "end" : "start");
         }
       },
       [activeNote, noteDataRef, blockRefs, editorRef, titleRef, setSelectedBlockId],

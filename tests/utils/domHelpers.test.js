@@ -16,6 +16,9 @@ import {
   placeCaret,
   titleFieldText,
   ownedField,
+  caretRect,
+  focusOwnedField,
+  hasOwnField,
 } from "../../src/utils/domHelpers.js";
 
 function editable(html) {
@@ -560,5 +563,76 @@ describe("isSelectableBlock / isEditableBlock", () => {
       expect(isSelectableBlock({ type })).toBe(false);
       expect(isEditableBlock({ type })).toBe(true);
     }
+  });
+});
+
+describe("hasOwnField", () => {
+  it("is the blocks that keep a field of their own", () => {
+    for (const type of ["code", "callout", "table"]) expect(hasOwnField({ type })).toBe(true);
+    for (const type of ["p", "h1", "bullet", "spacer", "image", "file", "frontmatter"])
+      expect(hasOwnField({ type })).toBe(false);
+    expect(hasOwnField(null)).toBe(false);
+    expect(hasOwnField(undefined)).toBe(false);
+  });
+});
+
+describe("focusOwnedField", () => {
+  const editorWith = () => {
+    const editor = document.createElement("div");
+    editor.innerHTML =
+      '<div data-block-id="c1" data-block-type="code" contenteditable="false">' +
+      '<textarea class="code-textarea"></textarea></div>' +
+      '<div data-block-id="p1" data-block-type="p">text</div>';
+    document.body.appendChild(editor);
+    return editor;
+  };
+
+  it("takes a code block's textarea at the edge the caret arrived from", () => {
+    const editor = editorWith();
+    const ta = editor.querySelector("textarea");
+    ta.value = "one\ntwo";
+    expect(focusOwnedField(editor, "c1")).toBe(true);
+    expect(document.activeElement).toBe(ta);
+    expect(ta.selectionStart).toBe(0);
+    expect(focusOwnedField(editor, "c1", "end")).toBe(true);
+    expect(ta.selectionStart).toBe(ta.value.length);
+    editor.remove();
+  });
+
+  it("answers false for a block with no field of its own", () => {
+    const editor = editorWith();
+    expect(focusOwnedField(editor, "p1")).toBe(false);
+    expect(focusOwnedField(editor, "missing")).toBe(false);
+    expect(focusOwnedField(null, "c1")).toBe(false);
+    editor.remove();
+  });
+});
+
+describe("caretRect — a caret in an empty paragraph still has a line", () => {
+  // Chromium reports all zeros for a collapsed caret in an empty text node,
+  // and the arrow keys ask "first or last line of this block?" against it.
+  it("takes the range's own rect when it has one", () => {
+    const el = document.createElement("div");
+    const range = document.createRange();
+    range.getBoundingClientRect = () => ({ top: 40, bottom: 58, width: 0, height: 18 });
+    expect(caretRect(range, el).top).toBe(40);
+  });
+
+  it("falls back to the node the caret sits in, then to the block", () => {
+    const el = document.createElement("div");
+    el.getBoundingClientRect = () => ({ top: 197, bottom: 223, width: 300, height: 26 });
+    const empty = document.createTextNode("");
+    el.appendChild(empty);
+    const range = document.createRange();
+    range.setStart(empty, 0);
+    range.collapse(true);
+    range.getBoundingClientRect = () => ({ top: 0, bottom: 0, width: 0, height: 0 });
+    range.getClientRects = () => [];
+    const rect = caretRect(range, el);
+    expect(rect.top).toBe(197);
+    expect(rect.bottom).toBe(223);
+    // Which is what makes both edge questions true for a one-line block.
+    expect(rect.top - 197 < 5).toBe(true);
+    expect(223 - rect.bottom < 5).toBe(true);
   });
 });

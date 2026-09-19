@@ -1,5 +1,5 @@
 /**
- * The divider is a block you can address as a whole. Typing `---` under a
+ * The divider is a block you can address as a whole. Typing `--- ` under a
  * paragraph writes the blank line CommonMark needs before it (without one,
  * `---` under a line of text is a heading underline everywhere but here);
  * Backspace at the start of the block below selects the rule instead of
@@ -32,7 +32,7 @@ test("typing --- under a paragraph writes a blank line before it; Backspace from
     await h.page.locator("[data-block-id]").first().click();
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.press("Enter");
-    await h.page.keyboard.type("---");
+    await h.page.keyboard.type("--- ");
     await expect(h.page.locator(RULE)).toHaveCount(1);
     // The caret lands in a fresh paragraph under the rule.
     await h.page.keyboard.type("world");
@@ -106,6 +106,47 @@ test("a conventional file opens with no stray row; arrows stop on the rule; clic
     await h.restart();
     await h.openNote("Alpha");
     expect(await blockTypes(h.page)).toEqual(["p", "spacer", "p", "p", "p", "p"]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// Every marker waits for its space (2026-09-19), the divider included: until
+// it arrives the dashes are text, and Enter opens the rule the same way, since
+// a paragraph of dashes left on disk is a rule to every Markdown reader
+// anyway. CommonMark's break is three dashes or more, so a longer run is the
+// same rule rather than something else.
+test("the dashes wait for a space, Enter opens the rule too, and a long run is the same rule", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+
+    // Three dashes alone are still text, and a run of ten can be typed at all.
+    await h.page.keyboard.type("----------");
+    await expect(h.page.locator(RULE)).toHaveCount(0);
+    expect(await h.page.locator("[data-block-type='p']").allInnerTexts()).toContain("----------");
+
+    // The space opens the rule, however long the run.
+    await h.page.keyboard.type(" ");
+    await expect(h.page.locator(RULE)).toHaveCount(1);
+    await h.page.keyboard.type("under");
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("under"));
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nunder\n");
+
+    // And Enter on a bare run opens one as well.
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("---");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.locator(RULE)).toHaveCount(2);
+    await waitForFile(h.vault.file("Alpha.md"), (t) => (t.match(/^---$/gm) ?? []).length === 2);
+    await sleep(SETTLE_MS);
+    // The empty paragraph the second rule opened under it is a row of its own.
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nunder\n\n---\n\n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

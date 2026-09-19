@@ -146,9 +146,10 @@ H1/H2 keep −0.4/−0.2px letter spacing. Bold inside a heading is one step hea
   lives in `filterSlashCommands()`**, used by the menu and the keyboard navigation alike.
   Order: Markdown blocks first roughly by reach, then Table and Image (`data.test.js`).
 - **Each row carries its typed shortcut as a muted mono hint** (`hint`). Nine are Markdown;
-  two are Boojy's own quick keys: `|||` makes the two-by-two table at once, `![]` plus a space
-  opens the image picker (it waits for the space so `![alt](url)` can still be typed). Both
-  run the menu's own command through `executeSlashCommand`. Tier-2 blocks have no trigger.
+  two are Boojy's own quick keys: `||| ` makes a table whose columns the pipes count, `![] `
+  opens the image picker (the space lets `![alt](url)` still be typed). Both run the menu's own
+  command through `executeSlashCommand`, the table passing `{ columns }`. Tier-2 blocks have no
+  trigger.
 - Labels are plain words (Quote, To-do list). Rows: Lucide glyph at the navigation stroke,
   label, hint; no chip or group heading.
 - Menus position through `positionMenu()` / `useMenuPosition`: honour the anchor, keep a
@@ -185,7 +186,13 @@ app's, made through state.**
   heading's word. A wrap reaching into an existing run dissolves the partial clone. A collapsed
   caret keeps `execCommand` (residue, rare). `heading-bold.spec.ts`.
 - **A block that owns its own field owns its edits** (table cell, callout, code textarea); a
-  selection reaching from a text block into one is refused.
+  selection reaching from a text block into one is refused. **It owns its keys too**: the editor
+  root's `handleEditorKeyDown` returns when the active element is a field inside it, because
+  everything it does is a function of the document selection, which is stale or empty while a
+  textarea holds focus (2026-09-19: an arrow pressed in a code block took focus out of it by a
+  range left in another block, and a letter landed in the note's first block). The cost, taken
+  knowingly: `Cmd+Shift+↑/↓` no longer reorders from inside a cell — use the grip, or the caret
+  outside the block.
 - **A collapsed Delete or Backspace reaching into a neighbour** merges only with a text block,
   selects a divider, image or table (the next key removes it), and refuses anything else.
   `cross-block-ownership.spec.ts`. Residue: an IME composition over a cross-block selection
@@ -373,12 +380,30 @@ and distinguishes an empty body from one blank line; the editor never normalises
 edit that introduces a closing-looking line grows the fence; adding a block after an unclosed
 import writes a closer. `tilde-fences.spec.ts`.
 
-- **A fence typed as ``` takes the caret into its own field**, as the slash menu's Code does
-  (`useInputHandler`; before 2026-09-19 it left the caret in the paragraph under the block, so
-  the first line of code landed as prose beneath the empty block). The conversion fires on the
-  third backtick, so a language typed after it (` ```js `) lands as the first line of the body:
-  a fence that waits for Enter is the open question, not a bug to patch here.
-  `slash-focus.spec.ts`.
+- **Every typed marker waits for its space, and Enter does what the space does**
+  (`utils/blockTriggers.ts`; `useInputHandler` holds the space forms, `useKeyboardHandlers` the
+  Enter ones, paragraphs only there — Enter in a list item means a new item). `# `, `- `, `1. `,
+  `> `, `[] `, ` ``` `, `--- `, `||| `, `![] `: one rule, no exceptions. Three of them carry an
+  argument, and **a marker that fires on its last character can never be given one** — which is
+  why ` ```js ` put the language in the body until 2026-09-19 and `||||` could not ask for a
+  third column. The argument is read from the marker: the fence's info string is its language,
+  and a table's pipes are the row being drawn (a row of N cells is written with N+1 pipes, so
+  `||| ` is two columns, `|||| ` three, clamped at `MAX_TYPED_COLUMNS`). A divider has none; its
+  dash count is only CommonMark's three-or-more, so `----- ` opens the same rule `--- ` does.
+  Until the space each is text, which is the only way a literal ``` or a row of pipes gets typed
+  — dashes excepted, since a line of them is a thematic break in the file whatever the editor
+  shows.
+- **The block takes the caret into its own field**, as the slash menu's Code does; both go
+  through `openCodeBlock` (`useBlockOperations`), and the divider's two routes through
+  `openDivider` beside it — one owner per operation, whichever trigger asked for it.
+- **The info string is kept as it was typed and resolved only for reading**: ` ```js ` stays
+  `js` in the file, as it does in Obsidian where the file is the document, and the corner reads
+  *JavaScript* (`canonicalLang`; `LANG_ALIAS` in `CodeBlock` answers the other question, which
+  grammar highlights it, so `xml` is markup there and stays `xml` here). A word the app does not
+  know is kept and read as written, with no highlighting and no row ticked. Choosing the
+  language a block already has writes nothing (`sameLang`), so a menu re-pick never rewrites
+  `js` to `javascript` (`utils/codeLanguage.ts`). `slash-focus.spec.ts`, `code-language.spec.ts`,
+  `divider.spec.ts`, `table-block.spec.ts`, `blockTriggers.test.ts`, `codeLanguage.test.ts`.
 - **The language is one list, in the app's menu grammar** (`CodeLangMenu`, from the block's
   label or its ···): Sort's rows, a check in the mark colour, `align: "end"` on `positionMenu`
   because the label sits at the block's right edge, and a letter jumps to a language. Plain
@@ -411,13 +436,28 @@ import writes a closer. `tilde-fences.spec.ts`.
 - **Backspace from the block below and forward Delete from the block above select it first**
   (`reachAcross`); the second press removes it. Code, callout and file blocks are still stepped
   over (`landingBefore` / `landingAfter`); extend the rule once the table has been judged live.
-- **The arrows stop on a divider or image and walk through a table**: ArrowDown from above
-  enters the first cell, ArrowUp from below the last row; inside the grid the arrows move
-  between cells only at a cell's edges (`handleCellKeyDown`, `onBlockNav`). Shift+Arrow is never
-  intercepted and nothing selects a range of cells, by decision.
+- **The arrows stop on a divider or image and walk into every block that keeps a field**:
+  ArrowDown from above enters its first field (a table's first cell, a code block's first line),
+  ArrowUp from below its end; inside the grid the arrows move between cells only at a cell's
+  edges (`handleCellKeyDown`, `onBlockNav`). Code and callout joined the table on 2026-09-19
+  (`hasOwnField` + `focusOwnedField`); before that they were stepped over in both directions and
+  the pointer was the only way in. **Deletion keeps the older rule**: Backspace merges text, so
+  it may only land where text can go and still steps over a code block (`landingBefore` vs
+  `caretLandingBefore`). Shift+Arrow is never intercepted and nothing selects a range of cells,
+  by decision.
 - **The root registers itself in the block ref map** from its own effect (`SpacerBlock`,
   `TableBlock`), never through `EditableBlock`'s `elRef`, whose repaint would paint a `<br>` or
   empty text over it. `findNearestBlock` skips non-editable blocks.
+- **Taking the caret back from a field never scrolls the note.** The editor root is one
+  contentEditable spanning every block, so focusing it brings *its* top into view: leaving a code
+  block or a table cell put the caret in the right place and jumped the page to the top
+  (2026-09-19, measured 109 → 0 and 451 → 0). `placeCaret` focuses with `preventScroll` and then
+  brings the block the caret landed in into view by the least the scroller must move;
+  `focusOwnedField` does the same on the way in.
+- **A caret's line is measured with `caretRect`, never the range's own rect.** A collapsed caret
+  in an empty text node — an empty paragraph, a caret anchor — reports all zeros, and the arrows
+  ask "first or last line of this block?" against it, so ArrowDown out of an empty paragraph
+  never ran its branch at all. `caret-navigation.spec.ts`, `domHelpers.test.js`.
 - Deliberately absent: a hover treatment, a block menu, Duplicate or Turn into.
 
 ### The table is a compact grid you can enter and leave

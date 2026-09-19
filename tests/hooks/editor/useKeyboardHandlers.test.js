@@ -2,13 +2,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useKeyboardHandlers } from "../../../src/hooks/editor/useKeyboardHandlers";
-import { placeCaret } from "../../../src/utils/domHelpers";
+import { focusOwnedField, placeCaret } from "../../../src/utils/domHelpers";
 
 // Mock dependencies
 vi.mock("../../../src/utils/domHelpers", () => ({
   findNearestBlock: vi.fn(),
-  isEditableBlock: (block) => !["image", "spacer", "embed", "file"].includes(block.type),
+  // As the real ones: a block with a field of its own is not editable text.
+  isEditableBlock: (block) =>
+    !["image", "spacer", "embed", "file", "code", "table", "callout", "frontmatter"].includes(
+      block.type,
+    ),
   isSelectableBlock: (block) => block.type === "spacer" || block.type === "image",
+  hasOwnField: (block) => ["code", "callout", "table"].includes(block?.type),
+  focusOwnedField: vi.fn(() => true),
+  caretRect: (range) => range.getBoundingClientRect(),
   placeCaret: vi.fn(() => true),
 }));
 
@@ -354,6 +361,60 @@ describe("useKeyboardHandlers", () => {
       expect(event.preventDefault).toHaveBeenCalled();
       expect(deps.selectBlock).toHaveBeenCalledWith("hr");
       expect(placeCaret).not.toHaveBeenCalled();
+    });
+
+    // The arrows walk into a block that keeps its own field, as they always
+    // have for a table (2026-09-19): before this a code block was stepped over
+    // in both directions and the pointer was the only way in.
+    it("the arrows walk into a code block instead of stepping over it", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "c1", type: "code", text: "x = 1", lang: "python" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.c1 = document.createElement("div");
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+
+      // From above: its first field, at the start.
+      caretIn(deps.blockRefs.current.b1, "Hello", 5);
+      const down = key("ArrowDown");
+      result.current.handleBlockKeyDown("note-1", 0, down);
+      expect(down.preventDefault).toHaveBeenCalled();
+      expect(focusOwnedField).toHaveBeenCalledWith(expect.anything(), "c1");
+      expect(placeCaret).not.toHaveBeenCalled();
+
+      // From below: the same field, at its end.
+      focusOwnedField.mockClear();
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const up = key("ArrowUp");
+      result.current.handleBlockKeyDown("note-1", 2, up);
+      expect(up.preventDefault).toHaveBeenCalled();
+      expect(focusOwnedField).toHaveBeenCalledWith(expect.anything(), "c1", "end");
+      expect(placeCaret).not.toHaveBeenCalled();
+    });
+
+    // Deletion is a different question from navigation: Backspace merges text,
+    // so it may only land where text can go and still steps over a code block.
+    it("Backspace still steps over a code block rather than merging into it", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "c1", type: "code", text: "x = 1", lang: "python" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.c1 = document.createElement("div");
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
+      expect(focusOwnedField).not.toHaveBeenCalled();
     });
 
     it("an image is stopped on too; a file block between is still stepped over", () => {

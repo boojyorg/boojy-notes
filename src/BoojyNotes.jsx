@@ -347,6 +347,8 @@ export default function BoojyNotes() {
   const {
     updateBlockText,
     insertBlockAfter,
+    openCodeBlock,
+    openDivider,
     deleteBlock,
     updateBlockProperty,
     saveAndInsertImage,
@@ -447,6 +449,8 @@ export default function BoojyNotes() {
     syncGeneration,
     updateBlockText,
     insertBlockAfter,
+    openCodeBlock,
+    openDivider,
     deleteBlock,
     saveAndInsertImage,
     reReadBlockFromDom,

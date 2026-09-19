@@ -39,14 +39,14 @@ const selectedTable = (h: Awaited<ReturnType<typeof launchApp>>) =>
 const paragraph = (h: Awaited<ReturnType<typeof launchApp>>, text: string) =>
   h.page.locator("[data-block-type='p']", { hasText: text });
 
-test("a typed ||| makes a small grid whose bars show while a cell has focus; Escape then Backspace removes it, Cmd+Z brings it back", async () => {
+test("a typed ||| and a space makes a small grid whose bars show while a cell has focus; Escape then Backspace removes it, Cmd+Z brings it back", async () => {
   const h = await launchApp({ [NOTE]: "Intro.\n" });
   try {
     await h.openNote("Grid");
     await paragraph(h, "Intro.").click();
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.press("Enter");
-    await h.page.keyboard.type("|||");
+    await h.page.keyboard.type("||| ");
     await expect(table(h).locator("th").first()).toBeFocused();
 
     // Content-sized: an empty 2×2 is a small grid at the column's left, not
@@ -195,6 +195,58 @@ test("Delete table from the cell menu removes the whole block, and an added colu
     await h.page.keyboard.press(`${MOD}+z`);
     await expect(table(h)).toHaveCount(1);
     await expect(table(h).locator("td").first()).toHaveText("Tea");
+  } finally {
+    await h.close();
+  }
+});
+
+// The pipes are the row being drawn: a row of N cells is written with N+1
+// pipes, so ||| is two columns and |||| is three (2026-09-19). Until the space
+// arrives they are text, which is what makes a run of pipes typable at all.
+test("the pipes wait for a space and say how many columns; Enter opens the grid too", async () => {
+  const h = await launchApp({ [NOTE]: "Intro.\n" });
+  try {
+    await h.openNote("Grid");
+    await paragraph(h, "Intro.").click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+
+    // A run of pipes is text until the space.
+    await h.page.keyboard.type("|||||");
+    await expect(table(h)).toHaveCount(0);
+    expect(await h.page.locator("[data-block-type='p']").allInnerTexts()).toContain("|||||");
+
+    // Five pipes: the row they draw has four cells.
+    await h.page.keyboard.type(" ");
+    await expect(table(h).locator("th")).toHaveCount(4);
+    await expect(table(h).locator("tr")).toHaveCount(2);
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press("Backspace");
+    await expect(table(h)).toHaveCount(0);
+
+    // And Enter on a bare run opens the grid the same way: four pipes, three cells.
+    await h.page.keyboard.type("||||");
+    await expect(table(h)).toHaveCount(0);
+    await h.page.keyboard.press("Enter");
+    await expect(table(h).locator("th")).toHaveCount(3);
+    await expect(table(h).locator("th").first()).toBeFocused();
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+// A lean on the key is not a request for twenty columns.
+test("a long run of pipes is clamped to what the column can show", async () => {
+  const h = await launchApp({ [NOTE]: "Intro.\n" });
+  try {
+    await h.openNote("Grid");
+    await paragraph(h, "Intro.").click();
+    await h.page.keyboard.press(END_OF_LINE);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type(`${"|".repeat(20)} `);
+    await expect(table(h).locator("th")).toHaveCount(8);
+    expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
   }

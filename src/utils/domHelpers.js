@@ -306,13 +306,41 @@ export function placeCaret(el, pos = 0) {
   if (!el || !el.isConnected) return false;
   let ancestor = el.parentElement;
   while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
-  if (ancestor) ancestor.focus();
+  // The editor root is one contentEditable spanning the whole note, so taking
+  // focus back from a block's own field (a code textarea, a table cell)
+  // scrolled the note to the root's top: the caret landed right and the page
+  // jumped (2026-09-19, measured leaving a code block and a table cell alike).
+  // Take the focus without the scroll, then bring the block the caret is in
+  // into view by the least the scroller must move.
+  const takesFocus = !!ancestor && document.activeElement !== ancestor;
+  if (ancestor) ancestor.focus({ preventScroll: true });
   const range = caretRangeAt(el, pos);
   if (!range) return false;
   const sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
+  if (takesFocus) el.scrollIntoView?.({ block: "nearest" });
   return true;
+}
+
+/**
+ * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
+ * an empty text node — an empty paragraph, or one of the editor's own caret
+ * anchors — and the arrow keys ask "is the caret on this block's first or last
+ * line?" against it, so a zero rect answered *no* for ever and ArrowDown out of
+ * an empty paragraph never ran its branch at all (2026-09-19). Falls back to
+ * the node the caret sits in, then to the block, which has exactly one line
+ * when it is empty.
+ */
+export function caretRect(range, el) {
+  const rect = range.getBoundingClientRect();
+  if (rect.width || rect.height) return rect;
+  const [first] = range.getClientRects();
+  if (first && (first.width || first.height)) return first;
+  const node = range.startContainer;
+  const host = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  const box = host?.getBoundingClientRect?.();
+  return box && (box.width || box.height) ? box : (el?.getBoundingClientRect?.() ?? rect);
 }
 
 /**
@@ -550,6 +578,34 @@ export function ownedField(editorEl, blockId, edge = "start") {
     if (last) return last;
   }
   return wrapper.querySelector("textarea, [contenteditable='true']");
+}
+
+/**
+ * Whether the block keeps its own field: a code block's textarea, a callout's
+ * title and body, a table's cells. The editor never gives one of these a
+ * caret of its own — the field takes focus instead (`focusOwnedField`) — and
+ * every key pressed inside it belongs to the field, not to the editor root the
+ * event bubbles through.
+ */
+export function hasOwnField(b) {
+  return b?.type === "code" || b?.type === "callout" || b?.type === "table";
+}
+
+/**
+ * Focus a block's own field at one of its edges, without scrolling the note:
+ * the arrows walk into a code block or a table this way, arriving at its start
+ * from above and its end from below.
+ */
+export function focusOwnedField(editorEl, blockId, edge = "start") {
+  const field = ownedField(editorEl, blockId, edge);
+  if (!field) return false;
+  field.focus({ preventScroll: true });
+  if (field.tagName === "TEXTAREA") {
+    const at = edge === "end" ? field.value.length : 0;
+    field.selectionStart = field.selectionEnd = at;
+  }
+  field.scrollIntoView?.({ block: "nearest" });
+  return true;
 }
 
 /**

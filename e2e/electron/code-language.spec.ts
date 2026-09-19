@@ -11,7 +11,7 @@
  * first and opened a new block instead of choosing.
  */
 import { expect, test } from "@playwright/test";
-import { type AppHandle, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
+import { type AppHandle, END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
 
 const NOTE = "Code.md";
 const FILE = "Intro.\n\n```\nconst a = 1;\n```\n";
@@ -105,4 +105,57 @@ test("a press outside closes it", async () => {
   await expect(menu(h.page)).toHaveCount(0);
   await expect(label(h.page)).toHaveText(/Plain/);
   expect(h.pageErrors).toEqual([]);
+});
+
+// A fence typed with its language opens in it (2026-09-19). The info string is
+// kept exactly as typed — ```js stays `js` on disk, as it does in Obsidian,
+// where the file is the document — and the corner resolves it for reading.
+test("```js and a space opens a JavaScript block, and the file keeps js", async () => {
+  await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("```js ");
+  await expect(h.page.locator("textarea.code-textarea").first()).toBeFocused();
+  await h.page.keyboard.type("let a = 1;");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("let a"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toContain("```js\nlet a = 1;\n```");
+  await expect(label(h.page).first()).toHaveText(/JavaScript/);
+  expect(h.pageErrors).toEqual([]);
+});
+
+test("```py and Enter opens a Python block", async () => {
+  await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.press("Enter");
+  await h.page.keyboard.type("```py");
+  await h.page.keyboard.press("Enter");
+  await expect(h.page.locator("textarea.code-textarea").first()).toBeFocused();
+  await expect(label(h.page).first()).toHaveText(/Python/);
+  await h.page.keyboard.type("x = 1");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("x = 1"));
+  await sleep(SETTLE_MS);
+  expect(h.vault.read(NOTE)).toContain("```py\nx = 1\n```");
+  expect(h.pageErrors).toEqual([]);
+});
+
+// The menu reads the same file the label does, and choosing the language the
+// block already has writes nothing: `js` is not rewritten to `javascript`.
+test("an imported ```js block reads JavaScript, and re-picking it leaves the file alone", async () => {
+  const imported = "Intro.\n\n```js\nlet a = 1;\n```\n";
+  const g = await launchApp({ "Imported.md": imported });
+  try {
+    await g.openNote("Imported");
+    await expect(label(g.page)).toHaveText(/JavaScript/);
+    await label(g.page).click();
+    const checked = menu(g.page).locator('[role="menuitemradio"][aria-checked="true"]');
+    await expect(checked).toHaveText("JavaScript");
+    await checked.click();
+    await expect(menu(g.page)).toHaveCount(0);
+    await sleep(SETTLE_MS);
+    expect(g.vault.read("Imported.md")).toBe(imported);
+    expect(g.pageErrors).toEqual([]);
+  } finally {
+    await g.close();
+  }
 });
