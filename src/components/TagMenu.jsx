@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
-import { extractAllTags, tagRows } from "../utils/tags";
+import { extractAllTags, tagKey, tagRows } from "../utils/tags";
+import { foldText } from "../utils/search";
 
 /**
  * Tag autocomplete under the `#…` being typed.
@@ -17,14 +18,19 @@ import { extractAllTags, tagRows } from "../utils/tags";
  * because the caret is no longer inside a `#…` token. Before this the menu
  * prevented the space (`#alpha` + ` beta` became `#alphabeta`) and took Enter
  * even with nothing on screen.
+ *
+ * It offers only tags that *start with* what is typed, and never the typed
+ * tag itself (2026-09-20: the tag being made is already in the index the
+ * moment its first letter commits, so `#ha` offered `#ha`, and a substring
+ * match offered `#hashtag` for `#a`). So typing a new name shows nothing once
+ * the letters diverge from every existing tag. Rows are the app's menu
+ * grammar; the note count is not shown.
  */
 export default function TagMenu({ position, filter, noteData, onSelect, onDismiss }) {
   const { theme } = useTheme();
-  const { BG, TEXT, ACCENT } = theme;
+  const { BG, TEXT } = theme;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  // Whether the user has moved the highlight with the arrows since typing.
-  const [chosen, setChosen] = useState(false);
   const menuRef = useRef(null);
 
   const allTags = useMemo(() => {
@@ -34,13 +40,13 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   const filtered = useMemo(() => {
     if (!filter) return allTags;
-    const lc = filter.toLowerCase();
-    return allTags.filter((t) => t.tag.toLowerCase().includes(lc));
+    const typed = foldText(filter).text;
+    const own = tagKey(filter);
+    return allTags.filter((t) => tagKey(t.tag) !== own && foldText(t.tag).text.startsWith(typed));
   }, [allTags, filter]);
 
   useEffect(() => {
     setSelectedIndex(0);
-    setChosen(false);
   }, [filter]);
 
   const shown = !!position && filtered.length > 0;
@@ -50,15 +56,13 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
     const handler = (e) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setChosen(true);
         setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setChosen(true);
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === "Enter") {
         const pick = filtered[selectedIndex]?.tag;
-        if (!pick || (!chosen && pick.toLowerCase() === filter.toLowerCase())) return;
+        if (!pick) return;
         e.preventDefault();
         onSelect(pick);
       } else if (e.key === "Escape") {
@@ -68,7 +72,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [shown, filtered, selectedIndex, chosen, filter, onSelect, onDismiss]);
+  }, [shown, filtered, selectedIndex, onSelect, onDismiss]);
 
   if (!shown) return null;
 
@@ -84,8 +88,8 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
         borderRadius: 8,
-        padding: "4px 0",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        padding: 4,
+        boxShadow: theme.modalShadow,
         zIndex: Z.WIKILINK_MENU,
         maxHeight: 200,
         overflowY: "auto",
@@ -104,20 +108,16 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
           }}
           onMouseEnter={() => setSelectedIndex(i)}
           style={{
-            padding: "6px 12px",
-            fontSize: 13,
+            padding: "7px 10px",
+            borderRadius: 6,
+            fontSize: 12.5,
             cursor: "pointer",
-            color: i === selectedIndex ? TEXT.primary : TEXT.secondary,
-            background: i === selectedIndex ? `${ACCENT.primary}15` : "transparent",
-            transition: "background 0.08s",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
+            color: TEXT.primary,
+            background: i === selectedIndex ? BG.hover : "transparent",
+            transition: "background 0.12s",
           }}
         >
-          <span>#{t.tag}</span>
-          <span style={{ fontSize: 11, color: TEXT.muted }}>{t.count}</span>
+          #{t.tag}
         </div>
       ))}
     </div>

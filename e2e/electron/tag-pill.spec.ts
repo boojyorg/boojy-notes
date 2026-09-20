@@ -45,6 +45,11 @@ test("a tag is a pill from its first letter; a space after it is prose, a letter
     await expect(block.locator(".inline-tag").nth(1)).toHaveText("#new");
     await expect.poll(() => noteText(page)).toBe("see #toddy #new and");
     await waitForFile(h.vault.file("Note.md"), (t) => t === "see #toddy #new and\n");
+
+    // A click on a tag that grew by typing searches its whole name.
+    await block.locator(".inline-tag").nth(1).click();
+    await expect(page.getByTestId("search-tag-chip")).toHaveText(/#new$/);
+    await page.keyboard.press("Escape");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

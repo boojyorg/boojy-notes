@@ -330,7 +330,9 @@ app's, made through state.**
   when focus is already inside.
 - **A suggestion menu under the caret never takes focus and owns a key only while offering a
   completion.** The tag menu listens only with rows, never touches Space, and takes Enter only
-  when accepting is a completion; the slash menu is opened on purpose and keeps its keys. **The
+  when accepting is a completion: it offers only tags that *start with* the letters typed and
+  never the typed tag itself (2026-09-20: a new tag is in the index from its first letter, so
+  `#ha` offered `#ha`), rows in the menu grammar with no count; the slash menu is opened on purpose and keeps its keys. **The
   `[[` picker is the exception** (2026-09-20): it is the link picker, a dialog with a field, and
   takes focus the moment it opens; Escape leaves the `[[` as typed and the caret after it.
 - `key-ownership.spec.ts`. Not changed: Shift+Arrow at a block's edges, ArrowUp into the title,

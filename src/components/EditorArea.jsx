@@ -766,7 +766,10 @@ const EditorArea = memo(
                   }
                   const tag = e.target.closest(".inline-tag");
                   if (tag) {
-                    const tagName = tag.getAttribute("data-tag");
+                    // The pill's text, not `data-tag`: the attribute is written
+                    // at paint, and a tag that grew by typing kept its first
+                    // letter's (2026-09-20, `#ha` searched `#h`).
+                    const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
                     if (tagName && onTagClick) onTagClick(tagName);
                     return;
                   }
