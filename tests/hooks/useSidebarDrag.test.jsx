@@ -27,6 +27,8 @@ const rectAt = (top, height = 28) => ({
   width: 240,
 });
 
+let moveNotes;
+
 describe("useSidebarDrag: drop feedback reads the live theme", () => {
   let scroller;
   let folderRow;
@@ -35,6 +37,7 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     theme = DAY;
+    moveNotes = vi.fn();
     scroller = document.createElement("div");
     scroller.setAttribute("role", "tree");
     scroller.getBoundingClientRect = () => rectAt(0, 400);
@@ -57,7 +60,7 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
     return renderHook(() =>
       useSidebarDrag({
         noteDataRef: { current: { n1: { id: "n1", title: "Plan", folder: "" } } },
-        adoptNoteData: vi.fn(),
+        moveNotes,
         sidebarScrollRef: { current: scroller },
         selectedNotesRef: { current: new Set() },
         clearSelectionRef: { current: null },
@@ -134,5 +137,171 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
       vi.runAllTimers();
     });
     expect(folderRow.style.background).toBe("none");
+  });
+});
+
+describe("useSidebarDrag: a row inside a `data-drag-scroller` drags within it (the path's popup)", () => {
+  let sidebar;
+  let popup;
+  let popupFolder;
+  let popupNote;
+  let moveFolder;
+
+  const press = (result, target) => {
+    act(() => {
+      result.current.handleSidebarPointerDown({
+        button: 0,
+        target,
+        clientX: 20,
+        clientY: 60,
+        pointerType: "mouse",
+      });
+    });
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+  };
+  const moveTo = (y) => {
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: y }));
+    });
+  };
+  const release = () => {
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointerup"));
+    });
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    theme = DAY;
+    moveNotes = vi.fn();
+    moveFolder = vi.fn();
+    sidebar = document.createElement("div");
+    sidebar.getBoundingClientRect = () => rectAt(0, 400);
+    const sidebarFolder = document.createElement("div");
+    sidebarFolder.dataset.folderPath = "Elsewhere";
+    sidebarFolder.getBoundingClientRect = () => rectAt(10);
+    const root = document.createElement("div");
+    root.dataset.dropRoot = "true";
+    root.getBoundingClientRect = () => rectAt(0, 10);
+    sidebar.append(root, sidebarFolder);
+    popup = document.createElement("div");
+    popup.dataset.dragScroller = "folders";
+    popup.setAttribute("role", "tree");
+    popup.getBoundingClientRect = () => rectAt(500, 200);
+    const head = document.createElement("div");
+    head.dataset.dropScope = "";
+    head.getBoundingClientRect = () => rectAt(500);
+    popup.append(head);
+    popupFolder = document.createElement("div");
+    popupFolder.dataset.folderPath = "Work";
+    popupFolder.getBoundingClientRect = () => rectAt(510);
+    popupNote = document.createElement("div");
+    popupNote.dataset.noteId = "n1";
+    popupNote.getBoundingClientRect = () => rectAt(550);
+    popup.append(popupFolder, popupNote);
+    document.body.append(sidebar, popup);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  function mount() {
+    return renderHook(() =>
+      useSidebarDrag({
+        noteDataRef: { current: { n1: { id: "n1", title: "Plan", folder: null } } },
+        moveNotes,
+        sidebarScrollRef: { current: sidebar },
+        selectedNotesRef: { current: new Set() },
+        clearSelectionRef: { current: null },
+        moveFolder,
+      }),
+    );
+  }
+
+  it("targets the popup's folder rows, and asks the move to reveal where it landed", () => {
+    const { result } = mount();
+    press(result, popupNote);
+    expect(result.current.sidebarDrag.current.active).toBe(true);
+    moveTo(520);
+    expect(popupFolder.style.background).toBe(rgb(DAY.BG.hover));
+    release();
+    expect(moveNotes).toHaveBeenCalledWith(["n1"], "Work", { reveal: true });
+    expect(result.current.sidebarDrag.current.active).toBe(false);
+  });
+
+  it("the head row is the scope: a drop on it moves up into that folder, the root here", () => {
+    const { result } = mount();
+    press(result, popupNote);
+    moveTo(505);
+    expect(result.current.sidebarDrag.current.dropTarget?.type).toBe("root");
+    release();
+    expect(moveNotes).toHaveBeenCalledWith(["n1"], null, { reveal: true });
+  });
+
+  it("has no implicit root there: a release between rows, or on a note row, moves nothing", () => {
+    const { result } = mount();
+    press(result, popupNote);
+    // The sidebar's own root row is under y=5, but the drag lives in the popup.
+    moveTo(5);
+    expect(result.current.sidebarDrag.current.dropTarget).toBeNull();
+    moveTo(560); // the note row
+    expect(result.current.sidebarDrag.current.dropTarget).toBeNull();
+    moveTo(690); // the empty space at the popup's foot
+    expect(result.current.sidebarDrag.current.dropTarget).toBeNull();
+    release();
+    expect(moveNotes).not.toHaveBeenCalled();
+    act(() => {
+      vi.runAllTimers();
+    });
+    expect(document.body.classList.contains("block-dragging")).toBe(false);
+  });
+
+  it("a folder dragged there goes into the folder row it is dropped on, never itself", () => {
+    const { result } = mount();
+    const own = document.createElement("div");
+    own.dataset.folderPath = "Work/Archive";
+    own.getBoundingClientRect = () => rectAt(600);
+    popup.append(own);
+    press(result, own);
+    moveTo(610); // its own row: no target
+    expect(result.current.sidebarDrag.current.dropTarget).toBeNull();
+    moveTo(520);
+    release();
+    expect(moveFolder).toHaveBeenCalledWith("Work/Archive", "Work", { reveal: true });
+  });
+
+  it("Escape cancels a live drag before the surface it started in sees the key", () => {
+    const { result } = mount();
+    press(result, popupNote);
+    moveTo(520);
+    const seen = vi.fn();
+    document.addEventListener("keydown", seen);
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(seen).not.toHaveBeenCalled();
+    expect(result.current.sidebarDrag.current.active).toBe(false);
+    expect(popupFolder.style.background).toBe("");
+    release();
+    expect(moveNotes).not.toHaveBeenCalled();
+    document.removeEventListener("keydown", seen);
+  });
+
+  it("a drop in the sidebar itself does not ask for a reveal", () => {
+    const sidebarNote = document.createElement("div");
+    sidebarNote.dataset.noteId = "n1";
+    sidebarNote.getBoundingClientRect = () => rectAt(50);
+    sidebar.append(sidebarNote);
+    const { result } = mount();
+    press(result, sidebarNote);
+    moveTo(15);
+    release();
+    expect(moveNotes).toHaveBeenCalledWith(["n1"], "Elsewhere", { reveal: false });
   });
 });

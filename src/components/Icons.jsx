@@ -26,6 +26,7 @@ import {
   Bold as LuBold,
   Check as LuCheck,
   ChevronDown as LuChevronDown,
+  ChevronRight as LuChevronRight,
   ChevronLeft as LuChevronLeft,
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
@@ -33,6 +34,7 @@ import {
   Copy as LuCopy,
   FileText as LuFileText,
   Folder as LuFolder,
+  FolderInput as LuFolderInput,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
   GripVertical as LuGripVertical,
@@ -84,6 +86,9 @@ const navBase = { strokeWidth: ICON_STROKE_NAV };
 // ── Disclosure ────────────────────────────────────────────────────────────
 export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
 export const ChevronDownIcon = ({ size = ICON_INLINE }) => <LuChevronDown {...base} size={size} />;
+export const ChevronRightIcon = ({ size = ICON_INLINE }) => (
+  <LuChevronRight {...base} size={size} />
+);
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {
@@ -160,6 +165,10 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+/** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
+export const MoveToIcon = ({ size = ICON_INLINE }) => (
+  <LuFolderInput {...base} {...navBase} size={size} />
+);
 // ── Settings and setup ────────────────────────────────────────────────────
 /** The three appearance pills: content stroke at 16px, beside 14px labels. */
 export const SunIcon = ({ size = ICON_INLINE }) => <LuSun {...base} size={size} />;

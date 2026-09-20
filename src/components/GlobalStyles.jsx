@@ -174,7 +174,7 @@ export default function GlobalStyles() {
            pill for NEW_ROW_MS, so the copy is found among its alphabetical
            neighbours instead of announced in a message. Same !important reason
            as above: the row's hover is an inline write. */
-        .sidebar-folder.is-new {
+        .sidebar-folder.is-new, .sidebar-note.is-new {
           background: ${theme.BG.hover} !important;
         }
         .sidebar-note.is-renaming .sidebar-note-more,

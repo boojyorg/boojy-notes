@@ -63,13 +63,25 @@ export function SidebarProvider({ children }) {
    * cue. One row at a time; a second copy takes the mark from the first.
    */
   const [newFolder, setNewFolder] = useState(null);
-  const newFolderTimer = useRef(null);
-  const markNewFolder = useCallback((path) => {
-    if (newFolderTimer.current) clearTimeout(newFolderTimer.current);
-    setNewFolder(path);
-    newFolderTimer.current = setTimeout(() => setNewFolder(null), NEW_ROW_MS);
+  /**
+   * The note rows that just landed somewhere by Move to… or a drag made in
+   * the path's popup (2026-09-20): the same pill for the same beat, because a
+   * moved note lands in the sort's order among its new neighbours exactly as
+   * a copied folder does. One mark at a time; a new one takes it.
+   */
+  const [newNotes, setNewNotes] = useState(() => new Set());
+  const newRowTimer = useRef(null);
+  const markNewRows = useCallback(({ folder = null, notes = [] } = {}) => {
+    if (newRowTimer.current) clearTimeout(newRowTimer.current);
+    setNewFolder(folder);
+    setNewNotes(new Set(notes));
+    newRowTimer.current = setTimeout(() => {
+      setNewFolder(null);
+      setNewNotes(new Set());
+    }, NEW_ROW_MS);
   }, []);
-  useEffect(() => () => clearTimeout(newFolderTimer.current), []);
+  const markNewFolder = useCallback((path) => markNewRows({ folder: path }), [markNewRows]);
+  useEffect(() => () => clearTimeout(newRowTimer.current), []);
   // Note id whose sidebar row is showing the inline rename input (the note
   // counterpart of renamingFolder — same grammar, same input treatment).
   const [renamingNote, setRenamingNote] = useState(null);
@@ -183,7 +195,9 @@ export function SidebarProvider({ children }) {
       renamingNote,
       setRenamingNote,
       newFolder,
+      newNotes,
       markNewFolder,
+      markNewRows,
       searchMode,
       searchResults,
       activeResultIndex,
@@ -209,7 +223,9 @@ export function SidebarProvider({ children }) {
       renamingFolder,
       renamingNote,
       newFolder,
+      newNotes,
       markNewFolder,
+      markNewRows,
       searchMode,
       searchResults,
       activeResultIndex,

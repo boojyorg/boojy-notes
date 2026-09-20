@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { SidebarNode } from "../../src/types/notes";
 import {
+  ancestorFolders,
   crumbScope,
   findFolder,
+  parentFolder,
   parentRowIndex,
+  pickerRows,
   scopeContents,
+  sharedFolder,
   visibleRows,
+  withinFolder,
 } from "../../src/utils/pathTree";
 
 /**
@@ -132,5 +137,57 @@ describe("parentRowIndex", () => {
     expect(parentRowIndex(rows, at("folder:University/Semester 1"))).toBe(at("folder:University"));
     expect(parentRowIndex(rows, at("folder:University"))).toBe(-1);
     expect(parentRowIndex(rows, at("note:ideas"))).toBe(-1);
+  });
+});
+
+describe("the Move to… picker's helpers", () => {
+  it("parentFolder and ancestorFolders read a path", () => {
+    expect(parentFolder("University")).toBeNull();
+    expect(parentFolder("University/Archive/2024")).toBe("University/Archive");
+    expect(ancestorFolders(null)).toEqual([]);
+    expect(ancestorFolders("University")).toEqual([]);
+    expect(ancestorFolders("University/Archive/2024")).toEqual([
+      "University",
+      "University/Archive",
+    ]);
+  });
+
+  it("sharedFolder is the one folder a selection shares, null for the root, undefined when spread", () => {
+    expect(sharedFolder(["Work", "Work"])).toBe("Work");
+    expect(sharedFolder([null, undefined, null])).toBeNull();
+    expect(sharedFolder(["Work", null])).toBeUndefined();
+    expect(sharedFolder(["Work", "Work/Archive"])).toBeUndefined();
+    expect(sharedFolder([])).toBeUndefined();
+  });
+
+  it("pickerRows is the root and then folders only, open ones showing their subfolders", () => {
+    const rows = pickerRows(tree, new Set(["University"]));
+    expect(
+      rows.map((r) => `${r.depth}:${r.name}${r.open ? "▾" : r.hasChildren ? "▸" : ""}`),
+    ).toEqual(["0:Notes▾", "1:Personal", "1:University▾", "2:Archive▸", "2:Semester 1"]);
+    expect(rows[0].path).toBeNull();
+    expect(rows[0].hasChildren).toBe(true);
+    // Notes are not children: Semester 1 holds a note and nothing to expand into.
+    expect(rows[4].hasChildren).toBe(false);
+    expect(rows.every((r) => !r.disabled)).toBe(true);
+    expect(parentRowIndex(rows, 3)).toBe(2);
+    expect(parentRowIndex(rows, 1)).toBe(0);
+  });
+
+  it("the folder being moved and its subtree are disabled, kept in place, and never open", () => {
+    const rows = pickerRows(
+      tree,
+      new Set(["University", "University/Archive"]),
+      "University/Archive",
+    );
+    expect(rows.map((r) => `${r.name}${r.disabled ? "×" : ""}${r.open ? "▾" : ""}`)).toEqual([
+      "Notes▾",
+      "Personal",
+      "University▾",
+      "Archive×",
+      "Semester 1",
+    ]);
+    expect(withinFolder("University/Archive/2024", "University/Archive")).toBe(true);
+    expect(withinFolder("University/Archives", "University/Archive")).toBe(false);
   });
 });

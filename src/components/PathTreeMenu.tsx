@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
   useCallback,
@@ -25,9 +26,17 @@ import {
   TREE_ROW_H,
 } from "../constants/layout";
 import type { SidebarNode } from "../types/notes";
-import { parentRowIndex, scopeContents, type TreeRow, visibleRows } from "../utils/pathTree";
+import {
+  ancestorFolders,
+  parentRowIndex,
+  type PickRow,
+  pickerRows,
+  scopeContents,
+  type TreeRow,
+  visibleRows,
+} from "../utils/pathTree";
 import { cssZoom } from "../utils/domHelpers";
-import { FolderIcon } from "./Icons";
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icons";
 import Collapsible from "./Collapsible";
 
 /**
@@ -54,8 +63,36 @@ import Collapsible from "./Collapsible";
  * container (a pointer-opened surface paints no ring) and a document listener
  * takes the keys, the ContextMenu/SortMenu grammar; the container is a
  * non-modal `dialog`, so the shell's shortcuts stay quiet while it is open
- * (`focusOwner`). Nothing here moves, renames or deletes.
+ * (`focusOwner`). Nothing here renames or deletes.
+ *
+ * Two things move from here (2026-09-20). A press held on a row and dragged
+ * lifts it, the sidebar's own drag (`useSidebarDrag`, handed in as
+ * `onRowPointerDown`): the note or folder goes into whichever folder row it
+ * is dropped on, or onto the head row. The head row is the popup's scope,
+ * the folder whose contents these are (`Notes` for the root), drawn muted
+ * with its contents indented under it: a drop there means "up into this
+ * folder", which is the only way a note or folder gets *out* of the folder it
+ * is in from here. It takes no click and no key. A release anywhere else
+ * flies the pill back. An ordinary click still only navigates.
+ *
+ * And the same surface is the Move to… picker (`pick`): folders only, the
+ * root as its first row, the thing's current folder ticked in the mark
+ * colour, the folder being moved and everything inside it disabled. Choosing
+ * and expanding are two different gestures here, because a click on a folder
+ * row cannot both open it and mean "here": the row's body chooses, a chevron
+ * at its right edge (and Right/Left) expands, Enter chooses. Choosing the
+ * ticked row does nothing but close.
  */
+
+export interface PickTarget {
+  /** The caption over the tree and the dialog's name: `Move "Todd's Note" to`. */
+  label: string;
+  /** Where the thing is now: a folder path, null for the root, undefined for more than one folder. */
+  current: string | null | undefined;
+  /** A folder being moved: it and its subtree take nothing. */
+  excluded?: string | null;
+  onPick: (folder: string | null) => void;
+}
 
 export interface PathTreeMenuProps {
   /** The crumb's viewport rect; the popup hangs under its left edge. */
@@ -67,8 +104,12 @@ export interface PathTreeMenuProps {
   activeNote: string | null;
   /** The crumb that opened the popup: a press on it is the crumb's to toggle, not an outside press. */
   opener?: HTMLElement | null;
-  onOpen: (id: string) => void;
+  onOpen?: (id: string) => void;
   onClose: () => void;
+  /** The sidebar's press-and-hold drag, so a row here can be dragged onto a folder row here. */
+  onRowPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void;
+  /** Draw the popup as the Move to… destination picker instead of the browser. */
+  pick?: PickTarget;
 }
 
 /** Judged against the menus' 160–200 minimums: room for a folder and a check. */
@@ -76,7 +117,9 @@ export const POPUP_W = 280;
 /** About twelve rows, then the list scrolls inside the popup. */
 export const POPUP_MAX_H = 12 * (TREE_ROW_H + TREE_ROW_GAP) + 8;
 /** Each row's element id, for `aria-activedescendant` and scrolling. */
-const rowId = (row: TreeRow) => `path-tree-${row.key.replace(/[^\w-]/g, "_")}`;
+const rowId = (row: { key: string }) => `path-tree-${row.key.replace(/[^\w-]/g, "_")}`;
+/** The chevron's hit box in the picker: the row's own height, a square. */
+const CHEVRON_BOX = TREE_ROW_H;
 
 export default function PathTreeMenu({
   anchor,
@@ -86,6 +129,8 @@ export default function PathTreeMenu({
   opener = null,
   onOpen,
   onClose,
+  onRowPointerDown,
+  pick,
 }: PathTreeMenuProps) {
   const { theme } = useTheme() as {
     theme: Record<string, Record<string, string>> & { modalShadow: string };
@@ -97,19 +142,39 @@ export default function PathTreeMenu({
   };
   const { noteData } = useNoteData() as { noteData: Record<string, { title: string }> };
 
-  const [expanded, setExpanded] = useState(() => new Set(initialExpanded));
+  // The picker opens with the path down to the current folder open, and the
+  // current folder itself, so the tick is on screen and the folders beside
+  // and inside it are one click away; the browser opens with what the crumb
+  // asked for.
+  const [expanded, setExpanded] = useState(
+    () =>
+      new Set(
+        pick
+          ? pick.current
+            ? [...ancestorFolders(pick.current), pick.current]
+            : []
+          : initialExpanded,
+      ),
+  );
   const contents = useMemo(
     () => scopeContents(folderTree, sortedRootNotes, scope),
     [folderTree, sortedRootNotes, scope],
   );
-  const rows = useMemo(() => visibleRows(contents, expanded), [contents, expanded]);
+  const excluded = pick?.excluded ?? null;
+  const rows: (TreeRow | PickRow)[] = useMemo(
+    () => (pick ? pickerRows(folderTree, expanded, excluded) : visibleRows(contents, expanded)),
+    [pick, folderTree, excluded, contents, expanded],
+  );
 
-  // The highlight starts on the open note's row when it is in view, else on
-  // the first row, and follows the keys and the pointer from there.
+  // The highlight starts on the open note's row when it is in view (the
+  // picker: on the ticked folder), else on the first row, and follows the
+  // keys and the pointer from there.
   const [activeIndex, setActiveIndex] = useState(() => {
-    const at = visibleRows(contents, expanded).findIndex(
-      (r) => r.kind === "note" && r.id === activeNote,
-    );
+    const at = pick
+      ? pick.current === undefined
+        ? -1
+        : pickerRows(folderTree, expanded, excluded).findIndex((r) => r.path === pick.current)
+      : visibleRows(contents, expanded).findIndex((r) => r.kind === "note" && r.id === activeNote);
     return at >= 0 ? at : 0;
   });
   const active = rows[Math.min(activeIndex, rows.length - 1)] ?? null;
@@ -157,19 +222,30 @@ export default function PathTreeMenu({
 
   const open = useCallback(
     (id: string) => {
-      onOpen(id);
+      onOpen?.(id);
       onClose();
     },
     [onOpen, onClose],
   );
 
+  /** The picker's choice: the row's folder, unless it is disabled or already the place. */
+  const choose = useCallback(
+    (row: PickRow) => {
+      if (row.disabled) return;
+      if (pick && row.path !== pick.current) pick.onPick(row.path);
+      onClose();
+    },
+    [pick, onClose],
+  );
+
   const activate = useCallback(
-    (row: TreeRow | null) => {
+    (row: TreeRow | PickRow | null) => {
       if (!row) return;
-      if (row.kind === "note") open(row.id);
+      if ("disabled" in row) choose(row);
+      else if (row.kind === "note") open(row.id);
       else toggle(row.path);
     },
-    [open, toggle],
+    [open, toggle, choose],
   );
 
   const handleKeyDown = useCallback(
@@ -196,14 +272,15 @@ export default function PathTreeMenu({
           break;
         case "ArrowRight":
           // A closed folder opens; an open one steps into its first child.
+          // The root row is always open.
           if (active?.kind === "folder" && active.hasChildren) {
             if (active.open) move(i + 1);
-            else toggle(active.path);
+            else if (active.path !== null) toggle(active.path);
           }
           break;
         case "ArrowLeft":
           // An open folder closes; anything else steps out to its folder.
-          if (active?.kind === "folder" && active.open) toggle(active.path);
+          if (active?.kind === "folder" && active.open && active.path !== null) toggle(active.path);
           else {
             const parent = parentRowIndex(rows, i);
             if (parent >= 0) move(parent);
@@ -251,6 +328,89 @@ export default function PathTreeMenu({
   }, [opener, onClose]);
 
   const scopeName = scope ? (scope.split("/").pop() as string) : "Notes";
+  const dialogName = pick ? pick.label : `Contents of ${scopeName}`;
+
+  const highlightRow = (key: string) => {
+    setKeyed(false);
+    if (active?.key !== key) setActiveIndex(rows.findIndex((r) => r.key === key));
+  };
+
+  /**
+   * A picker row: the folder glyph and name are the choice; the tick marks
+   * where the thing already is; the chevron, a control of its own at the
+   * right edge, is the one thing that expands. `aria-disabled` rather than
+   * `disabled` so the row still names itself to the keys and the reader.
+   */
+  const renderPickRow = (row: PickRow) => {
+    const highlighted = active?.key === row.key;
+    const current = pick?.current !== undefined && row.path === pick?.current;
+    const isRoot = row.path === null;
+    return (
+      <div
+        key={row.key}
+        id={rowId(row)}
+        role="treeitem"
+        aria-level={row.depth + 1}
+        aria-expanded={row.hasChildren ? row.open : undefined}
+        aria-disabled={row.disabled || undefined}
+        aria-current={current ? "location" : undefined}
+        tabIndex={-1}
+        data-pick-folder={row.path ?? ""}
+        onClick={() => choose(row)}
+        onMouseMove={() => highlightRow(row.key)}
+        style={{
+          ...rowBase,
+          paddingLeft: SPINE - ROW_INSET + row.depth * TREE_INDENT,
+          paddingRight: 0,
+          gap: TEXT_COL - SPINE - SPINE_ICON,
+          background: highlighted && !row.disabled ? BG.hover : "transparent",
+          color: row.disabled ? TEXT.muted : highlighted ? TEXT.primary : TEXT.secondary,
+          cursor: row.disabled ? "default" : "pointer",
+          boxShadow: highlighted && keyed && !row.disabled ? ring : undefined,
+        }}
+      >
+        <FolderIcon open={row.open} />
+        <span style={labelStyle}>{row.name}</span>
+        {current && (
+          <span
+            data-testid="pick-current"
+            style={{ display: "flex", color: ACCENT.primary, paddingRight: 8 }}
+          >
+            <CheckIcon />
+          </span>
+        )}
+        {row.hasChildren && !isRoot ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label={row.open ? `Collapse ${row.name}` : `Expand ${row.name}`}
+            data-testid="pick-chevron"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (row.path !== null) toggle(row.path);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: CHEVRON_BOX,
+              height: CHEVRON_BOX,
+              flex: "0 0 auto",
+              color: TEXT.muted,
+            }}
+          >
+            {row.open ? <ChevronDownIcon /> : <ChevronRightIcon />}
+          </span>
+        ) : (
+          <span aria-hidden="true" style={{ width: current ? 0 : 8, flex: "0 0 auto" }} />
+        )}
+      </div>
+    );
+  };
+
+  // The browser's rows sit one level under the head row; the picker's rows
+  // carry their own depth (its root row is a row of the tree).
+  const shift = pick ? 0 : 1;
 
   const renderNote = (id: string, depth: number) => {
     const row: TreeRow = { kind: "note", key: `note:${id}`, depth, id };
@@ -267,13 +427,10 @@ export default function PathTreeMenu({
         tabIndex={-1}
         data-note-id={id}
         onClick={() => open(id)}
-        onMouseMove={() => {
-          setKeyed(false);
-          if (!highlighted) setActiveIndex(rows.findIndex((r) => r.key === row.key));
-        }}
+        onMouseMove={() => highlightRow(row.key)}
         style={{
           ...rowBase,
-          paddingLeft: TEXT_COL - ROW_INSET + depth * TREE_INDENT,
+          paddingLeft: TEXT_COL - ROW_INSET + (depth + shift) * TREE_INDENT,
           background: highlighted || current ? BG.hover : "transparent",
           color: highlighted || current ? TEXT.primary : TEXT.secondary,
           boxShadow: highlighted && keyed ? ring : undefined,
@@ -308,13 +465,10 @@ export default function PathTreeMenu({
           tabIndex={-1}
           data-folder-path={folder._path}
           onClick={() => toggle(folder._path)}
-          onMouseMove={() => {
-            setKeyed(false);
-            if (!highlighted) setActiveIndex(rows.findIndex((r) => r.key === row.key));
-          }}
+          onMouseMove={() => highlightRow(row.key)}
           style={{
             ...rowBase,
-            paddingLeft: SPINE - ROW_INSET + depth * TREE_INDENT,
+            paddingLeft: SPINE - ROW_INSET + (depth + shift) * TREE_INDENT,
             gap: TEXT_COL - SPINE - SPINE_ICON,
             background: highlighted ? BG.hover : "transparent",
             color: highlighted ? TEXT.primary : TEXT.secondary,
@@ -335,7 +489,7 @@ export default function PathTreeMenu({
                   position: "absolute",
                   top: 0,
                   bottom: TREE_ROW_GAP,
-                  left: SPINE + SPINE_ICON / 2 + depth * TREE_INDENT - ROW_INSET,
+                  left: SPINE + SPINE_ICON / 2 + (depth + shift) * TREE_INDENT - ROW_INSET,
                   width: 1,
                   background: BG.divider,
                   pointerEvents: "none",
@@ -381,8 +535,8 @@ export default function PathTreeMenu({
       <div
         ref={menuRef}
         role="dialog"
-        aria-label={`Contents of ${scopeName}`}
-        data-testid="path-tree"
+        aria-label={dialogName}
+        data-testid={pick ? "move-picker" : "path-tree"}
         style={{
           position: "fixed",
           top: (pos?.top ?? anchor.bottom + 4) / zoom,
@@ -403,12 +557,33 @@ export default function PathTreeMenu({
         {/* The tree is the scroller, and the focused element: focusing a
             child taller than its scroller scrolls it to the top (the 4px inset
             went missing on every open); focusing the scroller moves nothing. */}
+        {pick && (
+          <div
+            style={{
+              padding: "8px 12px 4px",
+              fontSize: 12,
+              color: TEXT.muted,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              userSelect: "none",
+            }}
+          >
+            {pick.label}
+          </div>
+        )}
         <div
           ref={treeRef}
           role="tree"
-          aria-label={scopeName}
+          aria-label={pick ? "Destination" : scopeName}
           aria-activedescendant={active ? rowId(active) : undefined}
           tabIndex={-1}
+          // The browser's rows drag with the sidebar's own press-and-hold; the
+          // tree is the scroller the drag auto-scrolls, and "folders" says its
+          // folder rows are the only targets (no root here).
+          {...(!pick && onRowPointerDown
+            ? { onPointerDown: onRowPointerDown, "data-drag-scroller": "folders" }
+            : {})}
           style={{
             outline: "none",
             maxHeight: POPUP_MAX_H,
@@ -418,11 +593,60 @@ export default function PathTreeMenu({
             padding: ROW_INSET,
           }}
         >
-          {rows.length === 0 && (
-            <div style={{ padding: "6px 10px", fontSize: 13, color: TEXT.muted }}>Empty folder</div>
+          {pick ? (
+            rows.map((row) => renderPickRow(row as PickRow))
+          ) : (
+            <>
+              {/* The head row: the scope, a drop target and nothing else. Not
+                  a tree item, so the keys and the highlight never land on it. */}
+              <div
+                role="presentation"
+                data-testid="path-tree-scope"
+                data-drop-scope={scope}
+                style={{
+                  ...rowBase,
+                  paddingLeft: SPINE - ROW_INSET,
+                  gap: TEXT_COL - SPINE - SPINE_ICON,
+                  color: TEXT.muted,
+                  cursor: "default",
+                  userSelect: "none",
+                }}
+              >
+                <FolderIcon open />
+                <span style={labelStyle}>{scopeName}</span>
+              </div>
+              {/* No role: these are the tree's own top-level items, drawn
+                  under the head row with its indent guide. */}
+              <div style={{ position: "relative" }}>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: TREE_ROW_GAP,
+                    left: SPINE + SPINE_ICON / 2 - ROW_INSET,
+                    width: 1,
+                    background: BG.divider,
+                    pointerEvents: "none",
+                  }}
+                />
+                {rows.length === 0 && (
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      paddingLeft: TEXT_COL - ROW_INSET + TREE_INDENT,
+                      fontSize: 13,
+                      color: TEXT.muted,
+                    }}
+                  >
+                    Empty folder
+                  </div>
+                )}
+                {contents.folders.map((folder) => renderFolder(folder, 0))}
+                {contents.notes.map((id) => renderNote(id, 0))}
+              </div>
+            </>
           )}
-          {contents.folders.map((folder) => renderFolder(folder, 0))}
-          {contents.notes.map((id) => renderNote(id, 0))}
         </div>
       </div>
     </>

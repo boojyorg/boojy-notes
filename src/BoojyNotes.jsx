@@ -22,6 +22,8 @@ const SettingsModal = React.lazy(() => import("./components/settings/SettingsMod
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import { FolderOpenIcon } from "./components/Icons";
 import ContextMenu from "./components/ContextMenu";
+import PathTreeMenu from "./components/PathTreeMenu";
+import { ancestorFolders, parentFolder, sharedFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
 import WikilinkMenu from "./components/WikilinkMenu";
 import TagMenu from "./components/TagMenu";
@@ -109,6 +111,7 @@ export default function BoojyNotes() {
     setRenamingFolder,
     setRenamingNote,
     markNewFolder,
+    markNewRows,
     filteredTree,
     fNotes,
     folderList,
@@ -413,13 +416,17 @@ export default function BoojyNotes() {
   // Read by the paste handler (frozen at mount) to paint wikilinks when it
   // repaints a block directly; filled below once useWikilinkHandlers runs.
   const noteTitleSetRef = useRef(null);
+  // The drag's moves are the app's own (`moveNotesTo`, `moveFolderTo`,
+  // defined below with the selection they clear), read through a ref at drop
+  // time; the hook's handlers are made once.
+  const moveRef = useRef(null);
   const { sidebarDrag, handleSidebarPointerDown, cancelSidebarDrag } = useSidebarDrag({
     noteDataRef,
-    adoptNoteData,
+    moveNotes: (ids, folder, opts) => moveRef.current?.moveNotesTo(ids, folder, opts),
     sidebarScrollRef,
     selectedNotesRef: multiSelectRef,
     clearSelectionRef: clearSelectionRef,
-    moveFolder,
+    moveFolder: (path, parent, opts) => moveRef.current?.moveFolderTo(path, parent, opts),
   });
   const {
     handleEditorKeyDown,
@@ -732,6 +739,86 @@ export default function BoojyNotes() {
     [adoptNoteData, clearSelection],
   );
 
+  // ── Moving, from wherever it was asked ──────────────────────────────
+  // Move to… (every menu), a drag in the sidebar and a drag in the path's
+  // popup end here (2026-09-20). Where the thing landed is shown, not
+  // announced: the destination and the folders above it open in the sidebar
+  // and the moved rows wear the row pill for a beat (`markNewRows`), if the
+  // sidebar is showing; a hidden sidebar keeps the state and is never
+  // reopened for it. A drag made in the sidebar itself skips the reveal —
+  // the pointer is already on the destination.
+  const revealInSidebar = useCallback(
+    (folder, rows) => {
+      const open = folder ? [...ancestorFolders(folder), folder] : [];
+      if (open.length > 0)
+        setExpanded((prev) => {
+          if (open.every((f) => prev[f])) return prev;
+          const next = { ...prev };
+          for (const f of open) next[f] = true;
+          return next;
+        });
+      markNewRows(rows);
+    },
+    [setExpanded, markNewRows],
+  );
+  const moveNotesTo = useCallback(
+    (ids, folder, { reveal = true } = {}) => {
+      const dest = folder || null;
+      // Only what actually changes place is written or lit; a note dropped on
+      // the folder it is in stays exactly as it was, pending edits included.
+      const moving = ids.filter(
+        (id) => noteDataRef.current[id] && (noteDataRef.current[id].folder || null) !== dest,
+      );
+      if (moving.length === 0) {
+        clearSelection();
+        return;
+      }
+      bulkMoveNotes(moving, dest);
+      if (reveal) revealInSidebar(dest, { notes: moving });
+    },
+    [noteDataRef, bulkMoveNotes, clearSelection, revealInSidebar],
+  );
+  const moveFolderTo = useCallback(
+    (path, parent, { reveal = true } = {}) => {
+      // The disk names the folder's final path (a de-duplicated name), so the
+      // reveal waits for the answer.
+      moveFolder(path, parent || null).then((landed) => {
+        if (landed && reveal) revealInSidebar(parent || null, { folder: landed });
+      });
+    },
+    [moveFolder, revealInSidebar],
+  );
+  moveRef.current = { moveNotesTo, moveFolderTo };
+
+  // The Move to… picker: what is being moved and where the menu that asked
+  // for it stood. `subject` is `{ kind: "notes", ids }` or `{ kind: "folder", path }`.
+  const [movePicker, setMovePicker] = useState(null);
+  const openMovePicker = useCallback((subject, anchor) => setMovePicker({ subject, anchor }), []);
+  const closeMovePicker = useCallback(() => setMovePicker(null), []);
+  const pickTarget = React.useMemo(() => {
+    if (!movePicker) return null;
+    const { subject } = movePicker;
+    if (subject.kind === "folder") {
+      return {
+        label: `Move “${subject.path.split("/").pop()}” to`,
+        current: parentFolder(subject.path),
+        excluded: subject.path,
+        onPick: (folder) => moveFolderTo(subject.path, folder),
+      };
+    }
+    const { ids } = subject;
+    const label =
+      ids.length === 1
+        ? `Move “${noteData[ids[0]]?.title || "Untitled"}” to`
+        : `Move ${ids.length} notes to`;
+    return {
+      label,
+      // Spread over more than one folder, the picker ticks nothing.
+      current: sharedFolder(ids.map((id) => noteData[id]?.folder ?? null)),
+      onPick: (folder) => moveNotesTo(ids, folder),
+    };
+  }, [movePicker, noteData, moveFolderTo, moveNotesTo]);
+
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div
@@ -972,6 +1059,7 @@ export default function BoojyNotes() {
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}
+              onPathRowPointerDown={handleSidebarPointerDown}
               onTitleBlur={settleTitle}
             />
             {isMobile && (
@@ -1041,10 +1129,19 @@ export default function BoojyNotes() {
         selectedNotes={selectedNotes}
         selectedCount={selectedCount}
         bulkDeleteNotes={bulkDeleteNotes}
-        bulkMoveNotes={bulkMoveNotes}
-        folderList={folderList}
+        onMoveTo={openMovePicker}
         wordCount={wordCount}
       />
+      {pickTarget && (
+        <PathTreeMenu
+          anchor={movePicker.anchor}
+          scope=""
+          initialExpanded={[]}
+          activeNote={null}
+          onClose={closeMovePicker}
+          pick={pickTarget}
+        />
+      )}
 
       <SlashMenu
         slashMenu={slashMenu}

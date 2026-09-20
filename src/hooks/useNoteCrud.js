@@ -113,19 +113,25 @@ export function useNoteCrud({
     });
   };
 
+  // Answers with the path the folder ended up at (the disk's answer on the
+  // desktop, the request on web), or null when nothing moved, so a caller can
+  // reveal the row where it landed.
   const changeFolderPath = (oldPath, newPath) => {
-    if (newPath === oldPath) return;
+    if (newPath === oldPath) return Promise.resolve(null);
     if (folderOps) {
       // The disk decides the final path (sanitised, de-duplicated); the notes'
       // folder fields and the folder list follow inside folderOps.rename.
-      folderOps
+      return folderOps
         .rename(oldPath, newPath)
-        .then((finalPath) => remapExpanded(oldPath, finalPath))
+        .then((finalPath) => {
+          remapExpanded(oldPath, finalPath);
+          return finalPath;
+        })
         .catch((err) => {
           console.error("useNoteCrud: folder rename failed", err);
           onError?.("Failed to rename the folder on disk");
+          return null;
         });
-      return;
     }
     const remap = remapPaths(oldPath, newPath);
     commitNoteData((prev) => {
@@ -137,6 +143,7 @@ export function useNoteCrud({
     });
     remapExpanded(oldPath, newPath);
     setCustomFolders((prev) => prev.map(remap));
+    return Promise.resolve(newPath);
   };
 
   const renameFolder = (oldPath, newName) => {
@@ -150,14 +157,16 @@ export function useNoteCrud({
 
   // Drag a folder onto another folder, or onto the root (`null`). Location
   // only, never order; a folder cannot go into itself or its own subtree.
+  // Answers with the folder's final path, or null when it did not move.
   const moveFolder = (folderPath, targetParent) => {
     const parent = targetParent || null;
     const slash = folderPath.lastIndexOf("/");
     const currentParent = slash === -1 ? null : folderPath.slice(0, slash);
-    if (parent === currentParent) return;
-    if (parent && (parent === folderPath || parent.startsWith(`${folderPath}/`))) return;
+    if (parent === currentParent) return Promise.resolve(null);
+    if (parent && (parent === folderPath || parent.startsWith(`${folderPath}/`)))
+      return Promise.resolve(null);
     const name = folderPath.slice(slash + 1);
-    changeFolderPath(folderPath, parent ? `${parent}/${name}` : name);
+    return changeFolderPath(folderPath, parent ? `${parent}/${name}` : name);
   };
 
   const deleteFolder = (folderPath) => {
