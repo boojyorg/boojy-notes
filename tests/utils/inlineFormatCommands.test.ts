@@ -47,6 +47,10 @@ describe("inlineFormatForKey", () => {
     expect(key("b", { metaKey: true })).toBe("bold");
     expect(key("i", { ctrlKey: true })).toBe("italic");
     expect(key("`", { metaKey: true })).toBe("code");
+    expect(key("e", { metaKey: true })).toBe("code");
+    expect(key("e", { ctrlKey: true })).toBe("code");
+    // A dead accent key with Cmd held is what a Spanish layout reports for the backtick.
+    expect(key("Dead", { metaKey: true })).toBeNull();
     expect(key("k", { metaKey: true })).toBe("link");
     expect(key("K", { metaKey: true })).toBe("link");
     expect(key("S", { metaKey: true, shiftKey: true })).toBe("strikethrough");

@@ -191,3 +191,32 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
   expect(h.vault.read(NOTE)).toBe(`*${LINE}*\n`);
   expect(h.pageErrors).toEqual([]);
 });
+
+// The backtick is a dead accent key on Spanish and most European layouts, and
+// with Cmd held reports "Dead", so Cmd+` never fired there. Cmd+E is what the
+// chip shows (2026-09-20); the backtick still works where the layout gives it.
+test("Cmd+E makes inline code, and the chip says so", async () => {
+  const block = h.page.locator("[data-block-id]").first();
+  await block.click();
+  await h.page.keyboard.press("End");
+  for (let i = 0; i < 3; i++) await h.page.keyboard.press("Shift+ArrowLeft");
+  await h.page.keyboard.press(`${MOD}+e`);
+  await expect(block).toHaveText(LINE);
+  expect(await block.innerHTML()).toContain("<code>fox</code>");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("brown `fox`"));
+
+  await h.page.keyboard.press(`${MOD}+e`);
+  expect(await block.innerHTML()).not.toContain("<code>");
+  await h.page.keyboard.press(`${MOD}+\``);
+  expect(await block.innerHTML()).toContain("<code>fox</code>");
+
+  await sleep(SETTLE_MS);
+  const bar = toolbar(h.page);
+  await bar.getByRole("button", { name: "Inline code" }).hover();
+  const tip = h.page.getByTestId("format-tooltip");
+  await expect(tip).toBeVisible({ timeout: 2_000 });
+  expect(await tip.textContent()).toBe(
+    process.platform === "darwin" ? "Inline code⌘E" : "Inline codeCtrl+E",
+  );
+  expect(h.pageErrors).toEqual([]);
+});

@@ -134,6 +134,9 @@ History is in git and `CHANGELOG.md`.
   only when it would clip (`chipWouldClip` against `.editor-scroll`). `FORMATS` in
   `FloatingToolbar.jsx` is the one place an editor shortcut is shown and must match
   `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac (`isMac`, not `isElectronMac`).
+  **Inline code is shown as `⌘E`** (Notion's; 2026-09-20) and `Cmd+\`` still works unshown: the
+  backtick is a dead accent key on Spanish and most European layouts and reports `Dead` with
+  Cmd held, so the shown shortcut must be a letter.
   `formatting-toolbar.spec.ts`.
 
 ## ATX headings share one editor path
