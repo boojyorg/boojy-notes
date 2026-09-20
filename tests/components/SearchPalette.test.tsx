@@ -215,6 +215,36 @@ describe("SearchPalette", () => {
     }
   });
 
+  it("keeps the highlight when the same results land again as a new array", () => {
+    const first = { results: [titleHit, bodyHit], totalCount: 2 };
+    const t = setup({ search: "boojy", searchResults: first });
+    fireEvent.keyDown(t.getByLabelText("Search notes"), { key: "ArrowDown" });
+    expect(current(t.container)?.textContent).toContain("Week 3 lecture");
+    state.sidebar = {
+      ...state.sidebar,
+      searchResults: { results: [{ ...titleHit }, { ...bodyHit }], totalCount: 2 },
+    };
+    t.rerender(
+      <SearchPalette
+        onOpenResult={t.onOpenResult}
+        onClose={t.onClose}
+        recentIds={[]}
+        currentNoteId="n1"
+      />,
+    );
+    expect(current(t.container)?.textContent).toContain("Week 3 lecture");
+    state.sidebar = { ...state.sidebar, searchResults: { results: [bodyHit], totalCount: 1 } };
+    t.rerender(
+      <SearchPalette
+        onOpenResult={t.onOpenResult}
+        onClose={t.onClose}
+        recentIds={[]}
+        currentNoteId="n1"
+      />,
+    );
+    expect(current(t.container)).toBe(rows(t.container)[0]);
+  });
+
   it("opens a clicked row", () => {
     const { getByText, onOpenResult } = setup({
       search: "boojy",
