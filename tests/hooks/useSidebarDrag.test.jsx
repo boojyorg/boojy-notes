@@ -190,6 +190,10 @@ describe("useSidebarDrag: a row inside a `data-drag-scroller` drags within it (t
     popup.dataset.dragScroller = "folders";
     popup.setAttribute("role", "tree");
     popup.getBoundingClientRect = () => rectAt(500, 200);
+    const head = document.createElement("div");
+    head.dataset.dropScope = "";
+    head.getBoundingClientRect = () => rectAt(500);
+    popup.append(head);
     popupFolder = document.createElement("div");
     popupFolder.dataset.folderPath = "Work";
     popupFolder.getBoundingClientRect = () => rectAt(510);
@@ -229,7 +233,16 @@ describe("useSidebarDrag: a row inside a `data-drag-scroller` drags within it (t
     expect(result.current.sidebarDrag.current.active).toBe(false);
   });
 
-  it("has no root there: a release between rows, or on a note row, moves nothing", () => {
+  it("the head row is the scope: a drop on it moves up into that folder, the root here", () => {
+    const { result } = mount();
+    press(result, popupNote);
+    moveTo(505);
+    expect(result.current.sidebarDrag.current.dropTarget?.type).toBe("root");
+    release();
+    expect(moveNotes).toHaveBeenCalledWith(["n1"], null, { reveal: true });
+  });
+
+  it("has no implicit root there: a release between rows, or on a note row, moves nothing", () => {
     const { result } = mount();
     press(result, popupNote);
     // The sidebar's own root row is under y=5, but the drag lives in the popup.

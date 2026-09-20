@@ -375,3 +375,54 @@ test("a row in the path's popup drags onto a folder row there; a folder too; a r
     await h.close();
   }
 });
+
+test("the popup's head row is the folder whose contents are shown: a drop on it moves a note out of its only folder", async () => {
+  const h = await launchApp({
+    "test/Hi.md": "Hi.\n",
+    "test/inner/Deep.md": "Deep.\n",
+    "Ideas.md": "Ideas.\n",
+  });
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote("Hi");
+    await sidebarToggle(h.page).click();
+    await crumb(h.page, "test").click();
+    await expect(popup(h.page)).toBeVisible();
+    // The head row names the scope (the root), takes no click, is not a tree item.
+    const head = popup(h.page).getByTestId("path-tree-scope");
+    await expect(head).toHaveText("Notes");
+    expect(await head.getAttribute("role")).toBe("presentation");
+    await head.click();
+    await expect(popup(h.page)).toBeVisible();
+    expect(await editorTitle(h.page)).toBe("Hi");
+
+    await holdAndDrag(
+      h.page,
+      popup(h.page).locator("[data-note-id]").filter({ hasText: "Hi" }),
+      head,
+    );
+    expect(await head.evaluate((el) => el.style.boxShadow)).toContain("inset");
+    await h.page.mouse.up();
+    await waitForFile(h.vault.file("Hi.md"), (c) => c.includes("Hi."));
+    await expect.poll(() => h.vault.exists("test/Hi.md")).toBe(false);
+    expect(await editorTitle(h.page)).toBe("Hi");
+    await expect.poll(() => pathFolders(h.page)).toEqual([]);
+
+    // Deeper: the head row is the parent folder, not the root.
+    await sidebarToggle(h.page).click();
+    await expandAllFolders(h.page);
+    await h.openNote("Deep");
+    await crumb(h.page, "inner").click();
+    await expect(popup(h.page).getByTestId("path-tree-scope")).toHaveText("test");
+    await holdAndDrag(
+      h.page,
+      popup(h.page).locator("[data-note-id]").filter({ hasText: "Deep" }),
+      popup(h.page).getByTestId("path-tree-scope"),
+    );
+    await h.page.mouse.up();
+    await waitForFile(h.vault.file("test/Deep.md"), (c) => c.includes("Deep."));
+    await expect.poll(() => pathFolders(h.page)).toEqual(["test"]);
+  } finally {
+    await h.close();
+  }
+});

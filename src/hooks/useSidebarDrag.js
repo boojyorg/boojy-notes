@@ -12,7 +12,9 @@ const SETTLE_MS = 200;
  * carrying `data-drag-scroller` drags within that element instead (the
  * path's folder popup, 2026-09-20), which is then what auto-scrolls and where
  * the targets are looked for. `data-drag-scroller="folders"` says folder rows
- * are the only targets there: no root row, no implicit root, a release
+ * are the only targets there, plus the one row carrying `data-drop-scope`
+ * (the popup's head row: the folder whose contents are shown, `""` for the
+ * root), which means "into that folder": no implicit root, a release
  * anywhere else flies the pill back. A drop from such a scroller asks the
  * move to reveal where the thing landed (`{ reveal: true }`), since the
  * sidebar, if it is showing, was not where the drop happened.
@@ -244,8 +246,23 @@ export function useSidebarDrag({
     }
 
     if (!target && sd.foldersOnly) {
-      // The popup: folder rows or nothing. The pointer between rows, or on a
-      // note row, is over no target, and a release there cancels.
+      // The popup: folder rows, its head row (the scope; "" is the root), or
+      // nothing. The pointer between rows, or on a note row, is over no
+      // target, and a release there cancels.
+      const scopeEl = scrollEl.querySelector("[data-drop-scope]");
+      if (scopeEl) {
+        const scope = scopeEl.dataset.dropScope;
+        const rect = scopeEl.getBoundingClientRect();
+        const ownTree =
+          sd.type === "folder" && scope && (scope === sd.id || scope.startsWith(`${sd.id}/`));
+        if (pointerY >= rect.top && pointerY <= rect.bottom && !ownTree) {
+          sd.dropTarget = scope
+            ? { type: "folder", id: scope, el: scopeEl }
+            : { type: "root", el: scopeEl };
+          paintDropTarget(scopeEl);
+          return;
+        }
+      }
       sd.dropTarget = null;
       clearDropHighlights();
       return;

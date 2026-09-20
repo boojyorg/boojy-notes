@@ -371,9 +371,14 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   duplicate (it reaches and moves notes; the sidebar organises them).
 - **Its rows drag with the sidebar's own press-and-hold** (2026-09-20, `onRowPointerDown` from
   `useSidebarDrag`): a note or folder held and moved lifts the same pill and goes into whichever
-  folder row of the popup it is dropped on. The tree is `data-drag-scroller="folders"`: it is
-  what auto-scrolls, its folder rows are the only targets (no root row, no implicit root: a
-  release between rows, on a note row or outside flies the pill back), a folder is never a target
+  folder row of the popup it is dropped on, or onto **the head row** (`path-tree-scope`,
+  `data-drop-scope`): the popup's scope, `Notes` for the root, drawn muted with the contents
+  indented one level under it, a `presentation` row the keys and the highlight never reach. A
+  drop there is "up into this folder", the one way out of the folder a thing is in from here
+  (a note in the only folder had nowhere to go, 2026-09-20). The tree is
+  `data-drag-scroller="folders"`: it is what auto-scrolls, its folder rows and the head row are
+  the only targets (no implicit root: a release between rows, on a note row or outside flies
+  the pill back), a folder is never a target
   for itself or its subtree, and Escape mid-drag cancels before the popup's own Escape can close
   it. An ordinary click still navigates; `suppressNextClick` eats the one after a drop. The
   popup stays open after a move and redraws from the tree. A drop here asks the move to reveal

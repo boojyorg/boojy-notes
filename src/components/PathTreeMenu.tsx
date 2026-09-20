@@ -68,9 +68,12 @@ import Collapsible from "./Collapsible";
  * Two things move from here (2026-09-20). A press held on a row and dragged
  * lifts it, the sidebar's own drag (`useSidebarDrag`, handed in as
  * `onRowPointerDown`): the note or folder goes into whichever folder row it
- * is dropped on, and nowhere else — the popup has no root row and no empty
- * space that means "root", so a release anywhere but a folder row flies the
- * pill back. An ordinary click still only navigates.
+ * is dropped on, or onto the head row. The head row is the popup's scope,
+ * the folder whose contents these are (`Notes` for the root), drawn muted
+ * with its contents indented under it: a drop there means "up into this
+ * folder", which is the only way a note or folder gets *out* of the folder it
+ * is in from here. It takes no click and no key. A release anywhere else
+ * flies the pill back. An ordinary click still only navigates.
  *
  * And the same surface is the Move to… picker (`pick`): folders only, the
  * root as its first row, the thing's current folder ticked in the mark
@@ -405,6 +408,10 @@ export default function PathTreeMenu({
     );
   };
 
+  // The browser's rows sit one level under the head row; the picker's rows
+  // carry their own depth (its root row is a row of the tree).
+  const shift = pick ? 0 : 1;
+
   const renderNote = (id: string, depth: number) => {
     const row: TreeRow = { kind: "note", key: `note:${id}`, depth, id };
     const current = id === activeNote;
@@ -423,7 +430,7 @@ export default function PathTreeMenu({
         onMouseMove={() => highlightRow(row.key)}
         style={{
           ...rowBase,
-          paddingLeft: TEXT_COL - ROW_INSET + depth * TREE_INDENT,
+          paddingLeft: TEXT_COL - ROW_INSET + (depth + shift) * TREE_INDENT,
           background: highlighted || current ? BG.hover : "transparent",
           color: highlighted || current ? TEXT.primary : TEXT.secondary,
           boxShadow: highlighted && keyed ? ring : undefined,
@@ -461,7 +468,7 @@ export default function PathTreeMenu({
           onMouseMove={() => highlightRow(row.key)}
           style={{
             ...rowBase,
-            paddingLeft: SPINE - ROW_INSET + depth * TREE_INDENT,
+            paddingLeft: SPINE - ROW_INSET + (depth + shift) * TREE_INDENT,
             gap: TEXT_COL - SPINE - SPINE_ICON,
             background: highlighted ? BG.hover : "transparent",
             color: highlighted ? TEXT.primary : TEXT.secondary,
@@ -482,7 +489,7 @@ export default function PathTreeMenu({
                   position: "absolute",
                   top: 0,
                   bottom: TREE_ROW_GAP,
-                  left: SPINE + SPINE_ICON / 2 + depth * TREE_INDENT - ROW_INSET,
+                  left: SPINE + SPINE_ICON / 2 + (depth + shift) * TREE_INDENT - ROW_INSET,
                   width: 1,
                   background: BG.divider,
                   pointerEvents: "none",
@@ -590,13 +597,54 @@ export default function PathTreeMenu({
             rows.map((row) => renderPickRow(row as PickRow))
           ) : (
             <>
-              {rows.length === 0 && (
-                <div style={{ padding: "6px 10px", fontSize: 13, color: TEXT.muted }}>
-                  Empty folder
-                </div>
-              )}
-              {contents.folders.map((folder) => renderFolder(folder, 0))}
-              {contents.notes.map((id) => renderNote(id, 0))}
+              {/* The head row: the scope, a drop target and nothing else. Not
+                  a tree item, so the keys and the highlight never land on it. */}
+              <div
+                role="presentation"
+                data-testid="path-tree-scope"
+                data-drop-scope={scope}
+                style={{
+                  ...rowBase,
+                  paddingLeft: SPINE - ROW_INSET,
+                  gap: TEXT_COL - SPINE - SPINE_ICON,
+                  color: TEXT.muted,
+                  cursor: "default",
+                  userSelect: "none",
+                }}
+              >
+                <FolderIcon open />
+                <span style={labelStyle}>{scopeName}</span>
+              </div>
+              {/* No role: these are the tree's own top-level items, drawn
+                  under the head row with its indent guide. */}
+              <div style={{ position: "relative" }}>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: TREE_ROW_GAP,
+                    left: SPINE + SPINE_ICON / 2 - ROW_INSET,
+                    width: 1,
+                    background: BG.divider,
+                    pointerEvents: "none",
+                  }}
+                />
+                {rows.length === 0 && (
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      paddingLeft: TEXT_COL - ROW_INSET + TREE_INDENT,
+                      fontSize: 13,
+                      color: TEXT.muted,
+                    }}
+                  >
+                    Empty folder
+                  </div>
+                )}
+                {contents.folders.map((folder) => renderFolder(folder, 0))}
+                {contents.notes.map((id) => renderNote(id, 0))}
+              </div>
             </>
           )}
         </div>
