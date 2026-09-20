@@ -146,10 +146,16 @@ export default function SearchPalette({
   }, [mode, recentIds, noteData, currentNoteId, shown, query, tags, searchResults.results]);
 
   // The highlight: a position in the rows drawn, reset to the first whenever
-  // the list changes (a keystroke, a chip, results landing).
+  // the list's *content* changes (a keystroke, a chip, results landing). Not
+  // on the array's identity: the index re-runs the query on every change to
+  // the note store, and a save or watcher event landing between ArrowDown
+  // and Enter put the highlight back on the first row (CI, 2026-09-20).
   const [active, setActive] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `rows` changing is the reset.
-  useLayoutEffect(() => setActive(0), [rows]);
+  const rowsKey = rows
+    .map((r) => (r.kind === "tag" ? `#${r.tag}` : r.kind === "recent" ? r.noteId : r.result.noteId))
+    .join("\n");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the key changing is the reset.
+  useLayoutEffect(() => setActive(0), [rowsKey]);
   useEffect(() => {
     const el = listRef.current?.querySelector(`[data-search-index="${active}"]`);
     if (el && typeof (el as HTMLElement).scrollIntoView === "function")
