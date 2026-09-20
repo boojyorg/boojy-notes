@@ -222,17 +222,20 @@ test("the chip says where a link goes; a missing or shared name says so and its 
     const links = h.page.locator("[data-block-id] .wikilink");
     // Two notes share the name: drawn unresolved, the chip says so.
     await expect(links.nth(0)).toHaveClass(/wikilink-broken/);
-    await links.nth(0).hover();
-    await expect(chip).toHaveText("Goals2 notes share this name", { timeout: 2_000 });
-    await h.page.mouse.move(5, 5);
-    await links.nth(1).hover();
-    await expect(chip).toHaveText("Old planno note by this name", { timeout: 2_000 });
-    await h.page.mouse.move(5, 5);
-    await links.nth(2).hover();
-    await expect(chip).toHaveText("Todd's NoteUniversity/Archive", { timeout: 2_000 });
-    await h.page.mouse.move(5, 5);
-    await h.page.locator("[data-block-id] a").first().hover();
-    await expect(chip).toHaveText("https://example.org", { timeout: 2_000 });
+    // Re-hovered until the chip shows: the Linux runner sends a stray mouseout
+    // ~500 ms after a hover when the other worker launches, which cancels the
+    // rest (the tooltip specs do the same).
+    const chipFor = async (target: ReturnType<Page["locator"]>, text: string) => {
+      await expect(async () => {
+        await h.page.mouse.move(5, 5);
+        await target.hover();
+        await expect(chip).toHaveText(text, { timeout: 1_500 });
+      }).toPass({ timeout: 10_000 });
+    };
+    await chipFor(links.nth(0), "Goals2 notes share this name");
+    await chipFor(links.nth(1), "Old planno note by this name");
+    await chipFor(links.nth(2), "Todd's NoteUniversity/Archive");
+    await chipFor(h.page.locator("[data-block-id] a").first(), "https://example.org");
     await h.page.mouse.move(5, 5);
     await expect(chip).toHaveCount(0);
 
