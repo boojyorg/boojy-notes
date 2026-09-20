@@ -46,18 +46,18 @@ handy for tests, and its notes live in browser storage rather than on disk.
 ## Development
 
 
-| Script                 | Description                                                 |
-| ---------------------- | ----------------------------------------------------------- |
-| `dev`                  | Vite dev server + Electron                                  |
-| `dev:web`              | Vite dev server (browser only)                              |
-| `build`                | Production build (web)                                      |
-| `build:electron`       | Production build + desktop installers, into `release/`      |
-| `test`                 | Unit tests (Vitest)                                         |
-| `test:coverage`        | Unit tests with the CI coverage floor                       |
-| `test:e2e`             | Web end-to-end tests (Playwright)                           |
-| `test:electron`        | Real desktop app against a temp vault                       |
-| `check`                | Biome lint + format in one pass                             |
-| `typecheck`            | TypeScript check (`tsc --noEmit`)                           |
+| Script           | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `dev`            | Vite dev server + Electron                             |
+| `dev:web`        | Vite dev server (browser only)                         |
+| `build`          | Production build (web)                                 |
+| `build:electron` | Production build + desktop installers, into `release/` |
+| `test`           | Unit tests (Vitest)                                    |
+| `test:coverage`  | Unit tests with the CI coverage floor                  |
+| `test:e2e`       | Web end-to-end tests (Playwright)                      |
+| `test:electron`  | Real desktop app against a temp vault                  |
+| `check`          | Biome lint + format in one pass                        |
+| `typecheck`      | TypeScript check (`tsc --noEmit`)                      |
 
 
 All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`,
