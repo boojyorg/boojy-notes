@@ -148,6 +148,8 @@ const EditorArea = memo(
     lightbox,
     setLightbox,
     openNote: openNoteProp,
+    // The sidebar's press-and-hold drag, for the rows of the path's popup.
+    onPathRowPointerDown,
     onEditorClick,
     onTitleBlur,
   }) {
@@ -718,6 +720,7 @@ const EditorArea = memo(
             bg={editorBg}
             activeNote={activeNote}
             onOpenNote={openNoteProp}
+            onRowPointerDown={onPathRowPointerDown}
           >
             {titleField}
           </NotePath>

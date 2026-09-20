@@ -91,10 +91,111 @@ export function visibleRows(contents: TreeScope, expanded: ReadonlySet<string>):
 }
 
 /** The index of the folder row that holds row `i`, or -1 at the top level. */
-export function parentRowIndex(rows: TreeRow[], i: number): number {
+export function parentRowIndex(
+  rows: readonly { kind: string; depth: number }[],
+  i: number,
+): number {
   const depth = rows[i]?.depth ?? 0;
   for (let j = i - 1; j >= 0; j--) {
     if (rows[j].kind === "folder" && rows[j].depth === depth - 1) return j;
   }
   return -1;
+}
+
+// ── The Move to… picker ──────────────────────────────────────────────────
+
+/**
+ * A row of the Move to… picker (2026-09-20): the same popup drawn as a
+ * destination chooser. Folders only, the root as the first row (`path` null,
+ * named `Notes`, always open, since the root is a folder), and a folder that
+ * cannot take the thing being moved — the folder itself, or anything inside
+ * it — drawn `disabled` rather than left out, so the tree keeps its shape and
+ * the reader sees why. Notes never count as children here: a folder with
+ * notes and no subfolders has nothing to expand into.
+ */
+export interface PickRow {
+  kind: "folder";
+  key: string;
+  depth: number;
+  /** A vault-relative `/` path, or null for the root. */
+  path: string | null;
+  name: string;
+  open: boolean;
+  hasChildren: boolean;
+  disabled: boolean;
+}
+
+/** The parent folder's path, or null at the root. */
+export function parentFolder(path: string): string | null {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? null : path.slice(0, slash);
+}
+
+/** Every folder above `path`, outermost first (`a/b/c` → `a`, `a/b`); none for null. */
+export function ancestorFolders(path: string | null): string[] {
+  if (!path) return [];
+  const parts = path.split("/");
+  return parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join("/"));
+}
+
+/**
+ * The one folder a set of things share, `null` for the root, or `undefined`
+ * when they are spread over more than one — the picker then ticks nothing.
+ */
+export function sharedFolder(
+  folders: readonly (string | null | undefined)[],
+): string | null | undefined {
+  if (folders.length === 0) return undefined;
+  const first = folders[0] ?? null;
+  for (const f of folders) if ((f ?? null) !== first) return undefined;
+  return first;
+}
+
+/** Whether `path` is `folder` or lies inside it. */
+export const withinFolder = (path: string, folder: string) =>
+  path === folder || path.startsWith(`${folder}/`);
+
+/**
+ * The picker's rows, top to bottom: the root, then every folder, its
+ * subfolders under it while it is open. `excluded` is the folder being moved,
+ * which can go nowhere inside itself; it and its subtree are disabled and
+ * never expand.
+ */
+export function pickerRows(
+  tree: SidebarNode[],
+  expanded: ReadonlySet<string>,
+  excluded: string | null = null,
+): PickRow[] {
+  const rows: PickRow[] = [
+    {
+      kind: "folder",
+      key: "folder:",
+      depth: 0,
+      path: null,
+      name: "Notes",
+      open: true,
+      hasChildren: tree.length > 0,
+      disabled: false,
+    },
+  ];
+  const walk = (folders: SidebarNode[], depth: number) => {
+    for (const folder of folders) {
+      const disabled = excluded !== null && withinFolder(folder._path, excluded);
+      const hasChildren = folder.children.length > 0 && !disabled;
+      const open = hasChildren && expanded.has(folder._path);
+      rows.push({
+        kind: "folder",
+        key: `folder:${folder._path}`,
+        depth,
+        path: folder._path,
+        name: folder.name,
+        open,
+        hasChildren,
+        disabled,
+      });
+      if (open) walk(folder.children, depth + 1);
+    }
+  };
+  walk(tree, 1);
+  return rows;
 }

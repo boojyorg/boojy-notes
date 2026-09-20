@@ -9,16 +9,20 @@ import {
   memo,
 } from "react";
 import { useTheme } from "../hooks/useTheme";
-import { CopyIcon, NewFolderIcon, NewNoteIcon, PencilIcon, SettingsIcon, TrashIcon } from "./Icons";
+import {
+  CopyIcon,
+  MoveToIcon,
+  NewFolderIcon,
+  NewNoteIcon,
+  PencilIcon,
+  SettingsIcon,
+  TrashIcon,
+} from "./Icons";
 import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { cssZoom } from "../utils/domHelpers";
-
-const hBg = (el, c) => {
-  el.style.background = c;
-};
 
 /** The rule between groups, the sidebar menu's own: 1px, inset 6px. */
 const MenuRule = ({ color }) => (
@@ -43,15 +47,15 @@ const ContextMenu = memo(function ContextMenu({
   selectedNotes,
   selectedCount,
   bulkDeleteNotes,
-  bulkMoveNotes,
-  folderList,
+  // Opens the Move to… picker for `subject` ({ kind: "notes", ids } or
+  // { kind: "folder", path }) at this menu's anchor; the menu closes first.
+  onMoveTo,
   wordCount,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
   const { setSettingsOpen } = useSettings();
 
-  const [moveSubmenu, setMoveSubmenu] = useState(false);
   // The highlighted row, by index: the pointer's row, or the arrows'. -1 is
   // none. The one owner of a row's hover surface (`background` below); no
   // direct style write, so nothing can disagree with it.
@@ -60,11 +64,10 @@ const ContextMenu = memo(function ContextMenu({
   // no menu), so its state would otherwise carry over: hover Rename, close,
   // and the next row's, folder's or header's menu opened with Rename already
   // lit before the pointer arrived (seen live 2026-09-16). Every open starts
-  // with nothing highlighted and the Move-to submenu closed; a layout effect,
-  // so the reset lands before the menu's first paint.
+  // with nothing highlighted; a layout effect, so the reset lands before the
+  // menu's first paint.
   useLayoutEffect(() => {
     setActiveIndex(-1);
-    setMoveSubmenu(false);
   }, [ctxMenu]);
   const itemsRef = useRef([]);
   const menuContainerRef = useRef(null);
@@ -76,8 +79,8 @@ const ContextMenu = memo(function ContextMenu({
   // A right-click, or the header's ···, is a point anchor: the menu opens at
   // it where possible and flips/clamps into the viewport otherwise. A row's
   // ··· hands a rectangle (`anchor`, the row with the gap either side), so a
-  // flipped menu sits above the row rather than over it (2026-09-16). Submenu
-  // growth re-measures via reflowKey.
+  // flipped menu sits above the row rather than over it (2026-09-16). The Move
+  // to… picker opens at the same anchor once this menu has closed.
   const anchor = useMemo(
     () =>
       ctxMenu
@@ -90,7 +93,7 @@ const ContextMenu = memo(function ContextMenu({
         : null,
     [ctxMenu],
   );
-  const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor, { reflowKey: moveSubmenu });
+  const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor);
   // The UI scale is CSS zoom on <html>: the pointer's clientX/Y and every
   // measured rect arrive already multiplied by it, and a `top`/`left` written
   // on this fixed element is multiplied again on paint, so the placement is
@@ -143,6 +146,19 @@ const ContextMenu = memo(function ContextMenu({
   const isHeader = ctxMenu.type === "header";
   const isBulk = ctxMenu.type === "note" && selectedCount > 1;
 
+  // Move to… opens the picker where this menu stood (2026-09-20): the one
+  // route to a destination without dragging, and with the sidebar hidden the
+  // only one. It sits after Duplicate in every menu, between what the thing
+  // is and what removes it.
+  const moveItem = (subject) => ({
+    label: "Move to…",
+    icon: <MoveToIcon />,
+    action: () => {
+      setCtxMenu(null);
+      onMoveTo?.(subject, anchor);
+    },
+  });
+
   const noteItems = (id) => [
     {
       label: "Rename",
@@ -162,6 +178,7 @@ const ContextMenu = memo(function ContextMenu({
         setCtxMenu(null);
       },
     },
+    moveItem({ kind: "notes", ids: [id] }),
     {
       label: "Delete",
       icon: <TrashIcon />,
@@ -189,25 +206,19 @@ const ContextMenu = memo(function ContextMenu({
     ? [...(ctxMenu.id ? noteItems(ctxMenu.id) : []), settingsItem]
     : ctxMenu.type === "note" && isBulk
       ? [
+          // The bulk menu: Move first, since it is what a selection is
+          // usually made for, and the one destructive item last, as in the
+          // single-note menu. The picker ticks the folder the notes share, or
+          // nothing when they are spread over several.
+          moveItem({ kind: "notes", ids: [...selectedNotes] }),
           {
             label: `Delete ${selectedCount} notes`,
+            icon: <TrashIcon />,
             action: () => {
               bulkDeleteNotes([...selectedNotes]);
               setCtxMenu(null);
             },
             danger: true,
-          },
-          {
-            label: "Move to...",
-            action: () => setMoveSubmenu((v) => !v),
-            submenu: true,
-          },
-          {
-            label: "Move to root",
-            action: () => {
-              bulkMoveNotes([...selectedNotes], null);
-              setCtxMenu(null);
-            },
           },
         ]
       : ctxMenu.type === "note"
@@ -254,6 +265,7 @@ const ContextMenu = memo(function ContextMenu({
                 setCtxMenu(null);
               },
             },
+            moveItem({ kind: "folder", path: ctxMenu.id }),
             {
               label: "Delete folder",
               icon: <TrashIcon />,
@@ -337,7 +349,6 @@ const ContextMenu = memo(function ContextMenu({
                 {item.icon}
                 {item.label}
               </span>
-              {item.submenu && <span style={{ fontSize: 10, marginLeft: 8 }}>▸</span>}
             </button>
           </Fragment>
         ))}
@@ -360,43 +371,6 @@ const ContextMenu = memo(function ContextMenu({
               {noteStatsLabel(wordCount)}
             </div>
           </>
-        )}
-        {moveSubmenu && isBulk && folderList && folderList.length > 0 && (
-          <div
-            style={{
-              borderTop: `1px solid ${BG.divider}`,
-              padding: "4px 0",
-              maxHeight: 200,
-              overflowY: "auto",
-            }}
-          >
-            {folderList.map((fp) => (
-              <button
-                key={fp}
-                onClick={() => {
-                  bulkMoveNotes([...selectedNotes], fp);
-                  setCtxMenu(null);
-                }}
-                style={{
-                  width: "100%",
-                  background: "none",
-                  border: "none",
-                  borderRadius: 6,
-                  padding: "6px 10px 6px 18px",
-                  cursor: "pointer",
-                  color: TEXT.primary,
-                  fontSize: 12,
-                  fontFamily: "inherit",
-                  textAlign: "left",
-                  transition: "background 0.12s",
-                }}
-                onMouseEnter={(e) => hBg(e.currentTarget, BG.surface)}
-                onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-              >
-                {fp}
-              </button>
-            ))}
-          </div>
         )}
       </div>
     </>

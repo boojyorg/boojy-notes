@@ -52,8 +52,7 @@ const baseProps = () => ({
   selectedNotes: new Set(),
   selectedCount: 0,
   bulkDeleteNotes: vi.fn(),
-  bulkMoveNotes: vi.fn(),
-  folderList: [],
+  onMoveTo: vi.fn(),
 });
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -104,7 +103,7 @@ describe("ContextMenu", () => {
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 
-  it("the folder menu is exactly five glyphed items in order, with no rule (2026-09-17)", () => {
+  it("the folder menu is exactly six glyphed items in order, with no rule (2026-09-20)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
     const { getAllByRole, container } = render(<ContextMenu {...props} />);
@@ -114,6 +113,7 @@ describe("ContextMenu", () => {
       "New folder",
       "Rename",
       "Duplicate folder",
+      "Move to…",
       "Delete folder",
     ]);
     // Every row carries a Lucide glyph, as the note menu's rows do.
@@ -336,17 +336,52 @@ describe("the highlight belongs to one open", () => {
     expect(rename.style.background).not.toBe(hoverBg);
   });
 
-  it("closes the Move-to submenu for the next open", () => {
+  it("Move to… closes the menu and hands the picker the subject and this menu's anchor", () => {
     const props = baseProps();
+    props.onMoveTo = vi.fn();
+    props.ctxMenu = {
+      type: "note",
+      id: "n1",
+      x: 1,
+      y: 2,
+      anchor: { top: 96, bottom: 132, left: 200, right: 220 },
+    };
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("Move to…"));
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+    expect(props.onMoveTo).toHaveBeenCalledWith(
+      { kind: "notes", ids: ["n1"] },
+      { top: 96, bottom: 132, left: 200, right: 220 },
+    );
+  });
+
+  it("a bulk selection's Move to… carries every selected note, and Delete follows it", () => {
+    const props = baseProps();
+    props.onMoveTo = vi.fn();
     props.selectedNotes = new Set(["n1", "n2"]);
     props.selectedCount = 2;
-    props.folderList = ["Work"];
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
-    const { getByText, queryByText, rerender } = render(<ContextMenu {...props} />);
-    fireEvent.click(getByText("Move to..."));
-    expect(getByText("Work")).toBeInTheDocument();
-    rerender(<ContextMenu {...props} ctxMenu={null} />);
-    rerender(<ContextMenu {...props} ctxMenu={{ type: "note", id: "n2", x: 10, y: 10 }} />);
-    expect(queryByText("Work")).not.toBeInTheDocument();
+    const { getAllByRole, getByText } = render(<ContextMenu {...props} />);
+    expect(getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+      "Move to…",
+      "Delete 2 notes",
+    ]);
+    fireEvent.click(getByText("Move to…"));
+    expect(props.onMoveTo).toHaveBeenCalledWith(
+      { kind: "notes", ids: ["n1", "n2"] },
+      { top: 100, bottom: 100, left: 100, right: 100 },
+    );
+  });
+
+  it("a folder's Move to… names the folder", () => {
+    const props = baseProps();
+    props.onMoveTo = vi.fn();
+    props.ctxMenu = { type: "folder", id: "Work/Archive", x: 5, y: 6 };
+    const { getByText } = render(<ContextMenu {...props} />);
+    fireEvent.click(getByText("Move to…"));
+    expect(props.onMoveTo).toHaveBeenCalledWith(
+      { kind: "folder", path: "Work/Archive" },
+      { top: 6, bottom: 6, left: 5, right: 5 },
+    );
   });
 });

@@ -52,7 +52,7 @@ vi.mock("../../src/context/NoteDataContext", () => ({
   useNoteData: () => ({ noteData }),
 }));
 
-import PathTreeMenu from "../../src/components/PathTreeMenu";
+import PathTreeMenu, { type PickTarget } from "../../src/components/PathTreeMenu";
 
 const anchor = { top: 10, bottom: 30, left: 100, right: 160 };
 
@@ -302,5 +302,133 @@ describe("PathTreeMenu", () => {
     const tree = box.querySelector('[role="tree"]') as HTMLElement;
     expect(tree.style.overflowY).toBe("auto");
     expect(tree.tabIndex).toBe(-1);
+  });
+});
+
+describe("PathTreeMenu as the Move to… picker", () => {
+  const pickRows = (c: HTMLElement) =>
+    Array.from(c.querySelectorAll('[role="treeitem"]'), (el) => {
+      const open = el.getAttribute("aria-expanded");
+      const mark = open === null ? "" : open === "true" ? "▾ " : "▸ ";
+      const dis = el.getAttribute("aria-disabled") === "true" ? "× " : "";
+      const cur = el.getAttribute("aria-current") ? " ✓" : "";
+      return `${dis}${mark}${el.querySelector("span")?.textContent}${cur}`;
+    });
+  const pickRow = (c: HTMLElement, folder: string) =>
+    c.querySelector(`[data-pick-folder="${folder}"]`) as HTMLElement;
+  function mountPick(pick: Partial<PickTarget> = {}) {
+    const onPick = vi.fn();
+    const onClose = vi.fn();
+    const utils = render(
+      <PathTreeMenu
+        anchor={anchor}
+        scope=""
+        initialExpanded={[]}
+        activeNote={null}
+        onClose={onClose}
+        pick={{ label: "Move “Todd's Note” to", current: "University/Archive", onPick, ...pick }}
+      />,
+    );
+    return { ...utils, onPick, onClose };
+  }
+
+  it("is folders only, the root first, the current folder open and ticked, no note rows", () => {
+    const { container } = mountPick();
+    expect(pickRows(container)).toEqual([
+      "▾ Notes",
+      "Personal",
+      "▾ University",
+      "▾ Archive ✓",
+      "2024",
+      "Semester 1",
+    ]);
+    expect(container.querySelector("[data-note-id]")).toBeNull();
+    expect(container.querySelector('[role="dialog"]')?.getAttribute("aria-label")).toBe(
+      "Move “Todd's Note” to",
+    );
+    expect(container.textContent).toContain("Move “Todd's Note” to");
+    expect(highlighted(container)).toBe("Archive");
+    // The tick is the mark colour; the root and a childless folder have no chevron.
+    const tick = container.querySelector('[data-testid="pick-current"]') as HTMLElement;
+    expect(tick.style.color).toBe("rgb(143, 193, 198)");
+    expect(pickRow(container, "").querySelector('[data-testid="pick-chevron"]')).toBeNull();
+    expect(
+      pickRow(container, "University/Semester 1").querySelector('[data-testid="pick-chevron"]'),
+    ).toBeNull();
+  });
+
+  it("a click on the row chooses; the chevron only expands; the ticked row only closes", () => {
+    const { container, onPick, onClose } = mountPick();
+    fireEvent.click(
+      pickRow(container, "University").querySelector('[data-testid="pick-chevron"]')!,
+    );
+    expect(pickRows(container)).toEqual(["▾ Notes", "Personal", "▸ University"]);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      pickRow(container, "University").querySelector('[data-testid="pick-chevron"]')!,
+    );
+    fireEvent.click(pickRow(container, "University/Archive"));
+    expect(onPick).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(pickRow(container, "University/Semester 1"));
+    expect(onPick).toHaveBeenCalledWith("University/Semester 1");
+    fireEvent.click(pickRow(container, ""));
+    expect(onPick).toHaveBeenLastCalledWith(null);
+  });
+
+  it("Right and Left expand and collapse, Enter chooses, and the root never collapses", () => {
+    const { container, onPick } = mountPick({ current: null });
+    expect(pickRows(container)).toEqual(["▾ Notes ✓", "Personal", "▸ University"]);
+    expect(highlighted(container)).toBe("Notes");
+    key("ArrowLeft");
+    expect(pickRows(container)[0]).toBe("▾ Notes ✓");
+    key("End");
+    expect(highlighted(container)).toBe("University");
+    key("ArrowRight");
+    expect(pickRows(container)).toEqual([
+      "▾ Notes ✓",
+      "Personal",
+      "▾ University",
+      "▸ Archive",
+      "Semester 1",
+    ]);
+    expect(onPick).not.toHaveBeenCalled();
+    key("ArrowRight");
+    expect(highlighted(container)).toBe("Archive");
+    key("ArrowLeft");
+    expect(highlighted(container)).toBe("University");
+    key("ArrowLeft");
+    expect(pickRows(container)).toEqual(["▾ Notes ✓", "Personal", "▸ University"]);
+    key("Enter");
+    expect(onPick).toHaveBeenCalledWith("University");
+  });
+
+  it("a selection spread over folders ticks nothing and starts on the root", () => {
+    const { container } = mountPick({ label: "Move 2 notes to", current: undefined });
+    expect(container.querySelector("[aria-current]")).toBeNull();
+    expect(highlighted(container)).toBe("Notes");
+  });
+
+  it("the folder being moved and its subtree are disabled: no choice, no expansion, muted ink", () => {
+    const { container, onPick, onClose } = mountPick({
+      label: "Move “University” to",
+      current: null,
+      excluded: "University",
+    });
+    expect(pickRows(container)).toEqual(["▾ Notes ✓", "Personal", "× University"]);
+    const uni = pickRow(container, "University");
+    expect(uni.style.color).toBe("rgb(122, 115, 108)");
+    expect(uni.querySelector('[data-testid="pick-chevron"]')).toBeNull();
+    fireEvent.click(uni);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    key("End");
+    key("ArrowRight");
+    key("Enter");
+    expect(onPick).not.toHaveBeenCalled();
+    expect(pickRows(container)).toEqual(["▾ Notes ✓", "Personal", "× University"]);
   });
 });

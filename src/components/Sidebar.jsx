@@ -440,6 +440,7 @@ const Sidebar = memo(function Sidebar({
     renamingNote,
     setRenamingNote,
     newFolder,
+    newNotes,
     searchMode,
     searchResults,
     activeResultIndex,
@@ -521,7 +522,15 @@ const Sidebar = memo(function Sidebar({
         // inline input folders use. The two single-clicks it also fires just
         // open the note, harmlessly.
         onDoubleClick={!isMobile && renamingNote !== nId ? () => setRenamingNote(nId) : undefined}
-        className={renamingNote === nId ? "sidebar-note is-renaming" : "sidebar-note"}
+        className={[
+          "sidebar-note",
+          renamingNote === nId ? "is-renaming" : "",
+          // A note that just landed here (Move to…, a drag in the path's
+          // popup) wears the pill for a beat, as a duplicated folder does.
+          newNotes?.has(nId) ? "is-new" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onContextMenu={(e) => {
           e.preventDefault();
           if (!sel && clearSelection) clearSelection();
@@ -961,6 +970,12 @@ const Sidebar = memo(function Sidebar({
     );
     row?.scrollIntoView({ block: "nearest" });
   }, [newFolder, sidebarScrollRef]);
+  useEffect(() => {
+    const first = newNotes?.values().next().value;
+    if (!first) return;
+    const row = sidebarScrollRef.current?.querySelector(`[data-note-id="${CSS.escape(first)}"]`);
+    row?.scrollIntoView({ block: "nearest" });
+  }, [newNotes, sidebarScrollRef]);
 
   // Auto-scroll active search result into view
   useEffect(() => {

@@ -174,6 +174,8 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {string} props.bg the editor's ground, painted so the note scrolls under the row
  * @param {string | null} [props.activeNote] the open note's id, marked in the popup
  * @param {(id: string) => void} [props.onOpenNote] opens a note chosen in the popup
+ * @param {(e: import("react").PointerEvent<HTMLElement>) => void} [props.onRowPointerDown]
+ *   the sidebar's press-and-hold drag, so the popup's rows can be dragged onto its folders
  * @param {import("react").ReactNode} props.children the title field
  */
 export default function NotePath({
@@ -184,6 +186,7 @@ export default function NotePath({
   bg,
   activeNote = null,
   onOpenNote,
+  onRowPointerDown,
   children,
 }) {
   const { theme } = useTheme();
@@ -397,6 +400,7 @@ export default function NotePath({
             opener={menu.opener}
             onOpen={(id) => onOpenNote?.(id)}
             onClose={closeMenu}
+            onRowPointerDown={onRowPointerDown}
           />
         )}
         {/* The twin: every crumb at its full width, never shown, only measured. */}

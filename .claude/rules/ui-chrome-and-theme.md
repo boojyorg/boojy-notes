@@ -139,8 +139,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
 - **The wordmark opens Settings** (`wordmark-settings-button`). No app dropdown, About, Help or
   Recently Deleted surface.
 - **The editor header's ··· is the active note's menu and the second route to Settings**
-  (`ctxMenu.type === "header"`): Rename, Duplicate, Delete, then Settings with its cog glyph and
-  no rule before it; never the sidebar's multi-selection. With no note it holds Settings alone
+  (`ctxMenu.type === "header"`): Rename, Duplicate, Move to…, Delete, then Settings with its cog
+  glyph and no rule before it; never the sidebar's multi-selection. With no note it holds Settings alone
   (`App options`, not `Note actions`). It ends with the note's word count (`note-stats`, one
   muted 11px line under the menu's only rule, never a menu item): the desktop has no status bar
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
@@ -367,9 +367,49 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   outside closes it and is not swallowed** (capture-phase document `mousedown`, no backdrop):
   with a backdrop the first press on any top-row button read as a dead button. Focus rests on
   the `role="tree"` inside a non-modal `role="dialog"`; `focusOwner` counts a focused dialog as
-  a menu. Deliberately absent: hover expansion, flyouts, a back row, filtering, every file
-  action (it reaches notes; the sidebar organises them).
-- `breadcrumb-tree.spec.ts`, `pathTree.test.ts`, `PathTreeMenu.test.tsx`.
+  a menu. Deliberately absent: hover expansion, flyouts, a back row, filtering, rename, delete,
+  duplicate (it reaches and moves notes; the sidebar organises them).
+- **Its rows drag with the sidebar's own press-and-hold** (2026-09-20, `onRowPointerDown` from
+  `useSidebarDrag`): a note or folder held and moved lifts the same pill and goes into whichever
+  folder row of the popup it is dropped on. The tree is `data-drag-scroller="folders"`: it is
+  what auto-scrolls, its folder rows are the only targets (no root row, no implicit root: a
+  release between rows, on a note row or outside flies the pill back), a folder is never a target
+  for itself or its subtree, and Escape mid-drag cancels before the popup's own Escape can close
+  it. An ordinary click still navigates; `suppressNextClick` eats the one after a drop. The
+  popup stays open after a move and redraws from the tree. A drop here asks the move to reveal
+  the destination in the sidebar (below); a drop in the sidebar itself does not.
+- **The same surface is the Move to… picker** (`pick`, `data-testid="move-picker"`,
+  `pickerRows` in `utils/pathTree.ts`): folders only, the root as its first row (`Notes`, always
+  open, `path` null), opened with the path down to the current folder and the folder itself
+  open, the current folder ticked in the mark colour (`aria-current="location"`) and
+  highlighted; a selection spread over several folders ticks nothing and starts on the root.
+  **Choosing and expanding are two gestures**: the row's body chooses (Enter/Space too), a
+  chevron at the row's right edge (`pick-chevron`; Right/Left too) expands; the root has none.
+  A folder being moved and everything inside it is `aria-disabled` in muted ink, kept in place
+  so the tree keeps its shape, never chosen and never opened. Choosing the ticked row only
+  closes. No filtering, no new folder from here, no shortcut, by decision (2026-09-20).
+- `breadcrumb-tree.spec.ts`, `move-to.spec.ts`, `pathTree.test.ts`, `PathTreeMenu.test.tsx`.
+
+### Move to… is one picker from four menus, and a move is shown where it landed
+
+- **Move to…** sits after Duplicate in the note row's menu, the folder row's menu and the editor
+  header's ··· (the route with the sidebar hidden), and opens the bulk menu (`Move to…`, then
+  `Delete N notes`, both glyphed; the flat folder-path submenu and `Move to root` went with it).
+  `ContextMenu` closes itself and hands `onMoveTo` the subject (`{ kind: "notes", ids }` or
+  `{ kind: "folder", path }`) and its own anchor, so the picker opens where the menu stood.
+  The glyph is Lucide `FolderInput` (`MoveToIcon`).
+- **Every move ends in `moveNotesTo` / `moveFolderTo`** (`BoojyNotes`): the picker, a drag in
+  the sidebar and a drag in the popup alike. Notes go through `bulkMoveNotes` (a change of
+  record, `adoptNoteData`: no undo entry, pending edits keep their mark and flush at the new
+  path, the open note stays open and its path redraws), only those whose folder actually
+  changes; a folder through `moveFolder`, which now answers the final path the disk gave it.
+  **The destination is shown, never announced**: the destination and its ancestors open in the
+  sidebar's `expanded` and the moved rows wear the row pill for `NEW_ROW_MS` (`markNewRows` in
+  `SidebarContext`, `.sidebar-note.is-new` beside `.sidebar-folder.is-new`, scrolled into view)
+  — if the sidebar is showing. A hidden sidebar keeps the state and is never reopened for a
+  move. No toast. A drag in the sidebar skips the reveal (`{ reveal: false }`): the pointer is
+  already on the destination. `move-to.spec.ts`, `ContextMenu.test.jsx`,
+  `useSidebarDrag.test.jsx`.
 
 ## Sidebar
 
@@ -423,15 +463,15 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   (`ctxMenuFolderId`); the width change is instant and only the ink fades. The controls are
   `span role="button"` with `tabIndex={-1}` (a real button nested in the treeitem fails axe
   `nested-interactive`); the row is the keyboard path; clicks stop at the glyph.
-- **The folder menu is five glyphed items, no rule: New note, New folder, Rename, Duplicate
-  folder, Delete folder.** Duplicate copies the directory beside itself as `Name (copy)`,
+- **The folder menu is six glyphed items, no rule: New note, New folder, Rename, Duplicate
+  folder, Move to…, Delete folder.** Duplicate copies the directory beside itself as `Name (copy)`,
   everything in it included, and the copy appears closed beside the original (files rule).
-  Reveal in Finder is Settings → Notes folder's. Single-note and folder menus carry glyphs; the
-  bulk menu is text-only.
+  Reveal in Finder is Settings → Notes folder's. Every menu's items carry glyphs, the bulk
+  menu's included (2026-09-20).
 - **A row's ··· hands its menu the row's rectangle** (`rowMenuAnchor`), so a menu flipped above
   a low row sits above it and the pointer on the dots is not inside Delete. The header's ···
   and right-click keep point anchors. `ContextMenu` stays mounted between opens, so its
-  highlight index and Move-to submenu reset in a layout effect on every `ctxMenu`; the index is
+  highlight index resets in a layout effect on every `ctxMenu`; the index is
   the one owner of a row's hover surface, and a pointer-opened menu shows no ring on its first
   item. It divides its placement by `cssZoom`. `folders.spec.ts`.
 - **A note renames inline on double-click; a folder from its menu's Rename alone** (a folder's

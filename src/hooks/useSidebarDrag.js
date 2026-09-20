@@ -5,9 +5,25 @@ import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
 
+/**
+ * Press-and-hold drag of a note or folder row onto a folder row (or, in the
+ * sidebar, onto the Notes row or the empty space under the tree for the
+ * root). The sidebar's scroller is the default; a row inside an element
+ * carrying `data-drag-scroller` drags within that element instead (the
+ * path's folder popup, 2026-09-20), which is then what auto-scrolls and where
+ * the targets are looked for. `data-drag-scroller="folders"` says folder rows
+ * are the only targets there: no root row, no implicit root, a release
+ * anywhere else flies the pill back. A drop from such a scroller asks the
+ * move to reveal where the thing landed (`{ reveal: true }`), since the
+ * sidebar, if it is showing, was not where the drop happened.
+ *
+ * `moveNotes(ids, folder, { reveal })` and `moveFolder(path, parent,
+ * { reveal })` make the move; both are the app's, so a drop and Move to…
+ * end in the same place.
+ */
 export function useSidebarDrag({
   noteDataRef,
-  adoptNoteData,
+  moveNotes,
   sidebarScrollRef,
   selectedNotesRef,
   clearSelectionRef,
@@ -137,7 +153,18 @@ export function useSidebarDrag({
 
     document.body.classList.add("block-dragging");
 
-    const scrollEl = sidebarScrollRef.current;
+    // Escape cancels a live drag: the pill flies back and nothing moves. On
+    // the document in the capture phase, so the surface the drag started in
+    // (the popup closes itself on Escape) never sees the key.
+    sd.keyHandler = (ev) => {
+      if (ev.key !== "Escape") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      cancelSidebarDrag();
+    };
+    document.addEventListener("keydown", sd.keyHandler, true);
+
+    const scrollEl = sd.scrollEl;
     let lastPointerY = pointerY;
     const scrollLoop = () => {
       if (!sd.active) return;
@@ -178,7 +205,7 @@ export function useSidebarDrag({
   const updateSidebarDropTarget = (pointerX, pointerY) => {
     const sd = sidebarDrag.current;
     if (!sd.active) return;
-    const scrollEl = sidebarScrollRef.current;
+    const scrollEl = sd.scrollEl;
     if (!scrollEl) return;
     const scrollRect = scrollEl.getBoundingClientRect();
 
@@ -214,6 +241,14 @@ export function useSidebarDrag({
         target = { type: "folder", id: folderPath, el };
         break;
       }
+    }
+
+    if (!target && sd.foldersOnly) {
+      // The popup: folder rows or nothing. The pointer between rows, or on a
+      // note row, is over no target, and a release there cancels.
+      sd.dropTarget = null;
+      clearDropHighlights();
+      return;
     }
 
     if (!target) {
@@ -253,6 +288,9 @@ export function useSidebarDrag({
       return;
     }
 
+    // A drop in the sidebar lands where the eye already is; one made in the
+    // popup asks the sidebar (if it is showing) to reveal the destination.
+    const reveal = sd.scrollEl !== sidebarScrollRef.current;
     if (sd.type === "note") {
       // The only remaining outcome: move the note's real file. `folder: null`
       // is root; anything else is that folder. write-note relocates the .md on
@@ -261,21 +299,11 @@ export function useSidebarDrag({
       // a file back.
       const targetFolder = target.type === "folder" ? target.id : null;
       const ids = sd.draggedIds && sd.draggedIds.length > 0 ? sd.draggedIds : [sd.id];
-      adoptNoteData((prev) => {
-        let changed = false;
-        const next = { ...prev };
-        for (const noteId of ids) {
-          if (!next[noteId]) continue;
-          if ((next[noteId].folder || null) === targetFolder) continue;
-          next[noteId] = { ...next[noteId], folder: targetFolder };
-          changed = true;
-        }
-        return changed ? next : prev;
-      });
+      moveNotes(ids, targetFolder, { reveal });
     } else if (sd.type === "folder" && moveFolder) {
       // Folders are directories: the move is one directory rename on disk,
       // into the target folder or back to the root. Never a reorder.
-      moveFolder(sd.id, target.type === "folder" ? target.id : null);
+      moveFolder(sd.id, target.type === "folder" ? target.id : null, { reveal });
     }
 
     cleanupSidebarDrag();
@@ -323,6 +351,10 @@ export function useSidebarDrag({
       sd._scrollEl = null;
     }
     document.body.classList.remove("block-dragging");
+    if (sd.keyHandler) document.removeEventListener("keydown", sd.keyHandler, true);
+    sd.keyHandler = null;
+    sd.scrollEl = null;
+    sd.foldersOnly = false;
     sd.active = false;
     sd.type = null;
     sd.id = null;
@@ -372,6 +404,10 @@ export function useSidebarDrag({
     const targetEl = rowEl;
 
     const sd = sidebarDrag.current;
+    // The scroller the drag lives in: the row's own, or the sidebar's.
+    const own = rowEl.closest("[data-drag-scroller]");
+    sd.scrollEl = own || sidebarScrollRef.current;
+    sd.foldersOnly = own?.dataset.dragScroller === "folders";
     sd.startX = e.clientX;
     sd.startY = e.clientY;
 

@@ -167,8 +167,6 @@ none blocks the release. The shared question comes first because three candidate
   proving the conversion as a script over fixtures before any UI is one way to do that.
   Distinct from the File menu
   Import removed on 2026-09-05: a one-time journey with a report, not a converter.
-- **Move to…** for a single note: a destination without dragging (drag and the bulk menu cover
-  it today).
 - **Context menu on plain text** and **rich paste** are listed under Known issues; promoting
   either is a candidate call, not a fix.
 - **Recent notes in Search.** Decided in shape (2026-09-12), not scheduled: opening Search with
