@@ -4,6 +4,7 @@ import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import {
   ACTION_ROW_H,
   COLUMN_HEAD_GAP,
+  FIRST_LINE_BELOW_ROW,
   LABEL_PAD_X,
   ROW_LABEL_LINE_HEIGHT,
   ROW_LABEL_SIZE,
@@ -78,7 +79,8 @@ import { panelTransition } from "../tokens/motion";
 const COLUMN_TOP =
   COLUMN_HEAD_GAP +
   baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
-  baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT);
+  baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT) +
+  FIRST_LINE_BELOW_ROW;
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
 /** Air between the mobile label and the first Markdown block. */

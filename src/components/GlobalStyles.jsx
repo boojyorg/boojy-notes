@@ -661,6 +661,20 @@ export default function GlobalStyles() {
           position: absolute;
           pointer-events: none;
         }
+        /* An empty heading names its level, in its own size and weight
+           (the pseudo-element inherits the heading's type), by the same two
+           rules as the paragraph's placeholder: while the element holds
+           nothing, or only the caret's <br>. Every heading, focused or not:
+           the editor is one contentEditable, so a block is never :focus, and
+           an empty heading is otherwise an invisible row (2026-09-20). */
+        [data-block-type^="h"][data-placeholder]:empty::before,
+        [data-block-type^="h"][data-placeholder]:has(> br:only-child)::before {
+          content: attr(data-placeholder);
+          color: ${theme.TEXT.muted};
+          opacity: 0.4;
+          position: absolute;
+          pointer-events: none;
+        }
         /* The name's placeholder follows the same rule as the block's: it
            shows while the field is empty on screen (nothing, or the <br>
            the sync paints for the caret), read from the DOM and never from

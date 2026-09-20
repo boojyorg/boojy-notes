@@ -158,8 +158,12 @@ test("opened at 50%, 100% and 200%: the pane fits the window and its controls wo
         "aria-checked",
         "true",
       );
-      await h.page.getByTestId("notes-folder-path").hover();
-      await expect(h.page.getByTestId("path-tooltip")).toBeVisible({ timeout: 3_000 });
+      // Re-hovered until the chip shows: the Linux runner's stray mouseout
+      // cancels the chip's rest timer (chrome-tooltips.spec.ts does the same).
+      await expect(async () => {
+        await h.page.getByTestId("notes-folder-path").hover();
+        await expect(h.page.getByTestId("path-tooltip")).toBeVisible({ timeout: 1_500 });
+      }).toPass({ timeout: 10_000 });
       const chip = await h.page.getByTestId("path-tooltip").boundingBox();
       const anchor = await h.page.getByTestId("notes-folder-path").boundingBox();
       // The chip is drawn at the app's scale, under the control it names.

@@ -316,8 +316,11 @@ the caret leaves. Longer names still grow both ways (Finder's rename).
   and the nearest folders, then `… / name`, then the name), measured by an invisible twin of
   every crumb and a `ResizeObserver`, via `getBoundingClientRect` so the UI scale cancels.
   Widening never hides a folder.
-- **The note's first line and the New note row share a baseline, whatever block opens the note.**
-  The two columns start level (the sidebar header and the path band are both
+- **The note's first line sits on the New note row's baseline, 2px under it, whatever block
+  opens the note** (`FIRST_LINE_BELOW_ROW`, 2026-09-20: level, a 14px label beside a 28px
+  heading read as sitting high, because the eye weighs the heading's mass; judged with a
+  heading-first note, and a paragraph-first note is the check before moving it). The rest is
+  the baseline arithmetic. The two columns start level (the sidebar header and the path band are both
   `CHROME_TOP + CHROME_BTN`), so `COLUMN_TOP` (`EditorArea`) is the air above that row, plus the
   row label's baseline inside it, less the body's own baseline inside its line — all three from
   `utils/typeBaseline.ts`, whose one constant is the app face's ascent minus its descent, fitted

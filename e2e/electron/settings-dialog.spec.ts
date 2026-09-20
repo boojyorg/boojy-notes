@@ -23,8 +23,14 @@ test("the path is the Show in Finder control, named by a chip after the rest, an
     const pathControl = settings.getByRole("button", { name: /Show in Finder|Show in folder/ });
     await expect(pathControl).toHaveText(new RegExp(path.basename(h.vault.dir) + "$"));
     await expect(pathControl).not.toHaveAttribute("title", /.*/);
-    await pathControl.hover();
-    await expect(h.page.getByTestId("path-tooltip")).toHaveText(/Show in (Finder|folder)/);
+    // Re-hovered until the chip shows: the Linux runner sends a stray mouseout
+    // about half a second after a hover, which cancels the chip's rest timer.
+    await expect(async () => {
+      await pathControl.hover();
+      await expect(h.page.getByTestId("path-tooltip")).toHaveText(/Show in (Finder|folder)/, {
+        timeout: 1_500,
+      });
+    }).toPass({ timeout: 10_000 });
 
     // Change folder… explains before the picker.
     await settings.getByRole("button", { name: "Change folder…" }).click();
