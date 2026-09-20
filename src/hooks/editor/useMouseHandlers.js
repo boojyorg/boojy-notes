@@ -22,9 +22,32 @@ export function useMouseHandlers({
     return !!active && active !== document.body && !!editor && !editor.contains(active);
   };
 
-  const handleEditorMouseUp = useCallback(() => {
+  // A triple-click selects the block the pointer is on, by the app's own hand.
+  // Chromium's paragraph granularity ends the selection at the start of the
+  // *next* block, and when that block is a list row it lands on the row's
+  // non-editable, user-select:none marker (the number, the checkbox), which
+  // Chromium's user-select adjustment answers by collapsing the whole
+  // selection: the third click of a numbered item or a task selected nothing,
+  // and a bullet's only when a number or a task followed it (2026-09-20).
+  // Selecting the text root's own contents gives one answer for every block
+  // and stops the selection at the row's end instead of the next block's start.
+  const selectClickedBlock = (e) => {
+    if (e?.detail !== 3 || !e.target) return false;
+    const info = getBlock(e.target);
+    const root = info?.el;
+    if (!root?.isConnected || !root.contains(e.target)) return false;
+    const range = document.createRange();
+    range.selectNodeContents(root);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  };
+
+  const handleEditorMouseUp = useCallback((e) => {
     const currentNote = activeNoteRef.current;
     mouseIsDown.current = false;
+    if (selectClickedBlock(e)) return;
     requestAnimationFrame(() => {
       if (focusLeftEditor()) return;
       const sel = window.getSelection();
