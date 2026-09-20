@@ -9,7 +9,7 @@
 import { expect, test } from "@playwright/test";
 import { END_OF_LINE, launchApp, noteText, waitForFile } from "./harness";
 
-test("a space typed after a tag pill is prose; a letter grows the tag", async () => {
+test("a tag is a pill from its first letter; a space after it is prose, a letter grows it", async () => {
   const h = await launchApp({ "Note.md": "see #todd\n" });
   try {
     const page = h.page;
@@ -35,6 +35,16 @@ test("a space typed after a tag pill is prose; a letter grows the tag", async ()
     await page.keyboard.type("y");
     await expect.poll(() => noteText(page)).toBe("see #toddy");
     await waitForFile(h.vault.file("Note.md"), (t) => t === "see #toddy\n");
+
+    // A new tag is a pill from its first letter, grows with the next ones,
+    // and a space ends it.
+    await page.keyboard.type(" #n");
+    await expect(block.locator(".inline-tag")).toHaveCount(2);
+    await expect(block.locator(".inline-tag").nth(1)).toHaveText("#n");
+    await page.keyboard.type("ew and");
+    await expect(block.locator(".inline-tag").nth(1)).toHaveText("#new");
+    await expect.poll(() => noteText(page)).toBe("see #toddy #new and");
+    await waitForFile(h.vault.file("Note.md"), (t) => t === "see #toddy #new and\n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

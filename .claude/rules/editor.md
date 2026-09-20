@@ -107,8 +107,12 @@ History is in git and `CHANGELOG.md`.
   context menu is Open, Copy (a note's *name*, never its raw target), Edit link…, Remove link;
   an unresolved link gets Fix link… and Remove link.
 - **A `#tag` is a pill, and the Markdown is still `#tag`** (2026-09-20, `styles/tagPill.ts`,
-  one shape for the editor's `.inline-tag` and Search's filter chip): the neutral `BG.surface`
-  ground, `ACCENT.text` ink, 1px 5px, radius 6, 0.92em; never an accent surface. **One tag
+  one shape for the editor's `.inline-tag` and Search's filter chip): the accent at
+  `TAG_PILL_ALPHA` (14% Light / 22% Dark, a step over the selection band; a neutral grey was
+  judged too faint), `ACCENT.text` ink, 1px 5px, radius 6, 0.92em. **The pill appears on the
+  first letter** (`useInputHandler`, at the tag-menu detection): the block is painted by hand
+  from its text and the caret put back inside the new span, once, since a text-only commit
+  never repaints and `#p` stayed plain until something else did. **One tag
   grammar** (`TAG_RE` in `utils/tags.ts`: `#` at the start or after whitespace or `(`, a
   letter, then letters, marks, digits, `_`, `/`, `-`; `#café` is a tag): the renderer, the
   `#…` completion (`TAG_TAIL_RE`), Search's tag rows and the filter all read it, so a `#` the

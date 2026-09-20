@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { cleanOrphanNodes, hasOwnField, placeCaret } from "../../utils/domHelpers";
-import { domNodeToMarkdown } from "../../utils/inlineFormatting";
+import { cleanOrphanNodes, getCaretOffset, hasOwnField, placeCaret } from "../../utils/domHelpers";
+import { domNodeToMarkdown, inlineMarkdownToHtml } from "../../utils/inlineFormatting";
 import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
 import { genBlockId } from "../../utils/storage";
 import { TAG_TAIL_RE } from "../../utils/tags";
@@ -231,6 +231,24 @@ export function useInputHandler({
     // Tag autocomplete detection: open # with at least one letter typed
     const tagMatch = text.match(TAG_OPEN_RE);
     if (tagMatch) {
+      // The pill appears on the first letter (2026-09-20): a text-only commit
+      // never repaints, so `#p` stayed plain until something else did. The
+      // block is painted by hand from its own text and the caret put back at
+      // its offset, which lands inside the new span, so the letters that
+      // follow grow the tag and a space leaves it (`caretOutOfTagEnd`). Only
+      // once: with the caret already in a pill there is nothing to paint.
+      if (native?.inputType === "insertText" && !native.isComposing) {
+        const sel = window.getSelection();
+        const node = sel?.anchorNode;
+        const inPill = !!(node?.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest?.(
+          ".inline-tag",
+        );
+        if (!inPill) {
+          const offset = getCaretOffset(el);
+          el.innerHTML = inlineMarkdownToHtml(text, noteTitleSetRef?.current);
+          placeCaret(el, offset);
+        }
+      }
       const rect = el.getBoundingClientRect();
       setTagMenu({
         noteId,
