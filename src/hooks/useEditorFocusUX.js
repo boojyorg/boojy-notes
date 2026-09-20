@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import {
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
+  caretOutOfTagEnd,
   cleanOrphanNodes,
   cssZoom,
   getBlockFromNode,
@@ -9,6 +10,7 @@ import {
   placeCaret,
 } from "../utils/domHelpers";
 import { inlineFieldFor } from "../utils/inlineFormatCommands";
+import { TAG_CHAR_RE } from "../utils/tags";
 
 /** How long a keyboard selection must rest before the toolbar shows over it. */
 export const TOOLBAR_REST_MS = 300;
@@ -22,8 +24,9 @@ export const TOOLBAR_REST_MS = 300;
  *      ArrowRight) is moved onto the anchor after the link before the text lands, so
  *      typing continues as prose rather than rewriting the link's alias; one left at the
  *      start of a link's text (Home on a block that opens with a link) is moved onto the
- *      anchor before it, the same way. Only insertions outside an IME composition; caret
- *      movement and deletion are never touched.
+ *      anchor before it, the same way. A space or punctuation typed at the end of a
+ *      `#tag` leaves its pill the same way (a letter stays: the tag is growing). Only
+ *      insertions outside an IME composition; caret movement and deletion are never touched.
  *   3. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
  *      places the caret in that block, re-asserts it after the next frame if the DOM
  *      moved, and scrolls the block into view if it landed near the bottom. A block
@@ -155,7 +158,11 @@ export function useEditorFocusUX({
   useEffect(() => {
     const onBeforeInput = (e) => {
       if (e.isComposing || !e.inputType?.startsWith("insert")) return;
-      caretOutOfLinkEnd(editorRef.current) || caretOutOfLinkStart(editorRef.current);
+      const root = editorRef.current;
+      if (caretOutOfLinkEnd(root) || caretOutOfLinkStart(root)) return;
+      // A character that cannot continue a tag leaves its pill (a letter grows it).
+      if (e.inputType === "insertText" && e.data && !TAG_CHAR_RE.test(e.data))
+        caretOutOfTagEnd(root);
     };
     document.addEventListener("beforeinput", onBeforeInput);
     return () => document.removeEventListener("beforeinput", onBeforeInput);

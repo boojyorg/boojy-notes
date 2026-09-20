@@ -1,8 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
+import type { Range, Snippet } from "../utils/search";
+
+export type { Snippet };
 
 /**
  * Pieces shared by the desktop search palette and the mobile sidebar search:
- * the tag chip row and the two match highlighters. Highlights use the accent
+ * the tag chip row and the match highlighters. Highlights use the accent
  * as a marker (text colour), never as a surface.
  */
 
@@ -23,7 +26,7 @@ interface TagChipsProps {
   children?: ReactNode;
 }
 
-/** Tag chips for a `#` search, under a heading; `children` lands inside the same padded block. */
+/** Tag chips for a `#` search (mobile), under a heading; `children` lands inside the same padded block. */
 export function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }: TagChipsProps) {
   return (
     <div style={{ padding: "4px 14px 8px" }}>
@@ -65,44 +68,36 @@ export function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }:
   );
 }
 
-/** A title with its matched span in the accent. */
+/** `text` with each range in the accent; ranges are ordered and never overlap. */
+export function renderRanges(text: string, ranges: Range[], accentColor: string): ReactNode {
+  if (!ranges || ranges.length === 0) return text;
+  const parts: ReactNode[] = [];
+  let at = 0;
+  ranges.forEach(([start, end], i) => {
+    if (end <= start || start < at || start >= text.length) return;
+    if (start > at) parts.push(text.slice(at, start));
+    parts.push(
+      <span key={i} style={{ color: accentColor, fontWeight: 600 }}>
+        {text.slice(start, end)}
+      </span>,
+    );
+    at = end;
+  });
+  if (at < text.length) parts.push(text.slice(at));
+  return <>{parts}</>;
+}
+
+/** A title with its matched words in the accent. */
 export function renderHighlightedTitle(
   title: string,
-  matchStart: number,
-  matchEnd: number,
+  ranges: Range[],
   accentColor: string,
 ): ReactNode {
-  if (matchStart < 0 || matchEnd <= matchStart) return title;
-  return (
-    <>
-      {title.slice(0, matchStart)}
-      <span style={{ color: accentColor, fontWeight: 600 }}>
-        {title.slice(matchStart, matchEnd)}
-      </span>
-      {title.slice(matchEnd)}
-    </>
-  );
+  return renderRanges(title, ranges, accentColor);
 }
 
-export interface Snippet {
-  text: string;
-  highlightStart: number;
-  highlightEnd: number;
-}
-
-/** A body snippet with its matched span in the accent. */
+/** A body snippet with its matched words in the accent. */
 export function renderSnippet(snippet: Snippet | null, accentColor: string): ReactNode {
   if (!snippet) return null;
-  const { text, highlightStart, highlightEnd } = snippet;
-  if (highlightStart < 0 || highlightEnd <= highlightStart || highlightStart >= text.length)
-    return text;
-  return (
-    <>
-      {text.slice(0, highlightStart)}
-      <span style={{ color: accentColor, fontWeight: 600 }}>
-        {text.slice(highlightStart, highlightEnd)}
-      </span>
-      {text.slice(highlightEnd)}
-    </>
-  );
+  return renderRanges(snippet.text, snippet.ranges, accentColor);
 }

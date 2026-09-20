@@ -458,6 +458,24 @@ export function caretOutOfLinkStart(root) {
   return selectAnchor(anchorBeforeLink, link);
 }
 
+/**
+ * A tag's pill is a span, and a text-only edit never repaints the block, so a
+ * character typed at the end of `#todd` lands inside the span: a letter is
+ * the tag growing, which is right, but a space or punctuation would sit in
+ * the pill until the next repaint. Called from the same `beforeinput`
+ * listener as the link rules, for an insertion that cannot continue a tag:
+ * the caret at the end of an `.inline-tag`'s text is moved onto the anchor
+ * after it, so the space is prose. Inside the tag, or at its start, nothing
+ * moves.
+ */
+export function caretOutOfTagEnd(root) {
+  const caret = collapsedTextCaret(root);
+  if (!caret || caret.offset !== caret.node.data.length) return false;
+  const tag = caret.node.parentElement?.closest(".inline-tag");
+  if (!tag || tag === root || !root.contains(tag) || !isLastTextIn(tag, caret.node)) return false;
+  return selectAnchor(anchorAfterLink, tag);
+}
+
 /** The collapsed caret inside `root`, when it rests in a text node that is not a link's icon. */
 function collapsedTextCaret(root) {
   if (!root) return null;

@@ -3,7 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
-import { extractAllTags } from "../utils/tags";
+import { tagRows } from "../utils/tags";
 import { useSettings } from "../context/SettingsContext";
 import {
   FolderIcon,
@@ -435,6 +435,9 @@ const Sidebar = memo(function Sidebar({
     setExpanded,
     filteredTree,
     fNotes,
+    folderTree,
+    sortedRootNotes,
+    tags,
     renamingFolder,
     setRenamingFolder,
     renamingNote,
@@ -458,14 +461,9 @@ const Sidebar = memo(function Sidebar({
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
     if (!search.startsWith("#")) return null;
-    const tagMap = extractAllTags(noteData);
     const filter = search.slice(1).toLowerCase();
-    const tags = [...tagMap.entries()]
-      .map(([tag, noteIds]) => ({ tag, count: noteIds.size }))
-      .filter((t) => !filter || t.tag.toLowerCase().includes(filter))
-      .sort((a, b) => b.count - a.count);
-    return tags;
-  }, [search, noteData]);
+    return tagRows(tags).filter((t) => !filter || t.tag.toLowerCase().includes(filter));
+  }, [search, tags]);
 
   // Render a note row at given depth
   const renderNote = (nId, depth) => {
@@ -1231,14 +1229,7 @@ const Sidebar = memo(function Sidebar({
                         color: isActive ? TEXT.primary : TEXT.secondary,
                       }}
                     >
-                      {result.matchIn === "title"
-                        ? renderHighlightedTitle(
-                            result.title,
-                            result.matchStart,
-                            result.matchEnd,
-                            accentText,
-                          )
-                        : result.title}
+                      {renderHighlightedTitle(result.title, result.titleRanges, accentText)}
                     </span>
                     {folderPath && (
                       <span
@@ -1409,12 +1400,15 @@ const Sidebar = memo(function Sidebar({
                   />
                 )}
                 {/* An empty tree fails axe, so the element exists only with rows. */}
-                {(filteredTree.length > 0 || fNotes.length > 0) && (
+                {/* The unfiltered tree: the palette's query never reaches
+                    the desktop sidebar, which stays exactly as it was behind
+                    the scrim (2026-09-20). Only the mobile face filters. */}
+                {(folderTree.length > 0 || sortedRootNotes.length > 0) && (
                   <div role="tree" aria-label="Notes">
-                    {filteredTree.map((f) => renderFolder(f, 0))}
+                    {folderTree.map((f) => renderFolder(f, 0))}
                     {/* No breath before the root notes: the guide line ending
                         says the folder ended; the row rhythm stays even. */}
-                    {fNotes.map((nId) => renderNote(nId, 0))}
+                    {sortedRootNotes.map((nId) => renderNote(nId, 0))}
                   </div>
                 )}
               </>

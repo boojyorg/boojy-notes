@@ -262,17 +262,21 @@ test("a typed tag keeps its space, and Enter after a complete or unknown tag is 
     await blocks.first().click();
     await h.page.keyboard.press(END_OF_LINE);
 
-    // The space that ends a tag is typed, not eaten.
-    await h.page.keyboard.type(" #alpha");
+    // The space that ends a tag is typed, not eaten. The menu offers the
+    // tag while it is being typed and stands down once it is typed in full
+    // (a complete tag is never offered back, 2026-09-20).
+    await h.page.keyboard.type(" #alp");
     await expect(menu).toBeVisible();
+    await h.page.keyboard.type("ha");
+    await expect(menu).toBeHidden();
     await h.page.keyboard.type(" beta");
     await expect(menu).toBeHidden();
     expect(await noteText(h.page)).toBe("Notes #alpha beta");
 
-    // Enter after a tag typed in full: the menu shows the same tag, and Enter
-    // starts a new paragraph rather than "completing" what is complete.
+    // Enter after a tag typed in full: no menu, and Enter starts a new
+    // paragraph rather than "completing" what is complete.
     await h.page.keyboard.type(" #alpha");
-    await expect(menu).toBeVisible();
+    await expect(menu).toBeHidden();
     await h.page.keyboard.press("Enter");
     await expect(menu).toBeHidden();
     await expect(blocks).toHaveCount(before + 1);

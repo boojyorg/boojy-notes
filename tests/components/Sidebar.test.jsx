@@ -92,6 +92,9 @@ vi.mock("../../src/context/SidebarContext", () => ({
     setExpanded: _sidebarOverrides.setExpanded ?? vi.fn(),
     filteredTree: _sidebarOverrides.filteredTree ?? [],
     fNotes: _sidebarOverrides.fNotes ?? [],
+    folderTree: _sidebarOverrides.folderTree ?? _sidebarOverrides.filteredTree ?? [],
+    sortedRootNotes: _sidebarOverrides.sortedRootNotes ?? _sidebarOverrides.fNotes ?? [],
+    tags: _sidebarOverrides.tags ?? extractAllTags(_sidebarOverrides.noteData ?? {}),
     renamingFolder: _sidebarOverrides.renamingFolder ?? null,
     setRenamingFolder: _sidebarOverrides.setRenamingFolder ?? vi.fn(),
     renamingNote: _sidebarOverrides.renamingNote ?? null,
@@ -113,6 +116,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
 
 // ── Import component after mocks ──────────────────────────────────────────────
 import Sidebar from "../../src/components/Sidebar.jsx";
+import { extractAllTags } from "../../src/utils/tags";
 import {
   ROW_INSET,
   SIDEBAR_TREE_INSET,
@@ -413,8 +417,7 @@ describe("Sidebar", () => {
       title,
       folder,
       matchIn: "title",
-      matchStart: 0,
-      matchEnd: 6,
+      titleRanges: [[0, 6]],
       snippet: null,
     });
     const searchResults = {
@@ -827,8 +830,8 @@ describe("Sidebar (mobile)", () => {
 
 describe("Sidebar tag chips", () => {
   const taggedData = {
-    n1: { title: "A", content: { blocks: [{ text: "#work and #home" }] } },
-    n2: { title: "B", content: { blocks: [{ text: "#work again" }] } },
+    n1: { title: "A", content: { blocks: [{ type: "p", text: "#work and #home" }] } },
+    n2: { title: "B", content: { blocks: [{ type: "p", text: "#work again" }] } },
   };
   const oneResult = {
     results: [{ noteId: "n1", title: "A", matchIn: "title", snippet: null }],

@@ -6,8 +6,9 @@ vi.mock("../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
       TEXT: { primary: "#111", secondary: "#555", muted: "#888" },
-      BG: { elevated: "#fff", divider: "#ddd" },
+      BG: { elevated: "#fff", divider: "#ddd", hover: "#eee" },
       ACCENT: { primary: "#2A737D", onAccent: "#fff" },
+      modalShadow: "none",
     },
   }),
 }));
@@ -56,7 +57,7 @@ describe("TagMenu", () => {
   it("lists the matching tags, most used first, with the first selected", () => {
     const { getAllByRole } = setup();
     const options = getAllByRole("option");
-    expect(options.map((o) => o.textContent)).toEqual(["#review2"]);
+    expect(options.map((o) => o.textContent)).toEqual(["#review"]);
     expect(options[0].getAttribute("aria-selected")).toBe("true");
   });
 
@@ -70,7 +71,7 @@ describe("TagMenu", () => {
 
   it("the arrows move the highlight and are consumed too", () => {
     const { getAllByRole, onSelect } = setup("re");
-    expect(getAllByRole("option").map((o) => o.textContent)).toEqual(["#review2", "#reading1"]);
+    expect(getAllByRole("option").map((o) => o.textContent)).toEqual(["#review", "#reading"]);
     expect(pressInEditor("ArrowDown").defaultPrevented).toBe(true);
     expect(getAllByRole("option")[1].getAttribute("aria-selected")).toBe("true");
     pressInEditor("Enter");
@@ -94,20 +95,27 @@ describe("TagMenu", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("Enter after a tag typed in full is the editor's, whatever the case", () => {
-    const { onSelect, getAllByRole } = setup("Review");
-    expect(getAllByRole("option").map((o) => o.textContent)).toEqual(["#review2"]);
+  it("a tag typed in full is not offered, whatever the case, so Enter is the editor's", () => {
+    const { onSelect, container } = setup("Review");
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
     const event = pressInEditor("Enter");
     expect(onSelect).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it("Enter accepts a tag typed in full once the user has moved the highlight to it", () => {
-    const { onSelect } = setup("review");
-    pressInEditor("ArrowDown");
-    const event = pressInEditor("Enter");
-    expect(onSelect).toHaveBeenCalledWith("review");
-    expect(event.defaultPrevented).toBe(true);
+  it("offers only tags that start with the letters, never a substring match", () => {
+    // `#reading` holds `ea`, but no tag starts with it.
+    expect(setup("ea").container.querySelector('[role="listbox"]')).toBeNull();
+    cleanup();
+    const { getAllByRole } = setup("re");
+    expect(getAllByRole("option").map((o) => o.textContent)).toEqual(["#review", "#reading"]);
+  });
+
+  it("shows no count and no accent surface: the app's menu grammar", () => {
+    const { getAllByRole } = setup("rev");
+    const row = getAllByRole("option")[0];
+    expect(row.textContent).toBe("#review");
+    expect(row.style.background).toBe("rgb(238, 238, 238)");
   });
 
   it("Space is never the menu's: it ends the tag in the text", () => {
