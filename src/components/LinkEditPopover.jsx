@@ -28,10 +28,21 @@ export default function LinkEditPopover({ position, initialUrl, onApply, onRemov
       if (!e.target.closest(".link-edit-popover")) onDismiss();
     };
     document.addEventListener("keydown", handleKey);
-    document.addEventListener("mousedown", handleClick);
+    // The outside-press listener waits a frame: the toolbar's Link glyph opens
+    // this popover on its mousedown (the default would collapse the
+    // selection), and that same press, still on its way up to the document,
+    // reached a listener registered during its dispatch and closed the
+    // popover in the instant it opened. Cmd+K, with no press, never saw it
+    // (2026-09-20).
+    let armed = null;
+    const raf = requestAnimationFrame(() => {
+      armed = handleClick;
+      document.addEventListener("mousedown", handleClick);
+    });
     return () => {
+      cancelAnimationFrame(raf);
       document.removeEventListener("keydown", handleKey);
-      document.removeEventListener("mousedown", handleClick);
+      if (armed) document.removeEventListener("mousedown", armed);
     };
   }, [onDismiss]);
 

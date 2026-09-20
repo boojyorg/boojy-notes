@@ -18,6 +18,7 @@
 
 ### Bug Fixes
 
+- **The toolbar's Link button works** — Clicking Link in the selection toolbar did nothing; only Cmd+K opened the link field. The click was opening the field and, in the same instant, counting as a click outside it. It opens now, with the field ready to paste into.
 - **Inline code has a shortcut that works on every keyboard: Cmd+E** — The toolbar chip said Cmd+` for inline code, and on a Spanish keyboard (and most European ones) that key is an accent key, so the shortcut never fired. Cmd+E, the same key Notion uses, now does it and is what the chip shows. Cmd+` still works on keyboards where the backtick is a plain key.
 - **The block handle no longer vanishes for the rest of a note** — Two ways the grip in the left margin could disappear until you switched notes are gone. Pressing any key while the pointer rested on the grip (Cmd+Z, typically) hid it and it never came back for that note; and pressing the grip then switching apps with Cmd-Tab left the press half-made, so the next mouse movement started a ghost drag with no button held, the grip went missing everywhere, text stopped selecting, and the next click dropped a block somewhere. Both now clean up after themselves.
 - **One Cmd+Z no longer takes back two things** — Typing, pressing Enter (or pasting, or ticking a box), and typing again without a pause was one undo step: the text after the Enter was folded into it. Each is its own step now.
