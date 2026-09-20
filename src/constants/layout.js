@@ -148,11 +148,11 @@ export const ACTION_ROW_H = 32;
 /**
  * Air under the chrome row before the first row of a column — the sidebar's
  * New note row, and with it the note's first line, which is measured from this
- * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, 14 that day, 18 and then
- * 22 on 2026-09-20, each at Tyr's ask; it briefly carried half of a baseline
+ * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, 14 that day, then 18,
+ * 22 and 21 on 2026-09-20, each at Tyr's ask; it briefly carried half of a baseline
  * correction too, which the first block now makes for itself.
  */
-export const COLUMN_HEAD_GAP = 22;
+export const COLUMN_HEAD_GAP = 21;
 /**
  * How far the note's first baseline sits *below* New note's. The two were
  * level, and beside a 28px heading the 14px label read as sitting high: the
@@ -165,10 +165,10 @@ export const FIRST_LINE_BELOW_ROW = 2;
  * so the action and the list's name read as one head to the column rather than
  * as two sections. It gives up most of what `COLUMN_HEAD_GAP` takes, so the
  * Notes row and the list below it move down by less than New note does (8 → 6
- * → 3 on 2026-09-20, as the head gap went 14 → 18 → 22: New note down 8 in
- * all, Notes down 3).
+ * → 3 → 5 on 2026-09-20, as the head gap went 14 → 18 → 22 → 21: New note
+ * down 7 in all, Notes down 4).
  */
-export const NOTES_ROW_GAP = 3;
+export const NOTES_ROW_GAP = 5;
 /**
  * The New note row's label. Its line height is stated rather than left to the
  * browser's `normal`, because the note's first line is set on this label's
