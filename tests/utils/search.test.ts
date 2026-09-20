@@ -48,6 +48,18 @@ describe("buildPlainText", () => {
     ]);
   });
 
+  it("skips empty blocks, so an excerpt never shows a run of separators", () => {
+    const { plainText, blockOffsets } = buildPlainText([
+      p("a", "one"),
+      p("b", ""),
+      p("c", ""),
+      p("d", "two"),
+    ]);
+    expect(plainText).toBe(`one${BLOCK_JOIN}two`);
+    expect(blockOffsets[1]).toEqual({ blockIndex: 1, blockId: "b", start: 3, end: 3 });
+    expect(blockOffsets[3].start).toBe(3 + BLOCK_JOIN.length);
+  });
+
   it("reads a callout's title and body and a table's cells; a code body is text too", () => {
     const blocks = [
       { id: "c", type: "callout", title: "Note", text: "body" },

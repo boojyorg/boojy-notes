@@ -36,20 +36,17 @@ export function buildPlainText(blocks: Block[] | null | undefined): {
 } {
   if (!blocks || blocks.length === 0) return { plainText: "", blockOffsets: [] };
   const blockOffsets: BlockOffset[] = [];
-  let offset = 0;
-  const parts: string[] = [];
+  let plainText = "";
   for (let i = 0; i < blocks.length; i++) {
-    const text = stripMarkdownFormatting(blockText(blocks[i]));
-    blockOffsets.push({
-      blockIndex: i,
-      blockId: blocks[i].id,
-      start: offset,
-      end: offset + text.length,
-    });
-    parts.push(text);
-    offset += text.length + BLOCK_JOIN.length;
+    const text = stripMarkdownFormatting(blockText(blocks[i])).trim();
+    // An empty block is a row on screen but nothing to search, and joining it
+    // would put a run of separators into an excerpt.
+    if (text && plainText) plainText += BLOCK_JOIN;
+    const start = plainText.length;
+    plainText += text;
+    blockOffsets.push({ blockIndex: i, blockId: blocks[i].id, start, end: start + text.length });
   }
-  return { plainText: parts.join(BLOCK_JOIN), blockOffsets };
+  return { plainText, blockOffsets };
 }
 
 /**
