@@ -523,7 +523,11 @@ location; visible at rest, never hover-revealed. Click only, never hover.
 - **One list, three faces, one highlight** (2026-09-20). Empty, the list is **Recent**: the
   notes opened most recently, newest first, the open note left out, under the one label the
   palette has (the Notes row's grammar), at most `RECENT_SHOWN` (8) and fewer when the window
-  is short (`recentsThatFit`; the list never scrolls). Cmd+P then Enter is the way back to the
+  is short (`rowsThatFit`; the recents never scroll; with nothing to show, `No recent notes
+  yet`, since the open note alone is none). **The list is compact**: the field is fixed, the
+  count stays on it, and the list under it is at most `LIST_ROWS` (8) single-line rows tall
+  (an excerpt row counts for more) before it scrolls inside; a shorter list is shorter, and the
+  row pitch is never squeezed to fit. Cmd+P then Enter is the way back to the
   note you were in (the Back button the backlog declined). The list is `boojy-recent-notes`
   in localStorage, per vault, 30 ids, written as the active note changes
   (`utils/recentNotes.ts`); **never a timestamp on the note**, so opening moves nothing in

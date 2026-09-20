@@ -142,3 +142,35 @@ test("recents, an unchanged sidebar, Enter after typing, and the tag chip", asyn
     await h.close();
   }
 });
+
+test("recents are recorded from every route that opens a note and survive a restart", async () => {
+  const h = await launchApp({
+    "Alpha.md": "alpha\n",
+    "Beta.md": "beta\n",
+    "Gamma.md": "gamma\n",
+    "Delta.md": "delta\n",
+  });
+  try {
+    const dialog = () => h.page.getByRole("dialog", { name: "Search" });
+    const rows = () => dialog().locator("[data-search-index]");
+    // Sidebar, then the palette itself.
+    await h.openNote("Alpha");
+    await h.openNote("Beta");
+    await h.page.keyboard.press(`${MOD}+p`);
+    await h.page.keyboard.type("gam");
+    await h.page.keyboard.press("Enter");
+    await expect.poll(() => editorTitle(h.page)).toBe("Gamma");
+    await h.page.keyboard.press(`${MOD}+p`);
+    await expect(rows()).toHaveText([/^Beta$/, /^Alpha$/]);
+    await h.page.keyboard.press("Escape");
+
+    await h.restart();
+    await h.openNote("Delta");
+    await h.page.keyboard.press(`${MOD}+p`);
+    await expect(dialog().getByText("Recent")).toBeVisible();
+    await expect(rows()).toHaveText([/^Gamma$/, /^Beta$/, /^Alpha$/]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

@@ -61,13 +61,16 @@ const LABEL_H = 28;
 const MAX_VH = 70;
 const TOP_VH = 12;
 
-/** How many recents fit under the field without scrolling, at most RECENT_SHOWN. */
-function recentsThatFit(): number {
-  if (typeof window === "undefined") return RECENT_SHOWN;
+/** The list's height in single-line rows: eight at most, fewer in a short window. */
+const LIST_ROWS = 8;
+
+/** How many single-line rows the list may show before it scrolls, at most LIST_ROWS. */
+function rowsThatFit(): number {
+  if (typeof window === "undefined") return LIST_ROWS;
   const zoom = cssZoom(document.documentElement) || 1;
   const box = (window.innerHeight * MAX_VH) / 100 / zoom;
   const fit = Math.floor((box - FIELD_H - LABEL_H - LIST_PAD * 2) / ROW_H);
-  return Math.max(1, Math.min(RECENT_SHOWN, fit));
+  return Math.max(1, Math.min(LIST_ROWS, fit));
 }
 
 export default function SearchPalette({
@@ -112,21 +115,26 @@ export default function SearchPalette({
         ? "tags"
         : "results";
 
-  const [shown, setShown] = useState(recentsThatFit);
+  // The list is compact: a fixed field, then at most `shown` single-line rows
+  // (a body hit's excerpt makes its row taller and counts for more) before the
+  // list scrolls inside; a shorter list is shorter. Recents never scroll.
+  const [shown, setShown] = useState(rowsThatFit);
   useEffect(() => {
-    const onResize = () => setShown(recentsThatFit());
+    const onResize = () => setShown(rowsThatFit());
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const rows = useMemo<Row[]>(() => {
     if (mode === "recent") {
-      return recentRows(recentIds, noteData, currentNoteId, shown).map((noteId) => ({
-        kind: "recent",
-        noteId,
-        title: noteData[noteId].title,
-        folder: noteData[noteId].folder || null,
-      }));
+      return recentRows(recentIds, noteData, currentNoteId, Math.min(shown, RECENT_SHOWN)).map(
+        (noteId) => ({
+          kind: "recent",
+          noteId,
+          title: noteData[noteId].title,
+          folder: noteData[noteId].folder || null,
+        }),
+      );
     }
     if (mode === "tags") {
       const filter = foldText(query.slice(1)).text;
@@ -193,17 +201,19 @@ export default function SearchPalette({
   const emptyText =
     rows.length > 0
       ? null
-      : mode === "tags"
-        ? query === "#"
-          ? "No tags yet"
-          : `No tags match “${query}”`
-        : mode === "results" && (query || tagFilter)
-          ? tagFilter && query
-            ? `No notes tagged #${tagFilter} match “${query}”`
-            : tagFilter
-              ? `No notes tagged #${tagFilter}`
-              : `No notes match “${query}”`
-          : null;
+      : mode === "recent"
+        ? "No recent notes yet"
+        : mode === "tags"
+          ? query === "#"
+            ? "No tags yet"
+            : `No tags match “${query}”`
+          : mode === "results" && (query || tagFilter)
+            ? tagFilter && query
+              ? `No notes tagged #${tagFilter} match “${query}”`
+              : tagFilter
+                ? `No notes tagged #${tagFilter}`
+                : `No notes match “${query}”`
+            : null;
 
   const rowStyle = (isActive: boolean) =>
     ({
@@ -394,6 +404,8 @@ export default function SearchPalette({
             style={{
               borderTop: `1px solid ${BG.divider}`,
               overflowY: mode === "recent" ? "hidden" : "auto",
+              maxHeight: shown * ROW_H + LIST_PAD * 2,
+              boxSizing: "border-box",
               padding: LIST_PAD,
             }}
           >

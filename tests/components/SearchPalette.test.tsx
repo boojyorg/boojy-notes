@@ -125,10 +125,11 @@ describe("SearchPalette", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("shows nothing when there are no recents yet", () => {
-    const { container, queryByText } = setup({}, { recentIds: [] });
+  it("says so when there are no recents yet (the open note alone is none)", () => {
+    const { container, queryByText, getByText } = setup({}, { recentIds: ["n1"] });
     expect(rows(container)).toHaveLength(0);
     expect(queryByText("Recent")).not.toBeInTheDocument();
+    expect(getByText("No recent notes yet")).toBeInTheDocument();
   });
 
   it("types into the shared search state", () => {
