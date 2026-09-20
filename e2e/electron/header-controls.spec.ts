@@ -179,6 +179,7 @@ test("Settings is in the header menu, with a note open and with none", async () 
   expect(await menu.getByRole("menuitem").allTextContents()).toEqual([
     "Rename",
     "Duplicate",
+    "Move to…",
     "Delete",
     "Settings",
   ]);

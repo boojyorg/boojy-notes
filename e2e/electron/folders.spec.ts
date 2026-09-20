@@ -106,6 +106,7 @@ test("a folder row's New note makes the note inside that folder and opens the fo
       "New folder",
       "Rename",
       "Duplicate folder",
+      "Move to…",
       "Delete folder",
     ]);
     await h.page.keyboard.press("Escape");
