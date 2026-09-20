@@ -30,7 +30,7 @@ export const FORMATS = [
   { id: "italic", label: "Italic", key: "I" },
   { id: "strikethrough", label: "Strikethrough", key: "S", shift: true },
   { id: "highlight", label: "Highlight", key: "H", shift: true },
-  { id: "code", label: "Inline code", key: "`" },
+  { id: "code", label: "Inline code", key: "E" },
   { id: "link", label: "Link", key: "K" },
 ];
 

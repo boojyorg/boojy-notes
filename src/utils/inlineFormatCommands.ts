@@ -56,6 +56,11 @@ const SHIFT_KEYS: Record<string, InlineFormat> = {
 const MOD_KEYS: Record<string, InlineFormat> = {
   b: "bold",
   i: "italic",
+  // Cmd+E is the inline-code shortcut shown (Notion's), because the backtick
+  // is a dead accent key on Spanish and most European layouts and reports
+  // "Dead" with Cmd held, so Cmd+` never matched there (2026-09-20). The
+  // backtick stays as an unshown alternative where the layout gives it.
+  e: "code",
   "`": "code",
   k: "link",
   K: "link",

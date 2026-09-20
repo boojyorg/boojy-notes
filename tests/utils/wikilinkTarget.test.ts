@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  linkTargetFor,
   noteLinkKeys,
   parseWikilinkTarget,
   resolveWikilink,
   unresolvedWikilinkMessage,
+  wikilinkCandidates,
   wikilinkKey,
   wikilinkMayCreate,
+  wikilinkStatus,
 } from "../../src/utils/wikilinkTarget";
 import type { NoteData } from "../../src/types/notes";
 
@@ -116,5 +119,54 @@ describe("unresolvedWikilinkMessage", () => {
     expect(unresolvedWikilinkMessage(parseWikilinkTarget("#Intro"))).toBe(
       "Links to a heading in this note can't be followed yet.",
     );
+  });
+});
+
+describe("the picker's readings (2026-09-20)", () => {
+  const namesakes = {
+    a: { title: "Goals", folder: "Personal", content: { blocks: [] } },
+    b: { title: "Goals", folder: "Uni/Sem 1", content: { blocks: [] } },
+    c: { title: "Other", content: { blocks: [] } },
+    d: { title: "Draft", _draft: true, content: { blocks: [] } },
+  };
+
+  it("wikilinkCandidates lists every note a name could mean, drafts left out", () => {
+    expect(wikilinkCandidates("goals", namesakes)).toEqual(["a", "b"]);
+    expect(wikilinkCandidates("Personal/Goals", namesakes)).toEqual(["a"]);
+    expect(wikilinkCandidates("Other", namesakes)).toEqual(["c"]);
+    expect(wikilinkCandidates("Draft", namesakes)).toEqual([]);
+    expect(wikilinkCandidates("#Intro", namesakes)).toEqual([]);
+  });
+
+  it("resolveWikilink answers only a name one note owns", () => {
+    expect(resolveWikilink("Goals", namesakes)).toBeNull();
+    expect(resolveWikilink("Uni/Sem 1/Goals", namesakes)).toBe("b");
+    expect(resolveWikilink("other", namesakes)).toBe("c");
+  });
+
+  it("linkTargetFor is the title, or Folder/Title for a namesake", () => {
+    expect(linkTargetFor("c", namesakes)).toBe("Other");
+    expect(linkTargetFor("a", namesakes)).toBe("Personal/Goals");
+    expect(linkTargetFor("b", namesakes)).toBe("Uni/Sem 1/Goals");
+    expect(linkTargetFor("zzz", namesakes)).toBe("");
+  });
+
+  it("wikilinkStatus says note, ambiguous or missing", () => {
+    expect(wikilinkStatus("Other", namesakes)).toEqual({
+      kind: "note",
+      id: "c",
+      title: "Other",
+      folder: null,
+    });
+    expect(wikilinkStatus("Goals", namesakes)).toEqual({
+      kind: "ambiguous",
+      ids: ["a", "b"],
+      name: "Goals",
+    });
+    expect(wikilinkStatus("Work/Delta#Plan", namesakes)).toEqual({
+      kind: "missing",
+      name: "Delta",
+      folder: "Work",
+    });
   });
 });

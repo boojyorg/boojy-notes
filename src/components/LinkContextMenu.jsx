@@ -77,25 +77,26 @@ export default function LinkContextMenu({
     >
       {linkType === "external" && (
         <>
-          <MenuItem label="Open Link" onClick={onOpen} />
-          <MenuItem label="Copy URL" onClick={onCopy} />
-          <MenuItem label="Edit Link" onClick={onEdit} />
-          <MenuItem label="Remove Link" onClick={onRemove} />
+          <MenuItem label="Open link" onClick={onOpen} />
+          <MenuItem label="Copy link" onClick={onCopy} />
+          <MenuItem label="Edit link…" onClick={onEdit} />
+          <MenuItem label="Remove link" onClick={onRemove} />
         </>
       )}
       {linkType === "wikilink" && (
         <>
-          <MenuItem label="Open Note" onClick={onOpen} />
-          <MenuItem label="Copy Note Title" onClick={onCopy} />
-          <MenuItem label="Edit Link" onClick={onEdit} />
-          <MenuItem label="Remove Link" onClick={onRemove} />
+          <MenuItem label="Open note" onClick={onOpen} />
+          <MenuItem label="Copy note name" onClick={onCopy} />
+          <MenuItem label="Edit link…" onClick={onEdit} />
+          <MenuItem label="Remove link" onClick={onRemove} />
         </>
       )}
+      {/* A link that names no note, or two: the picker does the fixing, with
+          Create note as its first row where a click used to create silently. */}
       {linkType === "wikilink-broken" && (
         <>
-          <MenuItem label="Create Note" onClick={onCreate} />
-          <MenuItem label="Edit Link" onClick={onEdit} />
-          <MenuItem label="Remove Link" onClick={onRemove} />
+          <MenuItem label="Fix link…" onClick={onCreate} />
+          <MenuItem label="Remove link" onClick={onRemove} />
         </>
       )}
     </div>

@@ -72,3 +72,17 @@ test("redo after undo repaints too", async () => {
   expect(await noteText(h.page)).toBe(`${ORIGINAL} A`);
   await expectNoteMatchesDisk(h.page, h.vault, NOTE);
 });
+
+test("undo while renaming keeps the caret where it was, not at the start of the name", async () => {
+  const title = h.page.getByRole("textbox", { name: "Note title" });
+  await title.click();
+  await h.page.keyboard.press(END_OF_LINE);
+  await h.page.keyboard.type("XY");
+  await expect(title).toHaveText("JournalXY");
+  await waitForFile(h.vault.file("JournalXY.md"), () => true, { label: "the rename" });
+  await h.page.keyboard.press(`${MOD}+z`);
+  await expect(title).toHaveText("Journal");
+  // The caret is still at the end: the next character lands there.
+  await h.page.keyboard.type("Z");
+  await expect(title).toHaveText("JournalZ");
+});

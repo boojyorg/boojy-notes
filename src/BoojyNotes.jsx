@@ -25,7 +25,7 @@ import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
 import { ancestorFolders, parentFolder, sharedFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
-import WikilinkMenu from "./components/WikilinkMenu";
+import LinkPicker from "./components/LinkPicker";
 import TagMenu from "./components/TagMenu";
 import TopBarMobile from "./components/mobile/TopBarMobile";
 import Sidebar from "./components/Sidebar";
@@ -54,6 +54,8 @@ import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
+import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
+import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
 import { resolveAttachmentUrl } from "./utils/attachmentUrl";
@@ -380,14 +382,10 @@ export default function BoojyNotes() {
   // The selected whole block (a divider or an image; see isSelectableBlock) + lightbox state
   const [selectedBlockId, setSelectedBlockId] = useState(null);
 
-  // Link popover state
-  const [linkPopover, setLinkPopover] = useState(null);
-  const openLinkEditor = useCallback(() => {
-    if (getLinkContextRef.current) {
-      const ctx = getLinkContextRef.current();
-      if (ctx) setLinkPopover(ctx);
-    }
-  }, []);
+  // The link picker (useLinkPicker, below): Cmd+K and the toolbar's Link
+  // reach it through this ref, because the format hook is made first.
+  const linkPickerRef = useRef(null);
+  const openLinkEditor = useCallback(() => linkPickerRef.current?.openFromSelection(), []);
   const getLinkContextRef = useRef(null);
 
   const { applyFormat, detectActiveFormats, reReadBlockFromDom, getLinkContext } =
@@ -504,12 +502,21 @@ export default function BoojyNotes() {
   useLayoutEffect(() => {
     const title = noteData[activeNote]?.content?.title;
     trace("title sync effect", activeNote, "syncGen", syncGeneration.current);
-    if (titleRef.current && title !== undefined) {
+    const el = titleRef.current;
+    if (el && title !== undefined) {
+      // A repaint under the caret (an undo while renaming, a paste elsewhere
+      // bumping syncGen) threw it to the start of the name; the offset is
+      // remembered and put back, clamped, as a block's repaint does
+      // (2026-09-20). A field already holding the text is left alone.
+      const focused = document.activeElement === el;
+      if (focused && (el.textContent ?? "") === title && title !== "") return;
+      const caret = focused ? getCaretOffset(el) : -1;
       if (title === "") {
-        titleRef.current.innerHTML = "<br>";
+        el.innerHTML = "<br>";
       } else {
-        titleRef.current.innerText = title;
+        el.innerText = title;
       }
+      if (caret >= 0) placeCaret(el, Math.min(caret, title.length));
     }
   }, [activeNote, syncGeneration.current]); // only on note switch + external sync, NOT every keystroke
 
@@ -573,9 +580,15 @@ export default function BoojyNotes() {
   // refs (useBlockDrag keys its restore by the note the drag started in), so
   // the mount-time capture is safe — don't hand them anything render-bound.
   useEffect(() => {
+    // Unconditional: each cancel handles the inactive case itself, and a
+    // press on the grip (or a held sidebar row) that never became a drag
+    // still holds window listeners. Guarded on `.active`, a press followed
+    // by Cmd-Tab left them, and the next pointer movement started a phantom
+    // drag with no button down that hid the grip app-wide and dropped a block
+    // on the next click (2026-09-20).
     const onBlur = () => {
-      if (blockDrag.current.active) cancelBlockDrag();
-      if (sidebarDrag.current.active) cancelSidebarDrag();
+      cancelBlockDrag();
+      cancelSidebarDrag();
     };
     const onVisChange = () => {
       if (document.hidden) onBlur();
@@ -634,12 +647,12 @@ export default function BoojyNotes() {
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
   // Wikilink wiring (title set, click/select)
+  const openLinkFixerRef = useRef(null);
   const { noteTitleSet, handleWikilinkClick, handleWikilinkSelect } = useWikilinkHandlers({
     noteData,
     noteDataRef,
     textOnlyEdit,
     openNote,
-    createNote,
     wikilinkMenuRef,
     setWikilinkMenu,
     syncGeneration,
@@ -647,8 +660,54 @@ export default function BoojyNotes() {
     focusBlockId,
     focusCursorPos,
     showToast,
+    openLinkFixerRef,
   });
   noteTitleSetRef.current = noteTitleSet;
+
+  // The link picker: one popover for an address and a note alike.
+  const linkPicker = useLinkPicker({
+    noteData,
+    noteDataRef,
+    activeNoteRef,
+    editorRef,
+    getLinkContextRef,
+    reReadBlockFromDom,
+    createNote,
+    wikilinkMenu,
+    setWikilinkMenu,
+    handleWikilinkSelect,
+    blockRefs,
+  });
+  linkPickerRef.current = linkPicker;
+  openLinkFixerRef.current = linkPicker.openForLink;
+  const removeLink = useCallback(
+    (el) => {
+      removeLinkElement(el);
+      reReadBlockFromDom();
+    },
+    [reReadBlockFromDom],
+  );
+  // What the chip says a link points at: the URL; a note's name and folder;
+  // or that no note, or two, answers to the name.
+  const describeLink = useCallback(
+    (el) => {
+      if (el.tagName === "A") {
+        const url = el.getAttribute("data-url") || el.getAttribute("href");
+        return url ? { label: url } : null;
+      }
+      const target = el.getAttribute("data-target") || "";
+      const status = wikilinkStatus(target, noteDataRef.current);
+      if (status.kind === "note") return { label: status.title, sub: status.folder || "Notes" };
+      if (status.kind === "ambiguous")
+        return {
+          label: status.name,
+          sub: `${status.ids.length} notes share this name`,
+          missing: true,
+        };
+      return { label: status.name || target, sub: "no note by this name", missing: true };
+    },
+    [noteDataRef],
+  );
 
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
   const { handleTagClick, handleTagSelect } = useTagHandlers({
@@ -1052,8 +1111,9 @@ export default function BoojyNotes() {
               onTagClick={handleTagClick}
               toolbarState={isMobile ? null : toolbarState}
               noteTitleSet={noteTitleSet}
-              linkPopover={linkPopover}
-              setLinkPopover={setLinkPopover}
+              onEditLink={linkPicker.openForLink}
+              onRemoveLink={removeLink}
+              describeLink={describeLink}
               selectedBlockId={selectedBlockId}
               setSelectedBlockId={setSelectedBlockId}
               lightbox={lightbox}
@@ -1149,20 +1209,30 @@ export default function BoojyNotes() {
         executeSlashCommand={executeSlashCommand}
       />
 
-      {wikilinkMenu && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: Z.MENU_BACKDROP }}
-            onMouseDown={() => setWikilinkMenu(null)}
-          />
-          <WikilinkMenu
-            position={wikilinkMenu.rect}
-            filter={wikilinkMenu.filter}
-            noteData={noteData}
-            onSelect={handleWikilinkSelect}
-            onDismiss={() => setWikilinkMenu(null)}
-          />
-        </>
+      {linkPicker.picker && (
+        <LinkPicker
+          anchor={linkPicker.picker.anchor}
+          mode={linkPicker.picker.mode}
+          initialText={linkPicker.picker.text}
+          initialDest={linkPicker.picker.dest}
+          searchAtOpen={linkPicker.picker.searchAtOpen}
+          candidateIds={linkPicker.picker.candidateIds}
+          notes={linkPicker.notes}
+          onApply={linkPicker.apply}
+          onRemove={linkPicker.remove}
+          onClose={linkPicker.close}
+        />
+      )}
+      {!linkPicker.picker && linkPicker.quick && (
+        <LinkPicker
+          anchor={linkPicker.quick.anchor}
+          mode="create"
+          notesOnly
+          initialDest={linkPicker.quick.initialDest}
+          notes={linkPicker.notes}
+          onApply={linkPicker.applyQuick}
+          onClose={linkPicker.closeQuick}
+        />
       )}
 
       {tagMenu && (

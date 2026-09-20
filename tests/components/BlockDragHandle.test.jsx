@@ -211,6 +211,27 @@ describe("BlockDragHandle", () => {
     expect(screen.queryByTestId("block-drag-handle")).toBe(null);
   });
 
+  it("comes back after a key pressed while the pointer rests on the grip", async () => {
+    render(<Harness blocks={["b1", "b2", "b3"]} startHandleDrag={vi.fn()} />);
+    layOut();
+    await hoverAt(50);
+    const grip = screen.getByTestId("block-drag-handle");
+    // The pointer is on the grip itself; the element it is on then unmounts,
+    // so no mouseleave ever fires for it.
+    act(() => {
+      fireEvent.mouseEnter(grip);
+    });
+    act(() => {
+      fireEvent.keyDown(document.querySelector("[data-block-id='b1']"), {
+        key: "z",
+        metaKey: true,
+      });
+    });
+    expect(screen.queryByTestId("block-drag-handle")).toBe(null);
+    await hoverAt(90);
+    expect(screen.getByTestId("block-drag-handle").dataset.targetBlock).toBe("b2");
+  });
+
   it("hides when the pointer leaves the column", async () => {
     render(<Harness blocks={["b1", "b2", "b3"]} startHandleDrag={vi.fn()} />);
     layOut();

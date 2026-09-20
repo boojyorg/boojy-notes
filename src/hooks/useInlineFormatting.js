@@ -61,54 +61,44 @@ export function useInlineFormatting({
     return scope;
   };
 
+  /**
+   * What Cmd+K or the toolbar's Link is about: the link the caret is in (an
+   * `<a>` or a `[[wikilink]]` span, climbed to from the range's start, so a
+   * selection that begins inside a link is that link), else the selection.
+   * The anchor is a viewport rect: the picker is a fixed popover
+   * (`LinkPicker`), placed by `useMenuPosition` as every menu is.
+   */
   const getLinkContext = useCallback(() => {
     const sel = window.getSelection();
     if (!sel.rangeCount) return null;
     // A link lives inside one text block: no editor for a selection that
     // spans blocks, sits outside every block, or is in a block that owns its
     // own field.
-    if (!textBlockScope(sel.getRangeAt(0))) return null;
-    let node = sel.anchorNode;
+    const range = sel.getRangeAt(0);
+    if (!textBlockScope(range)) return null;
+    let node = range.startContainer;
     let linkEl = null;
     while (node && node !== editorRef.current) {
-      if (node.nodeName === "A") {
+      if (node.nodeName === "A" || (node.nodeType === 1 && node.classList.contains("wikilink"))) {
         linkEl = node;
         break;
       }
       node = node.parentNode;
     }
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const containerEl =
-      editorRef.current?.closest("[style*='position: relative']") ||
-      editorRef.current?.parentElement;
-    const containerRect = containerEl?.getBoundingClientRect() || { top: 0, left: 0 };
-    const savedRange = range.cloneRange();
+    const toAnchor = (r) => ({ top: r.top, bottom: r.bottom, left: r.left, right: r.right });
     if (linkEl) {
-      // Strip icon text from link text
-      const textContent = Array.from(linkEl.childNodes)
-        .filter((n) => !n.classList?.contains("external-link-icon"))
-        .map((n) => n.textContent)
-        .join("");
+      const r = document.createRange();
+      r.selectNode(linkEl);
       return {
         existingLink: linkEl,
-        url: linkEl.getAttribute("href") || "",
-        text: textContent,
-        position: {
-          top: rect.bottom - containerRect.top + 4,
-          left: rect.left - containerRect.left,
-        },
-        savedRange,
+        anchor: toAnchor(linkEl.getBoundingClientRect()),
+        savedRange: r,
       };
     }
-    // No existing link — use selection text
-    const selectedText = sel.isCollapsed ? "" : sel.toString();
     return {
       existingLink: null,
-      url: "",
-      text: selectedText,
-      position: { top: rect.bottom - containerRect.top + 4, left: rect.left - containerRect.left },
-      savedRange,
+      anchor: toAnchor(range.getBoundingClientRect()),
+      savedRange: range.cloneRange(),
     };
   }, [editorRef]);
 

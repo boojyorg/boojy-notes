@@ -334,7 +334,11 @@ the caret leaves. Longer names still grow both ways (Finder's rename).
   row's baseline, 2026-09-19: H1 +0.04, H2 +0.10, H3 +0.19, H4 −0.23, H5 −0.17, H6 +0.02,
   paragraph, quote, bullet and numbered +0.27, task +0.02; and within 0.6px at 120%, 125% and
   133% UI scale. Tops agreeing and centres agreeing were the two answers before it, the same day;
-  a baseline is the line the eye reads two words as sharing. **A baseline is not a canvas
+  a baseline is the line the eye reads two words as sharing. **A note opens at the top of the
+  scroller** (`EditorArea`, a layout effect on `activeNote`, 2026-09-20): the scroller is shared
+  between notes and the path band is sticky inside it, so a scroll the previous note left put
+  the next note's first line under the band, off this baseline; a search jump's own scroll runs
+  150 ms later and still wins. `editor-scroll.spec.ts`. **A baseline is not a canvas
   `fontBoundingBoxAscent`** — that was wrong by 5.75px on this very row and cost a round of
   judging. Probe it: wrap the text node in a span and read the top of a
   `display:inline-block;width:0;height:0;vertical-align:baseline` beside it. Touch devices have no

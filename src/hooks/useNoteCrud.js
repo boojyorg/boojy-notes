@@ -31,7 +31,9 @@ export function useNoteCrud({
   // (the same wash was dropped from Rename on 2026-08-23). The file is
   // `Untitled.md` either way: the write turns a blank name into that and the
   // renderer adopts it once the caret has left the field (useResolvedTitle).
-  const createNote = (folder = null, title = null) => {
+  // `open: false` makes the note and leaves the reader where they are (the
+  // link picker's Create note row, 2026-09-20). Answers the new note's id.
+  const createNote = (folder = null, title = null, { open: openIt = true } = {}) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();
     const noteTitle = title || "";
@@ -45,10 +47,12 @@ export function useNoteCrud({
     // A note made inside a folder (the row's New note, or New note from
     // its menu) must be seen to arrive: open the folder it lands in.
     if (folder) setExpanded((prev) => (prev[folder] ? prev : { ...prev, [folder]: true }));
+    if (!openIt) return id;
     open(id);
     setTimeout(() => {
       titleRef.current?.focus();
     }, 50);
+    return id;
   };
 
   const deleteNote = (noteId) => {

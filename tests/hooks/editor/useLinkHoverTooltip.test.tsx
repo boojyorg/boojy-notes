@@ -12,7 +12,11 @@ function setup() {
     'text <span class="wikilink" data-target="Beta">Beta</span> and <a href="https://x.y" data-url="https://x.y">x</a>';
   const link = container.querySelector(".wikilink") as HTMLElement;
   const anchor = container.querySelector("a") as HTMLElement;
-  const hook = renderHook(() => useLinkHoverTooltip({ current: container }));
+  const describeLink = (el: HTMLElement) =>
+    el.tagName === "A"
+      ? { label: el.getAttribute("href") as string }
+      : { label: el.getAttribute("data-target") as string, sub: "Notes" };
+  const hook = renderHook(() => useLinkHoverTooltip({ current: container }, describeLink));
   const moveOver = (target: Element) =>
     act(() => {
       hook.result.current.onMouseMove({ target } as never);
@@ -40,7 +44,7 @@ describe("useLinkHoverTooltip", () => {
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    expect(h.result.current.tooltip?.url).toBe("[[Beta]]");
+    expect(h.result.current.tooltip?.description.label).toBe("Beta");
     h.leave();
     expect(h.result.current.tooltip).toBeNull();
   });
@@ -71,7 +75,7 @@ describe("useLinkHoverTooltip", () => {
     act(() => {
       vi.advanceTimersByTime(250);
     });
-    expect(h.result.current.tooltip?.url).toBe("[[Beta]]");
+    expect(h.result.current.tooltip?.description.label).toBe("Beta");
   });
 
   it("moving to another link supersedes the pending hover", () => {
@@ -88,7 +92,7 @@ describe("useLinkHoverTooltip", () => {
     act(() => {
       vi.advanceTimersByTime(200);
     });
-    expect(h.result.current.tooltip?.url).toBe("https://x.y");
+    expect(h.result.current.tooltip?.description.label).toBe("https://x.y");
   });
 
   it("cancels the pending hover on unmount", () => {

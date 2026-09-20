@@ -81,6 +81,8 @@ export const NIGHT = {
   inlineCode: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)" },
   link: { color: "#6ea8d8", underline: "rgba(110,168,216,0.3)", hoverBg: "rgba(110,168,216,0.06)" },
   wikilink: { color: "#9CC9CE", underline: "rgba(156,201,206,0.3)" },
+  /** The link picker's wash on the words it will link: a neutral ink wash, never the accent. */
+  selectionWash: "rgba(255,255,255,0.14)",
   wikilinkBroken: {
     color: "rgba(255,255,255,0.4)",
     underline: "rgba(255,255,255,0.2)",
@@ -187,6 +189,7 @@ export const DAY = {
   inlineCode: { bg: "rgba(0,0,0,0.06)", border: "rgba(0,0,0,0.1)" },
   link: { color: "#2266AA", underline: "rgba(34,102,170,0.3)", hoverBg: "rgba(34,102,170,0.06)" },
   wikilink: { color: "#2A737D", underline: "rgba(42,115,125,0.3)" },
+  selectionWash: "rgba(20,17,15,0.10)",
   wikilinkBroken: {
     color: "rgba(0,0,0,0.35)",
     underline: "rgba(0,0,0,0.15)",

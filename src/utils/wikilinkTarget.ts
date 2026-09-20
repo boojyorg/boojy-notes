@@ -52,15 +52,13 @@ export function wikilinkKey({ name, folder }: WikilinkTarget): string | null {
  * The id of the note a target names, or null. Titles match case-insensitively
  * as they always have. A folder in the target is explicit: only the note at
  * that path answers, never a namesake elsewhere, so a stale path opens nothing
- * (and says so) rather than silently opening the wrong note.
+ * (and says so) rather than silently opening the wrong note. **A name two
+ * notes share resolves to neither** (2026-09-20, Tyr's decision): it used to
+ * open whichever loaded first; the click now asks (`wikilinkStatus`).
  */
 export function resolveWikilink(target: string, noteData: NoteData): string | null {
-  const key = wikilinkKey(parseWikilinkTarget(target));
-  if (!key) return null;
-  for (const [id, note] of Object.entries(noteData)) {
-    if (noteLinkKeys(note).includes(key)) return id;
-  }
-  return null;
+  const ids = wikilinkCandidates(target, noteData);
+  return ids.length === 1 ? ids[0] : null;
 }
 
 /**
@@ -78,4 +76,53 @@ export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): str
   if (!name) return "Links to a heading in this note can't be followed yet.";
   const where = folder ? ` in ${folder}` : "";
   return `No note named "${name}"${where}. Links to a heading, block or folder path don't create notes.`;
+}
+
+// ── The unified link picker (2026-09-20) ────────────────────────────────
+
+/** Every note a target could name: one for a clean link, several for a namesake, none for a missing one. */
+export function wikilinkCandidates(target: string, noteData: NoteData): string[] {
+  const key = wikilinkKey(parseWikilinkTarget(target));
+  if (!key) return [];
+  const ids: string[] = [];
+  for (const [id, note] of Object.entries(noteData)) {
+    if (note._draft) continue;
+    if (noteLinkKeys(note).includes(key)) ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * The shortest target that names this note and no other: its title, or
+ * `Folder/Title` when another note shares the title (Obsidian's rule). The
+ * picker writes this, so a plain `[[Goals]]` is only ever written when it is
+ * unambiguous.
+ */
+export function linkTargetFor(id: string, noteData: NoteData): string {
+  const note = noteData[id];
+  if (!note) return "";
+  const title = (note.title || "").trim();
+  const key = title.toLowerCase();
+  const namesakes = Object.entries(noteData).filter(
+    ([other, n]) => other !== id && !n._draft && (n.title || "").trim().toLowerCase() === key,
+  );
+  return namesakes.length > 0 && note.folder ? `${note.folder}/${title}` : title;
+}
+
+export type WikilinkStatus =
+  | { kind: "note"; id: string; title: string; folder: string | null }
+  | { kind: "ambiguous"; ids: string[]; name: string }
+  | { kind: "missing"; name: string; folder: string | null };
+
+/** What a target names now: the note, several notes, or nothing. */
+export function wikilinkStatus(target: string, noteData: NoteData): WikilinkStatus {
+  const parsed = parseWikilinkTarget(target);
+  const ids = wikilinkCandidates(target, noteData);
+  if (ids.length === 1) {
+    const n = noteData[ids[0]];
+    return { kind: "note", id: ids[0], title: n.title || "Untitled", folder: n.folder || null };
+  }
+  if (ids.length > 1) return { kind: "ambiguous", ids, name: parsed.name };
+  // Missing: the name the reader would search by.
+  return { kind: "missing", name: parsed.name, folder: parsed.folder };
 }

@@ -13,7 +13,14 @@ History is in git and `CHANGELOG.md`.
   Desktop only, `aria-hidden`.
 - **The editor stays clean at rest:** the grip is invisible until its block is hovered, hides on
   keydown and during a drag, doesn't exist with fewer than two blocks; hovering it lifts its
-  ink and nothing else. Reveal is CSS.
+  ink and nothing else. Reveal is CSS. **Hidden means not hovered** (2026-09-20): the keydown
+  that unmounts the grip also clears `hoveringHandle`, because an element unmounted under the
+  pointer never fires mouseleave, and the stale flag muted every mousemove until the next note
+  switch. **Blur cancels a press unconditionally** (`BoojyNotes` `onBlur`, both drag hooks):
+  a grip press registers its window listeners at once, and guarded on `.active` a press
+  followed by Cmd-Tab left them, so the next pointer movement was a phantom drag with no
+  button down that hid the grip app-wide and dropped a block on the next click.
+  `grip-reveal.spec.ts`.
 - **The drag commits on drop.** The grabbed block stays put; a translucent copy follows the
   pointer; a 3px accent marker shows the gap. Release reorders once, one history entry, only if
   the order changed. Escape, window blur or release over the sidebar cancel. The no-op position
@@ -56,21 +63,56 @@ History is in git and `CHANGELOG.md`.
   outside an IME composition. Deliberately not a `selectionchange` normaliser: that re-anchors
   after every ArrowLeft back into the link, so the link's last character could never be reached.
   Links only (`a`, `.wikilink`); bold, italic and tags keep the browser's edge behaviour.
-- **A wikilink click opens the note its target names, and creates one only for a plain name**
-  (`utils/wikilinkTarget.ts`, one reading for the click, the menu and the broken mark).
-  `[[Note#Heading]]`, `[[Note#^block]]`, `[[Folder/Note]]`: the part before `#` names the note,
-  in the folder its path gives; an explicit path is the path (a stale one draws broken rather
-  than opening a namesake; `noteLinkKeys` holds `folder/title` keys beside titles). The heading
-  is ignored for now. A heading, block or path target that resolves to nothing creates nothing
-  (a toast names the note; the menu offers Open Note); nothing on a click creates a directory.
-  `link-resolution.spec.ts`.
+- **A wikilink click opens the note its target names, and never guesses or creates**
+  (`utils/wikilinkTarget.ts`, one reading for the click, the picker and the broken mark;
+  2026-09-20, three decisions Tyr took on the prototype). `[[Note#Heading]]`, `[[Note#^block]]`,
+  `[[Folder/Note]]`: the part before `#` names the note, in the folder its path gives; an
+  explicit path is the path (a stale one draws unresolved rather than opening a namesake;
+  `noteLinkKeys` holds `folder/title` keys beside titles). The heading is ignored for now.
+  **A name two notes share resolves to neither** (`wikilinkCandidates`; the renderer's title set
+  leaves a shared title out, so the link draws dashed) and **a name no note has creates
+  nothing**: both open the link picker on the link (`openLinkFixerRef`, `fix` mode) with the
+  candidates, or `Create note` first, as its rows, and nothing happens until a row is chosen.
+  A same-note heading (`[[#Intro]]`) names no note and only toasts. Rename and move rewrite
+  nothing in other notes, by decision: the link breaks, draws dashed, the chip says so, and the
+  click fixes it from the picker (`docs/BACKLOG.md`). `link-resolution.spec.ts`,
+  `useWikilinkHandlers.test.js`.
+- **One link picker for an address and a note** (`LinkPicker.tsx`, owned by `useLinkPicker`;
+  2026-09-20, built from a prototype Tyr judged). Cmd+K, the toolbar's Link, a typed `[[`, a
+  right-click's Edit link and a click on an unresolved link all open it. Creating is one field,
+  `Paste a link or search notes…`: an address with or without its scheme (`readAddress`) is the
+  first row, `Link to youtube.com`; notes whose title holds the letters follow with the folder
+  muted at the right; a name no note has ends with `Create note`, under the address row, never
+  in its place; a click or Enter applies, Escape or a press outside cancels. What is written:
+  words selected + address → `[words](url)`; nothing selected + address → the bare URL, kept
+  verbatim; words + note → `[[Target|words]]`; nothing + note → `[[Target]]`, where the target is
+  the shortest that names the note and no other (`linkTargetFor`: the title, or `Folder/Title`
+  for a namesake). Create makes the note in the open note's folder without opening it
+  (`createNote(…, { open: false })`). **The `[[` route is the same picker, notes only** (no
+  address row for `google.com`), opened by `useInputHandler`'s `wikilinkMenu` state and applied
+  through `handleWikilinkSelect`, which rewrites the block from the `[[`; it takes focus, which
+  retires the old rule that the wikilink menu never did. **Editing is Text and Destination**, Text
+  focused and selected, no list until the destination is typed in; Enter or a press outside
+  commits a valid change, Escape cancels, Tab commits nothing, and a destination that is neither
+  an address nor a note is refused (the field in the error ink; a press outside then closes
+  without touching the link). Remove leaves the words. The caret after a new link is placed by
+  `placeCaret`, so the next keystroke is prose. **While the picker holds focus the words it will
+  link wear a neutral wash** (`mark.link-picker-wash`, `theme.selectionWash`), unwrapped before
+  anything is read back. Link is still not offered inside a table cell or callout (known gap).
+  `link-picker.spec.ts`, `LinkPicker.test.tsx`, `linkDestination.test.ts`.
+- **The destination chip** (`LinkTooltip`, `useLinkHoverTooltip`): the tooltip chip's grammar,
+  4px under the link, after the 500 ms rest, on hover or when a **key** brings the caret to rest
+  inside a link (a pointer-placed caret arms nothing). A web link says its URL; a note link its
+  name with the folder muted beside it; a missing or shared name says so in the error ink. The
+  context menu is Open, Copy (a note's *name*, never its raw target), Edit link…, Remove link;
+  an unresolved link gets Fix link… and Remove link.
 - **A backslash escape is shown as written** (`\*not italic\*`); the walkers read text back
   verbatim, so hiding it lost it on the first edit.
 - **A bare URL is linked in prose only, read as written**: the autolink pass takes the HTML a
   piece at a time and links only inside prose, decoded first, so `&gt;` ends the URL. The
   brackets of `<url>` are text; there is no angle-bracket autolink.
-- The hover tooltip (`useLinkHoverTooltip`) shows after 500 ms at rest; the pending hover is an
-  object holding the timer, never data hung off a timer handle.
+- The pending hover in `useLinkHoverTooltip` is an object holding the timer, never data hung
+  off a timer handle.
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes
 
@@ -127,6 +169,9 @@ History is in git and `CHANGELOG.md`.
   only when it would clip (`chipWouldClip` against `.editor-scroll`). `FORMATS` in
   `FloatingToolbar.jsx` is the one place an editor shortcut is shown and must match
   `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac (`isMac`, not `isElectronMac`).
+  **Inline code is shown as `⌘E`** (Notion's; 2026-09-20) and `Cmd+\`` still works unshown: the
+  backtick is a dead accent key on Spanish and most European layouts and reports `Dead` with
+  Cmd held, so the shown shortcut must be a letter.
   `formatting-toolbar.spec.ts`.
 
 ## ATX headings share one editor path
@@ -267,8 +312,9 @@ app's, made through state.**
   when focus is already inside.
 - **A suggestion menu under the caret never takes focus and owns a key only while offering a
   completion.** The tag menu listens only with rows, never touches Space, and takes Enter only
-  when accepting is a completion; the wikilink menu keeps completing on Enter; the slash menu
-  is opened on purpose and keeps its keys.
+  when accepting is a completion; the slash menu is opened on purpose and keeps its keys. **The
+  `[[` picker is the exception** (2026-09-20): it is the link picker, a dialog with a field, and
+  takes focus the moment it opens; Escape leaves the `[[` as typed and the caret after it.
 - `key-ownership.spec.ts`. Not changed: Shift+Arrow at a block's edges, ArrowUp into the title,
   the link popover's position on a collapsed caret (backlog).
 
@@ -293,6 +339,11 @@ actions; a seventh is a smell.
   `onActiveNoteChanged`, and the handlers read the ref at the moment they run. The stacks are
   shared, capped at 50; navigation pushes and drops nothing. `undo-scope.spec.ts`.
 - **A typing group belongs to one note** (`historyGroupNote`); leaving a note closes its group.
+  **A structural commit closes it too** (`applyCommit`, 2026-09-20), as an undo does: "abc",
+  Enter, "def" typed without a pause is three entries, not one. A code block's textarea lets
+  `Cmd+Z`, `Shift+Cmd+Z` and `Ctrl+Y` through to the shell whichever case Shift gives the key
+  (`CodeBlock`, key lower-cased; before, redo stopped there). The title's `syncGen` repaint
+  keeps the caret offset while the field is focused, as a block's repaint does.
 - **History is the editor's.** A snapshot restores title and blocks and keeps the live
   `folder`; a move is not undoable. Undo never conjures a note: entries for a note that is gone
   are discarded; a vault switch drops them.

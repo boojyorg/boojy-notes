@@ -206,6 +206,17 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   const applyCommit = (updater, recordHistory) => {
     if (recordHistory && !isUndoRedo.current) pushHistory();
     cancelPendingText();
+    // A structural edit ends the typing group, as an undo does: the
+    // keystrokes after Enter, a paste or a checkbox are a new entry, not part
+    // of the one this commit pushed. Left open, "abc", Enter, "def" typed
+    // without a pause was one Cmd+Z (2026-09-20).
+    if (recordHistory) {
+      if (historyTimer.current) {
+        clearTimeout(historyTimer.current);
+        historyTimer.current = null;
+      }
+      historyGroupNote.current = null;
+    }
     // Apply updater to ref so it reflects both pending text changes AND this structural change
     const before = noteDataRef.current;
     noteDataRef.current = updater(before);

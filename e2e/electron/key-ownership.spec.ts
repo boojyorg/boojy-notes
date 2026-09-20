@@ -233,7 +233,7 @@ test("Cmd+K is the link editor and Cmd+P is Search", async () => {
     await h.page.keyboard.press("Shift+ArrowLeft");
 
     const search = h.page.getByRole("dialog", { name: "Search" });
-    const url = h.page.getByPlaceholder("https://...");
+    const url = h.page.getByPlaceholder("Paste a link or search notes…");
     await h.page.keyboard.press(`${MOD}+k`);
     await expect(url).toBeFocused();
     await expect(search).toBeHidden();

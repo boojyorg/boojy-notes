@@ -191,3 +191,64 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
   expect(h.vault.read(NOTE)).toBe(`*${LINE}*\n`);
   expect(h.pageErrors).toEqual([]);
 });
+
+// The backtick is a dead accent key on Spanish and most European layouts, and
+// with Cmd held reports "Dead", so Cmd+` never fired there. Cmd+E is what the
+// chip shows (2026-09-20); the backtick still works where the layout gives it.
+test("Cmd+E makes inline code, and the chip says so", async () => {
+  const block = h.page.locator("[data-block-id]").first();
+  await block.click();
+  await h.page.keyboard.press("End");
+  for (let i = 0; i < 3; i++) await h.page.keyboard.press("Shift+ArrowLeft");
+  await h.page.keyboard.press(`${MOD}+e`);
+  await expect(block).toHaveText(LINE);
+  expect(await block.innerHTML()).toContain("<code>fox</code>");
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("brown `fox`"));
+
+  await h.page.keyboard.press(`${MOD}+e`);
+  expect(await block.innerHTML()).not.toContain("<code>");
+  await h.page.keyboard.press(`${MOD}+\``);
+  expect(await block.innerHTML()).toContain("<code>fox</code>");
+
+  await sleep(SETTLE_MS);
+  const bar = toolbar(h.page);
+  await bar.getByRole("button", { name: "Inline code" }).hover();
+  const tip = h.page.getByTestId("format-tooltip");
+  await expect(tip).toBeVisible({ timeout: 2_000 });
+  expect(await tip.textContent()).toBe(
+    process.platform === "darwin" ? "Inline code⌘E" : "Inline codeCtrl+E",
+  );
+  expect(h.pageErrors).toEqual([]);
+});
+
+// The toolbar opens the link field on mousedown; the field's own "press
+// outside closes" listener used to catch that same press (2026-09-20).
+test("the toolbar's Link glyph opens the link field, as Cmd+K does", async () => {
+  const block = h.page.locator("[data-block-id]").first();
+  await block.click();
+  await h.page.keyboard.press("End");
+  for (let i = 0; i < 3; i++) await h.page.keyboard.press("Shift+ArrowLeft");
+  await sleep(SETTLE_MS);
+  const bar = toolbar(h.page);
+  const btn = bar.getByRole("button", { name: "Link" });
+  const box = (await btn.boundingBox())!;
+  await h.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await h.page.mouse.down();
+  await h.page.mouse.up();
+  const url = h.page.getByPlaceholder("Paste a link or search notes…");
+  await expect(url).toBeVisible();
+  await expect(url).toBeFocused();
+  await h.page.keyboard.type("https://example.com");
+  await h.page.keyboard.press("Enter");
+  await expect(url).toHaveCount(0);
+  await waitForFile(h.vault.file(NOTE), (t) => t.includes("brown [fox](https://example.com)"));
+  // A press outside still closes it.
+  await block.click();
+  await h.page.keyboard.press("End");
+  for (let i = 0; i < 3; i++) await h.page.keyboard.press("Shift+ArrowLeft");
+  await h.page.keyboard.press(`${MOD}+k`);
+  await expect(url).toBeVisible();
+  await h.page.mouse.click(5, 300);
+  await expect(url).toHaveCount(0);
+  expect(h.pageErrors).toEqual([]);
+});

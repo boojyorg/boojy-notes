@@ -306,6 +306,14 @@ export default function GlobalStyles() {
         [data-block-id] .wikilink:hover {
           text-decoration-color: ${theme.wikilink.color};
         }
+        /* The words the link picker will link, while it holds focus: a
+           neutral wash the selection's own strength, unwrapped before the
+           block is read back (useLinkPicker). Never the saved ==highlight==. */
+        [data-block-id] mark.link-picker-wash {
+          background: ${theme.selectionWash};
+          color: inherit;
+          border-radius: 2px;
+        }
         [data-block-id] .wikilink-broken {
           color: ${theme.wikilinkBroken.color};
           text-decoration-style: dashed;
