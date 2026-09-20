@@ -1,7 +1,7 @@
 {
   "name": "boojy-notes",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Boojy Notes",
   "author": "Tyr Bujac",
   "type": "module",
