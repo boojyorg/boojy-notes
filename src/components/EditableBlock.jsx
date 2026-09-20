@@ -479,8 +479,14 @@ const EditableBlock = memo(
           data-block-id={block.id}
           data-block-type={block.type}
           aria-label={`Heading ${block.type.slice(1)}`}
+          // Shown by CSS while the element holds nothing but the caret's <br>
+          // (GlobalStyles, the paragraph placeholder's rule), so an empty
+          // heading names its level in its own type; a pseudo-element, so it
+          // can never reach the file or the clipboard.
+          data-placeholder={`Heading ${block.type.slice(1)}`}
           style={{
             contain: "content",
+            position: "relative",
             ...style,
             // A heading that opens a note reaches up to the note's first
             // baseline rather than pushing it down, and its top margin — the

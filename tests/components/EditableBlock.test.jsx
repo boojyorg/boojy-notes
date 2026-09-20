@@ -143,6 +143,18 @@ describe("EditableBlock", () => {
     expect(el.getAttribute("data-block-id")).toBe(block.id);
   });
 
+  it("every heading level carries its name as a placeholder for the CSS to show while empty", () => {
+    for (const level of [1, 2, 3, 4, 5, 6]) {
+      const { container, unmount } = renderBlock(heading(level, ""));
+      const el = container.querySelector(`h${level}`);
+      expect(el.getAttribute("data-placeholder")).toBe(`Heading ${level}`);
+      // Nothing of the placeholder is in the element itself: it is a
+      // pseudo-element, so the walkers and the clipboard never see it.
+      expect(el.textContent).toBe("");
+      unmount();
+    }
+  });
+
   it("renders h2 block", () => {
     const block = heading(2, "Subtitle");
     const { container } = renderBlock(block);

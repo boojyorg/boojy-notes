@@ -149,6 +149,16 @@ ink, against 15px/400 body):
 H1/H2 keep −0.4/−0.2px letter spacing. Bold inside a heading is one step heavier
 (`GlobalStyles`: 800 in H1 and H6, 700 in H2–H5).
 
+## An empty heading names its level
+
+`data-placeholder="Heading N"` on the heading element, shown by CSS while the element holds
+nothing or only the caret's `<br>` (the paragraph placeholder's two rules, in `GlobalStyles`),
+in the heading's own type because the pseudo-element inherits it; muted ink at 40%, absolute,
+because Chromium draws the caret after an in-flow `::before`. **Every empty heading shows it,
+focused or not**: the editor is one contentEditable so a block is never `:focus`, and Notion
+shows it unfocused too. A pseudo-element, so it can never reach the file or the clipboard.
+`heading-placeholder.spec.ts`, `EditableBlock.test.jsx`.
+
 ## The slash menu is tiered
 
 - `/` opens on eleven commands. `advanced: true` in `SLASH_COMMANDS` keeps H4–H6, Callout, File
