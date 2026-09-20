@@ -92,21 +92,25 @@ test("a tag click opens the search palette with focus, Escape closes it, and the
     const dialog = h.page.getByRole("dialog", { name: "Search" });
     const field = h.page.getByRole("textbox", { name: "Search notes" });
 
-    // The click opens the palette with the query and the field focused.
+    // The click opens the palette with the tag as its filter chip, the
+    // field empty and focused, and the tagged notes listed at once.
     await h.page.locator("[data-block-id] .inline-tag").first().click();
     await expect(dialog).toBeVisible();
-    await expect(field).toHaveValue("#review");
+    await expect(dialog.getByTestId("search-tag-chip")).toHaveText(/#review/);
+    await expect(field).toHaveValue("");
     await expect(field).toBeFocused();
     await h.page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
-    // Which note ArrowDown + Enter opens after Cmd+P with the same query.
-    // Results follow the search's own debounce; the keys wait for them, as a
-    // user does, in both paths.
+    // Which note ArrowDown + Enter opens after Cmd+P, `#review` typed and
+    // the tag row chosen: the same filter by the keyboard route.
     const rows = dialog.locator("[data-search-index]");
     await h.page.keyboard.press(`${MOD}+p`);
     await expect(field).toBeFocused();
     await h.page.keyboard.type("#review");
+    await expect(rows).toHaveCount(1);
+    await h.page.keyboard.press("Enter");
+    await expect(dialog.getByTestId("search-tag-chip")).toHaveText(/#review/);
     await expect(rows).toHaveCount(2);
     await h.page.keyboard.press("ArrowDown");
     await h.page.keyboard.press("Enter");

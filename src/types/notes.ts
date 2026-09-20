@@ -132,17 +132,6 @@ export type NoteData = Record<string, Note>;
 
 // ─── App-level data shapes (referenced from @ts-check'd .js via JSDoc) ─────
 
-export interface SearchIndexEntry {
-  noteId: string;
-  title: string;
-  titleLower: string;
-  plainText: string;
-  plainTextLower: string;
-  blockOffsets: { blockIndex: number; blockId: string; start: number; end: number }[];
-  folder: string | null;
-  lastModified: number;
-}
-
 export interface SlashCommand {
   id: string;
   label: string;

@@ -106,6 +106,20 @@ History is in git and `CHANGELOG.md`.
   name with the folder muted beside it; a missing or shared name says so in the error ink. The
   context menu is Open, Copy (a note's *name*, never its raw target), Edit link…, Remove link;
   an unresolved link gets Fix link… and Remove link.
+- **A `#tag` is a pill, and the Markdown is still `#tag`** (2026-09-20, `styles/tagPill.ts`,
+  one shape for the editor's `.inline-tag` and Search's filter chip): the neutral `BG.surface`
+  ground, `ACCENT.text` ink, 1px 5px, radius 6, 0.92em; never an accent surface. **One tag
+  grammar** (`TAG_RE` in `utils/tags.ts`: `#` at the start or after whitespace or `(`, a
+  letter, then letters, marks, digits, `_`, `/`, `-`; `#café` is a tag): the renderer, the
+  `#…` completion (`TAG_TAIL_RE`), Search's tag rows and the filter all read it, so a `#` the
+  editor never draws as a tag is never offered as one. **What becomes a tag is not what search
+  reads**: `extractAllTags` takes prose, list, quote, heading, callout and table-cell text with
+  inline code, bare URLs and link addresses removed, and skips code blocks and frontmatter, so
+  `#include`, `color: #fff` and `page#top` are never tags while search still finds them as
+  text. **A space or punctuation typed at the end of a pill lands outside it**
+  (`caretOutOfTagEnd`, from the link rules' `beforeinput` seam, for an `insertText` that
+  `TAG_CHAR_RE` refuses): a text-only edit never repaints, so the character would sit in the
+  pill until the next repaint; a letter stays, because the tag is growing. `tag-pill.spec.ts`.
 - **A backslash escape is shown as written** (`\*not italic\*`); the walkers read text back
   verbatim, so hiding it lost it on the first edit.
 - **A bare URL is linked in prose only, read as written**: the autolink pass takes the HTML a

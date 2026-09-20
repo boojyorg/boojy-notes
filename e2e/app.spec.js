@@ -54,7 +54,7 @@ test.describe("Boojy Notes", () => {
     await expect(firstRow).toBeVisible();
   });
 
-  test("clicking an inline #tag filters the sidebar search", async ({ page }) => {
+  test("clicking an inline #tag opens Search filtered to that tag", async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("[data-editor]", { timeout: 10000 });
     const block = page.locator("[data-editor] [data-block-id]").first();
@@ -66,9 +66,8 @@ test.describe("Boojy Notes", () => {
     const tag = page.locator("[data-editor] .inline-tag").first();
     await expect(tag).toBeVisible({ timeout: 5000 });
     await tag.click();
-    await expect(page.locator('input[aria-label="Search notes"]')).toHaveValue("#alpha", {
-      timeout: 5000,
-    });
+    await expect(page.getByTestId("search-tag-chip")).toHaveText(/#alpha/, { timeout: 5000 });
+    await expect(page.locator('input[aria-label="Search notes"]')).toHaveValue("");
   });
 
   test("no critical accessibility violations", async ({ page }) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -52,6 +52,7 @@ import { getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
+import { readRecents, recordRecent } from "./utils/recentNotes";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
@@ -105,6 +106,7 @@ export default function BoojyNotes() {
   const {
     search,
     setSearch,
+    setTagFilter,
     sidebarScrollRef,
     expanded,
     setExpanded,
@@ -480,7 +482,19 @@ export default function BoojyNotes() {
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setSearch("");
-  }, [setSearch]);
+    setTagFilter(null);
+  }, [setSearch, setTagFilter]);
+  // The notes opened most recently, for the palette's empty state: recorded
+  // per vault as the active note changes, read when the palette opens. A
+  // separate list, never a timestamp on the note (the sort's rule).
+  const recentKey = notesDir || "web";
+  useEffect(() => {
+    if (activeNote) recordRecent(recentKey, activeNote);
+  }, [activeNote, recentKey]);
+  const recentIds = useMemo(
+    () => (searchOpen ? readRecents(recentKey) : []),
+    [searchOpen, recentKey],
+  );
   const { handleSearchResultOpen } = useSearchNavigation({
     search,
     clearSelectionRef,
@@ -712,6 +726,7 @@ export default function BoojyNotes() {
   // Tag interactions (sidebar filter on click; token-replace + caret restore on select)
   const { handleTagClick, handleTagSelect } = useTagHandlers({
     setSearch,
+    setTagFilter,
     openSearch,
     tagMenuRef,
     noteDataRef,
@@ -1173,7 +1188,12 @@ export default function BoojyNotes() {
 
       {/* === Overlays === */}
       {searchOpen && !isMobile && (
-        <SearchPalette onOpenResult={handleSearchResultOpen} onClose={closeSearch} />
+        <SearchPalette
+          onOpenResult={handleSearchResultOpen}
+          onClose={closeSearch}
+          recentIds={recentIds}
+          currentNoteId={activeNote}
+        />
       )}
       <ContextMenu
         ctxMenu={ctxMenu}

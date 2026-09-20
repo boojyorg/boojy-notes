@@ -9,6 +9,7 @@ import {
   caretLength,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
+  caretOutOfTagEnd,
   getCaretOffset,
   isEditableBlock,
   isSelectableBlock,
@@ -176,6 +177,50 @@ describe("placeCaret — a caret at the end of a link lands outside it", () => {
     const { node } = anchorAt();
     expect(node.data).toBe(CARET_ANCHOR);
     expect(node.parentElement.previousSibling.className).toBe("wikilink");
+  });
+});
+
+describe("caretOutOfTagEnd — a space typed at the end of a #tag lands outside its pill", () => {
+  const root = () => document.querySelector("[contenteditable]");
+  const setCaret = (node, offset) => {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+  const anchorAt = () => {
+    const sel = window.getSelection();
+    return { node: sel.anchorNode, offset: sel.anchorOffset };
+  };
+  const tagHtml = 'see <span class="inline-tag" data-tag="todd">#todd</span>';
+
+  it("moves a caret at the end of a tag that ends the block onto an anchor after it", () => {
+    const el = editable(tagHtml);
+    setCaret(el.querySelector(".inline-tag").firstChild, "#todd".length);
+    expect(caretOutOfTagEnd(root())).toBe(true);
+    const { node, offset } = anchorAt();
+    expect(node.data).toBe(CARET_ANCHOR);
+    expect(offset).toBe(1);
+    expect(node.parentElement.previousSibling.className).toBe("inline-tag");
+    expect(getCaretOffset(el)).toBe("see #todd".length);
+  });
+
+  it("leaves a caret inside the tag alone, so the tag can still grow or be edited", () => {
+    const el = editable(tagHtml);
+    const text = el.querySelector(".inline-tag").firstChild;
+    for (const offset of [0, 2, 4]) {
+      setCaret(text, offset);
+      expect(caretOutOfTagEnd(root())).toBe(false);
+      expect(anchorAt()).toEqual({ node: text, offset });
+    }
+  });
+
+  it("leaves a caret outside any tag alone", () => {
+    const el = editable(`${tagHtml} now`);
+    setCaret(el.lastChild, 2);
+    expect(caretOutOfTagEnd(root())).toBe(false);
   });
 });
 

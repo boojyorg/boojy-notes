@@ -3,6 +3,7 @@ import { cleanOrphanNodes, hasOwnField, placeCaret } from "../../utils/domHelper
 import { domNodeToMarkdown } from "../../utils/inlineFormatting";
 import { paintTypedFormat, typedFormatHit } from "../../utils/typedFormatting";
 import { genBlockId } from "../../utils/storage";
+import { TAG_TAIL_RE } from "../../utils/tags";
 import { SLASH_COMMANDS } from "../../constants/data";
 import {
   TYPED_DIVIDER_RE,
@@ -48,8 +49,8 @@ const MENU_TRIGGERS = [
 
 /** An open `[[` not yet closed: the wikilink menu's trigger. */
 const WIKILINK_OPEN_RE = /\[\[([^\]]*)$/;
-/** A `#` with at least one letter typed: the tag menu's trigger. */
-const TAG_OPEN_RE = /(^|[\s(])#([a-zA-Z][\w/-]*)$/;
+/** A `#` with at least one letter typed: the tag menu's trigger (the one tag grammar). */
+const TAG_OPEN_RE = TAG_TAIL_RE;
 
 /** Whether `text` is about to open or filter a suggestion menu under the caret. */
 const menuWouldOpen = (text) =>

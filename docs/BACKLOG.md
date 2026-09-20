@@ -169,11 +169,6 @@ none blocks the release. The shared question comes first because three candidate
   Import removed on 2026-09-05: a one-time journey with a report, not a converter.
 - **Context menu on plain text** and **rich paste** are listed under Known issues; promoting
   either is a candidate call, not a fix.
-- **Recent notes in Search.** Decided in shape (2026-09-12), not scheduled: opening Search with
-  an empty query lists recently *opened* notes, and the first character typed replaces them with
-  results. The rule it must keep is the sort's: opening a note is not editing it, so appearing
-  in this list never moves a note in "Most recent" or touches its timestamp. How the list is
-  persisted, how long it is, and whether it survives a restart belong to the feature.
 - **A muted "N other files" hint** on folders holding files the app cannot open
   (Show in Finder in Settings → Storage answers it for now).
 - **More New Note entry points** (a global shortcut; a share action on mobile later) run the
@@ -203,8 +198,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   ~5px of movement and never on a timer, and a displacement threshold fixes all four at once.
 - [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
   up to ~800 ms of keystrokes, the text-commit and write debounces.
-- [ ] **`#` inside a word or a URL fragment indexes as a tag** — `TAG_RE` in `utils/tags.js`
-  has no left boundary, so `a#b` and `example.com/page#top` produce tags `b` and `top`.
 - [ ] **Find counts a code block's matches twice** (the textarea and its highlight overlay,
   `FindBar.jsx`), and Replace leaves a match inside a table cell, a callout or a code block
   alone, since those blocks own their fields; replacing inside them is a decision to make once
@@ -241,10 +234,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   one with text to read.
 - [ ] **Image → Replace may keep showing the old image**: the editor's render comparator has no
   `src` or `width` (review §3.8 residue).
-- [ ] **Tag chips harvest `#include` and `color: #fff`** from code blocks and frontmatter
-  (review §3.5); the same missing boundary as the `#` inside a word, above.
-- [ ] **Search snippets join blocks with a single space** (`…#tagonehere. first item…`), so a
-  heading and the line under it read as one sentence (review §7.9); one separator.
 - **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
   2026-09-09); opening `/` after a space mid-line as well as at the start of an empty block
   (Craft's compromise; review §7.6). Multi-line paste into a code block should be native since
@@ -350,7 +339,6 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   (`SPEC-markdown-source-of-truth.md`) and a backlink index; instead the broken link draws
   dashed, the chip says the note is missing, and a click opens the link picker to point it
   somewhere. "Ask on rename: update N links in M notes?" is the candidate if this grates.
-- [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a
   new inode over the link, so the target file is left stale and the link is gone.
@@ -389,8 +377,8 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 - [ ] **Contrast and focus, from the review's script over `themes.js`** (2026-09-07, both
   themes, every text token on every surface): Dark `SEMANTIC.error` on `BG.hover` 2.65 (a
   hovered Delete row), `TEXT.secondary` on `BG.hover` 3.16; Light `TEXT.muted` on `BG.hover`
-  3.95 (the slash-menu hint on the selected row, by rule); the inline `#tag` at 0.7 opacity
-  3.01 in Light; `SEMANTIC.warning` as text 2.5 on every light surface. The theme segments
+  3.95 (the slash-menu hint on the selected row, by rule); `SEMANTIC.warning` as text 2.5 on
+  every light surface. The theme segments
   (Light / Dark / System) have no visible focus ring and no `aria-pressed`; the 400 ms theme
   crossfade ignores `prefers-reduced-motion`; the crash screen loses its theme because
   `GlobalStyles` renders inside the boundary. The toasts, empty state and focus ring are under
@@ -607,5 +595,5 @@ additionally excludes layouts and blocks that cannot round-trip to readable Mark
 Declined 2026-09-12, when the sidebar was rearranged: **Collapse all folders** (folders toggle
 on click and persist as left, and the list menu has no room for an action nobody reached for),
 and **Back and Forward** through recently open notes (one active note, no navigation stack; the
-sidebar and Search are how you get back to a note, and Recent notes in Search is the idea that
-survives from it).
+sidebar and Search are how you get back to a note; Recent notes in Search, which shipped on
+2026-09-20, is the idea that survives from it).

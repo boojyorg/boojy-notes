@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
-import { extractAllTags } from "../utils/tags";
+import { extractAllTags, tagRows } from "../utils/tags";
 
 /**
  * Tag autocomplete under the `#…` being typed.
@@ -29,10 +29,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   const allTags = useMemo(() => {
     if (!noteData) return [];
-    const tagMap = extractAllTags(noteData);
-    return [...tagMap.entries()]
-      .map(([tag, noteIds]) => ({ tag, count: noteIds.size }))
-      .sort((a, b) => b.count - a.count);
+    return tagRows(extractAllTags(noteData));
   }, [noteData]);
 
   const filtered = useMemo(() => {

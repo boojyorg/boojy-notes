@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { makeCaretAnchor } from "../utils/domHelpers";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
+import { TAG_TAIL_RE } from "../utils/tags";
 
 /**
  * Tag interactions: clicking a tag chip filters the sidebar to `#tag`, and
@@ -12,6 +13,7 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
  */
 export function useTagHandlers({
   setSearch,
+  setTagFilter,
   openSearch,
   tagMenuRef,
   noteDataRef,
@@ -23,14 +25,21 @@ export function useTagHandlers({
   focusCursorPos,
   setTagMenu,
 }) {
-  // Tag click handler: searches for #tagname (the palette on desktop, the
-  // sidebar field on mobile, which has no palette to open).
+  // Tag click handler. Desktop: the palette opens with the tag as its
+  // filter chip, the notes carrying that exact tag listed and the field
+  // empty for further typing. Mobile has no palette or chip, so its sidebar
+  // field searches the text `#tagname`.
   const handleTagClick = useCallback(
     (tagName) => {
-      setSearch(`#${tagName}`);
-      openSearch?.();
+      if (openSearch && setTagFilter) {
+        setTagFilter(tagName, "");
+        setSearch("");
+        openSearch();
+      } else {
+        setSearch(`#${tagName}`);
+      }
     },
-    [setSearch, openSearch],
+    [setSearch, setTagFilter, openSearch],
   );
 
   // Tag autocomplete select handler
@@ -42,7 +51,7 @@ export function useTagHandlers({
       const blocks = noteDataRef.current[noteId]?.content?.blocks;
       if (!blocks || !blocks[blockIndex]) return;
       const oldText = blocks[blockIndex].text || "";
-      const match = oldText.match(/(^|[\s(])#([a-zA-Z][\w/-]*)$/);
+      const match = oldText.match(TAG_TAIL_RE);
       if (match) {
         const newText = oldText.slice(0, match.index + match[1].length) + `#${tag} `;
         // A structural commit, as the wikilink completion is: it publishes the

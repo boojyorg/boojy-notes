@@ -1,4 +1,5 @@
 import { useTheme } from "../hooks/useTheme";
+import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X } from "../constants/layout";
 import { PARAGRAPH_GAP } from "./EditableBlock";
 import { settingsStyles } from "./settings/SettingsPrimitives";
@@ -287,15 +288,7 @@ export default function GlobalStyles() {
           border-radius: 2px;
           padding: 0 2px;
         }
-        [data-block-id] .inline-tag {
-          color: ${theme.ACCENT.text};
-          opacity: 0.7;
-          font-size: 0.92em;
-          cursor: pointer;
-        }
-        [data-block-id] .inline-tag:hover {
-          opacity: 1;
-        }
+${tagPillCss(theme)}
         [data-block-id] .wikilink {
           color: ${theme.wikilink.color};
           text-decoration: underline;

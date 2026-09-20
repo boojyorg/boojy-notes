@@ -3,6 +3,7 @@
 
 import { CARET_ANCHOR_CLASS } from "./domHelpers";
 import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
+import { TAG_RE } from "./tags";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
 const escapeHtml = (text) =>
@@ -125,10 +126,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   );
 
   // 11. Tags (#tag but not # at line start which is heading)
-  s = s.replace(
-    /(^|[\s(])#([a-zA-Z][\w/-]*)/g,
-    '$1<span class="inline-tag" data-tag="$2">#$2</span>',
-  );
+  s = s.replace(TAG_RE, '$1<span class="inline-tag" data-tag="$2">#$2</span>');
 
   // Restore backslash-escaped characters, backslash included
   s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[parseInt(i, 10)]}`);

@@ -517,20 +517,52 @@ location; visible at rest, never hover-revealed. Click only, never hover.
 
 - Desktop search is `SearchPalette.tsx`: Cmd+P, the Search button, or a click on an inline
   `#tag`. **Cmd+K is the editor's link shortcut, not Search.** A 560px dialog in the top third
-  over a scrim, search only: no commands, no recent list, nothing before you type. Escape,
-  Enter or a click outside closes and clears the query.
-- Title hits show the match in the accent and nothing else; a body hit shows one muted line of
-  context with the word in the accent; every row carries its folder path muted on the right.
-  No grouping by folder. A `#` with no results shows the tag chips.
-- **One search, two faces.** The palette reads and writes `SidebarContext`'s search state
-  (`search`, `searchResults`, `activeResultIndex`, `navigateResults`), so Enter opens the
-  highlighted result and jumps to its block. The sidebar tree filters behind the scrim; mobile
-  keeps its field and inline results (`isMobile` in `Sidebar.jsx`); shared parts in
-  `SearchParts.tsx`. Cmd+F in-note find is separate (`FindBar`).
+  over a scrim (`vh` divided by the UI scale), search only: no commands, no tabs, no panels.
+  Escape closes in one press, chip or not; Enter or a click outside closes too; closing clears
+  the query and the tag filter, so **every open starts fresh**.
+- **One list, three faces, one highlight** (2026-09-20). Empty, the list is **Recent**: the
+  notes opened most recently, newest first, the open note left out, under the one label the
+  palette has (the Notes row's grammar), at most `RECENT_SHOWN` (8) and fewer when the window
+  is short (`recentsThatFit`; the list never scrolls). Cmd+P then Enter is the way back to the
+  note you were in (the Back button the backlog declined). The list is `boojy-recent-notes`
+  in localStorage, per vault, 30 ids, written as the active note changes
+  (`utils/recentNotes.ts`); **never a timestamp on the note**, so opening moves nothing in
+  "Most recent" (the sort's rule). A note opens at the top, as every note does. A `#` at the
+  start of the field lists **tags as rows** (most used first, filtered by what follows, the
+  count muted where a folder would be); Enter, Tab or a click makes the tag the **filter chip**
+  in the field, the field emptied and focused, the notes carrying exactly that tag listed at
+  once, newest first (`Search N notes` as the placeholder). Text then searches within them;
+  Backspace on the empty field puts the tag back as text, the chip's × drops it. Otherwise the
+  list is **results**.
+- **A row is one line: title, folder muted on the right.** Only a note the title does not
+  explain (matched in its body, or some query words only there) carries one muted excerpt
+  under it, the matched words in the accent, ` · ` where it crosses a block. Title matches
+  mark their words in the accent. No grouping, no sections, no second line on recents.
+- **Enter acts on the query as typed**: `flushSearch` runs a pending debounced query first, and
+  a flushed list opens its first row (`useSearch.ts`). The highlight is the palette's own
+  position in the rows it draws, reset to the first on every change of the list; mobile keeps
+  `activeResultIndex` / `navigateResults` for its inline results.
+- **The desktop sidebar never reads the query.** The tree behind the scrim draws `folderTree`
+  and `sortedRootNotes`, never `filteredTree`; sort, expansion and every row stay exactly as
+  they were. Only the mobile face filters (`isMobile` in `Sidebar.jsx`), with its own field,
+  inline results and tag chips; shared parts in `SearchParts.tsx`. Cmd+F in-note find is
+  separate (`FindBar`).
+- **Matching** (`utils/search.ts`): the query is words; every word must be in the title or
+  body, any order, folded for case and accents (`foldText`, with a map back to the text as
+  written, so `cafe` finds and marks `Café`). A word at the start of a title word ranks above
+  one anywhere in the title, above the title's initials (`tn` → Todd's Note, the one
+  tolerance), above a body word-start, above anywhere in the body; ties by last modified. **No
+  fuzzy matching anywhere**: scattered letters lit `Today I de` for `todd`. A code block's
+  body and a table's cells are searched (a snippet is something you look for). The index
+  rebuilds an entry whenever its note object changes, so a text edit is searchable once it
+  commits. **The tag filter is set membership, not text**: `#work` never lists `#workshop`
+  (`extractAllTags`, `tagKey`: case-insensitive, accent-sensitive, so `#café` and `#cafe`
+  stay two tags).
 - **One order: the list as `searchNotes` returns it**, score then recency. Both faces draw
-  `searchResults.results` in that order, `activeResultIndex` is a position in it, the
-  highlighted row carries `aria-current`. Never reintroduce a display order that is not the
-  array's. `search-active-row.spec.ts`.
+  `searchResults.results` in that order and the highlighted row carries `aria-current`. Never
+  reintroduce a display order that is not the array's. `search-palette.spec.ts`,
+  `search-active-row.spec.ts`, `SearchPalette.test.tsx`, `useSearch.test.ts`, `search.test.ts`,
+  `tags.test.ts`, `recentNotes.test.ts`.
 
 ## Note order is a preference, not a stored arrangement
 
