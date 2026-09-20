@@ -148,18 +148,19 @@ export const ACTION_ROW_H = 32;
 /**
  * Air under the chrome row before the first row of a column — the sidebar's
  * New note row, and with it the note's first line, which is measured from this
- * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, then 14 at Tyr's ask;
- * it briefly carried half of a baseline correction too, which the first block
- * now makes for itself.
+ * (`COLUMN_TOP` in `EditorArea`). 12 until 2026-09-19, 14 that day and 18 on
+ * 2026-09-20, each at Tyr's ask; it briefly carried half of a baseline
+ * correction too, which the first block now makes for itself.
  */
-export const COLUMN_HEAD_GAP = 14;
+export const COLUMN_HEAD_GAP = 18;
 /**
  * Between the New note row and the Notes row. Tighter than the air above them,
  * so the action and the list's name read as one head to the column rather than
- * as two sections. It gives up what `COLUMN_HEAD_GAP` takes, which is what
- * holds the Notes row and the list below it still while New note moves down.
+ * as two sections. It gives up part of what `COLUMN_HEAD_GAP` takes, so the
+ * Notes row and the list below it move down by less than New note does (8 → 6
+ * on 2026-09-20, as the head gap went 14 → 18: New note down 4, Notes down 2).
  */
-export const NOTES_ROW_GAP = 8;
+export const NOTES_ROW_GAP = 6;
 /**
  * The New note row's label. Its line height is stated rather than left to the
  * browser's `normal`, because the note's first line is set on this label's
