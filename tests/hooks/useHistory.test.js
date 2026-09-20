@@ -287,6 +287,26 @@ describe("useHistory", () => {
       expect(result.current.canUndo).toBe(false);
     });
 
+    it("a structural commit closes the typing group: the text typed after it is its own entry", async () => {
+      const { result } = setup();
+
+      act(() => result.current.commitTextChange(edit));
+      await act(() => flushMicrotasks());
+      // Enter, a paste, a checkbox: inside the 500ms window.
+      act(() => result.current.commitNoteData(edit));
+      await act(() => flushMicrotasks());
+      act(() => result.current.commitTextChange(edit));
+      await act(() => flushMicrotasks());
+
+      // Three entries: the first burst, the structural edit, the second burst.
+      act(() => result.current.undo());
+      expect(result.current.canUndo).toBe(true);
+      act(() => result.current.undo());
+      expect(result.current.canUndo).toBe(true);
+      act(() => result.current.undo());
+      expect(result.current.canUndo).toBe(false);
+    });
+
     it("pushes new history after 500ms debounce expires", async () => {
       const { result } = setup();
 

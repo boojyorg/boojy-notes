@@ -156,6 +156,21 @@ describe("CodeBlock", () => {
     expect(defaultProps.onUpdateCode).toHaveBeenCalled();
   });
 
+  it("lets undo and redo reach the shell whichever case Shift gives the key", () => {
+    const seen = vi.fn();
+    const { container } = render(
+      <div onKeyDown={(e) => seen(e.key)}>
+        <CodeBlock {...defaultProps} />
+      </div>,
+    );
+    const textarea = container.querySelector("textarea.code-textarea");
+    fireEvent.keyDown(textarea, { key: "z", metaKey: true });
+    fireEvent.keyDown(textarea, { key: "Z", metaKey: true, shiftKey: true });
+    fireEvent.keyDown(textarea, { key: "y", ctrlKey: true });
+    fireEvent.keyDown(textarea, { key: "a" });
+    expect(seen.mock.calls.map((c) => c[0])).toEqual(["z", "Z", "y"]);
+  });
+
   it("handles Escape to navigate to next block", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
     const textarea = container.querySelector("textarea.code-textarea");

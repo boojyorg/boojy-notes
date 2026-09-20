@@ -180,7 +180,10 @@ export default memo(function CodeBlock({
       // (useAppKeyboard, on the window); held here they were the textarea's
       // own, one character at a time and blind to state.
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && (e.key === "z" || e.key === "y")) return;
+      // Lower-cased: with Shift held the key is "Z", and the guard missed
+      // it, so redo was stopped here and never reached the shell (2026-09-20).
+      const k = e.key.toLowerCase();
+      if (mod && (k === "z" || k === "y")) return;
       e.stopPropagation(); // Prevent parent editor from intercepting
       const ta = textareaRef.current;
       if (!ta) return;

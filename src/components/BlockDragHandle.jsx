@@ -139,7 +139,15 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       if (hoveringHandle.current) return;
       setPos(null);
     };
-    const onKey = () => setPos(null);
+    // A key unmounts the grip, and an element unmounted while hovered never
+    // fires mouseleave: with the pointer resting on the grip, one keystroke
+    // (Cmd+Z was the natural one) left `hoveringHandle` true for the life of
+    // the mount and every mousemove was ignored from then on — the grip was
+    // gone until the next note switch (2026-09-20). Hidden means not hovered.
+    const onKey = () => {
+      hoveringHandle.current = false;
+      setPos(null);
+    };
 
     column.addEventListener("mousemove", onMove);
     column.addEventListener("mouseleave", onLeave);

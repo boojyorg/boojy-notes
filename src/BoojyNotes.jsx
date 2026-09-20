@@ -504,12 +504,21 @@ export default function BoojyNotes() {
   useLayoutEffect(() => {
     const title = noteData[activeNote]?.content?.title;
     trace("title sync effect", activeNote, "syncGen", syncGeneration.current);
-    if (titleRef.current && title !== undefined) {
+    const el = titleRef.current;
+    if (el && title !== undefined) {
+      // A repaint under the caret (an undo while renaming, a paste elsewhere
+      // bumping syncGen) threw it to the start of the name; the offset is
+      // remembered and put back, clamped, as a block's repaint does
+      // (2026-09-20). A field already holding the text is left alone.
+      const focused = document.activeElement === el;
+      if (focused && (el.textContent ?? "") === title && title !== "") return;
+      const caret = focused ? getCaretOffset(el) : -1;
       if (title === "") {
-        titleRef.current.innerHTML = "<br>";
+        el.innerHTML = "<br>";
       } else {
-        titleRef.current.innerText = title;
+        el.innerText = title;
       }
+      if (caret >= 0) placeCaret(el, Math.min(caret, title.length));
     }
   }, [activeNote, syncGeneration.current]); // only on note switch + external sync, NOT every keystroke
 
@@ -573,9 +582,15 @@ export default function BoojyNotes() {
   // refs (useBlockDrag keys its restore by the note the drag started in), so
   // the mount-time capture is safe — don't hand them anything render-bound.
   useEffect(() => {
+    // Unconditional: each cancel handles the inactive case itself, and a
+    // press on the grip (or a held sidebar row) that never became a drag
+    // still holds window listeners. Guarded on `.active`, a press followed
+    // by Cmd-Tab left them, and the next pointer movement started a phantom
+    // drag with no button down that hid the grip app-wide and dropped a block
+    // on the next click (2026-09-20).
     const onBlur = () => {
-      if (blockDrag.current.active) cancelBlockDrag();
-      if (sidebarDrag.current.active) cancelSidebarDrag();
+      cancelBlockDrag();
+      cancelSidebarDrag();
     };
     const onVisChange = () => {
       if (document.hidden) onBlur();

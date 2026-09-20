@@ -13,7 +13,14 @@ History is in git and `CHANGELOG.md`.
   Desktop only, `aria-hidden`.
 - **The editor stays clean at rest:** the grip is invisible until its block is hovered, hides on
   keydown and during a drag, doesn't exist with fewer than two blocks; hovering it lifts its
-  ink and nothing else. Reveal is CSS.
+  ink and nothing else. Reveal is CSS. **Hidden means not hovered** (2026-09-20): the keydown
+  that unmounts the grip also clears `hoveringHandle`, because an element unmounted under the
+  pointer never fires mouseleave, and the stale flag muted every mousemove until the next note
+  switch. **Blur cancels a press unconditionally** (`BoojyNotes` `onBlur`, both drag hooks):
+  a grip press registers its window listeners at once, and guarded on `.active` a press
+  followed by Cmd-Tab left them, so the next pointer movement was a phantom drag with no
+  button down that hid the grip app-wide and dropped a block on the next click.
+  `grip-reveal.spec.ts`.
 - **The drag commits on drop.** The grabbed block stays put; a translucent copy follows the
   pointer; a 3px accent marker shows the gap. Release reorders once, one history entry, only if
   the order changed. Escape, window blur or release over the sidebar cancel. The no-op position
@@ -293,6 +300,11 @@ actions; a seventh is a smell.
   `onActiveNoteChanged`, and the handlers read the ref at the moment they run. The stacks are
   shared, capped at 50; navigation pushes and drops nothing. `undo-scope.spec.ts`.
 - **A typing group belongs to one note** (`historyGroupNote`); leaving a note closes its group.
+  **A structural commit closes it too** (`applyCommit`, 2026-09-20), as an undo does: "abc",
+  Enter, "def" typed without a pause is three entries, not one. A code block's textarea lets
+  `Cmd+Z`, `Shift+Cmd+Z` and `Ctrl+Y` through to the shell whichever case Shift gives the key
+  (`CodeBlock`, key lower-cased; before, redo stopped there). The title's `syncGen` repaint
+  keeps the caret offset while the field is focused, as a block's repaint does.
 - **History is the editor's.** A snapshot restores title and blocks and keeps the live
   `folder`; a move is not undoable. Undo never conjures a note: entries for a note that is gone
   are discarded; a vault switch drops them.

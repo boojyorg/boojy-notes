@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { EMPTY_FORMATS } from "../hooks/useInlineFormatting";
 import {
@@ -211,6 +211,16 @@ const EditorArea = memo(
     // element remounts with the note (the column is keyed on it), so the
     // listener follows it.
     const hasNote = !!note;
+    // A note opens at its top. The scroller is not keyed by the note (only
+    // the column inside it is), so the previous note's scroll carried over:
+    // the path band is sticky inside the scroller and stayed put while the
+    // new note's first line sat high under it, off the New note baseline
+    // (2026-09-20). A layout effect, so a search jump's own scroll (150 ms
+    // later) still wins.
+    useLayoutEffect(() => {
+      if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
+    }, [activeNote, editorScrollRef]);
+
     useEffect(() => {
       const el = editorRef.current;
       if (!el) return;
