@@ -21,7 +21,6 @@ import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
-import LinkEditPopover from "./LinkEditPopover";
 import LinkContextMenu from "./LinkContextMenu";
 import {
   getBlockFromNode,
@@ -31,7 +30,6 @@ import {
   isSelectableBlock,
   hasOwnField,
   focusOwnedField,
-  linkText,
   titleFieldText,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
@@ -40,7 +38,7 @@ import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
-import { parseWikilinkTarget, wikilinkMayCreate } from "../utils/wikilinkTarget";
+import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { panelTransition } from "../tokens/motion";
 
 /*
@@ -141,8 +139,11 @@ const EditorArea = memo(
     onTagClick,
     toolbarState,
     noteTitleSet,
-    linkPopover,
-    setLinkPopover,
+    // The link picker's routes in (useLinkPicker): edit or fix a link, drop
+    // one to its words, and say what a link points at for the chip.
+    onEditLink,
+    onRemoveLink,
+    describeLink,
     selectedBlockId,
     setSelectedBlockId,
     lightbox,
@@ -244,102 +245,13 @@ const EditorArea = memo(
       [toolbarState],
     );
 
-    // Link hover tooltip: the URL or [[target]] under the pointer after a rest.
+    // The destination chip: what the link under the pointer, or the caret,
+    // points at, after a rest.
     const {
       tooltip: linkTooltip,
       onMouseMove: handleEditorMouseMove,
       onMouseLeave: handleEditorMouseLeave,
-    } = useLinkHoverTooltip(editorContainerRef);
-
-    // Link popover handlers
-    const handleLinkApply = useCallback(
-      (url) => {
-        if (!linkPopover) return;
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(linkPopover.savedRange);
-
-        if (linkPopover.existingLink) {
-          // Update existing link
-          linkPopover.existingLink.setAttribute("href", url);
-          linkPopover.existingLink.setAttribute("data-url", url);
-          if (!linkPopover.existingLink.classList.contains("external-link")) {
-            linkPopover.existingLink.className = "external-link";
-          }
-          // Add icon if missing
-          if (!linkPopover.existingLink.querySelector(".external-link-icon")) {
-            const icon = document.createElement("span");
-            icon.className = "external-link-icon";
-            icon.contentEditable = "false";
-            icon.textContent = "\u2197";
-            linkPopover.existingLink.appendChild(icon);
-          }
-        } else if (!sel.isCollapsed) {
-          // Wrap selection in link
-          const range = sel.getRangeAt(0);
-          const a = document.createElement("a");
-          a.href = url;
-          a.className = "external-link";
-          a.setAttribute("data-url", url);
-          try {
-            range.surroundContents(a);
-          } catch (_) {
-            const frag = range.extractContents();
-            a.appendChild(frag);
-            range.insertNode(a);
-          }
-          const icon = document.createElement("span");
-          icon.className = "external-link-icon";
-          icon.contentEditable = "false";
-          icon.textContent = "\u2197";
-          a.appendChild(icon);
-        } else {
-          // No selection — insert link with URL as text
-          const range = sel.getRangeAt(0);
-          const a = document.createElement("a");
-          a.href = url;
-          a.className = "external-link bare-url";
-          a.setAttribute("data-url", url);
-          a.textContent = url;
-          const icon = document.createElement("span");
-          icon.className = "external-link-icon";
-          icon.contentEditable = "false";
-          icon.textContent = "\u2197";
-          a.appendChild(icon);
-          range.insertNode(a);
-          range.setStartAfter(a);
-          range.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-        reReadBlockFromDom();
-        setLinkPopover(null);
-      },
-      [linkPopover, reReadBlockFromDom, setLinkPopover],
-    );
-
-    const handleLinkRemove = useCallback(() => {
-      if (!linkPopover?.existingLink) {
-        setLinkPopover(null);
-        return;
-      }
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(linkPopover.savedRange);
-      // Get text without icon
-      const textContent = Array.from(linkPopover.existingLink.childNodes)
-        .filter((n) => !n.classList?.contains("external-link-icon"))
-        .map((n) => n.textContent)
-        .join("");
-      const textNode = document.createTextNode(textContent);
-      linkPopover.existingLink.parentNode.replaceChild(textNode, linkPopover.existingLink);
-      reReadBlockFromDom();
-      setLinkPopover(null);
-    }, [linkPopover, reReadBlockFromDom, setLinkPopover]);
-
-    const handleLinkDismiss = useCallback(() => {
-      setLinkPopover(null);
-    }, [setLinkPopover]);
+    } = useLinkHoverTooltip(editorContainerRef, describeLink);
 
     // Block navigation out of a block that owns its fields (Escape / the
     // arrows at the edges of a code block, a callout or a table cell). A text
@@ -526,36 +438,37 @@ const EditorArea = memo(
     // Right-click context menu for links
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
 
-    const handleEditorContextMenu = useCallback((e) => {
-      const anchor = e.target.closest("a");
-      const wikilink = e.target.closest(".wikilink");
-      if (!anchor && !wikilink) return; // default context menu
-      e.preventDefault();
+    const handleEditorContextMenu = useCallback(
+      (e) => {
+        const anchor = e.target.closest("a");
+        const wikilink = e.target.closest(".wikilink");
+        if (!anchor && !wikilink) return; // default context menu
+        e.preventDefault();
 
-      if (anchor) {
-        const url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
-        setLinkCtxMenu({
-          position: { top: e.clientY, left: e.clientX },
-          linkType: "external",
-          url,
-          element: anchor,
-        });
-      } else if (wikilink) {
-        const target = wikilink.getAttribute("data-target");
-        // Create Note only where a click would create one (a plain name); a
-        // broken heading, block or folder-path link gets Open Note, which
-        // says why nothing opens rather than offering a note it won't make.
-        const creatable =
-          wikilink.classList.contains("wikilink-broken") &&
-          wikilinkMayCreate(parseWikilinkTarget(target || ""));
-        setLinkCtxMenu({
-          position: { top: e.clientY, left: e.clientX },
-          linkType: creatable ? "wikilink-broken" : "wikilink",
-          url: target,
-          element: wikilink,
-        });
-      }
-    }, []);
+        if (anchor) {
+          const url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
+          setLinkCtxMenu({
+            position: { top: e.clientY, left: e.clientX },
+            linkType: "external",
+            url,
+            element: anchor,
+          });
+        } else if (wikilink) {
+          const target = wikilink.getAttribute("data-target") || "";
+          // A link that names one note gets Open note; one that names none,
+          // or two, gets Fix link, which is the picker (2026-09-20).
+          const status = wikilinkStatus(target, noteDataRef.current);
+          setLinkCtxMenu({
+            position: { top: e.clientY, left: e.clientX },
+            linkType: status.kind === "note" ? "wikilink" : "wikilink-broken",
+            url: target,
+            title: status.kind === "note" ? status.title : target,
+            element: wikilink,
+          });
+        }
+      },
+      [noteDataRef],
+    );
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
@@ -861,7 +774,7 @@ const EditorArea = memo(
                   if (wikilink) {
                     e.preventDefault();
                     const target = wikilink.getAttribute("data-target");
-                    if (target && onWikilinkClick) onWikilinkClick(target);
+                    if (target && onWikilinkClick) onWikilinkClick(target, wikilink);
                     return;
                   }
                 }}
@@ -924,16 +837,10 @@ const EditorArea = memo(
                 activeFormats={activeFormats}
                 onFormat={applyFormat}
               />
-              <LinkTooltip url={linkTooltip?.url} position={linkTooltip?.position} />
-              {linkPopover && (
-                <LinkEditPopover
-                  position={linkPopover.position}
-                  initialUrl={linkPopover.url}
-                  onApply={handleLinkApply}
-                  onRemove={handleLinkRemove}
-                  onDismiss={handleLinkDismiss}
-                />
-              )}
+              <LinkTooltip
+                description={linkTooltip?.description ?? null}
+                position={linkTooltip?.position ?? null}
+              />
             </div>
 
             {/* Click to create new block */}
@@ -986,45 +893,26 @@ const EditorArea = memo(
                   dismissCtxMenu();
                 }}
                 onCopy={() => {
-                  navigator.clipboard.writeText(linkCtxMenu.url);
+                  // A note's name as it is, never its raw target.
+                  navigator.clipboard.writeText(
+                    linkCtxMenu.linkType === "external" ? linkCtxMenu.url : linkCtxMenu.title,
+                  );
                   dismissCtxMenu();
                 }}
                 onEdit={() => {
-                  // Position the popover near the link element
-                  const containerRect = editorContainerRef.current?.getBoundingClientRect();
-                  const linkRect = linkCtxMenu.element.getBoundingClientRect();
-                  const pos = containerRect
-                    ? {
-                        top: linkRect.bottom - containerRect.top + 4,
-                        left: linkRect.left - containerRect.left,
-                      }
-                    : { top: linkCtxMenu.position.top, left: linkCtxMenu.position.left };
-                  // Save a range at the link
-                  const range = document.createRange();
-                  range.selectNodeContents(linkCtxMenu.element);
-                  setLinkPopover({
-                    existingLink: linkCtxMenu.linkType === "external" ? linkCtxMenu.element : null,
-                    url: linkCtxMenu.url,
-                    text: linkText(linkCtxMenu.element),
-                    position: pos,
-                    savedRange: range,
-                  });
+                  const el = linkCtxMenu.element;
                   dismissCtxMenu();
+                  onEditLink?.(el, { fix: linkCtxMenu.linkType === "wikilink-broken" });
                 }}
                 onRemove={() => {
                   const el = linkCtxMenu.element;
-                  const textContent = Array.from(el.childNodes)
-                    .filter((n) => !n.classList?.contains("external-link-icon"))
-                    .map((n) => n.textContent)
-                    .join("");
-                  const textNode = document.createTextNode(textContent);
-                  el.parentNode.replaceChild(textNode, el);
-                  reReadBlockFromDom();
                   dismissCtxMenu();
+                  onRemoveLink?.(el);
                 }}
                 onCreate={() => {
-                  if (onWikilinkClick) onWikilinkClick(linkCtxMenu.url);
+                  const el = linkCtxMenu.element;
                   dismissCtxMenu();
+                  onEditLink?.(el, { fix: true });
                 }}
                 onDismiss={dismissCtxMenu}
               />
@@ -1087,7 +975,6 @@ const EditorArea = memo(
       prev.editorFadeIn === next.editorFadeIn &&
       // toolbarState is decided above, before the text-only fast path.
       prev.noteTitleSet === next.noteTitleSet &&
-      prev.linkPopover === next.linkPopover &&
       prev.selectedBlockId === next.selectedBlockId &&
       prev.lightbox === next.lightbox;
     const dt = performance.now() - t0;

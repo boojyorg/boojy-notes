@@ -235,7 +235,7 @@ test("the toolbar's Link glyph opens the link field, as Cmd+K does", async () =>
   await h.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await h.page.mouse.down();
   await h.page.mouse.up();
-  const url = h.page.getByPlaceholder("https://...");
+  const url = h.page.getByPlaceholder("Paste a link or search notes…");
   await expect(url).toBeVisible();
   await expect(url).toBeFocused();
   await h.page.keyboard.type("https://example.com");

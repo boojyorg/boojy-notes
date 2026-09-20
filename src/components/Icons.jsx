@@ -165,6 +165,8 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+/** The link picker's address row. */
+export const LinkIcon = ({ size = ICON_INLINE }) => <LuLink {...base} {...navBase} size={size} />;
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
 export const MoveToIcon = ({ size = ICON_INLINE }) => (
   <LuFolderInput {...base} {...navBase} size={size} />

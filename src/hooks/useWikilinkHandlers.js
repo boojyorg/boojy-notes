@@ -2,9 +2,8 @@ import { useCallback, useMemo, useRef } from "react";
 import {
   noteLinkKeys,
   parseWikilinkTarget,
-  resolveWikilink,
   unresolvedWikilinkMessage,
-  wikilinkMayCreate,
+  wikilinkStatus,
 } from "../utils/wikilinkTarget";
 
 /**
@@ -25,18 +24,19 @@ import {
  * A click resolves the *note* a target names (`utils/wikilinkTarget`), so
  * `[[Beta#Intro]]` and `[[Work/Gamma]]` open Beta and the Gamma in Work (an
  * explicit path is the path, never a namesake elsewhere); the heading or
- * block is not jumped to. Creating a note on click is kept for a plain name no
- * note has. A target of any other form that resolves to nothing creates
- * nothing and says so: before this the whole target was matched against
- * titles, failed, and `createNote` wrote `Beta#Intro.md` or `Work_Gamma.md`
- * into the vault root (2026-09-15, on a copy of Tyr's Obsidian vault).
+ * block is not jumped to. **A click that cannot open one note asks**
+ * (2026-09-20, Tyr's decision): a name no note has, or one two notes share,
+ * opens the link picker on the link (`openLinkFixerRef`) with Create note or
+ * the candidates as its rows, and nothing is made or guessed until a row is
+ * chosen. Before this a missing plain name was created at the root on click
+ * and a shared name opened whichever note loaded first. A target of another
+ * form that resolves to nothing (a heading in this note) says so.
  */
 export function useWikilinkHandlers({
   noteData,
   noteDataRef,
   textOnlyEdit,
   openNote,
-  createNote,
   wikilinkMenuRef,
   setWikilinkMenu,
   syncGeneration,
@@ -44,6 +44,8 @@ export function useWikilinkHandlers({
   focusBlockId,
   focusCursorPos,
   showToast,
+  // `(el, { fix: true })`: the picker on a link that names no note, or two.
+  openLinkFixerRef,
 }) {
   // Note title set for broken wikilink detection (its only consumer is
   // inlineMarkdownToHtml's `has`)
@@ -54,8 +56,18 @@ export function useWikilinkHandlers({
       return lastTitlesKey.current;
     }
     // Titles and `folder/title`s alike, so the renderer judges an explicit
-    // path by the path (utils/wikilinkTarget).
-    const key = Object.values(noteData).flatMap(noteLinkKeys).sort().join("\0");
+    // path by the path (utils/wikilinkTarget). A title two notes share is
+    // left out, so a plain `[[Goals]]` draws as unresolved: the click asks.
+    const counts = new Map();
+    for (const n of Object.values(noteData)) {
+      if (n._draft) continue;
+      for (const k of noteLinkKeys(n)) counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    const key = [...counts.entries()]
+      .filter(([k, c]) => c === 1 || k.includes("/"))
+      .map(([k]) => k)
+      .sort()
+      .join("\0");
     lastTitlesKey.current = key;
     return key;
   }, [noteData]);
@@ -63,17 +75,18 @@ export function useWikilinkHandlers({
 
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
-    (target) => {
-      const id = resolveWikilink(target, noteDataRef.current);
-      if (id) {
-        openNote(id);
+    (target, el = null) => {
+      const status = wikilinkStatus(target, noteDataRef.current);
+      if (status.kind === "note") {
+        openNote(status.id);
         return;
       }
       const parsed = parseWikilinkTarget(target);
-      if (wikilinkMayCreate(parsed)) createNote(null, parsed.name);
+      if (el && parsed.name && openLinkFixerRef?.current)
+        openLinkFixerRef.current(el, { fix: true });
       else showToast?.(unresolvedWikilinkMessage(parsed), "info");
     },
-    [openNote, createNote, noteDataRef, showToast],
+    [openNote, noteDataRef, showToast, openLinkFixerRef],
   );
 
   // Wikilink autocomplete select handler

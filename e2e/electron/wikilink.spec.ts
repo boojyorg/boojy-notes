@@ -59,7 +59,7 @@ test("hovering a link never throws, and no tooltip appears once the pointer has 
   try {
     await h.openNote("Alpha");
     const link = h.page.locator("[data-block-id] .wikilink").first();
-    const tooltip = h.page.getByText("[[Beta]]", { exact: true });
+    const tooltip = h.page.getByTestId("link-tooltip");
 
     // Brush across the link and leave well inside the 500ms hover delay.
     await link.hover();
@@ -71,6 +71,7 @@ test("hovering a link never throws, and no tooltip appears once the pointer has 
     // Resting on the link does show it; leaving hides it.
     await link.hover();
     await expect(tooltip).toBeVisible({ timeout: 2_000 });
+    await expect(tooltip).toHaveText("BetaNotes");
     await h.page.mouse.move(5, 5);
     await expect(tooltip).toHaveCount(0);
 

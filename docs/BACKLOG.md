@@ -345,7 +345,11 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   2026-09-15: rename `Beta` to `Gamma` and `[[Beta]]` in another note stays as written and shows
   broken). The rename is a new file plus an unlink, so Obsidian sees a delete and a create and
   its own link update never runs either; a vault edited in both apps accumulates dangling links
-  from every rename made here.
+  from every rename made here. **Decided 2026-09-20 (Tyr): not rewritten, for now.** Rewriting
+  other files on a rename needs a carve-out in the preservation promise
+  (`SPEC-markdown-source-of-truth.md`) and a backlink index; instead the broken link draws
+  dashed, the chip says the note is missing, and a click opens the link picker to point it
+  somewhere. "Ask on rename: update N links in M notes?" is the candidate if this grates.
 - [ ] **Search index goes stale on text-only edits**, and results cap at 20.
 - [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a

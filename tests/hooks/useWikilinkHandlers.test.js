@@ -57,12 +57,41 @@ describe("useWikilinkHandlers", () => {
     expect(createNote).not.toHaveBeenCalled();
   });
 
-  it("click creates a note when the title doesn't exist", () => {
-    const { result, openNote, createNote, showToast } = setup();
-    result.current.handleWikilinkClick("Delta");
-    expect(createNote).toHaveBeenCalledWith(null, "Delta");
+  it("click on a missing name opens the picker on the link, and creates nothing (2026-09-20)", () => {
+    const openLinkFixerRef = { current: vi.fn() };
+    const { result, openNote, createNote, showToast } = setup({ openLinkFixerRef });
+    const el = document.createElement("span");
+    result.current.handleWikilinkClick("Delta", el);
+    expect(openLinkFixerRef.current).toHaveBeenCalledWith(el, { fix: true });
+    expect(createNote).not.toHaveBeenCalled();
     expect(openNote).not.toHaveBeenCalled();
     expect(showToast).not.toHaveBeenCalled();
+    // With no element to fix (the context menu's Open on a broken link), it says so.
+    result.current.handleWikilinkClick("Delta");
+    expect(showToast).toHaveBeenCalled();
+  });
+
+  it("a name two notes share resolves to neither: the title set leaves it out and a click asks", () => {
+    const openLinkFixerRef = { current: vi.fn() };
+    const noteData = {
+      n1: { title: "Goals", folder: "Personal", content: { blocks: [] } },
+      n2: { title: "Goals", folder: "Uni", content: { blocks: [] } },
+      n3: { title: "Other", content: { blocks: [] } },
+    };
+    const { result, openNote } = setup({
+      noteData,
+      noteDataRef: { current: noteData },
+      openLinkFixerRef,
+    });
+    expect(result.current.noteTitleSet.has("goals")).toBe(false);
+    expect(result.current.noteTitleSet.has("personal/goals")).toBe(true);
+    expect(result.current.noteTitleSet.has("other")).toBe(true);
+    const el = document.createElement("span");
+    result.current.handleWikilinkClick("Goals", el);
+    expect(openNote).not.toHaveBeenCalled();
+    expect(openLinkFixerRef.current).toHaveBeenCalledWith(el, { fix: true });
+    result.current.handleWikilinkClick("Personal/Goals", el);
+    expect(openNote).toHaveBeenCalledWith("n1");
   });
 
   // Obsidian's other target forms name a note too; a click opens that note
