@@ -227,6 +227,12 @@ app's, made through state.**
   into the tag). A non-breaking space was probed and rejected (reached the file as U+00A0).
 - **Tab and Shift+Tab keep the caret on its character** (`updateBlockIndent` reads the offset
   inside the commit).
+- **A triple-click selects the clicked block by the app's hand** (`selectClickedBlock` in
+  `useMouseHandlers`, on `detail === 3` inside a text root). Chromium's paragraph granularity
+  ends at the start of the *next* block, and on a list row that is the non-editable,
+  `user-select: none` marker, which Chromium answers by collapsing the whole selection: a
+  numbered item or a task selected nothing, a bullet only when a bullet followed it. The range
+  is the text root's contents, so it stops at the row's end. `triple-click.spec.ts`.
 - **The click's caret rescue never takes focus back** (`useMouseHandlers`): if something the
   click opened holds focus a frame later, the rescue steps aside.
 
