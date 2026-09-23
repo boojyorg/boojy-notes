@@ -43,14 +43,30 @@ const drawnWidth = (page: Page) =>
     .locator('[data-block-type="image"] img')
     .evaluate((el: HTMLImageElement) => Math.round(el.getBoundingClientRect().width));
 
+/**
+ * Hover the picture until its pill shows, and return the pill's box. Re-hovered
+ * because the Linux runner sends a stray mouseout ~500 ms after a hover when
+ * the other worker launches, and the pill follows the pointer (the tooltip
+ * specs do the same).
+ */
+async function hoverForPill(page: Page) {
+  const img = await picture(page);
+  const pill = page.getByTestId("image-resize-handle").locator("span");
+  let box: { x: number; y: number; width: number; height: number } | null = null;
+  await expect(async () => {
+    await page.mouse.move(5, 5);
+    await img.hover();
+    await expect(pill).toBeVisible({ timeout: 500 });
+    box = await pill.boundingBox();
+    expect(box).not.toBeNull();
+  }).toPass({ timeout: 10_000 });
+  if (!box) throw new Error("no pill");
+  return box as { x: number; y: number; width: number; height: number };
+}
+
 /** Drag the resize pill `dx` pixels; the picture is `width` wide before the release. */
 async function dragPill(page: Page, dx: number, width: number) {
-  const img = await picture(page);
-  await img.hover();
-  const pill = page.getByTestId("image-resize-handle");
-  await expect(pill).toBeVisible();
-  const box = await pill.boundingBox();
-  if (!box) throw new Error("no pill");
+  const box = await hoverForPill(page);
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y);
@@ -146,8 +162,8 @@ test("a press anywhere off the picture deselects it: beside it in its row, the t
     // released without moving), and Backspace then deletes it.
     await img.click();
     await expect(wash).toBeVisible();
-    await img.hover();
-    await h.page.getByTestId("image-resize-handle").click();
+    const pillBox = await hoverForPill(h.page);
+    await h.page.mouse.click(pillBox.x + pillBox.width / 2, pillBox.y + pillBox.height / 2);
     await expect(wash).toBeVisible();
     await h.page.keyboard.press("Backspace");
     await waitForFile(h.vault.file("Pics.md"), (t) => !t.includes("Pic.png"), {
@@ -166,10 +182,8 @@ test("the pill stays under the pointer while a drag changes the picture's height
   try {
     await h.openNote("Pics");
     const img = await picture(h.page);
-    await img.hover();
     const pill = h.page.getByTestId("image-resize-handle").locator("span");
-    const box = await pill.boundingBox();
-    if (!box) throw new Error("no pill");
+    const box = await hoverForPill(h.page);
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
     const pillMiddle = async () => {
@@ -190,8 +204,7 @@ test("the pill stays under the pointer while a drag changes the picture's height
     expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
 
     // Once the pointer leaves and comes back, it is centred on the new height.
-    await h.page.mouse.move(5, 5);
-    await img.hover();
+    await hoverForPill(h.page);
     const imgBox = await img.boundingBox();
     if (!imgBox) throw new Error("no picture");
     expect(Math.abs((await pillMiddle()) - (imgBox.y + imgBox.height / 2))).toBeLessThan(1.5);
