@@ -160,7 +160,9 @@ describe("ImageBlock controls", () => {
   it("right-click and the bar's ··· open the same menu, in sentence case", () => {
     const { box, onSelect } = loaded();
     fireEvent.contextMenu(box, { clientX: 40, clientY: 30 });
-    expect(onSelect).toHaveBeenCalled();
+    // The menu does not select: the picture wears the wash while it is open.
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByTestId("image-selection-wash")).toBeTruthy();
     const labels = screen.getAllByRole("menuitem").map((b) => b.textContent);
     expect(labels).toEqual(["View full size", "Copy image", "Delete"]);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
@@ -181,6 +183,30 @@ describe("ImageBlock controls", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Original size" }));
     expect(onUpdateWidth).toHaveBeenCalledWith(null);
     expect(screen.queryByRole("menu")).toBeNull();
+    // Once the item has acted, the picture is left unselected.
+    expect(screen.queryByTestId("image-selection-wash")).toBeNull();
+  });
+
+  it("a press in the menu never reaches the editor underneath", () => {
+    const onEditorMouseUp = vi.fn();
+    const onEditorMouseDown = vi.fn();
+    const view = render(
+      <div onMouseUp={onEditorMouseUp} onMouseDown={onEditorMouseDown}>
+        <ImageBlock {...props} src="shot.png" displayWidth={300} />
+      </div>,
+    );
+    const img = view.container.querySelector("img");
+    fireEvent.load(img);
+    fireEvent.contextMenu(img.parentElement);
+    const item = screen.getByRole("menuitem", { name: "Original size" });
+    onEditorMouseDown.mockClear();
+    fireEvent.mouseDown(item);
+    fireEvent.mouseUp(item);
+    fireEvent.click(item);
+    // Before: the portal's press bubbled to the editor's onMouseUp, whose caret
+    // rescue scrolled the note to a paragraph once the menu had closed.
+    expect(onEditorMouseUp).not.toHaveBeenCalled();
+    expect(onEditorMouseDown).not.toHaveBeenCalled();
   });
 
   it("Delete in the menu deletes", () => {

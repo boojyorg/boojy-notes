@@ -56,6 +56,17 @@ describe("useFocusTrap", () => {
     expect(document.activeElement).toBe(btn);
   });
 
+  it("hands focus back without scrolling to it", async () => {
+    // Handing focus back to the editor, a contentEditable spanning the note,
+    // scrolled the note to its caret when the image menu closed (2026-09-23).
+    const btn = opener();
+    const focus = vi.spyOn(btn, "focus");
+    const { rerender } = render(<Surface open />);
+    await nextFrame();
+    rerender(<Surface open={false} />);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
   it("leaves focus where the surface itself put it", async () => {
     opener();
     render(<Surface open placeOwnFocus />);

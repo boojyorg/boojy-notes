@@ -158,10 +158,11 @@ function ImageBlock({
 
   const resolvedSrc = src ? resolveAttachmentUrl(src) : "";
 
-  const openMenu = (anchor: MenuAnchor, fromBar: boolean) => {
-    onSelect();
-    setMenu({ anchor, fromBar });
-  };
+  // Opening the menu does not select the picture: it wears the wash only
+  // while its menu is open, so the menu says which picture it is for, and is
+  // left as it was once an item has acted (Notion's; 2026-09-23, after Original
+  // size left the picture selected).
+  const openMenu = (anchor: MenuAnchor, fromBar: boolean) => setMenu({ anchor, fromBar });
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -338,7 +339,7 @@ function ImageBlock({
             ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
           }}
         />
-        {isSelected && !loading && (
+        {(isSelected || !!menu) && !loading && (
           <div
             data-testid="image-selection-wash"
             style={{

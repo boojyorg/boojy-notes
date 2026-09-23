@@ -53,6 +53,9 @@ const hBg = (el: HTMLElement, c: string) => {
  * It portals to `body`, and takes its keys on its own element and stops them
  * there, for CodeLangMenu's reason: a portal leaves the DOM but not the React
  * tree, so a key pressed here would otherwise reach the editor's `onKeyDown`.
+ * **Its presses stop the same way**: a press in the menu is not a press in
+ * the editor, and bubbled there it set the editor's mouse-down flag and ran
+ * its caret rescue a frame after the menu had closed.
  * Placement is divided by the UI scale, as every measured placement is.
  */
 export default function ImageMenu({
@@ -128,8 +131,16 @@ export default function ImageMenu({
     return false;
   };
 
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+
   return createPortal(
-    <>
+    <div
+      style={{ display: "contents" }}
+      onMouseDown={stop}
+      onMouseUp={stop}
+      onClick={stop}
+      onDoubleClick={stop}
+    >
       <div
         onMouseDown={onClose}
         onContextMenu={(e) => {
@@ -201,7 +212,7 @@ export default function ImageMenu({
           </div>
         ))}
       </div>
-    </>,
+    </div>,
     document.body,
   );
 }

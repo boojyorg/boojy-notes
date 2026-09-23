@@ -330,7 +330,9 @@ app's, made through state.**
   bar: the browser's own undo). The title field and a code textarea are inside the editor.
 - **Enter activates the focused button, natively.** `ConfirmDialog` takes only Escape; the
   Trash prompt opens on its action, a permanent web deletion on Cancel.
-- **A closing surface hands focus back only while it still holds it** (`useFocusTrap` cleanup).
+- **A closing surface hands focus back only while it still holds it, and never scrolls to it**
+  (`useFocusTrap` cleanup, `preventScroll`: focusing the editor, a contentEditable spanning the
+  note, scrolled it to its caret, so closing the image menu jumped the note; 2026-09-23).
   This is what lets Rename from a menu work: the field mounts and autofocuses in the same
   commit, and the trap must not put focus back on the row. A trap's first-item focus skips
   when focus is already inside.
@@ -566,7 +568,10 @@ import writes a closer. `tilde-fences.spec.ts`.
   size and writes no width there** (`imageNoWidthFields`); a
   double-click on the pill does the same. **A click selects and a double-click opens the full
   size**: until 2026-09-23 every click opened it, so a picture could not be selected to delete.
-  Right-click and ··· open one menu (`ImageMenu.tsx`, the table menu's grammar): View full
+  Right-click and ··· open one menu, **which does not select the picture**: it wears the wash
+  only while its menu is open, and is left as it was once an item acts (Notion's). The menu
+  stops its presses as it stops its keys, since a press in it is not one in the editor
+  (`ImageMenu.tsx`, the table menu's grammar): View full
   size, Copy image, Show in Finder (desktop), Original size (only when sized), Delete. **No
   Replace image**, by decision (2026-09-23): rarely wanted, and delete then drop does it. The
   full-size view is a dark room in both themes with the file's name and a close

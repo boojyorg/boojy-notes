@@ -101,8 +101,11 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
       const active = document.activeElement;
       const stillHeld = !active || active === document.body || container.contains(active);
       const previous = previousFocusRef.current;
+      // Never scrolled: handing focus back to the editor, a contentEditable
+      // spanning the note, scrolled it to wherever its caret sat, so closing
+      // the image menu jumped the note to the bottom (2026-09-23).
       if (stillHeld && previous && typeof previous.focus === "function") {
-        previous.focus();
+        previous.focus({ preventScroll: true });
       }
     };
   }, [isOpen, containerRef, initialFocus]);

@@ -200,3 +200,47 @@ test("the pill stays under the pointer while a drag changes the picture's height
     await h.close();
   }
 });
+
+test("a menu item acts without moving the note, and leaves the picture unselected", async () => {
+  // Reported 2026-09-23: Original size scrolled the note to the bottom and
+  // left the picture selected. Closing the menu handed focus back to the
+  // editor, and a plain focus() on a contentEditable spanning the note
+  // scrolls it to its caret (useFocusTrap now hands back with preventScroll).
+  const filler = (n: number, p: string) =>
+    Array.from({ length: n }, (_, i) => `${p} ${i + 1}.`).join("\n\n");
+  const body = [filler(20, "Before"), "![[Pic.png|200]]", filler(40, "After"), ""].join("\n\n");
+  const h = await launchApp(
+    { "Long.md": body },
+    {
+      prepare: (vault) => {
+        fs.mkdirSync(vault.file("attachments"), { recursive: true });
+        fs.writeFileSync(vault.file("attachments/Pic.png"), makePng(400, 100));
+      },
+    },
+  );
+  try {
+    await h.openNote("Long");
+    const img = await picture(h.page);
+    await img.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    const scroller = h.page.locator(".editor-scroll");
+    const scrollTop = () => scroller.evaluate((el) => Math.round(el.scrollTop));
+    const before = await scrollTop();
+    expect(before).toBeGreaterThan(100);
+
+    await img.click({ button: "right" });
+    // The picture wears the wash while its menu is open.
+    await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
+    await h.page.getByRole("menuitem", { name: "Original size" }).click();
+    await waitForFile(h.vault.file("Long.md"), (t) => t.includes("![[Pic.png]]"), {
+      label: "the width to be taken off",
+    });
+
+    // A few frames for the caret rescue that used to run after the click.
+    await h.page.waitForTimeout(300);
+    expect(await scrollTop()).toBe(before);
+    await expect(h.page.getByTestId("image-selection-wash")).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
