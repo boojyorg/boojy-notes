@@ -623,6 +623,10 @@ const EditorArea = memo(
         ref={editorScrollRef}
         className="editor-scroll"
         onMouseDown={onEditorClick}
+        // Files dropped anywhere on the pane, not only on the text.
+        onDragOver={handleEditorDragOver}
+        onDragLeave={handleEditorDragLeave}
+        onDrop={handleEditorDrop}
         style={{
           flex: 1,
           display: "flex",
@@ -742,9 +746,6 @@ const EditorArea = memo(
                 }}
                 onMouseUp={handleEditorMouseUp}
                 onFocus={handleEditorFocus}
-                onDragOver={handleEditorDragOver}
-                onDragLeave={handleEditorDragLeave}
-                onDrop={handleEditorDrop}
                 onClick={(e) => {
                   handleEditorClick(e);
                   const sel = window.getSelection();

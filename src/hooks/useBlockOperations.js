@@ -211,9 +211,25 @@ export function useBlockOperations({
         const result = await api.saveAttachment({ fileName: srcName, dataBase64 });
         insertFileBlock(noteId, afterIndex, result.filename, result.filename, result.size);
       }
+      return true;
     } catch (err) {
       console.error("saveAndInsertImage failed", err);
       onError?.("Failed to save image");
+      return false;
+    }
+  };
+
+  /**
+   * Several files dropped or pasted at once, in the order given: each is saved
+   * and inserted only after the one before it has landed, below it. Each
+   * insertion adds two blocks (the image or file, and the paragraph under it).
+   * Started all at once, they spliced at one index in whatever order their
+   * reads finished.
+   */
+  const saveAndInsertFiles = async (noteId, afterIndex, files) => {
+    let at = afterIndex;
+    for (const file of files) {
+      if (await saveAndInsertImage(noteId, at, file)) at += 2;
     }
   };
 
@@ -378,6 +394,7 @@ export function useBlockOperations({
     deleteBlock,
     updateBlockProperty,
     saveAndInsertImage,
+    saveAndInsertFiles,
     flipCheck,
     registerBlockRef,
     updateCodeLang,

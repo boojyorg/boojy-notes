@@ -4,6 +4,8 @@
 
 ### Bug Fixes
 
+- **Images can be dragged into a note from anywhere on the page** — Dragging a picture in from Finder or the desktop only worked if you let go exactly over a line of text; under a short note, in the margins or near the top, the pointer showed a "no" sign and the release did nothing, which felt like dragging images in was not supported at all. The whole page takes the drop now. While you hold the file over it, a thin teal line shows the gap it will land in, the same line that shows where a dragged block will go: over the top half of a paragraph it goes above it, anywhere below the last line it goes at the end.
+- **Several images at once all arrive, in order** — Pasting several image files at once kept only the first and silently dropped the rest, and dropping several could put them in a different order from the one you picked them in. Both now add every file, one under the other, in the order given.
 - **Images with a space in their name show up** — An image whose file name held a space, which is every macOS screenshot (`Screenshot 2026-09-23 at 10.12.33.png`), drew a dashed "Image not found" box instead of the picture, while a pasted image, named `paste-…` by the app, loaded fine. The file was saved and the note was right; only the display failed, so an Obsidian note with such an image failed the same way. Names with spaces, square brackets, a `%` or accented letters all load now. And a broken image that you replace now shows the new picture rather than keeping its "Image not found" box.
 
 ## v0.9.0 — 2026-09-20

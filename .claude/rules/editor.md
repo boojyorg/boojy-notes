@@ -610,6 +610,14 @@ paths; single lines paste inline.
   structured Markdown becomes its own block beside it. Only an *empty* block is taken over, and
   only by structure.
 - **One terminal line ending on the clipboard is incidental** and stripped.
+- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles` in
+  `useBlockOperations`): each is saved and inserted after the one before it has landed, below it,
+  so several arrive in the order given. **A drop is the whole pane's** (`useDragDropHandlers` on
+  `.editor-scroll`, not the editable root, where a release under a short note or in a margin
+  did nothing) and lands in the gap the block drag's rule names, drawn with its
+  `.block-drop-marker`: before the first block whose middle is below the pointer, never above
+  frontmatter, at the end below them all. Only a drag carrying files is touched.
+  `file-drop.spec.ts`.
 - **A selection inside one block copies as text**; structure travels only when the selection
   wholly covers a block (`fullBlock`). Deliberate.
 - **Copy writes two public formats and one private one** (`utils/clipboardCopy.ts`,

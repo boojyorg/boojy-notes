@@ -187,13 +187,6 @@ none blocks the release. The shared question comes first because three candidate
 
 ### Found since v0.9.0
 
-- [ ] **Pasting several files keeps one image and drops the rest** (audit 2026-09-23, traced in
-  code, not yet reproduced live). When any pasted file is an image, `usePasteHandler.js` inserts
-  that one image and returns; the other files vanish with no toast. Drop loops over every file
-  (`useDragDropHandlers.js`), so the two routes to the same operation disagree. Both also race:
-  each file saves asynchronously and splices at a fixed index, so several files can land out of
-  order (paste passes the same index for every file; drop's `afterIndex + i` ignores the
-  paragraph each insertion adds). One insertion loop for both routes, awaiting each file in turn.
 - [ ] **A link whose address holds parentheses is cut at the first `)`** (audit 2026-09-23,
   probed through `inlineMarkdownToHtml`). `[Mercury](https://en.wikipedia.org/wiki/Mercury_(planet))`
   gets the href `…Mercury_(planet` and a stray `)` drawn after the link; a bare URL does the same.
