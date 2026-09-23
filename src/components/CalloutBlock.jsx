@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import {
@@ -155,9 +156,9 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
           overflowY: "auto",
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
-          padding: "4px 0",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
+          boxShadow: theme.modalShadow,
         }}
       >
         {CALLOUT_TYPE_KEYS.map((key, idx) => {
@@ -176,9 +177,10 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                padding: "6px 12px",
+                padding: "6px 8px",
+                borderRadius: MENU_ROW_RADIUS,
                 cursor: "pointer",
-                background: isFocused ? BG.surface : "transparent",
+                background: isFocused ? BG.hover : "transparent",
                 transition: "background 0.1s",
               }}
             >

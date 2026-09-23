@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { extractAllTags, tagKey, tagRows } from "../utils/tags";
 import { foldText } from "../utils/search";
 
@@ -87,8 +88,8 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
         left: position.left,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
-        borderRadius: 8,
-        padding: 4,
+        borderRadius: MENU_RADIUS,
+        padding: MENU_PAD,
         boxShadow: theme.modalShadow,
         zIndex: Z.WIKILINK_MENU,
         maxHeight: 200,
@@ -109,7 +110,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
           onMouseEnter={() => setSelectedIndex(i)}
           style={{
             padding: "7px 10px",
-            borderRadius: 6,
+            borderRadius: MENU_ROW_RADIUS,
             fontSize: 12.5,
             cursor: "pointer",
             color: TEXT.primary,

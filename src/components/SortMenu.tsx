@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
 import { CheckIcon, ClockIcon, SortAlphaIcon } from "./Icons";
 
@@ -115,8 +116,8 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
-          padding: 4,
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
           minWidth: 200,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
@@ -141,7 +142,7 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
                 width: "100%",
                 background: index === activeIndex ? BG.hover : "none",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: MENU_ROW_RADIUS,
                 padding: "7px 10px",
                 cursor: "pointer",
                 color: TEXT.primary,

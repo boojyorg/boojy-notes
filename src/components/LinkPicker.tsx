@@ -11,6 +11,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
 import { readAddress, shownAddress } from "../utils/linkDestination";
 import { LinkIcon, PlusIcon } from "./Icons";
@@ -274,7 +275,7 @@ export default function LinkPicker({
     gap: 8,
     height: ROW_H,
     padding: "0 8px",
-    borderRadius: 6,
+    borderRadius: MENU_ROW_RADIUS,
     cursor: "pointer",
     fontSize: 13,
     color: TEXT.secondary,
@@ -308,7 +309,7 @@ export default function LinkPicker({
         boxSizing: "border-box",
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
-        borderRadius: 8,
+        borderRadius: MENU_RADIUS,
         boxShadow: theme.modalShadow,
         animation: "fadeIn 0.1s ease",
         fontFamily: "inherit",
@@ -379,7 +380,7 @@ export default function LinkPicker({
         <div
           role="listbox"
           aria-label="Link suggestions"
-          style={{ padding: 4, maxHeight: MAX_ROWS * (ROW_H + 2) + 8, overflowY: "auto" }}
+          style={{ padding: MENU_PAD, maxHeight: MAX_ROWS * (ROW_H + 2) + 8, overflowY: "auto" }}
         >
           {rows.length === 0 && (
             <div style={{ padding: "6px 8px 8px", fontSize: 12, color: TEXT.muted }}>
