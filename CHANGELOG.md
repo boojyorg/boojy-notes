@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- **Images with a space in their name show up** — An image whose file name held a space, which is every macOS screenshot (`Screenshot 2026-09-23 at 10.12.33.png`), drew a dashed "Image not found" box instead of the picture, while a pasted image, named `paste-…` by the app, loaded fine. The file was saved and the note was right; only the display failed, so an Obsidian note with such an image failed the same way. Names with spaces, square brackets, a `%` or accented letters all load now. And a broken image that you replace now shows the new picture rather than keeping its "Image not found" box.
+
 ## v0.9.0 — 2026-09-20
 
 ### Improvements

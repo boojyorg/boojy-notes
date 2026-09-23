@@ -21,6 +21,14 @@ function ImageBlock({
   const [hovered, setHovered] = useState(false);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
+  // A new picture is a new load, so a Replace after an error is not left
+  // drawing "Image not found" (state adjusted in render, React's own pattern).
+  const [loadSrc, setLoadSrc] = useState(src);
+  if (src !== loadSrc) {
+    setLoadSrc(src);
+    setErrored(false);
+    setLoading(true);
+  }
   const containerRef = useRef(null);
   const dragRef = useRef(null);
   const justDragged = useRef(false);

@@ -165,6 +165,17 @@ mark with no timer pending. `write-in-flight.spec.ts`.
   symlinked `.md` are still lost on save; don't fix by writing in place without a decision on
   the backup strategy. `file-mode.spec.ts`.
 
+## Attachments load by a name in the URL's path
+
+- **The renderer loads an attachment as `boojy-att://vault/<name>`, each path segment
+  percent-encoded** (`utils/attachmentUrl.js`), and the protocol in `main.js` reads the name back
+  from the URL's path and serves it only through `insideVault` (the vault-relative path, then the
+  same name under `attachments/`). Never put the name where the host goes: Chromium refuses a
+  space, `[` or `]` in a host and never calls the protocol, which is how every macOS screenshot
+  drew "Image not found" until 2026-09-23. `save-image` and `save-attachment` keep a name inside
+  the vault by `sanitizeFilename` (no separator survives it) rather than by `insideVault`.
+  `attachment-names.spec.ts`, `attachmentUrl.test.js`.
+
 ## Tracing
 
 `BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`; real profile and

@@ -12,8 +12,8 @@ import {
 import path from "node:path";
 import { WINDOW_MIN_W } from "../src/constants/layout.js";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
-import { registerNoteFileIPC } from "./noteFileManager.js";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { insideVault, registerNoteFileIPC } from "./noteFileManager.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
 import {
@@ -258,27 +258,24 @@ app.whenReady().then(async () => {
     );
   }
 
-  // Custom protocol for resolving attachment paths to actual files
+  // Attachments load as `boojy-att://vault/<encoded name>`
+  // (`src/utils/attachmentUrl.js`): the name is the URL's path, never its host,
+  // which Chromium refuses to hold a space in. The vault-relative path is
+  // tried first, then the same name under attachments/, and only a file inside
+  // the vault is served.
   protocol.handle("boojy-att", (request) => {
-    const relativePath = decodeURIComponent(request.url.slice("boojy-att://".length));
+    let relativePath;
+    try {
+      relativePath = decodeURIComponent(new URL(request.url).pathname.slice(1));
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
     const notesDir = getNotesDir();
-    const resolvedNotesDir = path.resolve(notesDir);
-
-    // Try exact relative path first, then attachments/ folder
-    let absPath = path.resolve(path.join(notesDir, relativePath));
-    if (!fs.existsSync(absPath)) {
-      const inAttachments = path.resolve(path.join(notesDir, "attachments", relativePath));
-      if (inAttachments.startsWith(resolvedNotesDir + path.sep) && fs.existsSync(inAttachments)) {
-        absPath = inAttachments;
-      }
-    }
-
-    // Prevent path traversal: resolved path must stay inside notes directory
-    if (!absPath.startsWith(resolvedNotesDir + path.sep)) {
-      return new Response("Forbidden", { status: 403 });
-    }
-
-    return net.fetch("file://" + absPath.replace(/\\/g, "/"));
+    const absPath = [relativePath, path.join("attachments", relativePath)]
+      .map((candidate) => insideVault(notesDir, candidate))
+      .find((abs) => abs && fs.statSync(abs, { throwIfNoEntry: false })?.isFile());
+    if (!absPath) return new Response("Not found", { status: 404 });
+    return net.fetch(pathToFileURL(absPath).toString());
   });
 
   // Build custom menu (strips devTools from production builds)

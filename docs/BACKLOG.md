@@ -201,19 +201,6 @@ none blocks the release. The shared question comes first because three candidate
   the note shows a `)` that is not part of the prose. CommonMark allows balanced parentheses in a
   destination; the bare-URL rule in `inlineFormatting.test.js` ("does not match trailing paren")
   should become "a closing paren is kept when it balances one in the URL".
-- [ ] **An image whose filename holds a space shows "Image not found"** (reported 2026-09-23;
-  root cause proven the same day in Electron 42 with a throwaway probe). The desktop loads an
-  attachment as `boojy-att://<filename>` with the name unencoded (`utils/attachmentUrl.js`), so
-  the name is parsed as the URL's *host*: Chromium rejects a space, `[` or `]` there and the
-  request never reaches the protocol handler (`main.js`), and a `%` reaches it and throws in
-  `decodeURIComponent`. Hence "sometimes": a pasted image is named `paste-<timestamp>.png` and
-  loads; a picked or dropped `Screenshot 2026-09-23 at 10.12.33.png` never does. The file is
-  saved correctly and the Markdown is right; only the display fails, so an Obsidian note with
-  such an image fails the same way. Fix (probed, every case loads): build the URL as
-  `boojy-att://vault/` + `encodeURIComponent(name)` and read the name back from `new
-  URL(request.url).pathname` in the handler. Two neighbours to fix with it: `ImageBlock`'s
-  `errored` never resets when `src` changes, so a broken image stays broken after Replace; and
-  image insertion has no Electron spec, which is why this shipped.
 
 ### From the September 2026 review
 
