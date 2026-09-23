@@ -116,7 +116,10 @@ test("a right-click on an unselected word selects it, and the menu hangs under i
     );
     const box = (await menu.boundingBox())!;
     expect(Math.round(box.x - wordBox.left)).toBe(0);
-    expect(Math.round(box.y - wordBox.bottom)).toBe(4);
+    // 2px under the painted selection, which is the whole line's height: the
+    // paragraph's own box, on a one-line paragraph.
+    const line = (await h.page.locator("p", { hasText: "Hello" }).boundingBox())!;
+    expect(Math.round(box.y - (line.y + line.height))).toBe(2);
     await expect(menu.getByRole("menuitem", { name: /^Copy/ })).not.toHaveAttribute(
       "aria-disabled",
       "true",
@@ -128,6 +131,30 @@ test("a right-click on an unselected word selects it, and the menu hangs under i
     await expect(menu).toHaveCount(0);
     // Enter chose Copy: nothing was typed over the word.
     expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("brave");
+  } finally {
+    await h.close();
+  }
+});
+
+test("a word pasted in pieces is one word to a right-click", async () => {
+  const h = await launchApp({ "Alpha.md": "Hello world\n" });
+  try {
+    await h.openNote("Alpha");
+    // "test" pasted twice: two text nodes side by side, one word on screen.
+    const at = await h.page.evaluate(() => {
+      const p = [...document.querySelectorAll("[data-editor] [data-block-id]")].find((b) =>
+        b.textContent?.includes("Hello"),
+      )!;
+      p.append(document.createTextNode(" test"), document.createTextNode("test"));
+      const r = document.createRange();
+      r.selectNodeContents(p.lastChild!);
+      const box = r.getBoundingClientRect();
+      window.getSelection()!.collapse(p.firstChild!, 0);
+      return { x: box.left + 4, y: box.top + box.height / 2 };
+    });
+    await h.page.mouse.click(at.x, at.y, { button: "right" });
+    await expect(h.page.locator(".editor-context-menu")).toBeVisible();
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("testtest");
   } finally {
     await h.close();
   }

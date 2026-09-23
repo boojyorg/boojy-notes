@@ -312,8 +312,12 @@ app's, made through state.**
   one surface at a time.
 - **It behaves as a Mac text menu** (`utils/contextSelection.ts`, judged against Notion's): a
   right-click on a word outside the selection selects the word, one inside the selection keeps
-  it, a link is left unselected; the menu hangs 4px under the line of the selection (or link)
-  the pointer is on, left-aligned with it, flipping above when it must. Chromium in Electron
+  it, a link is left unselected; the menu hangs `MENU_GAP` (2px) under the *painted* line of
+  the selection (or link) the pointer is on, left-aligned with it, flipping above when it
+  must. The selection is painted the line's full height, taller than a range's rect, so the
+  anchor is grown by half the difference (`paintedLead`) or the gap vanishes under the blue.
+  The word is read across the block's text nodes, not one: a paste is a node of its own, so
+  `test` pasted twice is one word. Chromium in Electron
   does none of this itself. **The menu never takes focus**: the editor keeps it, so the
   selection stays the ordinary blue a drag gives, and the menu takes every key from a
   document capture listener while it is open. With focus in the menu the selection went

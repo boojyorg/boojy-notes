@@ -16,6 +16,9 @@ import {
   UnlinkIcon,
 } from "./Icons";
 
+/** Air between the painted selection and the menu (judged 2026-09-23: 4 read as detached, 0 as touching). */
+const MENU_GAP = 2;
+
 /** What was right-clicked, when it was a link. */
 export type ContextLinkKind = "external" | "wikilink" | "wikilink-broken";
 
@@ -83,7 +86,7 @@ export default function EditorContextMenu({
   const { BG, TEXT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4 }) as {
+  const pos = useMenuPosition(menuRef, true, anchor, { gapY: MENU_GAP }) as {
     top: number;
     left: number;
   } | null;
