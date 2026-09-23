@@ -452,10 +452,14 @@ const EditorArea = memo(
         // left as it is: its menu is about the link.
         if (!field && !linkEl && !(range && pointInRange(range, x, y))) {
           const word = editorRef.current && wordRangeAt(editorRef.current, x, y);
-          if (word) {
+          // Not on a word: the caret goes to the pointer, so Paste lands where
+          // the right-click was. Chromium does this on Linux and not on a Mac;
+          // the app decides it the same everywhere.
+          const target = word ?? document.caretRangeFromPoint?.(x, y);
+          if (target && editorRef.current?.contains(target.startContainer)) {
             sel.removeAllRanges();
-            sel.addRange(word);
-            range = word.cloneRange();
+            sel.addRange(target);
+            range = target.cloneRange();
           }
         }
         let hangFrom = range;

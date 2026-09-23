@@ -70,15 +70,24 @@ test("Copy and Cut from the right-click menu write what the keys write", async (
   }
 });
 
-test("Paste from the right-click menu pastes at the caret", async () => {
+test("Paste from the right-click menu pastes where the right-click was", async () => {
   const h = await launchApp({ "Alpha.md": "Hello world\n" });
   try {
     await h.openNote("Alpha");
-    // On the space before "world": no word under the pointer, so the caret stays.
-    const space = await select(h.page, "Hello", 5, 6);
-    await select(h.page, "Hello", 6, 6);
-    await h.app.evaluate(({ clipboard }) => clipboard.writeText("brave "));
-    await h.page.mouse.click(space.x, space.y, { button: "right" });
+    // Past the end of the line: no word under the pointer, and the caret is
+    // elsewhere, so the right-click itself must place it (every platform).
+    const end = await h.page.evaluate(() => {
+      const p = [...document.querySelectorAll("[data-editor] [data-block-id]")].find((b) =>
+        b.textContent?.includes("Hello"),
+      )!;
+      const r = document.createRange();
+      r.selectNodeContents(p);
+      const box = r.getBoundingClientRect();
+      window.getSelection()!.collapse(p.firstChild!, 0);
+      return { x: box.right + 40, y: box.top + box.height / 2 };
+    });
+    await h.app.evaluate(({ clipboard }) => clipboard.writeText("!"));
+    await h.page.mouse.click(end.x, end.y, { button: "right" });
     const menu = h.page.locator(".editor-context-menu");
     // Nothing selected: nothing to cut or copy.
     await expect(menu.getByRole("menuitem", { name: /^Cut/ })).toHaveAttribute(
@@ -86,9 +95,9 @@ test("Paste from the right-click menu pastes at the caret", async () => {
       "true",
     );
     await menu.getByRole("menuitem", { name: /^Paste/ }).click();
-    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("brave"));
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("!"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Hello brave world\n");
+    expect(h.vault.read("Alpha.md")).toBe("Hello world!\n");
   } finally {
     await h.close();
   }

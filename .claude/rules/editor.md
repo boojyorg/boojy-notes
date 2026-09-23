@@ -312,7 +312,8 @@ app's, made through state.**
   one surface at a time.
 - **It behaves as a Mac text menu** (`utils/contextSelection.ts`, judged against Notion's): a
   right-click on a word outside the selection selects the word, one inside the selection keeps
-  it, a link is left unselected; the menu hangs `MENU_GAP` (2px) under the *painted* line of
+  it, one on no word puts the caret at the pointer (Chromium does that on Linux and not on a
+  Mac; the app decides it the same everywhere), a link is left unselected; the menu hangs `MENU_GAP` (2px) under the *painted* line of
   the selection (or link) the pointer is on, left-aligned with it, flipping above when it
   must. The selection is painted the line's full height, taller than a range's rect, so the
   anchor is grown by half the difference (`paintedLead`) or the gap vanishes under the blue.
