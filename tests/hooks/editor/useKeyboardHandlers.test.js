@@ -17,6 +17,14 @@ vi.mock("../../../src/utils/domHelpers", () => ({
   focusOwnedField: vi.fn(() => true),
   caretRect: (range) => range.getBoundingClientRect(),
   placeCaret: vi.fn(() => true),
+  // Visible characters, as the real ones count them (no icons or anchors here).
+  caretLength: (el) => el.textContent.length,
+  caretOffsetAt: (el, node, offset) => {
+    const range = document.createRange();
+    range.setStart(el, 0);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  },
 }));
 
 vi.mock("../../../src/utils/inlineFormatting", () => ({
@@ -271,7 +279,7 @@ describe("useKeyboardHandlers", () => {
       el.textContent = text;
       document.body.appendChild(el);
       const range = document.createRange();
-      range.setStart(el.firstChild, offset);
+      range.setStart(el.firstChild ?? el, offset);
       range.collapse(true);
       const sel = window.getSelection();
       sel.removeAllRanges();
@@ -306,13 +314,18 @@ describe("useKeyboardHandlers", () => {
       document.body.innerHTML = "";
     });
 
-    it("Backspace in an empty block under a divider selects the divider and deletes nothing", () => {
+    // One press: the empty row goes and the divider is selected, so what the
+    // next Backspace removes is on screen (2026-09-23; the row used to stay
+    // with the caret blinking in it and the selection went unseen).
+    it("Backspace in an empty block under a divider removes the row and selects the divider", () => {
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       const event = key("Backspace");
       result.current.handleBlockKeyDown("note-1", 2, event);
       expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 2);
       expect(deps.selectBlock).toHaveBeenCalledWith("hr");
-      expect(deps.deleteBlock).not.toHaveBeenCalled();
+      // The caret rests in the nearest text, above here, while the divider is selected.
+      expect(deps.focusBlockId.current).toBe("b1");
     });
 
     it("Backspace at the start of a block under a divider selects it and merges nothing across it", () => {
@@ -341,6 +354,106 @@ describe("useKeyboardHandlers", () => {
       expect(deps.selectBlock).not.toHaveBeenCalled();
       expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
       expect(deps.deleteBlock).toHaveBeenCalledWith("note-1", 1);
+    });
+
+    it("Backspace at the start of a heading makes it a paragraph and keeps its text", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            {
+              id: "b2",
+              type: "h3",
+              text: "World",
+              headingSource: { indent: "", gap: " ", suffix: "" },
+            },
+          ],
+        },
+      };
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("Backspace");
+      result.current.handleBlockKeyDown("note-1", 1, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(deps.updateBlockText).not.toHaveBeenCalled();
+      expect(deps.deleteBlock).not.toHaveBeenCalled();
+      const next = deps.commitNoteData.mock.calls[0][0](deps.noteDataRef.current);
+      expect(next["note-1"].content.blocks[1]).toEqual({ id: "b2", type: "p", text: "World" });
+      expect(deps.focusBlockId.current).toBe("b2");
+      expect(deps.focusCursorPos.current).toBe(0);
+    });
+
+    it("Backspace in an empty heading under a divider makes it a paragraph, selecting nothing", () => {
+      deps.noteDataRef.current["note-1"].content.blocks[2] = { id: "b2", type: "h3", text: "" };
+      caretIn(deps.blockRefs.current.b2, "", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
+      expect(deps.selectBlock).not.toHaveBeenCalled();
+      const next = deps.commitNoteData.mock.calls[0][0](deps.noteDataRef.current);
+      expect(next["note-1"].content.blocks[2].type).toBe("p");
+    });
+
+    it("Backspace at the start of a task drops the tick with the kind", () => {
+      deps.noteDataRef.current["note-1"].content.blocks[2] = {
+        id: "b2",
+        type: "checkbox",
+        text: "World",
+        checked: true,
+      };
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
+      const next = deps.commitNoteData.mock.calls[0][0](deps.noteDataRef.current);
+      expect(next["note-1"].content.blocks[2]).toEqual({ id: "b2", type: "p", text: "World" });
+    });
+
+    it("Backspace at the start of an indented list item still outdents first", () => {
+      deps.noteDataRef.current["note-1"].content.blocks[2] = {
+        id: "b2",
+        type: "bullet",
+        text: "World",
+        indent: 1,
+      };
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
+      expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 2, -1);
+      expect(deps.commitNoteData).not.toHaveBeenCalled();
+    });
+
+    it("a merge puts the caret at the seam in visible characters, not Markdown ones", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hi **there**" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.b1.textContent = "Hi there";
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 1, key("Backspace"));
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "Hi **there**World");
+      expect(deps.focusCursorPos.current).toBe(8);
+    });
+
+    it("Enter at the start of a heading opens a paragraph above and keeps the heading", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "b2", type: "h2", text: "World" },
+          ],
+        },
+      };
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 1, key("Enter"));
+      expect(deps.insertBlockAfter).toHaveBeenCalledWith("note-1", 0, "p", "");
+      expect(deps.updateBlockText).not.toHaveBeenCalled();
+      expect(deps.focusBlockId.current).toBe("b2");
+      expect(deps.focusCursorPos.current).toBe(0);
     });
 
     it("ArrowUp from the first line of the block under a divider selects it", () => {

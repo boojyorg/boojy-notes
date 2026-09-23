@@ -295,6 +295,19 @@ app's, made through state.**
   while state still held one, so nothing repainted and typing went nowhere until the note was
   reopened. `cross-block-ownership.spec.ts`.
 
+## Backspace sheds the kind before it merges
+
+- **Backspace at the start of a heading, list item, quote or task makes it a paragraph and
+  nothing else** (`DEMOTES_TO_PARAGRAPH` in `useKeyboardHandlers`, Notion's rule; 2026-09-23):
+  text and caret stay, the kind's own fields (heading spacing, marker, number, tick) go. An
+  indented list item outdents first, as before. Only a paragraph merges or reaches across.
+- **Enter at the start of a heading that holds text opens a paragraph above** and leaves the
+  heading and the caret where they are; the ordinary split demoted the text.
+- **A caret placed at a block's end is measured in visible characters** (`caretLength`), never
+  the Markdown's length, or a merge under `**bold**` put the caret four characters into the
+  moved text. **A split on a soft break's edge spends the break** rather than leaving a newline
+  at the head or tail of either half. `enter-backspace.spec.ts`, `useKeyboardHandlers.test.js`.
+
 ## Menus own their keys; the editor keeps the caret
 
 - **A key a menu has consumed never reaches the editor:** `handleEditorKeyDown` returns on
@@ -606,8 +619,12 @@ import writes a closer. `tilde-fences.spec.ts`.
   row) and the image menu. A click on a table
   focuses the cell and **Escape from a cell selects the table** (`selectWhole`).
 - **Backspace from the block below and forward Delete from the block above select it first**
-  (`reachAcross`); the second press removes it. Code, callout and file blocks are still stepped
-  over (`landingBefore` / `landingAfter`); extend the rule once the table has been judged live.
+  (`reachAcross`); the second press removes it. **An empty row under it goes in the same press**
+  (2026-09-23): the row is removed and the block selected, and while a block is selected the
+  editor's caret is not drawn (`caretColor` on the root), because a caret blinking in the row
+  beside a faint selection read as a dead key, and the next press deleted the picture. Code,
+  callout and file blocks are still stepped over (`landingBefore` / `landingAfter`); extend the
+  rule once the table has been judged live.
 - **The arrows stop on a divider or image and walk into every block that keeps a field**:
   ArrowDown from above enters its first field (a table's first cell, a code block's first line),
   ArrowUp from below its end; inside the grid the arrows move between cells only at a cell's
