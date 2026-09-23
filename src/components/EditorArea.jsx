@@ -21,7 +21,7 @@ import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
-import LinkContextMenu from "./LinkContextMenu";
+import EditorContextMenu from "./EditorContextMenu";
 import {
   getBlockFromNode,
   placeCaret,
@@ -423,39 +423,76 @@ const EditorArea = memo(
       return () => document.removeEventListener("mousedown", onPress, true);
     }, [selectedBlockId, setSelectedBlockId]);
 
-    // Right-click context menu for links
+    // The editor's right-click menu: a link's own actions when the pointer is
+    // on one, then Cut, Copy and Paste (EditorContextMenu). What the menu acts
+    // on is taken now, before it takes focus: the selection's range and the
+    // field that held focus (a code block's textarea keeps its own selection).
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
 
     const handleEditorContextMenu = useCallback(
       (e) => {
+        // A block with a menu of its own (an image) has already answered.
+        if (e.defaultPrevented || isMobile) return;
+        e.preventDefault();
+        const sel = window.getSelection();
+        const range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        const active = document.activeElement;
+        const field =
+          active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement
+            ? active
+            : null;
+        const menu = {
+          position: { top: e.clientY, left: e.clientX },
+          linkType: null,
+          range,
+          field,
+          canCutCopy: field
+            ? field.selectionStart !== field.selectionEnd
+            : !!range && !range.collapsed,
+        };
         const anchor = e.target.closest("a");
         const wikilink = e.target.closest(".wikilink");
-        if (!anchor && !wikilink) return; // default context menu
-        e.preventDefault();
-
         if (anchor) {
-          const url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
-          setLinkCtxMenu({
-            position: { top: e.clientY, left: e.clientX },
-            linkType: "external",
-            url,
-            element: anchor,
-          });
+          menu.linkType = "external";
+          menu.url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
+          menu.element = anchor;
         } else if (wikilink) {
           const target = wikilink.getAttribute("data-target") || "";
           // A link that names one note gets Open note; one that names none,
           // or two, gets Fix link, which is the picker (2026-09-20).
           const status = wikilinkStatus(target, noteDataRef.current);
-          setLinkCtxMenu({
-            position: { top: e.clientY, left: e.clientX },
-            linkType: status.kind === "note" ? "wikilink" : "wikilink-broken",
-            url: target,
-            title: status.kind === "note" ? status.title : target,
-            element: wikilink,
-          });
+          menu.linkType = status.kind === "note" ? "wikilink" : "wikilink-broken";
+          menu.url = target;
+          menu.title = status.kind === "note" ? status.title : target;
+          menu.element = wikilink;
         }
+        setLinkCtxMenu(menu);
       },
-      [noteDataRef],
+      [noteDataRef, isMobile],
+    );
+
+    // Cut, Copy and Paste run where ⌘X, ⌘C and ⌘V would: focus and the
+    // selection are put back first, then the editor's own cut, copy and paste
+    // handlers take the events these fire, so the menu and the keys can never
+    // write different things.
+    const runOnSelection = useCallback(
+      (fn) => {
+        const menu = linkCtxMenu;
+        if (!menu) return;
+        if (menu.field) {
+          menu.field.focus({ preventScroll: true });
+        } else {
+          editorRef.current?.focus({ preventScroll: true });
+          if (menu.range) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(menu.range);
+          }
+        }
+        fn();
+        setLinkCtxMenu(null);
+      },
+      [linkCtxMenu, editorRef],
     );
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
@@ -823,7 +860,8 @@ const EditorArea = memo(
                 />
               )}
               <FloatingToolbar
-                position={toolbarState}
+                // Never beside the right-click menu: one surface at a time.
+                position={linkCtxMenu ? null : toolbarState}
                 activeFormats={activeFormats}
                 onFormat={applyFormat}
               />
@@ -867,12 +905,12 @@ const EditorArea = memo(
               }}
             />
 
-            {/* Link context menu */}
+            {/* Right-click menu */}
             {linkCtxMenu && (
-              <LinkContextMenu
-                position={linkCtxMenu.position}
-                linkType={linkCtxMenu.linkType}
-                onOpen={() => {
+              <EditorContextMenu
+                point={linkCtxMenu.position}
+                link={linkCtxMenu.linkType}
+                onOpenLink={() => {
                   if (linkCtxMenu.linkType === "external") {
                     const api = getAPI();
                     if (api?.openExternal) api.openExternal(linkCtxMenu.url);
@@ -882,29 +920,29 @@ const EditorArea = memo(
                   }
                   dismissCtxMenu();
                 }}
-                onCopy={() => {
+                onCopyLink={() => {
                   // A note's name as it is, never its raw target.
                   navigator.clipboard.writeText(
                     linkCtxMenu.linkType === "external" ? linkCtxMenu.url : linkCtxMenu.title,
                   );
                   dismissCtxMenu();
                 }}
-                onEdit={() => {
+                onEditLink={() => {
                   const el = linkCtxMenu.element;
                   dismissCtxMenu();
                   onEditLink?.(el, { fix: linkCtxMenu.linkType === "wikilink-broken" });
                 }}
-                onRemove={() => {
+                onRemoveLink={() => {
                   const el = linkCtxMenu.element;
                   dismissCtxMenu();
                   onRemoveLink?.(el);
                 }}
-                onCreate={() => {
-                  const el = linkCtxMenu.element;
-                  dismissCtxMenu();
-                  onEditLink?.(el, { fix: true });
-                }}
-                onDismiss={dismissCtxMenu}
+                canCutCopy={linkCtxMenu.canCutCopy}
+                canPaste={!!getAPI()?.paste}
+                onCut={() => runOnSelection(() => document.execCommand("cut"))}
+                onCopy={() => runOnSelection(() => document.execCommand("copy"))}
+                onPaste={() => runOnSelection(() => getAPI()?.paste?.())}
+                onClose={dismissCtxMenu}
               />
             )}
           </div>

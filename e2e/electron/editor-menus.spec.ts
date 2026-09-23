@@ -71,11 +71,11 @@ test("link, code block and image context menus open at the pointer in a scrolled
     const link = await menuOffset(
       h.page,
       editor.locator("a", { hasText: "Example" }),
-      h.page.locator(".link-context-menu"),
+      h.page.locator(".editor-context-menu"),
     );
     expect(link, "link menu offset from the pointer").toEqual({ dx: 0, dy: 0 });
     await h.page.keyboard.press("Escape");
-    await expect(h.page.locator(".link-context-menu")).toHaveCount(0);
+    await expect(h.page.locator(".editor-context-menu")).toHaveCount(0);
 
     const code = await menuOffset(
       h.page,

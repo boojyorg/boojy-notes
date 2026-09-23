@@ -31,7 +31,9 @@ import {
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Code as LuCode,
+  ClipboardPaste as LuClipboardPaste,
   Copy as LuCopy,
+  ExternalLink as LuExternalLink,
   FileText as LuFileText,
   Folder as LuFolder,
   FolderInput as LuFolderInput,
@@ -48,6 +50,8 @@ import {
   Image as LuImage,
   Info as LuInfo,
   Italic as LuItalic,
+  Scissors as LuScissors,
+  Unlink as LuUnlink,
   Link as LuLink,
   List as LuList,
   Maximize2 as LuMaximize2,
@@ -175,6 +179,22 @@ export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (
 /** Original size: the width set by hand taken back off the picture. */
 export const ResetSizeIcon = ({ size = ICON_INLINE }) => (
   <LuRotateCcw {...base} {...navBase} size={size} />
+);
+/** The editor's right-click menu: Cut, Paste, Open link, Remove link. */
+export const CutIcon = ({ size = ICON_INLINE }) => (
+  <LuScissors {...base} {...navBase} size={size} />
+);
+export const PasteIcon = ({ size = ICON_INLINE }) => (
+  <LuClipboardPaste {...base} {...navBase} size={size} />
+);
+export const OpenLinkIcon = ({ size = ICON_INLINE }) => (
+  <LuExternalLink {...base} {...navBase} size={size} />
+);
+export const OpenNoteIcon = ({ size = ICON_INLINE }) => (
+  <LuFileText {...base} {...navBase} size={size} />
+);
+export const UnlinkIcon = ({ size = ICON_INLINE }) => (
+  <LuUnlink {...base} {...navBase} size={size} />
 );
 /** The link picker's address row. */
 export const LinkIcon = ({ size = ICON_INLINE }) => <LuLink {...base} {...navBase} size={size} />;
