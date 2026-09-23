@@ -11,7 +11,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
       SEMANTIC: { error: "#e5484d" },
       modalShadow: "none",
       floatShadow: "none",
-      imageHandle: { fill: "#FFFFFF", edge: "#999", edgeActive: "#111", shadow: "none" },
+      imageHandle: { fill: "#FFFFFF", edge: "#999", shadow: "none" },
     },
   }),
 }));
@@ -114,11 +114,38 @@ describe("ImageBlock controls", () => {
     expect(box.style.border).toBe("2px solid transparent");
   });
 
-  it("selected, it carries the teal wash and keeps its controls without the pointer", () => {
-    loaded({ isSelected: true });
+  it("selected, it carries the teal wash and nothing else: the controls follow the pointer", () => {
+    const { box } = loaded({ isSelected: true });
     const wash = screen.getByTestId("image-selection-wash");
     expect(wash.style.background).toBe("rgba(143, 193, 198, 0.2)");
+    // Before: the bar and pill stayed up on a selected picture wherever the
+    // pointer was, 50px to its right included.
+    expect(screen.queryByTestId("image-hover-bar")).toBeNull();
+    expect(screen.queryByTestId("image-resize-handle")).toBeNull();
+    fireEvent.mouseEnter(box);
     expect(screen.getByTestId("image-hover-bar")).toBeTruthy();
+    fireEvent.mouseLeave(box);
+    expect(screen.queryByTestId("image-hover-bar")).toBeNull();
+  });
+
+  it("the pill looks the same at rest and under the pointer", () => {
+    const { box } = loaded();
+    fireEvent.mouseEnter(box);
+    const handle = screen.getByTestId("image-resize-handle");
+    const pill = handle.firstElementChild;
+    const rest = pill.getAttribute("style");
+    fireEvent.mouseEnter(handle);
+    fireEvent.mouseOver(handle);
+    expect(screen.getByTestId("image-resize-handle").firstElementChild.getAttribute("style")).toBe(
+      rest,
+    );
+    expect(pill.style.width).toBe("6px");
+  });
+
+  it("marks the picture's frame, not its row, as what a press may land on and keep the selection", () => {
+    const { box } = loaded();
+    expect(box.hasAttribute("data-selection-surface")).toBe(true);
+    expect(box.parentElement.hasAttribute("data-selection-surface")).toBe(false);
   });
 
   it("the bar's full-size button opens the view without selecting through it", () => {

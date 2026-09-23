@@ -53,6 +53,7 @@ export default function SpacerBlock({
       ref={rootRef}
       data-block-id={blockId}
       data-block-type="spacer"
+      data-selection-surface
       data-selected={isSelected ? "true" : undefined}
       contentEditable="false"
       suppressContentEditableWarning

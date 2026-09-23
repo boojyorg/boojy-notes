@@ -550,12 +550,15 @@ import writes a closer. `tilde-fences.spec.ts`.
   width. An image already in a note is never rewritten by being shown. A resize writes the
   picture's pixel width, its travel divided by the UI scale. `image-size.spec.ts`,
   `imageSize.test.ts`.
-- **Nothing at rest but the picture; hover shows a bar and a pill, never an outline**
+- **Nothing at rest but the picture; the pointer on it shows a bar and a pill, never an outline**
   (`ImageBlock.tsx`, 2026-09-23, from a prototype Tyr judged against Obsidian's and Notion's).
   The bar sits at the top right: full size and ···, in the menus' ground with `floatShadow`. The
   pill is the one resize control: white with a dark edge in both themes (`imageHandle`, since it
   sits on the picture, not the sheet), straddling the right edge so it never meets the bar,
-  `PILL_LENGTH` (48) long or as long as the picture allows. **A drag shows the width it will
+  `PILL_LENGTH` (48) long or as long as the picture allows, and it looks the same at rest,
+  under the pointer and in a drag (the resize cursor and the width label are the feedback).
+  **The controls follow the pointer, never the selection**: a selected picture shows its wash
+  and nothing else, so they are never up with the pointer elsewhere. **A drag shows the width it will
   write, snaps to the picture's own size and writes no width there** (`imageNoWidthFields`); a
   double-click on the pill does the same. **A click selects and a double-click opens the full
   size**: until 2026-09-23 every click opened it, so a picture could not be selected to delete.
@@ -584,7 +587,12 @@ import writes a closer. `tilde-fences.spec.ts`.
   a paragraph under a table that ends the note); Escape deselects; a printable character
   deselects and types. No hover state (an image's bar and pill are controls, not a hover
   state). A selected image wears the tint *over* the picture, a step stronger
-  (`imageWashFill`, 20% / 26%). A click selects a divider or image; a click on a table
+  (`imageWashFill`, 20% / 26%). A click selects a divider or image. **A press anywhere off
+  the thing drawn deselects** (`EditorArea`, a capture-phase document listener while a block is
+  selected): beside a picture in its row, the margins, the sidebar and the chrome alike, since
+  2026-09-23; before, only a click in the text column did and a picture's whole row counted as
+  the picture. What keeps it is `data-selection-surface` (the picture's frame, the divider's
+  row) and the image menu. A click on a table
   focuses the cell and **Escape from a cell selects the table** (`selectWhole`).
 - **Backspace from the block below and forward Delete from the block above select it first**
   (`reachAcross`); the second press removes it. Code, callout and file blocks are still stepped

@@ -28,7 +28,7 @@ interface ImageBlockProps {
 type Theme = Record<string, Record<string, string>> & {
   name?: string;
   floatShadow: string;
-  imageHandle: { fill: string; edge: string; edgeActive: string; shadow: string };
+  imageHandle: { fill: string; edge: string; shadow: string };
 };
 
 /** The resize pill's length on a picture tall enough for it (Notion's proportion). */
@@ -115,16 +115,18 @@ function BarButton({
  * and Notion's). Nothing at rest but the picture. **Hover** shows a bar at the
  * top right (full size, and ··· for the menu) and a white pill on the right
  * edge that resizes it; no outline, because a frame round every hovered
- * picture was the teal border this replaced. **A click selects** (the teal
- * wash, the whole-block selection's tint, `imageWashFill`) and no longer opens
- * the full-size view, so a picture can be selected to delete it; a
- * double-click or the bar's button opens it. **Right-click and ··· open one
+ * picture was the teal border this replaced. The controls follow the pointer
+ * alone. **A click selects** (the teal wash, the whole-block selection's tint,
+ * `imageWashFill`, and nothing else) and no longer opens the full-size view,
+ * so a picture can be selected to delete it; a press anywhere off the picture
+ * deselects it (`EditorArea`). A double-click or the bar's button opens it. **Right-click and ··· open one
  * menu.** Alignment, crop and caption are left out by decision: Markdown can
  * hold none of them, and Obsidian would draw the note differently.
  *
  * The pill is the only resize control, on the right because the picture sits
  * on the left of the column. It straddles the edge, so it never meets the bar
  * on a short picture, and it is as long as `PILL_LENGTH` or the picture allows.
+ * It looks the same at rest, under the pointer and in a drag.
  * A drag shows the width it will write, snaps to the picture's own size and
  * writes no width there; a double-click on the pill does the same.
  */
@@ -157,7 +159,6 @@ function ImageBlock({
   }
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
-  const [pillHot, setPillHot] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -261,14 +262,17 @@ function ImageBlock({
     );
   }
 
-  const active = (hovered || isSelected || !!menu) && !loading;
+  // The controls follow the pointer (and a menu or drag it started), never the
+  // selection: a selected picture shows its wash and nothing else, so the bar
+  // and pill are never up with the pointer somewhere else (2026-09-23).
+  const pointerOn = (hovered || !!menu || !!drag) && !loading;
   const handle = theme.imageHandle;
-  const pillOn = pillHot || !!drag;
 
   return (
     <div style={{ display: "flex", justifyContent: "flex-start" }}>
       <div
         ref={containerRef}
+        data-selection-surface
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         onClick={(e) => {
@@ -338,7 +342,7 @@ function ImageBlock({
             }}
           />
         )}
-        {active && !drag && (
+        {pointerOn && !drag && (
           <div
             data-testid="image-hover-bar"
             style={{
@@ -373,14 +377,12 @@ function ImageBlock({
             </BarButton>
           </div>
         )}
-        {active && (
+        {pointerOn && (
           <button
             type="button"
             aria-label="Resize image"
             data-testid="image-resize-handle"
             onMouseDown={handleResizeStart}
-            onMouseEnter={() => setPillHot(true)}
-            onMouseLeave={() => setPillHot(false)}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => {
               e.stopPropagation();
@@ -405,14 +407,16 @@ function ImageBlock({
             <span
               style={{
                 display: "block",
-                width: pillOn ? 8 : 6,
+                // One look at rest, under the pointer and in a drag: the
+                // resize cursor and the width label are the feedback.
+                width: 6,
                 height: "100%",
                 maxHeight: PILL_LENGTH,
                 minHeight: 16,
                 boxSizing: "border-box",
                 borderRadius: 4,
                 background: handle.fill,
-                border: `1px solid ${pillOn ? handle.edgeActive : handle.edge}`,
+                border: `1px solid ${handle.edge}`,
                 boxShadow: handle.shadow,
               }}
             />

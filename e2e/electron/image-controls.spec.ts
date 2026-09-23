@@ -101,3 +101,49 @@ test("the pill writes a width into the file, and dragging back to the picture's 
     await h.close();
   }
 });
+
+test("a press anywhere off the picture deselects it: beside it in its row, the text, the sidebar", async () => {
+  const h = await seed("Pic.png", 300, 120);
+  try {
+    await h.openNote("Pics");
+    const img = await picture(h.page);
+    const wash = h.page.getByTestId("image-selection-wash");
+    const box = await img.boundingBox();
+    if (!box) throw new Error("no picture");
+
+    // Beside the picture, in its own row. Before: the whole row counted as
+    // the picture, so it stayed selected with its controls up.
+    await img.click();
+    await expect(wash).toBeVisible();
+    await h.page.mouse.click(box.x + box.width + 60, box.y + box.height / 2);
+    await expect(wash).toHaveCount(0);
+    await expect(h.page.getByTestId("image-hover-bar")).toHaveCount(0);
+
+    // In the text, as before.
+    await img.click();
+    await expect(wash).toBeVisible();
+    await h.page.locator('[data-block-type="p"]', { hasText: "Two" }).click();
+    await expect(wash).toHaveCount(0);
+
+    // Outside the editor: the sidebar's Notes label. Before: nothing there deselected.
+    await img.click();
+    await expect(wash).toBeVisible();
+    await h.page.getByText("Notes", { exact: true }).first().click();
+    await expect(wash).toHaveCount(0);
+
+    // A press on the picture's own controls keeps it (the pill, pressed and
+    // released without moving), and Backspace then deletes it.
+    await img.click();
+    await expect(wash).toBeVisible();
+    await img.hover();
+    await h.page.getByTestId("image-resize-handle").click();
+    await expect(wash).toBeVisible();
+    await h.page.keyboard.press("Backspace");
+    await waitForFile(h.vault.file("Pics.md"), (t) => !t.includes("Pic.png"), {
+      label: "the selected picture to be deleted",
+    });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

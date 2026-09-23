@@ -119,7 +119,6 @@ export const NIGHT = {
   imageHandle: {
     fill: "#FFFFFF",
     edge: "rgba(20,17,15,0.4)",
-    edgeActive: "rgba(20,17,15,0.85)",
     shadow: "0 1px 3px rgba(20,17,15,0.2)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
@@ -237,7 +236,6 @@ export const DAY = {
   imageHandle: {
     fill: "#FFFFFF",
     edge: "rgba(20,17,15,0.4)",
-    edgeActive: "rgba(20,17,15,0.85)",
     shadow: "0 1px 3px rgba(20,17,15,0.2)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
