@@ -169,7 +169,6 @@ const EditableBlock = memo(
     isBlockSelected,
     onBlockSelect,
     onImageLightbox,
-    onImageReplace,
     onImageCopyImage,
     onUpdateBlockProperty,
     onFileOpen,
@@ -268,7 +267,6 @@ const EditableBlock = memo(
             onSelect={() => onBlockSelect(block.id)}
             onLightbox={() => onImageLightbox(block.src, block.alt)}
             onDelete={() => onDeleteBlock(noteId, blockIndex)}
-            onReplace={() => onImageReplace(noteId, blockIndex)}
             onCopyImage={() => onImageCopyImage(block.src)}
             onShowInFolder={
               isElectron && !/^(https?:|data:)/i.test(block.src || "")

@@ -16,7 +16,6 @@ interface ImageBlockProps {
   onSelect: () => void;
   onLightbox: () => void;
   onDelete: () => void;
-  onReplace: () => void;
   onCopyImage: () => void;
   /** Desktop only. */
   onShowInFolder?: () => void;
@@ -126,7 +125,8 @@ function BarButton({
  * The pill is the only resize control, on the right because the picture sits
  * on the left of the column. It straddles the edge, so it never meets the bar
  * on a short picture, and it is as long as `PILL_LENGTH` or the picture allows.
- * It looks the same at rest, under the pointer and in a drag.
+ * It looks the same at rest, under the pointer and in a drag, and a drag holds
+ * it at the height it was pressed at rather than the picture's middle.
  * A drag shows the width it will write, snaps to the picture's own size and
  * writes no width there; a double-click on the pill does the same.
  */
@@ -138,7 +138,6 @@ function ImageBlock({
   onSelect,
   onLightbox,
   onDelete,
-  onReplace,
   onCopyImage,
   onShowInFolder,
   onUpdateWidth,
@@ -149,8 +148,9 @@ function ImageBlock({
   const [hovered, setHovered] = useState(false);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
-  // A new picture is a new load, so a Replace after an error is not left
-  // drawing "Image not found" (state adjusted in render, React's own pattern).
+  // A new picture is a new load (an outside edit, an undo), so a source that
+  // changes after an error is not left drawing "Image not found" (state
+  // adjusted in render, React's own pattern).
   const [loadSrc, setLoadSrc] = useState(src);
   if (src !== loadSrc) {
     setLoadSrc(src);
@@ -159,6 +159,9 @@ function ImageBlock({
   }
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  // Where the pill was pressed, in CSS px from the picture's top: held through
+  // the drag and until the pointer leaves, then the pill centres again.
+  const [grabY, setGrabY] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -192,6 +195,11 @@ function ImageBlock({
     const startX = e.clientX;
     const startWidth = img.offsetWidth;
     let moved: number | null = null;
+    // The pill stays at the height it was pressed at: the picture's top holds
+    // still while its height follows the width, so a pill kept centred slid up
+    // or down from under the pointer (2026-09-23).
+    const pill = (e.currentTarget as HTMLElement).firstElementChild?.getBoundingClientRect();
+    if (pill) setGrabY((pill.top + pill.height / 2 - img.getBoundingClientRect().top) / zoom);
 
     const onMove = (me: MouseEvent) => {
       const travel = (me.clientX - startX) / zoom;
@@ -205,6 +213,9 @@ function ImageBlock({
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       setDrag(null);
+      // Released off the picture, nothing holds the pill; on it, the pill
+      // stays put until the pointer leaves, so it never jumps under it.
+      if (!box.matches(":hover")) setGrabY(null);
       if (moved == null) return;
       img.style.width = "";
       onUpdateWidth(moved === own ? null : moved);
@@ -274,7 +285,10 @@ function ImageBlock({
         ref={containerRef}
         data-selection-surface
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseLeave={() => {
+          setHovered(false);
+          if (!drag) setGrabY(null);
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -399,19 +413,24 @@ function ImageBlock({
               border: "none",
               background: "transparent",
               cursor: "ew-resize",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
             }}
           >
             <span
               style={{
                 display: "block",
+                position: "absolute",
+                left: 9,
+                // Centred at rest; held where it was pressed during a drag,
+                // kept inside the picture as the picture's height changes.
+                // CSS does the clamping, so no frame is measured mid-drag.
+                top:
+                  grabY == null
+                    ? `calc(50% - min(${PILL_LENGTH / 2}px, 50%))`
+                    : `clamp(0px, calc(${grabY - 8}px - min(${PILL_LENGTH / 2}px, 50%)), calc(100% - min(${PILL_LENGTH}px, 100%)))`,
                 // One look at rest, under the pointer and in a drag: the
                 // resize cursor and the width label are the feedback.
                 width: 6,
-                height: "100%",
-                maxHeight: PILL_LENGTH,
+                height: `min(${PILL_LENGTH}px, 100%)`,
                 minHeight: 16,
                 boxSizing: "border-box",
                 borderRadius: 4,
@@ -456,7 +475,6 @@ function ImageBlock({
           onView={onLightbox}
           onCopy={onCopyImage}
           onShowInFolder={onShowInFolder}
-          onReplace={onReplace}
           onOriginalSize={displayWidth != null ? () => onUpdateWidth(null) : undefined}
           onDelete={onDelete}
           onClose={() => setMenu(null)}

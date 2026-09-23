@@ -6,7 +6,7 @@ import { useMenuPosition } from "../../hooks/useMenuPosition";
 import { Z } from "../../constants/zIndex";
 import { cssZoom } from "../../utils/domHelpers";
 import { isMac } from "../../utils/platform";
-import { CopyIcon, ExpandIcon, FolderIcon, ReplaceIcon, ResetSizeIcon, TrashIcon } from "../Icons";
+import { CopyIcon, ExpandIcon, FolderIcon, ResetSizeIcon, TrashIcon } from "../Icons";
 
 export interface MenuAnchor {
   top: number;
@@ -24,7 +24,6 @@ interface ImageMenuProps {
   onCopy: () => void;
   /** Desktop only: the web build has no folder to show. */
   onShowInFolder?: () => void;
-  onReplace: () => void;
   /** Only while the picture carries a width set by hand. */
   onOriginalSize?: () => void;
   onDelete: () => void;
@@ -62,7 +61,6 @@ export default function ImageMenu({
   onView,
   onCopy,
   onShowInFolder,
-  onReplace,
   onOriginalSize,
   onDelete,
   onClose,
@@ -99,7 +97,6 @@ export default function ImageMenu({
       action: act(onShowInFolder),
     });
   }
-  items.push({ label: "Replace image…", icon: <ReplaceIcon />, action: act(onReplace) });
   if (onOriginalSize) {
     items.push({ label: "Original size", icon: <ResetSizeIcon />, action: act(onOriginalSize) });
   }

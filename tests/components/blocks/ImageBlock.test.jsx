@@ -26,7 +26,6 @@ const props = {
   onSelect: () => {},
   onLightbox: () => {},
   onDelete: () => {},
-  onReplace: () => {},
   onCopyImage: () => {},
   onUpdateWidth: () => {},
 };
@@ -80,7 +79,6 @@ function loaded(extra = {}) {
     onSelect: vi.fn(),
     onLightbox: vi.fn(),
     onDelete: vi.fn(),
-    onReplace: vi.fn(),
     onCopyImage: vi.fn(),
     onUpdateWidth: vi.fn(),
   };
@@ -161,13 +159,13 @@ describe("ImageBlock controls", () => {
     fireEvent.contextMenu(box, { clientX: 40, clientY: 30 });
     expect(onSelect).toHaveBeenCalled();
     const labels = screen.getAllByRole("menuitem").map((b) => b.textContent);
-    expect(labels).toEqual(["View full size", "Copy image", "Replace image…", "Delete"]);
+    expect(labels).toEqual(["View full size", "Copy image", "Delete"]);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(screen.queryByRole("menu")).toBeNull();
 
     fireEvent.mouseEnter(box);
     fireEvent.click(screen.getByRole("button", { name: "Image options" }));
-    expect(screen.getAllByRole("menuitem")).toHaveLength(4);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
   });
 
   it("offers Show in Finder only where there is a folder, and Original size only on a sized picture", () => {

@@ -60,7 +60,6 @@ import {
   Paperclip as LuPaperclip,
   Pencil as LuPencil,
   Plus as LuPlus,
-  RefreshCw as LuRefreshCw,
   Redo2 as LuRedo2,
   RotateCcw as LuRotateCcw,
   Search as LuSearch,
@@ -172,10 +171,6 @@ export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBas
  *  menu's (`nav`, like every context-menu glyph). */
 export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (
   <LuMaximize2 {...(nav ? navBase : base)} size={size} />
-);
-/** Replace image…: another picture in the same place. */
-export const ReplaceIcon = ({ size = ICON_INLINE }) => (
-  <LuRefreshCw {...base} {...navBase} size={size} />
 );
 /** Original size: the width set by hand taken back off the picture. */
 export const ResetSizeIcon = ({ size = ICON_INLINE }) => (

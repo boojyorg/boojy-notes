@@ -557,14 +557,18 @@ import writes a closer. `tilde-fences.spec.ts`.
   sits on the picture, not the sheet), straddling the right edge so it never meets the bar,
   `PILL_LENGTH` (48) long or as long as the picture allows, and it looks the same at rest,
   under the pointer and in a drag (the resize cursor and the width label are the feedback).
+  **A drag holds it at the height it was pressed at**, clamped inside the picture by CSS, and it
+  stays there until the pointer leaves: the picture's top holds still while its height follows
+  the width, so a pill kept centred slid away from the pointer.
   **The controls follow the pointer, never the selection**: a selected picture shows its wash
   and nothing else, so they are never up with the pointer elsewhere. **A drag shows the width it will
   write, snaps to the picture's own size and writes no width there** (`imageNoWidthFields`); a
   double-click on the pill does the same. **A click selects and a double-click opens the full
   size**: until 2026-09-23 every click opened it, so a picture could not be selected to delete.
   Right-click and ··· open one menu (`ImageMenu.tsx`, the table menu's grammar): View full
-  size, Copy image, Show in Finder (desktop), Replace image…, Original size (only when sized),
-  Delete. The full-size view is a dark room in both themes with the file's name and a close
+  size, Copy image, Show in Finder (desktop), Original size (only when sized), Delete. **No
+  Replace image**, by decision (2026-09-23): rarely wanted, and delete then drop does it. The
+  full-size view is a dark room in both themes with the file's name and a close
   button (`ImageLightbox.tsx`). **Deliberately absent: alignment, crop and caption** — Markdown
   holds none of them, and Obsidian would draw the note differently. `image-controls.spec.ts`,
   `ImageBlock.test.jsx`.

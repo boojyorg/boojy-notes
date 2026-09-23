@@ -35,7 +35,6 @@ import {
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
-import { insertedImageWidth } from "../utils/imageSize";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
@@ -383,28 +382,6 @@ const EditorArea = memo(
         setLightbox({ src, alt });
       },
       [setLightbox],
-    );
-
-    const handleImageReplace = useCallback(
-      async (noteId, blockIndex) => {
-        const api = getAPI();
-        if (!api) return;
-        const picked = await api.pickImageFile();
-        if (!picked) return;
-        const filename = await api.saveImage({
-          fileName: picked.fileName,
-          dataBase64: picked.dataBase64,
-        });
-        // The new picture's own size (its on-screen width for a Retina PNG),
-        // never the old one's.
-        updateBlockProperty(noteId, blockIndex, {
-          src: filename,
-          width: 0,
-          widthPx: undefined,
-          ...insertedImageWidth(picked.dataBase64),
-        });
-      },
-      [updateBlockProperty],
     );
 
     const handleImageCopyImage = useCallback((src) => {
@@ -826,7 +803,6 @@ const EditorArea = memo(
                           isBlockSelected={selectedBlockId === block.id}
                           onBlockSelect={handleBlockSelect}
                           onImageLightbox={handleImageLightbox}
-                          onImageReplace={handleImageReplace}
                           onImageCopyImage={handleImageCopyImage}
                           onUpdateBlockProperty={updateBlockProperty}
                           onFileOpen={handleFileOpen}

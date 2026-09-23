@@ -147,3 +147,45 @@ test("a press anywhere off the picture deselects it: beside it in its row, the t
     await h.close();
   }
 });
+
+test("the pill stays under the pointer while a drag changes the picture's height", async () => {
+  // A portrait picture: its height follows its width, and its top holds still,
+  // so a pill kept centred slid up the edge, away from the pointer, as it shrank.
+  const h = await seed("Tall.png", 300, 400);
+  try {
+    await h.openNote("Pics");
+    const img = await picture(h.page);
+    await img.hover();
+    const pill = h.page.getByTestId("image-resize-handle").locator("span");
+    const box = await pill.boundingBox();
+    if (!box) throw new Error("no pill");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const pillMiddle = async () => {
+      const b = await pill.boundingBox();
+      if (!b) throw new Error("no pill");
+      return b.y + b.height / 2;
+    };
+
+    await h.page.mouse.move(x, y);
+    await h.page.mouse.down();
+    await h.page.mouse.move(x - 60, y, { steps: 6 });
+    await expect(h.page.getByTestId("image-width-label")).toHaveText("240 px");
+    // Centred, it would now sit 40px above the pointer (the picture is 320 tall, not 400).
+    expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
+
+    // Released on the picture, it stays put rather than jumping to the new middle.
+    await h.page.mouse.up();
+    expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
+
+    // Once the pointer leaves and comes back, it is centred on the new height.
+    await h.page.mouse.move(5, 5);
+    await img.hover();
+    const imgBox = await img.boundingBox();
+    if (!imgBox) throw new Error("no picture");
+    expect(Math.abs((await pillMiddle()) - (imgBox.y + imgBox.height / 2))).toBeLessThan(1.5);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
