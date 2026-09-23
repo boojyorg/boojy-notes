@@ -591,7 +591,8 @@ import writes a closer. `tilde-fences.spec.ts`.
   a paragraph under a table that ends the note); Escape deselects; a printable character
   deselects and types. No hover state (an image's bar and pill are controls, not a hover
   state). A selected image wears the tint *over* the picture, a step stronger
-  (`imageWashFill`, 20% / 26%). A click selects a divider or image. **A press anywhere off
+  (`imageWashFill`, 20% / 26%). **A press selects a divider or image, before the release**
+  (2026-09-23; it waited for the click), the same event that deselects. **A press anywhere off
   the thing drawn deselects** (`EditorArea`, a capture-phase document listener while a block is
   selected): beside a picture in its row, the margins, the sidebar and the chrome alike, since
   2026-09-23; before, only a click in the text column did and a picture's whole row counted as

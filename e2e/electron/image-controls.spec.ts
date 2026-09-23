@@ -55,13 +55,19 @@ async function dragPill(page: Page, dx: number, label: string) {
   await expect(page.getByTestId("image-width-label")).toHaveCount(0);
 }
 
-test("a click selects without opening the full-size view; a double-click opens it under the file's name", async () => {
+test("a press selects without opening the full-size view; a double-click opens it under the file's name", async () => {
   const h = await seed("Shot (2).png", 300, 120);
   try {
     await h.openNote("Pics");
     const img = await picture(h.page);
 
-    await img.click();
+    // Selected on the press, before the release.
+    const b = await img.boundingBox();
+    if (!b) throw new Error("no picture");
+    await h.page.mouse.move(b.x + 30, b.y + b.height / 2);
+    await h.page.mouse.down();
+    await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
+    await h.page.mouse.up();
     await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
     // Before: the same click opened the full-size view.
     await expect(h.page.getByRole("dialog")).toHaveCount(0);

@@ -116,7 +116,7 @@ function BarButton({
  * edge that resizes it; no outline, because a frame round every hovered
  * picture was the teal border this replaced. The controls follow the pointer
  * alone. **A click selects** (the teal wash, the whole-block selection's tint,
- * `imageWashFill`, and nothing else) and no longer opens the full-size view,
+ * `imageWashFill`, and nothing else) on the press, and no longer opens the full-size view,
  * so a picture can be selected to delete it; a press anywhere off the picture
  * deselects it (`EditorArea`). A double-click or the bar's button opens it. **Right-click and ··· open one
  * menu.** Alignment, crop and caption are left out by decision: Markdown can
@@ -289,10 +289,13 @@ function ImageBlock({
           setHovered(false);
           if (!drag) setGrabY(null);
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
+        // Selected on the press, not the release (2026-09-23): the Mac's own
+        // grammar, and the press that deselects elsewhere is the same event.
+        // The pill and the bar stop their own press, so neither selects.
+        onMouseDown={(e) => {
+          if (e.button === 0) onSelect();
         }}
+        onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => {
           e.stopPropagation();
           onLightbox();

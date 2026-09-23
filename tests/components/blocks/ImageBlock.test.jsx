@@ -90,10 +90,12 @@ function loaded(extra = {}) {
 
 // Redesigned 2026-09-23 from a prototype judged against Obsidian and Notion.
 describe("ImageBlock controls", () => {
-  it("a click selects and does not open the full-size view; a double-click does", () => {
+  it("a press selects, before the release, and does not open the full-size view; a double-click does", () => {
     const { box, onSelect, onLightbox } = loaded();
-    fireEvent.click(box);
+    fireEvent.mouseDown(box);
+    // Before 2026-09-23 the selection waited for the release.
     expect(onSelect).toHaveBeenCalled();
+    fireEvent.click(box);
     // Before: every click also opened the lightbox, so an image could not be
     // selected to delete it without the full-size view coming up first.
     expect(onLightbox).not.toHaveBeenCalled();
@@ -149,6 +151,7 @@ describe("ImageBlock controls", () => {
   it("the bar's full-size button opens the view without selecting through it", () => {
     const { box, onLightbox, onSelect } = loaded();
     fireEvent.mouseEnter(box);
+    fireEvent.mouseDown(screen.getByRole("button", { name: "View full size" }));
     fireEvent.click(screen.getByRole("button", { name: "View full size" }));
     expect(onLightbox).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
@@ -185,6 +188,13 @@ describe("ImageBlock controls", () => {
     fireEvent.contextMenu(box);
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("a press on the pill does not select the picture", () => {
+    const { box, onSelect } = loaded();
+    fireEvent.mouseEnter(box);
+    fireEvent.mouseDown(screen.getByTestId("image-resize-handle"));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("a double-click on the pill takes a width off, and does nothing on an unsized picture", () => {
