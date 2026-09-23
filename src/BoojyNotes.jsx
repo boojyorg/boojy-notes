@@ -59,7 +59,7 @@ import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
-import { resolveAttachmentUrl } from "./utils/attachmentUrl";
+import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -1276,6 +1276,7 @@ export default function BoojyNotes() {
         <ImageLightbox
           src={resolveAttachmentUrl(lightbox.src)}
           alt={lightbox.alt}
+          name={attachmentName(lightbox.src)}
           onClose={() => setLightbox(null)}
         />
       )}

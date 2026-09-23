@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   imageDisplayWidth,
+  imageNoWidthFields,
   imageWidthFields,
   insertedImageWidth,
   onScreenWidth,
 } from "../../src/utils/imageSize";
+import { blocksToMarkdown, markdownToBlocks } from "../../src/utils/markdown";
 import { makePng } from "../fixtures/makePng";
 
 const b64 = (buf: Buffer) => buf.toString("base64");
@@ -53,5 +55,18 @@ describe("the width an image is drawn at", () => {
   it("gives an added Retina PNG its on-screen width and a 1× picture none", () => {
     expect(insertedImageWidth(b64(makePng(1048, 20, 144)))).toEqual({ width: 75, widthPx: 524 });
     expect(insertedImageWidth(b64(makePng(200, 20)))).toEqual({});
+  });
+});
+
+describe("taking a width off (the pill's snap, Original size)", () => {
+  it("draws the picture at its own size and writes no width, in both image forms", () => {
+    for (const md of ["![[Shot.png|524]]", "![A chart|350](https://example.com/c.png)"]) {
+      const [block] = markdownToBlocks(md);
+      const reset = { ...block, ...imageNoWidthFields() };
+      expect(imageDisplayWidth(reset)).toBeNull();
+      const written = blocksToMarkdown([reset]).trim();
+      expect(written).not.toMatch(/\|\d+/);
+      expect(written).toBe(md.replace(/\|\d+/, ""));
+    }
   });
 });

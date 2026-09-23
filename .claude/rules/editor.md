@@ -550,6 +550,21 @@ import writes a closer. `tilde-fences.spec.ts`.
   width. An image already in a note is never rewritten by being shown. A resize writes the
   picture's pixel width, its travel divided by the UI scale. `image-size.spec.ts`,
   `imageSize.test.ts`.
+- **Nothing at rest but the picture; hover shows a bar and a pill, never an outline**
+  (`ImageBlock.tsx`, 2026-09-23, from a prototype Tyr judged against Obsidian's and Notion's).
+  The bar sits at the top right: full size and ···, in the menus' ground with `floatShadow`. The
+  pill is the one resize control: white with a dark edge in both themes (`imageHandle`, since it
+  sits on the picture, not the sheet), straddling the right edge so it never meets the bar,
+  `PILL_LENGTH` (48) long or as long as the picture allows. **A drag shows the width it will
+  write, snaps to the picture's own size and writes no width there** (`imageNoWidthFields`); a
+  double-click on the pill does the same. **A click selects and a double-click opens the full
+  size**: until 2026-09-23 every click opened it, so a picture could not be selected to delete.
+  Right-click and ··· open one menu (`ImageMenu.tsx`, the table menu's grammar): View full
+  size, Copy image, Show in Finder (desktop), Replace image…, Original size (only when sized),
+  Delete. The full-size view is a dark room in both themes with the file's name and a close
+  button (`ImageLightbox.tsx`). **Deliberately absent: alignment, crop and caption** — Markdown
+  holds none of them, and Obsidian would draw the note differently. `image-controls.spec.ts`,
+  `ImageBlock.test.jsx`.
 
 ### Tables are ragged on disk and stay ragged
 
@@ -567,7 +582,9 @@ import writes a closer. `tilde-fences.spec.ts`.
   band appears (`utils/selectionBand.ts`, accent at 10% / 18%); Backspace or Delete removes it
   (`deleteWholeBlock`); Enter opens a paragraph under it (a table too, the one keyboard route to
   a paragraph under a table that ends the note); Escape deselects; a printable character
-  deselects and types. No hover state. A click selects a divider or image; a click on a table
+  deselects and types. No hover state (an image's bar and pill are controls, not a hover
+  state). A selected image wears the tint *over* the picture, a step stronger
+  (`imageWashFill`, 20% / 26%). A click selects a divider or image; a click on a table
   focuses the cell and **Escape from a cell selects the table** (`selectWhole`).
 - **Backspace from the block below and forward Delete from the block above select it first**
   (`reachAcross`); the second press removes it. Code, callout and file blocks are still stepped

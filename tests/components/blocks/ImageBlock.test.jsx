@@ -1,12 +1,17 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("../../../src/hooks/useTheme", () => ({
   useTheme: () => ({
     theme: {
-      TEXT: { primary: "#fff", muted: "#666" },
-      BG: { elevated: "#2a2a2e", divider: "#444", surface: "#333" },
+      name: "day",
+      TEXT: { primary: "#fff", secondary: "#aaa", muted: "#666" },
+      BG: { elevated: "#2a2a2e", divider: "#444", surface: "#333", hover: "#3a3a3a" },
+      SEMANTIC: { error: "#e5484d" },
+      modalShadow: "none",
+      floatShadow: "none",
+      imageHandle: { fill: "#FFFFFF", edge: "#999", edgeActive: "#111", shadow: "none" },
     },
   }),
 }));
@@ -66,5 +71,109 @@ describe("ImageBlock", () => {
     expect(box.style.width).toBe("fit-content");
     expect(img.style.width).toBe("auto");
     expect(img.style.maxWidth).toBe("100%");
+  });
+});
+
+/** A loaded picture, with each callback a spy. */
+function loaded(extra = {}) {
+  const spies = {
+    onSelect: vi.fn(),
+    onLightbox: vi.fn(),
+    onDelete: vi.fn(),
+    onReplace: vi.fn(),
+    onCopyImage: vi.fn(),
+    onUpdateWidth: vi.fn(),
+  };
+  const view = render(<ImageBlock {...props} {...spies} src="shot.png" {...extra} />);
+  const img = view.container.querySelector("img");
+  fireEvent.load(img);
+  return { ...view, img, box: img.parentElement, ...spies };
+}
+
+// Redesigned 2026-09-23 from a prototype judged against Obsidian and Notion.
+describe("ImageBlock controls", () => {
+  it("a click selects and does not open the full-size view; a double-click does", () => {
+    const { box, onSelect, onLightbox } = loaded();
+    fireEvent.click(box);
+    expect(onSelect).toHaveBeenCalled();
+    // Before: every click also opened the lightbox, so an image could not be
+    // selected to delete it without the full-size view coming up first.
+    expect(onLightbox).not.toHaveBeenCalled();
+    fireEvent.doubleClick(box);
+    expect(onLightbox).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows nothing but the picture at rest, and no outline on hover", () => {
+    const { box } = loaded();
+    expect(screen.queryByTestId("image-hover-bar")).toBeNull();
+    expect(screen.queryByTestId("image-resize-handle")).toBeNull();
+    fireEvent.mouseEnter(box);
+    expect(screen.getByTestId("image-hover-bar")).toBeTruthy();
+    expect(screen.getByTestId("image-resize-handle")).toBeTruthy();
+    // Before: a teal ring on hover and a solid one when selected.
+    expect(box.style.border).toBe("2px solid transparent");
+  });
+
+  it("selected, it carries the teal wash and keeps its controls without the pointer", () => {
+    loaded({ isSelected: true });
+    const wash = screen.getByTestId("image-selection-wash");
+    expect(wash.style.background).toBe("rgba(143, 193, 198, 0.2)");
+    expect(screen.getByTestId("image-hover-bar")).toBeTruthy();
+  });
+
+  it("the bar's full-size button opens the view without selecting through it", () => {
+    const { box, onLightbox, onSelect } = loaded();
+    fireEvent.mouseEnter(box);
+    fireEvent.click(screen.getByRole("button", { name: "View full size" }));
+    expect(onLightbox).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("right-click and the bar's ··· open the same menu, in sentence case", () => {
+    const { box, onSelect } = loaded();
+    fireEvent.contextMenu(box, { clientX: 40, clientY: 30 });
+    expect(onSelect).toHaveBeenCalled();
+    const labels = screen.getAllByRole("menuitem").map((b) => b.textContent);
+    expect(labels).toEqual(["View full size", "Copy image", "Replace image…", "Delete"]);
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    fireEvent.mouseEnter(box);
+    fireEvent.click(screen.getByRole("button", { name: "Image options" }));
+    expect(screen.getAllByRole("menuitem")).toHaveLength(4);
+  });
+
+  it("offers Show in Finder only where there is a folder, and Original size only on a sized picture", () => {
+    const onShowInFolder = vi.fn();
+    const { box, onUpdateWidth } = loaded({ displayWidth: 300, onShowInFolder });
+    fireEvent.contextMenu(box);
+    const labels = screen.getAllByRole("menuitem").map((b) => b.textContent);
+    expect(labels).toContain("Original size");
+    expect(labels.some((l) => /^Show in (Finder|folder)$/.test(l))).toBe(true);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Original size" }));
+    expect(onUpdateWidth).toHaveBeenCalledWith(null);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("Delete in the menu deletes", () => {
+    const { box, onDelete } = loaded();
+    fireEvent.contextMenu(box);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("a double-click on the pill takes a width off, and does nothing on an unsized picture", () => {
+    const sized = loaded({ displayWidth: 300 });
+    fireEvent.mouseEnter(sized.box);
+    fireEvent.doubleClick(screen.getByTestId("image-resize-handle"));
+    expect(sized.onUpdateWidth).toHaveBeenCalledWith(null);
+    // The pill's double-click is its own, never the picture's full-size view.
+    expect(sized.onLightbox).not.toHaveBeenCalled();
+    cleanup();
+
+    const own = loaded();
+    fireEvent.mouseEnter(own.box);
+    fireEvent.doubleClick(screen.getByTestId("image-resize-handle"));
+    expect(own.onUpdateWidth).not.toHaveBeenCalled();
   });
 });
