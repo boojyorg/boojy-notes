@@ -3,6 +3,7 @@
 
 import { CARET_ANCHOR_CLASS } from "./domHelpers";
 import { parseWikilinkTarget, wikilinkKey } from "./wikilinkTarget";
+import { LINK_DEST } from "./linkDestination";
 import { TAG_RE } from "./tags";
 
 /** Step 1 of the renderer, for prose that has been read back to characters. */
@@ -20,13 +21,38 @@ const unescapeHtml = (html) =>
 const PROSE_OR_ELEMENT_RE =
   /<a\b[^>]*>[\s\S]*?<\/a>|<code>[\s\S]*?<\/code>|<span class="wikilink[^"]*"[^>]*>[\s\S]*?<\/span>|<[^>]*>|[^<]+/g;
 
+/** `[text](destination)`, the destination as `LINK_DEST` reads it. */
+const MD_LINK_RE = new RegExp(String.raw`\[([^\]]+)\]\((${LINK_DEST})\)`, "g");
+
+/** A bare URL in prose: `http(s)://` and everything up to whitespace or `<`. */
+const BARE_URL_RE = /https?:\/\/[^\s<]+/g;
+/** Punctuation that more often closes the sentence than belongs to the address. */
+const URL_TRAILING = ".,;:!?]'\"}>";
+
 /**
- * A bare URL in prose: `http(s)://` and everything up to whitespace or `<`,
- * not ending in punctuation that more often closes the sentence than belongs
- * to the address (so `<https://example.com>` links `https://example.com` and
- * shows the brackets as the text they are).
+ * The bare URL without the punctuation it ends in, GitHub's rule: a trailing
+ * `)` goes only while it has no `(` in the URL to close, so
+ * `(https://example.com)` links `https://example.com` and
+ * `https://en.wikipedia.org/wiki/Mercury_(planet)` keeps its own paren, and
+ * `<https://example.com>` links `https://example.com` and shows the brackets
+ * as the text they are.
  */
-const BARE_URL_RE = /https?:\/\/[^\s<]*[^\s<.,;:!?)\]'"}>]/g;
+function trimBareUrl(url) {
+  let end = url.length;
+  let open = 0;
+  let close = 0;
+  for (const ch of url) {
+    if (ch === "(") open++;
+    else if (ch === ")") close++;
+  }
+  while (end > 0) {
+    const ch = url[end - 1];
+    if (ch === ")" && close > open) close--;
+    else if (!URL_TRAILING.includes(ch)) break;
+    end--;
+  }
+  return url.slice(0, end);
+}
 
 /** A run of escaped prose with each bare URL made the editor's own autolink. */
 function autolinkProse(escaped) {
@@ -35,10 +61,12 @@ function autolinkProse(escaped) {
   let out = "";
   let last = 0;
   for (const m of text.matchAll(BARE_URL_RE)) {
-    const url = escapeHtml(m[0]);
+    const raw = trimBareUrl(m[0]);
+    if (!/^https?:\/\/./.test(raw)) continue;
+    const url = escapeHtml(raw);
     const attr = url.replace(/"/g, "&quot;");
     out += `${escapeHtml(text.slice(last, m.index))}<a href="${attr}" class="external-link bare-url" data-url="${attr}">${url}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
-    last = m.index + m[0].length;
+    last = m.index + raw.length;
   }
   return out + escapeHtml(text.slice(last));
 }
@@ -107,7 +135,7 @@ export function inlineMarkdownToHtml(md, noteTitles) {
 
   // 9. Markdown links [text](url) \u2014 escape the URL so a stray " can't break out
   // of the href/data-url attribute (attribute-injection guard; escAttr defined above).
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+  s = s.replace(MD_LINK_RE, (_, text, url) => {
     const safe = escAttr(url);
     return `<a href="${safe}" class="external-link" data-url="${safe}">${text}<span class="external-link-icon" contenteditable="false">\u2197</span></a>`;
   });
@@ -370,7 +398,7 @@ export function stripMarkdownFormatting(md) {
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2");
   s = s.replace(/\[\[([^\]]+)\]\]/g, "$1");
   // Remove markdown links: [text](url) → text
-  s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  s = s.replace(MD_LINK_RE, "$1");
   // Remove bold+italic (***text*** → text)
   s = s.replace(/\*\*\*(.+?)\*\*\*/g, "$1");
   // Remove bold (**text** → text)

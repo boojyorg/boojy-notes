@@ -185,16 +185,6 @@ none blocks the release. The shared question comes first because three candidate
 
 ## Known issues
 
-### Found since v0.9.0
-
-- [ ] **A link whose address holds parentheses is cut at the first `)`** (audit 2026-09-23,
-  probed through `inlineMarkdownToHtml`). `[Mercury](https://en.wikipedia.org/wiki/Mercury_(planet))`
-  gets the href `…Mercury_(planet` and a stray `)` drawn after the link; a bare URL does the same.
-  The bytes survive the round trip, so the file is fine, but the click opens the wrong page and
-  the note shows a `)` that is not part of the prose. CommonMark allows balanced parentheses in a
-  destination; the bare-URL rule in `inlineFormatting.test.js` ("does not match trailing paren")
-  should become "a closing paren is kept when it balances one in the URL".
-
 ### From the September 2026 review
 
 Still reproduce on master, in the review's order. None blocks Beta on its own.
@@ -283,7 +273,7 @@ tables (both under Data safety). Until those close, treat the promise as "the by
 understands are safe and the rest is preserved", not "switch freely".
 
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
-  of the URL and parentheses can truncate a destination. Reference-style links are unresolved;
+  of the URL. Reference-style links are unresolved;
   relative `.md` links use the external-link path rather than navigating within the vault.
   Assess correct parsing, source preservation and destination handling together. Heading
   targets are a separate future item below.

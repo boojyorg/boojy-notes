@@ -129,6 +129,12 @@ History is in git and `CHANGELOG.md`.
 - **A bare URL is linked in prose only, read as written**: the autolink pass takes the HTML a
   piece at a time and links only inside prose, decoded first, so `&gt;` ends the URL. The
   brackets of `<url>` are text; there is no angle-bracket autolink.
+- **An address keeps the parentheses it balances** (2026-09-23): `LINK_DEST`
+  (`utils/linkDestination.ts`) is the one reading of a `[text](…)` or `![alt](…)` destination,
+  for the renderer, the tag and word-count strippers and the image line alike, so
+  `…/Mercury_(planet)` is one address. A bare URL drops trailing punctuation by GitHub's rule
+  (`trimBareUrl`): a `)` goes only while no `(` in the URL is left for it to close.
+  `inlineFormatting.test.js`, `tags.test.ts`, `markdown.test.js`.
 - The pending hover in `useLinkHoverTooltip` is an object holding the timer, never data hung
   off a timer handle.
 
