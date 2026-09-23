@@ -770,7 +770,11 @@ const EditorArea = memo(
                   }
                 }}
                 data-editor
-                style={{ outline: "none" }}
+                // While a whole block is selected the caret stays where it was
+                // (a printable key deselects and types there) but is not drawn:
+                // a blinking caret beside a selected picture read as the key
+                // having done nothing (2026-09-23).
+                style={{ outline: "none", caretColor: selectedBlockId ? "transparent" : undefined }}
               >
                 {(() => {
                   const listPositions = listLayout(note.content.blocks);

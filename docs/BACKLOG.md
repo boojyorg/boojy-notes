@@ -225,12 +225,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Shift-click never ranges after a plain click**; the anchor is set only by Cmd-click
   (review §4.6). Not re-verified.
 - [ ] **Rename, Duplicate and Delete on an empty draft misbehave** (review §4.5). Not re-verified.
-- [ ] **Enter and Backspace placement** (review §1.11): Enter at the start of a heading leaves an
-  empty heading above and demotes the text; a Backspace-merge caret lands mid-word when the
-  block above ends in bold or a link; Enter at the end of a soft-broken first line gives the
-  new block a leading newline. (ArrowDown from an empty row above a divider skipping it was
-  fixed on 2026-09-19: a collapsed caret in an empty text node has no rect, and the arrows'
-  first/last-line questions were asked of it — `caretRect`.)
 - [ ] **Shift+Arrow at a block edge collapses the selection**, and ArrowUp from the first block
   is a dead key, so the title is unreachable by keyboard (review §1.13).
 - [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
