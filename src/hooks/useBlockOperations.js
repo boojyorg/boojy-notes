@@ -3,6 +3,7 @@ import { genBlockId } from "../utils/storage";
 import { getCaretOffset } from "../utils/domHelpers";
 import { withCell } from "../utils/tableShape";
 import { reorderFloor } from "../utils/blockOrder";
+import { insertedImageWidth } from "../utils/imageSize";
 import { getAPI } from "../services/apiProvider";
 
 export function useBlockOperations({
@@ -134,8 +135,16 @@ export function useBlockOperations({
     });
   };
 
-  const insertImageBlock = (noteId, afterIndex, src, alt = "", width = 0) => {
-    const imgBlock = { id: genBlockId(), type: "image", src, alt, width, text: "" };
+  const insertImageBlock = (noteId, afterIndex, src, alt = "", widthFields = {}) => {
+    const imgBlock = {
+      id: genBlockId(),
+      type: "image",
+      src,
+      alt,
+      width: 0,
+      ...widthFields,
+      text: "",
+    };
     const paraBlock = { id: genBlockId(), type: "p", text: "" };
     commitNoteData((prev) => {
       const next = { ...prev };
@@ -206,7 +215,13 @@ export function useBlockOperations({
           fileName: finalFileName,
           dataBase64,
         });
-        insertImageBlock(noteId, afterIndex, filename, finalFileName.replace(/\.[^.]+$/, ""));
+        insertImageBlock(
+          noteId,
+          afterIndex,
+          filename,
+          finalFileName.replace(/\.[^.]+$/, ""),
+          insertedImageWidth(dataBase64),
+        );
       } else {
         const result = await api.saveAttachment({ fileName: srcName, dataBase64 });
         insertFileBlock(noteId, afterIndex, result.filename, result.filename, result.size);

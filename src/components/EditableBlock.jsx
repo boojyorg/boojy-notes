@@ -5,6 +5,7 @@ import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
 import { baselineFromTop } from "../utils/typeBaseline";
+import { imageDisplayWidth, imageWidthFields } from "../utils/imageSize";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -260,7 +261,7 @@ const EditableBlock = memo(
           <ImageBlock
             src={block.src}
             alt={block.alt}
-            width={block.width || 100}
+            displayWidth={imageDisplayWidth(block)}
             isSelected={isBlockSelected}
             accentColor={accentColor}
             onSelect={() => onBlockSelect(block.id)}
@@ -268,11 +269,7 @@ const EditableBlock = memo(
             onDelete={() => onDeleteBlock(noteId, blockIndex)}
             onReplace={() => onImageReplace(noteId, blockIndex)}
             onCopyImage={() => onImageCopyImage(block.src)}
-            onUpdateWidth={(w) =>
-              // widthPx is the source file's exact pixel width — stale after a
-              // manual resize, so clear it (serialiser falls back to width%)
-              onUpdateBlockProperty(noteId, blockIndex, { width: w, widthPx: undefined })
-            }
+            onUpdateWidth={(px) => onUpdateBlockProperty(noteId, blockIndex, imageWidthFields(px))}
           />
         </div>
       );

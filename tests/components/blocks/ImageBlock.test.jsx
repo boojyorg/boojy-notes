@@ -15,7 +15,7 @@ import ImageBlock from "../../../src/components/blocks/ImageBlock";
 
 const props = {
   alt: "",
-  width: 100,
+  displayWidth: null,
   isSelected: false,
   accentColor: "#8FC1C6",
   onSelect: () => {},
@@ -44,5 +44,27 @@ describe("ImageBlock", () => {
     // Before: `errored` outlived the source it was about, so the box stayed.
     expect(queryByText(/Image not found/)).toBeNull();
     expect(container.querySelector("img")?.getAttribute("src")).toMatch(/new\.png$/);
+  });
+
+  it("is drawn at the file's pixel width, capped by the column", () => {
+    const { container } = render(<ImageBlock {...props} src="shot.png" displayWidth={524} />);
+    fireEvent.load(container.querySelector("img"));
+    const img = container.querySelector("img");
+    expect(img.style.width).toBe("524px");
+    expect(img.style.maxWidth).toBe("100%");
+    expect(img.parentElement.style.width).toBe("fit-content");
+  });
+
+  it("with no width, is drawn at the picture's own size once it has loaded, never stretched", () => {
+    const { container } = render(<ImageBlock {...props} src="icon.png" />);
+    const img = container.querySelector("img");
+    const box = img.parentElement;
+    // Loading: the placeholder holds the column.
+    expect(box.style.width).toBe("100%");
+    fireEvent.load(img);
+    // Before: every image without a width was drawn 100% of the column.
+    expect(box.style.width).toBe("fit-content");
+    expect(img.style.width).toBe("auto");
+    expect(img.style.maxWidth).toBe("100%");
   });
 });

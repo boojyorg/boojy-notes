@@ -35,6 +35,7 @@ import {
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
+import { insertedImageWidth } from "../utils/imageSize";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
@@ -394,7 +395,14 @@ const EditorArea = memo(
           fileName: picked.fileName,
           dataBase64: picked.dataBase64,
         });
-        updateBlockProperty(noteId, blockIndex, { src: filename, width: 100 });
+        // The new picture's own size (its on-screen width for a Retina PNG),
+        // never the old one's.
+        updateBlockProperty(noteId, blockIndex, {
+          src: filename,
+          width: 0,
+          widthPx: undefined,
+          ...insertedImageWidth(picked.dataBase64),
+        });
       },
       [updateBlockProperty],
     );

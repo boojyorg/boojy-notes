@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
 import { hasOwnField } from "../../utils/domHelpers";
+import { insertedImageWidth } from "../../utils/imageSize";
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
@@ -69,6 +70,7 @@ export function useSlashCommands({
       src: filename,
       alt: picked.fileName.replace(/\.[^.]+$/, ""),
       width: 0,
+      ...insertedImageWidth(picked.dataBase64),
       text: "",
     });
 

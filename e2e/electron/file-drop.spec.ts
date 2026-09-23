@@ -13,41 +13,13 @@
  * reproduces), and a paste of several kept only the first image.
  */
 import { expect, test } from "@playwright/test";
-import { launchApp, sleep, waitForFile } from "./harness";
+import { dropFiles, launchApp, sleep, waitForFile } from "./harness";
 
 const PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+const png = (name: string) => ({ name, bytes: Buffer.from(PNG_B64, "base64") });
 
 type Page = import("@playwright/test").Page;
-
-/** Drag files named `names` over (x, y) and release them there. */
-const dropFiles = (page: Page, names: string[], x: number, y: number) =>
-  page.evaluate(
-    ({ b64, names, x, y }) => {
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      const data = new DataTransfer();
-      for (const name of names) data.items.add(new File([bytes], name, { type: "image/png" }));
-      const target = document.elementFromPoint(x, y);
-      if (!target) throw new Error(`nothing at ${x},${y}`);
-      const fire = (type: string) =>
-        target.dispatchEvent(
-          new DragEvent(type, {
-            dataTransfer: data,
-            bubbles: true,
-            cancelable: true,
-            clientX: x,
-            clientY: y,
-          }),
-        );
-      fire("dragenter");
-      const accepted = !fire("dragover");
-      const marker = document.querySelector(".block-drop-marker");
-      const markerTop = marker ? marker.getBoundingClientRect().top : null;
-      fire("drop");
-      return { accepted, markerTop, markerGone: !document.querySelector(".block-drop-marker") };
-    },
-    { b64: PNG_B64, names, x, y },
-  );
 
 const lines = (t: string) => t.split("\n").filter((l) => l.trim() !== "");
 const paragraph = (page: Page, text: string) =>
@@ -62,7 +34,7 @@ test("an image dropped on the empty space under a short note is added at its end
     if (!two) throw new Error("no paragraph");
 
     // Far below the last block, in the pane but nowhere near the text.
-    const drop = await dropFiles(h.page, ["Below.png"], two.x + 40, height - 40);
+    const drop = await dropFiles(h.page, [png("Below.png")], two.x + 40, height - 40);
 
     // Before: the pane refused the drag and the release wrote nothing.
     expect(drop.accepted).toBe(true);
@@ -86,7 +58,7 @@ test("an image dropped over the top half of a paragraph lands above it", async (
     const two = await paragraph(h.page, "Two").boundingBox();
     if (!one || !two) throw new Error("no paragraph");
 
-    const drop = await dropFiles(h.page, ["Between.png"], two.x + 20, two.y + 2);
+    const drop = await dropFiles(h.page, [png("Between.png")], two.x + 20, two.y + 2);
 
     // The marker is drawn in the gap between the two, not through either.
     expect(drop.markerTop).toBeGreaterThan(one.y + one.height - 4);
@@ -108,7 +80,12 @@ test("several images dropped at once land in the order they were given", async (
     const one = await paragraph(h.page, "One").boundingBox();
     if (!one) throw new Error("no paragraph");
 
-    await dropFiles(h.page, ["a.png", "b.png", "c.png"], one.x + 20, one.y + one.height - 2);
+    await dropFiles(
+      h.page,
+      ["a.png", "b.png", "c.png"].map(png),
+      one.x + 20,
+      one.y + one.height - 2,
+    );
 
     await waitForFile(h.vault.file("Pics.md"), (t) => t.includes("![[c.png]]"), {
       label: "the last image to be written",
