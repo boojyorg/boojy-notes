@@ -13,3 +13,18 @@ export function resolveAttachmentUrl(filename) {
     return `boojy-att://vault/${filename.split("/").map(encodeURIComponent).join("/")}`;
   return filename;
 }
+
+/**
+ * The name a picture is shown under (the full-size view's title): the last
+ * segment of its path or address, decoded, so `attachments/Captura%20de….png`
+ * reads as the file Finder shows. Inline data has no name.
+ */
+export function attachmentName(src) {
+  if (!src || src.startsWith("data:")) return "";
+  const last = src.split(/[?#]/)[0].split("/").filter(Boolean).pop() ?? "";
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
+}

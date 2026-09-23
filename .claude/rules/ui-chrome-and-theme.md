@@ -51,8 +51,9 @@ on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
 - **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
   hover *and* select to `BG.hover`, so hover previews selection.
 - **Accent is never a desktop surface**: identity, focus rings, 2–3px markers, wikilinks and the
-  caret. Selected rows are neutral. The one tint is the selected divider's band (accent at 10%
-  Light / 18% Dark). Mobile note rows keep an accent pill.
+  caret. Selected rows are neutral. The one tint is the whole-block selection's band (accent at
+  10% Light / 18% Dark), laid over a selected image a step stronger (20% / 26%). Mobile note
+  rows keep an accent pill.
 
 Known leaks, not yet fixed: about 26 leaf tokens use plain black alphas (Dark's `overlay()` is a
 white alpha); callout and syntax colours are hand-picked per theme (Dark callout grounds are

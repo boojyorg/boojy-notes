@@ -35,7 +35,6 @@ import {
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
-import { insertedImageWidth } from "../utils/imageSize";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
 import { ramp } from "../utils/fluidLength";
@@ -385,28 +384,6 @@ const EditorArea = memo(
       [setLightbox],
     );
 
-    const handleImageReplace = useCallback(
-      async (noteId, blockIndex) => {
-        const api = getAPI();
-        if (!api) return;
-        const picked = await api.pickImageFile();
-        if (!picked) return;
-        const filename = await api.saveImage({
-          fileName: picked.fileName,
-          dataBase64: picked.dataBase64,
-        });
-        // The new picture's own size (its on-screen width for a Retina PNG),
-        // never the old one's.
-        updateBlockProperty(noteId, blockIndex, {
-          src: filename,
-          width: 0,
-          widthPx: undefined,
-          ...insertedImageWidth(picked.dataBase64),
-        });
-      },
-      [updateBlockProperty],
-    );
-
     const handleImageCopyImage = useCallback((src) => {
       const api = getAPI();
       if (api?.copyImageToClipboard) {
@@ -428,20 +405,23 @@ const EditorArea = memo(
       if (absPath && api.showItemInFolder) api.showItemInFolder(absPath);
     }, []);
 
-    // Click outside the selected block to deselect
-    const handleEditorClick = useCallback(
-      (e) => {
-        // A click on a selectable block's own root (its onClick has just set
-        // the selection) or on the image's context menu keeps it.
-        if (
-          !e.target.closest('[data-block-type="image"], [data-block-type="spacer"]') &&
-          !e.target.closest(".image-context-menu")
-        ) {
-          if (selectedBlockId) setSelectedBlockId(null);
-        }
-      },
-      [selectedBlockId, setSelectedBlockId],
-    );
+    // A press anywhere but a selectable block's own surface deselects: beside
+    // a picture in its row, the margins, the sidebar and the chrome alike
+    // (2026-09-23). Before, only a click in the text column did, and the
+    // picture's whole row counted as the picture, so a picture stayed selected
+    // (its controls up) with the pointer well to its right. A surface is the
+    // thing drawn (`data-selection-surface`: the picture's frame, the divider's
+    // row) plus the image menu, which is portalled out of it. Capture phase, so
+    // it runs before the press that selects another block.
+    useEffect(() => {
+      if (!selectedBlockId) return;
+      const onPress = (e) => {
+        if (e.target.closest?.("[data-selection-surface], .image-context-menu")) return;
+        setSelectedBlockId(null);
+      };
+      document.addEventListener("mousedown", onPress, true);
+      return () => document.removeEventListener("mousedown", onPress, true);
+    }, [selectedBlockId, setSelectedBlockId]);
 
     // Right-click context menu for links
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
@@ -755,7 +735,6 @@ const EditorArea = memo(
                 onMouseUp={handleEditorMouseUp}
                 onFocus={handleEditorFocus}
                 onClick={(e) => {
-                  handleEditorClick(e);
                   const sel = window.getSelection();
                   // Don't open links if user was selecting text
                   if (sel && !sel.isCollapsed) return;
@@ -824,7 +803,6 @@ const EditorArea = memo(
                           isBlockSelected={selectedBlockId === block.id}
                           onBlockSelect={handleBlockSelect}
                           onImageLightbox={handleImageLightbox}
-                          onImageReplace={handleImageReplace}
                           onImageCopyImage={handleImageCopyImage}
                           onUpdateBlockProperty={updateBlockProperty}
                           onFileOpen={handleFileOpen}

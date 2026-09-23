@@ -330,7 +330,9 @@ app's, made through state.**
   bar: the browser's own undo). The title field and a code textarea are inside the editor.
 - **Enter activates the focused button, natively.** `ConfirmDialog` takes only Escape; the
   Trash prompt opens on its action, a permanent web deletion on Cancel.
-- **A closing surface hands focus back only while it still holds it** (`useFocusTrap` cleanup).
+- **A closing surface hands focus back only while it still holds it, and never scrolls to it**
+  (`useFocusTrap` cleanup, `preventScroll`: focusing the editor, a contentEditable spanning the
+  note, scrolled it to its caret, so closing the image menu jumped the note; 2026-09-23).
   This is what lets Rename from a menu work: the field mounts and autofocuses in the same
   commit, and the trap must not put focus back on the row. A trap's first-item focus skips
   when focus is already inside.
@@ -550,6 +552,32 @@ import writes a closer. `tilde-fences.spec.ts`.
   width. An image already in a note is never rewritten by being shown. A resize writes the
   picture's pixel width, its travel divided by the UI scale. `image-size.spec.ts`,
   `imageSize.test.ts`.
+- **Nothing at rest but the picture; the pointer on it shows a bar and a pill, never an outline**
+  (`ImageBlock.tsx`, 2026-09-23, from a prototype Tyr judged against Obsidian's and Notion's).
+  The bar sits at the top right: full size and ···, in the menus' ground with `floatShadow`. The
+  pill is the one resize control: white with a dark edge in both themes (`imageHandle`, since it
+  sits on the picture, not the sheet), straddling the right edge so it never meets the bar,
+  `PILL_LENGTH` (48) long or as long as the picture allows, and it looks the same at rest,
+  under the pointer and in a drag (the resize cursor and the picture's own change are the feedback).
+  **A drag holds it at the height it was pressed at**, clamped inside the picture by CSS, and it
+  stays there until the pointer leaves: the picture's top holds still while its height follows
+  the width, so a pill kept centred slid away from the pointer. No width label while dragging,
+  by decision (2026-09-23): the picture's own change is the feedback.
+  **The controls follow the pointer, never the selection**: a selected picture shows its wash
+  and nothing else, so they are never up with the pointer elsewhere. **A drag snaps to the picture's own
+  size and writes no width there** (`imageNoWidthFields`); a
+  double-click on the pill does the same. **A click selects and a double-click opens the full
+  size**: until 2026-09-23 every click opened it, so a picture could not be selected to delete.
+  Right-click and ··· open one menu, **which does not select the picture**: it wears the wash
+  only while its menu is open, and is left as it was once an item acts (Notion's). The menu
+  stops its presses as it stops its keys, since a press in it is not one in the editor
+  (`ImageMenu.tsx`, the table menu's grammar): View full
+  size, Copy image, Show in Finder (desktop), Original size (only when sized), Delete. **No
+  Replace image**, by decision (2026-09-23): rarely wanted, and delete then drop does it. The
+  full-size view is a dark room in both themes with the file's name and a close
+  button (`ImageLightbox.tsx`). **Deliberately absent: alignment, crop and caption** — Markdown
+  holds none of them, and Obsidian would draw the note differently. `image-controls.spec.ts`,
+  `ImageBlock.test.jsx`.
 
 ### Tables are ragged on disk and stay ragged
 
@@ -567,7 +595,15 @@ import writes a closer. `tilde-fences.spec.ts`.
   band appears (`utils/selectionBand.ts`, accent at 10% / 18%); Backspace or Delete removes it
   (`deleteWholeBlock`); Enter opens a paragraph under it (a table too, the one keyboard route to
   a paragraph under a table that ends the note); Escape deselects; a printable character
-  deselects and types. No hover state. A click selects a divider or image; a click on a table
+  deselects and types. No hover state (an image's bar and pill are controls, not a hover
+  state). A selected image wears the tint *over* the picture, a step stronger
+  (`imageWashFill`, 20% / 26%). **A press selects a divider or image, before the release**
+  (2026-09-23; it waited for the click), the same event that deselects. **A press anywhere off
+  the thing drawn deselects** (`EditorArea`, a capture-phase document listener while a block is
+  selected): beside a picture in its row, the margins, the sidebar and the chrome alike, since
+  2026-09-23; before, only a click in the text column did and a picture's whole row counted as
+  the picture. What keeps it is `data-selection-surface` (the picture's frame, the divider's
+  row) and the image menu. A click on a table
   focuses the cell and **Escape from a cell selects the table** (`selectWhole`).
 - **Backspace from the block below and forward Delete from the block above select it first**
   (`reachAcross`); the second press removes it. Code, callout and file blocks are still stepped

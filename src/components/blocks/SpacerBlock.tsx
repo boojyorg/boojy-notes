@@ -53,10 +53,14 @@ export default function SpacerBlock({
       ref={rootRef}
       data-block-id={blockId}
       data-block-type="spacer"
+      data-selection-surface
       data-selected={isSelected ? "true" : undefined}
       contentEditable="false"
       suppressContentEditableWarning
-      onClick={onSelect}
+      // On the press, as a picture is and as the press elsewhere deselects.
+      onMouseDown={(e) => {
+        if (e.button === 0) onSelect();
+      }}
       style={{
         // The band reaches past the column; the negative margin keeps the rule
         // exactly where it sits at rest.

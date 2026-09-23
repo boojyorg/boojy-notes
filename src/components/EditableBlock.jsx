@@ -5,7 +5,8 @@ import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
 import { baselineFromTop } from "../utils/typeBaseline";
-import { imageDisplayWidth, imageWidthFields } from "../utils/imageSize";
+import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../utils/imageSize";
+import { isElectron } from "../utils/platform";
 import CodeBlock from "./CodeBlock";
 import FrontmatterBlock from "./FrontmatterBlock";
 import CalloutBlock from "./CalloutBlock";
@@ -168,7 +169,6 @@ const EditableBlock = memo(
     isBlockSelected,
     onBlockSelect,
     onImageLightbox,
-    onImageReplace,
     onImageCopyImage,
     onUpdateBlockProperty,
     onFileOpen,
@@ -267,9 +267,19 @@ const EditableBlock = memo(
             onSelect={() => onBlockSelect(block.id)}
             onLightbox={() => onImageLightbox(block.src, block.alt)}
             onDelete={() => onDeleteBlock(noteId, blockIndex)}
-            onReplace={() => onImageReplace(noteId, blockIndex)}
             onCopyImage={() => onImageCopyImage(block.src)}
-            onUpdateWidth={(px) => onUpdateBlockProperty(noteId, blockIndex, imageWidthFields(px))}
+            onShowInFolder={
+              isElectron && !/^(https?:|data:)/i.test(block.src || "")
+                ? () => onFileShowInFolder(block.src)
+                : undefined
+            }
+            onUpdateWidth={(px) =>
+              onUpdateBlockProperty(
+                noteId,
+                blockIndex,
+                px == null ? imageNoWidthFields() : imageWidthFields(px),
+              )
+            }
           />
         </div>
       );

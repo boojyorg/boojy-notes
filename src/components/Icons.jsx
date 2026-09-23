@@ -50,6 +50,7 @@ import {
   Italic as LuItalic,
   Link as LuLink,
   List as LuList,
+  Maximize2 as LuMaximize2,
   ListOrdered as LuListOrdered,
   Minus as LuMinus,
   Monitor as LuMonitor,
@@ -60,6 +61,7 @@ import {
   Pencil as LuPencil,
   Plus as LuPlus,
   Redo2 as LuRedo2,
+  RotateCcw as LuRotateCcw,
   Search as LuSearch,
   Settings as LuSettings,
   SquareCheck as LuSquareCheck,
@@ -165,6 +167,15 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+/** An image's full-size view: the hover bar's glyph (content stroke) and the
+ *  menu's (`nav`, like every context-menu glyph). */
+export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (
+  <LuMaximize2 {...(nav ? navBase : base)} size={size} />
+);
+/** Original size: the width set by hand taken back off the picture. */
+export const ResetSizeIcon = ({ size = ICON_INLINE }) => (
+  <LuRotateCcw {...base} {...navBase} size={size} />
+);
 /** The link picker's address row. */
 export const LinkIcon = ({ size = ICON_INLINE }) => <LuLink {...base} {...navBase} size={size} />;
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */

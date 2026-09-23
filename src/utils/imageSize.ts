@@ -31,6 +31,11 @@ export function imageDisplayWidth(block: ImageWidthFields): number | null {
   return null;
 }
 
+/** The block fields for no width at all: the picture drawn at its own size, `|px` gone from the file. */
+export function imageNoWidthFields(): ImageWidthFields {
+  return { width: 100, widthPx: undefined };
+}
+
 /** The block fields for a width of `px` CSS pixels, as the parser would read `|px` back. */
 export function imageWidthFields(px: number): Required<ImageWidthFields> {
   const widthPx = Math.max(1, Math.round(px));

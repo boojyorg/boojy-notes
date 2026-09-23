@@ -59,7 +59,6 @@ function baseProps(block, overrides = {}) {
     isBlockSelected: false,
     onBlockSelect: noop,
     onImageLightbox: noop,
-    onImageReplace: noop,
     onImageCopyImage: noop,
     onUpdateBlockProperty: noop,
     onFileOpen: noop,
@@ -257,12 +256,13 @@ describe("EditableBlock", () => {
     expect(registerRef).toHaveBeenCalledWith(block.id, root);
   });
 
-  it("a click on a divider selects it; selected, a tinted band appears and the rule lifts to the accent", () => {
+  it("a press on a divider selects it; selected, a tinted band appears and the rule lifts to the accent", () => {
     const block = spacer();
     const onBlockSelect = vi.fn();
     const { container, rerender } = renderBlock(block, { onBlockSelect });
     const root = () => container.querySelector('[data-block-type="spacer"]');
-    fireEvent.click(container.querySelector("hr"));
+    fireEvent.mouseDown(container.querySelector("hr"));
+    // On the press, before any release (2026-09-23).
     expect(onBlockSelect).toHaveBeenCalledWith(block.id);
     expect(root().style.background).toBe("transparent");
     expect(container.querySelector("hr").style.borderTop).toBe("1px solid rgb(85, 85, 85)");
