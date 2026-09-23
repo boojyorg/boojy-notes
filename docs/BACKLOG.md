@@ -111,6 +111,17 @@ none blocks the release. The shared question comes first because three candidate
   moves and through external renames, and whether losing it on an external rename is
   tolerable. Two fixed requirements: losing it must never damage a note, and existing
   `.boojy-meta.json` files stay untouched and unread. Decide once.
+- **Spell check in Settings: on/off and British or US English.** Wanted (Tyr, 2026-09-23). The
+  main process already reads `spellCheckEnabled` and `spellCheckLanguages` from `settings.json`
+  at window creation, but nothing writes them, so today it is always on. Two platform facts,
+  probed in Electron 42 the same day: **on macOS the language cannot be chosen by the app**
+  (`setSpellCheckerLanguages(["en-GB"])` is ignored and the checker stays on the system's
+  language, `es` on Tyr's Mac; it follows System Settings → Keyboard → Text Input), and the
+  current "off" path (an empty language list) is therefore also a no-op there;
+  `session.setSpellCheckerEnabled(false)` is the switch that works everywhere, live, without a
+  restart. So: the switch on every platform; the UK/US choice on Windows only, with macOS
+  saying where its language comes from rather than showing a control that does nothing. Also
+  still open from the Windows smoke test: dictionaries download from Google's CDN.
 - **Table row and column handles on hover.** The strips left of the rows and above the
   columns are invisible (click selects, hold to drag); Obsidian and Notion show a small handle
   when a row or column is hovered. Judged after the 2026-09-10 table pass (whole-table
@@ -151,9 +162,6 @@ none blocks the release. The shared question comes first because three candidate
   with an obvious way back. It is the one UI the preservation promise has, the tool for
   checking what an import did, and useful for unfamiliar syntax. A first version may commit
   source edits as one history entry on the way back.
-- **Nested-bullet visual hierarchy.** Consider distinguishing bullet markers by nesting depth
-  without changing the authored Markdown. Whether it helps, and which appearance to use, need
-  live judgement; retaining today's markers is an option.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
 - **Notion import.** The first migration priority; whether it ships in Beta is undecided.
@@ -176,6 +184,36 @@ none blocks the release. The shared question comes first because three candidate
   undecided for every entry point. Not accepted: deriving the title from the first line.
 
 ## Known issues
+
+### Found since v0.9.0
+
+- [ ] **Pasting several files keeps one image and drops the rest** (audit 2026-09-23, traced in
+  code, not yet reproduced live). When any pasted file is an image, `usePasteHandler.js` inserts
+  that one image and returns; the other files vanish with no toast. Drop loops over every file
+  (`useDragDropHandlers.js`), so the two routes to the same operation disagree. Both also race:
+  each file saves asynchronously and splices at a fixed index, so several files can land out of
+  order (paste passes the same index for every file; drop's `afterIndex + i` ignores the
+  paragraph each insertion adds). One insertion loop for both routes, awaiting each file in turn.
+- [ ] **A link whose address holds parentheses is cut at the first `)`** (audit 2026-09-23,
+  probed through `inlineMarkdownToHtml`). `[Mercury](https://en.wikipedia.org/wiki/Mercury_(planet))`
+  gets the href `…Mercury_(planet` and a stray `)` drawn after the link; a bare URL does the same.
+  The bytes survive the round trip, so the file is fine, but the click opens the wrong page and
+  the note shows a `)` that is not part of the prose. CommonMark allows balanced parentheses in a
+  destination; the bare-URL rule in `inlineFormatting.test.js` ("does not match trailing paren")
+  should become "a closing paren is kept when it balances one in the URL".
+- [ ] **An image whose filename holds a space shows "Image not found"** (reported 2026-09-23;
+  root cause proven the same day in Electron 42 with a throwaway probe). The desktop loads an
+  attachment as `boojy-att://<filename>` with the name unencoded (`utils/attachmentUrl.js`), so
+  the name is parsed as the URL's *host*: Chromium rejects a space, `[` or `]` there and the
+  request never reaches the protocol handler (`main.js`), and a `%` reaches it and throws in
+  `decodeURIComponent`. Hence "sometimes": a pasted image is named `paste-<timestamp>.png` and
+  loads; a picked or dropped `Screenshot 2026-09-23 at 10.12.33.png` never does. The file is
+  saved correctly and the Markdown is right; only the display fails, so an Obsidian note with
+  such an image fails the same way. Fix (probed, every case loads): build the URL as
+  `boojy-att://vault/` + `encodeURIComponent(name)` and read the name back from `new
+  URL(request.url).pathname` in the handler. Two neighbours to fix with it: `ImageBlock`'s
+  `errored` never resets when `src` changes, so a broken image stays broken after Replace; and
+  image insertion has no Electron spec, which is why this shipped.
 
 ### From the September 2026 review
 
