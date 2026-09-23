@@ -14,15 +14,15 @@ export default defineConfig({
       // quarter of the source (BoojyNotes.jsx, EditorArea.jsx, electron/main.js
       // among it) and made the percentages read 12-15 points too high.
       include: ["src/**", "electron/**"],
-      // Floors sit just below the honest actuals, measured 2026-09-07 after the
-      // dead-code sweep: lines 52.8, statements 51.8, branches 50.7, functions
-      // 46.2. A regression guard to ratchet UP as code gets covered, never a
-      // target, and never lifted by excluding a source directory.
+      // Floors sit just below the honest actuals, measured 2026-09-23 on master
+      // d1801e2: lines 67.8, statements 66.5, branches 65.0, functions 62.8. A
+      // regression guard to ratchet UP as code gets covered, never a target,
+      // and never lifted by excluding a source directory.
       thresholds: {
-        lines: 51,
-        branches: 49,
-        functions: 45,
-        statements: 50,
+        lines: 66,
+        branches: 63,
+        functions: 61,
+        statements: 65,
       },
     },
   },
