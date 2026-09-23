@@ -27,7 +27,7 @@ export function usePasteHandler({
   focusBlockId,
   focusCursorPos,
   syncGeneration,
-  saveAndInsertImage,
+  saveAndInsertFiles,
   reReadBlockFromDom,
   getBlock,
   scopeOf,
@@ -62,16 +62,8 @@ export function usePasteHandler({
     const files = e.clipboardData?.files;
     if (files?.length > 0) {
       const afterIndex = scope?.start ? scope.start.blockIndex : blocks.length - 1;
-      const allFiles = Array.from(files);
-      const imageFile = allFiles.find((f) => f.type.startsWith("image/"));
       e.preventDefault();
-      if (imageFile) {
-        saveAndInsertImage(currentNote, afterIndex, imageFile);
-        return;
-      }
-      for (const file of allFiles) {
-        saveAndInsertImage(currentNote, afterIndex, file);
-      }
+      saveAndInsertFiles(currentNote, afterIndex, Array.from(files));
       return;
     }
 

@@ -99,8 +99,9 @@ function realBasename(filePath) {
  * The absolute path `candidate` names if it lies in the vault (the root
  * itself included), else null. Every IPC handler that takes a path from the
  * renderer goes through this: a note's file block can name any path, and the
- * handlers hand paths to `shell`, the clipboard and `stat`. Lexical, like the
- * `boojy-att` protocol's check; a symlink inside the vault is the user's own.
+ * handlers hand paths to `shell`, the clipboard and `stat`, and the `boojy-att`
+ * protocol (`main.js`) serves attachments through it. Lexical; a symlink
+ * inside the vault is the user's own.
  */
 function insideVault(notesDir, candidate) {
   if (typeof candidate !== "string" || candidate === "") return null;

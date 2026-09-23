@@ -267,8 +267,9 @@ export function blocksToMarkdown(blocks) {
         break;
       case "image": {
         const src = block.src || "";
-        // widthPx is the file's own pixel value, kept when the % quantisation
-        // can't reproduce it (e.g. |300 → 43% → 301). In-app resizes clear it.
+        // widthPx is the pixel width: the file's own value, kept when the %
+        // quantisation can't reproduce it (e.g. |300 → 43% → 301), or the one
+        // an in-app resize or insertion set (utils/imageSize.ts).
         const px =
           block.widthPx ?? (block.width && block.width < 100 ? Math.round(block.width * 7) : null);
         if (block.format === "md") {

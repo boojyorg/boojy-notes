@@ -111,7 +111,7 @@ function setup(blocks, noteId = "note-1") {
   });
   const insertBlockAfter = vi.fn();
   const deleteBlock = vi.fn();
-  const saveAndInsertImage = vi.fn();
+  const saveAndInsertFiles = vi.fn();
   const reReadBlockFromDom = vi.fn();
   const toggleInlineCode = vi.fn();
   const applyFormat = vi.fn();
@@ -160,7 +160,7 @@ function setup(blocks, noteId = "note-1") {
     updateBlockText,
     insertBlockAfter,
     deleteBlock,
-    saveAndInsertImage,
+    saveAndInsertFiles,
     reReadBlockFromDom,
     toggleInlineCode,
     applyFormat,
@@ -216,7 +216,7 @@ function setup(blocks, noteId = "note-1") {
     applyFormat,
     toggleInlineCode,
     onOpenLinkEditor,
-    saveAndInsertImage,
+    saveAndInsertFiles,
     placeCursorInBlock,
     setBlockDomText,
   };
@@ -603,7 +603,7 @@ describe("useEditorHandlers", () => {
       expect(s.focusCursorPos.current).toBe(0);
     });
 
-    it("handles image file paste by calling saveAndInsertImage", () => {
+    it("hands a pasted image file to saveAndInsertFiles", () => {
       const blocks = [paragraph("hello")];
       const s = setup(blocks);
 
@@ -622,7 +622,27 @@ describe("useEditorHandlers", () => {
       });
 
       expect(e.preventDefault).toHaveBeenCalled();
-      expect(s.saveAndInsertImage).toHaveBeenCalledWith(s.noteId, 0, imageFile);
+      expect(s.saveAndInsertFiles).toHaveBeenCalledWith(s.noteId, 0, [imageFile]);
+    });
+
+    it("hands every pasted file on, not only the first image", () => {
+      const s = setup([paragraph("hello")]);
+      s.placeCursorInBlock(0, 0);
+      const files = [
+        new File(["a"], "a.png", { type: "image/png" }),
+        new File(["b"], "notes.pdf", { type: "application/pdf" }),
+        new File(["c"], "c.png", { type: "image/png" }),
+      ];
+      const e = new Event("paste", { bubbles: true, cancelable: true });
+      e.clipboardData = { getData: () => "", files };
+      e.preventDefault = vi.fn();
+
+      act(() => {
+        s.result.current.handleEditorPaste(e);
+      });
+
+      // Before: the first image was inserted and the other two were dropped.
+      expect(s.saveAndInsertFiles).toHaveBeenCalledWith(s.noteId, 0, files);
     });
   });
 

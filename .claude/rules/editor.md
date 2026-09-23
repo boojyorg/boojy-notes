@@ -531,6 +531,20 @@ import writes a closer. `tilde-fences.spec.ts`.
   leaves the DOM but not the React tree, so Enter reached the editor's `onKeyDown` first and
   opened a block instead of choosing. `code-language.spec.ts`, `CodeLangMenu.test.tsx`.
 
+### An image is drawn at its own size, and a width is pixels
+
+- **A width in the file is the picture's width in CSS pixels, as Obsidian reads `|350`**, capped
+  at the column; **with none, the picture is drawn at its own size**, capped and never enlarged
+  (`imageDisplayWidth`, `utils/imageSize.ts`). Until 2026-09-23 every image without a width
+  filled the column, stretching a small one. The block's legacy `width` per cent is read as
+  `× 7` px only when `widthPx` is absent.
+- **An image added in the app gets its on-screen width written into the file** when it is a
+  Retina PNG (`pHYs` at 2× or more, read from the head of the bytes: a 144 dpi, 1048px screenshot
+  is `|524`), so it is the size it was captured at and every reader agrees. A 1× picture gets no
+  width. An image already in a note is never rewritten by being shown. A resize writes the
+  picture's pixel width, its travel divided by the UI scale. `image-size.spec.ts`,
+  `imageSize.test.ts`.
+
 ### Tables are ragged on disk and stay ragged
 
 - **A row holds exactly the cells its Markdown line holds**: the parser neither slices nor pads,
@@ -610,6 +624,14 @@ paths; single lines paste inline.
   structured Markdown becomes its own block beside it. Only an *empty* block is taken over, and
   only by structure.
 - **One terminal line ending on the clipboard is incidental** and stripped.
+- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles` in
+  `useBlockOperations`): each is saved and inserted after the one before it has landed, below it,
+  so several arrive in the order given. **A drop is the whole pane's** (`useDragDropHandlers` on
+  `.editor-scroll`, not the editable root, where a release under a short note or in a margin
+  did nothing) and lands in the gap the block drag's rule names, drawn with its
+  `.block-drop-marker`: before the first block whose middle is below the pointer, never above
+  frontmatter, at the end below them all. Only a drag carrying files is touched.
+  `file-drop.spec.ts`.
 - **A selection inside one block copies as text**; structure travels only when the selection
   wholly covers a block (`fullBlock`). Deliberate.
 - **Copy writes two public formats and one private one** (`utils/clipboardCopy.ts`,

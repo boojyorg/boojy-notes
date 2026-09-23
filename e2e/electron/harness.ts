@@ -488,3 +488,46 @@ export async function expectTitlesMatchFiles(page: Page, vault: Vault) {
     })
     .toEqual(files);
 }
+
+/**
+ * Drag files over (x, y) in the renderer and release them there, as a drag
+ * from Finder arrives: a DragEvent carrying a DataTransfer of Files, which
+ * runs the app's own handlers (the OS drag session in front of them is
+ * Chromium's). Answers whether the drag was accepted and where the drop
+ * marker stood while it was held.
+ */
+export function dropFiles(
+  page: Page,
+  files: { name: string; bytes: Buffer }[],
+  x: number,
+  y: number,
+) {
+  return page.evaluate(
+    ({ files, x, y }) => {
+      const data = new DataTransfer();
+      for (const { name, b64 } of files) {
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        data.items.add(new File([bytes], name, { type: "image/png" }));
+      }
+      const target = document.elementFromPoint(x, y);
+      if (!target) throw new Error(`nothing at ${x},${y}`);
+      const fire = (type: string) =>
+        target.dispatchEvent(
+          new DragEvent(type, {
+            dataTransfer: data,
+            bubbles: true,
+            cancelable: true,
+            clientX: x,
+            clientY: y,
+          }),
+        );
+      fire("dragenter");
+      const accepted = !fire("dragover");
+      const marker = document.querySelector(".block-drop-marker");
+      const markerTop = marker ? marker.getBoundingClientRect().top : null;
+      fire("drop");
+      return { accepted, markerTop, markerGone: !document.querySelector(".block-drop-marker") };
+    },
+    { files: files.map((f) => ({ name: f.name, b64: f.bytes.toString("base64") })), x, y },
+  );
+}

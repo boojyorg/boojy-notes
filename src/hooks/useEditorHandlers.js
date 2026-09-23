@@ -29,7 +29,7 @@ export function useEditorHandlers({
   openCodeBlock,
   openDivider,
   deleteBlock,
-  saveAndInsertImage,
+  saveAndInsertFiles,
   reReadBlockFromDom,
   applyFormat,
   mouseIsDown,
@@ -103,14 +103,14 @@ export function useEditorHandlers({
   });
   const { handleEditorPaste, handleEditorCopy, handleEditorCut } = usePasteHandler({
     ...shared,
-    saveAndInsertImage,
+    saveAndInsertFiles,
     reReadBlockFromDom,
     scopeOf,
     ownEdit,
   });
   const { handleEditorDragOver, handleEditorDragLeave, handleEditorDrop } = useDragDropHandlers({
     ...shared,
-    saveAndInsertImage,
+    saveAndInsertFiles,
   });
   const { handleEditorMouseUp, handleEditorMouseDown, handleEditorFocus } = useMouseHandlers({
     ...shared,

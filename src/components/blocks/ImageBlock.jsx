@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { resolveAttachmentUrl } from "../../utils/attachmentUrl";
+import { cssZoom } from "../../utils/domHelpers";
 
 function ImageBlock({
   src,
   alt,
-  width,
+  displayWidth,
   isSelected,
   onSelect,
   onLightbox,
@@ -21,7 +22,16 @@ function ImageBlock({
   const [hovered, setHovered] = useState(false);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
+  // A new picture is a new load, so a Replace after an error is not left
+  // drawing "Image not found" (state adjusted in render, React's own pattern).
+  const [loadSrc, setLoadSrc] = useState(src);
+  if (src !== loadSrc) {
+    setLoadSrc(src);
+    setErrored(false);
+    setLoading(true);
+  }
   const containerRef = useRef(null);
+  const imgRef = useRef(null);
   const dragRef = useRef(null);
   const justDragged = useRef(false);
 
@@ -62,29 +72,36 @@ function ImageBlock({
     onLightbox();
   };
 
+  // A resize is the picture's width in CSS pixels, what the file's `|px`
+  // means: it starts from the width drawn (the picture's own size included),
+  // stops at the column less the frame, and the pointer's travel is divided by
+  // the UI scale, which Chromium has already multiplied into it.
   const handleResizeStart = (e, corner) => {
     e.preventDefault();
     e.stopPropagation();
-    const container = containerRef.current?.parentElement;
-    if (!container) return;
-    const editorWidth = container.offsetWidth;
+    const box = containerRef.current;
+    const img = imgRef.current;
+    const column = box?.parentElement;
+    if (!box || !img || !column) return;
+    const zoom = cssZoom(box);
+    const columnWidth = column.offsetWidth - (box.offsetWidth - img.offsetWidth);
     const startX = e.clientX;
-    const startWidth = ((width || 100) / 100) * editorWidth;
+    const startWidth = img.offsetWidth;
 
     const onMove = (me) => {
-      const dx = corner === "nw" || corner === "sw" ? startX - me.clientX : me.clientX - startX;
-      const newPx = Math.max(editorWidth * 0.1, Math.min(editorWidth, startWidth + dx));
-      const newPct = Math.round((newPx / editorWidth) * 100);
-      dragRef.current = newPct;
-      if (containerRef.current) {
-        containerRef.current.style.width = newPct + "%";
-      }
+      const travel =
+        (corner === "nw" || corner === "sw" ? startX - me.clientX : me.clientX - startX) / zoom;
+      const px = Math.round(
+        Math.max(columnWidth * 0.1, Math.min(columnWidth, startWidth + travel)),
+      );
+      dragRef.current = px;
+      img.style.width = `${px}px`;
     };
     const onUp = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       if (dragRef.current != null) {
-        onUpdateWidth(Math.max(10, Math.min(100, dragRef.current)));
+        onUpdateWidth(dragRef.current);
         dragRef.current = null;
         justDragged.current = true;
       }
@@ -167,7 +184,10 @@ function ImageBlock({
         style={{
           position: "relative",
           borderRadius: 6,
-          width: `${width || 100}%`,
+          // The frame fits the picture; the column caps both. Loading, the
+          // placeholder holds the column until the picture's size is known.
+          width: loading ? "100%" : "fit-content",
+          maxWidth: "100%",
           border: isSelected
             ? `2px solid ${accentColor}`
             : hovered
@@ -190,25 +210,22 @@ function ImageBlock({
         )}
         <style>{`@keyframes img-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
         <img
+          ref={imgRef}
           src={resolvedSrc}
           alt={alt || ""}
           draggable="false"
           loading={resolvedSrc?.startsWith("data:") ? undefined : "lazy"}
-          onLoad={(e) => {
-            if (!width) {
-              const img = e.currentTarget;
-              const ratio = img.naturalWidth / img.naturalHeight;
-              const autoWidth = ratio > 1.5 ? 100 : ratio >= 0.75 ? 70 : 50;
-              onUpdateWidth(autoWidth);
-            }
-            setLoading(false);
-          }}
+          onLoad={() => setLoading(false)}
           onError={() => {
             setErrored(true);
             setLoading(false);
           }}
           style={{
-            width: "100%",
+            display: "block",
+            // A width in the file is the picture's, in CSS pixels; none is its
+            // own size. Never wider than the column, never enlarged to fill it.
+            width: displayWidth ? `${displayWidth}px` : "auto",
+            maxWidth: "100%",
             borderRadius: 6,
             ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
           }}

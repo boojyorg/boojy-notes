@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+- **Images come in at a sensible size** — Every image used to fill the full width of the note, whatever its size: a small icon was stretched until it blurred, and a screenshot came out bigger than it looked on your screen, because a Retina Mac saves twice the pixels it shows. An image is now drawn at its own size and never enlarged, so small pictures stay small and big ones still stop at the edge of the note. A screenshot you add is drawn at the size it was on screen, and that width is saved in the note (`![[Screenshot….png|524]]`) so Obsidian shows it the same size. A width already in a note is now read as pixels, as Obsidian reads it, so an image sized in Obsidian looks the same here; one you resized in Boojy Notes before this may come out a little smaller than it was. Images already in your notes are never rewritten just by opening them, and dragging an image's corner still sizes it by hand.
+
+### Bug Fixes
+
+- **Images can be dragged into a note from anywhere on the page** — Dragging a picture in from Finder or the desktop only worked if you let go exactly over a line of text; under a short note, in the margins or near the top, the pointer showed a "no" sign and the release did nothing, which felt like dragging images in was not supported at all. The whole page takes the drop now. While you hold the file over it, a thin teal line shows the gap it will land in, the same line that shows where a dragged block will go: over the top half of a paragraph it goes above it, anywhere below the last line it goes at the end.
+- **Several images at once all arrive, in order** — Pasting several image files at once kept only the first and silently dropped the rest, and dropping several could put them in a different order from the one you picked them in. Both now add every file, one under the other, in the order given.
+- **Images with a space in their name show up** — An image whose file name held a space, which is every macOS screenshot (`Screenshot 2026-09-23 at 10.12.33.png`), drew a dashed "Image not found" box instead of the picture, while a pasted image, named `paste-…` by the app, loaded fine. The file was saved and the note was right; only the display failed, so an Obsidian note with such an image failed the same way. Names with spaces, square brackets, a `%` or accented letters all load now. And a broken image that you replace now shows the new picture rather than keeping its "Image not found" box.
+
 ## v0.9.0 — 2026-09-20
 
 ### Improvements
