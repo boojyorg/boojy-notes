@@ -74,9 +74,11 @@ test("Paste from the right-click menu pastes at the caret", async () => {
   const h = await launchApp({ "Alpha.md": "Hello world\n" });
   try {
     await h.openNote("Alpha");
-    const at = await select(h.page, "Hello", 6, 6);
+    // On the space before "world": no word under the pointer, so the caret stays.
+    const space = await select(h.page, "Hello", 5, 6);
+    await select(h.page, "Hello", 6, 6);
     await h.app.evaluate(({ clipboard }) => clipboard.writeText("brave "));
-    await h.page.mouse.click(at.x, at.y, { button: "right" });
+    await h.page.mouse.click(space.x, space.y, { button: "right" });
     const menu = h.page.locator(".editor-context-menu");
     // Nothing selected: nothing to cut or copy.
     await expect(menu.getByRole("menuitem", { name: /^Cut/ })).toHaveAttribute(
@@ -87,6 +89,37 @@ test("Paste from the right-click menu pastes at the caret", async () => {
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("brave"));
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe("Hello brave world\n");
+  } finally {
+    await h.close();
+  }
+});
+
+test("a right-click on an unselected word selects it, and the menu hangs under it", async () => {
+  const h = await launchApp({ "Alpha.md": "Hello brave world\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.locator("p", { hasText: "Hello" }).click();
+    const word = await select(h.page, "Hello", 6, 11);
+    const wordBox = await h.page.evaluate(() => {
+      const r = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      return { left: r.left, bottom: r.bottom };
+    });
+    await select(h.page, "Hello", 0, 0);
+    await h.page.mouse.click(word.x, word.y, { button: "right" });
+    const menu = h.page.locator(".editor-context-menu");
+    await expect(menu).toBeVisible();
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("brave");
+    // Painted while the menu holds focus.
+    expect(await h.page.evaluate(() => CSS.highlights.has("context-selection"))).toBe(true);
+    const box = (await menu.boundingBox())!;
+    expect(Math.round(box.x - wordBox.left)).toBe(0);
+    expect(Math.round(box.y - wordBox.bottom)).toBe(4);
+    await expect(menu.getByRole("menuitem", { name: /^Copy/ })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await h.page.keyboard.press("Escape");
+    expect(await h.page.evaluate(() => CSS.highlights.has("context-selection"))).toBe(false);
   } finally {
     await h.close();
   }

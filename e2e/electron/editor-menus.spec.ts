@@ -68,12 +68,14 @@ test("link, code block and image context menus open at the pointer in a scrolled
     const editor = h.page.locator(".editor-scroll");
     await expect(editor.locator("a", { hasText: "Example" })).toBeVisible();
 
-    const link = await menuOffset(
-      h.page,
-      editor.locator("a", { hasText: "Example" }),
-      h.page.locator(".editor-context-menu"),
-    );
-    expect(link, "link menu offset from the pointer").toEqual({ dx: 0, dy: 0 });
+    // The link's menu hangs 4px under the link, left-aligned with it (a text
+    // menu, 2026-09-23), rather than at the pointer.
+    const linkEl = editor.locator("a", { hasText: "Example" });
+    await menuOffset(h.page, linkEl, h.page.locator(".editor-context-menu"));
+    const lb = (await linkEl.boundingBox())!;
+    const mb = (await h.page.locator(".editor-context-menu").boundingBox())!;
+    expect(Math.round(mb.x - lb.x), "link menu aligned with the link").toBe(0);
+    expect(Math.round(mb.y - (lb.y + lb.height)), "link menu 4px under the link").toBe(4);
     await h.page.keyboard.press("Escape");
     await expect(h.page.locator(".editor-context-menu")).toHaveCount(0);
 

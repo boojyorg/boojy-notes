@@ -22,6 +22,7 @@ import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
+import { menuAnchorFor, pointInRange, wordRangeAt } from "../utils/contextSelection";
 import {
   getBlockFromNode,
   placeCaret,
@@ -434,15 +435,36 @@ const EditorArea = memo(
         // A block with a menu of its own (an image) has already answered.
         if (e.defaultPrevented || isMobile) return;
         e.preventDefault();
+        const x = e.clientX;
+        const y = e.clientY;
         const sel = window.getSelection();
-        const range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        let range = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
         const active = document.activeElement;
         const field =
           active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement
             ? active
             : null;
+        const anchor = e.target.closest("a");
+        const wikilink = e.target.closest(".wikilink");
+        const linkEl = anchor || wikilink;
+        // A right-click on a word outside the selection selects the word, as
+        // a Mac text field does; inside the selection it keeps it. A link is
+        // left as it is: its menu is about the link.
+        if (!field && !linkEl && !(range && pointInRange(range, x, y))) {
+          const word = editorRef.current && wordRangeAt(editorRef.current, x, y);
+          if (word) {
+            sel.removeAllRanges();
+            sel.addRange(word);
+            range = word.cloneRange();
+          }
+        }
+        let hangFrom = range;
+        if (linkEl) {
+          hangFrom = document.createRange();
+          hangFrom.selectNodeContents(linkEl);
+        }
         const menu = {
-          position: { top: e.clientY, left: e.clientX },
+          anchor: menuAnchorFor(hangFrom, x, y),
           linkType: null,
           range,
           field,
@@ -450,8 +472,6 @@ const EditorArea = memo(
             ? field.selectionStart !== field.selectionEnd
             : !!range && !range.collapsed,
         };
-        const anchor = e.target.closest("a");
-        const wikilink = e.target.closest(".wikilink");
         if (anchor) {
           menu.linkType = "external";
           menu.url = anchor.getAttribute("data-url") || anchor.getAttribute("href");
@@ -468,8 +488,19 @@ const EditorArea = memo(
         }
         setLinkCtxMenu(menu);
       },
-      [noteDataRef, isMobile],
+      [noteDataRef, isMobile, editorRef],
     );
+
+    // While the menu holds focus the editor's selection is drawn inactive,
+    // and the words the menu acts on went pale: they are painted in the
+    // selection colour for as long as it is open (a CSS highlight, nothing in
+    // the DOM).
+    useEffect(() => {
+      const range = linkCtxMenu?.range;
+      if (!range || range.collapsed || typeof CSS === "undefined" || !CSS.highlights) return;
+      CSS.highlights.set("context-selection", new Highlight(range));
+      return () => CSS.highlights.delete("context-selection");
+    }, [linkCtxMenu]);
 
     // Cut, Copy and Paste run where ⌘X, ⌘C and ⌘V would: focus and the
     // selection are put back first, then the editor's own cut, copy and paste
@@ -908,7 +939,7 @@ const EditorArea = memo(
             {/* Right-click menu */}
             {linkCtxMenu && (
               <EditorContextMenu
-                point={linkCtxMenu.position}
+                anchor={linkCtxMenu.anchor}
                 link={linkCtxMenu.linkType}
                 onOpenLink={() => {
                   if (linkCtxMenu.linkType === "external") {

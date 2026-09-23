@@ -21,8 +21,13 @@ import {
 export type ContextLinkKind = "external" | "wikilink" | "wikilink-broken";
 
 interface EditorContextMenuProps {
-  /** The pointer, in viewport pixels. */
-  point: { top: number; left: number };
+  /**
+   * Viewport rect the menu hangs under: the line of the selection (or link)
+   * under the pointer, so the menu opens below the words it acts on and
+   * left-aligned with them, as a native text menu does; flipped above when
+   * there is no room.
+   */
+  anchor: { top: number; bottom: number; left: number; right: number };
   link: ContextLinkKind | null;
   onOpenLink: () => void;
   onCopyLink: () => void;
@@ -60,7 +65,7 @@ interface Item {
  * and does nothing on a click.
  */
 export default function EditorContextMenu({
-  point,
+  anchor,
   link,
   onOpenLink,
   onCopyLink,
@@ -80,8 +85,10 @@ export default function EditorContextMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
-  const anchor = { top: point.top, bottom: point.top, left: point.left, right: point.left };
-  const pos = useMenuPosition(menuRef, true, anchor, {}) as { top: number; left: number } | null;
+  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4 }) as {
+    top: number;
+    left: number;
+  } | null;
   const zoom = cssZoom(document.documentElement);
 
   const items: Item[] = [];
@@ -196,8 +203,8 @@ export default function EditorContextMenu({
         style={{
           outline: "none",
           position: "fixed",
-          top: (pos?.top ?? point.top) / zoom,
-          left: (pos?.left ?? point.left) / zoom,
+          top: (pos?.top ?? anchor.bottom) / zoom,
+          left: (pos?.left ?? anchor.left) / zoom,
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
