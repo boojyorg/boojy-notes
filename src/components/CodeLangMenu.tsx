@@ -4,6 +4,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
 import { CheckIcon } from "./Icons";
 
@@ -206,8 +207,8 @@ export default function CodeLangMenu({
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
-          padding: 4,
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
           minWidth: 200,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
@@ -235,7 +236,7 @@ export default function CodeLangMenu({
                 width: "100%",
                 background: index === activeIndex ? BG.hover : "none",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: MENU_ROW_RADIUS,
                 padding: "7px 10px",
                 cursor: "pointer",
                 color: TEXT.primary,

@@ -142,6 +142,16 @@ export const TREE_ROW_H = 28;
 export const TREE_ROW_GAP = 2;
 /** The pill radius of every tree and action row. */
 export const ACTION_RADIUS = 12;
+/**
+ * Every menu, picker and palette: one surface, its rows inset by MENU_PAD and
+ * rounded by MENU_ROW_RADIUS, so a highlighted row is a pill like a sidebar
+ * row's (2026-09-23; the slash menu's rows ran square from edge to edge, the
+ * rest were 6px in an 8px box). The row's radius is the box's less its inset,
+ * so the two curves stay concentric where a row meets the edge.
+ */
+export const MENU_RADIUS = 12;
+export const MENU_PAD = 4;
+export const MENU_ROW_RADIUS = MENU_RADIUS - MENU_PAD;
 /** The labelled New note row: a touch taller than a tree row, as the one
  *  action among a list of names. */
 export const ACTION_ROW_H = 32;

@@ -4,6 +4,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useMenuPosition } from "../../hooks/useMenuPosition";
 import { Z } from "../../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../../constants/layout";
 import { cssZoom } from "../../utils/domHelpers";
 import { isMac } from "../../utils/platform";
 import { CopyIcon, ExpandIcon, FolderIcon, ResetSizeIcon, TrashIcon } from "../Icons";
@@ -169,8 +170,8 @@ export default function ImageMenu({
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
-          padding: 4,
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
           minWidth: 180,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
@@ -193,7 +194,7 @@ export default function ImageMenu({
                 width: "100%",
                 background: i === activeIndex ? BG.hover : "none",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: MENU_ROW_RADIUS,
                 padding: "7px 10px",
                 cursor: "pointer",
                 color: item.danger ? SEMANTIC.error : TEXT.primary,

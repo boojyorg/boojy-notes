@@ -24,6 +24,7 @@ import {
   TREE_INDENT,
   TREE_ROW_GAP,
   TREE_ROW_H,
+  MENU_RADIUS,
 } from "../constants/layout";
 import type { SidebarNode } from "../types/notes";
 import {
@@ -547,7 +548,7 @@ export default function PathTreeMenu({
           overflow: "hidden",
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
+          borderRadius: MENU_RADIUS,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
           // The chrome row above is the window's drag region; the popup is not.

@@ -22,6 +22,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
 
 /** The rule between groups, the sidebar menu's own: 1px, inset 6px. */
@@ -299,10 +300,10 @@ const ContextMenu = memo(function ContextMenu({
           zIndex: Z.CONTEXT_MENU,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 8,
+          borderRadius: MENU_RADIUS,
           // All-round padding insets the item pills from the menu edge so
           // their rounded hover reads as a pill, not an edge-to-edge bar.
-          padding: 4,
+          padding: MENU_PAD,
           minWidth: 160,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           animation: "fadeIn 0.1s ease",
@@ -330,7 +331,7 @@ const ContextMenu = memo(function ContextMenu({
                 // Every edge set, or Chromium's own 2px outset button border
                 // shows on the one left out (seen 2026-09-14).
                 border: 0,
-                borderRadius: 6,
+                borderRadius: MENU_ROW_RADIUS,
                 // 10px + the menu's 4px inset keeps the text 14px off the edge.
                 padding: "7px 10px",
                 cursor: "pointer",

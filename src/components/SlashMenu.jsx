@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
+import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { filterSlashCommands } from "../constants/data";
 import { SlashCommandIcon } from "./Icons";
 
@@ -62,8 +63,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           zIndex: Z.DROPDOWN,
           background: BG.elevated,
           border: `1px solid ${BG.divider}`,
-          borderRadius: 10,
-          padding: "6px 0",
+          borderRadius: MENU_RADIUS,
+          padding: MENU_PAD,
           minWidth: MENU_WIDTH,
           boxShadow: theme.modalShadow,
           animation: "slideUp 0.12s ease",
@@ -91,7 +92,10 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                   )
                 }
                 style={{
-                  padding: `${ROW_PAD_Y}px 12px`,
+                  // 8px inside the menu's 4px inset: the glyph keeps the 12px
+                  // it had from the edge when the rows ran edge to edge.
+                  padding: `${ROW_PAD_Y}px 8px`,
+                  borderRadius: MENU_ROW_RADIUS,
                   display: "flex",
                   alignItems: "center",
                   gap: 10,

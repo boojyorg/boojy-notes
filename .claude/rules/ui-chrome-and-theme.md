@@ -50,6 +50,11 @@ on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
 
 - **Interaction grammar is two-tier.** Content hovers to `BG.surface`; rows and menu items
   hover *and* select to `BG.hover`, so hover previews selection.
+- **Every menu's rows are pills, never edge-to-edge bands** (`MENU_RADIUS` 12, `MENU_PAD` 4,
+  `MENU_ROW_RADIUS` 8 in `constants/layout.js`, 2026-09-23): the slash, context, sort, tag,
+  code-language, table, image and callout menus, the link picker and the folder popup's box. The
+  row's radius is the box's less the inset so the curves stay concentric; the search palette
+  was already this shape. A new menu takes the three tokens, never its own numbers.
 - **Accent is never a desktop surface**: identity, focus rings, 2–3px markers, wikilinks and the
   caret. Selected rows are neutral. The one tint is the whole-block selection's band (accent at
   10% Light / 18% Dark), laid over a selected image a step stronger (20% / 26%). Mobile note
