@@ -34,16 +34,6 @@ type Theme = Record<string, Record<string, string>> & {
 const PILL_LENGTH = 48;
 /** How close to the picture's own size a drag lands on it exactly. */
 const SNAP_PX = 8;
-/** The width label sits outside the picture unless it would leave the column. */
-const LABEL_ROOM = 150;
-
-interface Drag {
-  px: number;
-  /** The picture's own size, capped at the column: the width a drag snaps to. */
-  own: number;
-  /** Whether the label fits beside the picture or goes inside it. */
-  labelInside: boolean;
-}
 
 /** A 28px button in the hover bar, named by the app's tooltip chip. */
 function BarButton({
@@ -127,8 +117,9 @@ function BarButton({
  * on a short picture, and it is as long as `PILL_LENGTH` or the picture allows.
  * It looks the same at rest, under the pointer and in a drag, and a drag holds
  * it at the height it was pressed at rather than the picture's middle.
- * A drag shows the width it will write, snaps to the picture's own size and
- * writes no width there; a double-click on the pill does the same.
+ * A drag snaps to the picture's own size (capped at the column) and writes no
+ * width there; a double-click on the pill does the same. No width label, by
+ * decision (2026-09-23): the picture changing size is the feedback.
  */
 function ImageBlock({
   src,
@@ -158,7 +149,7 @@ function ImageBlock({
     setLoading(true);
   }
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
-  const [drag, setDrag] = useState<Drag | null>(null);
+  const [dragging, setDragging] = useState(false);
   // Where the pill was pressed, in CSS px from the picture's top: held through
   // the drag and until the pointer leaves, then the pill centres again.
   const [grabY, setGrabY] = useState<number | null>(null);
@@ -207,12 +198,12 @@ function ImageBlock({
       if (Math.abs(px - own) <= SNAP_PX) px = own;
       moved = px;
       img.style.width = `${px}px`;
-      setDrag({ px, own, labelInside: px + LABEL_ROOM > columnWidth });
+      setDragging(true);
     };
     const onUp = () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
-      setDrag(null);
+      setDragging(false);
       // Released off the picture, nothing holds the pill; on it, the pill
       // stays put until the pointer leaves, so it never jumps under it.
       if (!box.matches(":hover")) setGrabY(null);
@@ -276,7 +267,7 @@ function ImageBlock({
   // The controls follow the pointer (and a menu or drag it started), never the
   // selection: a selected picture shows its wash and nothing else, so the bar
   // and pill are never up with the pointer somewhere else (2026-09-23).
-  const pointerOn = (hovered || !!menu || !!drag) && !loading;
+  const pointerOn = (hovered || !!menu || dragging) && !loading;
   const handle = theme.imageHandle;
 
   return (
@@ -287,7 +278,7 @@ function ImageBlock({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => {
           setHovered(false);
-          if (!drag) setGrabY(null);
+          if (!dragging) setGrabY(null);
         }}
         // Selected on the press, not the release (2026-09-23): the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.
@@ -359,7 +350,7 @@ function ImageBlock({
             }}
           />
         )}
-        {pointerOn && !drag && (
+        {pointerOn && !dragging && (
           <div
             data-testid="image-hover-bar"
             style={{
@@ -431,7 +422,7 @@ function ImageBlock({
                     ? `calc(50% - min(${PILL_LENGTH / 2}px, 50%))`
                     : `clamp(0px, calc(${grabY - 8}px - min(${PILL_LENGTH / 2}px, 50%)), calc(100% - min(${PILL_LENGTH}px, 100%)))`,
                 // One look at rest, under the pointer and in a drag: the
-                // resize cursor and the width label are the feedback.
+                // resize cursor and the picture's own change are the feedback.
                 width: 6,
                 height: `min(${PILL_LENGTH}px, 100%)`,
                 minHeight: 16,
@@ -443,32 +434,6 @@ function ImageBlock({
               }}
             />
           </button>
-        )}
-        {drag && (
-          <div
-            data-testid="image-width-label"
-            style={{
-              position: "absolute",
-              top: "50%",
-              marginTop: -14,
-              height: 28,
-              ...(drag.labelInside ? { right: 20 } : { left: "calc(100% + 16px)" }),
-              display: "flex",
-              alignItems: "center",
-              padding: "0 8px",
-              background: BG.elevated,
-              border: `1px solid ${BG.divider}`,
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 500,
-              whiteSpace: "nowrap",
-              fontVariantNumeric: "tabular-nums",
-              color: TEXT.primary,
-              pointerEvents: "none",
-            }}
-          >
-            {drag.px === drag.own ? `${drag.px} px · original size` : `${drag.px} px`}
-          </div>
         )}
       </div>
       {menu && (

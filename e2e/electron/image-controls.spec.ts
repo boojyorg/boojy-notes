@@ -37,8 +37,14 @@ async function picture(page: Page) {
   return img;
 }
 
-/** Drag the resize pill `dx` pixels, checking the width label on the way. */
-async function dragPill(page: Page, dx: number, label: string) {
+/** The picture's drawn width in CSS pixels. */
+const drawnWidth = (page: Page) =>
+  page
+    .locator('[data-block-type="image"] img')
+    .evaluate((el: HTMLImageElement) => Math.round(el.getBoundingClientRect().width));
+
+/** Drag the resize pill `dx` pixels; the picture is `width` wide before the release. */
+async function dragPill(page: Page, dx: number, width: number) {
   const img = await picture(page);
   await img.hover();
   const pill = page.getByTestId("image-resize-handle");
@@ -50,9 +56,8 @@ async function dragPill(page: Page, dx: number, label: string) {
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + dx, y, { steps: 6 });
-  await expect(page.getByTestId("image-width-label")).toHaveText(label);
+  await expect.poll(() => drawnWidth(page)).toBe(width);
   await page.mouse.up();
-  await expect(page.getByTestId("image-width-label")).toHaveCount(0);
 }
 
 test("a press selects without opening the full-size view; a double-click opens it under the file's name", async () => {
@@ -90,14 +95,14 @@ test("the pill writes a width into the file, and dragging back to the picture's 
     await h.openNote("Pics");
     const file = h.vault.file("Pics.md");
 
-    await dragPill(h.page, -150, "250 px");
+    await dragPill(h.page, -150, 250);
     await waitForFile(file, (t) => t.includes("![[Pic.png|250]]"), {
       label: "the width to be written",
     });
 
-    // 396 is within the snap of the picture's 400: the label says so, and the
+    // 396 is within the snap of the picture's 400: it lands on 400, and the
     // width comes off the file rather than being written as |400.
-    await dragPill(h.page, 146, "400 px · original size");
+    await dragPill(h.page, 146, 400);
     await waitForFile(file, (t) => t.includes("![[Pic.png]]"), {
       label: "the width to be taken off",
     });
@@ -176,7 +181,7 @@ test("the pill stays under the pointer while a drag changes the picture's height
     await h.page.mouse.move(x, y);
     await h.page.mouse.down();
     await h.page.mouse.move(x - 60, y, { steps: 6 });
-    await expect(h.page.getByTestId("image-width-label")).toHaveText("240 px");
+    await expect.poll(() => drawnWidth(h.page)).toBe(240);
     // Centred, it would now sit 40px above the pointer (the picture is 320 tall, not 400).
     expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
 
