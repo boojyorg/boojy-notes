@@ -1,7 +1,6 @@
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -59,9 +58,9 @@ interface Item {
  * did nothing at all (Electron supplies no menu) and a link's menu was a
  * hand-drawn list with no glyphs or keys.
  *
- * The image menu's grammar and for its reasons: portalled to `body`, keys and
- * presses stopped on its own element so they never reach the editor, placement
- * divided by the UI scale. A disabled row is muted, is skipped by the arrows
+ * The image menu's grammar: portalled to `body`, presses stopped on its own
+ * element so they never reach the editor, placement divided by the UI scale.
+ * Unlike the image menu it never takes focus (below). A disabled row is muted, is skipped by the arrows
  * and does nothing on a click.
  */
 export default function EditorContextMenu({
@@ -84,7 +83,6 @@ export default function EditorContextMenu({
   const { BG, TEXT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
-  useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
   const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4 }) as {
     top: number;
     left: number;
@@ -151,23 +149,32 @@ export default function EditorContextMenu({
     return from;
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.defaultPrevented) return false;
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       const dir = e.key === "ArrowDown" ? 1 : -1;
       setActiveIndex((i) => step(i === -1 ? (dir === 1 ? -1 : items.length) : i, dir));
-      return true;
-    }
-    if (e.key === "Enter" || e.key === " ") {
+    } else if (e.key === "Enter" || e.key === " ") {
       if (activeIndex >= 0) run(items[activeIndex]);
-      return true;
-    }
-    if (e.key === "Escape") {
+    } else if (e.key === "Escape") {
       onClose();
-      return true;
     }
-    return false;
   };
+  // The menu never takes focus: the editor keeps it, so the selection stays
+  // the ordinary blue a drag gives (with focus in the menu it went inactive,
+  // and a painted highlight over it drew the words twice). Every key goes to
+  // the menu while it is open, from a document capture listener that runs
+  // before the editor and the shell see the key.
+  const keyRef = useRef(handleKeyDown);
+  keyRef.current = handleKeyDown;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      keyRef.current(e);
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
 
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 
@@ -180,7 +187,11 @@ export default function EditorContextMenu({
       onDoubleClick={stop}
     >
       <div
-        onMouseDown={onClose}
+        onMouseDown={(e) => {
+          // Closing keeps the editor's focus and selection, as a native menu does.
+          e.preventDefault();
+          onClose();
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           onClose();
@@ -193,12 +204,8 @@ export default function EditorContextMenu({
         role="menu"
         aria-label={link ? "Link options" : "Edit"}
         aria-activedescendant={activeIndex >= 0 ? `editor-menu-item-${activeIndex}` : undefined}
-        tabIndex={-1}
-        onKeyDown={(e) => {
-          if (!handleKeyDown(e)) return;
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        // A press in the menu must not take focus from the editor.
+        onMouseDown={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
         style={{
           outline: "none",

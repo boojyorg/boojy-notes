@@ -38,9 +38,6 @@ const highlightStyle = document.createElement("style");
 highlightStyle.textContent = `
   ::highlight(find-matches) { background: rgba(255, 200, 0, 0.3); }
   ::highlight(find-active) { background: rgba(255, 150, 0, 0.5); }
-  /* The right-click menu's subject, drawn while the menu holds focus and the
-     editor's own selection has gone inactive: the system's selection colour. */
-  ::highlight(context-selection) { background-color: Highlight; }
 `;
 document.head.appendChild(highlightStyle);
 

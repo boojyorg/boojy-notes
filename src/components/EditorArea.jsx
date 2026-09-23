@@ -491,17 +491,6 @@ const EditorArea = memo(
       [noteDataRef, isMobile, editorRef],
     );
 
-    // While the menu holds focus the editor's selection is drawn inactive,
-    // and the words the menu acts on went pale: they are painted in the
-    // selection colour for as long as it is open (a CSS highlight, nothing in
-    // the DOM).
-    useEffect(() => {
-      const range = linkCtxMenu?.range;
-      if (!range || range.collapsed || typeof CSS === "undefined" || !CSS.highlights) return;
-      CSS.highlights.set("context-selection", new Highlight(range));
-      return () => CSS.highlights.delete("context-selection");
-    }, [linkCtxMenu]);
-
     // Cut, Copy and Paste run where ⌘X, ⌘C and ⌘V would: focus and the
     // selection are put back first, then the editor's own cut, copy and paste
     // handlers take the events these fire, so the menu and the keys can never

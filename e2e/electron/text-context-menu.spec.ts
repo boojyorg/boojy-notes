@@ -109,8 +109,11 @@ test("a right-click on an unselected word selects it, and the menu hangs under i
     const menu = h.page.locator(".editor-context-menu");
     await expect(menu).toBeVisible();
     expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("brave");
-    // Painted while the menu holds focus.
-    expect(await h.page.evaluate(() => CSS.highlights.has("context-selection"))).toBe(true);
+    // The editor keeps focus, so the selection is the ordinary blue a drag
+    // gives, drawn once (focus in the menu turned it inactive).
+    expect(await h.page.evaluate(() => !!document.activeElement?.closest("[data-editor]"))).toBe(
+      true,
+    );
     const box = (await menu.boundingBox())!;
     expect(Math.round(box.x - wordBox.left)).toBe(0);
     expect(Math.round(box.y - wordBox.bottom)).toBe(4);
@@ -118,8 +121,13 @@ test("a right-click on an unselected word selects it, and the menu hangs under i
       "aria-disabled",
       "true",
     );
-    await h.page.keyboard.press("Escape");
-    expect(await h.page.evaluate(() => CSS.highlights.has("context-selection"))).toBe(false);
+    // The menu takes the keys while it is open, though it holds no focus.
+    await h.page.keyboard.press("ArrowDown");
+    await h.page.keyboard.press("ArrowDown");
+    await h.page.keyboard.press("Enter");
+    await expect(menu).toHaveCount(0);
+    // Enter chose Copy: nothing was typed over the word.
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("brave");
   } finally {
     await h.close();
   }

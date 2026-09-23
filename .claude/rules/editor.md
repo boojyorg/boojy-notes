@@ -313,10 +313,11 @@ app's, made through state.**
 - **It behaves as a Mac text menu** (`utils/contextSelection.ts`, judged against Notion's): a
   right-click on a word outside the selection selects the word, one inside the selection keeps
   it, a link is left unselected; the menu hangs 4px under the line of the selection (or link)
-  the pointer is on, left-aligned with it, flipping above when it must; and while the menu
-  holds focus the words are painted in the system's selection colour
-  (`::highlight(context-selection)`, since the editor's own selection goes inactive).
-  Chromium in Electron does none of this itself. `text-context-menu.spec.ts`,
+  the pointer is on, left-aligned with it, flipping above when it must. Chromium in Electron
+  does none of this itself. **The menu never takes focus**: the editor keeps it, so the
+  selection stays the ordinary blue a drag gives, and the menu takes every key from a
+  document capture listener while it is open. With focus in the menu the selection went
+  inactive, and a painted highlight laid over it drew the words twice (judged 2026-09-23). `text-context-menu.spec.ts`,
   `editor-menus.spec.ts`, `contextSelection.test.ts`.
 
 ## Menus own their keys; the editor keeps the caret
