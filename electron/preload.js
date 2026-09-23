@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   resolveAttachment: (filename) => ipcRenderer.invoke("resolve-attachment", filename),
   getFileSize: (filename) => ipcRenderer.invoke("get-file-size", filename),
   copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
+  // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
+  paste: () => ipcRenderer.invoke("paste"),
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),

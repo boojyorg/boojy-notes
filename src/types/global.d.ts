@@ -61,6 +61,7 @@ declare global {
       resolveAttachment: (filename: string) => Promise<string | null>;
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
+      paste: () => Promise<void>;
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;

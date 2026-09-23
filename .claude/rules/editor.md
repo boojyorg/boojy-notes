@@ -103,9 +103,10 @@ History is in git and `CHANGELOG.md`.
 - **The destination chip** (`LinkTooltip`, `useLinkHoverTooltip`): the tooltip chip's grammar,
   4px under the link, after the 500 ms rest, on hover or when a **key** brings the caret to rest
   inside a link (a pointer-placed caret arms nothing). A web link says its URL; a note link its
-  name with the folder muted beside it; a missing or shared name says so in the error ink. The
-  context menu is Open, Copy (a note's *name*, never its raw target), Edit link…, Remove link;
-  an unresolved link gets Fix link… and Remove link.
+  name with the folder muted beside it; a missing or shared name says so in the error ink. A
+  link's right-click menu is Open, Copy (a note's *name*, never its raw target), Edit link…,
+  Remove link, then the editor's own three (below); an unresolved link gets Fix link… and
+  Remove link.
 - **A `#tag` is a pill, and the Markdown is still `#tag`** (2026-09-20, `styles/tagPill.ts`,
   one shape for the editor's `.inline-tag` and Search's filter chip): the accent at
   `TAG_PILL_ALPHA` (14% Light / 22% Dark, a step over the selection band; a neutral grey was
@@ -294,6 +295,35 @@ app's, made through state.**
   deletion on a lone `<p><br></p>` removes the paragraph element itself: a root with no block
   while state still held one, so nothing repainted and typing went nowhere until the note was
   reopened. `cross-block-ownership.spec.ts`.
+
+## Right-click is Cut, Copy and Paste
+
+- **A right-click in the editor opens `EditorContextMenu`** (2026-09-23; Electron supplies no
+  menu, so before this a right-click on text did nothing): a link's actions first when the
+  pointer is on one, a rule, then Cut ⌘X, Copy ⌘C, Paste ⌘V with their shortcuts muted at the
+  right. Cut and Copy are disabled with nothing selected; Paste is desktop only (a page cannot
+  read the clipboard for a menu item) and disabled on the web build. Image, file, code and
+  table blocks keep their own menus: their handlers stop the event before the editor's.
+- **The menu runs the keys' own path, never a second one.** The selection's range and the
+  focused field are taken at the right-click, before the menu takes focus; an item puts them
+  back and then fires `execCommand("cut"/"copy")` or the main process's `paste` IPC
+  (`webContents.paste()`), so `handleEditorCut`, `handleEditorCopy` and `handleEditorPaste`
+  write exactly what ⌘X, ⌘C and ⌘V do. **The selection toolbar stands down while it is open**:
+  one surface at a time.
+- **It behaves as a Mac text menu** (`utils/contextSelection.ts`, judged against Notion's): a
+  right-click on a word outside the selection selects the word, one inside the selection keeps
+  it, one on no word puts the caret at the pointer (Chromium does that on Linux and not on a
+  Mac; the app decides it the same everywhere), a link is left unselected; the menu hangs `MENU_GAP` (2px) under the *painted* line of
+  the selection (or link) the pointer is on, left-aligned with it, flipping above when it
+  must. The selection is painted the line's full height, taller than a range's rect, so the
+  anchor is grown by half the difference (`paintedLead`) or the gap vanishes under the blue.
+  The word is read across the block's text nodes, not one: a paste is a node of its own, so
+  `test` pasted twice is one word. Chromium in Electron
+  does none of this itself. **The menu never takes focus**: the editor keeps it, so the
+  selection stays the ordinary blue a drag gives, and the menu takes every key from a
+  document capture listener while it is open. With focus in the menu the selection went
+  inactive, and a painted highlight laid over it drew the words twice (judged 2026-09-23).
+  `text-context-menu.spec.ts`, `editor-menus.spec.ts`, `contextSelection.test.ts`.
 
 ## Backspace sheds the kind before it merges
 

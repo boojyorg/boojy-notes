@@ -195,8 +195,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   creates a real note: the one inconsistency in the New Note workflow, to be resolved with the
   focus and empty-file questions above. Prior art: at v0.2.0 an empty note reached disk only
   when something was typed.
-- [ ] **No context menu on plain text** — the editor's right-click handles links only and Electron
-  supplies no default menu, so cut, copy and paste have no menu on desktop (`EditorArea.jsx`).
 - [ ] **A multi-line rich paste is flattened** — a single line pasted from a browser or another
   app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
   `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).

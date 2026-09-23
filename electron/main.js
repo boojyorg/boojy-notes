@@ -213,6 +213,12 @@ ipcMain.on("trace-enabled", (event) => {
   event.returnValue = traceEnabled;
 });
 ipcMain.on("trace", (_event, line) => trace("R", line));
+// The editor's right-click Paste. A page cannot read the clipboard for a menu
+// item; the web contents can paste into whatever it has focused, which fires
+// the same paste event ⌘V does, so the renderer's own paste handler runs.
+ipcMain.handle("paste", (event) => {
+  event.sender.paste();
+});
 registerOSTrashIPC(getNotesDir, { suppressUnlink: claimUnlink, releaseUnlink: releaseUnlinkClaim });
 registerFolderIPC(getNotesDir, { suppressTree: claimTree });
 registerSettingsIPC(getMainWindow, restartWatcher);
