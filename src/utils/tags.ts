@@ -1,4 +1,5 @@
 import type { Block, NoteData } from "../types/notes";
+import { LINK_DEST } from "./linkDestination";
 
 /**
  * The one tag grammar. `#` at the start of the text or after whitespace or
@@ -49,7 +50,10 @@ export function tagSourceText(block: Block): string[] {
   }
 }
 
-const NOT_PROSE_RE = /`[^`]*`|https?:\/\/\S+|www\.\S+|\]\([^)]*\)|\[\[[^\]]*\]\]/g;
+const NOT_PROSE_RE = new RegExp(
+  String.raw`\`[^\`]*\`|https?:\/\/\S+|www\.\S+|\]\(${LINK_DEST}\)|\[\[[^\]]*\]\]`,
+  "g",
+);
 
 /** Every tag in one piece of prose, as written. */
 export function tagsInText(text: string): string[] {

@@ -8,6 +8,15 @@
  */
 const ADDRESS_RE = /^(?:https?:\/\/\S+|(?:[\w-]+\.)+[a-z]{2,}(?::\d+)?(?:[/?#]\S*)?)$/i;
 
+/**
+ * A link's destination inside its `(…)`, as a regex source: anything but a
+ * parenthesis, or a balanced pair holding none, so
+ * `[Mercury](https://en.wikipedia.org/wiki/Mercury_(planet))` is one address
+ * and not `…Mercury_(planet` with a stray `)` after the link. CommonMark
+ * allows balanced parentheses to any depth; one level is what addresses use.
+ */
+export const LINK_DEST = String.raw`(?:[^()]|\([^()]*\))+`;
+
 /** The address `text` names, with its scheme, or null when it is not one. */
 export function readAddress(text: string): string | null {
   const t = text.trim();

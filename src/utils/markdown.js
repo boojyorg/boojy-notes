@@ -2,7 +2,11 @@
 // Shared markdown ↔ blocks converters.
 // Single source of truth used by both the renderer (browser) and Electron main process.
 
+import { LINK_DEST } from "./linkDestination";
 import { listLayout, readListIndents } from "./listStructure";
+
+/** A line that is one `![alt](src)` and nothing else; `src` may hold balanced parens. */
+const MD_IMAGE_LINE_RE = new RegExp(String.raw`^!\[([^\]]*)\]\((${LINK_DEST})\)$`);
 
 const CALLOUT_ALIASES = {
   note: "note",
@@ -665,8 +669,8 @@ export function markdownToBlocks(md) {
       if (m[1] || suffix !== headingSuffix(text) || gap !== (block.bare ? "" : " ")) {
         block.headingSource = { indent: m[1], gap, suffix };
       }
-    } else if (/^!\[([^\]]*)\]\(([^)]+)\)$/.test(line)) {
-      const m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    } else if (MD_IMAGE_LINE_RE.test(line)) {
+      const m = line.match(MD_IMAGE_LINE_RE);
       // Obsidian-style width suffix in the alt: ![alt|350](url)
       let alt = m[1];
       let width = 100;

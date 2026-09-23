@@ -142,7 +142,35 @@ describe("inlineMarkdownToHtml", () => {
   it("does not match trailing paren in bare URLs", () => {
     const result = inlineMarkdownToHtml("(https://example.com)");
     // The closing paren should NOT be part of the href
-    expect(result).not.toContain('href="https://example.com)"');
+    expect(result).toContain('href="https://example.com"');
+    expect(result).toMatch(/<\/a>\)$/);
+  });
+
+  // An address may hold balanced parentheses (CommonMark for a link's
+  // destination, GitHub's autolink rule for a bare URL). Until 2026-09-23 both
+  // were cut at the first `)`: the click opened `…Mercury_(planet` and a stray
+  // `)` was drawn after the link.
+  const MERCURY = "https://en.wikipedia.org/wiki/Mercury_(planet)";
+
+  it("keeps a balanced paren inside a Markdown link's address", () => {
+    const md = `[Mercury](${MERCURY}) is small`;
+    const result = inlineMarkdownToHtml(md);
+    expect(result).toContain(`href="${MERCURY}"`);
+    expect(result).toContain("</a> is small");
+    expect(domNodeToMarkdown(makeEl(result))).toBe(md);
+  });
+
+  it("keeps a closing paren in a bare URL when it balances one in the URL", () => {
+    expect(inlineMarkdownToHtml(`see ${MERCURY}.`)).toContain(`href="${MERCURY}"`);
+    const wrapped = inlineMarkdownToHtml(`(see ${MERCURY})`);
+    expect(wrapped).toContain(`href="${MERCURY}"`);
+    expect(wrapped).toMatch(/<\/a>\)$/);
+    const md = `before ${MERCURY} after`;
+    expect(domNodeToMarkdown(makeEl(inlineMarkdownToHtml(md)))).toBe(md);
+  });
+
+  it("links nothing for a scheme with no address after it", () => {
+    expect(inlineMarkdownToHtml("(https://)")).not.toContain("<a ");
   });
 
   it("does not double-link URLs inside markdown links", () => {
@@ -296,6 +324,7 @@ describe("stripMarkdownFormatting", () => {
 
   it("strips markdown links", () => {
     expect(stripMarkdownFormatting("[text](url)")).toBe("text");
+    expect(stripMarkdownFormatting("[text](https://x.y/a_(b)) end")).toBe("text end");
   });
 
   it("strips all formatting in mixed text", () => {

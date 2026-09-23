@@ -19,6 +19,7 @@ describe("tagsInText: the one tag grammar", () => {
     expect(tagsInText("see example.com/page#top")).toEqual([]);
     expect(tagsInText("see https://example.com/page#top now")).toEqual([]);
     expect(tagsInText("[docs](https://x.y/#section)")).toEqual([]);
+    expect(tagsInText("[docs](https://x.y/a_(b) #section)")).toEqual([]);
   });
 
   it("drops inline code, so `#include` is not a tag", () => {

@@ -164,6 +164,19 @@ const LOSSLESS_CASES = [
       },
     ],
   ],
+  [
+    "image (standard markdown format, balanced parens in the address)",
+    [
+      {
+        type: "image",
+        src: "attachments/Screenshot (2).png",
+        alt: "",
+        width: 100,
+        text: "",
+        format: "md",
+      },
+    ],
+  ],
   ["file", [{ type: "file", src: "report.pdf", filename: "report.pdf", size: null, text: "" }]],
   [
     "frontmatter (first)",
