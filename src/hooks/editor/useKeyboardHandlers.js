@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import {
+  caretLength,
+  caretOffsetAt,
   caretOnEmptyLastLine,
   caretRect,
   findNearestBlock,
@@ -52,6 +54,7 @@ function caretLandingBefore(blocks, index) {
 function caretLandingAfter(blocks, index) {
   return landing(blocks, index, 1, takesCaret);
 }
+
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
 import {
   LIST_TYPES,
@@ -62,6 +65,34 @@ import {
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
 import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
 import { reorderFloor } from "../../utils/blockOrder";
+
+/**
+ * Blocks a Backspace at their start turns into a plain paragraph before it
+ * does anything else (Notion's rule, and Obsidian's in effect, where the key
+ * deletes the `### `): the text and the caret stay, only the kind goes. A
+ * second Backspace then merges or reaches across as a paragraph's would.
+ * Before 2026-09-23 the first press merged a heading's text into the block
+ * above, and on an empty heading under a picture it selected the picture
+ * with nothing on screen to say so, so the second press deleted it.
+ */
+const DEMOTES_TO_PARAGRAPH = new Set([
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "bullet",
+  "numbered",
+  "checkbox",
+  "blockquote",
+]);
+
+/** Where a caret lands at the end of a block: its visible length, never its Markdown's. */
+function endOffset(blockRefs, block) {
+  const el = blockRefs.current[block.id];
+  return el ? caretLength(el) : (block.text || "").length;
+}
 
 export function useKeyboardHandlers({
   noteDataRef,
@@ -280,8 +311,30 @@ export function useKeyboardHandlers({
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
-      const beforeText = markdownBefore(el, range.startContainer, range.startOffset);
-      const afterText = markdownAfter(el, range.endContainer, range.endOffset);
+
+      // Enter at the start of a heading that holds text opens a paragraph
+      // above it and leaves the heading where it is, caret and all. The
+      // split below made the empty half the heading and demoted the text
+      // to a paragraph (review §1.11).
+      if (
+        /^h[1-6]$/.test(blockType) &&
+        text !== "" &&
+        range.collapsed &&
+        caretOffsetAt(el, range.startContainer, range.startOffset) === 0
+      ) {
+        insertBlockAfter(noteId, blockIndex - 1, "p", "");
+        focusBlockId.current = block.id;
+        focusCursorPos.current = 0;
+        return;
+      }
+
+      let beforeText = markdownBefore(el, range.startContainer, range.startOffset);
+      let afterText = markdownAfter(el, range.endContainer, range.endOffset);
+      // A split on a soft break's edge spends the break: Enter at the end of
+      // a line, or at the start of the one after it, is the new block's
+      // boundary, not a newline left at the head or tail of either half.
+      if (afterText.startsWith("\n")) afterText = afterText.slice(1);
+      else if (beforeText.endsWith("\n")) beforeText = beforeText.slice(0, -1);
       updateBlockText(noteId, blockIndex, beforeText);
       syncGeneration.current++;
       insertBlockAfter(noteId, blockIndex, isList ? blockType : "p", afterText, {
@@ -291,6 +344,29 @@ export function useKeyboardHandlers({
 
     // Backspace
     if (e.key === "Backspace") {
+      // At the very start of a heading, list item, quote or task (outdented):
+      // become a paragraph first. The caret and the text stay put.
+      if (DEMOTES_TO_PARAGRAPH.has(block.type) && !(block.indent > 0)) {
+        const sel = window.getSelection();
+        const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+        if (range?.collapsed && caretOffsetAt(el, range.startContainer, range.startOffset) === 0) {
+          e.preventDefault();
+          commitNoteData((prev) => {
+            const next = { ...prev };
+            const n = { ...next[noteId] };
+            const blks = [...n.content.blocks];
+            // Only the id and the text survive: a heading's source spacing, a
+            // list's marker and number, a task's tick all belonged to the kind.
+            blks[blockIndex] = { id: block.id, type: "p", text };
+            n.content = { ...n.content, blocks: blks };
+            next[noteId] = n;
+            return next;
+          });
+          focusBlockId.current = block.id;
+          focusCursorPos.current = 0;
+          return;
+        }
+      }
       if (text === "") {
         // If indented, decrease indent instead of deleting
         if ((block.indent || 0) > 0) {
@@ -308,14 +384,27 @@ export function useKeyboardHandlers({
         if (blocks.length <= 1) return;
         const prevIdx = landingBefore(blocks, blockIndex);
         if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
-          // A divider or image above: select it rather than stepping over it.
-          // The next Backspace removes it; this empty row stays until then.
-          selectBlock(blocks[prevIdx].id);
+          // A divider, image or table above: this empty row goes and the
+          // block is selected, in one press, so what the next Backspace will
+          // remove is on screen. The row used to stay with the caret blinking
+          // in it, and the selection went unseen (2026-09-23).
+          const target = blocks[prevIdx].id;
+          // The caret needs somewhere to rest while the block is selected
+          // (a printable key deselects and types there): the nearest text
+          // below, else above. It is not drawn meanwhile.
+          let rest = landing(blocks, blockIndex, 1, isEditableBlock);
+          if (rest < 0) rest = landing(blocks, blockIndex, -1, isEditableBlock);
+          if (rest >= 0) {
+            focusBlockId.current = blocks[rest].id;
+            focusCursorPos.current = rest > blockIndex ? 0 : endOffset(blockRefs, blocks[rest]);
+          }
+          deleteBlock(noteId, blockIndex);
+          selectBlock(target);
           return;
         }
         if (prevIdx >= 0) {
           focusBlockId.current = blocks[prevIdx].id;
-          focusCursorPos.current = (blocks[prevIdx].text || "").length;
+          focusCursorPos.current = endOffset(blockRefs, blocks[prevIdx]);
         }
         deleteBlock(noteId, blockIndex);
         return;
@@ -347,7 +436,9 @@ export function useKeyboardHandlers({
               e.preventDefault();
               const prevBlock = blocks[prevIdx];
               const prevText = prevBlock.text || "";
-              const cursorPos = prevText.length;
+              // The seam in visible characters: `**bold**` is four fewer than
+              // its Markdown, and the caret landed that far into the moved text.
+              const cursorPos = endOffset(blockRefs, prevBlock);
               updateBlockText(noteId, prevIdx, prevText + text);
               deleteBlock(noteId, blockIndex);
               syncGeneration.current++;
