@@ -37,7 +37,12 @@ import FloatingToolbar, {
   chipWouldClip,
   clampedLeft,
 } from "../../src/components/FloatingToolbar.jsx";
-import { TOOLTIP_REST_MS, shortcutLabel } from "../../src/components/Tooltip";
+import {
+  TOOLTIP_REST_MS,
+  TOOLTIP_WARM_MS,
+  coolTooltips,
+  shortcutLabel,
+} from "../../src/components/Tooltip";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const defaultFormats = {
@@ -65,6 +70,8 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  // The warm window is shared module state: one test's chip must not warm the next.
+  coolTooltips(0);
 });
 
 describe("FloatingToolbar", () => {
@@ -157,6 +164,27 @@ describe("FloatingToolbar", () => {
     fireEvent.mouseEnter(getByRole("button", { name: "Italic" }));
     act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
     expect(getByTestId("format-tooltip").textContent).toBe("Italic⌘I");
+  });
+
+  // After one chip has shown, the next button's shows at once (the chrome
+  // row's warm window, shared): the rest is paid once per pass (2026-09-24).
+  it("once a chip has shown, a neighbour's shows at once; after the warm window it waits again", () => {
+    vi.useFakeTimers();
+    const { getByRole, getByTestId, queryByTestId } = shown();
+    const bold = getByRole("button", { name: "Bold" });
+    const italic = getByRole("button", { name: "Italic" });
+    fireEvent.mouseEnter(bold);
+    act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
+    expect(getByTestId("format-tooltip").textContent).toBe("Bold⌘B");
+    fireEvent.mouseLeave(bold);
+    fireEvent.mouseEnter(italic);
+    expect(getByTestId("format-tooltip").textContent).toBe("Italic⌘I");
+    fireEvent.mouseLeave(italic);
+    act(() => vi.advanceTimersByTime(TOOLTIP_WARM_MS + 1));
+    fireEvent.mouseEnter(bold);
+    expect(queryByTestId("format-tooltip")).toBeNull();
+    act(() => vi.advanceTimersByTime(TOOLTIP_REST_MS));
+    expect(getByTestId("format-tooltip").textContent).toBe("Bold⌘B");
   });
 
   // The chip goes below only when it would clip at the top of the scroll
