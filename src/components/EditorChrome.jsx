@@ -2,7 +2,13 @@ import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
-import { SidebarToggleIcon, MoreHorizontalIcon, SearchIcon, NewNoteIcon } from "./Icons";
+import {
+  SidebarToggleIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  NewNoteIcon,
+  SourceViewIcon,
+} from "./Icons";
 import { isElectronMac } from "../utils/platform";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
@@ -20,7 +26,10 @@ import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
  *
  * Right, the note's ··· menu — the active note's actions, and Settings under a
  * separator. It is rendered with no active note too, carrying Settings alone:
- * app settings must never need a note to reach.
+ * app settings must never need a note to reach. While the Markdown view is on,
+ * a lit `</>` stands left of it: the mode's one mark on screen, and its way
+ * back (2026-09-24). It is not there at rest; the ··· menu, View and ⌘/ open
+ * the view.
  *
  * Between the two, centred on the pane, the note's path and name (NotePath,
  * rendered by EditorArea at the top of its scroller so the note scrolls under
@@ -83,8 +92,14 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
 export const chromePathInset = (collapsed, fullScreen = false) =>
   chromeControlsLeft(collapsed, fullScreen) + (collapsed ? groupWidth(3) : 0) + PATH_AIR;
 
-/** Where the path's band ends, measured from the editor's right edge: the ··· and its air. */
-export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + CHROME_BTN + PATH_AIR;
+/**
+ * Where the path's band ends, measured from the editor's right edge: the ···,
+ * the room the Markdown view's `</>` takes beside it, and the air. Reserved
+ * whether the view is on or not, so switching never moves the path: a band
+ * that widened and narrowed with the mode re-centred the name and, for a
+ * frame, dropped its folders (2026-09-24).
+ */
+export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
 
 /**
  * The shell's shortcuts as the chips show them: the map in useAppKeyboard
@@ -96,6 +111,7 @@ export const SHORTCUTS = {
   search: shortcutLabel({ key: "P" }),
   settings: shortcutLabel({ key: "," }),
   toggleSidebar: shortcutLabel({ key: "\\" }),
+  sourceView: shortcutLabel({ key: "/" }),
 };
 
 /**
@@ -195,8 +211,14 @@ export function ChromeButton({
   );
 }
 
-export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onOpenSearch }) {
-  const { sidebarVisible, fullScreen, toggleSidebar } = useLayout();
+export default function EditorChrome({
+  activeNote,
+  onNoteActions,
+  onNewNote,
+  onOpenSearch,
+  onToggleSourceView,
+}) {
+  const { sidebarVisible, fullScreen, toggleSidebar, sourceView } = useLayout();
   const collapsed = !sidebarVisible;
 
   // The left controls belong to the editor, so they start at its left edge,
@@ -249,6 +271,20 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           gap: BTN_GAP,
         }}
       >
+        {sourceView && activeNote && (
+          // Held lit while the view is on, the way the path's folder glyph is
+          // while its popup is open: it says the mode is on, and it is the way
+          // back. The chip names what a press does.
+          <ChromeButton
+            onClick={onToggleSourceView}
+            label="Show formatted"
+            shortcut={SHORTCUTS.sourceView}
+            active
+            data-testid="source-view-toggle"
+          >
+            <SourceViewIcon />
+          </ChromeButton>
+        )}
         <ChromeButton
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();

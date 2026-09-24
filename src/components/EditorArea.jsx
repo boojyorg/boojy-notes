@@ -32,12 +32,16 @@ import {
   hasOwnField,
   focusOwnedField,
   titleFieldText,
+  getCaretOffset,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
 import FindBar from "./FindBar";
+import SourceView from "./SourceView";
+import { blocksToMarkdown } from "../utils/markdown";
+import { blockOffsetFor, sourceOffsetFor } from "../utils/sourceView";
 import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { panelTransition } from "../tokens/motion";
@@ -157,6 +161,8 @@ const EditorArea = memo(
     onTitleBlur,
     // Edit → Find… and Find and Replace…: the menu opens the bar through this.
     openFindRef,
+    // Show Markdown / Show Formatted, from the menus, ⌘/ and the lit `</>`.
+    switchViewRef,
   }) {
     const {
       editorRef,
@@ -198,7 +204,15 @@ const EditorArea = memo(
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
-    const { accentColor, editorBg, sidebarVisible, sidebarWidth, fullScreen } = useLayout();
+    const {
+      accentColor,
+      editorBg,
+      sidebarVisible,
+      sidebarWidth,
+      fullScreen,
+      sourceView,
+      setSourceView,
+    } = useLayout();
 
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
@@ -210,6 +224,8 @@ const EditorArea = memo(
     const findStepRef = useRef(null);
     if (openFindRef) {
       openFindRef.current = (mode) => {
+        // The Markdown view is a plain field with no find of its own yet.
+        if (sourceView) return;
         if (mode === "replace") {
           setFindBarReplace(true);
           findStepRef.current?.replace();
@@ -248,7 +264,64 @@ const EditorArea = memo(
       if (!el) return;
       el.addEventListener("beforeinput", handleEditorBeforeInput);
       return () => el.removeEventListener("beforeinput", handleEditorBeforeInput);
-    }, [activeNote, hasNote, editorRef, handleEditorBeforeInput]);
+      // `sourceView`: the editor element is a new one on the way back from the Markdown view.
+    }, [activeNote, hasNote, editorRef, handleEditorBeforeInput, sourceView]);
+
+    // ── The Markdown view's switch ──
+    // Both ways, the caret crosses in the block it was in (on the same
+    // character where the block's text is written as it is shown) and that
+    // block keeps its height in the pane, so the page does not move. Read on
+    // the way out, while the view being left is still on screen; applied on
+    // the way in, once the other has painted.
+    const sourceApiRef = useRef(null);
+    const sourceEntryRef = useRef(null);
+    const formattedEntryRef = useRef(null);
+    if (switchViewRef) {
+      switchViewRef.current = () => {
+        const blocks = noteDataRef.current?.[activeNote]?.content?.blocks;
+        const scroller = editorScrollRef.current;
+        if (blocks && scroller) {
+          const text = blocksToMarkdown(blocks);
+          if (sourceView) {
+            const place = sourceApiRef.current?.capture();
+            const at = place && blockOffsetFor(text, blocks, place.offset);
+            formattedEntryRef.current = at ? { ...at, top: place.top, atTop: place.atTop } : null;
+          } else {
+            const at = formattedPlace(blocks, blockRefs.current, editorRef.current, scroller);
+            sourceEntryRef.current = at
+              ? {
+                  offset: sourceOffsetFor(text, blocks, at.index, at.offset),
+                  top: at.top,
+                  atTop: scroller.scrollTop <= 0,
+                }
+              : null;
+          }
+        }
+        setSourceView(!sourceView);
+      };
+    }
+    // Back in the formatted view: the caret into its block, the block at its height.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: fires on the switch alone; everything else is read through refs
+    useLayoutEffect(() => {
+      const entry = formattedEntryRef.current;
+      formattedEntryRef.current = null;
+      if (sourceView || !entry) return;
+      const block = noteDataRef.current?.[activeNote]?.content?.blocks?.[entry.index];
+      const el = block && blockRefs.current[block.id];
+      const scroller = editorScrollRef.current;
+      if (!el || !scroller) return;
+      if (isEditableBlock(block)) placeCaret(el, entry.offset);
+      // A note that was at its top stays there, its caret's block brought into
+      // view only if it is below the fold; a scrolled one keeps the block at
+      // the height its line stood.
+      if (entry.atTop) {
+        scroller.scrollTop = 0;
+        el.scrollIntoView?.({ block: "nearest" });
+      } else {
+        scroller.scrollTop +=
+          el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - entry.top;
+      }
+    }, [sourceView]);
 
     const onNavigateToNote = useCallback(
       (target, create) => {
@@ -705,6 +778,11 @@ const EditorArea = memo(
           flexDirection: "column",
           overflowX: "hidden",
           overflowY: "auto",
+          // The scrollbar's lane is kept whether the note overflows or not: a
+          // styled bar takes layout width on macOS, so a note crossing the
+          // fold (or a switch to the Markdown view, whose height differs)
+          // narrowed the pane and moved the centred path by half a bar.
+          scrollbarGutter: "stable",
           background: editorBg,
           position: "relative",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -759,196 +837,213 @@ const EditorArea = memo(
           >
             {isMobile && titleField}
 
-            {/* Blocks */}
-            <div ref={editorContainerRef} style={{ position: "relative" }}>
-              {findBarOpen && (
-                <FindBar
-                  editorRef={editorRef}
-                  blocks={note.content.blocks}
-                  blockRefs={blockRefs}
-                  noteId={activeNote}
-                  updateBlockText={updateBlockText}
-                  initialShowReplace={findBarReplace}
-                  stepRef={findStepRef}
-                  onShowReplaceChange={setFindBarReplace}
-                  onClose={() => setFindBarOpen(false)}
-                />
-              )}
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                role="region"
-                aria-label="Note editor"
-                onKeyDown={(e) => {
-                  // Cmd+F toggles the find bar, opened as it was last left, Replace
-                  // showing or not (2026-09-24: one key for both, the Replace
-                  // toggle in the bar; Cmd+H is Hide on a Mac).
-                  const mod = e.ctrlKey || e.metaKey;
-                  if (mod && e.code === "KeyF" && !e.shiftKey && !e.altKey) {
+            {sourceView ? (
+              <SourceView
+                key={activeNote}
+                noteId={activeNote}
+                noteDataRef={noteDataRef}
+                commitTextChange={commitTextChange}
+                scrollerRef={editorScrollRef}
+                entryRef={sourceEntryRef}
+                apiRef={sourceApiRef}
+              />
+            ) : (
+              <>
+                {/* Blocks */}
+                <div ref={editorContainerRef} style={{ position: "relative" }}>
+                  {findBarOpen && (
+                    <FindBar
+                      editorRef={editorRef}
+                      blocks={note.content.blocks}
+                      blockRefs={blockRefs}
+                      noteId={activeNote}
+                      updateBlockText={updateBlockText}
+                      initialShowReplace={findBarReplace}
+                      stepRef={findStepRef}
+                      onShowReplaceChange={setFindBarReplace}
+                      onClose={() => setFindBarOpen(false)}
+                    />
+                  )}
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    role="region"
+                    aria-label="Note editor"
+                    onKeyDown={(e) => {
+                      // Cmd+F toggles the find bar, opened as it was last left, Replace
+                      // showing or not (2026-09-24: one key for both, the Replace
+                      // toggle in the bar; Cmd+H is Hide on a Mac).
+                      const mod = e.ctrlKey || e.metaKey;
+                      if (mod && e.code === "KeyF" && !e.shiftKey && !e.altKey) {
+                        e.preventDefault();
+                        setFindBarOpen((v) => !v);
+                        return;
+                      }
+                      // A selected whole block (divider or image) takes the key first.
+                      if (selectedBlockId && handleSelectedBlockKey(e)) return;
+                      handleEditorKeyDown(e);
+                    }}
+                    onInput={handleEditorInput}
+                    onPaste={handleEditorPaste}
+                    onCopy={handleEditorCopy}
+                    onCut={handleEditorCut}
+                    onMouseMove={handleEditorMouseMove}
+                    onMouseLeave={handleEditorMouseLeave}
+                    onContextMenu={handleEditorContextMenu}
+                    onMouseDown={(e) => {
+                      handleEditorMouseDown(e);
+                      // Prevent caret placement inside links on click (for instant open feel)
+                      if (!e.shiftKey && e.button === 0) {
+                        const anchor = e.target.closest("a");
+                        const wikilink = e.target.closest(".wikilink");
+                        if (anchor || wikilink) e.preventDefault();
+                      }
+                    }}
+                    onMouseUp={handleEditorMouseUp}
+                    onFocus={handleEditorFocus}
+                    onClick={(e) => {
+                      const sel = window.getSelection();
+                      // Don't open links if user was selecting text
+                      if (sel && !sel.isCollapsed) return;
+                      const anchor = e.target.closest("a");
+                      if (anchor) {
+                        e.preventDefault();
+                        const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
+                        if (url) {
+                          const api = getAPI();
+                          if (api?.openExternal) {
+                            api.openExternal(url);
+                          } else {
+                            window.open(url, "_blank");
+                          }
+                        }
+                        return;
+                      }
+                      const tag = e.target.closest(".inline-tag");
+                      if (tag) {
+                        // The pill's text, not `data-tag`: the attribute is written
+                        // at paint, and a tag that grew by typing kept its first
+                        // letter's (2026-09-20, `#ha` searched `#h`).
+                        const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
+                        if (tagName && onTagClick) onTagClick(tagName);
+                        return;
+                      }
+                      const wikilink = e.target.closest(".wikilink");
+                      if (wikilink) {
+                        e.preventDefault();
+                        const target = wikilink.getAttribute("data-target");
+                        if (target && onWikilinkClick) onWikilinkClick(target, wikilink);
+                        return;
+                      }
+                    }}
+                    data-editor
+                    // While a whole block is selected the caret stays where it was
+                    // (a printable key deselects and types there) but is not drawn:
+                    // a blinking caret beside a selected picture read as the key
+                    // having done nothing (2026-09-23).
+                    style={{
+                      outline: "none",
+                      caretColor: selectedBlockId ? "transparent" : undefined,
+                    }}
+                  >
+                    {(() => {
+                      const listPositions = listLayout(note.content.blocks);
+                      return note.content.blocks.map((block, i) => {
+                        const numberedIndex = listPositions[i]?.number;
+                        return (
+                          <BlockErrorBoundary
+                            key={block.id + "-" + block.type}
+                            blockId={block.id}
+                            onDelete={() => deleteBlock(activeNote, i)}
+                          >
+                            <EditableBlock
+                              block={block}
+                              blockIndex={i}
+                              noteId={activeNote}
+                              onCheckToggle={flipCheck}
+                              onDeleteBlock={deleteWholeBlock}
+                              registerRef={registerBlockRef}
+                              syncGen={syncGeneration.current}
+                              accentColor={accentColor}
+                              numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
+                              onUpdateText={updateBlockText}
+                              onUpdateLang={updateCodeLang}
+                              onUpdateCallout={updateCallout}
+                              onUpdateCalloutTitle={updateCalloutTitle}
+                              onUpdateTableCell={updateTableCell}
+                              onUpdateTableRows={updateTableRows}
+                              noteTitleSet={noteTitleSet}
+                              onBlockNav={handleBlockNav}
+                              isBlockSelected={selectedBlockId === block.id}
+                              onBlockSelect={handleBlockSelect}
+                              onImageLightbox={handleImageLightbox}
+                              onImageCopyImage={handleImageCopyImage}
+                              onUpdateBlockProperty={updateBlockProperty}
+                              onFileOpen={handleFileOpen}
+                              onFileShowInFolder={handleFileShowInFolder}
+                              noteDataRef={noteDataRef}
+                              onNavigateToNote={onNavigateToNote}
+                            />
+                          </BlockErrorBoundary>
+                        );
+                      });
+                    })()}
+                  </div>
+                  {!isMobile && (
+                    <BlockDragHandle
+                      columnRef={columnRef}
+                      editorRef={editorRef}
+                      startHandleDrag={startHandleDrag}
+                    />
+                  )}
+                  <FloatingToolbar
+                    // Never beside the right-click menu: one surface at a time.
+                    position={linkCtxMenu ? null : toolbarState}
+                    activeFormats={activeFormats}
+                    onFormat={applyFormat}
+                  />
+                  <LinkTooltip
+                    description={linkTooltip?.description ?? null}
+                    position={linkTooltip?.position ?? null}
+                  />
+                </div>
+
+                {/* Click to create new block */}
+                <div
+                  style={{ minHeight: 200, cursor: "text" }}
+                  onMouseDown={(e) => {
                     e.preventDefault();
-                    setFindBarOpen((v) => !v);
-                    return;
-                  }
-                  // A selected whole block (divider or image) takes the key first.
-                  if (selectedBlockId && handleSelectedBlockKey(e)) return;
-                  handleEditorKeyDown(e);
-                }}
-                onInput={handleEditorInput}
-                onPaste={handleEditorPaste}
-                onCopy={handleEditorCopy}
-                onCut={handleEditorCut}
-                onMouseMove={handleEditorMouseMove}
-                onMouseLeave={handleEditorMouseLeave}
-                onContextMenu={handleEditorContextMenu}
-                onMouseDown={(e) => {
-                  handleEditorMouseDown(e);
-                  // Prevent caret placement inside links on click (for instant open feel)
-                  if (!e.shiftKey && e.button === 0) {
-                    const anchor = e.target.closest("a");
-                    const wikilink = e.target.closest(".wikilink");
-                    if (anchor || wikilink) e.preventDefault();
-                  }
-                }}
-                onMouseUp={handleEditorMouseUp}
-                onFocus={handleEditorFocus}
-                onClick={(e) => {
-                  const sel = window.getSelection();
-                  // Don't open links if user was selecting text
-                  if (sel && !sel.isCollapsed) return;
-                  const anchor = e.target.closest("a");
-                  if (anchor) {
-                    e.preventDefault();
-                    const url = anchor.getAttribute("href") || anchor.getAttribute("data-url");
-                    if (url) {
-                      const api = getAPI();
-                      if (api?.openExternal) {
-                        api.openExternal(url);
-                      } else {
-                        window.open(url, "_blank");
+                    const blocks = noteDataRef.current[activeNote].content.blocks;
+                    if (blocks.length > 0) {
+                      const lastBlock = blocks[blocks.length - 1];
+                      const lastEl = blockRefs.current[lastBlock.id];
+                      if (lastEl && (lastEl.innerText || "").trim() === "") {
+                        placeCaret(lastEl, 0);
+                        const lastId = lastBlock.id;
+                        requestAnimationFrame(() => {
+                          const sel = window.getSelection();
+                          if (
+                            sel.rangeCount &&
+                            getBlockFromNode(
+                              sel.anchorNode,
+                              editorRef.current,
+                              blocks,
+                              blockRefs.current,
+                            )
+                          )
+                            return;
+                          const freshEl = blockRefs.current[lastId];
+                          if (freshEl) placeCaret(freshEl, 0);
+                        });
+                        return;
                       }
                     }
-                    return;
-                  }
-                  const tag = e.target.closest(".inline-tag");
-                  if (tag) {
-                    // The pill's text, not `data-tag`: the attribute is written
-                    // at paint, and a tag that grew by typing kept its first
-                    // letter's (2026-09-20, `#ha` searched `#h`).
-                    const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
-                    if (tagName && onTagClick) onTagClick(tagName);
-                    return;
-                  }
-                  const wikilink = e.target.closest(".wikilink");
-                  if (wikilink) {
-                    e.preventDefault();
-                    const target = wikilink.getAttribute("data-target");
-                    if (target && onWikilinkClick) onWikilinkClick(target, wikilink);
-                    return;
-                  }
-                }}
-                data-editor
-                // While a whole block is selected the caret stays where it was
-                // (a printable key deselects and types there) but is not drawn:
-                // a blinking caret beside a selected picture read as the key
-                // having done nothing (2026-09-23).
-                style={{ outline: "none", caretColor: selectedBlockId ? "transparent" : undefined }}
-              >
-                {(() => {
-                  const listPositions = listLayout(note.content.blocks);
-                  return note.content.blocks.map((block, i) => {
-                    const numberedIndex = listPositions[i]?.number;
-                    return (
-                      <BlockErrorBoundary
-                        key={block.id + "-" + block.type}
-                        blockId={block.id}
-                        onDelete={() => deleteBlock(activeNote, i)}
-                      >
-                        <EditableBlock
-                          block={block}
-                          blockIndex={i}
-                          noteId={activeNote}
-                          onCheckToggle={flipCheck}
-                          onDeleteBlock={deleteWholeBlock}
-                          registerRef={registerBlockRef}
-                          syncGen={syncGeneration.current}
-                          accentColor={accentColor}
-                          numberedIndex={block.type === "numbered" ? numberedIndex : undefined}
-                          onUpdateText={updateBlockText}
-                          onUpdateLang={updateCodeLang}
-                          onUpdateCallout={updateCallout}
-                          onUpdateCalloutTitle={updateCalloutTitle}
-                          onUpdateTableCell={updateTableCell}
-                          onUpdateTableRows={updateTableRows}
-                          noteTitleSet={noteTitleSet}
-                          onBlockNav={handleBlockNav}
-                          isBlockSelected={selectedBlockId === block.id}
-                          onBlockSelect={handleBlockSelect}
-                          onImageLightbox={handleImageLightbox}
-                          onImageCopyImage={handleImageCopyImage}
-                          onUpdateBlockProperty={updateBlockProperty}
-                          onFileOpen={handleFileOpen}
-                          onFileShowInFolder={handleFileShowInFolder}
-                          noteDataRef={noteDataRef}
-                          onNavigateToNote={onNavigateToNote}
-                        />
-                      </BlockErrorBoundary>
-                    );
-                  });
-                })()}
-              </div>
-              {!isMobile && (
-                <BlockDragHandle
-                  columnRef={columnRef}
-                  editorRef={editorRef}
-                  startHandleDrag={startHandleDrag}
+                    insertBlockAfter(activeNote, blocks.length - 1, "p", "");
+                  }}
                 />
-              )}
-              <FloatingToolbar
-                // Never beside the right-click menu: one surface at a time.
-                position={linkCtxMenu ? null : toolbarState}
-                activeFormats={activeFormats}
-                onFormat={applyFormat}
-              />
-              <LinkTooltip
-                description={linkTooltip?.description ?? null}
-                position={linkTooltip?.position ?? null}
-              />
-            </div>
-
-            {/* Click to create new block */}
-            <div
-              style={{ minHeight: 200, cursor: "text" }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const blocks = noteDataRef.current[activeNote].content.blocks;
-                if (blocks.length > 0) {
-                  const lastBlock = blocks[blocks.length - 1];
-                  const lastEl = blockRefs.current[lastBlock.id];
-                  if (lastEl && (lastEl.innerText || "").trim() === "") {
-                    placeCaret(lastEl, 0);
-                    const lastId = lastBlock.id;
-                    requestAnimationFrame(() => {
-                      const sel = window.getSelection();
-                      if (
-                        sel.rangeCount &&
-                        getBlockFromNode(
-                          sel.anchorNode,
-                          editorRef.current,
-                          blocks,
-                          blockRefs.current,
-                        )
-                      )
-                        return;
-                      const freshEl = blockRefs.current[lastId];
-                      if (freshEl) placeCaret(freshEl, 0);
-                    });
-                    return;
-                  }
-                }
-                insertBlockAfter(activeNote, blocks.length - 1, "p", "");
-              }}
-            />
+              </>
+            )}
 
             {/* Right-click menu */}
             {linkCtxMenu && (
@@ -1051,5 +1146,33 @@ const EditorArea = memo(
     );
   },
 );
+
+/**
+ * Where the formatted view's caret is, for the switch to the Markdown view:
+ * the block it is in, how far into the block's text, and the block's top in
+ * the pane. With no caret in the note, the first block showing at the top of
+ * the pane stands in, so the page still holds its place.
+ */
+function formattedPlace(blocks, refs, editor, scroller) {
+  const paneTop = scroller.getBoundingClientRect().top;
+  const sel = window.getSelection();
+  const node = sel?.rangeCount ? sel.anchorNode : null;
+  if (node && editor?.contains(node)) {
+    const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    const id = el?.closest?.("[data-block-id]")?.getAttribute("data-block-id");
+    const index = blocks.findIndex((b) => b.id === id);
+    const root = index >= 0 ? refs[blocks[index].id] : null;
+    if (root) {
+      const offset = root.contains(node) ? Math.max(0, getCaretOffset(root)) : 0;
+      return { index, offset, top: root.getBoundingClientRect().top - paneTop };
+    }
+  }
+  for (let i = 0; i < blocks.length; i++) {
+    const root = refs[blocks[i].id];
+    const r = root?.getBoundingClientRect();
+    if (r && r.bottom > paneTop) return { index: i, offset: 0, top: r.top - paneTop };
+  }
+  return null;
+}
 
 export default EditorArea;

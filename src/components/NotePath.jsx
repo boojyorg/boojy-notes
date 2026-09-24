@@ -15,6 +15,7 @@ import {
   chromePathInset,
 } from "./EditorChrome";
 import PathTreeMenu from "./PathTreeMenu";
+import { SCROLLBAR_W } from "../constants/layout";
 import { FolderIcon } from "./Icons";
 
 /*
@@ -227,6 +228,11 @@ export default function NotePath({
 
   const padLeft = chromePathInset(collapsed, fullScreen);
   const padRight = CHROME_PATH_RIGHT_INSET;
+  // The band sits inside the scroller, whose scrollbar lane is always kept at
+  // its right, so its right padding is the inset less the lane: the band ends
+  // where it always did on screen, and the bias below, measured from the
+  // window's edges, keeps the path on the pane's centre.
+  const bandPadRight = padRight - SCROLLBAR_W;
   // The pane's centre sits left of the band's centre by half of this when the
   // left group is the wider (it always is on the desktop); a positive value
   // is the right spacer's head start, a negative one the left's.
@@ -322,7 +328,7 @@ export default function NotePath({
         boxSizing: "border-box",
         paddingTop: CHROME_TOP,
         paddingLeft: padLeft,
-        paddingRight: padRight,
+        paddingRight: bandPadRight,
         background: bg,
         transition: panelTransition("padding-left"),
       }}
@@ -341,7 +347,7 @@ export default function NotePath({
             top: 0,
             bottom: 0,
             left: padLeft,
-            right: padRight,
+            right: bandPadRight,
             WebkitAppRegion: "drag",
             transition: panelTransition("left"),
           }}

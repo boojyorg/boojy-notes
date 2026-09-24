@@ -222,28 +222,48 @@ describe("the header menu", () => {
     return props;
   };
 
-  it("carries the open note's actions and Settings, each with a glyph, in one group", () => {
+  it("carries the open note's actions, the view, and Settings, each with a glyph", () => {
     const { getByText, getByRole, queryAllByRole } = render(<ContextMenu {...headerProps("n1")} />);
-    for (const label of ["Rename", "Duplicate", "Delete", "Settings"]) {
+    for (const label of ["Rename", "Duplicate", "Delete", "Show Markdown", "Settings"]) {
       expect(getByText(label)).toBeInTheDocument();
       expect(getByText(label).closest("button").querySelector("svg")).toBeInTheDocument();
     }
     expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
-    // The cog is what sets Settings apart; no rule above it (judged live
-    // 2026-09-16: two rules cut the menu into three compartments), and the
-    // same padding as every row.
+    // The view has a group of its own under one rule, since it acts on how
+    // the note is shown (2026-09-24); Settings shares it with no rule of its
+    // own (judged live 2026-09-16: two rules cut the menu into three
+    // compartments), and the same padding as every row.
+    const view = getByText("Show Markdown").closest("button");
+    expect(view.previousElementSibling).toHaveAttribute("role", "separator");
+    expect(view.previousElementSibling.previousElementSibling).toBe(
+      getByText("Delete").closest("button"),
+    );
     const settings = getByText("Settings").closest("button");
-    expect(settings.previousElementSibling).toBe(getByText("Delete").closest("button"));
+    expect(settings.previousElementSibling).toBe(view);
     expect(settings.style.paddingTop).toBe("7px");
     // Every edge set on every item: an edge left unset by the inline style
     // showed Chromium's own 2px outset button border (2026-09-14).
     const rename = getByText("Rename").closest("button");
     expect(rename.style.borderTopWidth).toBe("0px");
-    // No counts without them, so no rule at all.
-    expect(queryAllByRole("separator")).toHaveLength(0);
+    // No count without one, so the view's rule is the only one.
+    expect(queryAllByRole("separator")).toHaveLength(1);
   });
 
-  it("ends with the note's word count, one muted line under the menu's only rule", () => {
+  it("offers the Markdown view with its shortcut, and the formatted view back", () => {
+    const props = headerProps("n1");
+    props.onToggleSourceView = vi.fn();
+    const { getByText, rerender } = render(<ContextMenu {...props} />);
+    const show = getByText("Show Markdown").closest("button");
+    expect(show).toHaveTextContent(/⌘\/|Ctrl\+\//);
+    fireEvent.click(show);
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+    expect(props.onToggleSourceView).toHaveBeenCalledTimes(1);
+    // Says what it will do, as View's sidebar item does; never a check.
+    rerender(<ContextMenu {...props} sourceView />);
+    expect(getByText("Show Formatted")).toBeInTheDocument();
+  });
+
+  it("ends with the note's word count, one muted line under a rule", () => {
     const props = headerProps("n1");
     props.wordCount = 412;
     const { getByTestId, getAllByRole, queryByRole } = render(<ContextMenu {...props} />);
@@ -251,7 +271,8 @@ describe("the header menu", () => {
     expect(stats).toHaveTextContent("412 words");
     expect(stats).not.toHaveTextContent("character");
     expect(stats.previousElementSibling).toHaveAttribute("role", "separator");
-    expect(getAllByRole("separator")).toHaveLength(1);
+    // The view's rule, and the count's.
+    expect(getAllByRole("separator")).toHaveLength(2);
     // Not an item: the arrows never land on it.
     expect(queryByRole("menuitem", { name: /words/ })).toBeNull();
   });

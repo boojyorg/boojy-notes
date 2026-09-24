@@ -11,13 +11,16 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import {
   CopyIcon,
+  FormattedViewIcon,
   MoveToIcon,
   NewFolderIcon,
   NewNoteIcon,
   PencilIcon,
   SettingsIcon,
+  SourceViewIcon,
   TrashIcon,
 } from "./Icons";
+import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
@@ -52,6 +55,9 @@ const ContextMenu = memo(function ContextMenu({
   // { kind: "folder", path }) at this menu's anchor; the menu closes first.
   onMoveTo,
   wordCount,
+  // The Markdown view: whether it is on, and the one switch (EditorArea's).
+  sourceView,
+  onToggleSourceView,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
@@ -203,8 +209,22 @@ const ContextMenu = memo(function ContextMenu({
     },
   };
 
+  // The view item says what it will do, as View's Hide/Show Sidebar does: a
+  // view is switched, where a format is checked (2026-09-24). Under a rule of
+  // its own, since it acts on how the note is shown, not on the note.
+  const viewItem = {
+    label: sourceView ? "Show Formatted" : "Show Markdown",
+    icon: sourceView ? <FormattedViewIcon /> : <SourceViewIcon size={16} />,
+    shortcut: shortcutLabel({ key: "/" }),
+    separator: true,
+    action: () => {
+      setCtxMenu(null);
+      onToggleSourceView?.();
+    },
+  };
+
   const items = isHeader
-    ? [...(ctxMenu.id ? noteItems(ctxMenu.id) : []), settingsItem]
+    ? [...(ctxMenu.id ? [...noteItems(ctxMenu.id), viewItem] : []), settingsItem]
     : ctxMenu.type === "note" && isBulk
       ? [
           // The bulk menu: Move first, since it is what a selection is
@@ -346,10 +366,13 @@ const ContextMenu = memo(function ContextMenu({
               }}
             >
               {/* Icons inherit the item colour, so Delete's glyph goes red with it. */}
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
                 {item.icon}
                 {item.label}
               </span>
+              {item.shortcut && (
+                <span style={{ color: TEXT.muted, marginLeft: 24 }}>{item.shortcut}</span>
+              )}
             </button>
           </Fragment>
         ))}

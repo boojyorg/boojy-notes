@@ -161,6 +161,8 @@ export function useEditorFocusUX({
     const onBeforeInput = (e) => {
       if (e.isComposing || !e.inputType?.startsWith("insert")) return;
       const root = editorRef.current;
+      // No editor on screen: the Markdown view's field is typing.
+      if (!root) return;
       // A caret beside a list marker, outside the item's text, types into
       // nothing the file will hold: put it in the text first.
       const blocks = noteDataRef.current[activeNote]?.content?.blocks;

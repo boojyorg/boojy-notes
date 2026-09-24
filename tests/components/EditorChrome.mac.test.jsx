@@ -75,7 +75,7 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     // the menu bar's since 2026-09-24): the band starts at the inset's air.
     expect(chromePathInset(false)).toBe(10 + PATH_AIR);
     // The right edge clears the ··· by the same air, in every state.
-    expect(CHROME_PATH_RIGHT_INSET).toBe(10 + 32 + PATH_AIR);
+    expect(CHROME_PATH_RIGHT_INSET).toBe(10 + 32 + 2 + 32 + PATH_AIR);
   });
 });
 

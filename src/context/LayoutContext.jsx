@@ -53,6 +53,14 @@ export function LayoutProvider({ children }) {
   /** Make the sidebar visible without toggling it away if it already is. */
   const revealSidebar = useCallback(() => setCollapsed(false), []);
 
+  /**
+   * The Markdown view (SourceView): the note shown as its file. App-wide while
+   * it is on, so the next note opens in it too; never saved, so every launch
+   * starts in the formatted view (2026-09-24, Tyr's call). Only the switch in
+   * EditorArea writes it, because the caret's place is read on the way.
+   */
+  const [sourceView, setSourceView] = useState(false);
+
   const sidebarHandles = useRef([]);
 
   const { isDragging, startDrag } = usePanelResize({
@@ -72,6 +80,8 @@ export function LayoutProvider({ children }) {
       fullScreen,
       toggleSidebar,
       revealSidebar,
+      sourceView,
+      setSourceView,
       chromeBg,
       editorBg,
       accentColor,
@@ -87,6 +97,7 @@ export function LayoutProvider({ children }) {
       fullScreen,
       toggleSidebar,
       revealSidebar,
+      sourceView,
       chromeBg,
       editorBg,
       accentColor,

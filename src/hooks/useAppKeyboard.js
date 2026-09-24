@@ -69,6 +69,9 @@ export function useAppKeyboard({
   openFind,
   detectActiveFormats,
   sidebarVisible,
+  // The Markdown view: EditorArea's switch, and whether the view is on.
+  toggleSourceView,
+  sourceView,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -94,6 +97,7 @@ export function useAppKeyboard({
     setBlockKind,
     openFind,
     detectActiveFormats,
+    toggleSourceView,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -172,6 +176,15 @@ export function useAppKeyboard({
         L.toggleSidebar?.();
         return;
       }
+      // Cmd+/ shows the note as its Markdown, and back (2026-09-24: Typora's
+      // key; Obsidian's Cmd+E is inline code here). The slash is matched by
+      // the physical key too, for layouts where the character needs Shift.
+      if (mod && !e.altKey && (e.key === "/" || e.code === "Slash")) {
+        if (!L.activeNote) return;
+        e.preventDefault();
+        L.toggleSourceView?.();
+        return;
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -209,6 +222,7 @@ export function useAppKeyboard({
         formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
         kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
         sidebarVisible: !!sidebarVisible,
+        sourceView: !!sourceView,
       });
     };
     let timer = null;
@@ -226,7 +240,7 @@ export function useAppKeyboard({
       document.removeEventListener("focusout", publish);
       document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible]);
+  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView]);
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
@@ -315,6 +329,8 @@ function runMenuCommand(id, L, titleRef) {
   }
   if (!note) return;
   switch (id) {
+    case "toggleSourceView":
+      return L.toggleSourceView?.();
     case "rename":
       return L.renameNote?.(note);
     case "duplicate":

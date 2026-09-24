@@ -155,6 +155,7 @@ test("Move to… from the editor's ··· with the sidebar hidden: the root is a
       "Duplicate",
       "Move to…",
       "Delete",
+      /^Show Markdown/,
       "Settings",
     ]);
     await menuItem(h.page, "Move to…").click();
