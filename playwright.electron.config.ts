@@ -30,7 +30,9 @@ export default defineConfig({
   workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
+  // Its own report and results folders: CI keeps them from a failed shard.
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report/electron" }]],
+  outputDir: "test-results/electron",
   timeout: 40_000,
   expect: { timeout: 5_000 },
 });

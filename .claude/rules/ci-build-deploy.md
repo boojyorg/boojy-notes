@@ -97,8 +97,13 @@ change needs; the incidents behind them are in git.
   (`coverage.include`, 2026-09-07), whether or not a test imports it; before that, Vitest 4
   counted only files the tests happened to load, and a quarter of the source was missing from
   the denominator. The thresholds in `vitest.config.js` are a floor just below those honest
-  actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
+  actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level high`
   also gates every run; it is the live security net.
+- **A failed run keeps what it saw** (2026-09-24): the web job and each Electron shard upload
+  their HTML report and `test-results/` (each failure's error context, the page's accessibility
+  snapshot) as an artifact, only on failure, for 14 days. The two suites report into their own
+  folders (`playwright-report/web`, `…/electron`) so one run never overwrites the other's. The
+  workflows are read-only (`permissions`); only `release.yml` writes.
 - **The real-Electron suite runs in its own jobs**, with no Playwright browser
   download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
   `dist/` and `dist-electron/` itself; the web build elsewhere in the workflow uses

@@ -453,9 +453,6 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   off macOS (`deletion.spec.ts`, `folders.spec.ts`) and CI is Ubuntu only. A macOS job for
   `pnpm test:electron` (~5 min) is the fix; deferred, since the daily-driver build exercises
   them by hand.
-- **CI hygiene not yet done**: no `concurrency` group (two pushes to one branch run twice), no
-  `permissions` block, and nothing is uploaded on failure, so a red E2E job has no trace or
-  report to read; the two Playwright configs also share one `playwright-report/`.
 - **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every
   path-taking IPC handler goes through the vault guard, `will-navigate` and the window-open
   handler deny everything, `open-external` is `http(s)`-only), but it is a hand-rolled regex
@@ -471,8 +468,7 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   its reason, fix the real ones. Two rules are off by decision: `noAssignInExpressions` (the
   `while ((node = walker.nextNode()))` idiom throughout the walkers and the parser) and
   `noNonNullAssertion` (an invariant TypeScript cannot prove, and the tests' idiom). Also from
-  review §6: the audit gate is `critical` where `high` costs nothing with every dependency
-  dev-only; Actions are pinned by major tag, not SHA. Zero unit coverage on
+  review §6: Actions are pinned by major tag, not SHA. Zero unit coverage on
   `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the watcher's event
   handlers and `folderOps`; the Electron suite is the trustworthy layer for those journeys.
 - **Chrome ink, one pass if it is seen** (review §5): fourteen popovers carry hardcoded black
