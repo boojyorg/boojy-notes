@@ -94,7 +94,6 @@ missing core features no longer limit it. Worked one item at a time, each judged
 list is the product scope the release waits for; the CI gates and any serious data-loss bug
 found on the way gate it as well, without needing a line here.
 
-- [ ] **Preservation blocker** — the table-alignment mutation marked under Data safety below.
 - [ ] **Daily use feels reliable.** "A bit buggy" is the first reason Tyr still opens Obsidian
   (2026-09-24), ahead of any missing feature. The input is a friction log in the vault, one line
   for anything that felt off however vague; each entry is reproduced in the real app
@@ -143,8 +142,7 @@ none blocks the release. The shared question comes first because three candidate
   saying where its language comes from rather than showing a control that does nothing. Also
   still open from the Windows smoke test: dictionaries download from Google's CDN.
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
-  one. The preservation blocker comes first; after it, in the order daily use asks for them:
-  row and column handles on hover (the strips left of the rows and above the columns are
+  one. In the order daily use asks for them: row and column handles on hover (the strips left of the rows and above the columns are
   invisible today: click selects, hold to drag; Obsidian and Notion show a small handle), a
   paste from a spreadsheet (tab-separated text) becoming a table, and Tab in the last cell
   adding a row.
@@ -318,8 +316,8 @@ from a correctness defect. Existing preservation blockers retain their status un
 **Two-way use with Obsidian is not yet a general guarantee** (assessed 2026-09-15 on a copy of
 Tyr's vault, six findings reproduced in the real app, four of them since fixed): a note's
 *text* survives switching apps, and a click on any link Obsidian writes now opens the note or
-creates nothing, but a rename leaves dangling references and the first save reformats most
-tables (both under Data safety). Until those close, treat the promise as "the bytes it
+creates nothing, and a table keeps its spelling through a save, but a rename leaves dangling
+references (Data safety). Until that closes, treat the promise as "the bytes it
 understands are safe and the rest is preserved", not "switch freely".
 
 - **Links: parsing defects and missing navigation.** Optional link titles are treated as part
@@ -342,12 +340,6 @@ understands are safe and the rest is preserved", not "switch freely".
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
 `KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already fail.
 
-- [ ] **Table `:---` separators normalise to `---`** on first edit. This blocks Beta. Wider than
-  alignment (measured 2026-09-15 on a copy of Tyr's Obsidian vault, load → save with no edit): every
-  table not in the app's own spacing is rewritten, `|---|---|` to `| --- | --- |`, padded columns
-  collapsed, in 82 of 202 notes and 833 rows; cell content and count never changed. And a
-  `[[Note|alias]]` inside a cell is rewritten `[[Note | alias]]` (the cell splitter takes the pipe;
-  Obsidian documents the `\|` form, which holds).
 - [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
   keystroke; a save that lands in a pause after the space writes the non-breaking byte
@@ -366,8 +358,7 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 2026-09-07, every one still occurs on any save of the note:
 
 - [ ] Uppercase `- [X]` is written as `- [x]`.
-- [ ] Dividers and table rows with 1–3 leading spaces are dedented; an indented table
-  body row (`  | 1 | 2 |`) also gains an empty leading cell.
+- [ ] Dividers with 1–3 leading spaces are dedented.
 - [ ] Mixed line endings are healed to the dominant style (a code comment records this as
   intended; the spec does not).
 - [ ] Unclosed frontmatter gains a closer.
@@ -580,8 +571,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   remain open.
 - **Table alignment controls.** Consider restoring a way to set left, centre and right column
   alignment. Existing file alignments already render; the current absence of controls remains
-  intentional. Placement and interactions are unchosen. Preserving separator spelling is the
-  separate Data safety item, not dependent on adding controls.
+  intentional. Placement and interactions are unchosen. A separator is kept as written until
+  its alignments change (editor rule).
 - **Footnotes.** Consider rendering, editing and navigation between references and definitions.
   Supported syntax and interactions remain open; no citation-management system is implied.
 - **Richer nested quotes and list contents.** Consider nested quote depth and Markdown elements

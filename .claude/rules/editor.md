@@ -648,6 +648,15 @@ import writes a closer. `tilde-fences.spec.ts`.
   written into it (`withCell`). An explicit column operation may pad every row to the operated
   column (`withColumnInserted`, which writes `""`, never a label); a passive open or save never
   pads. Keep the shape arithmetic in `tableShape.ts`.
+- **A row keeps the line it was written with until its cells change** (`tableSource`, kept
+  only where the file's spelling is not the app's, as `headingSource` is; 2026-09-24). Each body
+  row takes the first unused source line holding its cells, so a row added, removed or moved
+  leaves the others as written; the header is judged on its own, and the separator is kept while
+  the header's width and the alignments are the ones read. An edited row, and every table the
+  app makes, is written `| a | b |`. Before this the first save rewrote every table not already
+  in that spelling (82 of 202 notes in a copy of Tyr's vault: padding, `|---|`, an alias pipe).
+  An indented row is read from its first pipe, never with an empty cell in front.
+  `table-preservation.spec.ts`, `markdown.test.js`, `table-obsidian-spellings.md`.
 
 ### Dividers, images and tables are selectable blocks
 

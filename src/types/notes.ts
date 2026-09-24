@@ -87,6 +87,8 @@ interface TableBlock extends BlockBase {
   /** Ragged: each row holds exactly the cells its Markdown line holds. */
   rows?: string[][];
   alignments?: string[];
+  /** The lines as read; a row whose cells are unchanged is written back as its line. */
+  tableSource?: { header: string; separator: string; rows: string[] };
 }
 
 interface SpacerBlock extends BlockBase {

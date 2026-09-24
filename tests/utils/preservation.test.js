@@ -50,7 +50,6 @@ const KNOWN_FAILURES = {
   "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
   // Found by the 2026-08-18 real-vault smoke test (209 files):
   "trailing-ws-list-lines.md": { roundtrip: true, edit: true }, // list/heading lines still trim trailing spaces (paragraphs don't)
-  "table-alignment.md": { roundtrip: true, edit: true }, // padding/:--- rewritten (escaped-\| DATA LOSS fixed 2026-08 — see table-escaped-pipes.md; ragged rows fixed 2026-09-07 — see table-ragged.md)
 };
 
 const fixtureNames = fs
