@@ -23,11 +23,13 @@ export interface Rhythm {
   blockGap: number;
 }
 
+/** v3, judged live against Obsidian and Notion on 2026-09-24 (v1 32/8/10 had
+ *  too much above a heading, v2 24/6/8 put a heading on its own text). */
 export const DEFAULT_RHYTHM: Rhythm = {
   bodySize: 15,
   lineHeight: 1.7,
-  paragraphGap: 10,
-  headingAbove: 32,
+  paragraphGap: 9,
+  headingAbove: 28,
   headingBelow: 8,
   blockGap: 16,
 };

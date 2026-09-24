@@ -13,24 +13,22 @@ import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
 const LS_KEY = "boojy-dev-rhythm";
 
 /**
- * Named sets to flip between while judging. v1 is the first cut from the
- * canvas (rhythm.ts's values); v2 tightens it after living with v1: less
- * space around headings, and the paragraph gap back to the 8 judged on
- * 2026-09-17; v3 sits between them. A preset is a starting point: any slider
- * still moves from it.
+ * Named sets to flip between while judging: v1 the first cut from the canvas,
+ * v2 tighter, v3 between them and now rhythm.ts's own values. A preset is a
+ * starting point: any slider still moves from it.
  */
 const PRESETS = [
-  { name: "v1", values: { ...DEFAULT_RHYTHM } },
+  {
+    name: "v1",
+    values: { ...DEFAULT_RHYTHM, headingAbove: 32, headingBelow: 8, paragraphGap: 10 },
+  },
   {
     name: "v2",
     values: { ...DEFAULT_RHYTHM, headingAbove: 24, headingBelow: 6, paragraphGap: 8 },
   },
   // Between the two, where each was judged wrong: v1's space above a heading
-  // was too much, v2's space below it too little (the heading met its text).
-  {
-    name: "v3",
-    values: { ...DEFAULT_RHYTHM, headingAbove: 28, headingBelow: 8, paragraphGap: 9 },
-  },
+  // was too much, v2's space below it too little. The default since 2026-09-24.
+  { name: "v3", values: { ...DEFAULT_RHYTHM } },
 ];
 const matches = (a, b) => Object.keys(b).every((k) => a[k] === b[k]);
 
@@ -170,7 +168,7 @@ export default function RhythmTweaker() {
         </label>
       ))}
       <div style={{ color: "#888", marginTop: 4 }}>
-        H1, H3–H6 follow H2. Teal = changed from rhythm.ts (v1).
+        H1, H3–H6 follow H2. Teal = changed from rhythm.ts (v3).
       </div>
     </div>
   );
