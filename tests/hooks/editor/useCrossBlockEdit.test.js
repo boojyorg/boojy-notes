@@ -139,17 +139,20 @@ describe("useCrossBlockEdit: the beforeinput guard", () => {
       ["paragraph into paragraph", [p("a", "first"), p("b", "second")], "a", "b", "ficond"],
       ["heading into paragraph", [h1("a", "Title"), p("b", "body")], "a", "b", "Tidy"],
       ["paragraph into list item", [p("a", "first"), bullet("b", "item")], "a", "b", "fiem"],
-    ])("Backspace over %s merges the two in state and Chromium does nothing", (_, blocks, s, e2, merged) => {
-      const { handleEditorBeforeInput } = setup(blocks);
-      select(text(s), 2, text(e2), 2);
-      const e = beforeInput("deleteContentBackward", selectionTarget());
-      handleEditorBeforeInput(e);
-      expect(e.defaultPrevented).toBe(true);
-      expect(blocksNow()).toEqual([{ ...blocks[0], text: merged }]);
-      expect(deps.focusBlockId.current).toBe(s);
-      expect(deps.focusCursorPos.current).toBe(2);
-      expect(deps.syncGeneration.current).toBe(1);
-    });
+    ])(
+      "Backspace over %s merges the two in state and Chromium does nothing",
+      (_, blocks, s, e2, merged) => {
+        const { handleEditorBeforeInput } = setup(blocks);
+        select(text(s), 2, text(e2), 2);
+        const e = beforeInput("deleteContentBackward", selectionTarget());
+        handleEditorBeforeInput(e);
+        expect(e.defaultPrevented).toBe(true);
+        expect(blocksNow()).toEqual([{ ...blocks[0], text: merged }]);
+        expect(deps.focusBlockId.current).toBe(s);
+        expect(deps.focusCursorPos.current).toBe(2);
+        expect(deps.syncGeneration.current).toBe(1);
+      },
+    );
 
     it("Cut, a word delete and a line delete are deletes too", () => {
       for (const type of ["deleteByCut", "deleteWordForward", "deleteSoftLineBackward"]) {
