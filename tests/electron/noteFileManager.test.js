@@ -467,7 +467,7 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
     expect(fs.existsSync(notesDir)).toBe(false);
   });
 
-  it("resolves attachments only inside the vault", () => {
+  it("resolves attachments only inside the vault", async () => {
     const outside = path.join(path.dirname(notesDir), `${path.basename(notesDir)}-outside.png`);
     fs.writeFileSync(outside, "x");
     fs.mkdirSync(path.join(notesDir, "attachments"));
@@ -480,7 +480,7 @@ describe("IPC handlers — folders, a missing vault, and path containment", () =
       const traversal = `../${path.basename(outside)}`;
       expect(handlers["resolve-attachment"](null, traversal)).toBeNull();
       expect(handlers["get-file-size"](null, traversal)).toBeNull();
-      expect(handlers["copy-image-to-clipboard"](null, `../${traversal}`)).toBe(false);
+      expect(await handlers["copy-image-to-clipboard"](null, `../${traversal}`)).toBe(false);
       expect(handlers["resolve-attachment"](null, outside)).toBeNull();
     } finally {
       fs.rmSync(outside, { force: true });
