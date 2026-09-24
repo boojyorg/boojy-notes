@@ -25,7 +25,7 @@ import {
 const SUBPIXEL = 0.5;
 
 /** The chrome buttons that sit left of the note's name, in DOM order. */
-const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"];
+const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes", "Undo", "Redo"];
 
 /**
  * Wait for every running CSS transition and animation to finish. The chrome

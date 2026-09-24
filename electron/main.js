@@ -64,9 +64,16 @@ const hiddenForTests = process.env.BOOJY_TEST_HIDDEN === "1";
 
 const stripHash = (url) => url.split("#")[0];
 
+// How long the window may wait for its first frame before it is shown anyway,
+// so a renderer that never paints still leaves the user a window to see.
+const FIRST_PAINT_CAP_MS = 3000;
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    show: !hiddenForTests,
+    // Shown on its first frame (below), never before: shown at once, the
+    // window stood empty in its background colour while the page loaded, and
+    // that blank canvas was the slow launch people saw (2026-09-24).
+    show: false,
     width: 1200,
     height: 800,
     // The narrowest sidebar beside the narrowest editor; see constants/layout.
@@ -124,6 +131,15 @@ function createWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+
+  if (!hiddenForTests) {
+    const win = mainWindow;
+    const reveal = () => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show();
+    };
+    win.once("ready-to-show", reveal);
+    setTimeout(reveal, FIRST_PAINT_CAP_MS);
+  }
 
   // macOS full screen takes the traffic lights away, and with them the reason
   // for the inset that clears them (MAC_TRAFFIC_INSET in EditorChrome.jsx).

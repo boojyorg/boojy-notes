@@ -125,6 +125,11 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
 
 ## Window chrome
 
+- **The window appears on its first frame, never before** (2026-09-24, `electron/main.js`):
+  created with `show: false` and shown on `ready-to-show`, with `FIRST_PAINT_CAP_MS` (3 s) as
+  the fallback for a renderer that never paints. Shown at creation, it stood as an empty canvas
+  while the page loaded. The test window stays hidden on a desktop, so `first-paint.spec.ts`
+  runs on CI only.
 - **No desktop top bar, no title bar.** The window is `hiddenInset`; on macOS the traffic
   lights sit inline in the sidebar header and the wordmark shifts by `MAC_TRAFFIC_INSET` (82;
   judge at 100% page zoom only, the lights never scale). In full screen macOS hides the lights
@@ -176,7 +181,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   two-option preference opening a menu earns no key. Folder-row and note-row controls keep native titles for now.
   Specs locate chrome controls by `aria-label`, never `title`. `chrome-tooltips.spec.ts`,
   `Tooltip.test.jsx`.
-- **The collapsed header carries the sidebar's own three controls** (toggle, Search, New note)
+- **The collapsed header carries the sidebar's own three controls** (toggle, New note, Search;
+  2026-09-24, New note second because it is the one used most, the order Claude and ChatGPT use)
   in front of the history pair, `BTN_GAP` 2 within a group and `GROUP_GAP` 12 between. While the
   sidebar shows it owns those three and the header renders none, so exactly one of each is
   reachable. The hidden sidebar keeps its DOM; **only its chrome row and sticky action block
