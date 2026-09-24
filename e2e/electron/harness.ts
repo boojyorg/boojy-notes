@@ -58,6 +58,8 @@ export const MOD = isMac ? "Meta" : "Control";
 /** Moves the caret to the end of the current line. */
 export const END_OF_LINE = isMac ? "Meta+ArrowRight" : "End";
 export const START_OF_LINE = isMac ? "Meta+ArrowLeft" : "Home";
+/** Extend the selection one word left: Option on a Mac, Control elsewhere. */
+export const SELECT_WORD_LEFT = isMac ? "Shift+Alt+ArrowLeft" : "Shift+Control+ArrowLeft";
 
 /**
  * Longest quiet period after which every in-app debounce has fired: the 300ms
@@ -284,6 +286,27 @@ export async function launchApp(
  * content seen on timeout, which is more useful than a bare timeout when a
  * write went missing.
  */
+/**
+ * Click an application-menu item by its id (electron/appMenu.ts), the path a
+ * pointer takes. A real keypress reaching a menu accelerator cannot be sent to
+ * a hidden window, so this is how a spec uses the menu bar.
+ */
+export function menuClick(h: AppHandle, id: string) {
+  return h.app.evaluate(({ Menu }, id) => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById(id);
+    if (!item) throw new Error(`no menu item ${id}`);
+    item.click();
+  }, id);
+}
+
+/** Whether an application-menu item is enabled; null when there is no such item. */
+export function menuEnabled(h: AppHandle, id: string) {
+  return h.app.evaluate(
+    ({ Menu }, id) => Menu.getApplicationMenu()?.getMenuItemById(id)?.enabled ?? null,
+    id,
+  );
+}
+
 export async function waitForFile(
   file: string,
   predicate: (content: string) => boolean,

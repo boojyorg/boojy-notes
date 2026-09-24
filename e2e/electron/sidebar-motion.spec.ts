@@ -5,7 +5,7 @@
  * from 234px to 16), the chrome row snapped while the panel eased, and the
  * note's name jumped to its new start and slid back. The column is now its
  * full width and slides out under the window's edge, so nothing inside it
- * reflows, and the history pair and the name move on the panel's clock.
+ * reflows, and the name moves on the panel's clock.
  *
  * The clip-not-squash contract is checked at rest, where it is deterministic:
  * hidden, the column keeps its width and everything in it its size. The
@@ -54,14 +54,6 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(hidden.column).toBe(open.column);
     expect(hidden.pill).toBe(open.pill);
     expect(hidden.transform).not.toBe("none");
-
-    // The history pair sits past the trio, one group-gap on, at rest.
-    // Search is the trio's last button (toggle, New note, Search).
-    const trioRight = await h.page
-      .getByRole("button", { name: "Search notes", exact: true })
-      .boundingBox();
-    const undo = await h.page.getByRole("button", { name: "Undo", exact: true }).boundingBox();
-    expect(undo!.x - (trioRight!.x + trioRight!.width)).toBe(12);
 
     await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await expect(row).toBeVisible();

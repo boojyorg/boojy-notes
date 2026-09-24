@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, MOD, SETTLE_MS, sleep, waitForFile } from "./harness";
+import { launchApp, MOD, menuEnabled, SETTLE_MS, sleep, waitForFile } from "./harness";
 
 /**
  * Frontmatter is the head of the file, not a block in the body. Nothing can
@@ -44,16 +44,15 @@ test("Cmd+Shift+Up on the first block under the frontmatter is refused, and reor
     const blocks = h.page.locator("[data-block-id]");
     await frontmatterFirst(h);
 
-    const undoButton = h.page.getByRole("button", { name: "Undo" });
-    await expect(undoButton).toBeDisabled();
+    await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
     await blocks.nth(1).click();
     await h.page.keyboard.press(`${MOD}+Shift+ArrowUp`);
     await sleep(SETTLE_MS);
     // Nothing moved, so nothing was written and there is nothing to undo:
-    // the bytes are the file's own and the Undo button stays off.
+    // the bytes are the file's own and Edit → Undo stays greyed.
     expect(h.vault.read("Tight.md")).toBe(TIGHT);
     await frontmatterFirst(h);
-    await expect(undoButton).toBeDisabled();
+    await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
 
     // Ordinary reordering under it still works, both ways, and is undoable.
     await h.page.keyboard.press(`${MOD}+Shift+ArrowDown`);
@@ -62,7 +61,7 @@ test("Cmd+Shift+Up on the first block under the frontmatter is refused, and reor
       (t) => t === `${FRONTMATTER}\nSecond paragraph.\n\nFirst paragraph.\n\nThird paragraph.\n`,
       { label: "the first paragraph moved down under the frontmatter" },
     );
-    await expect(undoButton).toBeEnabled();
+    await expect.poll(() => menuEnabled(h, "undo")).toBe(true);
     await h.page.keyboard.press(`${MOD}+Shift+ArrowUp`);
     await waitForFile(h.vault.file("Tight.md"), (t) => t === TIGHT, {
       label: "and back up, still under the frontmatter",

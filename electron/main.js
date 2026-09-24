@@ -34,6 +34,7 @@ import {
   checkForUpdatesOnStartup,
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
+import { buildAppMenu } from "./appMenu.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -300,72 +301,8 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(absPath).toString());
   });
 
-  // Build custom menu (strips devTools from production builds)
-  const isDev = !!process.env.VITE_DEV_SERVER_URL;
-  const template = [
-    ...(process.platform === "darwin"
-      ? [
-          {
-            label: "Boojy Notes",
-            submenu: [
-              { role: "about" },
-              { type: "separator" },
-              { role: "services" },
-              { type: "separator" },
-              { role: "hide" },
-              { role: "hideOthers" },
-              { role: "unhide" },
-              { type: "separator" },
-              { role: "quit" },
-            ],
-          },
-        ]
-      : []),
-    {
-      label: "File",
-      // Import (Markdown / HTML / Folder) was removed 2026-09-05: a folder in
-      // the sidebar is a directory, so files dropped into the vault in the OS
-      // file manager simply appear.
-      submenu: [process.platform === "darwin" ? { role: "close" } : { role: "quit" }],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        // Reload is a developer's key: it drops the renderer, and with it up
-        // to ~800 ms of typing still inside the text-commit and write
-        // debounces (the quit flush never runs). Dev builds only (2026-09-24).
-        ...(isDev ? [{ role: "reload" }, { role: "forceReload" }, { role: "toggleDevTools" }] : []),
-        // No zoom roles: they would take Cmd+Plus/Minus/0 before the renderer
-        // sees them, so the app's own UI scale never fired and Chromium's page
-        // zoom (which leaves the native traffic lights behind) ran instead.
-        { type: "separator" },
-        { role: "togglefullscreen" },
-      ],
-    },
-    {
-      label: "Window",
-      submenu: [
-        { role: "minimize" },
-        { role: "zoom" },
-        ...(process.platform === "darwin"
-          ? [{ type: "separator" }, { role: "front" }]
-          : [{ role: "close" }]),
-      ],
-    },
-  ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  // The application menu: every command with its shortcut (electron/appMenu.ts).
+  buildAppMenu({ isDev: !!process.env.VITE_DEV_SERVER_URL, getMainWindow });
 
   createWindow();
 

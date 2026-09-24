@@ -35,6 +35,10 @@ export default function FindBar({
   updateBlockText,
   initialShowReplace,
   onClose,
+  // Edit → Find ▸ Find Next, Find Previous and Replace… reach the open bar here.
+  stepRef,
+  // Whether Replace is showing, so the next Cmd+F opens the bar as it was left.
+  onShowReplaceChange,
 }) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
@@ -143,6 +147,12 @@ export default function FindBar({
     if (matches.length === 0) return;
     setActiveMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
   }, [matches]);
+
+  if (stepRef)
+    stepRef.current = { next: goNext, prev: goPrev, replace: () => setShowReplace(true) };
+  useEffect(() => {
+    onShowReplaceChange?.(showReplace);
+  }, [showReplace, onShowReplaceChange]);
 
   // The text block a match sits in, with its registered element, or null when
   // the match is inside a block that owns its own field (a table cell, a

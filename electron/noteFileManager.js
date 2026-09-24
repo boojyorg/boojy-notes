@@ -564,6 +564,14 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     if (abs && fs.existsSync(abs)) shell.showItemInFolder(abs);
   });
 
+  // File → Show in Finder: the open note's file, found by its id in the index
+  // (the renderer knows the note, not where the disk put it).
+  ipcMain.handle("reveal-note", (_event, noteId) => {
+    const rel = typeof noteId === "string" ? _idIndex[noteId] : undefined;
+    const abs = rel ? insideVault(getNotesDir(), rel) : null;
+    if (abs && fs.existsSync(abs)) shell.showItemInFolder(abs);
+  });
+
   ipcMain.handle("pick-file", async () => {
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openFile"],

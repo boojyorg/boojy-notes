@@ -6,6 +6,22 @@ import { reorderFloor } from "../utils/blockOrder";
 import { insertedImageWidth } from "../utils/imageSize";
 import { getAPI } from "../services/apiProvider";
 
+/** The text blocks the Format menu can turn into one another. */
+const KIND_TYPES = new Set([
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "bullet",
+  "numbered",
+  "checkbox",
+  "blockquote",
+]);
+const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
+
 export function useBlockOperations({
   commitNoteData,
   commitTextChange,
@@ -401,7 +417,42 @@ export function useBlockOperations({
     }
   };
 
+  // Format → Body Text, Heading, a list or Quote: each text block the
+  // selection touches becomes `type` and keeps its text, as the Backspace
+  // demotion keeps it (only the id and the text survive; a heading's source
+  // spacing, a list's marker and number, a task's tick belonged to the kind).
+  // A list keeps its indent when it stays a list. One history entry; the
+  // caret stays where it was in its block.
+  const setBlockKind = (noteId, blockIds, type) => {
+    const caretBlock = blockIds[0];
+    const el = caretBlock ? blockRefs.current[caretBlock] : null;
+    const caret = el ? getCaretOffset(el) : -1;
+    commitNoteData((prev) => {
+      const n = prev[noteId];
+      if (!n) return prev;
+      let changed = false;
+      const blocks = n.content.blocks.map((block) => {
+        if (!blockIds.includes(block.id) || !KIND_TYPES.has(block.type)) return block;
+        if (block.type === type) return block;
+        changed = true;
+        const next = { id: block.id, type, text: block.text ?? "" };
+        if (type === "checkbox") next.checked = false;
+        if (LIST_KINDS.has(type) && LIST_KINDS.has(block.type) && block.indent) {
+          next.indent = block.indent;
+        }
+        return next;
+      });
+      if (!changed) return prev;
+      return { ...prev, [noteId]: { ...n, content: { ...n.content, blocks } } };
+    });
+    if (caretBlock) {
+      focusBlockId.current = caretBlock;
+      if (caret >= 0) focusCursorPos.current = caret;
+    }
+  };
+
   return {
+    setBlockKind,
     updateBlockText,
     insertBlockAfter,
     openCodeBlock,

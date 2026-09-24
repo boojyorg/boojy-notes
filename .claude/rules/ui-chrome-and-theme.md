@@ -156,11 +156,34 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   muted 11px line under the menu's only rule, never a menu item): the desktop has no status bar
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
   is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
-- **Undo and Redo are chrome buttons before the note's name** (Lucide `Undo2`/`Redo2`, 18px,
-  navigation stroke, in `ChromeButton`), `aria-disabled` when the *open note* has nothing to
-  take back (the attribute, not `disabled`, so the control still takes the pointer and focus
-  and its chip still says `Undo ⌘Z`; the click is dropped in `ChromeButton`). A press keeps
-  the editor's selection (`keepSelection`). Back is not undo: no straight arrows.
+- **The menu bar is every command with its shortcut** (`electron/appMenu.ts`, 2026-09-24,
+  judged from mockups the same day: Apple's structure, Notion-style names only where Apple has
+  none). File: New Note, New Folder, Rename…, Duplicate, Move to…, Show in Finder, Move to
+  Trash. Edit: Undo, Redo, the clipboard roles, and **Find ▸** (Find… `⌘F`, Find Next `⌘G`,
+  Find Previous `⇧⌘G`, Replace…, Search All Notes… `⌘P`). Format: Bold, Italic, Strikethrough,
+  Highlight, Code, Add Link… on the editor's keys; Heading 1–3 on **`⌘1`–`⌘3`** (Bear's and
+  Craft's two keys), Text, a **List ▸** submenu (Bulleted, Numbered, Checklist) and Quote with
+  no shortcut, because a line's kind is typed in Markdown and **each kind shows its Markdown
+  under its name** (`sublabel`, `Type ## and a space`; macOS only). View: **Hide Sidebar / Show
+  Sidebar** (says what it will do, as Finder's does), **Zoom In, Zoom Out, Actual Size**.
+  Settings… and Check for Updates… in the app menu. **A check, never a renamed item**: a format
+  the selection holds and the kind of the caret's line carry `✓` (Pages' way), not `Unbold`.
+  **Icons only where Apple's own apps carry one** (SF Symbols through `createFromNamedImage`,
+  scaled to 16pt with a 2x rep and marked a template: New Note, New Folder, Move to Trash,
+  Undo, Redo, Cut, Find, the four format glyphs, Add Link); Copy and Paste have none, as in
+  Safari. **An item does nothing itself**: it sends its id (`menu-command`) and `useAppKeyboard`
+  runs what its key runs, under the key's own ownership rules (nothing under a modal but the
+  scale over Settings; a text field's Undo is the field's, `execCommand`). The renderer claims
+  every key it handles, so whether macOS offers a shortcut to the page or the menu first it runs
+  once. **The window reports what is true** (`menu-state`: what can act, the formats, the
+  line's kind, the sidebar; the selection on a 120 ms timer) and the main process rebuilds the
+  menu only when that changes. Greyed: Undo and Redo with nothing to take back (always live in a
+  text field), the note's items with no note, and Duplicate, Move to…, Show in Finder and Move
+  to Trash on a blank draft, which has no file. Undo is not the `undo` role: the browser's own
+  undo in the editor would take back a keystroke behind the app's history. **Undo and Redo left
+  the chrome row** the same day: the Edit menu is where a Mac app keeps them. A Format kind
+  keeps the line's text (`setBlockKind`, the Backspace demotion's rule). `app-menu.spec.ts`,
+  `useAppMenu.test.js`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`:
   the chip, `useTooltip`, `TOOLTIP_REST_MS` 400, `shortcutLabel`). Name 13px/500 in primary
   ink; the shortcut a step smaller on a `BG.surface` pill in secondary ink; radius 8, the
@@ -171,19 +194,19 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   edge and hidden under the editor. Below on the window's row and the Notes row, above on the
   selection toolbar (which flips below when it would clip). `ChromeButton` and `SectionAction`
   take `label` and `shortcut`; the wordmark's says `Settings`, the toggle's `Toggle sidebar` in
-  both states, Undo's `Undo` greyed or not. Shown after the rest, or at once while a
+  both states. Shown after the rest, or at once while a
   neighbour's chip has just hidden (`TOOLTIP_WARM_MS` 300) or on keyboard focus; a press,
   Enter, Space or Escape hides it until the pointer leaves and returns. A shortcut is shown
-  only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the map in `useAppKeyboard`;
-  Redo is `Ctrl+Y` off a Mac). **The shell's keys** (2026-09-17): `⌘N` New note, `⇧⌘N` New
+  only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the map in `useAppKeyboard` and the
+  menu's accelerators; Redo is `Ctrl+Y` off a Mac). **The shell's keys** (2026-09-17): `⌘N` New note, `⇧⌘N` New
   folder at the root, `⌘P` Search, `⌘,` Settings, `⌘\` Toggle sidebar (Notion's; `⌥⌘S` is three
   keys and `⌘B` is Bold), `⌘Z`/`⇧⌘Z` history, `⌘±0` UI scale. Sort has none, by decision: a
   two-option preference opening a menu earns no key. Folder-row and note-row controls keep native titles for now.
   Specs locate chrome controls by `aria-label`, never `title`. `chrome-tooltips.spec.ts`,
   `Tooltip.test.jsx`.
 - **The collapsed header carries the sidebar's own three controls** (toggle, New note, Search;
-  2026-09-24, New note second because it is the one used most, the order Claude and ChatGPT use)
-  in front of the history pair, `BTN_GAP` 2 within a group and `GROUP_GAP` 12 between. While the
+  2026-09-24, New note second because it is the one used most, the order Claude and ChatGPT use),
+  `BTN_GAP` 2 apart. While the
   sidebar shows it owns those three and the header renders none, so exactly one of each is
   reachable. The hidden sidebar keeps its DOM; **only its chrome row and sticky action block
   are `inert`** (`inert` on the whole column swallowed a double-click's second press while the
@@ -270,7 +293,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   a reload drops the renderer and the typing still inside the text-commit and write
   debounces, since the quit flush never runs. `zoom.spec.ts` checks the shipped menu.
 - **One zoom system: the app's own UI scale.** The View menu carries no zoom roles (a menu role
-  takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
+  takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead); its
+  Zoom In, Zoom Out and Actual Size are the app's own items and run the keys' step;
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
   than the installed app is page zoom; judge chrome geometry after Cmd+0.
 - **A scale shortcut answers, always** (`UiScaleChip`, 2026-09-19). `Cmd+±` and `Cmd+0` raise a
@@ -282,8 +306,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   already holds, a no-op for state): the chip is the scale's whole feedback and silence there
   reads as a missed keystroke. Settings' own stepper raises none — the figure is beside the
   buttons. `interface-size.spec.ts`, `UiScaleChip.test.tsx`.
-- Edit → Undo / Redo keep their menu roles (Cut, Copy, Paste, Select All must stay); Cmd+Z
-  reaches the renderer's own handler.
+- Edit keeps the Cut, Copy, Paste and Select All roles (a Mac text field needs them for its
+  keys); Undo and Redo are the app's own items (above).
 - On desktop the word count lives in the ··· menu; the touch layout shows it in its own ··· menu
   and carries Undo and Redo at its toolbar's fixed left edge.
 - The sidebar drag handle is gated on the sidebar showing; unconditional, it leaves a hairline.
@@ -294,9 +318,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
 on it carries `.panel-motion`, which a reduced-motion user gets with no travel. The sidebar's
 column is its full `sidebarWidth`, never `flex: 1`, and slides out under the window's edge
 (`translateX(-width)`; `none` at rest so nothing fixed inside it gains a containing block) as
-the wrapper's width closes over it, contents fading over the first half; the history pair is a
-fixed block that transitions `left`; the collapsed trio fades in over the last half; the path
-band's inset transitions with the pair. Don't put the sidebar back on `flex: 1` and don't add a
+the wrapper's width closes over it, contents fading over the first half; the collapsed trio
+fades in over the last half; the path band's inset transitions with it. Don't put the sidebar back on `flex: 1` and don't add a
 second duration. The one per-frame cost left is the column re-wrapping its prose (720px beside
 the sidebar, 840 alone; a product choice). `sidebar-motion.spec.ts`.
 
@@ -565,7 +588,8 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   and `sortedRootNotes`, never `filteredTree`; sort, expansion and every row stay exactly as
   they were. Only the mobile face filters (`isMobile` in `Sidebar.jsx`), with its own field,
   inline results and tag chips; shared parts in `SearchParts.tsx`. Cmd+F in-note find is
-  separate (`FindBar`).
+  separate (`FindBar`; `⌘F` opens it as it was last left, Replace showing or not, and Edit →
+  Find ▸ Replace… opens it with Replace; `⌘H` is Hide on a Mac).
 - **Matching** (`utils/search.ts`): the query is words; every word must be in the title or
   body, any order, folded for case and accents (`foldText`, with a map back to the text as
   written, so `cafe` finds and marks `Café`). A word at the start of a title word ranks above

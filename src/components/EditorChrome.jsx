@@ -2,40 +2,21 @@ import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
-import { useNoteDataActions } from "../context/NoteDataContext";
-import {
-  SidebarToggleIcon,
-  MoreHorizontalIcon,
-  SearchIcon,
-  NewNoteIcon,
-  UndoIcon,
-  RedoIcon,
-} from "./Icons";
+import { SidebarToggleIcon, MoreHorizontalIcon, SearchIcon, NewNoteIcon } from "./Icons";
 import { isElectronMac } from "../utils/platform";
-import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET, SIDEBAR_HANDLE_W } from "../constants/layout";
-import { PANEL_MS, panelTransition } from "../tokens/motion";
+import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
+import { PANEL_MS } from "../tokens/motion";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
 
 /**
  * The editor's own chrome: two fixed corners, no horizontal strip.
  *
- * Left, reading outward from the window's edge, two groups with different
- * jobs and a wider gap between them than within either:
- *
- *   navigation and creation  panel toggle, Search, New note — rendered ONLY
- *          while the sidebar is not showing. When the sidebar IS showing,
- *          those three live in it (see Sidebar.jsx), so exactly one of each
- *          exists at any moment and it always means the same thing.
- *   history  Undo and Redo, the open note's edits. Always here, in both
- *          sidebar states, disabled when the open note has nothing to undo or
- *          redo (and with no note open at all).
- *
- * The two are separate fixed blocks so each can move on the panel's clock
- * (tokens/motion.js, 2026-09-14): the history pair slides between its two
- * positions as the sidebar slides, and the trio fades in at the corner as the
- * panel finishes leaving. As one block, the trio mounted on the first frame
- * over the still-open sidebar and the pair jumped 132px and floated in the
- * editor for the 200ms the panel took to catch up.
+ * Left, only while the sidebar is not showing: the panel toggle, New note and
+ * Search. When the sidebar IS showing those three live in it (see
+ * Sidebar.jsx), so exactly one of each exists at any moment and it always
+ * means the same thing. The trio fades in at the corner as the panel finishes
+ * leaving (tokens/motion.js). Undo and Redo sat beside it until 2026-09-24;
+ * they are the menu bar's Edit → Undo and Redo now (electron/appMenu.ts).
  *
  * Right, the note's ··· menu — the active note's actions, and Settings under a
  * separator. It is rendered with no active note too, carrying Settings alone:
@@ -67,7 +48,6 @@ export {
   MAC_TRAFFIC_INSET,
   SIDEBAR_HANDLE_W,
 } from "../constants/layout";
-const GROUP_GAP = 12;
 /** Air between the path's band and the control groups either side of it. */
 export const PATH_AIR = 12;
 /**
@@ -101,21 +81,16 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
  * together.
  */
 export const chromePathInset = (collapsed, fullScreen = false) =>
-  chromeControlsLeft(collapsed, fullScreen) +
-  (collapsed ? groupWidth(3) + GROUP_GAP + groupWidth(2) : groupWidth(2)) +
-  PATH_AIR;
+  chromeControlsLeft(collapsed, fullScreen) + (collapsed ? groupWidth(3) : 0) + PATH_AIR;
 
 /** Where the path's band ends, measured from the editor's right edge: the ··· and its air. */
 export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + CHROME_BTN + PATH_AIR;
 
 /**
- * The shell's shortcuts as the chips show them: the map in useAppKeyboard,
- * and the two must agree. Redo is ⇧⌘Z on a Mac and Ctrl+Y elsewhere; the
- * handler takes both.
+ * The shell's shortcuts as the chips show them: the map in useAppKeyboard
+ * and the menu's accelerators (electron/appMenu.ts), and the three must agree.
  */
 export const SHORTCUTS = {
-  undo: shortcutLabel({ key: "Z" }),
-  redo: shortcutLabel({ key: "Z", shift: true, win: { key: "Y" } }),
   newNote: shortcutLabel({ key: "N" }),
   newFolder: shortcutLabel({ key: "N", shift: true }),
   search: shortcutLabel({ key: "P" }),
@@ -221,18 +196,14 @@ export function ChromeButton({
 }
 
 export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onOpenSearch }) {
-  const { sidebarVisible, sidebarWidth, fullScreen, toggleSidebar } = useLayout();
-  const { canUndo, canRedo, undo, redo } = useNoteDataActions();
+  const { sidebarVisible, fullScreen, toggleSidebar } = useLayout();
   const collapsed = !sidebarVisible;
 
-  // The left controls belong to the editor, so they start at its left edge:
-  // past the sidebar and its handle while the sidebar shows, at the viewport
-  // otherwise. Collapsed, the trio holds that edge and the history pair sits
-  // a group-gap past it; expanded, the pair holds the edge alone.
+  // The left controls belong to the editor, so they start at its left edge,
+  // which collapsed is the viewport's. Undo and Redo left this row on
+  // 2026-09-24 for the menu bar's Edit menu, so an expanded sidebar leaves
+  // the editor's side of the row empty.
   const trioLeft = chromeControlsLeft(true, fullScreen);
-  const pairLeft = collapsed
-    ? trioLeft + groupWidth(3) + GROUP_GAP
-    : sidebarWidth + SIDEBAR_HANDLE_W + chromeControlsLeft(false, fullScreen);
 
   return (
     <>
@@ -267,39 +238,6 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
           </div>
         </div>
       )}
-      <div
-        className="panel-motion"
-        style={{
-          position: "fixed",
-          top: CHROME_TOP,
-          left: pairLeft,
-          zIndex: Z.TOOLBAR,
-          display: "flex",
-          alignItems: "center",
-          gap: BTN_GAP,
-          transition: panelTransition("left"),
-        }}
-      >
-        <ChromeButton
-          onClick={undo}
-          disabled={!canUndo}
-          keepSelection
-          label="Undo"
-          shortcut={SHORTCUTS.undo}
-        >
-          <UndoIcon />
-        </ChromeButton>
-        <ChromeButton
-          onClick={redo}
-          disabled={!canRedo}
-          keepSelection
-          label="Redo"
-          shortcut={SHORTCUTS.redo}
-        >
-          <RedoIcon />
-        </ChromeButton>
-      </div>
-
       <div
         style={{
           position: "fixed",

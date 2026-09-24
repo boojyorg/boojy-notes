@@ -20,6 +20,8 @@ import {
 } from "./harness";
 
 const NOTE = "University/Archive/Todd's Note.md";
+const LONG_TITLE = "Todd's Revision Note";
+const LONG = `University/Archive/${LONG_TITLE}.md`;
 const FILES: Record<string, string> = {
   [NOTE]: "Alpha.\n",
   "University/Archive/Old plan.md": "Old.\n",
@@ -309,14 +311,18 @@ test("hidden folders: the ellipsis opens the root with the path expanded, inside
       // Enough notes in Archive that the popup must scroll, with the open note
       // newest so it sorts first among them (Most recent is the default).
       for (let i = 1; i <= 15; i++) vault.write(`University/Archive/Note ${i}.md`, `N${i}.\n`);
+      // A name long enough that its folders cannot all show beside it at the
+      // window's minimum (Todd's Note alone fits since Undo and Redo left the
+      // row on 2026-09-24).
+      vault.write(LONG, "Long.\n");
       const base = Date.now() - 60_000;
       for (const f of vault.list()) vault.setMtime(f, base);
-      vault.setMtime(NOTE, base + 30_000);
+      vault.setMtime(LONG, base + 30_000);
     },
   });
   try {
     await expandAllFolders(h.page);
-    await h.openNote("Todd's Note");
+    await h.openNote(LONG_TITLE);
     await setWidth(h, WINDOW_MIN_W);
     await expect(h.page.getByTestId("note-path-ellipsis")).toHaveCount(1);
 
@@ -328,11 +334,11 @@ test("hidden folders: the ellipsis opens the root with the path expanded, inside
       "▾ University",
       "▾ Archive",
       "▸ 2024",
-      "Todd's Note",
+      LONG_TITLE,
     ]);
     expect(rows).toContain("Note 15");
     expect(rows.at(-1)).toBe("Ideas");
-    await expect(popup(h.page).locator('[aria-current="true"]')).toHaveText("Todd's Note");
+    await expect(popup(h.page).locator('[aria-current="true"]')).toHaveText(LONG_TITLE);
     // Clamped inside the narrow window, and scrolling inside itself rather
     // than growing past the twelve-row cap; the clicked path's folders stay
     // in view above the open note.

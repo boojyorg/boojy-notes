@@ -155,6 +155,8 @@ const EditorArea = memo(
     onPathRowPointerDown,
     onEditorClick,
     onTitleBlur,
+    // Edit → Find… and Find and Replace…: the menu opens the bar through this.
+    openFindRef,
   }) {
     const {
       editorRef,
@@ -201,6 +203,24 @@ const EditorArea = memo(
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
     const [findBarReplace, setFindBarReplace] = useState(false);
+    // Edit → Find ▸: Find… opens the bar as it was last left (unlike Cmd+F it
+    // never closes it, since a menu item says what it does); Replace… opens it
+    // with Replace showing; Find Next and Previous step through an open bar,
+    // and open a closed one.
+    const findStepRef = useRef(null);
+    if (openFindRef) {
+      openFindRef.current = (mode) => {
+        if (mode === "replace") {
+          setFindBarReplace(true);
+          findStepRef.current?.replace();
+        }
+        if ((mode === "next" || mode === "prev") && findBarOpen && findStepRef.current) {
+          findStepRef.current[mode]();
+          return;
+        }
+        setFindBarOpen(true);
+      };
+    }
 
     const editorContainerRef = useRef(null);
     // Note column (padding + measure) — the drag handle positions against it.
@@ -749,10 +769,9 @@ const EditorArea = memo(
                   noteId={activeNote}
                   updateBlockText={updateBlockText}
                   initialShowReplace={findBarReplace}
-                  onClose={() => {
-                    setFindBarOpen(false);
-                    setFindBarReplace(false);
-                  }}
+                  stepRef={findStepRef}
+                  onShowReplaceChange={setFindBarReplace}
+                  onClose={() => setFindBarOpen(false)}
                 />
               )}
               <div
@@ -762,18 +781,13 @@ const EditorArea = memo(
                 role="region"
                 aria-label="Note editor"
                 onKeyDown={(e) => {
-                  // Cmd+F: toggle find bar, Cmd+H: find with replace
+                  // Cmd+F toggles the find bar, opened as it was last left, Replace
+                  // showing or not (2026-09-24: one key for both, the Replace
+                  // toggle in the bar; Cmd+H is Hide on a Mac).
                   const mod = e.ctrlKey || e.metaKey;
-                  if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {
+                  if (mod && e.code === "KeyF" && !e.shiftKey && !e.altKey) {
                     e.preventDefault();
-                    setFindBarReplace(false);
                     setFindBarOpen((v) => !v);
-                    return;
-                  }
-                  if (mod && (e.key === "h" || e.key === "H") && !e.shiftKey) {
-                    e.preventDefault();
-                    setFindBarReplace(true);
-                    setFindBarOpen(true);
                     return;
                   }
                   // A selected whole block (divider or image) takes the key first.
