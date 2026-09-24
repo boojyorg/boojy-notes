@@ -12,6 +12,21 @@ import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
 
 const LS_KEY = "boojy-dev-rhythm";
 
+/**
+ * Named sets to flip between while judging. v1 is the first cut from the
+ * canvas (rhythm.ts's values); v2 tightens it after living with v1: less
+ * space around headings, and the paragraph gap back to the 8 judged on
+ * 2026-09-17. A preset is a starting point: any slider still moves from it.
+ */
+const PRESETS = [
+  { name: "v1", values: { ...DEFAULT_RHYTHM } },
+  {
+    name: "v2",
+    values: { ...DEFAULT_RHYTHM, headingAbove: 24, headingBelow: 6, paragraphGap: 8 },
+  },
+];
+const matches = (a, b) => Object.keys(b).every((k) => a[k] === b[k]);
+
 const CONTROLS = [
   { key: "bodySize", label: "Body size", min: 14, max: 18, step: 0.5, unit: "px" },
   { key: "lineHeight", label: "Line height", min: 1.4, max: 1.9, step: 0.05, unit: "" },
@@ -106,6 +121,27 @@ export default function RhythmTweaker() {
           ×
         </button>
       </div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+        {PRESETS.map((preset) => {
+          const on = matches(values, preset.values);
+          return (
+            <button
+              key={preset.name}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setValues({ ...preset.values })}
+              style={{
+                ...btn,
+                flexGrow: 1,
+                background: on ? "#9CC9CE" : btn.background,
+                color: on ? "#14110F" : btn.color,
+              }}
+            >
+              {preset.name}
+            </button>
+          );
+        })}
+      </div>
       {CONTROLS.map(({ key, label, min, max, step, unit }) => (
         <label key={key} style={{ display: "block", marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -127,7 +163,7 @@ export default function RhythmTweaker() {
         </label>
       ))}
       <div style={{ color: "#888", marginTop: 4 }}>
-        H1, H3–H6 follow H2. Teal = changed from rhythm.ts.
+        H1, H3–H6 follow H2. Teal = changed from rhythm.ts (v1).
       </div>
     </div>
   );

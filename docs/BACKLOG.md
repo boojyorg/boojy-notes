@@ -57,6 +57,12 @@ more than any feature nobody else has. That is a product hypothesis, not validat
 
 Product calls for Tyr; each trades conventional Markdown meaning against byte preservation.
 
+- **A spare empty row is two blank lines in the file.** One blank line between blocks is
+  structure (the gap every Markdown reader needs), so Enter twice after a paragraph shows one
+  empty row and writes two blank lines, as Obsidian needs it. Tyr is unsure it feels right
+  (2026-09-24). The alternative, one blank line per spare row, would make a single blank mean
+  either a gap or a row depending on context. Also open: whether the row's height (a line plus
+  the paragraph gap) reads as a bigger hole than the Enter that made it.
 - **Setext headings (`===` and hyphen underlines).** Recommended direction: recognise both
   forms while preserving their authored spelling. Editing behaviour remains unresolved; this
   recommendation does not change the spec's documented current behaviour. `===` underlines
