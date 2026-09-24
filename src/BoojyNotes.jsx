@@ -63,10 +63,17 @@ import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
 
+// The touch layout is switched off (2026-09-24): about 1,700 untested lines in
+// components/mobile that the desktop pays for, kept until the web build on a
+// phone is designed and either reuses them or they are deleted. `true` brings
+// it back on a touch device.
+const TOUCH_LAYOUT = false;
+
 export default function BoojyNotes() {
   const { theme } = useTheme();
   const { toasts, showToast, dismissToast } = useToast();
-  const isMobile = useIsMobile();
+  const touchDevice = useIsMobile();
+  const isMobile = TOUCH_LAYOUT && touchDevice;
   const mobileKeyboard = useKeyboard();
 
   // ── Contexts ───────────────────────────────────────────────────────

@@ -618,6 +618,9 @@ location; visible at rest, never hover-revealed. Click only, never hover.
 Width changes how much room the app has, not what it is. Two separate questions drive layout:
 is this a touch device (`useIsMobile.ts`, misnamed), and is the sidebar open (`collapsed` in
 `LayoutContext`). Narrowing a browser does not preview mobile; use device emulation.
+**The touch layout is switched off** (`TOUCH_LAYOUT` in `BoojyNotes.jsx`, 2026-09-24): every
+device gets the desktop layout until the web build on a phone is designed, and the rules below
+that mention the touch layout describe code that does not run.
 
 - **The sidebar has one presentation: in the layout, at every width.** Shown, it pushes the
   editor. The overlay sidebar (`useSidebarFits`, `overlayOpen`, a hysteresis band) is gone;
