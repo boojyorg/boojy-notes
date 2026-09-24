@@ -83,11 +83,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     if (!noteId || !noteDataRef.current[noteId]) return;
     const noteToClone = noteDataRef.current[noteId];
     queueMicrotask(() => {
-      const t0 = performance.now();
       const snapshot = cloneNote(noteToClone);
-      const dt = performance.now() - t0;
-      if (import.meta.env.DEV && dt > 1)
-        console.warn(`[perf] pushHistory cloneNote: ${dt.toFixed(1)}ms`);
       // The commit has applied by now. If it left the open note's object
       // untouched — discarding the launch draft on the way into a note,
       // making or deleting another note — there is nothing here to take
