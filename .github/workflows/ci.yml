@@ -6,13 +6,21 @@ on:
   pull_request:
     branches: [master]
 
-# Three independent jobs run side by side, so the wall clock follows the
-# slowest (the Electron suite) rather than their sum. Measured 2026-09-06 on
+# A new push to a PR cancels that PR's run still in flight; its result would
+# describe a commit nobody is looking at. Master runs are never cancelled, so
+# every merge keeps a result of its own (each takes a group of its own: one
+# shared group would queue them, and a queued run is dropped for a newer one).
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# Independent jobs run side by side, so the wall clock follows the slowest
+# (an Electron shard) rather than their sum. Measured 2026-09-06 on
 # the serial layout: checks and unit tests ~70 s, web E2E ~15 s, Electron ~180 s
 # with two workers; serially that was ~270 s of a ~4.5 min job. Each job
 # installs for itself (a cache hit, ~10 s); nothing is passed between them.
 # The `ci` job at the end is the one status branch protection requires; it
-# only reports whether the three above all succeeded.
+# only reports whether every job above succeeded.
 
 jobs:
   checks:
@@ -83,10 +91,18 @@ jobs:
         timeout-minutes: 15
         run: pnpm test:e2e
 
+  # The Electron suite is split across four runners (Playwright's --shard,
+  # by file), two workers each: it is most of CI's wall clock, and it waits on
+  # the app's own debounces rather than the CPU, so more machines is the lever
+  # and a faster one is not. Each shard builds for itself (~5 s).
   electron-e2e:
-    name: Electron E2E
+    name: Electron E2E (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -103,9 +119,11 @@ jobs:
       # every Playwright action: 672 s → 267 s, 2026-09-14). Builds its own
       # dist and dist-electron, and drives the electron binary from
       # node_modules, so no Playwright browser download.
+      - name: Build
+        run: pnpm exec vite build
       - name: Electron core-journey tests
         timeout-minutes: 15
-        run: pnpm test:electron
+        run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/4
 
   # The single status branch protection requires. Runs even when a job above
   # failed or was cancelled, and reports that as a failure of its own.
