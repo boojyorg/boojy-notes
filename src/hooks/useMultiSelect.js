@@ -39,8 +39,11 @@ export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
           setSelectedNotes(range);
         }
       } else {
-        // Plain click: clear selection, open note
+        // Plain click: clear selection, open note, and anchor a later
+        // Shift-click's range here (Finder's rule). Clearing the anchor too
+        // left Shift-click after a plain click doing nothing but open.
         clearSelection();
+        lastClickedNote.current = noteId;
         openNote(noteId);
       }
     },
