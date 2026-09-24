@@ -4,250 +4,153 @@ Boojy Notes is a desktop (Electron) editor for Markdown files you own. The web b
 (`pnpm dev:web`) is a development and test surface, not the product. Read files directly when
 needed; do not ask before reading.
 
-Naming: **Boojy** is the wider suite of creative and productivity tools; this repository and
-product is **Boojy Notes**. Use the full product name in documentation and product-facing
-prose (then "the app" or "it"), and reserve "Boojy" alone for the suite. Identifiers, stored
-keys, filenames and URLs stay as they are.
-
-Suite-wide process (branch discipline, changelog and release skeleton, working preferences)
-lives in the suite root's `AGENTS.md` (`~/Documents/Projects/boojy/AGENTS.md`). This file is
-the map: stack, layout, the invariants, the editor traps, and where the detailed rules live.
+Naming: **Boojy** is the suite; this product is **Boojy Notes** (then "the app" or "it") in
+documentation and product prose. Identifiers, stored keys, filenames and URLs stay as they are.
+Suite-wide process lives in `~/Documents/Projects/boojy/AGENTS.md`.
 
 ## Which file answers which question
 
 | Question | File |
 | --- | --- |
-| What is Boojy Notes, how do I run it | `README.md` |
-| What may exist: blocks, Markdown support dimensions, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
-| Direction, Beta requirements and candidates, what is known-broken, what comes after Beta | `docs/BACKLOG.md` |
-| What shipped, and what was removed | `CHANGELOG.md` |
-| How the chrome, theme and sidebar are built, and which oddities are deliberate | `.claude/rules/ui-chrome-and-theme.md` |
-| The editor's invariants: block drag, links, keys, history, paint, paragraphs, tables, paste | `.claude/rules/editor.md` |
-| Files, the watcher, outside edits, folders, the title-is-filename rule | `.claude/rules/files-and-watcher.md` |
-| CI, build, release, dependency policy | `.claude/rules/ci-build-deploy.md` |
+| What it is, how to run it | `README.md` |
+| What may exist: blocks, Markdown support, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
+| Direction, Beta requirements and candidates, known issues, after Beta | `docs/BACKLOG.md` |
+| What shipped and what was removed | `CHANGELOG.md` |
+| Chrome, theme, sidebar, search | `.claude/rules/ui-chrome-and-theme.md` |
+| Editor invariants | `.claude/rules/editor.md` |
+| Files, watcher, outside edits, folders, title-is-filename | `.claude/rules/files-and-watcher.md` |
+| CI, build, release, dependencies | `.claude/rules/ci-build-deploy.md` |
 
-The rules files are kept accurate in the same commit as the code they describe. When this
-file and a rules file disagree, the rules file wins; fix the drift here.
+The rules files are updated in the same commit as the code they describe, and win over this
+file when they disagree.
 
-## Stack
+**Rules files have a budget** (they load into every session): editor 20k characters, UI 15k,
+files 7k, CI 7k. A bullet is the rule, one reason, and the spec that proves it; never dates,
+measurements or "before this" stories (git and `CHANGELOG.md` keep those), never values the
+code already holds. A change that adds to a file at its budget cuts something.
 
-React 19 + Vite 8 · Electron 44 · Vitest + Testing Library (unit), Playwright (E2E) · Biome 2
-for lint and format, run by Husky on commit · pnpm with `node-linker=hoisted` · TypeScript on
-new files.
+## Stack and commands
 
-## Commands
+React 19 + Vite 8 · Electron 44 · Vitest + Testing Library, Playwright · Biome 2 (Husky on
+commit) · pnpm with `node-linker=hoisted` · TypeScript on new files.
 
 ```sh
 pnpm dev              # Electron + Vite
 pnpm dev:web          # browser only (ELECTRON_DISABLE=1)
-pnpm test             # unit tests
 pnpm test:coverage    # unit tests with the CI coverage gate; run before pushing
-pnpm test:e2e         # Playwright, Chromium (web build)
-pnpm test:electron    # real-Electron core journeys against a throwaway vault; window hidden locally, shown on CI
+pnpm test:e2e         # Playwright, web build
+pnpm test:electron    # real Electron against a throwaway vault
 pnpm check            # Biome lint + format
 pnpm typecheck        # tsc --noEmit
-pnpm build:electron   # web build + desktop installers into release/
+pnpm build:electron   # desktop installers into release/
 ```
 
 ## Structure
 
 ```text
 src/
-├── BoojyNotes.jsx      # root component
-├── main.jsx            # entry, providers
-├── components/         # UI; blocks/ (media blocks), mobile/ (touch UI), settings/
+├── BoojyNotes.jsx      # root component; main.jsx is the entry
+├── components/         # UI; blocks/ (media blocks), settings/
 ├── context/            # Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor
 ├── hooks/              # app hooks; editor/ holds keyboard, paste, drag, slash commands
 ├── services/           # getAPI(): the Electron or web API
 ├── utils/              # markdown.js (the converters), storage, search, platform, …
-├── constants/          # themes.js (the only colour authority), layout.js (chrome + sidebar geometry), slash commands, z-index
-├── styles/             # shared inline style fragments (buttons)
-├── tokens/             # spacing, radius, typography, shadows
+├── constants/          # themes.js (the only colour authority), layout.js, slash commands, z-index
+├── tokens/  styles/    # spacing, radius, type, shadows; shared style fragments
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
-electron/               # main process: IPC, file I/O, watcher, OS trash, folders
-tests/                  # unit tests and the preservation fixture corpus
-e2e/                    # Playwright
-docs/private/           # gitignored personal notes
-dev/                    # dev-only tooling (the ?tweak colour panel); never bundled, not covered
+electron/               # main process: IPC, file I/O, watcher, OS trash, folders, menu
+tests/  e2e/            # unit tests + preservation corpus; Playwright (e2e/electron/ = real app)
+dev/                    # dev-only tooling (?tweak); never bundled
 ```
 
 ## Invariants
 
-- **Markdown is the source of truth.** A note *is* its markdown; blocks are an in-memory
-  rendering of its *structure*, not of its source lines: a paragraph block holds every adjacent
-  line of the paragraph, one blank line between paragraphs is structure rather than a block,
-  further blank lines are empty rows. Every block round-trips block→markdown→block losslessly,
-  and editing one part of a file must not rewrite the rest. No nesting into structures Markdown
-  cannot express, columns or JSON-blob blocks. Evaluate read/render, edit/write and preservation
-  independently; read the spec's definitions before planning a feature or changing a block type.
-- **A persisted note's title is its filename.** The write reports the basename the file actually
-  got (suffix, sanitised characters, trimmed, `Untitled`) and the renderer adopts it at once,
-  or once the caret has left the name field when the user is still typing in it;
-  nothing in the UI re-implements filename rules. Only a name the app makes is sanitised; a name
-  the disk already holds (a Finder-made folder, a note that was already there) is kept exactly.
-  Details and the caret rule: the files rule.
-- **The editor is a custom, uncontrolled `contentEditable`.** No ProseMirror, TipTap or editor
-  library. Text lives as markdown in `block.text` and is rendered through
-  `inlineMarkdownToHtml()` into `innerHTML`.
-- **One active note.** `useActiveNote` holds a single note ID; opening a note replaces it.
-  There are no tabs and no split view. Old persisted `boojy-ui-state` blobs still migrate in
-  `resolveInitialActiveNote()`; leave that read path alone, it keeps old installs safe.
-- **State is React Context** (7 providers, no Redux/Zustand). NoteData separates data from
-  actions; refs carry anything that must not trigger renders. **Note state has one owner:**
-  every change goes through a `useHistory` action (the raw setter is not exposed), and undo
-  restores text in the note the user has open, never another note, a location, or a note that no
-  longer exists. Which action for which change: the editor rule, "One owner for note state".
-- **Styling is inline from `useTheme()`** (`BG`, `TEXT`, `ACCENT`, `SEMANTIC`), never a
-  hardcoded hex. Tokens live in `src/tokens/`. Roles, grammar and known leaks: UI rule.
-- **Icons are Lucide only**, via `src/components/Icons.jsx`, always `currentColor`. Size and
-  stroke tiers: UI rule.
-- **Every path that crosses IPC stays inside the vault.** A handler that takes a filename or
-  path from the renderer resolves it through `insideVault()` (`electron/noteFileManager.js`)
-  or `resolveVaultDir()` (`electron/folders.ts`) and does nothing with one that escapes; the
-  renderer is trusted but a note's file block can name any path. The window never opens a
-  second window and never navigates (`main.js`: `setWindowOpenHandler`, `will-navigate`); an
-  http(s) link goes to the system browser. `config.json` and `settings.json` are written
-  atomically, like notes.
-- **Platform:** `src/utils/platform.js` exports `isElectron`, `isWeb`, `isNative`
-  (`isNative === isElectron`) and `isElectronMac`. `ELECTRON_DISABLE=1` excludes Electron code
-  from a build.
+- **Markdown is the source of truth.** Blocks render a note's *structure*, not its lines. Every
+  block round-trips losslessly; editing one part never rewrites the rest; nothing Markdown
+  cannot express. Read the spec before changing a block type.
+- **A persisted note's title is its filename**; only the write decides the final name
+  (files rule).
+- **The editor is a custom, uncontrolled `contentEditable`**, no editor library. Text lives as
+  Markdown in `block.text`, rendered by `inlineMarkdownToHtml()`.
+- **One active note**; no tabs or split view.
+- **State is React Context**, no Redux/Zustand; refs for anything that must not render. **Note
+  state has one owner**: every change through a `useHistory` action (editor rule).
+- **Styling is inline from `useTheme()`**, never a hardcoded hex. **Icons are Lucide only**
+  via `Icons.jsx`.
+- **Every path that crosses IPC stays inside the vault** (`insideVault()`,
+  `resolveVaultDir()`). The window never opens a second window or navigates; http(s) links go
+  to the system browser. Config and settings are written atomically.
+- Platform flags live in `src/utils/platform.js`; `ELECTRON_DISABLE=1` excludes Electron code.
 
 ## Keep it small
 
-Boojy Notes is a small product and must stay one a single person can hold in their head.
-Optimise every change for the maintainability of the app that exists, not of one that might.
+One person must be able to hold the app in their head.
 
-- **Abstract only what is repeated now** and demonstrably better shared; no speculative
-  extensibility, no generalised editor framework, command bus or state layer for features
-  nobody has asked for.
-- **Prefer deleting a duplicate path to wrapping it.** A good fix usually removes a branch,
-  an owner or a way of doing the same thing; be suspicious of one that adds machinery.
-- **Enforce a correctness invariant at the existing ownership seam**, as close to where the
-  data is owned as possible, so the invalid path becomes impossible rather than guarded in
-  many places.
-- **Complexity is earned only by simplifying the product.** Implementation may grow where it
-  makes the user-facing model plainer; it may not grow to keep options open.
+- Abstract only what is repeated now; no speculative frameworks, buses or state layers.
+- Prefer deleting a duplicate path to wrapping it.
+- Enforce an invariant at the existing ownership seam, so the invalid path is impossible.
+- Complexity is earned only by simplifying the product.
 
 ## Editor gotchas
 
-Each of these has caused a real bug. Read before touching the editor.
+Each has caused a real bug.
 
-1. **State lags the DOM.** The browser owns the live DOM; `block.text` updates on a debounce
-   (`commitTextChange`). Anything that must respond to the current keystroke (the empty-block
-   placeholder, for one) reads the DOM, not state. An "empty" block holds a `<br>` for the
-   caret, so it is never `:empty`; use `:has(> br:only-child)`.
-2. **A text block is painted from the keystroke ref, never from the render, and only on a
-   signal.** `EditableBlock` repaints `innerHTML` on mount, when `syncGen` changes (undo, a
-   paste, an outside change) and when the title set changes, and it paints the block as
-   `noteDataRef` holds it, because a render can be a keystroke behind the DOM and painting
-   the render's text lost the keystroke. A bump alone renders nothing: pair it with a commit
-   that publishes at once (`commitNoteData`), from a React handler or a native listener alike
-   (proven in the real app, 2026-09-09). A text-only commit (`commitTextChange`) never repaints,
-   by design, so a programmatic *text* edit edits the live DOM and reads the block back the way
-   a keystroke is (`domNodeToMarkdown` → `updateBlockText`: formatting, the link popover,
-   Find → Replace); one that changes a block's *type* clears the element itself before the
-   commit (`useInputHandler`), because the effect does not re-run for a type change. When a
-   DOM-sync fix "should work" but doesn't, add a `console.log` in the layout effect and
-   observe; don't theorise about timing.
-3. **`EditorContext` is frozen at mount.** Its value is memoised with `[]`, so every handler
-   from `useEditorContext()` is the first render's. Handlers read changing state through refs
-   (`activeNoteRef`, `noteDataRef`, `blockRefs`), never a captured value. The same applies to
-   any listener registered once (`useAppKeyboard`, the window-blur drag cancel).
-4. **Every desktop save echoes back through chokidar, sometimes twice, up to ~3s later.**
-   `electron/fileWatcher.js` drops only an event it can identify as the consequence of the
-   app's own operation, never one on the clock alone: `write-note` claims the bytes it wrote,
-   and any later event whose file still holds exactly those bytes is that write's echo, however
-   late; the claim ends at the first event showing other bytes there or the file gone, so a
-   later return to those bytes (a revert, a Put Back from the Trash) is a real change. An unlink
-   the app causes (a Trash move, a rename's old path) is claimed once and consumed by that
-   unlink. An unlink nobody claimed is asked one more question before it is a delete: whether
-   the file's inode is now elsewhere in the vault (`relocateNote`), in which case it is an
-   outside rename or move and the note follows it, pending edits and all, as `file-moved`.
-   Never replace the bytes with a timer (macOS sends a second metadata-only `change`
-   1.5–2.7s after a write). An echo that escapes re-parses the file with fresh block IDs, every
-   block remounts, the caret jumps to the top and the unsaved keystroke is lost. The rules for a
-   real outside change (never silently overwritten; a conflicted copy when edits are pending, on
-   screen or not; a save is refused when the file changed since the app last saw it) are in the
-   files rule. Reproduce
-   desktop-only bugs in the real Electron build (Playwright `_electron`, temp `userData` and
-   vault), not jsdom.
+1. **State lags the DOM.** `block.text` updates on a debounce; anything answering the current
+   keystroke reads the DOM. An empty block holds a `<br>`, so use `:has(> br:only-child)`,
+   never `:empty`.
+2. **A text block is painted from the keystroke ref, only on a signal** (mount, `syncGen`, title
+   set), never from the render. A programmatic text edit edits the DOM and reads it back. When a
+   DOM-sync fix "should work" but doesn't, log in the effect and observe; don't theorise.
+3. **`EditorContext` is frozen at mount** (memoised with `[]`): handlers read changing state
+   through refs (`activeNoteRef`, `noteDataRef`, `blockRefs`), as does any listener registered
+   once.
+4. **Every desktop save echoes back through chokidar, up to ~3 s later.** The watcher drops only
+   events it can trace to the app's own operation, by bytes, never by timer (files rule). An
+   escaped echo re-parses the note, remounts every block and loses the caret and keystroke.
+   Reproduce desktop bugs in real Electron, not jsdom.
 
 ## Testing
 
-- Unit tests in `tests/` (Vitest, jsdom, Testing Library); E2E in `e2e/`. The preservation
-  corpus in `tests/fixtures/preservation/` is byte-sensitive and protected by `.gitattributes`.
-- **Markdown has four contracts, one file each** (plus `tests/electron/markdown.test.js`, an
-  older file over the same module that is due to move beside them; see the backlog).
-  `tests/utils/markdown.test.js`: block →
-  markdown → block (what the app creates survives its own reader). `preservation.test.js`:
-  markdown → blocks → markdown byte for byte (did we alter the source?).
-  `domRoundTrip.test.js`: every text block of that corpus rendered to HTML, painted into a
-  DOM and read back by both DOM→Markdown paths (the live walker; sanitise plus walk for a
-  copy, an Enter split or a paste), byte for byte: the road a block's bytes take on its first
-  edit, which the converter suites never travel. `inline-preservation.spec.ts` proves the same
-  road in real Chromium.
-  `markdownInterop.test.js`: what the Markdown *means* outside Boojy Notes, judged by an
-  independent CommonMark parser (`markdown-it`, dev only) against `tests/fixtures/interop/`,
-  each fixture paired with a reviewed `.meaning.txt` outline. `src/utils/markdown.js` is never
-  the oracle. Known mismatches are narrow `it.fails` cases, never a weakened oracle; the
-  paragraph ones are the evidence for the paragraph architecture decision.
-- Coverage floors in `vitest.config.js` sit just below actuals. Ratchet up; never lower to pass.
-- CI runs `test:coverage`, the web E2E and the Electron suite, not `pnpm test`. Desktop
-  behaviour is only proven in a real Electron build; the web build cannot stand in for it.
-- **Three verification surfaces, each for one job.** `pnpm dev:web` is for fast iteration and
-  visual judgement; a visible real Electron build is the final manual acceptance of anything
-  desktop-only; `pnpm test:electron` is the automated proof. The installed daily-driver app is
-  rebuilt at coherent checkpoints, not per PR.
-- **The real-Electron suite (`e2e/electron/`, `pnpm test:electron`) is where cross-layer
-  behaviour is proven**: it launches the built app against a temp vault and userData and asserts
-  observable truth — editor text, the Markdown on disk, filenames, mtimes, state after a restart,
-  leftover temp files. The core invariant is that once an operation settles, what the user sees
-  and what is persisted describe the same note. There is no test-only bridge into React state;
-  add one only if an important invariant genuinely cannot be proven from the outside. The app
-  runs with its window hidden (`BOOJY_TEST_HIDDEN`, main process) so routine runs never steal
-  focus; `BOOJY_TEST_HEADED=1` shows it for watching a run, and CI always shows it, because a hidden
-  window on the Linux runner ticks no animation frames (CI rule). Nothing in the suite needs real OS
-  focus, the clipboard or native menus, and there is no headed test bucket.
-- **Correctness fixes include a regression test that fails before the fix**, at the lowest
-  trustworthy layer practical: pure logic in Vitest, component-only behaviour in jsdom, anything
-  crossing the text-commit or write debounces, IPC, the watcher, the filesystem or a restart in
-  the Electron suite. Where deterministic reproduction is genuinely unreasonable (a race with no
-  stable trigger, a native dialog), say so in the PR and cover the nearest deterministic seam.
+- Unit tests in `tests/` (Vitest, jsdom); E2E in `e2e/`. `tests/fixtures/preservation/` is
+  byte-sensitive (`.gitattributes`).
+- **Markdown has four contracts**: `markdown.test.js` (block → md → block),
+  `preservation.test.js` (md → blocks → md, byte for byte), `domRoundTrip.test.js` (rendered,
+  painted and read back), `markdownInterop.test.js` (meaning judged by `markdown-it`, never by
+  our own parser; known mismatches are narrow `it.fails`).
+- Coverage floors sit just below actuals: ratchet up, never lower. CI gates are
+  `test:coverage`, web E2E and the Electron suite.
+- **Three verification surfaces**: `dev:web` for iteration and visual judgement, a visible
+  Electron build for final desktop acceptance, `pnpm test:electron` for automated proof. The
+  installed app is rebuilt at checkpoints, not per PR.
+- **The Electron suite proves cross-layer behaviour from the outside** (editor text, Markdown on
+  disk, filenames, state after restart); no test-only bridge into React state unless an
+  invariant cannot otherwise be proven. Window hidden locally, shown on CI (CI rule).
+- **Correctness fixes include a regression test that fails first**, at the lowest trustworthy
+  layer; anything crossing debounces, IPC, the watcher or a restart goes in the Electron suite.
 - Never skip the pre-commit hook with `--no-verify`.
 
 ## Release
 
-The version source is `package.json` (Settings imports it; never hardcode a version). Pushing a
-`v*` tag builds the installers; pushing `master` deploys the web build. Mechanics, the draft
-release trap and the dependency policy: CI rule.
-
-Every release runs the docs pass: shipped items leave `docs/BACKLOG.md` and are recorded in
-`CHANGELOG.md` (the backlog never lists shipped work); the README Status paragraph and the
-backlog's Direction section are re-read against what actually shipped; the backlog's
-last-reviewed date is bumped; the Notes row in the suite root's `README.md` and `VISION.md` is
-updated; then run `/suite-sync`.
+The version source is `package.json`; never hardcode one. Mechanics and the draft-release trap:
+CI rule. Every release runs the docs pass: shipped items leave `docs/BACKLOG.md` for
+`CHANGELOG.md`; re-read the README Status and the backlog's Direction; bump the backlog's
+last-reviewed date; update the Notes row in the suite `README.md` and `VISION.md`; run
+`/suite-sync`.
 
 ## Conventions
 
-- PascalCase components, camelCase hooks/utils/constants. Relative imports only, ordered React
-  → hooks → context → constants → utils → components.
-- IDs come from `genBlockId()` / `genNoteId()` in `src/utils/storage`; never hand-craft one.
-- `React.memo` for components that re-render often; refs over state for non-rendering values.
-- **TypeScript on touch.** New files are `.ts`/`.tsx`. Existing `.js`/`.jsx` convert when you
-  are already making substantive edits, never in conversion-only commits. `src/types/notes.ts`
-  is the only home of `Block`/`Note`/`NoteData` (the id→note map); `src/types/global.d.ts`
-  mirrors `electron/preload.js` and changes in the same commit. `@ts-check` + JSDoc is the
-  halfway house for hot `.js` files.
+- PascalCase components, camelCase hooks/utils/constants. Relative imports, ordered React →
+  hooks → context → constants → utils → components.
+- IDs come from `genBlockId()` / `genNoteId()`; never hand-craft one.
+- **TypeScript on touch**: new files `.ts`/`.tsx`; convert existing files only during
+  substantive edits. `src/types/notes.ts` is the only home of `Block`/`Note`/`NoteData`;
+  `global.d.ts` mirrors `electron/preload.js` in the same commit.
 
 ## Docs and Claude Code
 
-One planning file (`docs/BACKLOG.md`) and one history file (`CHANGELOG.md`); there is
-deliberately no roadmap, feature tracker or current-target file. The backlog holds the
-direction and the post-Beta ideas too, in tiers (release requirements, Beta candidates,
-future), so that no separate direction document is needed; a preference recorded there is not
-a task. A change to UI or editor behaviour updates its rules file in the same commit; a release bumps the
-version and `CHANGELOG.md` and runs the docs pass above.
+One planning file (`docs/BACKLOG.md`, tiered, including direction) and one history file
+(`CHANGELOG.md`); deliberately no roadmap, tracker or direction document. A change to UI or
+editor behaviour updates its rules file in the same commit.
 
-`.claude/settings.json` runs `.claude/hooks/post-edit-validation.sh` after every
-`.js/.jsx/.ts/.tsx` edit: Biome with fixes, typecheck for `.ts`/`.tsx`, then `vitest related`.
-Do not bypass it. `CLAUDE.md` is a one-line pointer to this file.
+`.claude/hooks/post-edit-validation.sh` runs after every `.js/.jsx/.ts/.tsx` edit (Biome,
+typecheck for TS, `vitest related`). Do not bypass it. `CLAUDE.md` points here.
