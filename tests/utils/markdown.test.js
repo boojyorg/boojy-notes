@@ -64,17 +64,16 @@ describe("fenced code retains its authored boundaries", () => {
     expect(blocksToMarkdown([block])).toBe("~~~~python\ncode\n~~~~~ \t");
   });
 
-  it.each([
-    "",
-    " \t",
-    "\u00a0",
-  ])("grows the same fence character for a closing-looking line with %j padding", (padding) => {
-    const [block] = markdownToBlocks("~~~\ncode\n~~~~  ");
-    block.text = `code\n${padding}~~~${padding}\ninline ~~~~~ text`;
-    const source = blocksToMarkdown([block]);
-    expect(source).toBe(`~~~~\n${block.text}\n~~~~  `);
-    expect(markdownToBlocks(source)[0].text).toBe(block.text);
-  });
+  it.each(["", " \t", "\u00a0"])(
+    "grows the same fence character for a closing-looking line with %j padding",
+    (padding) => {
+      const [block] = markdownToBlocks("~~~\ncode\n~~~~  ");
+      block.text = `code\n${padding}~~~${padding}\ninline ~~~~~ text`;
+      const source = blocksToMarkdown([block]);
+      expect(source).toBe(`~~~~\n${block.text}\n~~~~  `);
+      expect(markdownToBlocks(source)[0].text).toBe(block.text);
+    },
+  );
 
   it("closes an unclosed imported fence only when a new block is added after it", () => {
     const [block] = markdownToBlocks("~~~\ncode");
@@ -1021,13 +1020,13 @@ describe("the serializer never writes a line its own parser reads as another blo
 describe("ATX headings H1–H6", () => {
   for (const level of [1, 2, 3, 4, 5, 6]) {
     const marker = "#".repeat(level);
-    it.each([
-      "Title ###",
-      "###",
-    ])(`keeps literal final hashes in generated H${level}: %j`, (text) => {
-      const block = { type: `h${level}`, text };
-      expect(stripIds(markdownToBlocks(blocksToMarkdown([block])))).toEqual([block]);
-    });
+    it.each(["Title ###", "###"])(
+      `keeps literal final hashes in generated H${level}: %j`,
+      (text) => {
+        const block = { type: `h${level}`, text };
+        expect(stripIds(markdownToBlocks(blocksToMarkdown([block])))).toEqual([block]);
+      },
+    );
     it(`reads, edits and writes H${level} with conventional meaning`, () => {
       const [block] = markdownToBlocks(`${marker} Title`);
       expect(block).toMatchObject({ type: `h${level}`, text: "Title" });
@@ -1062,15 +1061,13 @@ describe("ATX headings H1–H6", () => {
     });
   }
 
-  it.each([
-    "####### Beyond six",
-    "####No gap",
-    "\\#### Escaped",
-    "    #### Indented",
-  ])("keeps non-heading source literal: %j", (source) => {
-    expect(markdownToBlocks(source)[0]).toMatchObject({ type: "p", text: source });
-    expect(blocksToMarkdown(markdownToBlocks(source))).toBe(source);
-  });
+  it.each(["####### Beyond six", "####No gap", "\\#### Escaped", "    #### Indented"])(
+    "keeps non-heading source literal: %j",
+    (source) => {
+      expect(markdownToBlocks(source)[0]).toMatchObject({ type: "p", text: source });
+      expect(blocksToMarkdown(markdownToBlocks(source))).toBe(source);
+    },
+  );
 
   it("keeps a heading-like soft break inside its paragraph", () => {
     const saved = blocksToMarkdown([{ type: "p", text: "Body\n###### Still body" }]);

@@ -244,15 +244,12 @@ describe("stripIncidentalLineEnding", () => {
 });
 
 describe("isStructuredMarkdownLine", () => {
-  it.each([
-    "## Title",
-    "- item",
-    "1. step",
-    "- [ ] task",
-    "- [x] done",
-    "> quote",
-  ])("recognises %s", (line) => expect(isStructuredMarkdownLine(line)).toBe(true));
+  it.each(["## Title", "- item", "1. step", "- [ ] task", "- [x] done", "> quote"])(
+    "recognises %s",
+    (line) => expect(isStructuredMarkdownLine(line)).toBe(true),
+  );
 
   it.each(["plain words", "", "a\nb", "---", "```"])("rejects %j", (line) =>
-    expect(isStructuredMarkdownLine(line)).toBe(false));
+    expect(isStructuredMarkdownLine(line)).toBe(false),
+  );
 });

@@ -40,7 +40,7 @@ test("a note sent to the Trash is a receipt: the Trash mark, no ×, gone by itse
     await expect(toast).toHaveAttribute("data-toast-kind", "done");
     await expect(toast).toContainText("moved to the Trash");
     // Its own mark, not a tick, and no × — it is going anyway.
-    expect(await toast.locator("svg.lucide-trash2").count()).toBe(1);
+    expect(await toast.locator("svg.lucide-trash").count()).toBe(1);
     await expect(toast.getByRole("button", { name: "Dismiss" })).toHaveCount(0);
     // A receipt is news, not an interruption.
     await expect(toast).toHaveAttribute("role", "status");

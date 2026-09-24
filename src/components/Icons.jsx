@@ -74,7 +74,7 @@ import {
   Sun as LuSun,
   Table as LuTable,
   TextQuote as LuTextQuote,
-  Trash2 as LuTrash2,
+  Trash as LuTrash,
   TriangleAlert as LuTriangleAlert,
   Undo2 as LuUndo2,
   X as LuX,
@@ -166,7 +166,7 @@ export const ArrowRightToLineIcon = ({ size = ICON_INLINE }) => (
 );
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
  *  12.5px menu labels (judged live 2026-08-23). */
-export const TrashIcon = () => <LuTrash2 {...base} {...navBase} size={ICON_INLINE} />;
+export const TrashIcon = () => <LuTrash {...base} {...navBase} size={ICON_INLINE} />;
 export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
@@ -285,12 +285,12 @@ export const FormatIcon = ({ name, size = ICON_INLINE }) => {
 
 // ── Notifications ─────────────────────────────────────────────────────────
 // One glyph per toast, keyed by the name `useToast` carries: the kind's own
-// mark, or the one the message asks for (a trashed note says Trash2, which is
+// mark, or the one the message asks for (a trashed note says Trash, which is
 // more use than a tick). Content stroke at 16px: a toast is a line of prose
 // with a mark beside it, not a control.
 const TOAST_GLYPHS = {
   check: LuCheck,
-  trash: LuTrash2,
+  trash: LuTrash,
   info: LuInfo,
   warning: LuTriangleAlert,
   error: LuCircleAlert,

@@ -89,7 +89,7 @@ describe("Toast", () => {
       />,
     );
     // Lucide names its glyphs in a class, which is how the two are told apart.
-    expect(box().querySelector("svg.lucide-trash2")).not.toBeNull();
+    expect(box().querySelector("svg.lucide-trash")).not.toBeNull();
     cleanup();
 
     render(<Toast message="Kept in a copy" kind="notice" onDismiss={vi.fn()} theme={theme} />);
