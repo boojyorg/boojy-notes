@@ -4,7 +4,7 @@ import { Z } from "../constants/zIndex";
 import { cssZoom } from "../utils/domHelpers";
 import { FIELD_FORMATS } from "../utils/inlineFormatCommands";
 import { FormatIcon } from "./Icons";
-import { TOOLTIP_REST_MS, Tooltip, shortcutLabel } from "./Tooltip";
+import { TOOLTIP_REST_MS, Tooltip, coolTooltips, shortcutLabel, tooltipsWarm } from "./Tooltip";
 
 /** Button box. The 32px control tier read chunky hovering over a line of text (judged 2026-09-10). */
 const BTN = 28;
@@ -166,6 +166,13 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   }, []);
   const onRest = (id) => {
     cancelRest();
+    // Moving along the strip after a chip has shown: the next one shows at
+    // once, as the chrome row's do. The first rest is paid once per pass.
+    if (tooltipsWarm()) {
+      setTipBelow(chipWouldClip(barRef.current));
+      setTip(id);
+      return;
+    }
     const rest = { id, timer: null };
     rest.timer = setTimeout(() => {
       if (pending.current !== rest) return;
@@ -176,6 +183,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   };
   const onLeave = () => {
     cancelRest();
+    if (tip) coolTooltips();
     setTip(null);
   };
   useEffect(() => cancelRest, [cancelRest]);

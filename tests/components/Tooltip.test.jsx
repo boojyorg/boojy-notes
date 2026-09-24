@@ -22,7 +22,12 @@ vi.mock("../../src/context/NoteDataContext", () => ({
 vi.mock("../../src/utils/platform", () => ({ isMac: true, isElectronMac: false }));
 
 import { ChromeButton } from "../../src/components/EditorChrome.jsx";
-import { TOOLTIP_REST_MS, TOOLTIP_WARM_MS, shortcutLabel } from "../../src/components/Tooltip";
+import {
+  TOOLTIP_REST_MS,
+  TOOLTIP_WARM_MS,
+  coolTooltips,
+  shortcutLabel,
+} from "../../src/components/Tooltip";
 
 const chip = (q) => q.queryByTestId("chrome-tooltip");
 
@@ -40,11 +45,11 @@ Element.prototype.matches = function (sel) {
 afterEach(() => {
   cleanup();
   focusVisible = true;
-  // The warm window is module state: let it lapse so the next test starts cold.
-  if (vi.isFakeTimers()) {
-    act(() => vi.advanceTimersByTime(TOOLTIP_WARM_MS + 1));
-    vi.useRealTimers();
-  }
+  // The warm window is module state: end it so the next test starts cold.
+  // (Advancing fake time past it was not enough: the next test's fake clock
+  // starts from the real one, which can still be inside the window.)
+  vi.useRealTimers();
+  coolTooltips(0);
 });
 
 const renderPair = (props = {}) => {
