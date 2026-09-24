@@ -419,6 +419,9 @@ never saved, off at launch. Plain source, never a live preview that hides marker
   inline Markdown (the formatted view counts what is shown), else at the text's start. A note
   at its top stays there; a scrolled one keeps the block at its height. The switch lives in
   `EditorArea` (`switchViewRef`) because the place is read from the view being left.
+- **The name's Enter and ArrowDown go into the view's text, and ArrowUp on its first line comes
+  back** (`focusTitleEnd`, shared with the formatted view): the name's handler asked for a first
+  block, which the view has none of, and focus stayed in the name.
 - **The entry place is read once, when the view is made** (`useState`), never consumed in an
   effect: StrictMode runs a mount effect twice and the second run lost the caret.
 - `sourceView.test.ts`, `SourceView.test.tsx`, `source-view.spec.ts`.

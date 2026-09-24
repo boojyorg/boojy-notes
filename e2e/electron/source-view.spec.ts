@@ -5,6 +5,8 @@
  * and Cmd+Z takes it back.
  */
 import { expect, test } from "@playwright/test";
+import { PATH_AIR } from "../../src/components/EditorChrome";
+import { WINDOW_MIN_W } from "../../src/constants/layout";
 import {
   MOD,
   SETTLE_MS,
@@ -172,6 +174,44 @@ test("a menu the keyboard opened in one view does not follow into the other", as
     await expect(slash).toHaveCount(0);
     await h.page.keyboard.press(`${MOD}+/`);
     await expect(slash).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a long name never runs under the lit </>, at any width, and the name's keys cross into the view", async () => {
+  const name = "A really rather long note name that keeps going well past the middle";
+  const h = await launchApp({ [`University/Archive/${name}.md`]: "Body line.\n" });
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote(name);
+    await h.page.keyboard.press(`${MOD}+/`);
+    const toggle = h.page.getByRole("button", { name: "Show formatted", exact: true });
+    await expect(toggle).toBeVisible();
+    for (let width = 1200; width >= WINDOW_MIN_W; width -= 40) {
+      await h.app.evaluate(({ BrowserWindow }, w) => {
+        BrowserWindow.getAllWindows()[0].setSize(w, 800);
+      }, width);
+      await expect.poll(() => h.page.evaluate(() => window.innerWidth)).toBe(width);
+      await h.page.evaluate(
+        () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))),
+      );
+      const path = await h.page.getByTestId("note-path").boundingBox();
+      const lit = await toggle.boundingBox();
+      expect(path!.x + path!.width, `at ${width}`).toBeLessThanOrEqual(lit!.x - PATH_AIR + 0.5);
+    }
+
+    // Enter from the name goes into the Markdown, and ArrowUp from its first line back.
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await title.click();
+    await h.page.keyboard.press("Enter");
+    const field = h.page.getByRole("textbox", { name: "Markdown" });
+    await expect(field).toBeFocused();
+    await h.page.keyboard.press("ArrowUp");
+    await expect(title).toBeFocused();
+    await h.page.keyboard.press("ArrowDown");
+    await expect(field).toBeFocused();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

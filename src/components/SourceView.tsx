@@ -1,6 +1,7 @@
 import { type MutableRefObject, useLayoutEffect, useRef, useState } from "react";
 import { blocksToMarkdown, markdownToBlocks } from "../utils/markdown";
 import { paintMarkdown } from "../utils/sourceView";
+import { focusTitleEnd } from "../utils/domHelpers";
 
 type Block = { id: string; type: string; text?: string };
 type Note = { content: { blocks: Block[] } };
@@ -17,6 +18,8 @@ export type SourcePlace = { offset: number; top: number; atTop: boolean };
 export interface SourceViewApi {
   /** The caret's offset in the file text and its line's height in the scroller. */
   capture: () => SourcePlace | null;
+  /** The caret at the start of the text: Enter or ArrowDown from the note's name. */
+  focusStart: () => void;
 }
 
 interface SourceViewProps {
@@ -132,6 +135,12 @@ export default function SourceView({
         atTop: scroller.scrollTop <= 0,
       };
     },
+    focusStart: () => {
+      const field = fieldRef.current;
+      if (!field) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(0, 0);
+    },
   };
 
   const onInput = () => {
@@ -150,6 +159,21 @@ export default function SourceView({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // ArrowUp on the first line reaches the note's name, as it does from the
+    // formatted view's first line; the name's Enter and ArrowDown come back.
+    const field = e.currentTarget;
+    if (
+      e.key === "ArrowUp" &&
+      !e.shiftKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      field.selectionStart === field.selectionEnd &&
+      !field.value.slice(0, field.selectionStart).includes("\n")
+    ) {
+      e.preventDefault();
+      focusTitleEnd();
+      return;
+    }
     // Tab is a character here, as in any text editor, never a trip out of
     // the field. Typed through the browser, so the input event commits it.
     if (e.key === "Tab" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {

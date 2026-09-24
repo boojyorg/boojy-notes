@@ -657,6 +657,11 @@ const EditorArea = memo(
           // comes back here (2026-09-24).
           if (e.key === "Enter" || (e.key === "ArrowDown" && !e.shiftKey)) {
             e.preventDefault();
+            // The Markdown view has no blocks: the caret goes to the top of its text.
+            if (sourceView) {
+              sourceApiRef.current?.focusStart();
+              return;
+            }
             const blocks = noteDataRef.current[activeNote].content.blocks;
             const first = blocks.find((b) => isEditableBlock(b));
             if (first) {
