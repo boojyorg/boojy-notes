@@ -1,23 +1,29 @@
 import {
   Menu,
   ipcMain,
+  nativeImage,
   shell,
   type BrowserWindow,
   type MenuItemConstructorOptions,
+  type NativeImage,
 } from "electron";
 
 /**
  * The application menu: every command the app has, with its shortcut
- * (2026-09-24). The menu does nothing itself. An item sends its id to the
- * window (`menu-command`), and the renderer runs the same function the key
- * runs (`useMenuBar`), so a command has one implementation whichever way it
- * is asked for. The renderer claims the keys it handles (preventDefault), so
+ * (2026-09-24; its layout judged from ASCII mockups the same day: Apple's
+ * structure, a List submenu and Find submenu, the typed Markdown shown under a
+ * block's name, icons only where Apple's own apps carry one).
+ *
+ * The menu does nothing itself. An item sends its id to the window
+ * (`menu-command`), and the renderer runs the same function the key runs
+ * (`useAppKeyboard`), so a command has one implementation whichever way it is
+ * asked for. The renderer claims the keys it handles (preventDefault), so
  * whether macOS offers a shortcut to the page or to the menu first, it runs
  * once.
  *
- * The window says what can act (`menu-state`): Undo with nothing to take back,
- * the note items with no note open and the Format items outside a note are
- * greyed rather than left to do nothing.
+ * The window says what is true (`menu-state`), and the menu is rebuilt from it
+ * when it changes: what cannot act is greyed, the formats on the selection and
+ * the line's kind carry a check, and the sidebar item says what it will do.
  */
 
 export type MenuState = {
@@ -29,60 +35,82 @@ export type MenuState = {
   canRedo: boolean;
   /** A text field outside the editor has focus, where Undo is the field's own. */
   textField: boolean;
+  /** The inline formats on the selection (`bold`, `italic`, …). */
+  formats: string[];
+  /** The kind of the line the caret is in (`p`, `h2`, `bullet`, …), or null outside the editor. */
+  kind: string | null;
+  sidebarVisible: boolean;
+};
+
+const INITIAL: MenuState = {
+  hasNote: false,
+  hasFile: false,
+  canUndo: false,
+  canRedo: false,
+  textField: false,
+  formats: [],
+  kind: null,
+  sidebarVisible: true,
 };
 
 const isMac = process.platform === "darwin";
 
-/** Items that act on the note's file, which a blank draft does not have yet. */
-const FILE_ITEMS = ["duplicate", "moveTo", "reveal", "trash"];
-
-/** Items that act on the open note. */
-const NOTE_ITEMS = [
-  "rename",
-  "find",
-  "findReplace",
-  "bold",
-  "italic",
-  "strikethrough",
-  "highlight",
-  "code",
-  "link",
-  "body",
-  "h1",
-  "h2",
-  "h3",
-  "todo",
-  "bullet",
-  "numbered",
-  "quote",
-];
-
 /**
- * A block's kind, on Notion's keys: Option+Command and a digit on a Mac. Off a
- * Mac, Ctrl+Alt is AltGr on many layouts and types a character, so it is
- * Ctrl+Shift there, as Notion has it.
+ * An SF Symbol as a menu icon: rendered large and scaled to 16pt with a 2x
+ * representation, since the symbol comes back as one bitmap at the size asked
+ * for, and marked a template so macOS inks it for the theme and the
+ * highlighted row. Only on a Mac; elsewhere no item has one.
  */
-const kindKey = (digit: number) => (isMac ? `Alt+Command+${digit}` : `Ctrl+Shift+${digit}`);
+const icons = new Map<string, NativeImage | undefined>();
+function icon(symbol: string): NativeImage | undefined {
+  if (!isMac) return undefined;
+  if (icons.has(symbol)) return icons.get(symbol);
+  const big = nativeImage.createFromNamedImage(symbol, { pointSize: 30 });
+  let out: NativeImage | undefined;
+  if (!big.isEmpty()) {
+    out = nativeImage.createEmpty();
+    out.addRepresentation({ scaleFactor: 1, buffer: big.resize({ height: 16 }).toPNG() });
+    out.addRepresentation({ scaleFactor: 2, buffer: big.resize({ height: 32 }).toPNG() });
+    out.setTemplateImage(true);
+  }
+  icons.set(symbol, out);
+  return out;
+}
 
-export function buildAppMenu({
-  isDev,
-  getMainWindow,
-}: {
-  isDev: boolean;
-  getMainWindow: () => BrowserWindow | null;
-}) {
-  const send = (id: string) => () => getMainWindow()?.webContents.send("menu-command", id);
+function template(state: MenuState, isDev: boolean, send: (id: string) => () => void) {
+  const noteless = !state.hasNote;
+  const fileless = !state.hasFile;
   const item = (
     id: string,
     label: string,
     accelerator?: string,
     extra: Partial<MenuItemConstructorOptions> = {},
   ): MenuItemConstructorOptions => ({ id, label, accelerator, click: send(id), ...extra });
+  const note = (id: string, label: string, accelerator?: string, extra = {}) =>
+    item(id, label, accelerator, { enabled: !noteless, ...extra });
+  const file = (id: string, label: string, extra = {}) =>
+    item(id, label, undefined, { enabled: !fileless, ...extra });
+  // A format carries a check while the selection holds it, as Pages does,
+  // rather than renaming itself to its opposite.
+  const format = (id: string, label: string, accelerator: string, symbol?: string) =>
+    note(id, label, accelerator, {
+      type: "checkbox",
+      checked: state.formats.includes(id),
+      icon: symbol ? icon(symbol) : undefined,
+    });
+  // A line's kind carries a check on the kind the caret's line is, and the
+  // Markdown that makes it from the keyboard underneath its name.
+  const kind = (id: string, type: string, label: string, typed?: string, accelerator?: string) =>
+    note(id, label, accelerator, {
+      type: "checkbox",
+      checked: state.kind === type,
+      ...(isMac && typed ? { sublabel: `Type ${typed} and a space` } : {}),
+    });
 
   const settings = item("settings", isMac ? "Settings…" : "Settings", "CmdOrCtrl+,");
   const checkUpdates = item("checkUpdates", "Check for Updates…");
 
-  const template: MenuItemConstructorOptions[] = [
+  return [
     ...(isMac
       ? [
           {
@@ -107,15 +135,15 @@ export function buildAppMenu({
     {
       label: "File",
       submenu: [
-        item("newNote", "New Note", "CmdOrCtrl+N"),
-        item("newFolder", "New Folder", "Shift+CmdOrCtrl+N"),
+        item("newNote", "New Note", "CmdOrCtrl+N", { icon: icon("square.and.pencil") }),
+        item("newFolder", "New Folder", "Shift+CmdOrCtrl+N", { icon: icon("folder.badge.plus") }),
         { type: "separator" },
-        item("rename", "Rename"),
-        item("duplicate", "Duplicate"),
-        item("moveTo", "Move to…"),
-        item("reveal", isMac ? "Show in Finder" : "Show in Folder"),
+        note("rename", "Rename…"),
+        file("duplicate", "Duplicate"),
+        file("moveTo", "Move to…"),
+        file("reveal", isMac ? "Show in Finder" : "Show in Folder"),
         { type: "separator" },
-        item("trash", isMac ? "Move to Trash" : "Delete"),
+        file("trash", isMac ? "Move to Trash" : "Delete", { icon: icon("trash") }),
         { type: "separator" },
         ...(isMac ? [] : [settings, checkUpdates, { type: "separator" } as const]),
         isMac ? { role: "close" } : { role: "quit" },
@@ -127,49 +155,78 @@ export function buildAppMenu({
         // Not the `undo` role: that is the browser's own undo, which in the
         // editor would take back a keystroke behind the app's history. The
         // renderer runs the app's Undo, or the focused field's own.
-        item("undo", "Undo", "CmdOrCtrl+Z"),
-        item("redo", "Redo", isMac ? "Shift+Command+Z" : "Ctrl+Y"),
+        item("undo", "Undo", "CmdOrCtrl+Z", {
+          enabled: state.textField || state.canUndo,
+          icon: icon("arrow.uturn.backward"),
+        }),
+        item("redo", "Redo", isMac ? "Shift+Command+Z" : "Ctrl+Y", {
+          enabled: state.textField || state.canRedo,
+          icon: icon("arrow.uturn.forward"),
+        }),
         { type: "separator" },
-        { role: "cut" },
+        { role: "cut", icon: icon("scissors") },
         { role: "copy" },
         { role: "paste" },
         { role: "selectAll" },
         { type: "separator" },
-        item("search", "Search Notes…", "CmdOrCtrl+P"),
-        item("find", "Find…", "CmdOrCtrl+F"),
-        item("findReplace", "Find and Replace…", "Alt+CmdOrCtrl+F"),
+        {
+          label: "Find",
+          submenu: [
+            note("find", "Find…", "CmdOrCtrl+F", { icon: icon("magnifyingglass") }),
+            note("findNext", "Find Next", "CmdOrCtrl+G"),
+            note("findPrevious", "Find Previous", "Shift+CmdOrCtrl+G"),
+            note("replace", "Replace…"),
+            { type: "separator" },
+            item("search", "Search All Notes…", "CmdOrCtrl+P"),
+          ],
+        },
       ],
     },
     {
       label: "Format",
       submenu: [
-        item("bold", "Bold", "CmdOrCtrl+B"),
-        item("italic", "Italic", "CmdOrCtrl+I"),
-        item("strikethrough", "Strikethrough", "Shift+CmdOrCtrl+S"),
-        item("highlight", "Highlight", "Shift+CmdOrCtrl+H"),
-        item("code", "Inline Code", "CmdOrCtrl+E"),
-        item("link", "Link…", "CmdOrCtrl+K"),
+        format("bold", "Bold", "CmdOrCtrl+B", "bold"),
+        format("italic", "Italic", "CmdOrCtrl+I", "italic"),
+        format("strikethrough", "Strikethrough", "Shift+CmdOrCtrl+S", "strikethrough"),
+        format("highlight", "Highlight", "Shift+CmdOrCtrl+H", "highlighter"),
+        format("code", "Code", "CmdOrCtrl+E"),
+        note("link", "Add Link…", "CmdOrCtrl+K", {
+          type: "checkbox",
+          checked: state.formats.includes("link"),
+          icon: icon("link"),
+        }),
         { type: "separator" },
-        item("body", "Body Text", kindKey(0)),
-        item("h1", "Heading 1", kindKey(1)),
-        item("h2", "Heading 2", kindKey(2)),
-        item("h3", "Heading 3", kindKey(3)),
+        kind("h1", "h1", "Heading 1", "#", "CmdOrCtrl+1"),
+        kind("h2", "h2", "Heading 2", "##", "CmdOrCtrl+2"),
+        kind("h3", "h3", "Heading 3", "###", "CmdOrCtrl+3"),
+        kind("body", "p", "Text"),
         { type: "separator" },
-        item("todo", "To-do List", kindKey(4)),
-        item("bullet", "Bulleted List", kindKey(5)),
-        item("numbered", "Numbered List", kindKey(6)),
-        item("quote", "Quote"),
+        {
+          label: "List",
+          enabled: !noteless,
+          submenu: [
+            kind("bullet", "bullet", "Bulleted List", "-"),
+            kind("numbered", "numbered", "Numbered List", "1."),
+            kind("todo", "checkbox", "Checklist", "[]"),
+          ],
+        },
+        kind("quote", "blockquote", "Quote", ">"),
       ],
     },
     {
       label: "View",
       submenu: [
-        item("toggleSidebar", "Toggle Sidebar", "CmdOrCtrl+\\"),
+        // Says what it will do, as Finder's Show/Hide Sidebar does.
+        item(
+          "toggleSidebar",
+          state.sidebarVisible ? "Hide Sidebar" : "Show Sidebar",
+          "CmdOrCtrl+\\",
+        ),
         { type: "separator" },
         // The app's own interface size, never Chromium's page zoom (the UI
         // rule, "One zoom system"): these run the same step the keys do.
-        item("bigger", "Bigger", "CmdOrCtrl+Plus"),
-        item("smaller", "Smaller", "CmdOrCtrl+-"),
+        item("bigger", "Zoom In", "CmdOrCtrl+Plus"),
+        item("smaller", "Zoom Out", "CmdOrCtrl+-"),
         item("actualSize", "Actual Size", "CmdOrCtrl+0"),
         { type: "separator" },
         // Reload is a developer's key: it drops the renderer, and with it up
@@ -203,22 +260,26 @@ export function buildAppMenu({
         },
       ],
     },
-  ];
+  ] as MenuItemConstructorOptions[];
+}
 
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-
+export function buildAppMenu({
+  isDev,
+  getMainWindow,
+}: {
+  isDev: boolean;
+  getMainWindow: () => BrowserWindow | null;
+}) {
+  const send = (id: string) => () => getMainWindow()?.webContents.send("menu-command", id);
+  let current = "";
   const apply = (state: MenuState) => {
-    const set = (id: string, enabled: boolean) => {
-      const found = menu.getMenuItemById(id);
-      if (found) found.enabled = enabled;
-    };
-    for (const id of NOTE_ITEMS) set(id, state.hasNote);
-    for (const id of FILE_ITEMS) set(id, state.hasFile);
-    // A text field's Undo is its own, whatever the note's history holds.
-    set("undo", state.textField || state.canUndo);
-    set("redo", state.textField || state.canRedo);
+    // Rebuilt only when something it shows changed: the renderer reports on
+    // every selection change, and most of those change nothing here.
+    const key = JSON.stringify(state);
+    if (key === current) return;
+    current = key;
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template(state, isDev, send)));
   };
-  apply({ hasNote: false, hasFile: false, canUndo: false, canRedo: false, textField: false });
-  ipcMain.on("menu-state", (_event, state: MenuState) => apply(state));
+  apply(INITIAL);
+  ipcMain.on("menu-state", (_event, state: Partial<MenuState>) => apply({ ...INITIAL, ...state }));
 }

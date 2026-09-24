@@ -203,11 +203,21 @@ const EditorArea = memo(
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
     const [findBarReplace, setFindBarReplace] = useState(false);
-    // The menu's Find… opens the bar (and Find and Replace… with Replace shown);
-    // unlike Cmd+F it never closes it, since a menu item says what it does.
+    // Edit → Find ▸: Find… opens the bar as it was last left (unlike Cmd+F it
+    // never closes it, since a menu item says what it does); Replace… opens it
+    // with Replace showing; Find Next and Previous step through an open bar,
+    // and open a closed one.
+    const findStepRef = useRef(null);
     if (openFindRef) {
-      openFindRef.current = (replace) => {
-        setFindBarReplace(!!replace);
+      openFindRef.current = (mode) => {
+        if (mode === "replace") {
+          setFindBarReplace(true);
+          findStepRef.current?.replace();
+        }
+        if ((mode === "next" || mode === "prev") && findBarOpen && findStepRef.current) {
+          findStepRef.current[mode]();
+          return;
+        }
         setFindBarOpen(true);
       };
     }
@@ -759,10 +769,9 @@ const EditorArea = memo(
                   noteId={activeNote}
                   updateBlockText={updateBlockText}
                   initialShowReplace={findBarReplace}
-                  onClose={() => {
-                    setFindBarOpen(false);
-                    setFindBarReplace(false);
-                  }}
+                  stepRef={findStepRef}
+                  onShowReplaceChange={setFindBarReplace}
+                  onClose={() => setFindBarOpen(false)}
                 />
               )}
               <div
@@ -772,19 +781,13 @@ const EditorArea = memo(
                 role="region"
                 aria-label="Note editor"
                 onKeyDown={(e) => {
-                  // Cmd+F toggles the find bar; Option+Cmd+F opens it with Replace
-                  // (2026-09-24: Cmd+H is Hide on a Mac, VS Code's and Pages' key).
-                  // `code`, because Option turns the F into a character on a Mac.
+                  // Cmd+F toggles the find bar, opened as it was last left, Replace
+                  // showing or not (2026-09-24: one key for both, the Replace
+                  // toggle in the bar; Cmd+H is Hide on a Mac).
                   const mod = e.ctrlKey || e.metaKey;
-                  if (mod && e.code === "KeyF" && !e.shiftKey) {
+                  if (mod && e.code === "KeyF" && !e.shiftKey && !e.altKey) {
                     e.preventDefault();
-                    if (e.altKey) {
-                      setFindBarReplace(true);
-                      setFindBarOpen(true);
-                    } else {
-                      setFindBarReplace(false);
-                      setFindBarOpen((v) => !v);
-                    }
+                    setFindBarOpen((v) => !v);
                     return;
                   }
                   // A selected whole block (divider or image) takes the key first.

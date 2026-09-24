@@ -888,7 +888,9 @@ export default function BoojyNotes() {
     deleteNote: confirmDeleteNote,
     applyFormat,
     setBlockKind,
-    openFind: (replace) => openFindRef.current?.(replace),
+    openFind: (mode) => openFindRef.current?.(mode),
+    detectActiveFormats,
+    sidebarVisible,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {

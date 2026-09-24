@@ -177,13 +177,15 @@ test("narrowing the window drops the outer folders first and never puts the path
 });
 
 test("a long name in a deep folder gives up its folders before a letter of itself", async () => {
-  const name = "COMP336 Coursework 2 Marking Scheme (working draft)";
+  // Long enough to be cut at the window's minimum on every platform: the row
+  // gained 66px when Undo and Redo left it (2026-09-24).
+  const name = "COMP336 Coursework 2 Marking Scheme and Feedback Notes (working draft)";
   const deep = `University/26-27 Semester 1/COMP336 Big Data Analytics/${name}.md`;
   const h = await launchApp({ [deep]: "Body.\n" });
   try {
     await expandAllFolders(h.page);
     await h.openNote(name);
-    await setWidth(h, 1200);
+    await setWidth(h, 1400);
     await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
     await settled(h.page);
     await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
@@ -202,7 +204,7 @@ test("a long name in a deep folder gives up its folders before a letter of itsel
     expect(g.right).toBeLessThanOrEqual(g.moreLeft - PATH_AIR + SUBPIXEL);
 
     // Narrow: no folder is left to give, so the name itself is cut, inside the band.
-    await setWidth(h, 600);
+    await setWidth(h, WINDOW_MIN_W);
     expect(await folders(h.page)).toEqual([]);
     expect(await ellipses(h.page)).toBe(0);
     expect(await nameCut(h.page)).toBe(true);

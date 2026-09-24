@@ -229,8 +229,8 @@ none blocks the release. The shared question comes first because three candidate
   accepted: deriving the title from the first line.
 - **Search, a few additions.** Quoted phrases, other files by name (above), and a timing check
   on a vault of 2,000 notes. Still no fuzzy matching. A heading picker was declined (Not doing).
-- **Find in note, as good as a code editor's.** Cmd+F finds and replaces (`⌥⌘F` with Replace,
-  and Edit → Find… since the menu bar); Tyr asked for it without knowing it was there
+- **Find in note, as good as a code editor's.** Cmd+F finds and replaces (it opens as it was
+  last left; Edit → Find ▸ since the menu bar); Tyr asked for it without knowing it was there
   (2026-09-24). Add match-case and whole-word toggles, and draw it in the app's grammar (Lucide
   glyphs, not the three hand-drawn SVGs and the `▶`/`▼` text). Its double count and Replace's
   reach are under Known issues.

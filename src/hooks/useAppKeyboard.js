@@ -67,6 +67,8 @@ export function useAppKeyboard({
   applyFormat,
   setBlockKind,
   openFind,
+  detectActiveFormats,
+  sidebarVisible,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -91,6 +93,7 @@ export function useAppKeyboard({
     applyFormat,
     setBlockKind,
     openFind,
+    detectActiveFormats,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -181,29 +184,49 @@ export function useAppKeyboard({
     return api.onMenuCommand((id) => runMenuCommand(id, latest.current, titleRef));
   }, []);
 
-  // What the menu may offer: the note's items with a note open, Undo and Redo
-  // with something to take back, or always in a text field, whose own they
-  // are then. Focus is watched for the field; the rest is state.
+  // What the menu shows: the note's items with a note open, Undo and Redo
+  // with something to take back (or always in a text field, whose own they
+  // are then), a check on the formats the selection holds and on the line's
+  // kind, and Hide or Show Sidebar. Focus and the selection are watched, the
+  // selection on a short timer since it moves on every keystroke; the main
+  // process rebuilds the menu only when something it shows has changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the selection's own reads go through `latest`
   useEffect(() => {
     const api = getAPI();
     if (!api?.setMenuState) return;
     const hasFile = !!activeNote && !noteData[activeNote]?._draft;
-    const publish = () =>
+    const publish = () => {
+      const L = latest.current;
+      const blocks = L.noteData[L.activeNote]?.content?.blocks ?? [];
+      const [caretBlock] = selectedBlockIds(blocks);
+      const formats = caretBlock ? L.detectActiveFormats?.() : null;
       api.setMenuState({
         hasNote: !!activeNote,
         hasFile,
         canUndo: !!canUndo,
         canRedo: !!canRedo,
         textField: isTextField(document.activeElement),
+        formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
+        kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
+        sidebarVisible: !!sidebarVisible,
       });
+    };
+    let timer = null;
+    const soon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(publish, 120);
+    };
     publish();
     document.addEventListener("focusin", publish);
     document.addEventListener("focusout", publish);
+    document.addEventListener("selectionchange", soon);
     return () => {
+      clearTimeout(timer);
       document.removeEventListener("focusin", publish);
       document.removeEventListener("focusout", publish);
+      document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData]);
+  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible]);
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
@@ -310,8 +333,13 @@ function runMenuCommand(id, L, titleRef) {
     case "trash":
       return L.deleteNote?.(note);
     case "find":
-    case "findReplace":
-      return L.openFind?.(id === "findReplace");
+      return L.openFind?.("find");
+    case "findNext":
+      return L.openFind?.("next");
+    case "findPrevious":
+      return L.openFind?.("prev");
+    case "replace":
+      return L.openFind?.("replace");
   }
   const blocks = L.noteData[note]?.content?.blocks ?? [];
   if (INLINE_FORMATS.has(id)) {

@@ -69,6 +69,9 @@ declare global {
         canUndo: boolean;
         canRedo: boolean;
         textField: boolean;
+        formats: string[];
+        kind: string | null;
+        sidebarVisible: boolean;
       }) => void;
       revealNote: (noteId: string) => Promise<void>;
 

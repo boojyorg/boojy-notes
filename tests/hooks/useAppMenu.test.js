@@ -184,26 +184,53 @@ describe("the application menu", () => {
     expect(deps.setUiScale).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the find bar, with Replace for Find and Replace", () => {
+  it("opens the find bar, steps through it, and shows Replace", () => {
     const deps = makeDeps();
     renderHook(() => useAppKeyboard(deps));
     run("find");
-    run("findReplace");
-    expect(deps.openFind.mock.calls).toEqual([[false], [true]]);
+    run("findNext");
+    run("findPrevious");
+    run("replace");
+    expect(deps.openFind.mock.calls).toEqual([["find"], ["next"], ["prev"], ["replace"]]);
   });
 
   it("tells the menu what can act, and again when focus moves into a field", () => {
     const deps = makeDeps({ canUndo: true });
     mountEditor();
     renderHook(() => useAppKeyboard(deps));
-    expect(api.setMenuState).toHaveBeenLastCalledWith({
-      hasNote: true,
-      hasFile: true,
-      canUndo: true,
-      canRedo: false,
-      textField: false,
-    });
+    expect(api.setMenuState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        hasNote: true,
+        hasFile: true,
+        canUndo: true,
+        canRedo: false,
+        textField: false,
+      }),
+    );
     act(() => document.getElementById("field").focus());
     expect(api.setMenuState).toHaveBeenLastCalledWith(expect.objectContaining({ textField: true }));
+  });
+
+  it("tells the menu which formats the selection holds and what kind its line is", async () => {
+    vi.useFakeTimers();
+    const deps = makeDeps({
+      sidebarVisible: false,
+      detectActiveFormats: () => ({ bold: true, italic: false, link: true }),
+      noteData: {
+        n1: {
+          title: "A",
+          content: { blocks: [{ ...blocks[0] }, { ...blocks[1], type: "h2" }, blocks[2]] },
+        },
+      },
+    });
+    mountEditor();
+    renderHook(() => useAppKeyboard(deps));
+    select("b2", "b2");
+    document.dispatchEvent(new Event("selectionchange"));
+    act(() => vi.advanceTimersByTime(200));
+    expect(api.setMenuState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ formats: ["bold", "link"], kind: "h2", sidebarVisible: false }),
+    );
+    vi.useRealTimers();
   });
 });

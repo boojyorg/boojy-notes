@@ -156,24 +156,34 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   muted 11px line under the menu's only rule, never a menu item): the desktop has no status bar
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
   is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
-- **The menu bar is every command with its shortcut** (`electron/appMenu.ts`, 2026-09-24).
-  File: New Note, New Folder, Rename, Duplicate, Move to…, Show in Finder, Move to Trash. Edit:
-  Undo, Redo, the clipboard roles, Search Notes… `⌘P`, Find… `⌘F`, Find and Replace… `⌥⌘F`.
-  Format: the six inline formats on the editor's keys, then Body Text, Heading 1–3, To-do,
-  Bulleted and Numbered List on Notion's `⌥⌘0`–`⌥⌘6` (`Ctrl+Shift` off a Mac, where
-  `Ctrl+Alt` is AltGr), and Quote. View: Toggle Sidebar, Bigger, Smaller, Actual Size. Settings…
-  and Check for Updates… in the app menu. **An item does nothing itself**: it sends its id
-  (`menu-command`) and `useAppKeyboard` runs what its key runs, under the key's own ownership
-  rules (nothing under a modal but the scale over Settings; a text field's Undo is the field's,
-  `execCommand`). The renderer claims every key it handles, so whether macOS offers a shortcut
-  to the page or the menu first it runs once. **What cannot act is greyed** (`menu-state`):
-  Undo and Redo with nothing to take back (always live in a text field), the note's items with
-  no note, and Duplicate, Move to…, Show in Finder and Move to Trash on a blank draft, which has
-  no file. Undo is not the `undo` role: the browser's own undo in the editor would take back a
-  keystroke behind the app's history. **Undo and Redo left the chrome row** the same day: the
-  Edit menu is where a Mac app keeps them, and Apple Notes, Notion and Obsidian show neither.
-  A Format kind keeps the line's text (`setBlockKind`, the Backspace demotion's rule).
-  `app-menu.spec.ts`, `useAppMenu.test.js`.
+- **The menu bar is every command with its shortcut** (`electron/appMenu.ts`, 2026-09-24,
+  judged from mockups the same day: Apple's structure, Notion-style names only where Apple has
+  none). File: New Note, New Folder, Rename…, Duplicate, Move to…, Show in Finder, Move to
+  Trash. Edit: Undo, Redo, the clipboard roles, and **Find ▸** (Find… `⌘F`, Find Next `⌘G`,
+  Find Previous `⇧⌘G`, Replace…, Search All Notes… `⌘P`). Format: Bold, Italic, Strikethrough,
+  Highlight, Code, Add Link… on the editor's keys; Heading 1–3 on **`⌘1`–`⌘3`** (Bear's and
+  Craft's two keys), Text, a **List ▸** submenu (Bulleted, Numbered, Checklist) and Quote with
+  no shortcut, because a line's kind is typed in Markdown and **each kind shows its Markdown
+  under its name** (`sublabel`, `Type ## and a space`; macOS only). View: **Hide Sidebar / Show
+  Sidebar** (says what it will do, as Finder's does), **Zoom In, Zoom Out, Actual Size**.
+  Settings… and Check for Updates… in the app menu. **A check, never a renamed item**: a format
+  the selection holds and the kind of the caret's line carry `✓` (Pages' way), not `Unbold`.
+  **Icons only where Apple's own apps carry one** (SF Symbols through `createFromNamedImage`,
+  scaled to 16pt with a 2x rep and marked a template: New Note, New Folder, Move to Trash,
+  Undo, Redo, Cut, Find, the four format glyphs, Add Link); Copy and Paste have none, as in
+  Safari. **An item does nothing itself**: it sends its id (`menu-command`) and `useAppKeyboard`
+  runs what its key runs, under the key's own ownership rules (nothing under a modal but the
+  scale over Settings; a text field's Undo is the field's, `execCommand`). The renderer claims
+  every key it handles, so whether macOS offers a shortcut to the page or the menu first it runs
+  once. **The window reports what is true** (`menu-state`: what can act, the formats, the
+  line's kind, the sidebar; the selection on a 120 ms timer) and the main process rebuilds the
+  menu only when that changes. Greyed: Undo and Redo with nothing to take back (always live in a
+  text field), the note's items with no note, and Duplicate, Move to…, Show in Finder and Move
+  to Trash on a blank draft, which has no file. Undo is not the `undo` role: the browser's own
+  undo in the editor would take back a keystroke behind the app's history. **Undo and Redo left
+  the chrome row** the same day: the Edit menu is where a Mac app keeps them. A Format kind
+  keeps the line's text (`setBlockKind`, the Backspace demotion's rule). `app-menu.spec.ts`,
+  `useAppMenu.test.js`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`:
   the chip, `useTooltip`, `TOOLTIP_REST_MS` 400, `shortcutLabel`). Name 13px/500 in primary
   ink; the shortcut a step smaller on a `BG.surface` pill in secondary ink; radius 8, the
@@ -284,7 +294,7 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   debounces, since the quit flush never runs. `zoom.spec.ts` checks the shipped menu.
 - **One zoom system: the app's own UI scale.** The View menu carries no zoom roles (a menu role
   takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead); its
-  Bigger, Smaller and Actual Size are the app's own items and run the keys' step;
+  Zoom In, Zoom Out and Actual Size are the app's own items and run the keys' step;
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
   than the installed app is page zoom; judge chrome geometry after Cmd+0.
 - **A scale shortcut answers, always** (`UiScaleChip`, 2026-09-19). `Cmd+±` and `Cmd+0` raise a
@@ -578,7 +588,8 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   and `sortedRootNotes`, never `filteredTree`; sort, expansion and every row stay exactly as
   they were. Only the mobile face filters (`isMobile` in `Sidebar.jsx`), with its own field,
   inline results and tag chips; shared parts in `SearchParts.tsx`. Cmd+F in-note find is
-  separate (`FindBar`; `⌥⌘F` opens it with Replace, since `⌘H` is Hide on a Mac).
+  separate (`FindBar`; `⌘F` opens it as it was last left, Replace showing or not, and Edit →
+  Find ▸ Replace… opens it with Replace; `⌘H` is Hide on a Mac).
 - **Matching** (`utils/search.ts`): the query is words; every word must be in the title or
   body, any order, folded for case and accents (`foldText`, with a map back to the text as
   written, so `cafe` finds and marks `Café`). A word at the start of a title word ranks above

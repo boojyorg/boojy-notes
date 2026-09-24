@@ -12,7 +12,15 @@
  * block from a render that was one keystroke behind the DOM (§1.1).
  */
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, MOD, SETTLE_MS, launchApp, noteText, sleep, waitForFile } from "./harness";
+import {
+  END_OF_LINE,
+  SETTLE_MS,
+  launchApp,
+  menuClick,
+  noteText,
+  sleep,
+  waitForFile,
+} from "./harness";
 
 const NOTE = "Note.md";
 
@@ -22,8 +30,9 @@ test("Find → Replace changes the paragraph on screen, and typing after it keep
     await h.openNote("Note");
     const first = h.page.locator("[data-block-id]").first();
     await first.click();
-    // Find and Replace is Option+Cmd+F since 2026-09-24 (Cmd+H is Hide on a Mac).
-    await h.page.keyboard.press(`${MOD}+Alt+f`);
+    // Edit → Find ▸ Replace… (2026-09-24: Cmd+F opens the bar as it was left;
+    // Cmd+H is Hide on a Mac).
+    await menuClick(h, "replace");
     await h.page.getByPlaceholder("Find in note...").fill("leaves");
     await expect(h.page.getByText("1 of 2")).toBeVisible();
     await h.page.getByPlaceholder("Replace with...").fill("leafs");
@@ -56,8 +65,9 @@ test("Replace All edits the visible text of every text block and leaves a URL's 
   try {
     await h.openNote("Note");
     await h.page.locator("[data-block-id]").first().click();
-    // Find and Replace is Option+Cmd+F since 2026-09-24 (Cmd+H is Hide on a Mac).
-    await h.page.keyboard.press(`${MOD}+Alt+f`);
+    // Edit → Find ▸ Replace… (2026-09-24: Cmd+F opens the bar as it was left;
+    // Cmd+H is Hide on a Mac).
+    await menuClick(h, "replace");
     await h.page.getByPlaceholder("Find in note...").fill("docs");
     await expect(h.page.getByText("1 of 3")).toBeVisible();
     // `$&` is text, not a regex back-reference.

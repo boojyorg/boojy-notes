@@ -58,6 +58,8 @@ export const MOD = isMac ? "Meta" : "Control";
 /** Moves the caret to the end of the current line. */
 export const END_OF_LINE = isMac ? "Meta+ArrowRight" : "End";
 export const START_OF_LINE = isMac ? "Meta+ArrowLeft" : "Home";
+/** Extend the selection one word left: Option on a Mac, Control elsewhere. */
+export const SELECT_WORD_LEFT = isMac ? "Shift+Alt+ArrowLeft" : "Shift+Control+ArrowLeft";
 
 /**
  * Longest quiet period after which every in-app debounce has fired: the 300ms
