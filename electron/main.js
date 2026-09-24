@@ -211,7 +211,8 @@ function createWindow() {
 
   // Dev: load Vite dev server; Prod: load built files
   if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+    // `pnpm dev:tweak` opens the dev window with the colour and spacing panels.
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL + (process.env.BOOJY_TWEAK ? "?tweak" : ""));
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }

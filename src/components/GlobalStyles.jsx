@@ -1,11 +1,12 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
-import { PARAGRAPH_GAP } from "./EditableBlock";
+import { useRhythm } from "../tokens/rhythm";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
   const { theme } = useTheme();
+  const rhythm = useRhythm();
 
   return (
     <style>{`
@@ -321,7 +322,7 @@ ${tagPillCss(theme)}
           background: ${theme.codeBlockBg};
           border: 1px solid ${theme.codeBlockBorder};
           border-radius: 8px;
-          margin: 8px 0;
+          margin: ${rhythm.blockGap}px 0;
           padding: 14px 16px;
           transition: border-color 0.15s;
         }
@@ -558,7 +559,7 @@ ${tagPillCss(theme)}
         .token.italic { font-style: italic; }
         /* Callout block styles */
         .callout-block {
-          margin: 8px 0;
+          margin: ${rhythm.blockGap}px 0;
         }
         .callout-icon-btn:hover {
           background: ${theme.calloutIconHover} !important;
@@ -675,18 +676,18 @@ ${tagPillCss(theme)}
         /* Settings and setup: hover lifts ink, focus is the inset ring
            (settings/SettingsPrimitives.jsx). */
         ${settingsStyles(theme)}
-        /* The paragraph pitch (EditableBlock.PARAGRAPH_GAP): a soft break is
+        /* The paragraph pitch (rhythm.paragraphGap): a soft break is
            line height alone, Enter adds this, an empty row adds a whole line.
            A paragraph after a list item is its own structure now (the file
            has a blank line between them) and gets the same gap above it,
            which the list's tight row padding does not give. */
         p[data-block-type="p"] {
-          margin: 0 0 ${PARAGRAPH_GAP}px;
+          margin: 0 0 ${rhythm.paragraphGap}px;
         }
         [data-block-type="bullet"] + p[data-block-type="p"],
         [data-block-type="numbered"] + p[data-block-type="p"],
         [data-block-type="checkbox"] + p[data-block-type="p"] {
-          margin-top: ${PARAGRAPH_GAP}px;
+          margin-top: ${rhythm.paragraphGap}px;
         }
         .empty-block {
           position: relative;

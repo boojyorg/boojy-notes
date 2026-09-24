@@ -37,9 +37,8 @@ test("Format turns the line into a heading, Edit → Undo takes it back, and Und
     await h.page.locator("[data-block-id]", { hasText: "Second line." }).click();
     await click(h, "h2");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("## Second line."));
-    // The paragraph model: the blank line between two paragraphs is structure,
-    // and none is written before a heading, as when `## ` is typed there.
-    expect(h.vault.read("Alpha.md")).toBe("First line.\n## Second line.\n");
+    // The blank line between the two blocks is structure and stays one.
+    expect(h.vault.read("Alpha.md")).toBe("First line.\n\n## Second line.\n");
     await expect.poll(() => enabled(h, "undo")).toBe(true);
     // The caret's line is a Heading 2 now; the menu checks it and teaches its Markdown.
     await expect.poll(() => checked(h, "h2")).toBe(true);

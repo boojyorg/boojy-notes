@@ -132,7 +132,7 @@ test("Divider from the slash menu still opens a paragraph under it and types the
     await h.page.keyboard.type("after");
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("after"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read(NOTE)).toContain("---\nafter");
+    expect(h.vault.read(NOTE)).toContain("---\n\nafter");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

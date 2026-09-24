@@ -69,11 +69,11 @@ test("leaving a code block by the arrows keeps the note where it was", async () 
   const before = await scrollTop();
   expect(before).toBeGreaterThan(40);
 
-  // Out of the block: the blank line the file keeps around a fence is a row of
-  // its own, so that is where the caret lands.
+  // Out of the block: the blank line around a fence is structure, so the
+  // caret lands in the paragraph under it.
   await h.page.keyboard.press("ArrowDown");
   await expect(h.page.locator("textarea.code-textarea")).not.toBeFocused();
-  expect(await caretBlock()).toBe("p:");
+  expect(await caretBlock()).toBe("p:After the code");
   // The caret moved; the note did not.
   expect(Math.abs((await scrollTop()) - before)).toBeLessThan(40);
 
@@ -86,11 +86,9 @@ test("leaving a code block by the arrows keeps the note where it was", async () 
 
 test("the arrows walk into the code block instead of over it", async () => {
   const ta = h.page.locator("textarea.code-textarea");
-  // From the text above, down through the blank row, into the code's first line.
+  // From the text above straight into the code's first line.
   await h.page.locator("[data-block-type='p']", { hasText: "Line 14." }).click();
   await h.page.keyboard.press(END_OF_LINE);
-  await h.page.keyboard.press("ArrowDown");
-  expect(await caretBlock()).toBe("p:");
   await h.page.keyboard.press("ArrowDown");
   await expect(ta).toBeFocused();
   expect(await ta.evaluate((el) => (el as HTMLTextAreaElement).selectionStart)).toBe(0);
@@ -99,12 +97,9 @@ test("the arrows walk into the code block instead of over it", async () => {
   await h.page.keyboard.press("ArrowDown");
   await expect(ta).toBeFocused();
   await h.page.keyboard.press("ArrowDown");
-  expect(await caretBlock()).toBe("p:");
-  await h.page.keyboard.press("ArrowDown");
   expect(await caretBlock()).toBe("p:After the code");
 
   // And back up: the block is entered at its end, never stepped over.
-  await h.page.keyboard.press("ArrowUp");
   await h.page.keyboard.press("ArrowUp");
   await expect(ta).toBeFocused();
   const value = await ta.inputValue();

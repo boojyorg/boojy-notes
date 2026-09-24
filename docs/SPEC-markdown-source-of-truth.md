@@ -27,9 +27,14 @@ editor, in `cat`, in anything that reads text.
 ## Blocks are structure, not lines
 
 A paragraph block holds every adjacent plain line of the paragraph, joined by soft breaks; a list
-item holds its lazy continuation lines; one blank line between such a block and the paragraph or
-divider after it is the separator and not a block, and every further blank line is an empty
-paragraph block. Enter starts a paragraph, Shift+Enter a soft break. A soft-break line that would
+item holds its lazy continuation lines. **One blank line between any two blocks is structure, not
+a block**, and every further blank line is an empty paragraph block, a visible row: the space
+between blocks is drawn from their kinds, so a file with a blank line around every heading and
+one with none look alike. The app writes one blank line between blocks and none between list
+items; a pair the file spelled the other way keeps its spelling (`tightAbove`, `looseAbove` on
+the lower block), and a pair that would merge on reading back (a paragraph under a paragraph,
+list item, quote or table; two quotes) is always written apart. Enter starts a paragraph,
+Shift+Enter a soft break. A soft-break line that would
 start another block to a Markdown reader (`# bar`, `- bar`, `1. two`, `---`, a fence) is written
 with its marker backslash-escaped (`\# bar`), so the file means the one block that was typed; a
 file that holds the tight form is read as the blocks it means and written back unchanged. Nothing
@@ -159,12 +164,12 @@ test rather than letting it pass as if lossless:
   first save writes the separator blank before the `---`, so the file comes to mean what the
   editor showed. Whether to read the tight form as a heading instead is an open decision in
   `docs/BACKLOG.md`.
-- **An empty bullet tight under a paragraph line** — `hello` / `- ` is the same setext underline
-  to a conventional reader (a lone `-` qualifies as `---` does), so an empty item left directly
-  under a paragraph means a heading outside and an empty item inside. Unlike the divider, no
-  blank is written for it: the bytes stay the file's own and the meaning outside stays a
-  heading. The same open decision; on record as a second `it.fails` in
-  `tests/utils/markdownInterop.test.js`.
+- **An empty bullet tight under a paragraph line in a file** — `hello` / `- ` is the same setext
+  underline to a conventional reader (a lone `-` qualifies as `---` does), so an empty item read
+  directly under a paragraph means a heading outside and an empty item inside. Unlike the
+  divider, the file's tight spelling is kept: the bytes stay the file's own and the meaning
+  outside stays a heading. The same open decision. An empty item the app makes under a
+  paragraph is written with a blank line, and means a list everywhere.
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
 

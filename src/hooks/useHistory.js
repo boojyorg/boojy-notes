@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, startTransition } from "react";
 
 import { trace } from "../utils/trace";
 import { reconcileListEdit } from "../utils/listStructure";
+import { keepGapsInPlace } from "../utils/blockOrder";
 
 export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef) {
   const undoStack = useRef([]);
@@ -220,7 +221,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       for (const [id, note] of Object.entries(noteDataRef.current)) {
         const previous = before[id]?.content?.blocks;
         if (!previous || !note?.content?.blocks) continue;
-        const blocks = reconcileListEdit(previous, note.content.blocks);
+        const blocks = reconcileListEdit(previous, keepGapsInPlace(previous, note.content.blocks));
         if (blocks !== note.content.blocks) {
           noteDataRef.current = {
             ...noteDataRef.current,

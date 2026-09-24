@@ -133,7 +133,8 @@ test("empty list items and headings open as themselves, and one left behind come
     await sleep(SETTLE_MS);
     expect(h.vault.read("Empties.md")).toBe("- \n1. \n- [ ] \n- [x] \n# \n## \nEnd. Edited\n");
 
-    // Authoring: type a bullet marker, leave the item empty, move on.
+    // Authoring: type a bullet marker, leave the item empty, move on. It is
+    // written a blank line under the paragraph, so it is a list everywhere.
     await h.openNote("Start");
     await h.page.locator("[data-block-id]").first().click();
     await h.page.keyboard.press(END_OF_LINE);
@@ -144,14 +145,14 @@ test("empty list items and headings open as themselves, and one left behind come
     await h.openNote("Empties");
     await waitForFile(h.vault.file("Start.md"), (t) => t.includes("- "));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Start.md")).toBe("Start.\n- \n");
+    expect(h.vault.read("Start.md")).toBe("Start.\n\n- \n");
 
     await h.restart();
     await h.openNote("Empties");
     expect(await blockTypes(h.page)).toEqual(expectedTypes);
     await h.openNote("Start");
     expect(await blockTypes(h.page)).toEqual(["p", "bullet", "p"]);
-    expect(h.vault.read("Start.md")).toBe("Start.\n- \n");
+    expect(h.vault.read("Start.md")).toBe("Start.\n\n- \n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

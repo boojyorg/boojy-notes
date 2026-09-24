@@ -18,12 +18,12 @@ function AppErrorBoundary({ children }) {
   return <ErrorBoundary noteDataRef={noteDataRef}>{children}</ErrorBoundary>;
 }
 
-// `?tweak` on a dev build mounts the colour tweaking panel (dev/, outside the
-// coverage denominator). Dead code in a production build.
-const ThemeTweaker =
-  import.meta.env.DEV && new URLSearchParams(window.location.search).has("tweak")
-    ? lazy(() => import("../dev/ThemeTweaker.jsx"))
-    : null;
+// `?tweak` on a dev build mounts the colour and spacing panels (dev/, outside
+// the coverage denominator; `pnpm dev:tweak` opens the desktop app with it).
+// Dead code in a production build.
+const tweaking = import.meta.env.DEV && new URLSearchParams(window.location.search).has("tweak");
+const ThemeTweaker = tweaking ? lazy(() => import("../dev/ThemeTweaker.jsx")) : null;
+const RhythmTweaker = tweaking ? lazy(() => import("../dev/RhythmTweaker.jsx")) : null;
 
 // Apply saved UI scale immediately to prevent flash
 const savedScale = localStorage.getItem("boojy-ui-scale");
@@ -64,6 +64,7 @@ createRoot(document.getElementById("root")).render(
       {ThemeTweaker && (
         <Suspense fallback={null}>
           <ThemeTweaker />
+          <RhythmTweaker />
         </Suspense>
       )}
     </ThemeProvider>

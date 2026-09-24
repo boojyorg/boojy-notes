@@ -31,7 +31,8 @@ test("Enter in a quote is a new line of the same quote; Enter on its empty last 
     await h.page.keyboard.type("Outside");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("Outside"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("> Quote\n> Second line\nOutside\n");
+    // A blank line under the quote, so no reader folds the paragraph into it.
+    expect(h.vault.read("Alpha.md")).toBe("> Quote\n> Second line\n\nOutside\n");
     await expect(quote).toHaveCount(1);
     expect(await editorText(h.page)).toBe("Quote\nSecond line\nOutside\n");
     const type = await h.page.evaluate(() => {

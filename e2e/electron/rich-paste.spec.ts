@@ -72,10 +72,9 @@ test("an editor's unformatted HTML pastes as its plain text, so a code fence sta
   const text = await waitForFile(h.vault.file("P.md"), (t) => t.includes("let b"), {
     label: "the paste to be written",
   });
-  // The fence arrives whole: one code block, its lines as copied. (The
-  // writer puts no blank line between a paragraph and a fence; a fence may
-  // interrupt a paragraph.)
-  expect(text).toBe(`Start\n${code}\n`);
+  // The fence arrives whole: one code block, its lines as copied, a blank
+  // line under the paragraph as the writer puts between any two blocks.
+  expect(text).toBe(`Start\n\n${code}\n`);
   await expect(h.page.locator('[data-block-type="code"]')).toHaveCount(1);
   expect(h.pageErrors).toEqual([]);
 });

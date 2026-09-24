@@ -55,7 +55,10 @@ test("whole blocks copy as their Markdown and as block HTML, and paste back thro
     await h.openNote("Module");
     await h.page.locator("[data-block-id]").first().waitFor();
     const copied = await h.page.evaluate(copyRange, { start: 0, end: 4 });
-    expect(copied.text).toBe(MODULE.trimEnd());
+    // The app's spelling, not the file's: one blank line between blocks.
+    expect(copied.text).toBe(
+      "# PSYC327\n\n## Assessments\n\n30% Coursework – Blog\n\n70% Online Exam\n\n- Psychology module",
+    );
     expect(copied.html).toBe(
       "<h1>PSYC327</h1><h2>Assessments</h2><p>30% Coursework – Blog</p><p>70% Online Exam</p><ul><li>Psychology module</li></ul>",
     );

@@ -333,7 +333,11 @@ export function usePasteHandler({
       if (!isEditableBlock(block)) {
         // Preserve non-editable blocks (code, table, callout, image, file) in full
         const entry = { ...block, fullBlock: true };
+        // The file's blank-line spelling stays with the file: a copy is
+        // written the app's way, one blank line between blocks.
         delete entry.id;
+        delete entry.tightAbove;
+        delete entry.looseAbove;
         copiedBlocks.push(entry);
         continue;
       }

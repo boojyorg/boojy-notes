@@ -57,18 +57,6 @@ more than any feature nobody else has. That is a product hypothesis, not validat
 
 Product calls for Tyr; each trades conventional Markdown meaning against byte preservation.
 
-- **A paragraph typed straight after a quote is folded into the quote by other readers.** A lazy
-  line read from a file stays its own paragraph so its bytes survive (quote lines are written
-  with `> `), which means no blank line can be written before a paragraph after a quote. Fixing
-  it needs a way for a quote to remember a lazy line without hidden per-block state. On record as
-  one `it.fails` in `tests/utils/markdownInterop.test.js`.
-- **Blank lines around headings, lists, fences and quotes are empty rows.** Only the blank line
-  between a paragraph or list item and the paragraph or divider after it is structure; every
-  other blank is a visible row, so an Obsidian-style note, which puts a blank line around nearly
-  every heading, reads airy in the editor. The blank *after* a divider is the same case (the one
-  before it became structure on 2026-09-05, because without it `---` is a heading underline).
-  Making one such blank structural too keeps the common form tidy but needs a per-block "written
-  tight" record to keep the rarer tight form byte-identical.
 - **Setext headings (`===` and hyphen underlines).** Recommended direction: recognise both
   forms while preserving their authored spelling. Editing behaviour remains unresolved; this
   recommendation does not change the spec's documented current behaviour. `===` underlines
