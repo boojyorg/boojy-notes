@@ -382,7 +382,7 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   the `role="tree"` inside a non-modal `role="dialog"`; `focusOwner` counts a focused dialog as
   a menu. Deliberately absent: hover expansion, flyouts, a back row, filtering, rename, delete,
   duplicate (it reaches and moves notes; the sidebar organises them).
-- **Its rows drag with the sidebar's own press-and-hold** (2026-09-20, `onRowPointerDown` from
+- **Its rows drag with the sidebar's own drag** (2026-09-20, `onRowPointerDown` from
   `useSidebarDrag`): a note or folder held and moved lifts the same pill and goes into whichever
   folder row of the popup it is dropped on, or onto **the head row** (`path-tree-scope`,
   `data-drop-scope`): the popup's scope, `Notes` for the root, drawn muted with the contents
@@ -595,6 +595,13 @@ location; visible at rest, never hover-revealed. Click only, never hover.
   or the empty space under the tree moves it to the root. Drag never sets a position. Folders
   are always alphabetical. Dragging a folder moves its directory the same way, never into
   itself or its own subtree.
+- **A mouse press lifts the row once it has moved `DRAG_THRESHOLD` (5px), with no hold**
+  (`useSidebarDrag`, 2026-09-24; Finder's, Notion's and Obsidian's rule). It was a 400 ms
+  hold during which any movement *cancelled* the drag, so a quick grab-and-move did nothing
+  and a slow click was swallowed. A click's jitter stays under the threshold, so clicks and
+  double-click rename are untouched. **Touch keeps the hold** (`HOLD_MS`): a finger that moves
+  first is scrolling. `useSidebarDrag.test.jsx`; the harness's `moveNoteToFolder` /
+  `moveFolderTo` drag without a hold.
 - The ghost is a title-only pill with `theme.dragShadow`; releasing anywhere that isn't a
   target flies it back. **Dropping over the editor does not open the note**; every drag ends
   by suppressing the trailing click.

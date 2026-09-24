@@ -4,9 +4,19 @@ import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
+/**
+ * A pointer drag starts once the press has travelled this far, as in Finder,
+ * Notion and Obsidian (2026-09-24). Before, a mouse press had to be held still
+ * for HOLD_MS and any movement first cancelled it, so a quick grab-and-move did
+ * nothing and a slow click was swallowed. A click's jitter stays under it.
+ */
+const DRAG_THRESHOLD = 5;
+/** Touch keeps the hold: a finger that moves without holding first is scrolling. */
+const HOLD_MS = 400;
 
 /**
- * Press-and-hold drag of a note or folder row onto a folder row (or, in the
+ * Drag of a note or folder row (by the mouse, once it has moved
+ * DRAG_THRESHOLD; by touch, after a HOLD_MS hold) onto a folder row (or, in the
  * sidebar, onto the Notes row or the empty space under the tree for the
  * root). The sidebar's scroller is the default; a row inside an element
  * carrying `data-drag-scroller` drags within that element instead (the
@@ -428,16 +438,39 @@ export function useSidebarDrag({
     sd.startX = e.clientX;
     sd.startY = e.clientY;
 
-    const pY = e.clientY;
-    sd.holdTimer = setTimeout(() => {
-      activateSidebarDrag(type, id, targetEl, pY);
-    }, 400);
+    const touch = e.pointerType === "touch";
+    if (touch) {
+      const pY = e.clientY;
+      sd.holdTimer = setTimeout(() => {
+        sd.holdTimer = null;
+        activateSidebarDrag(type, id, targetEl, pY);
+      }, HOLD_MS);
+    }
+    let pending = !touch;
+
+    const follow = (ev) => {
+      if (sd.cloneEl) {
+        sd.cloneEl.style.top = ev.clientY - sd.offsetY + "px";
+        sd.cloneEl.style.left = ev.clientX - sd.offsetX + "px";
+      }
+      if (sd._updatePointerY) sd._updatePointerY(ev.clientY);
+      updateSidebarDropTarget(ev.clientX, ev.clientY);
+    };
 
     const onMove = (ev) => {
+      const travelled = Math.hypot(ev.clientX - sd.startX, ev.clientY - sd.startY);
+      if (pending) {
+        // A mouse press becomes a drag once it has travelled; the pill is
+        // lifted from where the press began, then follows at once.
+        if (travelled <= DRAG_THRESHOLD) return;
+        pending = false;
+        activateSidebarDrag(type, id, targetEl, sd.startY);
+        follow(ev);
+        return;
+      }
       if (sd.holdTimer && !sd.active) {
-        const dx = ev.clientX - sd.startX;
-        const dy = ev.clientY - sd.startY;
-        if (Math.hypot(dx, dy) > 5) {
+        // Touch: moving before the hold completes is a scroll, not a drag.
+        if (travelled > DRAG_THRESHOLD) {
           clearTimeout(sd.holdTimer);
           sd.holdTimer = null;
           window.removeEventListener("pointermove", onMove);
@@ -445,14 +478,7 @@ export function useSidebarDrag({
         }
         return;
       }
-      if (sd.active) {
-        if (sd.cloneEl) {
-          sd.cloneEl.style.top = ev.clientY - sd.offsetY + "px";
-          sd.cloneEl.style.left = ev.clientX - sd.offsetX + "px";
-        }
-        if (sd._updatePointerY) sd._updatePointerY(ev.clientY);
-        updateSidebarDropTarget(ev.clientX, ev.clientY);
-      }
+      if (sd.active) follow(ev);
     };
     const onUp = () => {
       if (sd.holdTimer) {

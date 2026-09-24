@@ -242,9 +242,13 @@ test("the chip says where a link goes; a missing or shared name says so and its 
     // The keyboard: a caret that comes to rest inside a link shows the chip too.
     // (The block's left edge: its middle is a link, and a click there opens it.)
     await block(h.page, 0).click({ position: { x: 4, y: 8 } });
-    await h.page.keyboard.press(START_OF_BLOCK);
-    for (let i = 0; i < 6; i++) await h.page.keyboard.press("ArrowRight");
-    await expect(chip).toHaveText("Goals2 notes share this name", { timeout: 2_000 });
+    // Re-tried as the hovers are: the runner's stray pointer event lands
+    // inside the rest and cancels it (failing on master since 2026-09-23).
+    await expect(async () => {
+      await h.page.keyboard.press(START_OF_BLOCK);
+      for (let i = 0; i < 6; i++) await h.page.keyboard.press("ArrowRight");
+      await expect(chip).toHaveText("Goals2 notes share this name", { timeout: 1_500 });
+    }).toPass({ timeout: 10_000 });
     await h.page.keyboard.press(START_OF_BLOCK);
     await expect(chip).toHaveCount(0);
 

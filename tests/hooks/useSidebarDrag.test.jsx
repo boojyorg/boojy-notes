@@ -82,9 +82,6 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
       pointerDown({ button: 0, target: noteRow, clientX: 20, clientY: 60, pointerType: "mouse" });
     });
     act(() => {
-      vi.advanceTimersByTime(400); // the hold that lifts the row
-    });
-    act(() => {
       window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 20 }));
     });
 
@@ -93,6 +90,66 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
     expect(folderRow.style.boxShadow.toLowerCase()).toContain(NIGHT.TEXT.muted.toLowerCase());
     expect(folderRow.style.background).not.toBe(rgb(DAY.BG.hover));
 
+    act(() => result.current.cancelSidebarDrag());
+  });
+
+  // Finder's, Notion's and Obsidian's rule (2026-09-24): a mouse press lifts
+  // the row once it has moved, with no hold; before, moving first cancelled it.
+  it("a mouse press lifts the row as soon as it has moved 5px, with no hold", () => {
+    const { result } = mount();
+    const down = { button: 0, target: noteRow, clientX: 20, clientY: 60, pointerType: "mouse" };
+    act(() => result.current.handleSidebarPointerDown(down));
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 23, clientY: 63 }));
+    });
+    // Within the threshold: still a click.
+    expect(result.current.sidebarDrag.current.active).toBe(false);
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 20 }));
+    });
+    expect(result.current.sidebarDrag.current.active).toBe(true);
+    // The pill follows at once, on the move that lifted it.
+    expect(folderRow.style.background).toBe(rgb(DAY.BG.hover));
+    act(() => result.current.cancelSidebarDrag());
+  });
+
+  it("a mouse press held still never lifts, and its release is an ordinary click", () => {
+    const { result } = mount();
+    act(() =>
+      result.current.handleSidebarPointerDown({
+        button: 0,
+        target: noteRow,
+        clientX: 20,
+        clientY: 60,
+        pointerType: "mouse",
+      }),
+    );
+    act(() => vi.advanceTimersByTime(2000));
+    expect(result.current.sidebarDrag.current.active).toBe(false);
+    act(() => window.dispatchEvent(new MouseEvent("pointerup")));
+    expect(moveNotes).not.toHaveBeenCalled();
+  });
+
+  it("touch keeps the hold: moving first is a scroll, holding then moving drags", () => {
+    const { result } = mount();
+    const down = {
+      button: 0,
+      target: noteRow,
+      clientX: 20,
+      clientY: 60,
+      pointerType: "touch",
+      preventDefault: () => {},
+    };
+    act(() => result.current.handleSidebarPointerDown(down));
+    act(() => {
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 90 }));
+    });
+    act(() => vi.advanceTimersByTime(400));
+    expect(result.current.sidebarDrag.current.active).toBe(false);
+
+    act(() => result.current.handleSidebarPointerDown(down));
+    act(() => vi.advanceTimersByTime(400));
+    expect(result.current.sidebarDrag.current.active).toBe(true);
     act(() => result.current.cancelSidebarDrag());
   });
 
@@ -112,9 +169,6 @@ describe("useSidebarDrag: drop feedback reads the live theme", () => {
         clientY: 60,
         pointerType: "mouse",
       });
-    });
-    act(() => {
-      vi.advanceTimersByTime(400);
     });
     act(() => {
       window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 20 }));
@@ -157,8 +211,9 @@ describe("useSidebarDrag: a row inside a `data-drag-scroller` drags within it (t
         pointerType: "mouse",
       });
     });
+    // A mouse press lifts once it has travelled (DRAG_THRESHOLD), no hold.
     act(() => {
-      vi.advanceTimersByTime(400);
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 20, clientY: 70 }));
     });
   };
   const moveTo = (y) => {

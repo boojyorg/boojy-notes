@@ -190,7 +190,9 @@ History is in git and `CHANGELOG.md`.
   waited for the 300 ms text commit to publish. The glyph's ink is not transitioned for the same
   reason (the fill's ramp is hover's).
 - Resting on a button for `TOOLTIP_REST_MS` (400, `Tooltip.tsx`, the chrome row's chip too)
-  shows a chip with the name and shortcut (12px/500, the app's own chip, not inverted), below
+  shows a chip with the name and shortcut; **once one has shown, the next button's shows at
+  once** inside `TOOLTIP_WARM_MS` (the chrome row's warm window, shared through
+  `coolTooltips` / `tooltipsWarm`; 2026-09-24, it felt sluggish paying the rest per button) (12px/500, the app's own chip, not inverted), below
   only when it would clip (`chipWouldClip` against `.editor-scroll`). `FORMATS` in
   `FloatingToolbar.jsx` is the one place an editor shortcut is shown and must match
   `useKeyboardHandlers`; `shortcutLabel` writes `⇧⌘S` on a Mac (`isMac`, not `isElectronMac`).

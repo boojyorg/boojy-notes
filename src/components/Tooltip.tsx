@@ -32,6 +32,19 @@ const EDGE = 8;
 
 let warmUntil = 0;
 
+/**
+ * The warm window, shared by every chip: the chrome row's (useTooltip) and the
+ * selection toolbar's, which keeps its own rest timer. `coolTooltips` after a
+ * chip that was showing hides (`coolTooltips(0)` ends the window);
+ * `tooltipsWarm` to show the next one at once.
+ */
+export function coolTooltips(ms: number = TOOLTIP_WARM_MS): void {
+  warmUntil = Date.now() + ms;
+}
+export function tooltipsWarm(): boolean {
+  return Date.now() < warmUntil;
+}
+
 /** Whether the browser would draw a focus ring on `el`: keyboard focus, not a click's. */
 function focusVisible(el: Element): boolean {
   try {
@@ -189,7 +202,7 @@ export function useTooltip(): { shown: boolean; handlers: TooltipHandlers } {
   const handlers: TooltipHandlers = {
     onMouseEnter: () => {
       cancel();
-      if (Date.now() < warmUntil) {
+      if (tooltipsWarm()) {
         setShown(true);
         return;
       }
@@ -199,7 +212,7 @@ export function useTooltip(): { shown: boolean; handlers: TooltipHandlers } {
       }, TOOLTIP_REST_MS);
     },
     onMouseLeave: () => {
-      if (shownRef.current) warmUntil = Date.now() + TOOLTIP_WARM_MS;
+      if (shownRef.current) coolTooltips();
       pointerDown.current = false;
       hide();
     },
