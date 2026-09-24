@@ -102,6 +102,8 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
 - A newline inside a table cell is written as `<br>`, the line break GitHub and Obsidian read in
   a cell, and read back only in that exact form; a newline in a callout title is written as a
   space.
+- A table row whose cells are unchanged is written back as the line it was read from; an edited
+  row, and a table the app makes, take the app's spelling (`| a | b |`, `| --- |`).
 - Tilde and backtick fences are one block type; a non-default opener or closer, or an absent
   closer, is carried on the block (`fenceSource`) and written back as authored. **A fence's info
   string is kept exactly as typed or imported** — ` ```js ` stays `js`, never normalised to

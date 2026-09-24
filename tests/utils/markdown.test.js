@@ -6,6 +6,7 @@ import {
   markdownToBlocks,
   parseTableRow,
 } from "../../src/utils/markdown.js";
+import { withCell, withColumnInserted } from "../../src/utils/tableShape";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUND-TRIP GUARDRAIL
@@ -431,6 +432,104 @@ describe("ragged tables keep every cell (review H9, 2026-09-07)", () => {
     const [out] = markdownToBlocks(blocksToMarkdown(blocks));
     expect(out.rows).toEqual(blocks[0].rows);
     expect(out.alignments).toEqual(blocks[0].alignments);
+  });
+});
+
+describe("a table keeps the lines it was written with (2026-09-24)", () => {
+  // The first save of a note rewrote every table not already in the app's
+  // spelling (82 of 202 notes in a real Obsidian vault): padding collapsed,
+  // `|---|` spaced out, `[[Note|alias]]` split at its pipe. A row now keeps its
+  // line until its cells change; only the rows the user changed are rewritten.
+  const md = [
+    "| Name    | Amount |",
+    "|:--------|-------:|",
+    "| Coffee  |   3.20 |",
+    "| Tea     |   2.10 |",
+    "| Cake    |   4.00 |",
+  ].join("\n");
+
+  const edit = (source, change) => {
+    const [table] = markdownToBlocks(source);
+    return blocksToMarkdown([{ ...table, ...change(table) }]).split("\n");
+  };
+
+  it("an edited cell rewrites its own row and nothing else", () => {
+    const out = edit(md, (t) => ({ rows: withCell(t.rows, 2, 1, "2.50") }));
+    expect(out).toEqual([
+      "| Name    | Amount |",
+      "|:--------|-------:|",
+      "| Coffee  |   3.20 |",
+      "| Tea | 2.50 |",
+      "| Cake    |   4.00 |",
+    ]);
+  });
+
+  it("an edited header cell keeps the separator as written", () => {
+    const out = edit(md, (t) => ({ rows: withCell(t.rows, 0, 1, "Price") }));
+    expect(out.slice(0, 3)).toEqual([
+      "| Name | Price |",
+      "|:--------|-------:|",
+      "| Coffee  |   3.20 |",
+    ]);
+  });
+
+  it("a row added, removed or moved leaves the other rows as written", () => {
+    const added = edit(md, (t) => ({
+      rows: [...t.rows.slice(0, 2), ["Milk", "1.00"], ...t.rows.slice(2)],
+    }));
+    expect(added.slice(2)).toEqual([
+      "| Coffee  |   3.20 |",
+      "| Milk | 1.00 |",
+      "| Tea     |   2.10 |",
+      "| Cake    |   4.00 |",
+    ]);
+    const removed = edit(md, (t) => ({ rows: t.rows.filter((_, r) => r !== 2) }));
+    expect(removed.slice(2)).toEqual(["| Coffee  |   3.20 |", "| Cake    |   4.00 |"]);
+    const moved = edit(md, (t) => ({ rows: [t.rows[0], t.rows[3], t.rows[1], t.rows[2]] }));
+    expect(moved.slice(2)).toEqual([
+      "| Cake    |   4.00 |",
+      "| Coffee  |   3.20 |",
+      "| Tea     |   2.10 |",
+    ]);
+  });
+
+  it("a changed alignment rewrites the separator, and only it", () => {
+    const out = edit(md, () => ({ alignments: ["center", "right"] }));
+    expect(out[1]).toBe("| :---: | ---: |");
+    expect(out.slice(2)).toEqual(md.split("\n").slice(2));
+  });
+
+  it("an added column rewrites the rows it pads", () => {
+    const out = edit(md, (t) => ({
+      rows: withColumnInserted(t.rows, 2),
+      alignments: [...t.alignments, "left"],
+    }));
+    expect(out).toEqual([
+      "| Name | Amount |  |",
+      "| --- | ---: | --- |",
+      "| Coffee | 3.20 |  |",
+      "| Tea | 2.10 |  |",
+      "| Cake | 4.00 |  |",
+    ]);
+  });
+
+  it("keeps Obsidian's spellings through a save: no spaces, an alias pipe, an indent", () => {
+    const obsidian = "|a|b|\n|---|---|\n|[[Note|alias]]|x|\n  | 1 | 2 |";
+    expect(blocksToMarkdown(markdownToBlocks(obsidian))).toBe(obsidian);
+  });
+
+  it("reads an indented row's cells from its first pipe, with no empty cell in front", () => {
+    const [table] = markdownToBlocks("  | a | b |\n  | --- | :-: |\n  | 1 | 2 |");
+    expect(table.rows).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+    expect(table.alignments).toEqual(["left", "center"]);
+  });
+
+  it("a table in the app's own spelling carries no source", () => {
+    const [table] = markdownToBlocks("| a | b |\n| --- | ---: |\n| 1 | 2 |");
+    expect(table.tableSource).toBeUndefined();
   });
 });
 

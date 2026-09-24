@@ -366,22 +366,52 @@ export function blocksToMarkdown(blocks) {
           // a paragraph (review 2026-09-07, §3.1). parseTableRow maps that
           // exact form back, so the bytes round-trip.
           const esc = (cell) => cell.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+          const writeRow = (row) => "| " + row.map((cell) => esc(cell ?? "")).join(" | ") + " |";
+          // A row still holding the cells its line was read with is written as
+          // that line, byte for byte: its padding, a `|---|` with no spaces, an
+          // indent, an unescaped pipe in a `[[Note|alias]]`. Only a row the user
+          // changed, and a table the app made, take the app's spelling. Before
+          // this the first save rewrote every table not already in it.
+          const source = block.tableSource;
           const header = block.rows[0];
-          lines.push("| " + header.map(esc).join(" | ") + " |");
           const aligns = block.alignments || [];
-          const sep = header.map((_, i) => {
-            const a = aligns[i];
-            if (a === "center") return ":---:";
-            if (a === "right") return "---:";
-            return "---";
-          });
-          lines.push("| " + sep.join(" | ") + " |");
-          // Each body row is written with its own cells, one more or one fewer
-          // than the header included; padding or trimming a row to the header
-          // here is what used to drop a wide row's extra cells on every save.
+          if (source && sameCells(readRow(source.header), header)) {
+            lines.push(source.header);
+          } else {
+            lines.push(writeRow(header));
+          }
+          const sourceWidth = source ? readRow(source.header).length : -1;
+          if (
+            source &&
+            header.length === sourceWidth &&
+            sameCells(readAlignments(source.separator, sourceWidth), aligns.slice(0, header.length))
+          ) {
+            lines.push(source.separator);
+          } else {
+            const sep = header.map((_, i) => {
+              const a = aligns[i];
+              if (a === "center") return ":---:";
+              if (a === "right") return "---:";
+              return "---";
+            });
+            lines.push("| " + sep.join(" | ") + " |");
+          }
+          // Each body row takes the first unused source line holding its cells,
+          // so a row inserted, deleted or moved leaves the others as written.
+          // Each row is written with its own cells, one more or one fewer than
+          // the header included; padding or trimming a row to the header here
+          // is what used to drop a wide row's extra cells.
+          const sourceRows = source ? source.rows.map(readRow) : [];
+          const used = sourceRows.map(() => false);
           for (let r = 1; r < block.rows.length; r++) {
             const row = block.rows[r].length > 0 ? block.rows[r] : [""];
-            lines.push("| " + row.map((cell) => esc(cell ?? "")).join(" | ") + " |");
+            const k = sourceRows.findIndex((cells, j) => !used[j] && sameCells(cells, row));
+            if (source && k !== -1) {
+              used[k] = true;
+              lines.push(source.rows[k]);
+            } else {
+              lines.push(writeRow(row));
+            }
           }
         }
         break;
@@ -520,35 +550,29 @@ export function markdownToBlocks(md) {
     ) {
       const rows = [];
       rows.push(parseTableRow(line));
-      const separatorCells = parseTableRow(lines[i + 1]);
-      const alignments = separatorCells.map((cell) => {
-        const t = cell.trim();
-        if (t.startsWith(":") && t.endsWith(":")) return "center";
-        if (t.endsWith(":")) return "right";
-        return "left";
-      });
-      i++;
-      i++;
-      while (i < lines.length && /^\|(.+)\|/.test(lines[i].trim())) {
-        rows.push(parseTableRow(lines[i]));
-        i++;
-      }
+      // The lines as written, so an unchanged row is written back as it was.
+      /** @type {{ header: string; separator: string; rows: string[] }} */
+      const tableSource = { header: raw, separator: lines[i + 1], rows: [] };
       // The separator row follows the header's width; every other row keeps
       // exactly the cells its line holds. A row wider than the header used to
       // be sliced to it and a shorter one padded, so the extra cells were gone
       // on the next save and short rows were rewritten. The grid on screen is
       // the widest row wide (utils/tableShape.ts); the file is never
       // rectangularised by reading it.
-      const colCount = rows[0].length;
-      while (alignments.length < colCount) alignments.push("left");
-      if (alignments.length > colCount) alignments.length = colCount;
-      blocks.push({
-        id: `md-${++_parseBlockId}`,
-        type: "table",
-        rows,
-        alignments,
-        text: "",
-      });
+      const alignments = readAlignments(lines[i + 1], rows[0].length);
+      i++;
+      i++;
+      while (i < lines.length && /^\|(.+)\|/.test(lines[i].trim())) {
+        rows.push(readRow(lines[i]));
+        tableSource.rows.push(lines[i]);
+        i++;
+      }
+      /** @type {{ id: string; type: string; rows: string[][]; alignments: string[]; text: string; tableSource?: typeof tableSource }} */
+      const table = { id: `md-${++_parseBlockId}`, type: "table", rows, alignments, text: "" };
+      // Kept only where the file's spelling is not the app's, as `headingSource` is.
+      const written = [tableSource.header, tableSource.separator, ...tableSource.rows].join("\n");
+      if (blocksToMarkdown([table]) !== written) table.tableSource = tableSource;
+      blocks.push(table);
       continue;
     }
 
@@ -710,6 +734,36 @@ export function markdownToBlocks(md) {
     blocks.push({ id: `md-${++_parseBlockId}`, type: "p", text: "" });
   }
   return readListIndents(structureParagraphs(blocks));
+}
+
+/**
+ * A separator line's column alignments, padded or cut to the header's width.
+ * @param {string} line
+ * @param {number} width
+ */
+function readAlignments(line, width) {
+  const alignments = readRow(line).map((cell) => {
+    if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+    if (cell.endsWith(":")) return "right";
+    return "left";
+  });
+  while (alignments.length < width) alignments.push("left");
+  alignments.length = width;
+  return alignments;
+}
+
+/**
+ * A table line's cells. An indented row (Obsidian writes them) is the same row:
+ * read from its first pipe, it gained an empty first cell.
+ * @param {string} line
+ */
+function readRow(line) {
+  return parseTableRow(line.trimStart());
+}
+
+/** @param {string[]} a @param {string[]} b */
+function sameCells(a, b) {
+  return a.length === b.length && a.every((cell, i) => cell === (b[i] ?? ""));
 }
 
 export function parseTableRow(line) {
