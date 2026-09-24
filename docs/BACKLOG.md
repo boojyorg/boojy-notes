@@ -227,21 +227,13 @@ none blocks the release. The shared question comes first because three candidate
   bookmarklet, the Shortcuts app and Raycast, and later a web clipper (Future). Initial focus,
   location and the moment an empty note becomes a file are undecided for every entry point. Not
   accepted: deriving the title from the first line.
-- **A full menu bar, and no Undo or Redo buttons.** Decided 2026-09-24: the chrome's Undo and
-  Redo go, and the menu bar carries every command with its shortcut (File: New Note, New Folder,
-  Import, Export to PDF, Show in Finder; Edit: Undo, Redo, Find, Find and Replace; View: Toggle
-  Sidebar, Source View, Interface Size; Search). On a Mac, Help's own search then finds any
-  command, which is why the palette can stay search-only. Check first: Edit → Undo is the
-  Electron `undo` role, and a click on it may run Chromium's native undo rather than the app's
-  history; wire it to the app's. Windows draws this bar inside the window; judge it in the
-  Windows smoke test.
 - **Search, a few additions.** Quoted phrases, other files by name (above), and a timing check
   on a vault of 2,000 notes. Still no fuzzy matching. A heading picker was declined (Not doing).
-- **Find in note, as good as a code editor's.** Cmd+F already finds and replaces; Tyr asked for
-  it without knowing it was there (2026-09-24), so the menu bar entry is half the fix. Add
-  match-case and whole-word toggles, and draw it in the app's grammar (Lucide glyphs, not the
-  three hand-drawn SVGs and the `▶`/`▼` text). Its double count and Replace's reach are under
-  Known issues.
+- **Find in note, as good as a code editor's.** Cmd+F finds and replaces (`⌥⌘F` with Replace,
+  and Edit → Find… since the menu bar); Tyr asked for it without knowing it was there
+  (2026-09-24). Add match-case and whole-word toggles, and draw it in the app's grammar (Lucide
+  glyphs, not the three hand-drawn SVGs and the `▶`/`▼` text). Its double count and Replace's
+  reach are under Known issues.
 - **Motion, small and fast.** Wanted (Tyr, 2026-09-24): menus and tooltips fade and grow a
   little from their anchor, dialogs fade in, the checkbox tick draws, a dragged row lifts and a
   drop settles. Enter under 150 ms, exit faster; tokens in `tokens/motion.js`; nothing moves

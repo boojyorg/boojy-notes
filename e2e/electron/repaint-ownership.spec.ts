@@ -22,7 +22,8 @@ test("Find → Replace changes the paragraph on screen, and typing after it keep
     await h.openNote("Note");
     const first = h.page.locator("[data-block-id]").first();
     await first.click();
-    await h.page.keyboard.press(`${MOD}+h`);
+    // Find and Replace is Option+Cmd+F since 2026-09-24 (Cmd+H is Hide on a Mac).
+    await h.page.keyboard.press(`${MOD}+Alt+f`);
     await h.page.getByPlaceholder("Find in note...").fill("leaves");
     await expect(h.page.getByText("1 of 2")).toBeVisible();
     await h.page.getByPlaceholder("Replace with...").fill("leafs");
@@ -55,7 +56,8 @@ test("Replace All edits the visible text of every text block and leaves a URL's 
   try {
     await h.openNote("Note");
     await h.page.locator("[data-block-id]").first().click();
-    await h.page.keyboard.press(`${MOD}+h`);
+    // Find and Replace is Option+Cmd+F since 2026-09-24 (Cmd+H is Hide on a Mac).
+    await h.page.keyboard.press(`${MOD}+Alt+f`);
     await h.page.getByPlaceholder("Find in note...").fill("docs");
     await expect(h.page.getByText("1 of 3")).toBeVisible();
     // `$&` is text, not a regex back-reference.

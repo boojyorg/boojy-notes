@@ -21,6 +21,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
   // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
   paste: () => ipcRenderer.invoke("paste"),
+  // The application menu (electron/appMenu.ts): its items arrive as command
+  // ids, and the window tells it what can act so it greys what cannot.
+  onMenuCommand: (callback) => {
+    const handler = (_event, id) => callback(id);
+    ipcRenderer.on("menu-command", handler);
+    return () => ipcRenderer.removeListener("menu-command", handler);
+  },
+  setMenuState: (state) => ipcRenderer.send("menu-state", state),
+  // Show a note's file in Finder or Explorer, by its id.
+  revealNote: (noteId) => ipcRenderer.invoke("reveal-note", noteId),
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),

@@ -24,13 +24,17 @@ import {
 /** A transitioned margin can settle a hundredth of a pixel short of its target. */
 const SUBPIXEL = 0.5;
 
-/** The chrome buttons that sit left of the note's name, in DOM order. */
-const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes", "Undo", "Redo"];
+/**
+ * The chrome buttons that sit left of the note's name while the sidebar is
+ * away, in DOM order. Expanded there are none: Undo and Redo went to the menu
+ * bar on 2026-09-24.
+ */
+const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes"];
 
 /**
  * Wait for every running CSS transition and animation to finish. The chrome
- * row moves on the panel's clock since 2026-09-14 (the history pair slides,
- * the trio fades in), so a position read straight after a toggle or a resize
+ * row moves on the panel's clock since 2026-09-14 (the trio fades in, the
+ * path's inset eases), so a position read straight after a toggle or a resize
  * is a position in flight.
  */
 async function settled(page: Page) {
@@ -89,12 +93,15 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
   try {
     await h.openNote("Link end");
 
-    // Expanded: the history pair is the only thing in front of the name, at
-    // every width, since the sidebar stays in the layout at the minimum too.
+    // Expanded: nothing stands in front of the name, so it starts past the
+    // editor's own edge and the band's air, at every width, since the sidebar
+    // stays in the layout at the minimum too.
     for (const width of [1200, WINDOW_MIN_W]) {
       await setWidth(h, width);
-      const { right, mid } = await controlsRight(h.page, ["Undo", "Redo"]);
+      const editor = (await h.page.locator(".editor-scroll").boundingBox())!;
+      const right = editor.x;
       const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
+      const mid = more!.y + more!.height / 2;
       await expect
         .poll(async () => (await titleBox(h.page)).x, {
           message: `title left, expanded at ${width}`,
@@ -116,7 +123,7 @@ test("the chrome row's controls never overlap the note's name, wide or narrow", 
     await settled(h.page);
     await expect(h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)")).toBeVisible();
 
-    // Collapsed: five controls, and the name still starts past the last.
+    // Collapsed: three controls, and the name still starts past the last.
     for (const width of [1200, 700, WINDOW_MIN_W]) {
       await setWidth(h, width);
       const { right, mid } = await controlsRight(h.page, LEFT_CONTROLS);

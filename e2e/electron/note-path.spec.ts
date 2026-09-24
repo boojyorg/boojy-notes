@@ -14,7 +14,9 @@ import { WINDOW_MIN_W } from "../../src/constants/layout";
 import { type AppHandle, expandAllFolders, launchApp, MOD, waitForFile } from "./harness";
 
 const SUBPIXEL = 0.5;
-const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"];
+// Collapsed, the trio stands left of the path; expanded, nothing does (Undo and
+// Redo went to the menu bar on 2026-09-24), and the pane's own edge is the limit.
+const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note"];
 
 async function settled(page: Page) {
   await page.evaluate(async () => {
@@ -46,7 +48,7 @@ async function rowGeometry(page: Page, controls: string[]) {
   expect(path, "path box").not.toBeNull();
   expect(pane, "pane box").not.toBeNull();
   expect(more, "··· box").not.toBeNull();
-  let controlsRight = 0;
+  let controlsRight = controls.length === 0 ? pane!.x : 0;
   for (const title of controls) {
     const box = await page.locator(`[aria-label='${title}']:not([inert] *)`).boundingBox();
     expect(box, `${title} box`).not.toBeNull();
@@ -82,7 +84,7 @@ test("the path shows the note's folders before its name, centred on the pane, in
     // Expanded: every folder, no ellipsis, and the whole thing on the pane's centre.
     expect(await folders(h.page)).toEqual(["University", "Archive"]);
     expect(await ellipses(h.page)).toBe(0);
-    let g = await rowGeometry(h.page, ["Undo", "Redo"]);
+    let g = await rowGeometry(h.page, []);
     expect(Math.abs(g.centre - g.paneCentre)).toBeLessThanOrEqual(1);
     expect(g.left).toBeGreaterThanOrEqual(g.controlsRight + PATH_AIR - SUBPIXEL);
     expect(g.right).toBeLessThanOrEqual(g.moreLeft - PATH_AIR + SUBPIXEL);

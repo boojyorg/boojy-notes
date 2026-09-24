@@ -55,7 +55,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   const chip = h.page.getByTestId("chrome-tooltip");
 
   // None of the row's controls carries a `title`: the chip is the one tooltip.
-  for (const name of ["Toggle sidebar", "Search notes", "Undo", "Redo", "New folder", "Sort"]) {
+  for (const name of ["Toggle sidebar", "Search notes", "New folder", "Sort"]) {
     const control = h.page.locator(`[aria-label='${name}']:not([inert] *)`);
     await expect(control, name).not.toHaveAttribute("title", /.*/);
   }
@@ -98,7 +98,7 @@ test("a chrome control names itself under the pointer, shortcut on a pill, whole
   expect(h.pageErrors).toEqual([]);
 });
 
-test("the Notes row's pair name themselves, a greyed Undo keeps its name, and the ··· chip stays inside the window", async () => {
+test("the Notes row's pair name themselves, and the ··· chip stays inside the window", async () => {
   h = await launchApp({ "Alpha.md": "Alpha starts here.\n" });
   await h.openNote("Alpha");
   const chip = h.page.getByTestId("chrome-tooltip");
@@ -109,9 +109,6 @@ test("the Notes row's pair name themselves, a greyed Undo keeps its name, and th
   );
   await hoverForChip(h.page.getByRole("button", { name: "Sort", exact: true }), "Sort");
 
-  const undo = h.page.getByRole("button", { name: "Undo", exact: true });
-  await expect(undo).toBeDisabled();
-  await hoverForChip(undo, /^Undo(⌘Z|Ctrl\+Z)$/);
   await h.page.mouse.move(400, 300);
   await expect(chip).toHaveCount(0);
 

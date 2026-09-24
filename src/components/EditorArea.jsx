@@ -155,6 +155,8 @@ const EditorArea = memo(
     onPathRowPointerDown,
     onEditorClick,
     onTitleBlur,
+    // Edit → Find… and Find and Replace…: the menu opens the bar through this.
+    openFindRef,
   }) {
     const {
       editorRef,
@@ -201,6 +203,14 @@ const EditorArea = memo(
     // Find bar state
     const [findBarOpen, setFindBarOpen] = useState(false);
     const [findBarReplace, setFindBarReplace] = useState(false);
+    // The menu's Find… opens the bar (and Find and Replace… with Replace shown);
+    // unlike Cmd+F it never closes it, since a menu item says what it does.
+    if (openFindRef) {
+      openFindRef.current = (replace) => {
+        setFindBarReplace(!!replace);
+        setFindBarOpen(true);
+      };
+    }
 
     const editorContainerRef = useRef(null);
     // Note column (padding + measure) — the drag handle positions against it.
@@ -762,18 +772,19 @@ const EditorArea = memo(
                 role="region"
                 aria-label="Note editor"
                 onKeyDown={(e) => {
-                  // Cmd+F: toggle find bar, Cmd+H: find with replace
+                  // Cmd+F toggles the find bar; Option+Cmd+F opens it with Replace
+                  // (2026-09-24: Cmd+H is Hide on a Mac, VS Code's and Pages' key).
+                  // `code`, because Option turns the F into a character on a Mac.
                   const mod = e.ctrlKey || e.metaKey;
-                  if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {
+                  if (mod && e.code === "KeyF" && !e.shiftKey) {
                     e.preventDefault();
-                    setFindBarReplace(false);
-                    setFindBarOpen((v) => !v);
-                    return;
-                  }
-                  if (mod && (e.key === "h" || e.key === "H") && !e.shiftKey) {
-                    e.preventDefault();
-                    setFindBarReplace(true);
-                    setFindBarOpen(true);
+                    if (e.altKey) {
+                      setFindBarReplace(true);
+                      setFindBarOpen(true);
+                    } else {
+                      setFindBarReplace(false);
+                      setFindBarOpen((v) => !v);
+                    }
                     return;
                   }
                   // A selected whole block (divider or image) takes the key first.

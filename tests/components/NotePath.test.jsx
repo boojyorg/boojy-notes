@@ -154,18 +154,32 @@ describe("NotePath", () => {
     expect(row2.style.paddingLeft).toBe(`${chromePathInset(true, false)}px`);
   });
 
+  // The narrower side's spacer starts with the difference, so the path centres
+  // on the pane. Collapsed, the left group (the trio) is the wider side;
+  // expanded, the editor's side of the row is empty since Undo and Redo went
+  // to the menu bar (2026-09-24), and the ··· side is the wider one.
   it("biases the spacers so the path centres on the pane, not the band", () => {
-    const { container } = mount(["A"]);
-    const band = container.querySelector("[data-testid='note-path-row']").firstElementChild;
-    const [left, , right] = band.children;
-    const bias = chromePathInset(false, false) - CHROME_PATH_RIGHT_INSET;
-    expect(bias).toBeGreaterThan(0);
-    expect(left.style.flexBasis).toBe("0px");
-    expect(right.style.flexBasis).toBe(`${bias}px`);
+    const spacers = (collapsed) => {
+      const { container } = mount(["A"], "n", collapsed ? { collapsed: true } : undefined);
+      const band = container.querySelector("[data-testid='note-path-row']").firstElementChild;
+      const [left, , right] = band.children;
+      return { left, right };
+    };
+    const wide = chromePathInset(true, false) - CHROME_PATH_RIGHT_INSET;
+    expect(wide).toBeGreaterThan(0);
+    const c = spacers(true);
+    expect(c.left.style.flexBasis).toBe("0px");
+    expect(c.right.style.flexBasis).toBe(`${wide}px`);
     // The bias gives way before the path does.
-    expect(Number(right.style.flexShrink)).toBeGreaterThan(1);
-    expect(left.style.flexGrow).toBe("1");
-    expect(right.style.flexGrow).toBe("1");
+    expect(Number(c.right.style.flexShrink)).toBeGreaterThan(1);
+    expect(c.left.style.flexGrow).toBe("1");
+    expect(c.right.style.flexGrow).toBe("1");
+    cleanup();
+    const narrow = chromePathInset(false, false) - CHROME_PATH_RIGHT_INSET;
+    expect(narrow).toBeLessThan(0);
+    const e = spacers(false);
+    expect(e.left.style.flexBasis).toBe(`${-narrow}px`);
+    expect(e.right.style.flexBasis).toBe("0px");
   });
 
   it("hands the field its placeholder's width, whatever the name, so an emptied field holds it", () => {

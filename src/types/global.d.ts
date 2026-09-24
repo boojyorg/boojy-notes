@@ -62,6 +62,15 @@ declare global {
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
       paste: () => Promise<void>;
+      onMenuCommand: (callback: (id: string) => void) => () => void;
+      setMenuState: (state: {
+        hasNote: boolean;
+        hasFile: boolean;
+        canUndo: boolean;
+        canRedo: boolean;
+        textField: boolean;
+      }) => void;
+      revealNote: (noteId: string) => Promise<void>;
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;

@@ -1,9 +1,10 @@
 /**
- * The editor header's controls: Undo and Redo for the open note, the
- * sidebar/Search/New note trio that appears only while the sidebar is away,
- * and the ··· menu that always offers Settings.
+ * The editor header's controls: the sidebar/Search/New note trio that appears
+ * only while the sidebar is away, and the ··· menu that always offers
+ * Settings. Undo and Redo were header buttons until 2026-09-24 and are Edit →
+ * Undo and Redo now; the history tests drive those items.
  *
- * Needs the real app: the proof of a history button is the Markdown on disk
+ * Needs the real app: the proof of a history command is the Markdown on disk
  * once the write debounce has settled, and the proof of "one visible control
  * each" is what the rendered window actually holds in each sidebar state.
  */
@@ -14,6 +15,8 @@ import {
   type AppHandle,
   expectNoTempFiles,
   launchApp,
+  menuClick,
+  menuEnabled,
   noteText,
   sleep,
   waitForFile,
@@ -32,32 +35,30 @@ test.afterEach(async () => {
 
 const hideSidebar = () => h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
 
-test("the buttons undo and redo the open note, and the file follows", async () => {
+test("Edit → Undo and Redo take back the open note's edits, and the file follows", async () => {
   h = await launchApp({ [A]: `${A_TEXT}\n` });
   await h.openNote("Alpha");
-  const undo = h.page.getByRole("button", { name: "Undo", exact: true });
-  const redo = h.page.getByRole("button", { name: "Redo", exact: true });
 
-  // Nothing has been edited in this note, so neither button offers anything.
-  await expect(undo).toBeDisabled();
-  await expect(redo).toBeDisabled();
+  // Nothing has been edited in this note, so neither item offers anything.
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
+  await expect.poll(() => menuEnabled(h, "redo")).toBe(false);
 
   await h.page.locator("[data-block-id]").first().click();
   await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.type(" edited");
   await waitForFile(h.vault.file(A), (t) => t.includes(" edited"), { label: "typing to save" });
-  await expect(undo).toBeEnabled();
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(true);
 
-  await undo.click();
+  await menuClick(h, "undo");
   await waitForFile(h.vault.file(A), (t) => !t.includes(" edited"), { label: "undo to save" });
   expect(await noteText(h.page)).toBe(A_TEXT);
-  await expect(redo).toBeEnabled();
+  await expect.poll(() => menuEnabled(h, "redo")).toBe(true);
 
-  await redo.click();
+  await menuClick(h, "redo");
   await waitForFile(h.vault.file(A), (t) => t.includes(" edited"), { label: "redo to save" });
   expect(await noteText(h.page)).toBe(`${A_TEXT} edited`);
 
-  // Typing carries on in the note: the press never took the caret out of it.
+  // Typing carries on in the note: the menu never took the caret out of it.
   // (Where a restore leaves the caret is history's own long-standing rule and
   // is not changed here, so the test puts it at the end first.)
   await h.page.keyboard.press(END_OF_LINE);
@@ -67,7 +68,7 @@ test("the buttons undo and redo the open note, and the file follows", async () =
   expectNoTempFiles(h.vault);
 });
 
-test("a button press changes the open note and leaves the other note's file alone", async () => {
+test("Edit → Undo changes the open note and leaves the other note's file alone", async () => {
   h = await launchApp({ [A]: `${A_TEXT}\n`, [B]: `${B_TEXT}\n` });
   await h.openNote("Alpha");
   await h.page.locator("[data-block-id]").first().click();
@@ -77,14 +78,14 @@ test("a button press changes the open note and leaves the other note's file alon
 
   // Beta has nothing of its own to undo, and Alpha's entry is not Beta's.
   await h.openNote("Beta");
-  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
   await sleep(SETTLE_MS);
   expect(h.vault.read(A).trimEnd()).toBe(`${A_TEXT} edited`);
   expect(h.vault.read(B).trimEnd()).toBe(B_TEXT);
 
   await h.openNote("Alpha");
-  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
-  await h.page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(true);
+  await menuClick(h, "undo");
   await waitForFile(h.vault.file(A), (t) => !t.includes(" edited"), {
     label: "Alpha undo to save",
   });
@@ -93,7 +94,7 @@ test("a button press changes the open note and leaves the other note's file alon
   // History is the session's; the files are what survives a restart.
   await h.restart();
   await h.openNote("Alpha");
-  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
   expect(await noteText(h.page)).toBe(A_TEXT);
   expectNoTempFiles(h.vault);
 });
@@ -118,21 +119,21 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
     );
 
   // Expanded: the sidebar owns navigation and creation; the header carries the
-  // note's history and its ··· .
+  // note's ··· alone. Undo and Redo are the menu bar's (2026-09-24).
   for (const name of ["Search notes", "New note", "Toggle sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), name).toBe(1);
   }
   for (const name of ["Undo", "Redo"]) {
-    expect(await exposed(name), name).toBe(1);
+    expect(await exposed(name), name).toBe(0);
   }
 
   await hideSidebar();
 
   // Collapsed: the header takes the trio over, still one of each.
-  for (const name of ["Search notes", "New note", "Toggle sidebar", "Undo", "Redo"]) {
+  for (const name of ["Search notes", "New note", "Toggle sidebar"]) {
     expect(await exposed(name), name).toBe(1);
   }
-  for (const name of ["New folder", "Sort"]) {
+  for (const name of ["New folder", "Sort", "Undo", "Redo"]) {
     expect(await exposed(name), name).toBe(0);
   }
 
@@ -147,7 +148,6 @@ test("exactly one Search, New note and sidebar toggle is exposed in each sidebar
   for (const name of ["Search notes", "New note", "Toggle sidebar", "New folder", "Sort"]) {
     expect(await exposed(name), `narrow: ${name}`).toBe(1);
   }
-  expect(await exposed("Undo")).toBe(1);
 });
 
 test("the collapsed header's New note and Search are the sidebar's own actions", async () => {
@@ -188,12 +188,12 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await h.page.keyboard.press("Escape");
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
 
-  // An empty library: nothing has been edited, so both history buttons are
-  // inactive, and Settings is still one click away.
+  // An empty library: nothing has been edited, so Undo and Redo are greyed,
+  // and Settings is still one click away.
   await h.close();
   h = await launchApp({});
-  await expect(h.page.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
-  await expect(h.page.getByRole("button", { name: "Redo", exact: true })).toBeDisabled();
+  await expect.poll(() => menuEnabled(h, "undo")).toBe(false);
+  await expect.poll(() => menuEnabled(h, "redo")).toBe(false);
   await h.page.locator("button[aria-label='Note actions']").click();
   await expect(h.page.getByRole("menu").getByRole("menuitem", { name: "Settings" })).toBeVisible();
   // The desktop always has a note open (an empty library opens a draft), so

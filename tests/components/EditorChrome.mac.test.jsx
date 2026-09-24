@@ -24,10 +24,6 @@ vi.mock("../../src/context/LayoutContext", () => ({
   }),
 }));
 
-vi.mock("../../src/context/NoteDataContext", () => ({
-  useNoteDataActions: () => ({ canUndo: true, canRedo: true, undo: vi.fn(), redo: vi.fn() }),
-}));
-
 // macOS Electron: the traffic lights hold the viewport's top-left corner once
 // the sidebar is hidden, so the collapsed group shifts right of them.
 vi.mock("../../src/utils/platform", () => ({ isElectronMac: true, isMac: true }));
@@ -69,16 +65,15 @@ describe("EditorChrome on macOS with the sidebar hidden", () => {
     expect(Number.parseInt(group.style.left, 10)).toBe(MAC_TRAFFIC_INSET);
     expect(chromeControlsLeft(true)).toBe(MAC_TRAFFIC_INSET);
 
-    // Five controls in two groups, and the path's band starts past the last of them.
-    const controls = ["Toggle sidebar", "Search notes", "New note", "Undo", "Redo"].map((t) =>
-      getByLabelText(t),
-    );
-    expect(controls).toHaveLength(5);
-    // 3 buttons at 32 + two 2px gaps, a 12px step, 2 buttons at 32 + one gap,
-    // then the band's air: the inset must reach past all of it.
-    expect(chromePathInset(true)).toBe(MAC_TRAFFIC_INSET + 100 + 12 + 66 + PATH_AIR);
-    // Expanded, only the history pair is on the row, from the editor's inset.
-    expect(chromePathInset(false)).toBe(10 + 66 + PATH_AIR);
+    // Three controls, and the path's band starts past the last of them.
+    for (const t of ["Toggle sidebar", "Search notes", "New note"]) {
+      expect(getByLabelText(t)).toBeInTheDocument();
+    }
+    // 3 buttons at 32 + two 2px gaps, then the band's air.
+    expect(chromePathInset(true)).toBe(MAC_TRAFFIC_INSET + 100 + PATH_AIR);
+    // Expanded, nothing is on the editor's side of the row (Undo and Redo are
+    // the menu bar's since 2026-09-24): the band starts at the inset's air.
+    expect(chromePathInset(false)).toBe(10 + PATH_AIR);
     // The right edge clears the ··· by the same air, in every state.
     expect(CHROME_PATH_RIGHT_INSET).toBe(10 + 32 + PATH_AIR);
   });
@@ -106,7 +101,7 @@ describe("EditorChrome on macOS in full screen", () => {
     expect(trafficLightsShown(true)).toBe(false);
     expect(trafficLightsShown(false)).toBe(true);
     expect(chromeControlsLeft(true, true)).toBe(CHROME_INSET);
-    expect(chromePathInset(true, true)).toBe(CHROME_INSET + 100 + 12 + 66 + PATH_AIR);
+    expect(chromePathInset(true, true)).toBe(CHROME_INSET + 100 + PATH_AIR);
     // Expanded the group never sat behind the lights, so nothing changes.
     expect(chromePathInset(false, true)).toBe(chromePathInset(false, false));
     // No drag strip anywhere: the path band is the drag region now (NotePath).

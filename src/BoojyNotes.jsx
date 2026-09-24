@@ -83,6 +83,8 @@ export default function BoojyNotes() {
     activeNoteRef,
     undo,
     redo,
+    canUndo,
+    canRedo,
     onActiveNoteChanged,
     commitNoteData,
     adoptNoteData,
@@ -380,6 +382,7 @@ export default function BoojyNotes() {
     updateTableRows,
     updateBlockIndent,
     moveBlock,
+    setBlockKind,
   } = useBlockOperations({
     commitNoteData,
     commitTextChange,
@@ -569,26 +572,6 @@ export default function BoojyNotes() {
     },
     [setUiScale],
   );
-
-  useAppKeyboard({
-    activeNote,
-    noteData,
-    uiScale,
-    blockDrag,
-    sidebarDrag,
-    titleRef,
-    undo,
-    redo,
-    createNote,
-    createFolder,
-    revealSidebar,
-    toggleSidebar,
-    openSearch,
-    openSettings: () => setSettingsOpen(true),
-    setUiScale: setUiScaleByKey,
-    cancelBlockDrag,
-    cancelSidebarDrag,
-  });
 
   useAppPersistence({
     activeNote,
@@ -876,6 +859,37 @@ export default function BoojyNotes() {
   // for it stood. `subject` is `{ kind: "notes", ids }` or `{ kind: "folder", path }`.
   const [movePicker, setMovePicker] = useState(null);
   const openMovePicker = useCallback((subject, anchor) => setMovePicker({ subject, anchor }), []);
+
+  // The shell's keys and the application menu: one set of commands.
+  const openFindRef = useRef(null);
+  useAppKeyboard({
+    activeNote,
+    noteData,
+    uiScale,
+    blockDrag,
+    sidebarDrag,
+    titleRef,
+    undo,
+    redo,
+    createNote,
+    createFolder,
+    revealSidebar,
+    toggleSidebar,
+    openSearch,
+    openSettings: () => setSettingsOpen(true),
+    setUiScale: setUiScaleByKey,
+    cancelBlockDrag,
+    cancelSidebarDrag,
+    canUndo,
+    canRedo,
+    renameNote: startNoteRename,
+    duplicateNote,
+    moveNote: openMovePicker,
+    deleteNote: confirmDeleteNote,
+    applyFormat,
+    setBlockKind,
+    openFind: (replace) => openFindRef.current?.(replace),
+  });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
     if (!movePicker) return null;
@@ -1123,6 +1137,7 @@ export default function BoojyNotes() {
             }}
           >
             <EditorArea
+              openFindRef={openFindRef}
               isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}

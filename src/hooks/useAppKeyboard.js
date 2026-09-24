@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { getAPI } from "../services/apiProvider";
 import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
 
 /**
@@ -31,6 +32,11 @@ import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
  * the document, or in the capture phase — never on the window in the bubble
  * phase, where a listener registered after this one runs after it and its
  * preventDefault comes too late.
+ *
+ * The application menu (electron/appMenu.ts) is the same commands with a
+ * pointer: an item arrives here as its id and runs what its key runs, under
+ * the same ownership rules, and the hook tells the menu what can act so it
+ * greys the rest.
  */
 export function useAppKeyboard({
   activeNote,
@@ -51,6 +57,16 @@ export function useAppKeyboard({
   setUiScale,
   cancelBlockDrag,
   cancelSidebarDrag,
+  // The menu's own commands
+  canUndo,
+  canRedo,
+  renameNote,
+  duplicateNote,
+  moveNote,
+  deleteNote,
+  applyFormat,
+  setBlockKind,
+  openFind,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -68,6 +84,13 @@ export function useAppKeyboard({
     setUiScale,
     cancelBlockDrag,
     cancelSidebarDrag,
+    renameNote,
+    duplicateNote,
+    moveNote,
+    deleteNote,
+    applyFormat,
+    setBlockKind,
+    openFind,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -121,13 +144,7 @@ export function useAppKeyboard({
       }
       if (mod && key === "n") {
         e.preventDefault();
-        if (L.activeNote && L.noteData[L.activeNote]?._draft) {
-          if (titleRef.current) {
-            titleRef.current.focus();
-          }
-          return;
-        }
-        L.createNote(null);
+        newNote(L, titleRef);
         return;
       }
       // Search is a palette over the window, so it needs no sidebar. Cmd+P
@@ -156,6 +173,155 @@ export function useAppKeyboard({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
+  useEffect(() => {
+    const api = getAPI();
+    if (!api?.onMenuCommand) return;
+    return api.onMenuCommand((id) => runMenuCommand(id, latest.current, titleRef));
+  }, []);
+
+  // What the menu may offer: the note's items with a note open, Undo and Redo
+  // with something to take back, or always in a text field, whose own they
+  // are then. Focus is watched for the field; the rest is state.
+  useEffect(() => {
+    const api = getAPI();
+    if (!api?.setMenuState) return;
+    const hasFile = !!activeNote && !noteData[activeNote]?._draft;
+    const publish = () =>
+      api.setMenuState({
+        hasNote: !!activeNote,
+        hasFile,
+        canUndo: !!canUndo,
+        canRedo: !!canRedo,
+        textField: isTextField(document.activeElement),
+      });
+    publish();
+    document.addEventListener("focusin", publish);
+    document.addEventListener("focusout", publish);
+    return () => {
+      document.removeEventListener("focusin", publish);
+      document.removeEventListener("focusout", publish);
+    };
+  }, [activeNote, canUndo, canRedo, noteData]);
+}
+
+/** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
+function newNote(L, titleRef) {
+  if (L.activeNote && L.noteData[L.activeNote]?._draft) {
+    titleRef.current?.focus();
+    return;
+  }
+  L.createNote(null);
+}
+
+/** A native text field outside the editor: its Undo is its own. */
+function isTextField(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return (tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor]");
+}
+
+const INLINE_FORMATS = new Set(["bold", "italic", "strikethrough", "highlight", "code", "link"]);
+const BLOCK_KINDS = {
+  body: "p",
+  h1: "h1",
+  h2: "h2",
+  h3: "h3",
+  todo: "checkbox",
+  bullet: "bullet",
+  numbered: "numbered",
+  quote: "blockquote",
+};
+
+/** The ids of the blocks the selection runs through, first to last, in the editor. */
+function selectedBlockIds(blocks) {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return [];
+  const idOf = (node) => {
+    const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    const block = el?.closest?.("[data-editor] [data-block-id]");
+    return block?.getAttribute("data-block-id") ?? null;
+  };
+  const a = blocks.findIndex((b) => b.id === idOf(sel.anchorNode));
+  const f = blocks.findIndex((b) => b.id === idOf(sel.focusNode));
+  if (a === -1 || f === -1) return [];
+  return blocks.slice(Math.min(a, f), Math.max(a, f) + 1).map((b) => b.id);
+}
+
+/**
+ * One menu command, run as its key runs it and owned as its key is: nothing
+ * acts under a modal dialog or a focused menu, except the scale over Settings
+ * (the keys' own exception) and a text field's Undo, which is the field's.
+ */
+function runMenuCommand(id, L, titleRef) {
+  const owner = focusOwner();
+  if (id === "undo" || id === "redo") {
+    if (isTextField(document.activeElement)) {
+      document.execCommand(id);
+      return;
+    }
+    if (owner === "modal") return;
+    if (id === "undo") L.undo();
+    else L.redo();
+    return;
+  }
+  if (id === "bigger" || id === "smaller" || id === "actualSize") {
+    if (owner === "modal" && !settingsHoldsKeys()) return;
+    const key = id === "bigger" ? "+" : id === "smaller" ? "-" : "0";
+    L.setUiScale(scaleFor(key, L.uiScale));
+    return;
+  }
+  if (owner === "modal") return;
+  const note = L.activeNote;
+  switch (id) {
+    case "newNote":
+      return newNote(L, titleRef);
+    case "newFolder":
+      return L.createFolder?.(null);
+    case "settings":
+      return L.openSettings?.();
+    case "checkUpdates":
+      L.openSettings?.();
+      getAPI()?.checkForUpdate?.();
+      return;
+    case "search":
+      return L.openSearch?.();
+    case "toggleSidebar":
+      return L.toggleSidebar?.();
+  }
+  if (!note) return;
+  switch (id) {
+    case "rename":
+      return L.renameNote?.(note);
+    case "duplicate":
+      return L.duplicateNote?.(note);
+    case "moveTo": {
+      // The picker opens under the note's name in the top row, the place the
+      // path of the note already stands.
+      const r = document.querySelector("[data-title]")?.getBoundingClientRect();
+      const anchor = r
+        ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+        : { top: 48, bottom: 48, left: window.innerWidth / 2, right: window.innerWidth / 2 };
+      return L.moveNote?.({ kind: "notes", ids: [note] }, anchor);
+    }
+    case "reveal":
+      return getAPI()?.revealNote?.(note);
+    case "trash":
+      return L.deleteNote?.(note);
+    case "find":
+    case "findReplace":
+      return L.openFind?.(id === "findReplace");
+  }
+  const blocks = L.noteData[note]?.content?.blocks ?? [];
+  if (INLINE_FORMATS.has(id)) {
+    if (selectedBlockIds(blocks).length > 0) L.applyFormat?.(id);
+    return;
+  }
+  if (id in BLOCK_KINDS) {
+    const ids = selectedBlockIds(blocks);
+    if (ids.length > 0) L.setBlockKind?.(note, ids, BLOCK_KINDS[id]);
+  }
 }
 
 /** The keys that change the UI scale, with `+` in both its spellings. */
