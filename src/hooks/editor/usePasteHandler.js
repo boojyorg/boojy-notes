@@ -17,6 +17,7 @@ import {
   isTextBlockType,
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
+import { richPasteMarkdown } from "../../utils/richPaste";
 
 export function usePasteHandler({
   noteDataRef,
@@ -188,10 +189,15 @@ export function usePasteHandler({
 
     // Multi-line external paste, or a single structured Markdown line landing
     // in an empty block: parse as markdown blocks. A single line anywhere else
-    // pastes inline below.
+    // pastes inline below. Several lines of formatted HTML (a browser, Google
+    // Docs, Apple Notes) are read as Markdown first, so their bold, italics,
+    // links, headings and lists survive; HTML with no formatting of its own
+    // is left for the plain text (`richPasteMarkdown`).
+    const htmlData = e.clipboardData.getData("text/html");
     const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
-      const pastedBlocks = markdownToBlocks(textData);
+      const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;
+      const pastedBlocks = markdownToBlocks(rich ?? textData);
       if (!pastedBlocks.length) return;
       const {
         blocks: newBlocks,
@@ -236,7 +242,6 @@ export function usePasteHandler({
     // the line into blocks when the sanitiser returned a wrapper, and rewrote
     // the space beside the insertion into a non-breaking space that reached
     // the file as U+00A0.
-    const htmlData = e.clipboardData.getData("text/html");
     if (crossing) {
       const text = htmlData ? htmlToInlineMarkdown(sanitizeInlineHtml(htmlData)) : textData;
       ownEdit(scope, { kind: "insertText", text }, range);
