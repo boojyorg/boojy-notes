@@ -208,20 +208,20 @@ describe("ensureUniqueFilePath — a note's own file is not a collision", () => 
 
 describe("write-note — the returned title is the basename on disk", () => {
   let writeNote;
-  let registered;
+  // Taken once at registration: Vitest 5 clears a mock's calls between tests.
+  let handler;
 
   beforeEach(async () => {
     const { ipcMain } = await import("electron");
     const { registerNoteFileIPC } = await import("../../electron/noteFileManager.js");
-    if (!registered) {
+    if (!handler) {
       registerNoteFileIPC(
         () => null,
         () => notesDir,
         { claimWrite: () => {}, claimUnlink: () => {}, releaseUnlinkClaim: () => {} },
       );
-      registered = true;
+      handler = ipcMain.handle.mock.calls.find(([name]) => name === "write-note")[1];
     }
-    const handler = ipcMain.handle.mock.calls.find(([name]) => name === "write-note")[1];
     writeNote = (note) => handler(null, note);
     readAllNotes(notesDir); // load (an empty) index for this vault
   });
