@@ -866,7 +866,15 @@ export default function BoojyNotes() {
   // Show Markdown / Show Formatted: EditorArea's switch, which reads the
   // caret's place on the way (the ··· menu, View, ⌘/ and the lit `</>`).
   const switchViewRef = useRef(null);
-  const toggleSourceView = useCallback(() => switchViewRef.current?.(), []);
+  const toggleSourceView = useCallback(() => {
+    // The menus a keystroke opened under the caret (`/`, `[[`, `#`) belong to
+    // the view being left; left open, the slash menu stood over the Markdown
+    // view and was still there on the way back.
+    setSlashMenu(null);
+    setWikilinkMenu(null);
+    setTagMenu(null);
+    switchViewRef.current?.();
+  }, [setSlashMenu, setWikilinkMenu, setTagMenu]);
   useAppKeyboard({
     activeNote,
     noteData,

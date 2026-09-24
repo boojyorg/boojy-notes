@@ -157,6 +157,27 @@ test("the path at the top holds still across the switch, folders and all", async
   }
 });
 
+test("a menu the keyboard opened in one view does not follow into the other", async () => {
+  const h = await launchApp({ "Alpha.md": "First line.\n" });
+  try {
+    await h.openNote("Alpha");
+    await h.page.locator("[data-block-id]", { hasText: "First line." }).click();
+    await h.page.keyboard.press(`${MOD}+ArrowRight`);
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("/");
+    const slash = h.page.getByRole("menu", { name: "Slash commands" });
+    await expect(slash).toBeVisible();
+    await h.page.keyboard.press(`${MOD}+/`);
+    await expect(h.page.getByRole("textbox", { name: "Markdown" })).toBeFocused();
+    await expect(slash).toHaveCount(0);
+    await h.page.keyboard.press(`${MOD}+/`);
+    await expect(slash).toHaveCount(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
 test("the view is app-wide: the next note opens in it too", async () => {
   const h = await launchApp({ "Alpha.md": "# A\n", "Beta.md": "# B\n" });
   try {

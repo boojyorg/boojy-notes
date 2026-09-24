@@ -56,7 +56,9 @@ on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
   row's radius is the box's less the inset so the curves stay concentric; the search palette
   was already this shape. A new menu takes the three tokens, never its own numbers.
 - **Accent is never a desktop surface**: identity, focus rings, 2–3px markers, wikilinks and the
-  caret. Selected rows are neutral. The one tint is the whole-block selection's band (accent at
+  caret. Selected rows are neutral. The tints are the tag pill, a mode that is on (the Markdown
+  view's lit `</>`, the tag pill's wash: in hover's grey it read as a hovered button), and the
+  whole-block selection's band (accent at
   10% Light / 18% Dark), laid over a selected image a step stronger (20% / 26%). Mobile note
   rows keep an accent pill.
 
@@ -158,7 +160,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   **Show Markdown ⌘/** (`</>`, Lucide `CodeXml`, never `Code`, which is inline code's), or
   **Show Formatted ⌘/** (`Type`) while the Markdown view is on: a view says what it will do, as
   Hide/Show Sidebar does, where a format is checked. While the view is on, a lit `</>`
-  `ChromeButton` (`active`, chip `Show formatted ⌘/`) stands left of the ···: the mode's one
+  `ChromeButton` (`lit`: `ACCENT.text` glyph on the tag pill's wash, `tagPillGround`, a step
+  stronger on hover; chip `Show formatted ⌘/`) stands left of the ···: the mode's one
   mark on screen and its way back, never there at rest. The path band reserves its room
   whether the view is on or not (`CHROME_PATH_RIGHT_INSET`), so switching never moves the path;
   a band that changed with the mode re-centred the name and dropped its folders for a frame. It ends with the note's word count (`note-stats`, one

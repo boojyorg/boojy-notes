@@ -149,8 +149,9 @@ describe("EditorChrome", () => {
     );
     const toggle = queryByTestId("source-view-toggle");
     expect(toggle).toHaveAttribute("aria-label", "Show formatted");
-    // Held lit: the surface the hover gives, at rest.
-    expect(toggle.style.background).not.toBe("none");
+    // Lit in the accent: the glyph's ink, on a teal wash rather than hover's grey.
+    expect(toggle.style.color).toBe("rgb(164, 202, 206)");
+    expect(toggle.style.background).toMatch(/rgba\(/);
     expect(toggle.nextElementSibling).toHaveAttribute("aria-label", "Note actions");
     fireEvent.click(toggle);
     expect(onToggleSourceView).toHaveBeenCalledTimes(1);

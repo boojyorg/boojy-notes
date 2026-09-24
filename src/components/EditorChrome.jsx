@@ -13,6 +13,7 @@ import { isElectronMac } from "../utils/platform";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
+import { tagPillGround } from "../styles/tagPill";
 
 /**
  * The editor's own chrome: two fixed corners, no horizontal strip.
@@ -131,13 +132,19 @@ export function ChromeButton({
   // Held in the hover state (surface and primary ink) while whatever it opened
   // is open, so the pointer leaving for the popup does not drop it.
   active,
+  // A mode that is on (the Markdown view): the glyph in the accent ink on the
+  // tag pill's teal wash, a step stronger under the pointer. Never the grey
+  // of hover, which it was first and read as a hovered button (2026-09-24).
+  lit,
   children,
   style,
   ...rest
 }) {
   const { theme } = useTheme();
-  const { BG, TEXT } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const tip = useTooltip();
+  const restBg = lit ? tagPillGround(theme) : active ? BG.surface : "none";
+  const restInk = lit ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
   const ref = useRef(null);
   return (
     <button
@@ -166,7 +173,7 @@ export function ChromeButton({
         position: "relative",
         width: CHROME_BTN,
         height: CHROME_BTN,
-        background: active ? BG.surface : "none",
+        background: restBg,
         border: "none",
         borderRadius: 6,
         cursor: disabled ? "default" : "pointer",
@@ -174,7 +181,7 @@ export function ChromeButton({
         alignItems: "center",
         justifyContent: "center",
         padding: 0,
-        color: active ? TEXT.primary : TEXT.muted,
+        color: restInk,
         // Disabled reads as inactive ink, never as a second colour: the glyph
         // is the same one, just further back.
         opacity: disabled ? 0.4 : 1,
@@ -187,14 +194,14 @@ export function ChromeButton({
       onMouseEnter={(e) => {
         tip.handlers.onMouseEnter();
         if (disabled) return;
-        e.currentTarget.style.background = BG.surface;
-        e.currentTarget.style.color = TEXT.primary;
+        e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.surface;
+        e.currentTarget.style.color = lit ? ACCENT.text : TEXT.primary;
       }}
       onMouseLeave={(e) => {
         tip.handlers.onMouseLeave();
         if (disabled || active) return;
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = TEXT.muted;
+        e.currentTarget.style.background = lit ? restBg : "transparent";
+        e.currentTarget.style.color = restInk;
       }}
     >
       {children}
@@ -272,14 +279,13 @@ export default function EditorChrome({
         }}
       >
         {sourceView && activeNote && (
-          // Held lit while the view is on, the way the path's folder glyph is
-          // while its popup is open: it says the mode is on, and it is the way
-          // back. The chip names what a press does.
+          // Lit while the view is on: it says the mode is on, and it is the
+          // way back. The chip names what a press does.
           <ChromeButton
             onClick={onToggleSourceView}
             label="Show formatted"
             shortcut={SHORTCUTS.sourceView}
-            active
+            lit
             data-testid="source-view-toggle"
           >
             <SourceViewIcon />
