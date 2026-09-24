@@ -482,14 +482,12 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
 - **Block IDs are minted on every re-parse** — `markdownToBlocks` uses a module-global counter,
   so a re-sync remounts every block and loses the caret. Fix is content-stable IDs; non-trivial.
 - **The touch layout goes** (decided 2026-09-24): about 1,700 untested lines in
-  `src/components/mobile`, plus 55 `isMobile` branches the desktop files pay for. Switched off
-  first (`useIsMobile` returns `false`: one line, reversible), because the web build on a phone
-  comes straight after this phase and its design may want a starting point; deleted once that
-  design starts and does not reuse it (git keeps it). The archived
+  `src/components/mobile`, plus 55 `isMobile` branches the desktop files pay for. **Switched
+  off** on 2026-09-24 (`TOUCH_LAYOUT` in `BoojyNotes.jsx`), not deleted, because the web build
+  on a phone comes straight after this phase and its design may want a starting point; deleted
+  once that design starts and does not reuse it (git keeps it). The archived
   `docs/private/archive/mobile-spec.md` header records its grammar. Deletion retires the
   `useIsMobile` → `useIsTouch` rename above and the touch ··· menu's separate delete copy.
-- **`[perf]` warnings ship in production** — `console.warn('[perf] …')` timing lines remain in
-  `EditorArea.jsx`, `useAppPersistence.js` and `useHistory.js`. Decided 2026-09-24: remove them.
 - **Updater behaviour is undecided** — today `autoDownload` is on and every launch checks,
   with a failed check swallowed (`autoUpdater.checkForUpdates().catch(() => {})` in
   `electron/settingsManager.js`). The alternative is check-and-ask with a visible error. Moot

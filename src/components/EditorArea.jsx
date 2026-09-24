@@ -1001,8 +1001,6 @@ const EditorArea = memo(
     );
   },
   (prev, next) => {
-    const t0 = performance.now();
-
     // A sync-generation bump means the blocks must be repainted from state:
     // undo/redo, an external file change, a paste. It outranks every other
     // shortcut here, because a text-only undo looks exactly like a text-only
@@ -1029,19 +1027,14 @@ const EditorArea = memo(
     const pBlocks = prev.note?.content?.blocks;
     const nBlocks = next.note?.content?.blocks;
     if (haveEditorBlockRenderChanges(pBlocks, nBlocks)) return false;
-    const result =
+    return (
       prev.activeNote === next.activeNote &&
       prev.editorFadeIn === next.editorFadeIn &&
       // toolbarState is decided above, before the text-only fast path.
       prev.noteTitleSet === next.noteTitleSet &&
       prev.selectedBlockId === next.selectedBlockId &&
-      prev.lightbox === next.lightbox;
-    const dt = performance.now() - t0;
-    if (import.meta.env.DEV && dt > 0.5)
-      console.warn(
-        `[perf] EditorArea memo comparator: ${dt.toFixed(2)}ms, blocks: ${next.note?.content?.blocks?.length}`,
-      );
-    return result;
+      prev.lightbox === next.lightbox
+    );
   },
 );
 

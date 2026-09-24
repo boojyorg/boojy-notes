@@ -23,7 +23,6 @@ export function useAppPersistence({ activeNote, expanded, noteData, customFolder
   useEffect(() => {
     if (isNative) return;
     const timer = setTimeout(() => {
-      const t0 = performance.now();
       try {
         localStorage.setItem(
           STORAGE_KEY,
@@ -35,11 +34,6 @@ export function useAppPersistence({ activeNote, expanded, noteData, customFolder
           showToast("Failed to save — storage may be full", "warning");
         });
       }
-      const dt = performance.now() - t0;
-      if (import.meta.env.DEV && dt > 5)
-        console.warn(
-          `[perf] localStorage.setItem: ${dt.toFixed(1)}ms (${Object.keys(noteData).length} notes)`,
-        );
     }, 2000);
     return () => clearTimeout(timer);
   }, [noteData, activeNote, expanded, customFolders]);
@@ -51,12 +45,9 @@ export function useAppPersistence({ activeNote, expanded, noteData, customFolder
   useEffect(() => {
     if (isNative) return;
     const flush = () => {
-      const t0 = performance.now();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(beforeunloadDataRef.current));
       } catch {}
-      if (import.meta.env.DEV)
-        console.warn(`[perf] beforeunload flush: ${(performance.now() - t0).toFixed(1)}ms`);
     };
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);
