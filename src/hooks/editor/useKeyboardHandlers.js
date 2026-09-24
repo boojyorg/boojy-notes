@@ -88,6 +88,20 @@ const DEMOTES_TO_PARAGRAPH = new Set([
   "blockquote",
 ]);
 
+/** The note's name field (`data-title`), focused with the caret at its end. */
+function focusTitleEnd() {
+  const title = document.querySelector("[data-title]");
+  if (!(title instanceof HTMLElement)) return;
+  title.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(title);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 /** Where a caret lands at the end of a block: its visible length, never its Markdown's. */
 function endOffset(blockRefs, block) {
   const el = blockRefs.current[block.id];
@@ -461,22 +475,25 @@ export function useKeyboardHandlers({
         const elRect = el.getBoundingClientRect();
         if (rect.top - elRect.top < 5) {
           e.preventDefault();
-          if (blockIndex === 0) {
-            const titleEl = editorRef.current?.parentElement?.querySelector("h1[contenteditable]");
-            if (titleEl) titleEl.focus();
+          const prevIdx = caretLandingBefore(blocks, blockIndex);
+          if (prevIdx < 0) {
+            // Nothing above to land in (the first block, or only frontmatter
+            // above it): up goes to the note's name, caret at its end, as
+            // Enter and ArrowDown there come back down. The name lives in the
+            // chrome row's path band, not above the editor, since 2026-09-15;
+            // the old lookup searched the editor's parent for an h1 and found
+            // nothing, so the key was dead (review §1.13, fixed 2026-09-24).
+            focusTitleEnd();
+          } else if (hasOwnField(blocks[prevIdx])) {
+            // The arrows walk into a block that keeps its own field rather
+            // than stopping on it: arriving from below lands at its end —
+            // a table's last row, a code block's last line.
+            focusOwnedField(editorRef.current, blocks[prevIdx].id, "end");
+          } else if (isSelectableBlock(blocks[prevIdx])) {
+            selectBlock(blocks[prevIdx].id);
           } else {
-            const prevIdx = caretLandingBefore(blocks, blockIndex);
-            if (prevIdx >= 0 && hasOwnField(blocks[prevIdx])) {
-              // The arrows walk into a block that keeps its own field rather
-              // than stopping on it: arriving from below lands at its end —
-              // a table's last row, a code block's last line.
-              focusOwnedField(editorRef.current, blocks[prevIdx].id, "end");
-            } else if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
-              selectBlock(blocks[prevIdx].id);
-            } else if (prevIdx >= 0) {
-              const prevEl = blockRefs.current[blocks[prevIdx].id];
-              if (prevEl) placeCaret(prevEl, (blocks[prevIdx].text || "").length);
-            }
+            const prevEl = blockRefs.current[blocks[prevIdx].id];
+            if (prevEl) placeCaret(prevEl, endOffset(blockRefs, blocks[prevIdx]));
           }
         }
       }

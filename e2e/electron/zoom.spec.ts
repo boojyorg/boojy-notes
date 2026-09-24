@@ -9,7 +9,7 @@
 import { expect, test } from "@playwright/test";
 import { launchApp } from "./harness";
 
-test("the View menu carries no zoom roles", async () => {
+test("the View menu carries no zoom roles, and no Reload outside a dev build", async () => {
   const h = await launchApp({ "Note.md": "hello\n" });
   try {
     const roles = await h.app.evaluate(({ Menu }) => {
@@ -26,6 +26,10 @@ test("the View menu carries no zoom roles", async () => {
     expect(roles).not.toContain("zoomin");
     expect(roles).not.toContain("zoomout");
     expect(roles).not.toContain("resetzoom");
+    // Nor Reload outside a dev build: it drops the renderer and the typing
+    // still inside the debounces with it (2026-09-24).
+    expect(roles).not.toContain("reload");
+    expect(roles).not.toContain("forcereload");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
