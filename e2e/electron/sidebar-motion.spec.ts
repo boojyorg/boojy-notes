@@ -56,8 +56,9 @@ test("hiding the sidebar clips its column rather than re-laying it out", async (
     expect(hidden.transform).not.toBe("none");
 
     // The history pair sits past the trio, one group-gap on, at rest.
+    // Search is the trio's last button (toggle, New note, Search).
     const trioRight = await h.page
-      .getByRole("button", { name: "New note", exact: true })
+      .getByRole("button", { name: "Search notes", exact: true })
       .boundingBox();
     const undo = await h.page.getByRole("button", { name: "Undo", exact: true }).boundingBox();
     expect(undo!.x - (trioRight!.x + trioRight!.width)).toBe(12);

@@ -258,11 +258,11 @@ export default function EditorChrome({ activeNote, onNoteActions, onNewNote, onO
             >
               <SidebarToggleIcon />
             </ChromeButton>
-            <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
-              <SearchIcon size={18} />
-            </ChromeButton>
             <ChromeButton onClick={onNewNote} label="New note" shortcut={SHORTCUTS.newNote}>
               <NewNoteIcon size={18} />
+            </ChromeButton>
+            <ChromeButton onClick={onOpenSearch} label="Search notes" shortcut={SHORTCUTS.search}>
+              <SearchIcon size={18} />
             </ChromeButton>
           </div>
         </div>
