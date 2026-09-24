@@ -19,7 +19,7 @@ export function useSearchNavigation({
   }, [search, clearSelectionRef]);
 
   const scrollToSearchMatch = useCallback(
-    (noteId, matchBlockId) => {
+    (_noteId, matchBlockId) => {
       if (!matchBlockId) return;
       setTimeout(() => {
         const el = blockRefs.current[matchBlockId];

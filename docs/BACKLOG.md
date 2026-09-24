@@ -463,14 +463,18 @@ E2E axe only catches critical violations on the initial screen. Known gaps below
   control that makes a future slip inert. It touches HMR, inline styles and `boojy-att:`, so it
   is a job on its own. `javascript:` hrefs survive into the DOM and only the main process
   filters them: inert on desktop, and the web build's `window.open` fallback is not product.
-- **The gates are green but say little** (review §6): `pnpm check` passes with ~266 warnings
-  (168 `useExhaustiveDependencies`), so neither it nor the coverage floor can tell drift from
-  signal; the audit gate is `critical` where `high` costs nothing with every dependency
-  dev-only; Actions are pinned by major tag, not SHA; majors are available (Electron 44, Vite
-  8, Vitest 5, TypeScript 7, jsdom 30) for a deliberate pass per the dependency policy. Zero
-  unit coverage on `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the
-  watcher's event handlers and `folderOps`; the Electron suite is the trustworthy layer for
-  those journeys.
+- **The hook-dependency warnings are the lint gate's last noise** (2026-09-24): `pnpm check`
+  now warns about nothing else, 206 `useExhaustiveDependencies` in all. Most name a ref's
+  `.current` or a function from the frozen `EditorContext` (AGENTS.md gotcha 3), which the rule
+  cannot see is stable, so adding them blindly would change behaviour; a few may be real stale
+  closures. One audit: teach the rule the app's stable hooks, suppress each deliberate site with
+  its reason, fix the real ones. Two rules are off by decision: `noAssignInExpressions` (the
+  `while ((node = walker.nextNode()))` idiom throughout the walkers and the parser) and
+  `noNonNullAssertion` (an invariant TypeScript cannot prove, and the tests' idiom). Also from
+  review §6: the audit gate is `critical` where `high` costs nothing with every dependency
+  dev-only; Actions are pinned by major tag, not SHA. Zero unit coverage on
+  `useTableInteractions`, `useSidebarDrag`, `FindBar`, `SidebarContext`, the watcher's event
+  handlers and `folderOps`; the Electron suite is the trustworthy layer for those journeys.
 - **Chrome ink, one pass if it is seen** (review §5): fourteen popovers carry hardcoded black
   shadows at 0.4–0.5 where `theme.modalShadow` is 0.12/0.08 in Light; the code block's
   context-menu hover is white at 6% over a white surface, invisible in Light; the find

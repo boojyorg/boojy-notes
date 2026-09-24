@@ -56,7 +56,9 @@ test("Copy and Cut from the right-click menu write what the keys write", async (
     await expect(toolbar).toHaveCount(0);
     await menu.getByRole("menuitem", { name: /^Copy/ }).click();
     await expect(menu).toHaveCount(0);
-    expect(await h.page.evaluate(() => (window as any).__written)).toEqual(["copy:brave"]);
+    expect(
+      await h.page.evaluate(() => (window as unknown as { __written: string[] }).__written),
+    ).toEqual(["copy:brave"]);
 
     at = await select(h.page, "Hello", 6, 12);
     await h.page.mouse.click(at.x, at.y, { button: "right" });
@@ -64,7 +66,9 @@ test("Copy and Cut from the right-click menu write what the keys write", async (
     await waitForFile(h.vault.file("Alpha.md"), (t) => !t.includes("brave"));
     await sleep(SETTLE_MS);
     expect(h.vault.read("Alpha.md")).toBe("Hello world\n");
-    expect(await h.page.evaluate(() => (window as any).__written)).toContain("cut:brave ");
+    expect(
+      await h.page.evaluate(() => (window as unknown as { __written: string[] }).__written),
+    ).toContain("cut:brave ");
   } finally {
     await h.close();
   }

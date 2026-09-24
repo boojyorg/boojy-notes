@@ -73,11 +73,11 @@ export function renderRanges(text: string, ranges: Range[], accentColor: string)
   if (!ranges || ranges.length === 0) return text;
   const parts: ReactNode[] = [];
   let at = 0;
-  ranges.forEach(([start, end], i) => {
+  ranges.forEach(([start, end]) => {
     if (end <= start || start < at || start >= text.length) return;
     if (start > at) parts.push(text.slice(at, start));
     parts.push(
-      <span key={i} style={{ color: accentColor, fontWeight: 600 }}>
+      <span key={start} style={{ color: accentColor, fontWeight: 600 }}>
         {text.slice(start, end)}
       </span>,
     );

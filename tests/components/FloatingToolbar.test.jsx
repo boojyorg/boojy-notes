@@ -196,11 +196,7 @@ describe("FloatingToolbar", () => {
     scroller.className = "editor-scroll";
     scroller.getBoundingClientRect = () => ({ top: 100 });
     document.body.appendChild(scroller);
-    const {
-      getByRole,
-      getByTestId,
-      getByRole: q,
-    } = render(
+    const { getByRole, getByRole: q } = render(
       <FloatingToolbar
         position={{ top: -40, left: 100 }}
         activeFormats={defaultFormats}

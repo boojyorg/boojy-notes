@@ -129,7 +129,8 @@ function nearestTextIndex(blocks, from, step) {
 const EditorArea = memo(
   function EditorArea({
     isMobile,
-    textOnlyEditForEditor,
+    // Read by the memo comparator below, not by the body.
+    textOnlyEditForEditor: _textOnlyEditForEditor,
     // The current value of the sync generation, passed as a plain prop so the
     // memo comparator can see it change (the ref itself never changes identity).
     syncGen: _syncGen,
@@ -147,7 +148,7 @@ const EditorArea = memo(
     describeLink,
     selectedBlockId,
     setSelectedBlockId,
-    lightbox,
+    lightbox: _lightbox,
     setLightbox,
     openNote: openNoteProp,
     // The sidebar's press-and-hold drag, for the rows of the path's popup.
@@ -192,7 +193,6 @@ const EditorArea = memo(
       updateBlockProperty,
       detectActiveFormats,
       applyFormat,
-      reReadBlockFromDom,
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;

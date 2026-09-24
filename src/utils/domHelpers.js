@@ -11,7 +11,7 @@
 export function getBlockFromNode(node, editorEl, blocks, blockRefs) {
   let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
   while (el && el !== editorEl) {
-    if (el.dataset && el.dataset.blockId) {
+    if (el.dataset?.blockId) {
       const blockId = el.dataset.blockId;
       if (!blocks) return null;
       const blockIndex = blocks.findIndex((b) => b.id === blockId);
@@ -303,7 +303,7 @@ export function caretOffsetAt(el, node, offset) {
  * typing at the end of bold text extends the bold, as in every editor.
  */
 export function placeCaret(el, pos = 0) {
-  if (!el || !el.isConnected) return false;
+  if (!el?.isConnected) return false;
   let ancestor = el.parentElement;
   while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
   // The editor root is one contentEditable spanning the whole note, so taking
@@ -478,7 +478,7 @@ export function caretOutOfLinkEnd(root) {
  */
 export function caretOutOfLinkStart(root) {
   const caret = collapsedTextCaret(root);
-  if (!caret || caret.offset !== 0) return false;
+  if (caret?.offset !== 0) return false;
   const link = enclosingLink(caret.node, root);
   if (!link || !isFirstTextIn(link, caret.node)) return false;
   return selectAnchor(anchorBeforeLink, link);
@@ -615,7 +615,7 @@ export function suppressNextClick(ttl = 200) {
  */
 export function ownedField(editorEl, blockId, edge = "start") {
   const wrapper = editorEl?.querySelector?.(`[data-block-id="${blockId}"]`);
-  if (!wrapper || wrapper.getAttribute("contenteditable") !== "false") return null;
+  if (wrapper?.getAttribute("contenteditable") !== "false") return null;
   if (edge === "end" && wrapper.dataset.blockType === "table") {
     const rows = wrapper.querySelectorAll("tr");
     const last = rows[rows.length - 1]?.querySelector("[contenteditable='true']");

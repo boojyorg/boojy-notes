@@ -176,7 +176,7 @@ export function usePasteHandler({
         let attempts = 0;
         const tryPlace = () => {
           const el = blockRefs.current[deferredId];
-          if (el && el.isConnected) {
+          if (el?.isConnected) {
             placeCaret(el, deferredPos);
           } else if (++attempts < 10) {
             requestAnimationFrame(tryPlace);
@@ -224,7 +224,7 @@ export function usePasteHandler({
         let attempts = 0;
         const tryPlace = () => {
           const el = blockRefs.current[targetId];
-          if (el && el.isConnected) {
+          if (el?.isConnected) {
             placeCaret(el, targetPos);
           } else if (++attempts < 10) {
             requestAnimationFrame(tryPlace);

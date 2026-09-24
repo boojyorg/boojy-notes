@@ -49,7 +49,7 @@ export function useTagHandlers({
       if (!menu) return;
       const { noteId, blockIndex } = menu;
       const blocks = noteDataRef.current[noteId]?.content?.blocks;
-      if (!blocks || !blocks[blockIndex]) return;
+      if (!blocks?.[blockIndex]) return;
       const oldText = blocks[blockIndex].text || "";
       const match = oldText.match(TAG_TAIL_RE);
       if (match) {

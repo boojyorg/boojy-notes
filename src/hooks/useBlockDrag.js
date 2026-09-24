@@ -138,7 +138,7 @@ export function useBlockDrag({
       if (!srcEl) continue;
       const c = srcEl.cloneNode(true);
       c.removeAttribute("contenteditable");
-      c.querySelectorAll("[contenteditable]").forEach((e) => e.removeAttribute("contenteditable"));
+      for (const e of c.querySelectorAll("[contenteditable]")) e.removeAttribute("contenteditable");
       clone.appendChild(c);
     }
     // The clone lives on <body>, so carry the editor's type with it or it

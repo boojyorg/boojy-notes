@@ -112,7 +112,7 @@ export function useLinkHoverTooltip(
     const onSelectionChange = () => {
       if (!byKey.current) return;
       const sel = window.getSelection();
-      if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+      if (!sel?.rangeCount || !sel.isCollapsed) return;
       if (!inside(sel.anchorNode)) return;
       const link = linkAt(sel.anchorNode);
       if (link && inside(link)) arm(link);

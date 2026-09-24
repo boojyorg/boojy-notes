@@ -201,8 +201,7 @@ export default function MobileToolbar({
 }) {
   const { theme } = useTheme();
   const { canUndo, canRedo, undo, redo } = useNoteDataActions();
-  const { applyFormat, updateBlockProperty, insertBlockAfter, editorRef, blockRefs } =
-    useEditorContext();
+  const { applyFormat, updateBlockProperty, insertBlockAfter, editorRef } = useEditorContext();
   const [panel, setPanel] = useState(null); // null | "aa" | "insert"
 
   // Detect current block type from cursor position
