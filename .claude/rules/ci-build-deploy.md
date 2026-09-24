@@ -1,216 +1,105 @@
+---
+paths:
+  - ".github/**"
+  - "package.json"
+  - "pnpm-lock.yaml"
+  - ".npmrc"
+  - "vite.config.js"
+  - "vitest.config.js"
+  - "playwright*.config.*"
+  - "e2e/**"
+  - "assets/**"
+  - "electron/main.js"
+---
+
 # CI, build, deploy
 
-Durable operational rules for this repo's pipelines. Each carries the one reason a future
-change needs; the incidents behind them are in git.
+Rule + one reason. Incidents and measurements are in git; command details in
+`docs/private/code-signing.md` (local).
 
 ## Releases
 
-- Pushing a `v*` tag runs `release.yml`: a macOS and a Windows job, each running
-  `pnpm build:electron` and uploading through electron-builder's GitHub publisher. macOS
-  signs when `MACOS_CERTIFICATE` is set (`MACOS_CERTIFICATE_PWD` unlocks the `.p12`), notarises
-  with the API key described below, and builds unsigned otherwise. **Set on 2026-09-11** for the
-  v0.7.0 release; every published macOS build before it (v0.5.0 included) is unsigned, and
-  electron-updater refuses to update an unsigned app with the error swallowed, so Settings →
-  Updates only works from a signed build onward. Two things
-  the first signed run taught, each a silent failure until found (`docs/private/code-signing.md`,
-  local, has the commands): **the `.p12` must be legacy-encoded** (`openssl pkcs12 -export
-  -legacy -nomaciter -descert -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES`); an OpenSSL 3
-  default export (AES/PBES2) verifies with `openssl` but the runner's `security import` rejects
-  it as "MAC verification failed (wrong password?)", which is not the password. And
-  **electron-builder must be ≥ 26.16.1**: before that it handed `security set-key-partition-list`
-  the certificate's password where the keychain's own is required (upstream #10066, fixed in
-  #10172), which the `macos-26` runner image enforces and older images let through.
-  **Notarisation is an App Store Connect *Team* API key and only that**
-  (`APPLE_API_KEY_B64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, plus `APPLE_TEAM_ID`). The Apple
-  ID route is not a fallback: `APPLE_ID` and `APPLE_APP_PASSWORD` were deleted from the repo's
-  secrets on 2026-09-11, because the inherited app-specific password had already been
-  invalidated by Apple and cost two rehearsals, and because electron-builder checks the Apple ID
-  pair *first* and returns early, so reintroducing either variable silently disables the key.
-  Three things it demands. It must be a **Team** key: an Individual key cannot use notarytool at all, and
-  Developer is role enough. `@electron/notarize` wants **a filesystem path** to the `.p8`, not
-  its contents, so `release.yml` decodes the secret into `RUNNER_TEMP` before the build and
-  removes it after (outside the workspace, so no `files` glob can pack it). And `APPLE_ID` and
-  `APPLE_APP_SPECIFIC_PASSWORD` must stay **out** of that step's env, for the reason above. Check
-  credentials against Apple before spending a run:
+- A `v*` tag runs `release.yml` (macOS + Windows, `pnpm build:electron`, electron-builder's
+  GitHub publisher). macOS signs when `MACOS_CERTIFICATE` is set; builds before v0.7.0 are
+  unsigned, and electron-updater silently refuses to update an unsigned app.
+- **The `.p12` must be legacy-encoded** (`openssl pkcs12 -export -legacy …`, PBE-SHA1-3DES): the
+  runner's `security import` rejects an OpenSSL 3 default export as "MAC verification failed",
+  which is not the password. **electron-builder ≥ 26.16.1** (older versions pass the wrong
+  password to `set-key-partition-list`, which `macos-26` enforces).
+- **Notarisation is an App Store Connect Team API key, only** (`APPLE_API_KEY_B64`,
+  `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`). Never reintroduce `APPLE_ID` /
+  `APPLE_APP_SPECIFIC_PASSWORD`: electron-builder checks that pair first and silently skips the
+  key. The `.p8` is decoded to a path in `RUNNER_TEMP` (notarize wants a path; outside the
+  workspace so no glob packs it). Check credentials before spending a run:
   `xcrun notarytool history --key <p8> --key-id <id> --issuer <uuid>`.
-- **The macOS target is `dmg` and `zip`, and the zip is the updater's** (2026-09-17). electron-updater
-  installs a macOS update from a zip only (`MacUpdater` throws `ZIP file not provided` when
-  `latest-mac.yml` lists no zip), so a dmg-only release, which v0.7.0 was, can be found but never
-  installed; the check itself passes at equal versions, which is why "Up to date" proved nothing.
-  Keep both targets: the DMG is the website download, the zip is what a running app fetches. Verified
-  by updating the installed 0.7.0 to 0.8.0 through Settings.
-- **Releases land as drafts, and one tag can produce two of them** with the assets split
-  between them (seen 2026-09-11 from the Windows job alone: EXE and `latest.yml` in one,
-  the blockmap in the other; the matrix adds the same race across jobs). electron-builder
-  names the draft after `package.json`'s version, never the pushed tag, and **uploads into an
-  existing draft of that name** when it finds one, so a rehearsal tag (`v0.7.0-rc.1`) with the
-  version already bumped makes the real `v0.7.0` drafts. A draft is invisible to "latest
-  release" lookups, so the website version text and the auto-updater keep resolving to the
-  last *published* release. After every tag push: check `gh release list`, merge the assets
-  into one release, **publish it**, delete the leftover draft. Proper fix, unscheduled: create
-  the release once before the matrix so both jobs upload to it, or auto-publish when both
-  succeed.
-- Publishing a release fires `site-rebuild.yml`, which POSTs the boojy.org Cloudflare deploy
-  hook so the site picks up the new version. It skips gracefully if the secret is absent.
-- Every workflow job carries `timeout-minutes` (`ci.yml`: checks 15, web E2E 15, Electron 20,
-  the `ci` summary 5; `release.yml` 45; `site-rebuild.yml` 5), sized from measured actuals.
-  Keep it that way; a stalled job once ran six hours unnoticed. The release number is the one
-  exception to sizing tight: measured 2026-09-11 on the first notarised run, macOS is 3m34s end
-  to end (notarisation 2m20s of it) and Windows 2m26s, but the variable is Apple's notarisation
-  queue rather than the build, and a cap that kills a submission mid-queue wastes the run.
+- **The macOS target is `dmg` and `zip`.** The DMG is the website download; the zip is the only
+  thing `MacUpdater` can install from.
+- **Releases land as drafts, sometimes two per tag** with the assets split between them, named
+  after `package.json`'s version (so an rc tag with the version bumped fills the real drafts).
+  Drafts are invisible to the website and the updater. After every tag push: `gh release list`,
+  merge the assets into one release, publish it, delete the leftover draft.
+- Publishing a release fires `site-rebuild.yml` (the boojy.org deploy hook; skips if the secret
+  is absent).
+- Every job carries `timeout-minutes` sized from actuals (a stalled job once ran six hours).
+  `release.yml` is sized loose on purpose: Apple's notarisation queue is the variable.
 
 ## CI
 
-- **Node is pinned to 22.** Node 24 deterministically hangs the Playwright browser install on
-  the GitHub runner image. The actions themselves run on Node 24 via `@v6`; only the project
-  runtime is held at 22. Don't rebump it without fixing the Playwright install first.
-- **Playwright installs the browser only: `playwright install chromium`, never
-  `--with-deps`.** The apt half stalls for tens of minutes on a slow mirror and buys nothing:
-  every library Chromium links against is already on `ubuntu-latest`, and the packages it
-  would add are fonts this suite never renders. If a future image drops a library, Chromium
-  fails to launch naming it, in seconds. Don't restore `--with-deps` to fix a launch error
-  without confirming the named library is genuinely absent.
-- The browser is cached at `~/.cache/ms-playwright`, keyed on the lockfile hash with a
-  prefix restore-key, so an unchanged lockfile skips the download and a dep bump degrades to a
-  partial hit. A cold miss is about ten seconds. If the install step is ever slow, look at the
-  CDN or the cache action, not apt.
-- The install runs inside a `timeout` and a three-attempt loop, with `timeout-minutes` on the
-  step as the outer cap. Size any timeout to the work, not to patience: one short enough to
-  feel safe will kill a download that is merely slow and turn a passing step into a guaranteed
-  failure.
-- **`ci.yml` is side-by-side jobs plus a summary** (2026-09-24): `checks` (audit, lint, format,
-  typecheck, unit tests with coverage, the web build), `web-e2e`, and `electron-e2e` as **six
-  shards** (`--shard=N/6`, two workers each), each installing for itself from the pnpm cache, so
-  the wall clock follows the slowest job rather than their sum. The `ci` job at the end only
-  reports whether every job succeeded; it is the one status branch protection requires, so keep
-  that job name. The Electron suite waits on the app's debounces, not the CPU, so machines are
-  the lever and a faster runner is not (Blacksmith was benchmarked twice on 2026-09-06: 4–16%,
-  with provisioning stalls; the repo is public, so GitHub-hosted runners cost nothing however
-  many shards). **The suite is `fullyParallel`**, so a shard is a share of tests, not of files:
-  by file one shard ran a minute behind another. Playwright balances shards by test count, not
-  time, so expect ±30 s between them. Measured 2026-09-24: 445 s wall on one Electron job; 170 s
-  on four shards by file; 160 s on four by test; **~125 s on six**, where the shards meet the
-  checks job (~105 s) and more shards stop paying. A new push to a PR cancels that PR's run in
-  flight (`concurrency`); master runs each take a group of their own and are never cancelled.
-- **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
-  `pnpm test`.** Coverage is measured against every file under `src/` and `electron/`
-  (`coverage.include`, 2026-09-07), whether or not a test imports it; before that, Vitest 4
-  counted only files the tests happened to load, and a quarter of the source was missing from
-  the denominator. The thresholds in `vitest.config.js` are a floor just below those honest
-  actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level high`
-  also gates every run; it is the live security net.
-- **A failed run keeps what it saw** (2026-09-24): the web job and each Electron shard upload
-  their HTML report and `test-results/` (each failure's error context, the page's accessibility
-  snapshot) as an artifact, only on failure, for 14 days. The two suites report into their own
-  folders (`playwright-report/web`, `…/electron`) so one run never overwrites the other's. The
-  workflows are read-only (`permissions`); only `release.yml` writes.
-- **The real-Electron suite runs in its own jobs**, with no Playwright browser
-  download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
-  `dist/` and `dist-electron/` itself; the web build elsewhere in the workflow uses
-  `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
-  (each test owns its app process, vault and userData; measured 2026-09-06: 333 s to 175 s on the
-  runner, five runs with no flake), and `e2e/electron/global-setup.ts` resolves the Electron
-  binary once before any worker starts: Electron fetches its binary on the first
-  `require("electron")` when `dist/` is empty (since Electron 42), which on CI is the first test's launch, and two
-  first launches at once left one worker spawning a half-written executable (`spawn ETXTBSY`).
-  Don't remove the global setup when touching the workers. Its assertions are about files on disk,
-  so Linux is a fair proxy for the renderer and main-process logic; anything that depends on the
-  OS Trash or native dialogs is macOS-only and says so in the spec. `--no-sandbox` is passed only
-  when `CI` is set. **The window is hidden on a desktop and shown on CI** (`harness.ts`:
-  `BOOJY_TEST_HEADED=1` shows it for watching a run locally; `CI` shows it always). A hidden
-  window on the Linux runner ticks no compositor frames, so nothing on a
-  `requestAnimationFrame` runs on its own, and Playwright's click and locator waits poll on
-  exactly that: every action stalled until a stray frame arrived. Measured 2026-09-14 on the
-  same 133 tests: hidden, the step took 672 s and tests that run in 1 s on a Mac took 5–16 s;
-  shown under xvfb, 267 s, each test within a beat of its local time, no retries. Before this
-  the per-spec workaround was a `page.screenshot()` to force a frame and `polling: 50` on
-  `waitForFunction`; both are gone, don't bring them back, show the window. The `headed`
-  project and `pnpm test:electron:headed` were removed on 2026-09-07 because the bucket never
-  held a spec and the script exited 1 with "No tests found".
-- **Each worker has an X display of its own** (`ownDisplay` in `harness.ts`, 2026-09-24: an
-  Xvfb per worker on a Linux CI runner, `-displayfd` picking a free number; the job no longer
-  wraps the suite in `xvfb-run`). On one shared display the window one worker launched came up
-  over the other's and took the display's only focus and pointer: the other app saw a window
-  blur, which cancels a drag, and a real mouseout, which ends a hover. Across 30 runs that was
-  most of the retries (drags that never dropped, chips and hover-revealed controls that never
-  showed), and none reproduced on a Mac. Don't go back to one display for two workers. A spec
-  that presses a key into a menu waits for the menu to hold focus first: `useFocusTrap` focuses
-  a frame after the menu shows, and a key in that frame goes to the editor.
+- **Node is pinned to 22**: Node 24 hangs the Playwright browser install on the runner.
+- **`playwright install chromium`, never `--with-deps`**: the apt half stalls on slow mirrors
+  and adds only fonts. If Chromium fails to launch naming a library, confirm it is really absent
+  before adding anything. The browser is cached on the lockfile hash; the install runs in a
+  `timeout` + three-attempt loop sized to the work, not to patience.
+- **`ci.yml` is side-by-side jobs plus a `ci` summary job**: `checks` (audit, lint, format,
+  typecheck, coverage, web build), `web-e2e`, and `electron-e2e` in six `fullyParallel` shards.
+  Branch protection requires the `ci` job name; keep it. More shards stop paying past six;
+  a faster runner doesn't help (the suite waits on debounces). New pushes cancel a PR's run;
+  master runs are never cancelled.
+- **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite**, plus
+  `pnpm audit --audit-level high`. Coverage counts every file under `src/` and `electron/`;
+  thresholds in `vitest.config.js` sit just below actuals: ratchet up, never lower or exclude
+  to pass.
+- A failed run uploads its Playwright report and `test-results/` (14 days); the two suites
+  report into separate folders. Workflows are read-only except `release.yml`.
+- **The Electron suite**: drives the binary from `node_modules`, builds `dist/` itself.
+  `e2e/electron/global-setup.ts` resolves the Electron binary once before workers start (two
+  first launches raced into `spawn ETXTBSY`); don't remove it. **The window is shown on CI**
+  (a hidden window on Linux ticks no rAF, so every Playwright action stalls); never bring back
+  screenshot pumps or timer polling. **Each worker gets its own Xvfb** (`ownDisplay` in
+  `harness.ts`): on a shared display the other worker's window stole focus and pointer,
+  cancelling drags and hovers. A spec that presses a key into a menu waits for the menu to hold
+  focus first. OS Trash and native dialogs are macOS-only and say so.
 
 ## pnpm and Electron
 
-- `.npmrc` sets `node-linker=hoisted` so electron-builder resolves dependencies; a DMG built
-  this way is verified clean.
-- pnpm 10 blocks native build scripts by default. `electron`, `electron-winstaller` and
-  `esbuild` must stay in `pnpm.onlyBuiltDependencies` in `package.json`, or their binaries
-  never build (symptom: an "Ignored build scripts" warning after install).
-- **The preload is built as CommonJS, outside library mode** (`vite.config.js`, 2026-09-24). A
-  sandboxed preload runs as a classic script; vite-plugin-electron builds every entry as ESM in
-  a `"type": "module"` package, and under Vite 8 that preload failed to load, so the window had
-  no `electronAPI`, the vault never read and the sidebar stayed empty with no error on screen.
-  The main process stays ESM.
-- **If `pnpm dev` dies with "Electron failed to install correctly"**, a lockfile-churning
-  install relinked `node_modules/electron` without re-running its download script. Fix:
-  `pnpm rebuild electron` (about 30 seconds).
-- Anything touching Electron needs a real desktop build to verify; green web CI does not
-  exercise it.
-- **The app icon is `assets/boojy-notes-app-icon.png`**: 1024px, transparent corners, the
-  rounded square at 824px on Apple's icon grid so the Dock draws it the size of every other app.
-  Both electron-builder targets (macOS DMG, Windows NSIS; the unused Linux block went on
-  2026-09-07 with the default-valued `npmRebuild`) and the `BrowserWindow` icon in `main.js` point at it, and
-  electron-builder makes the `.icns` itself. It is generated, never hand-edited, from
-  `assets/boojy-notes-app-icon-source.png`, the full-bleed 1071px export of the artwork:
-  `magick <source> -resize 824x824 -background none -gravity center -extent 1024x1024 <icon>`.
-  Replace the source and re-run that; a full-bleed PNG handed straight to electron-builder
-  renders about a quarter too large beside native icons.
-- **The daily-driver build is `pnpm build:electron` on master.** It writes
-  `release/mac-arm64/Boojy Notes.app` and the DMG beside it; electron-builder signs with
-  whatever Developer ID identity the keychain holds and builds unsigned without one. Quit the
-  running app first (its quit flush saves pending edits), replace `/Applications/Boojy Notes.app`,
-  then check `codesign --verify --deep --strict` and the version in Settings. The installed app
-  never self-updates, so rebuild at coherent checkpoints (a batch of merges worth judging live),
-  not per PR. Distributed releases go through `release.yml` only.
-- **Build input and output are separate directories** (2026-09-07). `dist/` (the renderer) and
-  `dist-electron/` (main and preload) are the packaged input; installers land in `release/`,
-  never in `dist/`. With both in `dist/`, the `files` glob `dist/**/*` packed the previous
-  build's own app and DMG into every new `app.asar` (345 MB, 5,800 entries; now 1.2 MB and 18),
-  and the DMG was 244 MB where 118 MB is the Electron floor. `build:electron` empties
-  `dist-electron/` first, because vite-plugin-electron never does and every removed feature's
-  chunks were shipping. `pnpm test:e2e` and the Electron suite rebuild `dist/`, which is
-  harmless now; the packaged app in `release/` is untouched. The `files` list takes only
-  `assets/boojy-notes-app-icon.png` from `assets/` (2026-09-07): the wordmarks are bundled by Vite
-  and the icon source is build-time input, so nothing else in that directory is read at runtime.
-- **Every dependency is a devDependency, on purpose.** Vite bundles the renderer and the
-  main process alike; the built `main.js` requires only Node built-ins and `electron`, the
-  renderer nothing. electron-builder copies `dependencies` into the asar wholesale, so listing
-  `react`, `lucide-react`, `chokidar` or `electron-updater` there shipped 5,200 files nothing
-  read (29 MB). Proven 2026-09-07 by launching the packaged app from `release/` against a
-  throwaway vault: `app.isPackaged` true, the vault rendered, Settings → Updates completed the
-  GitHub check (`Up to date`) with no module or page errors. A new runtime import that Vite
-  cannot bundle (a native module) is the one reason to put something back in `dependencies`.
+- `.npmrc` `node-linker=hoisted` (electron-builder needs it). `electron`, `electron-winstaller`
+  and `esbuild` stay in `pnpm.onlyBuiltDependencies`.
+- **The preload is built as CommonJS** (`vite.config.js`): a sandboxed preload is a classic
+  script, and as ESM it failed silently (no `electronAPI`, empty sidebar). Main stays ESM.
+- "Electron failed to install correctly" after an install: `pnpm rebuild electron`.
+- Anything touching Electron needs a real desktop build to verify; green web CI proves nothing
+  there.
+- **Every dependency is a devDependency**: Vite bundles main and renderer, and electron-builder
+  copies `dependencies` into the asar wholesale. Only an unbundleable native module goes back
+  in `dependencies`.
+- **Build input and output are separate**: `dist/` and `dist-electron/` are packaged input,
+  installers go to `release/` (in `dist/`, each build packed the previous one).
+  `build:electron` empties `dist-electron/` first. `files` takes only
+  `assets/boojy-notes-app-icon.png` from `assets/`.
+- **The app icon is generated, never hand-edited**, from the full-bleed source:
+  `magick assets/boojy-notes-app-icon-source.png -resize 824x824 -background none -gravity center -extent 1024x1024 assets/boojy-notes-app-icon.png`
+  (Apple's icon grid; full-bleed renders too large in the Dock).
+- **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
+  saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
+  --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.
 
 ## Web deploy
 
-- Pushing `master` deploys the web build to Cloudflare Pages. The build command
-  (`ELECTRON_DISABLE=1 pnpm build`) is set **in the Cloudflare dashboard**, not read from the
-  repo; confirm the deploy is green after any build change.
-- The web deploy is not the product surface. Desktop is; the web build is a development and
-  test target. Don't spend Beta effort on web-only product issues.
+Pushing `master` deploys the web build to Cloudflare Pages; the build command lives in the
+Cloudflare dashboard, not the repo. The web build is a dev/test target, not the product.
 
 ## Dependencies
 
-Three independent controls, deliberately set:
-
-| Control | Where it lives | State |
-| --- | --- | --- |
-| Routine Dependabot version-update PRs | `.github/dependabot.yml` | **off** (no file; don't re-add one) |
-| Dependabot vulnerability alerts | repo security setting | **on** |
-| Automatic security-fix PRs | repo security setting | **off** |
-
-Routine PRs are off because automatic bumps produced a queue of mutually conflicting lockfile
-PRs that nobody asked for. The config file has no authority over the two security settings, so
-its absence changes nothing there.
-
-Maintenance is a deliberate pass, not a queue: occasionally run `pnpm outdated`, batch patch
-and minor bumps into one commit, run the whole gate sequence, one PR. Majors go one at a time
-on their own branch. A vulnerability alert is the trigger for an unscheduled pass.
+No `.github/dependabot.yml` (routine PRs made conflicting lockfile queues; don't re-add).
+Vulnerability alerts on, automatic security-fix PRs off. Updates are a deliberate pass:
+`pnpm outdated`, batch patch/minor into one PR through every gate; majors one per branch.
