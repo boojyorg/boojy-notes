@@ -198,10 +198,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **A multi-line rich paste is flattened** — a single line pasted from a browser or another
   app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
   `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).
-- [ ] **Sidebar drag needs a 400ms hold** before a note lifts (`useSidebarDrag.js`); no hint until
-  the third attempt. The hold is also the cause of a 2px twitch-to-root, a swallowed slow click
-  and a stale target under auto-scroll (review §4.4); Finder, Notion and Obsidian lift after
-  ~5px of movement and never on a timer, and a displacement threshold fixes all four at once.
 - [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
   up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **Find counts a code block's matches twice** (the textarea and its highlight overlay,

@@ -59,14 +59,13 @@ const expandedFolders = (page: Page) =>
     .locator('[data-folder-path][aria-expanded="true"]')
     .evaluateAll((els) => els.map((el) => el.getAttribute("data-folder-path")));
 
-/** A press held on a row, moved onto `to`, released — or moved and left there for the caller. */
+/** A press on a row, moved onto `to` (it lifts once it has travelled) and left there for the caller. */
 async function holdAndDrag(page: Page, from: Locator, to: Locator) {
   const a = await from.boundingBox();
   const b = await to.boundingBox();
   if (!a || !b) throw new Error("holdAndDrag: row not visible");
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
-  await sleep(600);
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
   await sleep(100);
 }

@@ -350,8 +350,8 @@ export async function renameRow(page: Page, title: string, newName: string) {
 }
 
 /**
- * Move a note into a folder the way the user does: press on its row, hold
- * until the pill lifts, carry it over the folder row, release. Drag never
+ * Move a note into a folder the way the user does: press on its row, carry it
+ * over the folder row (the pill lifts once the press has moved 5px), release. Drag never
  * opens the note, so the editor is untouched afterwards.
  */
 export async function moveNoteToFolder(page: Page, title: string, folder: string | null) {
@@ -365,8 +365,6 @@ export async function moveNoteToFolder(page: Page, title: string, folder: string
   if (!from || !to) throw new Error(`moveNoteToFolder: row or folder "${folder}" not visible`);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  // The hold-to-lift delay is 400ms; a move of more than 5px before it cancels.
-  await sleep(600);
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
   await sleep(100);
   await page.mouse.up();
@@ -413,7 +411,6 @@ export async function moveFolderTo(page: Page, folder: string, target: string | 
   if (!from || !to) throw new Error(`moveFolderTo: "${folder}" or its target is not visible`);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await sleep(600);
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
   await sleep(100);
   await page.mouse.up();
