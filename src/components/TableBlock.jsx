@@ -1,6 +1,7 @@
 import { useRef, useCallback, useLayoutEffect, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
+import { useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
 import { caretLength, getCaretOffset, placeCaret } from "../utils/domHelpers";
 import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
@@ -134,6 +135,7 @@ export default memo(function TableBlock({
   onDelete,
   registerRef,
 }) {
+  const rhythm = useRhythm();
   const { theme } = useTheme();
   const accent = accentColor || theme.ACCENT.primary;
   const cellRefs = useRef({});
@@ -368,7 +370,7 @@ export default memo(function TableBlock({
       style={{
         position: "relative",
         outline: "none",
-        margin: "8px 0",
+        margin: `${rhythm.blockGap}px 0`,
         // As wide as the grid, never wider than the column: the bars hug the
         // table's own edges, and a wide table scrolls inside the scroller.
         width: "fit-content",

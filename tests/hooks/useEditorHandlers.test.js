@@ -725,7 +725,7 @@ describe("useEditorHandlers", () => {
       act(() => s.result.current.handleEditorCopy(e));
 
       expect(plain(e)).toBe(
-        "# PSYC327\n## Assessments\n30% Coursework – Blog\n\n70% Online Exam\n- Psychology module",
+        "# PSYC327\n\n## Assessments\n\n30% Coursework – Blog\n\n70% Online Exam\n\n- Psychology module",
       );
       expect(html(e)).toBe(
         "<h1>PSYC327</h1><h2>Assessments</h2><p>30% Coursework – Blog</p><p>70% Online Exam</p><ul><li>Psychology module</li></ul>",
@@ -816,7 +816,7 @@ describe("useEditorHandlers", () => {
       const e = makeCopyEvent();
       act(() => source.result.current.handleEditorCopy(e));
       const formatsSet = Object.fromEntries(e.clipboardData.setData.mock.calls);
-      expect(formatsSet["text/plain"]).toBe("# Title\n- item");
+      expect(formatsSet["text/plain"]).toBe("# Title\n\n- item");
 
       document.body.innerHTML = "";
       const target = setup([paragraph("")], "note-2");

@@ -1,5 +1,6 @@
 import { memo, useRef, useLayoutEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { headingStyle, isHeadingType, useRhythm } from "../tokens/rhythm";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
@@ -16,27 +17,6 @@ import FileBlock from "./blocks/FileBlock";
 import EmbedBlock from "./blocks/EmbedBlock";
 import SpacerBlock from "./blocks/SpacerBlock";
 
-/**
- * The paragraph pitch: the space after a paragraph or quote block. A soft break
- * (Shift+Enter) is line height alone, a paragraph break (Enter) adds this, and
- * an empty row (Enter twice) adds a whole line on top; the three must read as
- * three. Lists and headings keep their own rhythm. The paragraph's own margin
- * is set in GlobalStyles from this value, beside the rule that gives a
- * paragraph after a list item the same gap; the quote uses it inline. 8 since
- * 2026-09-17 (was 12): at 12 an Enter read as two lines to an Obsidian hand.
- */
-export const PARAGRAPH_GAP = 8;
-
-/**
- * Body text size for every text block. Not a preference: the Settings row that
- * used to set it (10–24) was removed on 2026-09-05 because Cmd+Plus/Minus/0
- * already scale the whole app and one knob is enough.
- */
-export const EDITOR_FONT_SIZE = 15;
-/** The line box of a paragraph, list row or quote: the editor's own rhythm.
- *  Exported because the column's top padding is measured against it — the
- *  note's first line sits on the sidebar's New note row (`EditorArea`). */
-export const EDITOR_LINE_HEIGHT = 1.7;
 /** Checkbox rows: line height ratio and box size, shared so the box can centre on the first line. */
 const CHECKBOX_LINE_HEIGHT = 1.6;
 const CHECKBOX_SIZE = 16;
@@ -59,28 +39,9 @@ const CHECKBOX_SIZE = 16;
 /** Air between the drawn box and the task's text. */
 const CHECKBOX_TEXT_GAP = 9;
 
-// One render path for all heading levels; the smaller levels keep body-sized
-// text and use weight/spacing to remain headings. No extra editor chrome.
-const HEADING_STYLES = {
-  h1: {
-    fontSize: 28,
-    fontWeight: 700,
-    margin: "8px 0 12px",
-    lineHeight: 1.3,
-    letterSpacing: "-0.4px",
-  },
-  h2: {
-    fontSize: 22,
-    fontWeight: 600,
-    margin: "6px 0 10px",
-    lineHeight: 1.35,
-    letterSpacing: "-0.2px",
-  },
-  h3: { fontSize: 20, fontWeight: 600, margin: "8px 0 8px", lineHeight: 1.35 },
-  h4: { fontSize: 18, fontWeight: 600, margin: "8px 0 6px", lineHeight: 1.35 },
-  h5: { fontSize: 16.5, fontWeight: 600, margin: "8px 0 4px", lineHeight: 1.35 },
-  h6: { fontSize: 15, fontWeight: 700, margin: "8px 0 4px", lineHeight: 1.4 },
-};
+// One render path for all heading levels: type and margins come from the
+// rhythm (tokens/rhythm.ts); the smaller levels keep body-sized text and use
+// weight and spacing to remain headings. No extra editor chrome.
 
 const INDENT_PX = 24;
 
@@ -98,16 +59,16 @@ const ROW_PAD_TOP = { bullet: 2, numbered: 2, checkbox: 2.5 };
  * for a heading bigger than the body — it reaches up — positive for H6, whose
  * line is tighter than the body's, and zero for a paragraph.
  */
-function firstBlockLift(type) {
-  const heading = HEADING_STYLES[type];
-  const size = heading ? heading.fontSize : EDITOR_FONT_SIZE;
+function firstBlockLift(type, r) {
+  const heading = isHeadingType(type) ? headingStyle(type, r) : null;
+  const size = heading ? heading.fontSize : r.bodySize;
   const lineHeight = heading
     ? heading.lineHeight
     : type === "checkbox"
       ? CHECKBOX_LINE_HEIGHT
-      : EDITOR_LINE_HEIGHT;
+      : r.lineHeight;
   return (
-    baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT) -
+    baselineFromTop(r.bodySize, r.lineHeight) -
     (ROW_PAD_TOP[type] ?? 0) -
     baselineFromTop(size, lineHeight)
   );
@@ -130,14 +91,15 @@ function firstBlockLift(type) {
 const BULLET_DOT = 6;
 const BULLET_RING = 7;
 const BULLET_RING_STROKE = 1.25;
-const BULLET_LINE_CENTRE = 13;
+/** Where the marker's centre sits, as a share of the line box: 13px of 25.5 at the default rhythm. */
+const BULLET_LINE_CENTRE = 13 / 25.5;
 
-function bulletMarkerStyle(hollow, ink) {
+function bulletMarkerStyle(hollow, ink, linePx) {
   const size = hollow ? BULLET_RING : BULLET_DOT;
   return {
     width: size,
     height: size,
-    marginTop: BULLET_LINE_CENTRE - size / 2,
+    marginTop: BULLET_LINE_CENTRE * linePx - size / 2,
     borderRadius: "50%",
     boxSizing: "border-box",
     flexShrink: 0,
@@ -178,6 +140,7 @@ const EditableBlock = memo(
   }) {
     const { theme } = useTheme();
     const { TEXT, ACCENT } = theme;
+    const rhythm = useRhythm();
     const elRef = useRef(null);
     // The root of a block that has no text of its own, or that keeps its text
     // in a field of its own: an image, a file, a code block, a callout, an
@@ -435,8 +398,8 @@ const EditableBlock = memo(
             contain: "content",
             borderLeft: `3px solid ${accentColor}`,
             paddingLeft: 14 + indentPad,
-            margin: `0 0 ${PARAGRAPH_GAP}px`,
-            lineHeight: EDITOR_LINE_HEIGHT,
+            margin: `0 0 ${rhythm.paragraphGap}px`,
+            lineHeight: rhythm.lineHeight,
           }}
         >
           <span
@@ -445,7 +408,7 @@ const EditableBlock = memo(
               color: TEXT.primary,
               outline: "none",
               display: "block",
-              fontSize: EDITOR_FONT_SIZE,
+              fontSize: rhythm.bodySize,
             }}
           />
         </div>
@@ -467,9 +430,9 @@ const EditableBlock = memo(
             // Vertical rhythm lives in GlobalStyles (the paragraph pitch and the
             // gap after a list item), where a sibling rule can reach it.
             contain: "content",
-            lineHeight: EDITOR_LINE_HEIGHT,
+            lineHeight: rhythm.lineHeight,
             color: TEXT.primary,
-            fontSize: EDITOR_FONT_SIZE,
+            fontSize: rhythm.bodySize,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
@@ -479,7 +442,7 @@ const EditableBlock = memo(
 
     if (/^h[1-6]$/.test(block.type)) {
       const Heading = block.type;
-      const style = HEADING_STYLES[block.type];
+      const style = headingStyle(block.type, rhythm);
       return (
         <Heading
           ref={elRef}
@@ -499,7 +462,7 @@ const EditableBlock = memo(
             // baseline rather than pushing it down, and its top margin — the
             // air between it and a block above, of which it has none — goes
             // with it. Every other heading keeps its rhythm. 2026-09-19.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
             color: TEXT.primary,
             outline: "none",
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
@@ -522,11 +485,11 @@ const EditableBlock = memo(
             alignItems: "flex-start",
             gap: 9,
             padding: "2px 0",
-            fontSize: EDITOR_FONT_SIZE,
-            lineHeight: EDITOR_LINE_HEIGHT,
+            fontSize: rhythm.bodySize,
+            lineHeight: rhythm.lineHeight,
             paddingLeft: depth * INDENT_PX || undefined,
             // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
           }}
         >
           <span
@@ -534,7 +497,7 @@ const EditableBlock = memo(
             suppressContentEditableWarning
             aria-hidden="true"
             data-marker={hollow ? "hollow" : "filled"}
-            style={bulletMarkerStyle(hollow, TEXT.primary)}
+            style={bulletMarkerStyle(hollow, TEXT.primary, rhythm.bodySize * rhythm.lineHeight)}
           />
           <span
             ref={elRef}
@@ -558,11 +521,11 @@ const EditableBlock = memo(
             alignItems: "flex-start",
             gap: 9,
             padding: "2px 0",
-            fontSize: EDITOR_FONT_SIZE,
-            lineHeight: EDITOR_LINE_HEIGHT,
+            fontSize: rhythm.bodySize,
+            lineHeight: rhythm.lineHeight,
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
             // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
           }}
         >
           <span
@@ -571,7 +534,7 @@ const EditableBlock = memo(
             style={{
               color: TEXT.secondary,
               flexShrink: 0,
-              fontSize: EDITOR_FONT_SIZE,
+              fontSize: rhythm.bodySize,
               userSelect: "none",
               minWidth: 18,
               textAlign: "right",
@@ -603,10 +566,10 @@ const EditableBlock = memo(
             alignItems: "flex-start",
             gap: CHECKBOX_TEXT_GAP,
             padding: "2.5px 0",
-            fontSize: EDITOR_FONT_SIZE,
+            fontSize: rhythm.bodySize,
             lineHeight: CHECKBOX_LINE_HEIGHT,
             // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type) } : null),
+            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
             paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
           }}
         >
@@ -627,7 +590,7 @@ const EditableBlock = memo(
               width: CHECKBOX_SIZE,
               height: CHECKBOX_SIZE,
               // Centre the box on the first line's height, whatever the font size.
-              marginTop: (EDITOR_FONT_SIZE * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
+              marginTop: (rhythm.bodySize * CHECKBOX_LINE_HEIGHT - CHECKBOX_SIZE) / 2,
               flexShrink: 0,
               cursor: "pointer",
               display: "flex",

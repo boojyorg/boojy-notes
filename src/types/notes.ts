@@ -27,6 +27,10 @@ export type BlockType =
 interface BlockBase {
   id: string;
   text?: string;
+  /** Written with no blank line above where the app would write one (markdown.js). */
+  tightAbove?: true;
+  /** Written with one blank line above where the app would write none: a loose list item. */
+  looseAbove?: true;
   indent?: number;
   /** Source spelling retained until a structural list edit makes it obsolete. */
   indentStr?: string;

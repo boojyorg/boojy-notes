@@ -61,8 +61,7 @@ describe("SourceView", () => {
     const blocks = noteDataRef.current.n1.content.blocks;
     expect(blocks.map((b) => [b.type, b.text])).toEqual([
       ["p", "one"],
-      // A blank line before a heading is an empty row in the block model.
-      ["p", ""],
+      // One blank line between blocks is structure, not a row.
       ["h2", "two"],
     ]);
   });

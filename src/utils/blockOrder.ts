@@ -13,3 +13,35 @@ import type { Block } from "../types/notes";
 export function reorderFloor(blocks: readonly Block[]): number {
   return blocks[0]?.type === "frontmatter" ? 1 : 0;
 }
+
+/**
+ * A reorder keeps the file's gaps where they were. `tightAbove` and
+ * `looseAbove` record how the file spelled the gap above a position (no blank
+ * line, or one between list items); they belong to the place, not the block,
+ * so a commit that only reorders blocks leaves each position's spelling as it
+ * was and a moved block takes the gap it lands in. Anything else is returned
+ * as it is.
+ */
+export function keepGapsInPlace(before: readonly Block[], after: Block[]): Block[] {
+  if (before.length !== after.length || before.length < 2) return after;
+  let reordered = false;
+  const ids = new Set<string>();
+  for (let i = 0; i < before.length; i++) {
+    ids.add(before[i].id);
+    if (before[i].id !== after[i].id) reordered = true;
+  }
+  if (!reordered || !after.every((b) => ids.has(b.id))) return after;
+  let changed = false;
+  const out = after.map((block, i) => {
+    const { tightAbove, looseAbove } = before[i];
+    if (block.tightAbove === tightAbove && block.looseAbove === looseAbove) return block;
+    changed = true;
+    const next: Block = { ...block };
+    delete next.tightAbove;
+    delete next.looseAbove;
+    if (tightAbove) next.tightAbove = true;
+    if (looseAbove) next.looseAbove = true;
+    return next;
+  });
+  return changed ? out : after;
+}

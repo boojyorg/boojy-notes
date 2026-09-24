@@ -78,7 +78,7 @@ describe("fenced code retains its authored boundaries", () => {
   it("closes an unclosed imported fence only when a new block is added after it", () => {
     const [block] = markdownToBlocks("~~~\ncode");
     const source = blocksToMarkdown([block, { type: "p", text: "After." }]);
-    expect(source).toBe("~~~\ncode\n~~~\nAfter.");
+    expect(source).toBe("~~~\ncode\n~~~\n\nAfter.");
     expect(markdownToBlocks(source).map((block) => block.type)).toEqual(["code", "p"]);
   });
 
@@ -769,26 +769,25 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
 
   it("a divider after a paragraph is written with a blank line: `---` straight under text is a heading underline elsewhere", () => {
     const blocks = [p("Before."), spacer(), p("After.")];
-    expect(blocksToMarkdown(blocks)).toBe("Before.\n\n---\nAfter.");
+    expect(blocksToMarkdown(blocks)).toBe("Before.\n\n---\n\nAfter.");
     expect(roundTrip(blocks)).toEqual(blocks);
   });
 
   it("a divider after a list item is written with the same blank line", () => {
     const blocks = [bullet("item"), spacer(), p("After.")];
-    expect(blocksToMarkdown(blocks)).toBe("- item\n\n---\nAfter.");
+    expect(blocksToMarkdown(blocks)).toBe("- item\n\n---\n\nAfter.");
     expect(roundTrip(blocks)).toEqual(blocks);
   });
 
-  it("one blank line before a divider is the separator, not a row; a blank after it is a row", () => {
+  it("one blank line on either side of a divider is structure; a divider written tight keeps its spelling", () => {
     expect(stripIds(markdownToBlocks("Before.\n\n---\nAfter."))).toEqual([
       p("Before."),
       spacer(),
-      p("After."),
+      { ...p("After."), tightAbove: true },
     ]);
     expect(stripIds(markdownToBlocks("Before.\n\n---\n\nAfter."))).toEqual([
       p("Before."),
       spacer(),
-      p(""),
       p("After."),
     ]);
     for (const md of [
@@ -819,7 +818,7 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     // before the marker; a quote under a list item is ordinary Obsidian output.
     expect(stripIds(markdownToBlocks("- item\n  > quote under item\n"))).toEqual([
       bullet("item"),
-      { type: "blockquote", text: "quote under item", indentStr: "  " },
+      { type: "blockquote", text: "quote under item", indentStr: "  ", tightAbove: true },
       p(""),
     ]);
     expect(stripIds(markdownToBlocks("   > three"))).toEqual([
@@ -831,7 +830,7 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     // A change of indent inside a run starts a new block, so the bytes survive.
     expect(stripIds(markdownToBlocks("> a\n  > b"))).toEqual([
       { type: "blockquote", text: "a" },
-      { type: "blockquote", text: "b", indentStr: "  " },
+      { type: "blockquote", text: "b", indentStr: "  ", tightAbove: true },
     ]);
     for (const md of [
       "  > quote",
@@ -848,13 +847,13 @@ describe("paragraph model: blocks are Markdown structure, not source lines", () 
     const md = "> quoted\nlazy line\n\nAfter.";
     expect(stripIds(markdownToBlocks(md))).toEqual([
       { type: "blockquote", text: "quoted" },
-      p("lazy line"),
+      { ...p("lazy line"), tightAbove: true },
       p("After."),
     ]);
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
   });
 
-  it("a blank line before a heading or a list stays an empty row, so those files keep their bytes", () => {
+  it("a heading or a list written with or without a blank line above keeps its bytes", () => {
     for (const md of ["# T\n\nPara", "# T\nPara", "Para\n\n- a", "- a\n\n- b", "- a\n- b"]) {
       expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
     }
@@ -1002,8 +1001,8 @@ describe("the serializer never writes a line its own parser reads as another blo
     const md = "foo\n# bar\n- item\n\\# escaped in the file\n";
     expect(stripIds(markdownToBlocks(md))).toEqual([
       p("foo"),
-      { type: "h1", text: "bar" },
-      bullet("item\n\\# escaped in the file"),
+      { type: "h1", text: "bar", tightAbove: true },
+      { ...bullet("item\n\\# escaped in the file"), tightAbove: true },
       p(""),
     ]);
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
@@ -1073,5 +1072,80 @@ describe("ATX headings H1–H6", () => {
     const saved = blocksToMarkdown([{ type: "p", text: "Body\n###### Still body" }]);
     expect(saved).toBe("Body\n\\###### Still body");
     expect(markdownToBlocks(saved).map((block) => block.type)).toEqual(["p"]);
+  });
+});
+
+describe("one blank line between blocks is structure, whatever the blocks", () => {
+  const p = (text) => ({ type: "p", text });
+  const h = (level, text) => ({ type: `h${level}`, text });
+  const bullet = (text) => ({ type: "bullet", text });
+
+  it("a blank line around a heading draws no row, so Obsidian's spelling and a tight file look alike", () => {
+    expect(stripIds(markdownToBlocks("# T\n\nPara\n\n## Next\n\n- a"))).toEqual([
+      h(1, "T"),
+      p("Para"),
+      h(2, "Next"),
+      bullet("a"),
+    ]);
+    expect(stripIds(markdownToBlocks("# T\nPara\n## Next\n- a"))).toEqual([
+      h(1, "T"),
+      { ...p("Para"), tightAbove: true },
+      { ...h(2, "Next"), tightAbove: true },
+      { ...bullet("a"), tightAbove: true },
+    ]);
+  });
+
+  it("every blank line after the first is a visible row", () => {
+    expect(stripIds(markdownToBlocks("# T\n\n\nPara"))).toEqual([h(1, "T"), p(""), p("Para")]);
+    expect(stripIds(markdownToBlocks("# T\n\n\n\nPara"))).toEqual([
+      h(1, "T"),
+      p(""),
+      p(""),
+      p("Para"),
+    ]);
+  });
+
+  it("the app writes one blank line between blocks and none between list items", () => {
+    expect(blocksToMarkdown([h(1, "T"), p("Para"), bullet("a"), bullet("b"), h(2, "N")])).toBe(
+      "# T\n\nPara\n\n- a\n- b\n\n## N",
+    );
+  });
+
+  it("a list written loose keeps its blank lines, and they draw no row", () => {
+    expect(stripIds(markdownToBlocks("- a\n\n- b"))).toEqual([
+      bullet("a"),
+      { ...bullet("b"), looseAbove: true },
+    ]);
+    expect(stripIds(markdownToBlocks("- a\n\n\n- b"))).toEqual([bullet("a"), p(""), bullet("b")]);
+  });
+
+  it("an empty row between two blocks always has the blank line in front of it", () => {
+    const md = blocksToMarkdown([h(1, "T"), p(""), { ...p("Para"), tightAbove: true }]);
+    expect(md).toBe("# T\n\n\nPara");
+    expect(stripIds(markdownToBlocks(md))).toEqual([h(1, "T"), p(""), p("Para")]);
+  });
+
+  it("a pair that would merge is written apart whatever it was read as", () => {
+    // A block retyped or moved under a paragraph keeps its flag, but the
+    // writer never lets two blocks become one on save.
+    expect(blocksToMarkdown([p("a"), { ...p("b"), tightAbove: true }])).toBe("a\n\nb");
+    expect(
+      blocksToMarkdown([
+        { type: "blockquote", text: "a" },
+        { type: "blockquote", text: "b", tightAbove: true },
+      ]),
+    ).toBe("> a\n\n> b");
+  });
+
+  it("a whole corpus of spellings round-trips byte for byte", () => {
+    for (const md of [
+      "# T\nPara\n\n## N\n- a\n- b\n\nEnd",
+      "---\ntitle: x\n---\n# T\n\nBody",
+      "```js\nx\n```\nAfter",
+      "| a |\n| --- |\n\n# After",
+      "> q\n\n# After\n\n\n\n- x\n\n- y",
+    ]) {
+      expect(blocksToMarkdown(markdownToBlocks(md)), JSON.stringify(md)).toBe(md);
+    }
   });
 });

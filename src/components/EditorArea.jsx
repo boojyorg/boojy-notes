@@ -16,7 +16,8 @@ import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
-import EditableBlock, { EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT } from "./EditableBlock";
+import EditableBlock from "./EditableBlock";
+import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
 import FloatingToolbar from "./FloatingToolbar";
@@ -79,10 +80,10 @@ import { panelTransition } from "../tokens/motion";
  * Tops agreeing and centres agreeing were the two answers before this, on the
  * same day; a baseline is the line the eye actually reads two words as sharing.
  */
-const COLUMN_TOP =
+const columnTop = (rhythm) =>
   COLUMN_HEAD_GAP +
   baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
-  baselineFromTop(EDITOR_FONT_SIZE, EDITOR_LINE_HEIGHT) +
+  baselineFromTop(rhythm.bodySize, rhythm.lineHeight) +
   FIRST_LINE_BELOW_ROW;
 const MOBILE_LABEL_FONT_SIZE = 13.5;
 const MOBILE_LABEL_LINE_HEIGHT = 1.4;
@@ -164,6 +165,7 @@ const EditorArea = memo(
     // Show Markdown / Show Formatted, from the menus, ⌘/ and the lit `</>`.
     switchViewRef,
   }) {
+    const rhythm = useRhythm();
     const {
       editorRef,
       editorScrollRef,
@@ -820,7 +822,7 @@ const EditorArea = memo(
             style={{
               padding: isMobile
                 ? "12px 20px 80px 20px"
-                : `${COLUMN_TOP}px ${colPad} 80px ${colPad}`,
+                : `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
               maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
               marginLeft: isMobile ? 0 : colOffset,
               marginRight: "auto",

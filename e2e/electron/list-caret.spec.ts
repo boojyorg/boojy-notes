@@ -42,12 +42,12 @@ test("ArrowLeft and ArrowRight cross between items through their text", async ()
     await h.page.keyboard.press("ArrowRight");
     expect(await caretAt(h.page)).toBe("bullet:two");
     await h.page.keyboard.type("Y");
-    // From the first item's start, out to the row above: the blank line
-    // before a list is an empty paragraph of its own.
+    // From the first item's start, out to the end of the paragraph above: the
+    // blank line before a list is structure, not a row.
     await h.page.keyboard.press("ArrowUp");
     await h.page.keyboard.press(START_OF_LINE);
     await h.page.keyboard.press("ArrowLeft");
-    expect(await caretAt(h.page)).toBe("p:");
+    expect(await caretAt(h.page)).toBe("p:Intro");
     // And from the paragraph's end, into the item's text rather than its row.
     await h.page.keyboard.press("ArrowRight");
     expect(await caretAt(h.page)).toBe("bullet:oneX");

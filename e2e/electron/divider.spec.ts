@@ -38,7 +38,7 @@ test("typing --- under a paragraph writes a blank line before it; Backspace from
     await h.page.keyboard.type("world");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("world"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nworld\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nworld\n");
 
     // Backspace at the start of the block below: the rule is selected, nothing merges.
     await h.page.keyboard.press(START_OF_LINE);
@@ -63,8 +63,8 @@ test("a conventional file opens with no stray row; arrows stop on the rule; clic
   const h = await launchApp({ "Alpha.md": "Alpha.\n\n---\n\nOmega.\n" });
   try {
     await h.openNote("Alpha");
-    // The blank before the rule is structure; the one after it is a visible row.
-    expect(await blockTypes(h.page)).toEqual(["p", "spacer", "p", "p", "p"]);
+    // Both blank lines around the rule are structure: no row on either side.
+    expect(await blockTypes(h.page)).toEqual(["p", "spacer", "p", "p"]);
 
     // ArrowDown from the paragraph above lands on the rule, selected; again moves on.
     await h.page.locator("[data-block-id]").first().click();
@@ -76,7 +76,7 @@ test("a conventional file opens with no stray row; arrows stop on the rule; clic
     await h.page.keyboard.type("mid");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("mid"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nmid\n\nOmega.\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nmidOmega.\n");
 
     // Click selects; Enter opens a paragraph under the rule with the caret in it.
     await h.page.locator(RULE).click();
@@ -86,7 +86,7 @@ test("a conventional file opens with no stray row; arrows stop on the rule; clic
     await h.page.keyboard.type("new");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("new"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nnew\n\nmid\n\nOmega.\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nnew\n\nmidOmega.\n");
 
     // Delete removes a clicked rule; undo brings it back.
     await h.page.locator(RULE).click();
@@ -95,17 +95,17 @@ test("a conventional file opens with no stray row; arrows stop on the rule; clic
     await expect(h.page.locator(RULE)).toHaveCount(0);
     await waitForFile(h.vault.file("Alpha.md"), (t) => !t.includes("---"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\nnew\n\nmid\n\nOmega.\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\nnew\n\nmidOmega.\n");
     await h.page.keyboard.press(`${MOD}+z`);
     await expect(h.page.locator(RULE)).toHaveCount(1);
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("---"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nnew\n\nmid\n\nOmega.\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nnew\n\nmidOmega.\n");
 
     // It all survives a restart, still with no row invented above the rule.
     await h.restart();
     await h.openNote("Alpha");
-    expect(await blockTypes(h.page)).toEqual(["p", "spacer", "p", "p", "p", "p"]);
+    expect(await blockTypes(h.page)).toEqual(["p", "spacer", "p", "p", "p"]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -136,7 +136,7 @@ test("the dashes wait for a space, Enter opens the rule too, and a long run is t
     await h.page.keyboard.type("under");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("under"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nunder\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nunder\n");
 
     // And Enter on a bare run opens one as well.
     await h.page.keyboard.press("Enter");
@@ -146,7 +146,7 @@ test("the dashes wait for a space, Enter opens the rule too, and a long run is t
     await waitForFile(h.vault.file("Alpha.md"), (t) => (t.match(/^---$/gm) ?? []).length === 2);
     await sleep(SETTLE_MS);
     // The empty paragraph the second rule opened under it is a row of its own.
-    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\nunder\n\n---\n\n");
+    expect(h.vault.read("Alpha.md")).toBe("Alpha.\n\n---\n\nunder\n\n---\n\n");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

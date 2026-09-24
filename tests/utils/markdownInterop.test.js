@@ -240,11 +240,10 @@ describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
     }
   });
 
-  // On record: a `-` line directly under a paragraph is a setext heading
-  // underline to a conventional reader, exactly as `---` is. An empty bullet
-  // left under a paragraph is therefore written as a heading outside; the
-  // same tight-form decision as the divider, on the backlog.
-  it.fails("an empty bullet authored tight under a paragraph means a list outside (KNOWN MISMATCH)", () => {
+  // A `-` line directly under a paragraph is a setext heading underline to a
+  // conventional reader, exactly as `---` is. The app writes a blank line
+  // between blocks, so an empty bullet under a paragraph is a list outside.
+  it("an empty bullet under a paragraph means a list outside", () => {
     expect(authored([paragraph("x"), bullet("")])).toBe('paragraph "x"\nbullet list\n  item\n');
   });
 
@@ -285,16 +284,10 @@ describe("interop — Markdown Boojy Notes authors from its own blocks", () => {
     );
   });
 
-  // ── On record: the one place meaning and bytes still disagree ─────────────
-  // A paragraph block straight after a quote block is written on the next
-  // line, which a conventional reader folds into the quote. Writing a blank
-  // line there would be right for authored notes, but a lazy line read from a
-  // file is stored as its own paragraph (a quote's lines are written with a
-  // `> ` prefix, so it cannot join the block without changing the bytes on
-  // save), and that paragraph must be written back without a blank line.
-  // Resolving this needs a decision on how a quote remembers a lazy line;
-  // until then the gap is narrow and explicit.
-  it.fails("a paragraph block after a quote is a paragraph, not part of the quote (KNOWN MISMATCH)", () => {
+  // A paragraph block after a quote block is written with a blank line, so no
+  // reader folds it into the quote. A lazy line read from a file is its own
+  // paragraph marked `tightAbove`, and is written back as the file had it.
+  it("a paragraph block after a quote is a paragraph, not part of the quote", () => {
     expect(
       authored([{ id: "q", type: "blockquote", text: "quoted" }, paragraph("After the quote.")]),
     ).toBe('blockquote\n  paragraph "quoted"\nparagraph "After the quote."\n');

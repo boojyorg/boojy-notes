@@ -108,7 +108,6 @@ app's, made through state.**
   is unwrapped before anything is read back. Not offered in a cell or callout yet.
   `link-picker.spec.ts`.
 - The destination chip (`LinkTooltip`) shows after a rest, on hover or a key-placed caret only.
-  Copy on a note link copies its name, never the raw target.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
   URLs and link addresses. The pill appears on the first letter (painted by hand). A space or
@@ -172,7 +171,6 @@ app's, made through state.**
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
   via `wholeRef`, not `elRef` (whose repaint would paint over the wrapper).
-- Deliberately absent: a "+" beside the grip, a click menu, a mobile handle.
 
 ## Menus
 
@@ -188,7 +186,9 @@ app's, made through state.**
 
 ## Headings
 
-H1–H6 are native heading elements on one editing path; scale in `HEADING_STYLES`. New headings
+H1–H6 are native heading elements on one editing path; type and margins from `headingStyle`
+(`tokens/rhythm.ts`: much more space above than below). **Every editor spacing value lives in
+`DEFAULT_RHYTHM`**, read through `useRhythm`; `?tweak` / `pnpm dev:tweak` drags it live. New headings
 are ATX; imported spacing and closers live in `headingSource`. Setext is deferred. An empty
 heading shows `Heading N` via a CSS `data-placeholder` pseudo-element (never in the file),
 focused or not. `heading-placeholder.spec.ts`.
@@ -223,8 +223,10 @@ Blocks are Markdown structure, not lines (`structureParagraphs`).
 - **A paragraph holds every adjacent plain line**, joined by `\n`. Enter makes a paragraph;
   Shift+Enter a soft break (in a heading, Enter). **Enter in a quote is a soft break**; on an
   empty last line it leaves the quote (adjacent quote blocks are one quote on disk).
-- **One exactly-empty blank line between paragraph/list and paragraph/divider is structure**
-  (`takesSeparator`); every other blank line is an empty row.
+- **One blank line between any two blocks is structure; each further blank is an empty row.**
+  Spacing comes from the block's kind (`tokens/rhythm.ts`), never from blank lines. The app
+  writes one blank between blocks, none between list items; a file's other spelling is kept as
+  `tightAbove` / `looseAbove`, and `mustSeparate` pairs are always written apart.
 - **On screen a newline is a `<br>`**, plus a trailing `<br>` for an empty last line that both
   walkers ignore. Never clamp a caret to `textContent.length`.
 - **A soft-break line that would open a block is written escaped** (`readsBackAsText`), asking

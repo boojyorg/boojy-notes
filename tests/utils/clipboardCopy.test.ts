@@ -26,7 +26,7 @@ describe("blockCopyPayload: a whole-block copy is Markdown and block HTML", () =
       li("Psychology module"),
     ]);
     expect(text).toBe(
-      "# PSYC327\n## Assessments\n30% Coursework – Blog\n\n70% Online Exam\n- Psychology module",
+      "# PSYC327\n\n## Assessments\n\n30% Coursework – Blog\n\n70% Online Exam\n\n- Psychology module",
     );
     expect(html).toBe(
       "<h1>PSYC327</h1><h2>Assessments</h2><p>30% Coursework – Blog</p><p>70% Online Exam</p><ul><li>Psychology module</li></ul>",
@@ -99,18 +99,24 @@ describe("blockCopyPayload: a whole-block copy is Markdown and block HTML", () =
       [
         "> q1",
         "> q2",
+        "",
         "```js",
         "let a = 1 < 2;",
         "```",
+        "",
         "```",
         "plain",
         "```",
+        "",
         "---",
+        "",
         "| H1 | H2 |",
         "| --- | --- |",
         "| a | **b** |",
+        "",
         "> [!warning] Careful",
         "> body",
+        "",
         "> [!note]",
       ].join("\n"),
     );
@@ -134,7 +140,7 @@ describe("blockCopyPayload: a whole-block copy is Markdown and block HTML", () =
       { type: "embed", target: "Other", text: "" },
     ]);
     expect(text).toBe(
-      "---\ntitle: x\n---\n![[pic.png]]\n![alt](https://x.com/a.png)\n![[doc.pdf]]\n![[Other]]",
+      "---\ntitle: x\n---\n\n![[pic.png]]\n\n![alt](https://x.com/a.png)\n\n![[doc.pdf]]\n\n![[Other]]",
     );
     expect(html).toBe(
       "<pre>---\ntitle: x\n---</pre><p>![[pic.png]]</p><p>![alt](https://x.com/a.png)</p><p>![[doc.pdf]]</p><p>![[Other]]</p>",
