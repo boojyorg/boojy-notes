@@ -139,6 +139,11 @@ change needs; the incidents behind them are in git.
 - pnpm 10 blocks native build scripts by default. `electron`, `electron-winstaller` and
   `esbuild` must stay in `pnpm.onlyBuiltDependencies` in `package.json`, or their binaries
   never build (symptom: an "Ignored build scripts" warning after install).
+- **The preload is built as CommonJS, outside library mode** (`vite.config.js`, 2026-09-24). A
+  sandboxed preload runs as a classic script; vite-plugin-electron builds every entry as ESM in
+  a `"type": "module"` package, and under Vite 8 that preload failed to load, so the window had
+  no `electronAPI`, the vault never read and the sidebar stayed empty with no error on screen.
+  The main process stays ESM.
 - **If `pnpm dev` dies with "Electron failed to install correctly"**, a lockfile-churning
   install relinked `node_modules/electron` without re-running its download script. Fix:
   `pnpm rebuild electron` (about 30 seconds).

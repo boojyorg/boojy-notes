@@ -31,7 +31,7 @@ file and a rules file disagree, the rules file wins; fix the drift here.
 
 ## Stack
 
-React 19 + Vite 6 · Electron 44 · Vitest + Testing Library (unit), Playwright (E2E) · Biome 2
+React 19 + Vite 8 · Electron 44 · Vitest + Testing Library (unit), Playwright (E2E) · Biome 2
 for lint and format, run by Husky on commit · pnpm with `node-linker=hoisted` · TypeScript on
 new files.
 
