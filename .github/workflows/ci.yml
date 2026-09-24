@@ -92,7 +92,7 @@ jobs:
         run: pnpm test:e2e
 
   # The Electron suite is split across six runners (Playwright's --shard,
-  # by file), two workers each: it is most of CI's wall clock, and it waits on
+  # by test), two workers each: it is most of CI's wall clock, and it waits on
   # the app's own debounces rather than the CPU, so more machines is the lever
   # and a faster one is not. Each shard builds for itself (~5 s).
   electron-e2e:

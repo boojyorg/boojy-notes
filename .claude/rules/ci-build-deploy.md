@@ -78,18 +78,20 @@ change needs; the incidents behind them are in git.
   step as the outer cap. Size any timeout to the work, not to patience: one short enough to
   feel safe will kill a download that is merely slow and turn a passing step into a guaranteed
   failure.
-- **`ci.yml` is three jobs side by side plus a summary** (2026-09-06): `checks` (audit, lint,
-  format, typecheck, unit tests with coverage, the web build), `web-e2e` and `electron-e2e`,
-  each installing for itself from the pnpm cache, so the wall clock follows the slowest job
-  rather than their sum. The `ci` job at the end only reports whether all three succeeded; it
-  is the one status branch protection requires, so keep that job name. Measured 2026-09-06 over
-  five runs of one commit: wall clock 197 s (serial, the same steps took 256 s; before the
-  two-worker change, 422 s), with the Electron job the critical path at ~190 s, checks ~74 s,
-  web E2E ~29 s. Speeding CI up further means speeding up the Electron job alone. By 2026-09-12
-  the suite had doubled (62 → 126 tests in four days) and the wall clock was 11.5 min, most of
-  it the hidden-window stall described under the xvfb bullet below; with the window shown the Electron step is ~4.5 min for
-  138 tests, which is its floor at two workers, so the next lever is sharding the job, not the
-  runner.
+- **`ci.yml` is side-by-side jobs plus a summary** (2026-09-24): `checks` (audit, lint, format,
+  typecheck, unit tests with coverage, the web build), `web-e2e`, and `electron-e2e` as **six
+  shards** (`--shard=N/6`, two workers each), each installing for itself from the pnpm cache, so
+  the wall clock follows the slowest job rather than their sum. The `ci` job at the end only
+  reports whether every job succeeded; it is the one status branch protection requires, so keep
+  that job name. The Electron suite waits on the app's debounces, not the CPU, so machines are
+  the lever and a faster runner is not (Blacksmith was benchmarked twice on 2026-09-06: 4–16%,
+  with provisioning stalls; the repo is public, so GitHub-hosted runners cost nothing however
+  many shards). **The suite is `fullyParallel`**, so a shard is a share of tests, not of files:
+  by file one shard ran a minute behind another. Playwright balances shards by test count, not
+  time, so expect ±30 s between them. Measured 2026-09-24: 445 s wall on one Electron job; 170 s
+  on four shards by file; 160 s on four by test; **~125 s on six**, where the shards meet the
+  checks job (~105 s) and more shards stop paying. A new push to a PR cancels that PR's run in
+  flight (`concurrency`); master runs each take a group of their own and are never cancelled.
 - **The gates are `pnpm test:coverage`, the web E2E suite and the Electron suite, not
   `pnpm test`.** Coverage is measured against every file under `src/` and `electron/`
   (`coverage.include`, 2026-09-07), whether or not a test imports it; before that, Vitest 4
@@ -97,7 +99,7 @@ change needs; the incidents behind them are in git.
   the denominator. The thresholds in `vitest.config.js` are a floor just below those honest
   actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
   also gates every run; it is the live security net.
-- **The real-Electron suite runs in its own job**, with no Playwright browser
+- **The real-Electron suite runs in its own jobs**, with no Playwright browser
   download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
   `dist/` and `dist-electron/` itself; the web build elsewhere in the workflow uses
   `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
