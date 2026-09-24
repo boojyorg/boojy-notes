@@ -119,12 +119,12 @@ describe("blocksToMarkdown", () => {
     expect(blocksToMarkdown([{ type: "h1" }])).toBe("# ");
   });
 
-  it("joins multiple blocks with newlines", () => {
+  it("joins blocks with one blank line between them", () => {
     const result = blocksToMarkdown([
       { type: "h1", text: "Title" },
       { type: "p", text: "Body" },
     ]);
-    expect(result).toBe("# Title\nBody");
+    expect(result).toBe("# Title\n\nBody");
   });
 });
 

@@ -29,7 +29,7 @@ import { blocksToMarkdown } from "./markdown";
  * written `-`, an authored `03.` is `3.`, imported list indentation and
  * heading spacing are canonical (the copied entries carry no `indentStr`,
  * `marker`, `numRaw` or `headingSource`), and the blank line the writer
- * puts between two paragraphs is written whether or not the file had it.
+ * puts between two blocks is written whether or not the file had it.
  * Special blocks (code, table, callout) are copied whole and keep their
  * source spelling.
  */

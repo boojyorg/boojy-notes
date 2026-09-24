@@ -54,14 +54,16 @@ function quoteIndent(raw) {
 
 // ─── Paragraph structure ───
 // Blocks represent Markdown structure, not source lines. A paragraph block
-// holds every adjacent plain line of the source joined by "\n" (soft breaks);
-// a single blank line between two paragraphs, or between a list item and a
-// paragraph, is the separator conventional Markdown needs and is not a block;
-// every further blank line is an empty paragraph block, a visible empty row.
-// A plain line directly under a list item is a lazy continuation and belongs
-// to the item, as it does to every Markdown reader. Nothing is recorded that
-// the source does not say: the separator is implied by structure, so an
-// untouched file serialises to the same bytes it was read from.
+// holds every adjacent plain line of the source joined by "\n" (soft breaks).
+// One blank line between any two blocks is structure, not a block: the space
+// between blocks is drawn from their kinds, so a file that puts a blank line
+// around every heading (Obsidian's habit) and one that puts none look alike.
+// Every further blank line is an empty paragraph block, a visible empty row.
+// The app writes one blank line between blocks, and none between two list
+// items; a pair the file spelled the other way carries `tightAbove` or
+// `looseAbove` on its lower block, so an untouched file serialises to the
+// bytes it was read from. A plain line directly under a list item is a lazy
+// continuation and belongs to the item, as it does to every Markdown reader.
 
 const isListItem = (b) => b.type === "bullet" || b.type === "numbered" || b.type === "checkbox";
 /** An item with no text: `- `, `1. `, `- [ ] `, or the bare marker alone. */
@@ -87,12 +89,29 @@ const absorbsFollowingLine = (b) => isTextParagraph(b) || (isListItem(b) && !isE
  * underline: `hello` / `---` is a heading called "hello" and no divider at all.
  */
 const takesSeparator = (b) => isTextParagraph(b) || b.type === "spacer";
+const isQuoteLike = (b) => b.type === "blockquote" || b.type === "callout";
+
+/**
+ * Two blocks that read back as something else when written with no blank line
+ * between them: a paragraph or divider under a paragraph or list item (folded
+ * in, or a setext underline), two quotes (one quote), a paragraph under a
+ * table (a row to GFM readers). Quotes at different indents stay apart. The separator is written here whatever the
+ * pair was read as, so a moved or retyped block can never merge on save.
+ */
+const mustSeparate = (a, b) =>
+  (absorbsFollowingLine(a) && takesSeparator(b)) ||
+  (isQuoteLike(a) && b.type === "blockquote" && (a.indentStr || "") === (b.indentStr || "")) ||
+  (a.type === "table" && isTextParagraph(b));
+
+/** The app's own spelling: one blank line between blocks, none between list items. */
+const separatesByDefault = (a, b) => !(isListItem(a) && isListItem(b));
 
 /**
  * From one block per source line to one block per structure: merge adjacent
  * plain lines into a paragraph, attach a lazy continuation to its list item,
- * and drop the single separator blank between an absorbing block and the
- * paragraph or divider after it. Extra blanks stay, as empty paragraph blocks.
+ * drop the one blank line between two blocks, and record a pair spelled
+ * differently from the app's default. Extra blanks stay, as empty paragraph
+ * blocks.
  */
 function structureParagraphs(lineBlocks) {
   const merged = [];
@@ -105,10 +124,14 @@ function structureParagraphs(lineBlocks) {
     merged.push(b);
   }
   const out = [];
+  // Set when the blank line above the next block was taken as structure.
+  let separated = false;
   for (let i = 0; i < merged.length; i++) {
     const b = merged[i];
     const prev = out[out.length - 1];
-    if (isBlankParagraph(b) && prev && absorbsFollowingLine(prev)) {
+    const afterSeparator = separated;
+    separated = false;
+    if (isBlankParagraph(b) && prev && !isBlankParagraph(prev)) {
       let j = i;
       while (j < merged.length && isBlankParagraph(merged[j])) j++;
       // The first blank of the run is the separator; keep the rest. Only a run
@@ -117,15 +140,37 @@ function structureParagraphs(lineBlocks) {
       // kept literally, every line a row, and the serializer writes no
       // separator in front of it. The two rules mirror each other on the run.
       const literalRun = merged.slice(i, j).some((r) => (r.text || "") !== "");
-      if (j < merged.length && takesSeparator(merged[j]) && !literalRun) {
+      if (j < merged.length && !literalRun) {
+        const next = merged[j];
+        if (!separatesByDefault(prev, next) && j === i + 1) next.looseAbove = true;
         for (let k = i + 1; k < j; k++) out.push(merged[k]);
         i = j - 1;
+        separated = true;
         continue;
       }
+    } else if (
+      !afterSeparator &&
+      prev &&
+      !isBlankParagraph(prev) &&
+      !isBlankParagraph(b) &&
+      separatesByDefault(prev, b)
+    ) {
+      b.tightAbove = true;
     }
     out.push(b);
   }
   return out;
+}
+
+/**
+ * Whether the writer puts a blank line between `a` and `b`, the next
+ * non-blank block, with `rows` empty rows between them. Rows always take
+ * one in front of them, or the first would read back as the separator.
+ */
+function writesSeparator(a, b, rows) {
+  if (mustSeparate(a, b) || rows > 0) return true;
+  if (b.tightAbove) return false;
+  return separatesByDefault(a, b) || !!b.looseAbove;
 }
 
 /**
@@ -216,18 +261,17 @@ export function blocksToMarkdown(blocks) {
   const listPositions = listLayout(blocks);
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
-    if (takesSeparator(block)) {
-      // A paragraph or divider after a paragraph or a list item needs one blank
-      // line, or a conventional reader folds the paragraph into the block above
-      // and reads the divider as a heading underline. The blank goes right
-      // after that block; empty rows between them follow it.
+    if (!isBlankParagraph(block)) {
+      // The blank line between this block and the one above goes right after
+      // that block; empty rows between them follow it. A run holding a
+      // whitespace-only line is the file's own bytes and takes none.
       let j = i - 1;
       let literalRun = false;
       while (j >= 0 && isBlankParagraph(blocks[j])) {
         if ((blocks[j].text || "") !== "") literalRun = true;
         j--;
       }
-      if (j >= 0 && absorbsFollowingLine(blocks[j]) && !literalRun) {
+      if (j >= 0 && !literalRun && writesSeparator(blocks[j], block, i - 1 - j)) {
         lines.splice(endOfBlock[j], 0, "");
       }
     }
