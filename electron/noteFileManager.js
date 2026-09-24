@@ -1,4 +1,4 @@
-import { app, ipcMain, dialog, shell, clipboard, nativeImage } from "electron";
+import { app, ipcMain, dialog, shell, clipboard, ClipboardItem, nativeImage } from "electron";
 import { trace } from "./trace.js";
 import path from "node:path";
 import fs from "node:fs";
@@ -141,6 +141,9 @@ function resolveWritePath(targetPath, existingPath) {
 let _idIndex = {}; // noteId → relative path
 let _savedIndexJson = null; // serialized state already on disk — skip no-op saves
 let _indexDirOverride = null; // tests inject a temp dir (no `app` in vitest)
+// Where the last file or image was picked from. Since Electron 43 a dialog with
+// no path opens in Downloads every time rather than where the user last was.
+let _lastPickDir;
 
 function setIndexDir(dir) {
   _indexDirOverride = dir;
@@ -564,9 +567,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("pick-file", async () => {
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openFile"],
+      defaultPath: _lastPickDir,
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const filePath = result.filePaths[0];
+    _lastPickDir = path.dirname(filePath);
     const size = fs.statSync(filePath).size;
     const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
     if (size > MAX_FILE_SIZE) {
@@ -596,14 +601,18 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return null;
   });
 
-  ipcMain.handle("copy-image-to-clipboard", (_event, filename) => {
+  ipcMain.handle("copy-image-to-clipboard", async (_event, filename) => {
     const notesDir = getNotesDir();
     if (typeof filename !== "string") return false;
     const absPath = insideVault(notesDir, path.join("attachments", filename));
     if (!absPath || !fs.existsSync(absPath)) return false;
     try {
-      const img = nativeImage.createFromPath(absPath);
-      clipboard.writeImage(img);
+      // Electron 44's clipboard is the W3C one: `writeImage` went, and an
+      // image is written as a PNG blob, whatever the file's own format.
+      const png = nativeImage.createFromPath(absPath).toPNG();
+      await clipboard.write([
+        new ClipboardItem({ "image/png": new Blob([png], { type: "image/png" }) }),
+      ]);
       return true;
     } catch {
       return false;
@@ -622,9 +631,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       filters: [
         { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"] },
       ],
+      defaultPath: _lastPickDir,
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const filePath = result.filePaths[0];
+    _lastPickDir = path.dirname(filePath);
     const dataBase64 = fs.readFileSync(filePath).toString("base64");
     return { fileName: path.basename(filePath), dataBase64 };
   });

@@ -139,6 +139,9 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openDirectory", "createDirectory"],
       title: "Choose Notes Folder",
+      // Since Electron 43 a dialog with no path opens in Downloads; open
+      // beside the folder in use, so it is there to see and keep.
+      defaultPath: path.dirname(getNotesDir()),
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const dir = result.filePaths[0];
