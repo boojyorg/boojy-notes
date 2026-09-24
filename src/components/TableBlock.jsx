@@ -426,6 +426,7 @@ export default memo(function TableBlock({
                 {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
                   (cell, colIdx) => (
                     <TableCell
+                      // biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column; it has no identity of its own
                       key={colIdx}
                       tag="th"
                       rowIdx={0}
@@ -460,6 +461,7 @@ export default memo(function TableBlock({
                     {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
                       (cell, colIdx) => (
                         <TableCell
+                          // biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column; it has no identity of its own
                           key={colIdx}
                           tag="td"
                           rowIdx={rowIdx}
@@ -487,9 +489,11 @@ export default memo(function TableBlock({
               {/* Preview rows during drag-to-create */}
               {previewCount.rows > 0 &&
                 Array.from({ length: previewCount.rows }, (_, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: preview rows are placeholders counted, never reordered
                   <tr key={`preview-${i}`} className="table-preview-row">
                     {Array.from({ length: colCount }, (_, ci) => (
                       <td
+                        // biome-ignore lint/suspicious/noArrayIndexKey: a preview cell is its column
                         key={ci}
                         style={{
                           textAlign: alignments[ci] || "left",

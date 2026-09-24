@@ -40,11 +40,6 @@ function landingBefore(blocks, index) {
   return landing(blocks, index, -1, takesText);
 }
 
-/** The ArrowDown counterpart of landingBefore. -1 at the bottom. */
-function landingAfter(blocks, index) {
-  return landing(blocks, index, 1, takesText);
-}
-
 /** Where ArrowUp lands: a code block or callout above is entered, not skipped. */
 function caretLandingBefore(blocks, index) {
   return landing(blocks, index, -1, takesCaret);

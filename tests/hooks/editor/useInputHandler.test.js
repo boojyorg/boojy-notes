@@ -317,7 +317,10 @@ describe("useInputHandler", () => {
       mockEl.textContent = "say **bold**";
       typedFormatHit.mockReturnValueOnce(hit());
       const order = [];
-      paintTypedFormat.mockImplementationOnce(() => (order.push("paint"), true));
+      paintTypedFormat.mockImplementationOnce(() => {
+        order.push("paint");
+        return true;
+      });
       deps.updateBlockText.mockImplementationOnce(() => order.push("commit"));
       const { result } = renderHook(() => useInputHandler(deps));
       result.current.handleBlockInput("note-1", 0, native);

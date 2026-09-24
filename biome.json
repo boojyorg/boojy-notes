@@ -47,12 +47,12 @@
       "suspicious": {
         "noControlCharactersInRegex": "off",
         "noEmptyBlockStatements": "off",
-        "noAssignInExpressions": "warn",
+        "noAssignInExpressions": "off",
         "noArrayIndexKey": "warn",
         "useIterableCallbackReturn": "warn"
       },
       "style": {
-        "noNonNullAssertion": "warn"
+        "noNonNullAssertion": "off"
       }
     }
   }

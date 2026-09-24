@@ -367,7 +367,7 @@ export function useSidebarDrag({
 
   const cleanupSidebarDrag = () => {
     const sd = sidebarDrag.current;
-    if (sd.cloneEl && sd.cloneEl.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
+    if (sd.cloneEl?.parentNode) sd.cloneEl.parentNode.removeChild(sd.cloneEl);
     if (sd.scrollRAF) {
       cancelAnimationFrame(sd.scrollRAF);
       sd.scrollRAF = null;

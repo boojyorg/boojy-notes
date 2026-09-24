@@ -44,7 +44,7 @@ const webAPI = {
     const mime = MIME_MAP[ext] || "image/png";
     return `data:${mime};base64,${dataBase64}`;
   },
-  saveAttachment: ({ fileName, dataBase64 }) => {
+  saveAttachment: ({ dataBase64 }) => {
     return {
       filename: `data:application/octet-stream;base64,${dataBase64}`,
       size: Math.round((dataBase64.length * 3) / 4),

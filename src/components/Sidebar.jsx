@@ -432,7 +432,6 @@ const Sidebar = memo(function Sidebar({
     searchInputRef,
     sidebarScrollRef,
     expanded,
-    setExpanded,
     filteredTree,
     fNotes,
     folderTree,

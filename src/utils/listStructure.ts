@@ -182,9 +182,9 @@ export function reconcileListEdit<T extends ListSource>(before: T[], after: T[])
       parentId(before, oldPositions, oldGroup) === parentId(after, positions, start) &&
       (before[oldGroup].indent || 0) === (after[start].indent || 0);
     const first = sameParent ? oldPositions[oldGroup]!.number! : 1;
-    members.forEach((i, offset) =>
-      patch(i, { num: first + offset, numRaw: undefined } as Partial<T>),
-    );
+    members.forEach((i, offset) => {
+      patch(i, { num: first + offset, numRaw: undefined } as Partial<T>);
+    });
   }
   // A moved item cannot retain its old prefix. Descendants follow a changed
   // parent's prefix/marker width too, while unrelated imported indentation stays.

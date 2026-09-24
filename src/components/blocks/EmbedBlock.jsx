@@ -40,7 +40,7 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
       >
         <span>&quot;{block.target}&quot; not found</span>
         <button
-          onClick={() => onNavigate && onNavigate(block.target, true)}
+          onClick={() => onNavigate?.(block.target, true)}
           style={{
             background: "none",
             border: `1px solid ${TEXT.muted}`,
@@ -89,7 +89,7 @@ function EmbedBlock({ block, noteData, accentColor, onNavigate, depth = 0 }) {
         padding: "12px 16px",
         cursor: "pointer",
       }}
-      onClick={() => onNavigate && onNavigate(targetNote.id)}
+      onClick={() => onNavigate?.(targetNote.id)}
     >
       <div
         style={{

@@ -217,10 +217,7 @@ describe("useNoteCrud", () => {
 
   describe("createFolder", () => {
     it("adds to customFolders and triggers renaming", () => {
-      const { result, getFolders, setRenamingFolder, setExpanded } = setup(
-        {},
-        { customFolders: [] },
-      );
+      const { result, getFolders, setExpanded } = setup({}, { customFolders: [] });
 
       act(() => {
         result.current.createFolder();
