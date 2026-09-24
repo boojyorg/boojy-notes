@@ -16,6 +16,19 @@ export default defineConfig({
               onstart(args) {
                 args.reload();
               },
+              // A sandboxed preload runs as a classic script, never a module.
+              // Vite 8 (Rolldown) emits ESM for this `"type": "module"`
+              // package unless told otherwise, and an ESM preload fails to
+              // load, which leaves the window with no `electronAPI` at all.
+              vite: {
+                build: {
+                  lib: false,
+                  rolldownOptions: {
+                    input: "electron/preload.js",
+                    output: { format: "cjs", entryFileNames: "preload.js" },
+                  },
+                },
+              },
             },
           ]),
           renderer(),
