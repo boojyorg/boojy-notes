@@ -209,25 +209,13 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   its own; an IME composition begun over a selection spanning blocks cannot be intercepted
   (`insertCompositionText` is not cancelable). None loses data; each is a decision to make
   once it has been felt.
-- [ ] **Toasts and the empty state are short of ink** (review §5): the info toast is `#fff` on
-  the accent, 1.76:1 on Dark; "Failed to save", the one data-loss message, is under 2.7:1 on
-  both themes; the empty-state line at half muted is 1.95:1; the focus ring at 25% accent is
-  under 2:1 where a component needs 3:1. `ACCENT.onAccent` on the info toast, dark ink on the
-  warning, full `TEXT.muted` for the empty state, a 2px ring at 60% would still be quiet.
-- [ ] **Shift-click never ranges after a plain click**; the anchor is set only by Cmd-click
-  (review §4.6). Not re-verified.
-- [ ] **Rename, Duplicate and Delete on an empty draft misbehave** (review §4.5). Not re-verified.
-- [ ] **Shift+Arrow at a block edge collapses the selection** (review §1.13; its other half,
-  ArrowUp from the first block being dead, was fixed 2026-09-24).
-- [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
-- [ ] **Block drag on code and callout blocks**: the grip shows and drags nothing, and the
-  marker draws through a code block, which the editor rule forbids (review §3.10). The table joined
-  the draggable set on 2026-09-10, the image and the file attachment on 2026-09-16 (their
-  wrappers now register in the block ref map); code and callout wait on the same judgement as
-  their whole-block selection, because the paste and caret paths take a registered element for
-  one with text to read.
-- [ ] **Image → Replace may keep showing the old image**: the editor's render comparator has no
-  `src` or `width` (review §3.8 residue).
+- [ ] **The empty state and the focus ring are short of ink** (review §5): the empty-state line
+  at half muted is 1.95:1; the focus ring at 25% accent is under 2:1 where a component needs
+  3:1. Full `TEXT.muted` for the empty state and a 2px ring at 60% would still be quiet. (The
+  toasts in the same finding were redrawn on 2026-09-19.) Not re-verified.
+- [ ] **⌘N then ··· → Rename at once leaves focus on the ··· button**, so the name typed goes
+  nowhere; with the caret in the body first, Rename works on a draft as on a note (checked
+  2026-09-24). Duplicate and Delete on an empty draft do nothing visible and write nothing.
 - **Taste calls, judge live:** `\# bar` shown after a reopen (the soft-break escape of
   2026-09-09); opening `/` after a space mid-line as well as at the start of an empty block
   (Craft's compromise; review §7.6). Multi-line paste into a code block should be native since

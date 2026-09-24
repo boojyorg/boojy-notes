@@ -392,8 +392,11 @@ app's, made through state.**
   caret at its end; frontmatter above counts as nothing), and **ArrowDown from the name goes
   back down** as Enter does (2026-09-24). The name moved into the chrome row on 2026-09-15 and
   the old lookup for an h1 above the editor left the key dead. `title-arrows.spec.ts`.
-- `key-ownership.spec.ts`. Not changed: Shift+Arrow at a block's edges,
-  the link popover's position on a collapsed caret (backlog).
+- **Shift+ArrowUp/Down are the browser's** (2026-09-24): the block navigation that moves a
+  caret between blocks returns on Shift, and Chromium extends the selection across block roots
+  itself; before, Shift+Down on a block's last line collapsed the selection into the next
+  block. `shift-arrow-selection.spec.ts`.
+- `key-ownership.spec.ts`.
 
 ## One owner for note state
 
