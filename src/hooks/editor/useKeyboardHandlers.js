@@ -464,6 +464,13 @@ export function useKeyboardHandlers({
       }
     }
 
+    // Shift+ArrowUp/Down extend the selection, and that is the browser's: the
+    // editor is one contentEditable, so Chromium carries a selection across
+    // block roots itself. The block navigation below moves a caret, and run
+    // for a Shift press it collapsed the selection into the next block
+    // (review §1.13, fixed 2026-09-24).
+    if (e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
+
     // Arrow up
     if (e.key === "ArrowUp") {
       const sel = window.getSelection();
