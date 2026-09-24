@@ -16,13 +16,20 @@ const LS_KEY = "boojy-dev-rhythm";
  * Named sets to flip between while judging. v1 is the first cut from the
  * canvas (rhythm.ts's values); v2 tightens it after living with v1: less
  * space around headings, and the paragraph gap back to the 8 judged on
- * 2026-09-17. A preset is a starting point: any slider still moves from it.
+ * 2026-09-17; v3 sits between them. A preset is a starting point: any slider
+ * still moves from it.
  */
 const PRESETS = [
   { name: "v1", values: { ...DEFAULT_RHYTHM } },
   {
     name: "v2",
     values: { ...DEFAULT_RHYTHM, headingAbove: 24, headingBelow: 6, paragraphGap: 8 },
+  },
+  // Between the two, where each was judged wrong: v1's space above a heading
+  // was too much, v2's space below it too little (the heading met its text).
+  {
+    name: "v3",
+    values: { ...DEFAULT_RHYTHM, headingAbove: 28, headingBelow: 8, paragraphGap: 9 },
   },
 ];
 const matches = (a, b) => Object.keys(b).every((k) => a[k] === b[k]);
