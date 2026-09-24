@@ -698,6 +698,7 @@ export function markdownToBlocks(md) {
       // Obsidian-style width suffix in the alt: ![alt|350](url)
       let alt = m[1];
       let width = 100;
+      /** @type {number | null} */
       let mdWidthPx = null;
       const widthMatch = alt.match(/^(.*)\|(\d+)$/);
       if (widthMatch) {
