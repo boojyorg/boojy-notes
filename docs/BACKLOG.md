@@ -175,8 +175,6 @@ none blocks the release. The shared question comes first because three candidate
   proving the conversion as a script over fixtures before any UI is one way to do that.
   Distinct from the File menu
   Import removed on 2026-09-05: a one-time journey with a report, not a converter.
-- **Context menu on plain text** and **rich paste** are listed under Known issues; promoting
-  either is a candidate call, not a fix.
 - **A muted "N other files" hint** on folders holding files the app cannot open
   (Show in Finder in Settings → Storage answers it for now).
 - **More New Note entry points** (a global shortcut; a share action on mobile later) run the
@@ -195,9 +193,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   creates a real note: the one inconsistency in the New Note workflow, to be resolved with the
   focus and empty-file questions above. Prior art: at v0.2.0 an empty note reached disk only
   when something was typed.
-- [ ] **A multi-line rich paste is flattened** — a single line pasted from a browser or another
-  app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
-  `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).
 - [ ] **Find counts a code block's matches twice** (the textarea and its highlight overlay,
   `FindBar.jsx`), and Replace leaves a match inside a table cell, a callout or a code block
   alone, since those blocks own their fields; replacing inside them is a decision to make once

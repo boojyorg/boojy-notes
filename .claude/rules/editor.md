@@ -743,6 +743,14 @@ paths; single lines paste inline.
   by hand, not automated.
 - **A paste that keeps a block's id and type repaints that element directly**
   (`repaintKeptBlock`); a state-only write never reaches the page.
+- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`, 2026-09-24): the
+  clipboard's HTML becomes Markdown blocks (bold, italics, links with a web or mail address,
+  headings, lists and tasks, quotes, code, tables; Google Docs' whole-document `<b>` unwrapped
+  and its bold and italic spans read as such) and goes through the same `markdownToBlocks` and
+  `buildPastedBlocks` as plain text, so the block-type rules above still hold. **HTML with no
+  semantic formatting is ignored** and the plain text pastes as before: an editor's clipboard is
+  a `<div>` per line with colour spans, and read as blocks a pasted fence came apart line by
+  line. `rich-paste.spec.ts`, `richPaste.test.ts`.
 - **A rich single-line paste is the app's own insertion**: the HTML is sanitised to inline nodes
   (`sanitizeInlineFragment`, never a wrapper element) and inserted with `insertNode`, then the
   block is read back as after a keystroke; `insertHTML` split paragraphs and wrote U+00A0.
