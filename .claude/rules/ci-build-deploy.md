@@ -97,7 +97,7 @@ change needs; the incidents behind them are in git.
   the denominator. The thresholds in `vitest.config.js` are a floor just below those honest
   actuals; ratchet up, never lower to pass, and never exclude a source directory to lift them. Run `pnpm test:coverage` before claiming green. `pnpm audit --audit-level critical`
   also gates every run; it is the live security net.
-- **The real-Electron suite runs under `xvfb-run` in its own job**, with no Playwright browser
+- **The real-Electron suite runs in its own job**, with no Playwright browser
   download: it drives the Electron binary from `node_modules`. `pnpm test:electron` builds
   `dist/` and `dist-electron/` itself; the web build elsewhere in the workflow uses
   `ELECTRON_DISABLE=1` and produces no main process. **It runs on two Playwright workers**
@@ -120,6 +120,15 @@ change needs; the incidents behind them are in git.
   `waitForFunction`; both are gone, don't bring them back, show the window. The `headed`
   project and `pnpm test:electron:headed` were removed on 2026-09-07 because the bucket never
   held a spec and the script exited 1 with "No tests found".
+- **Each worker has an X display of its own** (`ownDisplay` in `harness.ts`, 2026-09-24: an
+  Xvfb per worker on a Linux CI runner, `-displayfd` picking a free number; the job no longer
+  wraps the suite in `xvfb-run`). On one shared display the window one worker launched came up
+  over the other's and took the display's only focus and pointer: the other app saw a window
+  blur, which cancels a drag, and a real mouseout, which ends a hover. Across 30 runs that was
+  most of the retries (drags that never dropped, chips and hover-revealed controls that never
+  showed), and none reproduced on a Mac. Don't go back to one display for two workers. A spec
+  that presses a key into a menu waits for the menu to hold focus first: `useFocusTrap` focuses
+  a frame after the menu shows, and a key in that frame goes to the editor.
 
 ## pnpm and Electron
 
