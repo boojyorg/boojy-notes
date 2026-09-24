@@ -199,7 +199,7 @@ export function renameFolder(
   guard.suppressTree(finalAbs);
   fs.renameSync(oldAbs, finalAbs);
 
-  const idIndex = getIdIndex();
+  const idIndex: Record<string, string> = getIdIndex();
   const oldPrefix = path.relative(notesDir, oldAbs) + path.sep;
   const newPrefix = path.relative(notesDir, finalAbs) + path.sep;
   for (const [id, rel] of Object.entries(idIndex)) {
