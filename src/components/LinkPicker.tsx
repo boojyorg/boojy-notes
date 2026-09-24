@@ -214,25 +214,28 @@ export default function LinkPicker({
   const changed = editing && (text.trim() !== initialText.trim() || searching);
 
   // A press outside: creation cancels; editing commits a valid change. The
-  // listener arms a frame later, because the toolbar's Link glyph opens the
-  // picker on its own mousedown and that press would otherwise close it at once.
+  // toolbar's Link glyph opens the picker on its own mousedown, and that press
+  // must not close it at once: it is told apart by its time, since it began
+  // before the picker existed. The listener is armed at once and never
+  // re-armed (the latest decision is read from a ref). Arming a frame late,
+  // and again a frame late on every keystroke, missed a press that came
+  // inside the gap (the CI flake in formatting-toolbar.spec, 2026-09-24).
+  const onOutside = useRef<() => void>(() => {});
+  onOutside.current = () => {
+    if (editing && changed) commit("outside");
+    else onClose();
+  };
   useEffect(() => {
+    const openedAt = performance.now();
     const onPress = (e: MouseEvent) => {
+      if (e.timeStamp <= openedAt) return;
       const t = e.target as Node | null;
       if (t && menuRef.current?.contains(t)) return;
-      if (editing && changed) commit("outside");
-      else onClose();
+      onOutside.current();
     };
-    let armed = false;
-    const raf = requestAnimationFrame(() => {
-      armed = true;
-      document.addEventListener("mousedown", onPress, true);
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      if (armed) document.removeEventListener("mousedown", onPress, true);
-    };
-  }, [editing, changed, commit, onClose]);
+    document.addEventListener("mousedown", onPress, true);
+    return () => document.removeEventListener("mousedown", onPress, true);
+  }, []);
 
   // Escape closes the picker wherever focus is: in a field, or still in the
   // note for the frame before the field takes it. Capture phase, so the
