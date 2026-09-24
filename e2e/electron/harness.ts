@@ -27,7 +27,16 @@
  * a stray frame arrived. Measured 2026-09-14 on the same 133 tests: hidden,
  * the suite took 672 s with tests that run in 1 s here taking 5–16 s; shown,
  * 267 s, each test within a beat of its local time. Keep it shown there.
+ *
+ * On a Linux CI runner each worker also gets an X display of its own
+ * (`ownDisplay`). On one shared display, the window a worker launched came up
+ * over the other worker's and took the display's single focus and pointer: the
+ * other app saw a window blur, which cancels any drag in progress, and a real
+ * mouseout, which ends any hover. That was most of the suite's flakes (drags
+ * that never dropped, chips and hover controls that never showed; 2026-09-24,
+ * 30 runs), and none of them reproduced on a Mac, where windows are separate.
  */
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -118,7 +127,38 @@ export interface AppHandle {
   close(): Promise<void>;
 }
 
+let display: Promise<string> | undefined;
+
+/**
+ * This worker's own Xvfb display, started on first use and stopped when the
+ * worker exits; `undefined` off a Linux CI runner, where the app uses whatever
+ * display it inherits. `-displayfd` lets Xvfb pick a free display number and
+ * report it, so two workers (or a worker restarted after a failure) never race
+ * for the same one. Tests in a worker run one at a time, so its display only
+ * ever holds one window.
+ */
+function ownDisplay(): Promise<string> | undefined {
+  if (process.platform !== "linux" || !process.env.CI) return undefined;
+  display ??= new Promise((resolve, reject) => {
+    const xvfb = spawn(
+      "Xvfb",
+      ["-displayfd", "3", "-screen", "0", "1280x1024x24", "-nolisten", "tcp"],
+      { stdio: ["ignore", "ignore", "inherit", "pipe"] },
+    );
+    let out = "";
+    xvfb.stdio[3]!.on("data", (chunk: Buffer) => {
+      out += chunk.toString();
+      if (out.includes("\n")) resolve(`:${out.trim()}`);
+    });
+    xvfb.on("error", reject);
+    xvfb.on("exit", (code) => reject(new Error(`Xvfb exited with ${code} before it was ready`)));
+    process.on("exit", () => xvfb.kill());
+  });
+  return display;
+}
+
 async function launchElectron(userData: string, documents?: string) {
+  const displayEnv = await ownDisplay();
   const app = await _electron.launch({
     args: [
       path.join(here, "main-wrapper.mjs"),
@@ -128,6 +168,7 @@ async function launchElectron(userData: string, documents?: string) {
     cwd: repoRoot,
     env: {
       ...process.env,
+      ...(displayEnv ? { DISPLAY: displayEnv } : {}),
       BOOJY_TEST_USERDATA: userData,
       ...(documents ? { BOOJY_TEST_DOCUMENTS: documents } : {}),
       BOOJY_TEST_HIDDEN: process.env.BOOJY_TEST_HEADED === "1" || process.env.CI ? "0" : "1",

@@ -39,15 +39,20 @@ test("a fresh install shows setup; Create note makes the default folder and puts
     // Nothing written by ending setup: the draft waits for a keystroke.
     expect(fs.readdirSync(h.vault.dir).filter((f) => f.endsWith(".md"))).toEqual([]);
 
-    // The caret is in the note's body, so typing is the first thing.
-    const focused = await h.page.evaluate(() => {
-      const node = window.getSelection()?.anchorNode;
-      const el = node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
-      return el?.closest("[data-block-type]")
-        ? "body"
-        : document.activeElement?.getAttribute("aria-label");
-    });
-    expect(focused).toBe("body");
+    // The caret is in the note's body, so typing is the first thing. Polled:
+    // the caret is placed a frame after the dialog closes.
+    await expect
+      .poll(() =>
+        h.page.evaluate(() => {
+          const node = window.getSelection()?.anchorNode;
+          const el =
+            node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null);
+          return el?.closest("[data-block-type]")
+            ? "body"
+            : document.activeElement?.getAttribute("aria-label");
+        }),
+      )
+      .toBe("body");
     await h.page.keyboard.type("Hello");
     await waitForFile(h.vault.file("Untitled.md"), (t) => t.includes("Hello"));
     await sleep(SETTLE_MS);

@@ -34,6 +34,8 @@ test("the label opens the menu, Plain first then alphabetical, with the block's 
   await expect(label(h.page)).toHaveText(/Plain/);
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
+  // Focus lands a frame after the menu shows; a key before that misses it.
+  await expect(menu(h.page)).toBeFocused();
   expect(await menu(h.page).getByRole("menuitemradio").allInnerTexts()).toEqual([
     "Plain",
     "Bash",
@@ -55,6 +57,8 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
   const blocksBefore = await h.page.locator("[data-block-type]").count();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
+  // Focus lands a frame after the menu shows; a key before that misses it.
+  await expect(menu(h.page)).toBeFocused();
   // The menu holds focus, so the letter never reaches the code field under it.
   await h.page.keyboard.press("t");
   await expect(menu(h.page)).toHaveAttribute("aria-activedescendant", "code-lang-item-8");
@@ -73,6 +77,8 @@ test("a letter jumps to a language and Enter writes its fence word to disk", asy
 test("Escape closes it and changes nothing", async () => {
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
+  // Focus lands a frame after the menu shows; a key before that misses it.
+  await expect(menu(h.page)).toBeFocused();
   await h.page.keyboard.press("ArrowDown");
   await h.page.keyboard.press("Escape");
   await expect(menu(h.page)).toHaveCount(0);
@@ -88,6 +94,8 @@ test("the block's ··· menu opens the same menu, and carries no list of its ow
   expect(await items.allInnerTexts()).toEqual(["Copy code", "Change language", "Delete block"]);
   await items.filter({ hasText: "Change language" }).click();
   await expect(menu(h.page)).toBeVisible();
+  // Focus lands a frame after the menu shows; a key before that misses it.
+  await expect(menu(h.page)).toBeFocused();
   await expect(h.page.locator(".code-ctx-menu")).toHaveCount(0);
   await menu(h.page).getByRole("menuitemradio", { name: "Python" }).click();
   await expect(label(h.page)).toHaveText(/Python/);
@@ -101,6 +109,8 @@ test("a press outside closes it", async () => {
   const para = await h.page.locator("[data-block-type='p']").first().boundingBox();
   await label(h.page).click();
   await expect(menu(h.page)).toBeVisible();
+  // Focus lands a frame after the menu shows; a key before that misses it.
+  await expect(menu(h.page)).toBeFocused();
   await h.page.mouse.click(para!.x + 10, para!.y + para!.height / 2);
   await expect(menu(h.page)).toHaveCount(0);
   await expect(label(h.page)).toHaveText(/Plain/);
