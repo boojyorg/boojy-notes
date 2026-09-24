@@ -6,6 +6,7 @@ import {
   caretOnEmptyLastLine,
   CARET_ANCHOR,
   CARET_ANCHOR_CLASS,
+  caretIntoTextRoot,
   caretLength,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
@@ -679,5 +680,55 @@ describe("caretRect — a caret in an empty paragraph still has a line", () => {
     // Which is what makes both edge questions true for a one-line block.
     expect(rect.top - 197 < 5).toBe(true);
     expect(223 - rect.bottom < 5).toBe(true);
+  });
+});
+
+describe("caretIntoTextRoot — a caret beside a list marker moves into the item's text", () => {
+  const blocks = [
+    { id: "a", type: "bullet", text: "one" },
+    { id: "b", type: "code", text: "x" },
+  ];
+  const mount = () => {
+    document.body.innerHTML =
+      '<div contenteditable="true" id="ed">' +
+      '<div data-block-id="a"><span contenteditable="false" data-marker="filled"></span><span id="t">one</span></div>' +
+      '<div data-block-id="b"><span contenteditable="false"></span><div id="c">x</div></div>' +
+      "</div>";
+    const $ = (id) => document.getElementById(id);
+    return { ed: $("ed"), refs: { a: $("t"), b: $("c") } };
+  };
+  const setCaret = (node, offset) => {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+  const caret = () => {
+    const sel = window.getSelection();
+    return { text: sel.anchorNode.textContent, offset: sel.anchorOffset };
+  };
+
+  it("moves a caret before the text to its start", () => {
+    const { ed, refs } = mount();
+    setCaret(ed.querySelector('[data-block-id="a"]'), 0);
+    expect(caretIntoTextRoot(ed, blocks, refs)).toBe(true);
+    expect(refs.a.contains(window.getSelection().anchorNode)).toBe(true);
+    expect(caret()).toEqual({ text: "one", offset: 0 });
+  });
+
+  it("moves a caret after the text to its end", () => {
+    const { ed, refs } = mount();
+    setCaret(ed.querySelector('[data-block-id="a"]'), 2);
+    expect(caretIntoTextRoot(ed, blocks, refs)).toBe(true);
+    expect(caret()).toEqual({ text: "one", offset: 3 });
+  });
+
+  it("leaves a caret already in the text, and a block that is not text", () => {
+    const { ed, refs } = mount();
+    setCaret(refs.a.firstChild, 1);
+    expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
+    setCaret(ed.querySelector('[data-block-id="b"]'), 0);
+    expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
   });
 });

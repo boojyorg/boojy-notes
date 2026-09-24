@@ -324,6 +324,32 @@ export function placeCaret(el, pos = 0) {
 }
 
 /**
+ * A list row, a task and a numbered item are a row around two children: the
+ * marker (`contentEditable=false`) and the text root. The row is inside the
+ * editor's one contentEditable, so Chromium will rest a caret in the row
+ * itself, beside the marker (ArrowLeft from the item's start, a click by the
+ * dot), and a character typed there is a text node of the row: drawn beside
+ * the dot, never read by the walkers, gone from the file (2026-09-24). A
+ * caret in a text block's row but outside its root is moved into the root, to
+ * its start when it sat before it and its end when after. Returns whether it
+ * moved.
+ */
+export function caretIntoTextRoot(editorEl, blocks, blockRefs) {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount || !sel.isCollapsed) return false;
+  const node = sel.anchorNode;
+  const info = node && getBlockFromNode(node, editorEl, blocks, blockRefs);
+  const el = info?.el;
+  if (!el?.isConnected || el.contains(node) || !isEditableBlock(blocks[info.blockIndex])) {
+    return false;
+  }
+  const around = document.createRange();
+  around.selectNode(el);
+  const before = around.comparePoint(node, sel.anchorOffset) < 0;
+  return placeCaret(el, before ? 0 : caretLength(el));
+}
+
+/**
  * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
  * an empty text node — an empty paragraph, or one of the editor's own caret
  * anchors — and the arrow keys ask "is the caret on this block's first or last
