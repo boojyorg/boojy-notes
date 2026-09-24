@@ -70,8 +70,8 @@ tests, Biome for lint and format, pnpm for packages.
 
 ## Status
 
-Boojy Notes is in early access ahead of its first desktop Beta: v0.9.0 was published on
-2026-09-20 and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0
+Boojy Notes is in early access ahead of its first desktop Beta: v0.9.1 was published on
+2026-09-24 and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0
 onward updates itself to it. Beta starts when the local desktop app feels complete
 enough for ordinary daily use that I no longer feel limited by missing core features. It isn't
 there yet. I use it every day, and what I bump into decides what gets finished next.
