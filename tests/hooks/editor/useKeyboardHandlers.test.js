@@ -5,7 +5,9 @@ import { useKeyboardHandlers } from "../../../src/hooks/editor/useKeyboardHandle
 import { focusOwnedField, placeCaret } from "../../../src/utils/domHelpers";
 
 // Mock dependencies
-vi.mock("../../../src/utils/domHelpers", () => ({
+vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
+  // The real one: the name field is plain DOM here too.
+  focusTitleEnd: (await importOriginal()).focusTitleEnd,
   findNearestBlock: vi.fn(),
   // As the real ones: a block with a field of its own is not editable text.
   isEditableBlock: (block) =>
