@@ -10,6 +10,10 @@ on:
 # describe a commit nobody is looking at. Master runs are never cancelled, so
 # every merge keeps a result of its own (each takes a group of its own: one
 # shared group would queue them, and a queued run is dropped for a newer one).
+# Read-only: CI checks code and never writes to the repository.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
@@ -39,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Audit
-        run: pnpm audit --audit-level critical
+        run: pnpm audit --audit-level high
       - name: Lint and format check
         run: pnpm check
       - name: Type check
@@ -90,6 +94,17 @@ jobs:
       - name: E2E tests
         timeout-minutes: 15
         run: pnpm test:e2e
+      # A red run keeps what it saw: the HTML report, and each failure's error
+      # context (the page's accessibility snapshot) and trace.
+      - name: Keep the report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-e2e-report
+          path: |
+            playwright-report/web
+            test-results/web
+          retention-days: 14
 
   # The Electron suite is split across six runners (Playwright's --shard,
   # by test), two workers each: it is most of CI's wall clock, and it waits on
@@ -124,6 +139,15 @@ jobs:
       - name: Electron core-journey tests
         timeout-minutes: 15
         run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/6
+      - name: Keep the report of a failed shard
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: electron-e2e-report-${{ matrix.shard }}
+          path: |
+            playwright-report/electron
+            test-results/electron
+          retention-days: 14
 
   # The single status branch protection requires. Runs even when a job above
   # failed or was cancelled, and reports that as a failure of its own.

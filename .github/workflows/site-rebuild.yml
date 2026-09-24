@@ -12,6 +12,9 @@ on:
   release:
     types: [published]
 
+# Posts to a deploy hook and never touches the repository.
+permissions: {}
+
 jobs:
   rebuild-site:
     runs-on: ubuntu-latest

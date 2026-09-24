@@ -8,7 +8,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  // Each suite reports into its own folder, so one run never overwrites the other's.
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report/web" }]],
+  outputDir: "test-results/web",
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
