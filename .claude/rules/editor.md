@@ -388,7 +388,11 @@ app's, made through state.**
   `#ha` offered `#ha`), rows in the menu grammar with no count; the slash menu is opened on purpose and keeps its keys. **The
   `[[` picker is the exception** (2026-09-20): it is the link picker, a dialog with a field, and
   takes focus the moment it opens; Escape leaves the `[[` as typed and the caret after it.
-- `key-ownership.spec.ts`. Not changed: Shift+Arrow at a block's edges, ArrowUp into the title,
+- **ArrowUp with nothing above reaches the note's name** (`focusTitleEnd`, by `data-title`,
+  caret at its end; frontmatter above counts as nothing), and **ArrowDown from the name goes
+  back down** as Enter does (2026-09-24). The name moved into the chrome row on 2026-09-15 and
+  the old lookup for an h1 above the editor left the key dead. `title-arrows.spec.ts`.
+- `key-ownership.spec.ts`. Not changed: Shift+Arrow at a block's edges,
   the link popover's position on a collapsed caret (backlog).
 
 ## One owner for note state

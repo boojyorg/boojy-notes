@@ -198,8 +198,6 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **A multi-line rich paste is flattened** — a single line pasted from a browser or another
   app keeps its bold, italics and links (2026-09-09), but a paste of several lines reads
   `text/plain` only, so their formatting is dropped (`usePasteHandler.js`).
-- [ ] **View → Reload ships in production** (`main.js` keeps the `reload` role) and discards
-  up to ~800 ms of keystrokes, the text-commit and write debounces.
 - [ ] **Find counts a code block's matches twice** (the textarea and its highlight overlay,
   `FindBar.jsx`), and Replace leaves a match inside a table cell, a callout or a code block
   alone, since those blocks own their fields; replacing inside them is a decision to make once
@@ -219,8 +217,8 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 - [ ] **Shift-click never ranges after a plain click**; the anchor is set only by Cmd-click
   (review §4.6). Not re-verified.
 - [ ] **Rename, Duplicate and Delete on an empty draft misbehave** (review §4.5). Not re-verified.
-- [ ] **Shift+Arrow at a block edge collapses the selection**, and ArrowUp from the first block
-  is a dead key, so the title is unreachable by keyboard (review §1.13).
+- [ ] **Shift+Arrow at a block edge collapses the selection** (review §1.13; its other half,
+  ArrowUp from the first block being dead, was fixed 2026-09-24).
 - [ ] **Cmd+K on a collapsed caret opens the link popover at the editor origin** (review §1.6).
 - [ ] **Block drag on code and callout blocks**: the grip shows and drags nothing, and the
   marker draws through a code block, which the editor rule forbids (review §3.10). The table joined

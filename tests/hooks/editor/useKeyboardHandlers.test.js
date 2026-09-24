@@ -549,6 +549,44 @@ describe("useKeyboardHandlers", () => {
       expect(deps.selectBlock).toHaveBeenCalledWith("img");
     });
 
+    // The name lives in the chrome row, not above the editor (2026-09-24):
+    // ArrowUp with nothing above finds it by `data-title` and ends there.
+    it("ArrowUp from the first block focuses the note's name, caret at its end", () => {
+      const title = document.createElement("div");
+      title.contentEditable = "true";
+      // jsdom focuses a contentEditable element only with a tabIndex.
+      title.tabIndex = 0;
+      title.setAttribute("data-title", "");
+      title.textContent = "Plan";
+      document.body.appendChild(title);
+      caretIn(deps.blockRefs.current.b1, "Hello", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const event = key("ArrowUp");
+      result.current.handleBlockKeyDown("note-1", 0, event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(document.activeElement).toBe(title);
+      const sel = window.getSelection();
+      expect(sel.anchorNode === title || title.contains(sel.anchorNode)).toBe(true);
+      expect(sel.getRangeAt(0).collapsed).toBe(true);
+      expect(deps.selectBlock).not.toHaveBeenCalled();
+    });
+
+    it("ArrowUp at the end of a block that draws bold lands at its visible end, not its Markdown's", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hi **there**" },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.b1.textContent = "Hi there";
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 1, key("ArrowUp"));
+      expect(placeCaret).toHaveBeenCalledWith(deps.blockRefs.current.b1, 8);
+    });
+
     it("with nothing selectable between, ArrowUp still walks to the previous text block", () => {
       deps.noteDataRef.current["note-1"] = {
         content: {
@@ -560,6 +598,8 @@ describe("useKeyboardHandlers", () => {
         },
       };
       deps.blockRefs.current.f = document.createElement("div");
+      // The caret lands at the end the block draws (its visible length).
+      deps.blockRefs.current.b1.textContent = "Hello";
       caretIn(deps.blockRefs.current.b2, "World", 0);
       const { result } = renderHook(() => useKeyboardHandlers(deps));
       result.current.handleBlockKeyDown("note-1", 2, key("ArrowUp"));

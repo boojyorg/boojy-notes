@@ -327,9 +327,10 @@ app.whenReady().then(async () => {
     {
       label: "View",
       submenu: [
-        { role: "reload" },
-        { role: "forceReload" },
-        ...(isDev ? [{ role: "toggleDevTools" }] : []),
+        // Reload is a developer's key: it drops the renderer, and with it up
+        // to ~800 ms of typing still inside the text-commit and write
+        // debounces (the quit flush never runs). Dev builds only (2026-09-24).
+        ...(isDev ? [{ role: "reload" }, { role: "forceReload" }, { role: "toggleDevTools" }] : []),
         // No zoom roles: they would take Cmd+Plus/Minus/0 before the renderer
         // sees them, so the app's own UI scale never fired and Chromium's page
         // zoom (which leaves the native traffic lights behind) ran instead.

@@ -559,7 +559,10 @@ const EditorArea = memo(
           });
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          // Enter, or ArrowDown (the name is one line, so down always leaves
+          // it): into the note's first block. ArrowUp from the first block
+          // comes back here (2026-09-24).
+          if (e.key === "Enter" || (e.key === "ArrowDown" && !e.shiftKey)) {
             e.preventDefault();
             const blocks = noteDataRef.current[activeNote].content.blocks;
             const first = blocks.find((b) => isEditableBlock(b));

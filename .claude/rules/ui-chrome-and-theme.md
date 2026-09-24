@@ -260,6 +260,9 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   until the first keystroke, so a dismissal leaves no `Untitled.md`. A fresh install starts on
   System; an existing user keeps whatever they had, Light included. Choosing a folder switches
   the app behind the scrim live and the pills apply as clicked. `first-run.spec.ts`.
+- **View → Reload is a dev build's alone** (with Force Reload and the dev tools; 2026-09-24):
+  a reload drops the renderer and the typing still inside the text-commit and write
+  debounces, since the quit flush never runs. `zoom.spec.ts` checks the shipped menu.
 - **One zoom system: the app's own UI scale.** The View menu carries no zoom roles (a menu role
   takes the shortcut before the renderer sees it, and Chromium's page zoom ran instead);
   `main.js` resets Chromium's zoom to 0 on every `dom-ready`. A dev window that looks bigger
