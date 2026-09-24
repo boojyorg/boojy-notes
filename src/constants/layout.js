@@ -26,6 +26,13 @@ export const LABEL_PAD_X = 5;
  *  a group only if the step out of it is bigger than the step within it. */
 export const BTN_GAP = 2;
 /**
+ * The editor scroller's scrollbar lane (GlobalStyles' `::-webkit-scrollbar`
+ * width). Styled bars take layout width, and the editor keeps the lane
+ * whether the note overflows or not (`scrollbar-gutter: stable`), so what is
+ * measured from the window's right edge inside the scroller is this much less.
+ */
+export const SCROLLBAR_W = 12;
+/**
  * Left inset that clears the macOS traffic lights: x:14, three 14px lights on
  * a 23px pitch on macOS 26 (they end at 75px), then breathing room. Shared by
  * the sidebar header's wordmark and the collapsed control group. Pairs with

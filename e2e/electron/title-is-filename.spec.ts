@@ -368,3 +368,32 @@ test("whitespace and characters the filesystem changes are not painted under the
     await h.close();
   }
 });
+
+// A paragraph pasted into the name became the whole name, a wall of text in
+// the top row, and a name no file system takes, so every save failed
+// (2026-09-24). The name takes the clipboard's first line with text on it.
+test("a multi-line paste into the name takes its first line, and the file is named by it", async () => {
+  const h = await launchApp({ "Alpha.md": "Body.\n" });
+  try {
+    await h.openNote("Alpha");
+    const title = h.page.getByRole("textbox", { name: "Note title" });
+    await title.click();
+    await h.page.keyboard.press(`${MOD}+a`);
+    await h.page.evaluate(() => {
+      const data = new DataTransfer();
+      data.setData("text/plain", "\n  Pasted plan  \n## Heading\n- item one\n- item two\n");
+      document
+        .querySelector("[data-title]")
+        ?.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+        );
+    });
+    await expect(title).toHaveText("Pasted plan");
+    await h.page.keyboard.press("Enter");
+    await waitForFile(h.vault.file("Pasted plan.md"), (t) => t === "Body.\n");
+    expect(h.vault.list().filter((f) => f.endsWith(".md"))).toEqual(["Pasted plan.md"]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

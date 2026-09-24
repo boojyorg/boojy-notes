@@ -31,6 +31,7 @@ import {
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Code as LuCode,
+  CodeXml as LuCodeXml,
   ClipboardPaste as LuClipboardPaste,
   Copy as LuCopy,
   ExternalLink as LuExternalLink,
@@ -76,6 +77,7 @@ import {
   TextQuote as LuTextQuote,
   Trash as LuTrash,
   TriangleAlert as LuTriangleAlert,
+  Type as LuType,
   Undo2 as LuUndo2,
   X as LuX,
 } from "lucide-react";
@@ -221,6 +223,17 @@ export const SidebarToggleIcon = ({ size = ICON_CONTROL }) => (
 );
 export const MoreHorizontalIcon = ({ size = ICON_CONTROL }) => (
   <LuMoreHorizontal {...base} {...navBase} size={size} />
+);
+
+// ── The Markdown view ─────────────────────────────────────────────────────
+/** Show Markdown, and the lit corner control while the Markdown view is on.
+ *  `</>` rather than `< >`, which is inline code's glyph in the toolbar. */
+export const SourceViewIcon = ({ size = ICON_CONTROL }) => (
+  <LuCodeXml {...base} {...navBase} size={size} />
+);
+/** Show Formatted: the glyph names what the item gives you back. */
+export const FormattedViewIcon = ({ size = ICON_INLINE }) => (
+  <LuType {...base} {...navBase} size={size} />
 );
 
 // ── Slash menu ────────────────────────────────────────────────────────────

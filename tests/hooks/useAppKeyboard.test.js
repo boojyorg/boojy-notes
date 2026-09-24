@@ -135,6 +135,25 @@ describe("useAppKeyboard", () => {
     expect(deps.toggleSidebar).toHaveBeenCalledTimes(2);
   });
 
+  it("Cmd+/ switches the Markdown view, and only with a note open", () => {
+    const toggleSourceView = vi.fn();
+    renderHook(() => useAppKeyboard(makeDeps({ toggleSourceView })));
+    const e = key("/", { metaKey: true });
+    expect(toggleSourceView).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(true);
+    // A layout where the slash needs Shift: the physical key counts.
+    key("7", { ctrlKey: true, shiftKey: true, code: "Slash" });
+    expect(toggleSourceView).toHaveBeenCalledTimes(2);
+    // Typing a slash is typing.
+    key("/");
+    expect(toggleSourceView).toHaveBeenCalledTimes(2);
+    cleanup();
+    const none = vi.fn();
+    renderHook(() => useAppKeyboard(makeDeps({ activeNote: null, toggleSourceView: none })));
+    expect(key("/", { metaKey: true }).defaultPrevented).toBe(false);
+    expect(none).not.toHaveBeenCalled();
+  });
+
   it("zoom shortcuts step through SCALE_OPTIONS from the current scale", () => {
     const deps = makeDeps({ uiScale: 100 });
     const { rerender } = renderHook((props) => useAppKeyboard(props), { initialProps: deps });

@@ -174,15 +174,16 @@ none blocks the release. The shared question comes first because three candidate
   arbitrary text or background colour inside notes (no portable Markdown syntax; word-level
   colour stored outside the file breaks when another editor changes the text; `==highlight==`
   is already an extension).
-- **Editable Markdown source view** from the ··· menu and a shortcut; no permanent toggle. Two
-  views of one note, one visible at a time. Switching alone never changes bytes; both views
-  edit the same document with no lost pending change; undo and the caret behave coherently
-  across a switch; unsupported syntax is visible and preserved; source mode is identifiable
-  with an obvious way back. It is the one UI the preservation promise has, the tool for
-  checking what an import did, and useful for unfamiliar syntax. A first version may commit
-  source edits as one history entry on the way back. Wanted (Tyr, 2026-09-24): plain source,
-  `## Header` as written, not an Obsidian-style live preview that reveals markers on the caret's
-  line (that fights the block model). The shortcut is unchosen; Cmd+E is inline code.
+- **The Markdown view's residue** (shipped 2026-09-24: ··· menu, View, ⌘/, the lit `</>`).
+  No Find in it yet: ⌘F and Edit → Find do nothing while it is on. The keys are a plain text
+  field's (no list continuation on Enter, no auto-pairing); add them only if typing there
+  proves common. Its edits are typing-grain undo entries; the "one entry on the way back"
+  alternative was not needed. Decided 2026-09-24, to revisit after daily use: **no slash menu
+  in it** (`/` is typed there constantly, in addresses, paths and dates, and the view is where
+  the syntax is written by hand), and **no table alignment as you type** (padding every row
+  when one cell grows is the rewrite the table preservation fix removed, and it moves text
+  under the caret). A candidate if hand-aligning pipes becomes a chore: an explicit **Tidy
+  table** command for the table under the caret, one undo entry, nothing changed unless asked.
 - **Local version history**, brought forward from Future (Tyr, 2026-09-24: version control
   matters). Undo reverses recent actions; history recovers older saved states: preview, restore,
   restore as a copy, and a restore keeps the current version. Snapshots in userData, never in

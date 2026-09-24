@@ -72,6 +72,7 @@ declare global {
         formats: string[];
         kind: string | null;
         sidebarVisible: boolean;
+        sourceView: boolean;
       }) => void;
       revealNote: (noteId: string) => Promise<void>;
 

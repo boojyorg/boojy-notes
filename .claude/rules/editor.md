@@ -398,6 +398,34 @@ app's, made through state.**
   block. `shift-arrow-selection.spec.ts`.
 - `key-ownership.spec.ts`.
 
+## The Markdown view is the file, edited as typing
+
+`SourceView` (2026-09-24, from a canvas Tyr judged): the note as `blocksToMarkdown` writes it,
+in a monospace field. Opened from the ··· menu, View, ⌘/; closed the same ways or by the lit
+`</>` beside the ··· (`ui-chrome-and-theme.md`). `sourceView` lives in `LayoutContext`: app-wide,
+never saved, off at launch. Plain source, never a live preview that hides markers.
+
+- **Switching commits nothing**, so it never changes a byte. The field is a transparent textarea
+  over a painted layer (`paintMarkdown`: markers muted, heading words and bold semibold, code
+  untouched), the code block's pattern.
+- **Every input is read back with `markdownToBlocks` and committed through `commitTextChange`**:
+  a burst is one undo entry, the save and the quit flush see it, and Cmd+Z is the note's
+  (`data-editor` on the wrapper, as the code textarea is).
+- **The field repaints only when the note's blocks are not the ones it last committed**
+  (identity, not text): an undo, a redo, an outside change. Judged by text, a spelling the
+  writer would change (`---` under a line gains its blank) was respelled under the caret.
+- **The caret crosses in its block** (`sourceOffsetFor` / `blockOffsetFor` in
+  `utils/sourceView.ts`), on the same character when the block's text is one line with no
+  inline Markdown (the formatted view counts what is shown), else at the text's start. A note
+  at its top stays there; a scrolled one keeps the block at its height. The switch lives in
+  `EditorArea` (`switchViewRef`) because the place is read from the view being left.
+- **The name's Enter and ArrowDown go into the view's text, and ArrowUp on its first line comes
+  back** (`focusTitleEnd`, shared with the formatted view): the name's handler asked for a first
+  block, which the view has none of, and focus stayed in the name.
+- **The entry place is read once, when the view is made** (`useState`), never consumed in an
+  effect: StrictMode runs a mount effect twice and the second run lost the caret.
+- `sourceView.test.ts`, `SourceView.test.tsx`, `source-view.spec.ts`.
+
 ## One owner for note state
 
 Note state has two copies by design: React state, and `useHistory`'s keystroke ref, which runs

@@ -56,7 +56,9 @@ on it. `LayoutContext` hands out both as `accentColor` and `accentText`.
   row's radius is the box's less the inset so the curves stay concentric; the search palette
   was already this shape. A new menu takes the three tokens, never its own numbers.
 - **Accent is never a desktop surface**: identity, focus rings, 2–3px markers, wikilinks and the
-  caret. Selected rows are neutral. The one tint is the whole-block selection's band (accent at
+  caret. Selected rows are neutral. The tints are the tag pill, a mode that is on (the Markdown
+  view's lit `</>`, the tag pill's wash: in hover's grey it read as a hovered button), and the
+  whole-block selection's band (accent at
   10% Light / 18% Dark), laid over a selected image a step stronger (20% / 26%). Mobile note
   rows keep an accent pill.
 
@@ -102,8 +104,10 @@ white.
 - The thumb is a slim pill inside a wider transparent-bordered track (`background-clip:
   padding-box`); state rules set `background-color`, never the `background` shorthand, which
   resets the clip.
-- Sidebar and editor share one grammar (rest → hover → drag). No overflow means no gutter;
-  `scrollbar-gutter: stable` is the fix if it grates.
+- Sidebar and editor share one grammar (rest → hover → drag). The editor keeps its gutter
+  whether it overflows or not (`scrollbar-gutter: stable`, 2026-09-24): the bar takes layout
+  width, and a pane that narrowed when a note crossed the fold, or on a switch to the Markdown
+  view, moved the centred path. The sidebar has no gutter without overflow.
 - `.editor-scroll` stays as a class: `CalloutBlock`, `TableContextMenu` and `FloatingToolbar`
   query it.
 - Styled webkit bars are non-overlay on macOS and take layout width.
@@ -152,7 +156,15 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
 - **The editor header's ··· is the active note's menu and the second route to Settings**
   (`ctxMenu.type === "header"`): Rename, Duplicate, Move to…, Delete, then Settings with its cog
   glyph and no rule before it; never the sidebar's multi-selection. With no note it holds Settings alone
-  (`App options`, not `Note actions`). It ends with the note's word count (`note-stats`, one
+  (`App options`, not `Note actions`). Between Delete and Settings, under a rule, the view item:
+  **Show Markdown ⌘/** (`</>`, Lucide `CodeXml`, never `Code`, which is inline code's), or
+  **Show Formatted ⌘/** (`Type`) while the Markdown view is on: a view says what it will do, as
+  Hide/Show Sidebar does, where a format is checked. While the view is on, a lit `</>`
+  `ChromeButton` (`lit`: `ACCENT.text` glyph on the tag pill's wash, `tagPillGround`, a step
+  stronger on hover; chip `Show formatted ⌘/`) stands left of the ···: the mode's one
+  mark on screen and its way back, never there at rest. The path band reserves its room
+  whether the view is on or not (`CHROME_PATH_RIGHT_INSET`), so switching never moves the path;
+  a band that changed with the mode re-centred the name and dropped its folders for a frame. It ends with the note's word count (`note-stats`, one
   muted 11px line under the menu's only rule, never a menu item): the desktop has no status bar
   and this is the one surface that costs no pixels until asked. A menu separator, where drawn,
   is `MenuRule` (1px `BG.divider`, inset 6px), never an item's top border.
@@ -165,7 +177,8 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   Craft's two keys), Text, a **List ▸** submenu (Bulleted, Numbered, Checklist) and Quote with
   no shortcut, because a line's kind is typed in Markdown and **each kind shows its Markdown
   under its name** (`sublabel`, `Type ## and a space`; macOS only). View: **Hide Sidebar / Show
-  Sidebar** (says what it will do, as Finder's does), **Zoom In, Zoom Out, Actual Size**.
+  Sidebar** (says what it will do, as Finder's does), **Show Markdown / Show Formatted ⌘/** in a
+  group of its own, **Zoom In, Zoom Out, Actual Size**.
   Settings… and Check for Updates… in the app menu. **A check, never a renamed item**: a format
   the selection holds and the kind of the caret's line carry `✓` (Pages' way), not `Unbold`.
   **Icons only where Apple's own apps carry one** (SF Symbols through `createFromNamedImage`,
@@ -200,7 +213,7 @@ a close), two in `CodeBlock` (one with a hardcoded green), the task-list tick in
   only where one exists (`SHORTCUTS` in `EditorChrome.jsx`, the map in `useAppKeyboard` and the
   menu's accelerators; Redo is `Ctrl+Y` off a Mac). **The shell's keys** (2026-09-17): `⌘N` New note, `⇧⌘N` New
   folder at the root, `⌘P` Search, `⌘,` Settings, `⌘\` Toggle sidebar (Notion's; `⌥⌘S` is three
-  keys and `⌘B` is Bold), `⌘Z`/`⇧⌘Z` history, `⌘±0` UI scale. Sort has none, by decision: a
+  keys and `⌘B` is Bold), `⌘/` the Markdown view (Typora's; `⌘E` is inline code), `⌘Z`/`⇧⌘Z` history, `⌘±0` UI scale. Sort has none, by decision: a
   two-option preference opening a menu earns no key. Folder-row and note-row controls keep native titles for now.
   Specs locate chrome controls by `aria-label`, never `title`. `chrome-tooltips.spec.ts`,
   `Tooltip.test.jsx`.

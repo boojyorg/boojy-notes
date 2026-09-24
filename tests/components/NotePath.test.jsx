@@ -33,6 +33,7 @@ vi.mock("../../src/components/PathTreeMenu", () => ({
 }));
 
 import NotePath from "../../src/components/NotePath.jsx";
+import { SCROLLBAR_W } from "../../src/constants/layout";
 import { CHROME_PATH_RIGHT_INSET, chromePathInset } from "../../src/components/EditorChrome.jsx";
 
 /**
@@ -147,7 +148,8 @@ describe("NotePath", () => {
     const expanded = mount(["A"]);
     const row = expanded.container.querySelector("[data-testid='note-path-row']");
     expect(row.style.paddingLeft).toBe(`${chromePathInset(false, false)}px`);
-    expect(row.style.paddingRight).toBe(`${CHROME_PATH_RIGHT_INSET}px`);
+    // The inset less the scroller's kept scrollbar lane, which lies beyond it.
+    expect(row.style.paddingRight).toBe(`${CHROME_PATH_RIGHT_INSET - SCROLLBAR_W}px`);
     cleanup();
     const collapsed = mount(["A"], "n", { collapsed: true });
     const row2 = collapsed.container.querySelector("[data-testid='note-path-row']");

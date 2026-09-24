@@ -1,6 +1,6 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
-import { LABEL_PAD_X } from "../constants/layout";
+import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { PARAGRAPH_GAP } from "./EditableBlock";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
@@ -73,7 +73,7 @@ export default function GlobalStyles() {
         @supports not selector(::-webkit-scrollbar) {
           * { scrollbar-width: thin; scrollbar-color: ${theme.scrollbar.thumb} transparent; }
         }
-        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar { width: ${SCROLLBAR_W}px; height: ${SCROLLBAR_W}px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-corner { background: transparent; }
         /* 12px of hit area, 7px of visible thumb: the transparent border is padding
@@ -395,6 +395,55 @@ ${tagPillCss(theme)}
           /* Empty overlay lines must occupy the same line box as the textarea. */
           min-height: 1lh;
         }
+        /* The Markdown view (SourceView): a transparent field over a painted
+           layer, one font, one size, the two boxes laid out alike so every
+           line of the layer sits under the same line of the field. */
+        .source-view {
+          position: relative;
+        }
+        .source-field,
+        .source-layer {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          border: none;
+          font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+          font-size: 14px;
+          line-height: 1.75;
+          tab-size: 4;
+          white-space: pre-wrap;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
+        .source-field {
+          position: relative;
+          z-index: 1;
+          min-height: 200px;
+          background: transparent;
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+          caret-color: ${theme.caretColor};
+          outline: none;
+          resize: none;
+          overflow: hidden;
+        }
+        .source-field::selection {
+          background: ${theme.codeSelection};
+          -webkit-text-fill-color: transparent;
+        }
+        .source-layer {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: transparent;
+          color: ${theme.TEXT.primary};
+          overflow: hidden;
+        }
+        .source-layer .md-mark { color: ${theme.TEXT.muted}; }
+        .source-layer .md-meta { color: ${theme.TEXT.secondary}; }
+        .source-layer .md-strong { font-weight: 600; }
         .code-copy-wrapper {
           position: absolute;
           top: 8px;

@@ -105,6 +105,7 @@ export default function BoojyNotes() {
     sidebarVisible,
     revealSidebar,
     toggleSidebar,
+    sourceView,
     chromeBg,
     accentColor,
     sidebarHandles,
@@ -862,6 +863,18 @@ export default function BoojyNotes() {
 
   // The shell's keys and the application menu: one set of commands.
   const openFindRef = useRef(null);
+  // Show Markdown / Show Formatted: EditorArea's switch, which reads the
+  // caret's place on the way (the ··· menu, View, ⌘/ and the lit `</>`).
+  const switchViewRef = useRef(null);
+  const toggleSourceView = useCallback(() => {
+    // The menus a keystroke opened under the caret (`/`, `[[`, `#`) belong to
+    // the view being left; left open, the slash menu stood over the Markdown
+    // view and was still there on the way back.
+    setSlashMenu(null);
+    setWikilinkMenu(null);
+    setTagMenu(null);
+    switchViewRef.current?.();
+  }, [setSlashMenu, setWikilinkMenu, setTagMenu]);
   useAppKeyboard({
     activeNote,
     noteData,
@@ -891,6 +904,8 @@ export default function BoojyNotes() {
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
     sidebarVisible,
+    toggleSourceView,
+    sourceView,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
@@ -971,6 +986,7 @@ export default function BoojyNotes() {
           onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "header", id: activeNote })}
           onNewNote={() => createNote(null)}
           onOpenSearch={openSearch}
+          onToggleSourceView={toggleSourceView}
         />
       )}
       {isMobile && (
@@ -1140,6 +1156,7 @@ export default function BoojyNotes() {
           >
             <EditorArea
               openFindRef={openFindRef}
+              switchViewRef={switchViewRef}
               isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}
@@ -1236,6 +1253,8 @@ export default function BoojyNotes() {
         bulkDeleteNotes={bulkDeleteNotes}
         onMoveTo={openMovePicker}
         wordCount={wordCount}
+        sourceView={sourceView}
+        onToggleSourceView={toggleSourceView}
       />
       {pickTarget && (
         <PathTreeMenu

@@ -40,6 +40,8 @@ export type MenuState = {
   /** The kind of the line the caret is in (`p`, `h2`, `bullet`, …), or null outside the editor. */
   kind: string | null;
   sidebarVisible: boolean;
+  /** The Markdown view is on, so View offers the formatted one back. */
+  sourceView: boolean;
 };
 
 const INITIAL: MenuState = {
@@ -51,6 +53,7 @@ const INITIAL: MenuState = {
   formats: [],
   kind: null,
   sidebarVisible: true,
+  sourceView: false,
 };
 
 const isMac = process.platform === "darwin";
@@ -221,6 +224,15 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           "toggleSidebar",
           state.sidebarVisible ? "Hide Sidebar" : "Show Sidebar",
           "CmdOrCtrl+\\",
+        ),
+        { type: "separator" },
+        // The note as its file, and back: says what it will do, as the
+        // sidebar item does, because a view is switched where a format is
+        // checked (2026-09-24).
+        note(
+          "toggleSourceView",
+          state.sourceView ? "Show Formatted" : "Show Markdown",
+          "CmdOrCtrl+/",
         ),
         { type: "separator" },
         // The app's own interface size, never Chromium's page zoom (the UI

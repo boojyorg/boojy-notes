@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **See and edit a note as its Markdown** — Choose Show Markdown from the note's ··· menu, from View in the menu bar, or press ⌘/, and the note turns into its file, exactly as it is saved on disk: `## Heading`, `- [ ] task`, `**bold**`, frontmatter and all, in a monospace font with the Markdown symbols in grey so the words still lead. You can edit it there like any text; each burst of typing saves as it would in the normal view, and ⌘Z undoes it. While it is on, a small teal `</>` button sits next to the ··· at the top right: it is the one sign you are in this view, and clicking it takes you back. So do ⌘/ again and Show Formatted, which is what the menu item says while the view is on. Switching back and forth never changes a byte of the file by itself. Your cursor stays in the same line, on the same character when the line has no formatting, and a note you were reading at its top stays at its top. The view stays on as you move between notes and is off again the next time the app opens.
+
+### Bug Fixes
+
+- **Pasting a long text into a note's name no longer breaks it** — Pasting a few paragraphs into the name at the top of a note made the whole text the name: a wall of text across the top of the window, and a file name too long for the Mac to save, so the note failed to save and kept retrying. A paste into the name now takes just the first line, and a name that is still too long for a file is cut to fit, so the note always saves.
+- **The folder and note name at the top no longer shift** — The path above the note moved a few pixels sideways whenever a note grew long enough to scroll, or got short enough to stop, because the scrollbar arriving narrowed the page. The space for the scrollbar is now always kept, so the path stays exactly centred and still.
+
 ## v0.9.1 — 2026-09-24
 
 ### Improvements

@@ -16,6 +16,7 @@ vi.mock("../../src/utils/platform", () => ({ isElectronMac: true, isMac: true })
 vi.mock("../../src/components/PathTreeMenu", () => ({ default: () => null }));
 
 import NotePath from "../../src/components/NotePath.jsx";
+import { SCROLLBAR_W } from "../../src/constants/layout";
 import { CHROME_PATH_RIGHT_INSET, chromePathInset } from "../../src/components/EditorChrome.jsx";
 
 afterEach(cleanup);
@@ -53,7 +54,7 @@ describe("NotePath on macOS", () => {
     // Marked, so the popup-open rule can stand it down.
     expect(strip.hasAttribute("data-drag-region")).toBe(true);
     expect(strip.style.left).toBe(`${chromePathInset(collapsed, false)}px`);
-    expect(strip.style.right).toBe(`${CHROME_PATH_RIGHT_INSET}px`);
+    expect(strip.style.right).toBe(`${CHROME_PATH_RIGHT_INSET - SCROLLBAR_W}px`);
     expect(strip.style.top).toBe("0px");
     expect(strip.style.bottom).toBe("0px");
     // The path opts out and must come after the strip in the DOM.

@@ -35,6 +35,7 @@ beforeEach(() => {
   layoutState.sidebarVisible = true;
   layoutState.sidebarWidth = 260;
   layoutState.toggleSidebar = vi.fn();
+  layoutState.sourceView = false;
 });
 afterEach(cleanup);
 
@@ -45,6 +46,7 @@ const renderChrome = (props = {}) =>
       onNoteActions={props.onNoteActions ?? vi.fn()}
       onNewNote={props.onNewNote ?? vi.fn()}
       onOpenSearch={props.onOpenSearch ?? vi.fn()}
+      onToggleSourceView={props.onToggleSourceView ?? vi.fn()}
     />,
   );
 
@@ -127,5 +129,31 @@ describe("EditorChrome", () => {
     const { getByLabelText } = renderChrome();
     const trio = getByLabelText("Toggle sidebar").parentElement.parentElement;
     expect(trio.style.animation).toContain("fadeIn");
+  });
+
+  // The Markdown view's one mark on screen, and its way back (2026-09-24):
+  // a lit `</>` left of the ···, only while the view is on.
+  it("shows the lit Markdown control beside the ··· only while the view is on", () => {
+    const { queryByTestId, rerender } = renderChrome();
+    expect(queryByTestId("source-view-toggle")).not.toBeInTheDocument();
+    layoutState.sourceView = true;
+    const onToggleSourceView = vi.fn();
+    rerender(
+      <EditorChrome
+        activeNote="n1"
+        onNoteActions={vi.fn()}
+        onNewNote={vi.fn()}
+        onOpenSearch={vi.fn()}
+        onToggleSourceView={onToggleSourceView}
+      />,
+    );
+    const toggle = queryByTestId("source-view-toggle");
+    expect(toggle).toHaveAttribute("aria-label", "Show formatted");
+    // Lit in the accent: the glyph's ink, on a teal wash rather than hover's grey.
+    expect(toggle.style.color).toBe("rgb(164, 202, 206)");
+    expect(toggle.style.background).toMatch(/rgba\(/);
+    expect(toggle.nextElementSibling).toHaveAttribute("aria-label", "Note actions");
+    fireEvent.click(toggle);
+    expect(onToggleSourceView).toHaveBeenCalledTimes(1);
   });
 });

@@ -681,3 +681,20 @@ export function isEditableBlock(b) {
 export function isSelectableBlock(b) {
   return b.type === "spacer" || b.type === "image" || b.type === "table";
 }
+
+/**
+ * The note's name field (`data-title`), focused with the caret at its end:
+ * where ArrowUp goes from the note's first line, in either view.
+ */
+export function focusTitleEnd() {
+  const title = document.querySelector("[data-title]");
+  if (!(title instanceof HTMLElement)) return;
+  title.focus({ preventScroll: true });
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(title);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}

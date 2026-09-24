@@ -23,9 +23,33 @@ import {
  * same rule covers `.` and `..`, so no name can be a traversal component.
  */
 function sanitizeFilename(name) {
-  let sanitized = name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "Untitled";
+  let sanitized = capBytes(name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")).trim() || "Untitled";
   if (sanitized.startsWith(".")) sanitized = `_${sanitized.slice(1)}`;
   return sanitized;
+}
+
+/**
+ * The longest name the app makes, in UTF-8 bytes. A file name is at most 255
+ * bytes on macOS, Windows and Linux alike; this leaves room for `.md`, a
+ * collision suffix and a conflicted copy's ` (conflicted copy YYYY-MM-DD)`.
+ * A longer title (a paragraph pasted into the name) failed every save with
+ * the retry toast (2026-09-24); now the file takes the name cut here and the
+ * field adopts it, as it adopts any answer the write gives.
+ */
+const MAX_NAME_BYTES = 200;
+
+/** `name` cut to MAX_NAME_BYTES of UTF-8, never inside a character. */
+function capBytes(name) {
+  if (Buffer.byteLength(name, "utf8") <= MAX_NAME_BYTES) return name;
+  let out = "";
+  let bytes = 0;
+  for (const ch of name) {
+    const size = Buffer.byteLength(ch, "utf8");
+    if (bytes + size > MAX_NAME_BYTES) break;
+    out += ch;
+    bytes += size;
+  }
+  return out;
 }
 
 /**
@@ -653,6 +677,7 @@ export {
   writeFileAtomic,
   insideVault,
   sanitizeFilename,
+  MAX_NAME_BYTES,
   ensureUniqueFilePath,
   resolveWritePath,
   noteToFilePath,

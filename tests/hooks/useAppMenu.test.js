@@ -119,11 +119,23 @@ describe("the application menu", () => {
     expect(Object.keys(anchor).sort()).toEqual(["bottom", "left", "right", "top"]);
   });
 
+  it("switches the Markdown view from View, and says which view is on", () => {
+    const toggleSourceView = vi.fn();
+    const deps = makeDeps({ toggleSourceView, sourceView: true });
+    renderHook(() => useAppKeyboard(deps));
+    run("toggleSourceView");
+    expect(toggleSourceView).toHaveBeenCalledTimes(1);
+    expect(api.setMenuState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sourceView: true }),
+    );
+  });
+
   it("does nothing to a note when none is open", () => {
     const deps = makeDeps({ activeNote: null });
     renderHook(() => useAppKeyboard(deps));
     run("duplicate");
     run("bold");
+    run("toggleSourceView");
     expect(deps.duplicateNote).not.toHaveBeenCalled();
     expect(deps.applyFormat).not.toHaveBeenCalled();
   });

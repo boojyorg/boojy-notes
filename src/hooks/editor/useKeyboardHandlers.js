@@ -10,6 +10,7 @@ import {
   isEditableBlock,
   isSelectableBlock,
   placeCaret,
+  focusTitleEnd,
 } from "../../utils/domHelpers";
 import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
 
@@ -82,20 +83,6 @@ const DEMOTES_TO_PARAGRAPH = new Set([
   "checkbox",
   "blockquote",
 ]);
-
-/** The note's name field (`data-title`), focused with the caret at its end. */
-function focusTitleEnd() {
-  const title = document.querySelector("[data-title]");
-  if (!(title instanceof HTMLElement)) return;
-  title.focus({ preventScroll: true });
-  const sel = window.getSelection();
-  if (!sel) return;
-  const range = document.createRange();
-  range.selectNodeContents(title);
-  range.collapse(false);
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
 
 /** A text root that sits inside a row beside its marker (a list item, a task). */
 function inRow(el) {
