@@ -689,7 +689,12 @@ const EditorArea = memo(
         }}
         onPaste={(e) => {
           e.preventDefault();
-          document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+          // The name is one line: a paste gives it the clipboard's first line
+          // with text on it, never the rest. A pasted document became the
+          // whole name, a wall of text in the top row (2026-09-24).
+          const text = e.clipboardData.getData("text/plain");
+          const line = text.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
+          if (line) document.execCommand("insertText", false, line.trim());
         }}
         onFocus={(e) => {
           // The placeholder's width holds under the caret from the moment

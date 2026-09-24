@@ -233,6 +233,22 @@ describe("write-note — the returned title is the basename on disk", () => {
     content: { title, blocks: [{ id: "b1", type: "p", text }] },
   });
 
+  // A paragraph pasted into the name failed every save (2026-09-24): no file
+  // system takes a 1,000-character name. The file takes the name cut to
+  // MAX_NAME_BYTES, and the write answers with it, which the field adopts.
+  it("cuts a name too long for a file, never inside a character, and answers with the cut name", async () => {
+    const { MAX_NAME_BYTES } = await import("../../electron/noteFileManager.js");
+    const long = `Plan ${"é🙂".repeat(200)}`;
+    const written = writeNote(note("n-long", long));
+    expect(written.title.length).toBeGreaterThan(10);
+    expect(Buffer.byteLength(written.title, "utf8")).toBeLessThanOrEqual(MAX_NAME_BYTES);
+    expect(long.startsWith(written.title)).toBe(true);
+    expect(written.title).not.toMatch(/\uFFFD/);
+    expect(fs.existsSync(path.join(notesDir, `${written.title}.md`))).toBe(true);
+    // A name within the limit is untouched.
+    expect(writeNote(note("n-short", "Short name")).title).toBe("Short name");
+  });
+
   // A save never lands over bytes the app has not seen (2026-09-15). The
   // watcher reports an outside write only once the file has settled, so a
   // save inside that window wrote over it and the event was then dropped as

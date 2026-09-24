@@ -8,6 +8,7 @@
 
 ### Bug Fixes
 
+- **Pasting a long text into a note's name no longer breaks it** — Pasting a few paragraphs into the name at the top of a note made the whole text the name: a wall of text across the top of the window, and a file name too long for the Mac to save, so the note failed to save and kept retrying. A paste into the name now takes just the first line, and a name that is still too long for a file is cut to fit, so the note always saves.
 - **The folder and note name at the top no longer shift** — The path above the note moved a few pixels sideways whenever a note grew long enough to scroll, or got short enough to stop, because the scrollbar arriving narrowed the page. The space for the scrollbar is now always kept, so the path stays exactly centred and still.
 
 ## v0.9.1 — 2026-09-24

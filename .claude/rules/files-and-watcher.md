@@ -138,7 +138,8 @@ mark with no timer pending. `write-in-flight.spec.ts`.
 - **For every persisted desktop note, the title shown equals the Markdown basename.** `write-note`
   in `electron/noteFileManager.js` is the only place that knows the final name (collision
   suffix, invalid characters to `_`, trimmed edges, `Untitled` for blank, a leading dot to `_`,
-  the volume's own casing) and answers every write with it; `useResolvedTitle` adopts a
+  cut to `MAX_NAME_BYTES` (200 bytes of UTF-8, never inside a character; a longer name failed
+  every save), the volume's own casing) and answers every write with it; `useResolvedTitle` adopts a
   differing answer (`adoptNoteData`, so Cmd+Z undoes the rename itself) and repaints the title
   field, caret preserved. Don't add a sanitiser to an input.
 - **A name the app makes is sanitised; a name the disk holds is kept.** `noteToFilePath`
@@ -160,6 +161,10 @@ mark with no timer pending. `write-in-flight.spec.ts`.
   (review 2026-09-07, §2.7) went with the reason for it. Chromium holds a typed trailing space as
   U+00A0, which `trim()` and the sanitiser strip alike. `title-is-filename.spec.ts`.
 - The title repaints from state only when unfocused. No inline "name exists" validation.
+- **A paste into the name is its first line with text on it** (`EditorArea`'s title `onPaste`):
+  the name is one line, and a pasted document became the whole name. That is what a paste
+  means in a one-line field, not a filename rule; the length is still the write's to decide.
+  `title-is-filename.spec.ts`.
 - **A save keeps the file's permission bits** (`writeFileAtomic` copies the nine bits onto the
   temp file; a stale `.tmp` is removed first, never reopened). Birthtime, xattrs and a
   symlinked `.md` are still lost on save; don't fix by writing in place without a decision on
