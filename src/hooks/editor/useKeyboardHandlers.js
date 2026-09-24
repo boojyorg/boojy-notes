@@ -102,6 +102,11 @@ function focusTitleEnd() {
   sel.addRange(range);
 }
 
+/** A text root that sits inside a row beside its marker (a list item, a task). */
+function inRow(el) {
+  return !!el && el.closest("[data-block-id]") !== el;
+}
+
 /** Where a caret lands at the end of a block: its visible length, never its Markdown's. */
 function endOffset(blockRefs, block) {
   const el = blockRefs.current[block.id];
@@ -529,6 +534,41 @@ export function useKeyboardHandlers({
             }
           }
         }
+      }
+    }
+
+    // ArrowLeft at a block's start and ArrowRight at its end, where a list row
+    // is on either side of the step. Chromium's own move stops in the row
+    // beside the marker, outside the item's text, and the next character
+    // typed there never reached the file (2026-09-24). The step lands where
+    // ArrowUp and ArrowDown would, at the neighbour's near edge; between two
+    // paragraphs the browser's move is already right and is left alone.
+    if (
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      !e.shiftKey &&
+      !e.metaKey &&
+      !e.ctrlKey
+    ) {
+      const sel = window.getSelection();
+      const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+      if (!range?.collapsed) return;
+      const back = e.key === "ArrowLeft";
+      const offset = caretOffsetAt(el, range.startContainer, range.startOffset);
+      if (offset !== (back ? 0 : caretLength(el))) return;
+      const idx = back
+        ? caretLandingBefore(blocks, blockIndex)
+        : caretLandingAfter(blocks, blockIndex);
+      const target = idx >= 0 ? blocks[idx] : null;
+      const targetEl = target ? blockRefs.current[target.id] : null;
+      if (!inRow(el) && !(target && isEditableBlock(target) && inRow(targetEl))) return;
+      e.preventDefault();
+      if (!target) return;
+      if (hasOwnField(target)) {
+        focusOwnedField(editorRef.current, target.id, back ? "end" : "start");
+      } else if (isSelectableBlock(target)) {
+        selectBlock(target.id);
+      } else if (targetEl) {
+        placeCaret(targetEl, back ? endOffset(blockRefs, target) : 0);
       }
     }
     // Deps deliberately not exhaustive: all deps are stable refs/callbacks passed via shared object

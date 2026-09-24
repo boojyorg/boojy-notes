@@ -1,5 +1,10 @@
 import { useCallback } from "react";
-import { findNearestBlock, isEditableBlock, placeCaret } from "../../utils/domHelpers";
+import {
+  caretIntoTextRoot,
+  findNearestBlock,
+  isEditableBlock,
+  placeCaret,
+} from "../../utils/domHelpers";
 
 export function useMouseHandlers({
   noteDataRef,
@@ -52,11 +57,16 @@ export function useMouseHandlers({
       if (focusLeftEditor()) return;
       const sel = window.getSelection();
       if (sel.rangeCount && !sel.getRangeAt(0).collapsed) return;
+      const blocks = noteDataRef.current[currentNote]?.content?.blocks;
       if (sel.rangeCount) {
         const info = getBlock(sel.anchorNode);
-        if (info) return;
+        if (info) {
+          // In a block's row is not in its text: a click by a list marker
+          // leaves the caret beside the dot, where typing reaches no file.
+          if (blocks) caretIntoTextRoot(editorRef.current, blocks, blockRefs.current);
+          return;
+        }
       }
-      const blocks = noteDataRef.current[currentNote]?.content?.blocks;
       if (!blocks || blocks.length === 0) return;
       if (sel.rangeCount) {
         const target = findNearestBlock(sel, blocks, blockRefs.current);

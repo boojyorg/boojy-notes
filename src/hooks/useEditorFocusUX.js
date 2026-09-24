@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect } from "react";
 import {
+  caretIntoTextRoot,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   caretOutOfTagEnd,
@@ -25,7 +26,8 @@ export const TOOLBAR_REST_MS = 300;
  *      typing continues as prose rather than rewriting the link's alias; one left at the
  *      start of a link's text (Home on a block that opens with a link) is moved onto the
  *      anchor before it, the same way. A space or punctuation typed at the end of a
- *      `#tag` leaves its pill the same way (a letter stays: the tag is growing). Only
+ *      `#tag` leaves its pill the same way (a letter stays: the tag is growing). A caret
+ *      resting in a list row beside its marker, outside the text, is put into the text. Only
  *      insertions outside an IME composition; caret movement and deletion are never touched.
  *   3. a layout effect that, when a focus target is queued (focusBlockId/focusCursorPos),
  *      places the caret in that block, re-asserts it after the next frame if the DOM
@@ -159,6 +161,10 @@ export function useEditorFocusUX({
     const onBeforeInput = (e) => {
       if (e.isComposing || !e.inputType?.startsWith("insert")) return;
       const root = editorRef.current;
+      // A caret beside a list marker, outside the item's text, types into
+      // nothing the file will hold: put it in the text first.
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
+      if (blocks) caretIntoTextRoot(root, blocks, blockRefs.current);
       if (caretOutOfLinkEnd(root) || caretOutOfLinkStart(root)) return;
       // A character that cannot continue a tag leaves its pill (a letter grows it).
       if (e.inputType === "insertText" && e.data && !TAG_CHAR_RE.test(e.data))
@@ -166,7 +172,8 @@ export function useEditorFocusUX({
     };
     document.addEventListener("beforeinput", onBeforeInput);
     return () => document.removeEventListener("beforeinput", onBeforeInput);
-  }, [editorRef]);
+    // Deps deliberately not exhaustive: blockRefs and noteDataRef are stable refs
+  }, [editorRef, activeNote]);
 
   // Focus block layout effect
   useLayoutEffect(() => {

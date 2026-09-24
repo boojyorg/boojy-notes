@@ -463,6 +463,14 @@ on a signal, from the block as the keystroke ref holds it, never from the render
   Drawn as boxes (`bulletMarkerStyle`: 6px dot, 7px ring with a 1.25px stroke, centred ~13px
   into the line box), never the `●`/`○` glyphs. Presentation only; the file's marker and
   indentation are untouched.
+- **The caret never rests beside a marker, outside the item's text** (2026-09-24). A list
+  item, numbered item and task are a row holding the marker and the text root, and the row
+  is inside the one contentEditable: ArrowLeft from an item's start, or a click in the gap
+  between dot and text, left Chromium's caret in the row, and what was typed there was drawn
+  beside the dot and never reached the file. Three guards: ArrowLeft/Right at a block's edge
+  cross by the app's hand when a row is on either side (between paragraphs the browser's
+  move is kept); the click rescue treats "in the row" as not "in the block"; and the
+  `beforeinput` seam runs `caretIntoTextRoot` before any insertion. `list-caret.spec.ts`.
 - `listLayout` in `utils/listStructure.ts` supplies the editor's numbers and the writer's
   prefixes: sibling counters continue across nested lists and blank rows, restart for a new
   sequence, respect an imported start; a child starts at its parent's content column.
