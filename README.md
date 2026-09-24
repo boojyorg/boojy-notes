@@ -4,29 +4,21 @@ A simple desktop notes app for Markdown files you own.
 
 ## What Boojy Notes is
 
-Write normally, organise notes into folders, and everything stays as ordinary `.md` files on
-your computer. There's no account to make, no proprietary note format, and no workspace to
-set up. Point it at a folder of Markdown and start writing.
+Write normally, organise notes into folders, and everything stays as ordinary `.md` files on your computer. There's no account to make, no proprietary note format, and no workspace to set up. Point it at a folder of Markdown and start writing.
 
-The idea is to combine the simplicity of a traditional notes app with the ownership of local
-Markdown. Common note-taking should be obvious. The more advanced Markdown you might already
-have in those files (wikilinks, tags, callouts, frontmatter) is understood quietly, and only
-shows up when you reach for it.
+The idea is to combine the simplicity of a traditional notes app with the ownership of local Markdown. Common note-taking should be obvious. The more advanced Markdown you might already have in those files (wikilinks, tags, callouts, frontmatter) is understood quietly, and only shows up when you reach for it.
 
-One promise sits under all of it: editing part of a file must not rewrite the rest of it.
-Syntax the app doesn't understand is preserved, never "cleaned up", which is what makes it safe
-to use on a folder you care about. The full contract is in
-[docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
+One promise sits under all of it: editing part of a file must not rewrite the rest of it. Syntax the app doesn't understand is preserved, never "cleaned up", which is what makes it safe to use on a folder you care about. The full contract is in [docs/SPEC-markdown-source-of-truth.md](docs/SPEC-markdown-source-of-truth.md).
 
 ## Features
 
 - Block editor with six heading levels, lists and to-dos, tables, images, code and quotes
-- Slash commands and typed Markdown shortcuts: `#`, `-`, `>` and a space, a code fence,
-  `**bold**` as you type, `|||` for a table, `![]` for an image
+- Slash commands and typed Markdown shortcuts: `#`, `-`, `>` and a space, a code fence, `**bold**` as you type, `|||` for a table, `![]` for an image
 - Notes are `.md` files in a folder you choose, including an existing Obsidian vault
 - Wikilinks, tags, callouts and frontmatter understood without extra chrome
 - A folder tree sorted by most recent or by name, and a search palette on Cmd+P
-- The note's folder path in the top row, with Undo, Redo and a word count beside it
+- The note's folder path in the top row, and a full menu bar with every command and its shortcut
+- A Markdown view (Cmd+/) that shows and edits the note as its file
 - One note open at a time
 - Light, Dark and System appearance
 
@@ -40,11 +32,9 @@ pnpm dev        # the desktop app (Electron)
 pnpm dev:web    # browser-only dev server, for fast UI iteration
 ```
 
-The desktop app is the product. The browser build is a development target: quick to reload,
-handy for tests, and its notes live in browser storage rather than on disk.
+The desktop app is the product. The browser build is a development target: quick to reload, handy for tests, and its notes live in browser storage rather than on disk.
 
 ## Development
-
 
 | Script           | Description                                            |
 | ---------------- | ------------------------------------------------------ |
@@ -59,32 +49,19 @@ handy for tests, and its notes live in browser storage rather than on disk.
 | `check`          | Biome lint + format in one pass                        |
 | `typecheck`      | TypeScript check (`tsc --noEmit`)                      |
 
+All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`, `test:coverage`, `test:e2e` and `test:electron`, plus a dependency audit at high severity; `test` alone is not the gate. Architecture, conventions and the things that will bite you are in [AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
 
-All scripts run via `pnpm <script>`. CI gates every push on `check`, `typecheck`,
-`test:coverage`, `test:e2e` and `test:electron`, plus a critical-level dependency audit; `test`
-alone is not the gate. Architecture, conventions and the things that will bite you are in
-[AGENTS.md](AGENTS.md); remaining work is in [docs/BACKLOG.md](docs/BACKLOG.md).
-
-Built with React 19 and Vite 6, Electron 42 for the desktop shell, Vitest and Playwright for
-tests, Biome for lint and format, pnpm for packages.
+Built with React 19 and Vite 8, Electron 44 for the desktop shell, Vitest and Playwright for tests, Biome for lint and format, pnpm for packages.
 
 ## Status
 
-Boojy Notes is in early access ahead of its first desktop Beta: v0.9.1 was published on
-2026-09-24 and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0
-onward updates itself to it. Beta starts when the local desktop app feels complete
-enough for ordinary daily use that I no longer feel limited by missing core features. It isn't
-there yet. I use it every day, and what I bump into decides what gets finished next.
+Boojy Notes is in early access ahead of its first desktop Beta: v0.9.1 was published on 2026-09-24 and is the build [boojy.org](https://boojy.org) offers; an installed copy from v0.8.0 onward updates itself to it. Beta starts when the local desktop app feels complete enough for ordinary daily use that I no longer feel limited by missing core features. It isn't there yet. I use it every day, and what I bump into decides what gets finished next.
 
-Several things were built and then removed to keep the product small: cloud sync and sign-in,
-PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in
-[CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
+Several things were built and then removed to keep the product small: cloud sync and sign-in, PDF and DOCX export, tabs and split view, native mobile. Each is listed under Removed in [CHANGELOG.md](CHANGELOG.md), and Git keeps the code if a direction is ever reconsidered.
 
 ## Contributing
 
-Boojy Notes is a personal project and isn't accepting code contributions or pull requests right now.
-Feedback and bug reports are welcome by email at [tyr@boojy.org](mailto:tyr@boojy.org).
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Boojy Notes is a personal project and isn't accepting code contributions or pull requests right now. Feedback and bug reports are welcome by email at [tyr@boojy.org](mailto:tyr@boojy.org). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
