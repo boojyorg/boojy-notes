@@ -40,7 +40,11 @@ function isSkippedDir(name: string): boolean {
  * `._*` AppleDouble file could be a real user file and keeps the folder. */
 function isDeletableOsCruft(name: string): boolean {
   const lower = name.toLowerCase();
-  return lower === ".ds_store" || lower === "thumbs.db" || lower === "desktop.ini";
+  // `Icon\r` is a folder's custom icon, which Finder and Dropbox write; the
+  // carriage return is part of the name.
+  return (
+    lower === ".ds_store" || lower === "thumbs.db" || lower === "desktop.ini" || name === "Icon\r"
+  );
 }
 
 export const toPosix = (rel: string): string => rel.split(path.sep).join("/");

@@ -49,7 +49,14 @@ function LocationRow({ v, removable, withRemove, switchVault, forgetVault, revea
     <div
       className="settings-location"
       data-testid="settings-location-row"
-      style={{ display: "contents" }}
+      // A real box across the whole row (on the list's columns), so pointing
+      // anywhere along it, the empty stretch included, shows its Use and ×.
+      style={{
+        gridColumn: "1 / -1",
+        display: "grid",
+        gridTemplateColumns: "subgrid",
+        alignItems: "center",
+      }}
     >
       {/* Name and place are one phrase and one Show in Finder control, its
           hover ground hugging the words. */}

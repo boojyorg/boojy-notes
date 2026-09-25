@@ -347,6 +347,8 @@ describe("readOtherFiles", () => {
     write(".obsidian/app.json");
     write(".DS_Store");
     write("Uni/Thumbs.db");
+    write("Icon\r");
+    write("Uni/Icon\r");
     expect(readOtherFiles(notesDir)).toEqual([
       { path: "Uni/lecture-3.pptx", attachment: false },
       { path: "attachments/diagram-1.png", attachment: true },

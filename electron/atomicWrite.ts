@@ -7,8 +7,10 @@ import path from "node:path";
  * previous file intact instead of a truncated one. The fsync before the rename
  * matters for power loss: without it the rename can hit the journal while the
  * data is still only in the page cache, leaving the target pointing at zeroed
- * blocks. The dot-prefix keeps the temp file invisible to the chokidar watcher
- * and the vault walk.
+ * blocks. The temp file is `.~<name>.tmp` (`tempPathFor`): the dot keeps it
+ * invisible to the chokidar watcher and the vault walk, and `.~` is a prefix
+ * Dropbox never syncs, so a vault in a sync folder does not upload a file
+ * that exists for a few milliseconds per save to every other device.
  *
  * Used for notes, the ID index, and the app's own `config.json` and
  * `settings.json`: a torn config would send the next launch to the default
@@ -27,8 +29,11 @@ import path from "node:path";
  * nothing on a text file. Birthtime and extended attributes (Finder tags) are
  * not carried over; that is a separate decision (backlog).
  */
+export const tempPathFor = (filePath: string): string =>
+  path.join(path.dirname(filePath), `.~${path.basename(filePath)}.tmp`);
+
 export function writeFileAtomic(filePath: string, data: string, modeFrom = filePath): void {
-  const tmpPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.tmp`);
+  const tmpPath = tempPathFor(filePath);
   const mode = existingMode(modeFrom);
   fs.rmSync(tmpPath, { force: true });
   const fd = fs.openSync(tmpPath, "w");

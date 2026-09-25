@@ -199,10 +199,10 @@ test("when the conflict copy cannot be written, blur and quit never put the loca
   const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
   try {
     // Make the copy's write fail, and only the copy's: the atomic write opens
-    // `.<name>.md.tmp` beside the file, so a directory in its place fails it
+    // `.~<name>.md.tmp` beside the file, so a directory in its place fails it
     // with EISDIR while `Alpha.md` itself stays perfectly writable.
     const copyName = `Alpha (conflicted copy ${TODAY})`;
-    const blocker = path.join(h.vault.dir, `.${copyName}.md.tmp`);
+    const blocker = path.join(h.vault.dir, `.~${copyName}.md.tmp`);
     fs.mkdirSync(blocker);
 
     await h.openNote("Alpha");

@@ -21,6 +21,9 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
   unclaimed unlink is real, however soon.
 - A folder rename, removal or copy is the one timed suppression (`claimTree`, 1.5 s).
 - `watcher-ownership.spec.ts`.
+- **A vault in a sync folder**: a version renamed over a note is an outside edit, a sync
+  client's conflicted copy is its own note, `Icon\r` is OS clutter, and the save's temp file
+  is `.~name.tmp` (a prefix Dropbox never syncs). `cloud-sync.spec.ts`.
 
 ## An outside rename or move is the same note
 

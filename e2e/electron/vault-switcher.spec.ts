@@ -217,3 +217,32 @@ test("removing the open location asks, switches to another, then removes it", as
     await h.close();
   }
 });
+
+test("pointing anywhere along a location's row, the empty stretch included, shows its ×", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    const other = path.join(path.dirname(h.vault.dir), "Uni");
+    fs.mkdirSync(other);
+    await h.page.getByTestId("wordmark-settings-button").click();
+    await addLocation(h, other);
+    const settings = h.page.getByRole("dialog", { name: "Settings" });
+    const home = path.basename(h.vault.dir);
+    const remove = settings.getByRole("button", { name: `Remove ${home} from Boojy Notes` });
+    const opacity = () =>
+      remove.evaluate(
+        (el) => getComputedStyle(el.closest(".settings-location-action") as Element).opacity,
+      );
+    expect(await opacity()).toBe("0");
+    // Between the end of the path and Active: nothing but the row itself.
+    const reveal = await settings
+      .getByRole("button", { name: new RegExp(`^${home},`) })
+      .boundingBox();
+    const active = await settings.getByTestId("location-active").boundingBox();
+    if (!reveal || !active) throw new Error("row not laid out");
+    await h.page.mouse.move((reveal.x + reveal.width + active.x) / 2, active.y + active.height / 2);
+    await expect.poll(opacity).toBe("1");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
