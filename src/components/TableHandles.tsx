@@ -28,7 +28,7 @@ const DRAG_START = 4;
 const RING = 2;
 const LINE = 3;
 /** The carried copy's opacity: enough to read it, enough to see what it is over. */
-const GHOST_OPACITY = 0.85;
+const GHOST_OPACITY = 0.9;
 
 interface Box {
   left: number;
