@@ -52,7 +52,6 @@ vi.mock("../../src/hooks/useTableInteractions", () => ({
     setAlignment: vi.fn(),
     openGripMenu: vi.fn(),
     contextMenu: null,
-    handleCellContextMenu: vi.fn(),
     closeContextMenu: mockCloseContextMenu,
   }),
 }));

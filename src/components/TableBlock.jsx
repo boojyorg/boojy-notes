@@ -38,7 +38,6 @@ function TableCell({
   onInput,
   onKeyDown,
   onPaste,
-  onContextMenu,
   style,
 }) {
   const ref = useRef(null);
@@ -69,7 +68,6 @@ function TableCell({
       onInput={(e) => onInput(e, rowIdx, colIdx)}
       onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
       onPaste={(e) => onPaste(e, rowIdx, colIdx)}
-      onContextMenu={(e) => onContextMenu(e, rowIdx, colIdx)}
       style={style}
     />
   );
@@ -131,7 +129,6 @@ export default memo(function TableBlock({
   isSelected,
   onSelect,
   onBlockNav,
-  onDelete,
   registerRef,
 }) {
   const rhythm = useRhythm();
@@ -179,14 +176,12 @@ export default memo(function TableBlock({
     setAlignment,
     contextMenu,
     openGripMenu,
-    handleCellContextMenu,
     closeContextMenu,
   } = useTableInteractions({
     block,
     noteId,
     blockIndex,
     onUpdateTableRows,
-    tableRef,
     cellRefs,
   });
   // The row or column whose grip menu is open: outlined by TableHandles.
@@ -421,7 +416,6 @@ export default memo(function TableBlock({
                       onInput={handleCellInput}
                       onKeyDown={handleCellKeyDown}
                       onPaste={handleCellPaste}
-                      onContextMenu={handleCellContextMenu}
                       style={{
                         fontWeight: 600,
                         textAlign: alignments[colIdx] || "left",
@@ -452,7 +446,6 @@ export default memo(function TableBlock({
                           onInput={handleCellInput}
                           onKeyDown={handleCellKeyDown}
                           onPaste={handleCellPaste}
-                          onContextMenu={handleCellContextMenu}
                           style={{ textAlign: alignments[colIdx] || "left" }}
                         />
                       ),
@@ -578,7 +571,6 @@ export default memo(function TableBlock({
           onDeleteRow={deleteRowAt}
           onInsertColumn={insertColumn}
           onDeleteColumn={deleteColumnAt}
-          onDeleteTable={onDelete}
           onDismiss={closeContextMenu}
         />
       )}

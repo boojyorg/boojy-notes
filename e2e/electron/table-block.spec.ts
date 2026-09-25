@@ -11,7 +11,7 @@
  * Escape from a cell selects the whole table (the divider's band) and
  * Backspace removes it, Cmd+Z brings it back; a Backspace or forward Delete
  * arriving from a neighbour selects it and keeps the neighbour; Delete table
- * in the cell menu does the same; and the arrows walk in from the paragraph
+ * in a cell's right-click menu does the same; and the arrows walk in from the paragraph
  * above, through the cells and out at the last row.
  */
 import { expect, test } from "@playwright/test";
@@ -161,7 +161,7 @@ test("Backspace from below and forward Delete from above select the table and ke
   }
 });
 
-test("Delete table from the cell menu removes the whole block, and an added column is empty", async () => {
+test("right-click in a cell is the text menu, with Delete table last: it removes the whole block, and an added column is empty", async () => {
   const h = await launchApp({ [NOTE]: seeded });
   try {
     await h.openNote("Grid");
@@ -177,9 +177,15 @@ test("Delete table from the cell menu removes the whole block, and an added colu
     expect(h.vault.read(NOTE)).not.toContain("Col ");
 
     await table(h).locator("td").first().click({ button: "right" });
-    const menu = h.page.locator(".table-context-menu");
+    const menu = h.page.getByRole("menu", { name: "Edit" });
     await expect(menu).toBeVisible();
-    await menu.getByText("Delete table").click();
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Cut⌘X",
+      "Copy⌘C",
+      "Paste⌘V",
+      "Delete table",
+    ]);
+    await menu.getByRole("menuitem", { name: "Delete table" }).click();
     await expect(table(h)).toHaveCount(0);
     await expect(menu).toHaveCount(0);
     // The caret lands in the paragraph under where the table was.
@@ -246,6 +252,44 @@ test("a long run of pipes is clamped to what the column can show", async () => {
     await h.page.keyboard.press("Enter");
     await h.page.keyboard.type(`${"|".repeat(20)} `);
     await expect(table(h).locator("th")).toHaveCount(8);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Cut and Paste from a cell's right-click menu act in the cell, as ⌘X and ⌘V do", async () => {
+  const h = await launchApp({ [NOTE]: seeded });
+  try {
+    await h.openNote("Grid");
+    const tea = table(h).locator("td").first();
+    // Beside a cell's text there is no word: nothing is selected, nothing to cut
+    // (read as one run of text, the table once handed over a neighbour's word).
+    const qty = table(h).locator("td").nth(1);
+    const qtyBox = await qty.boundingBox();
+    await qty.click({ button: "right", position: { x: (qtyBox?.width ?? 80) - 6, y: 10 } });
+    const menu = h.page.getByRole("menu", { name: "Edit" });
+    await expect(menu.getByRole("menuitem", { name: /^Cut/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await h.page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+
+    // A right-click on a word selects it, and Cut takes it out of the cell.
+    await tea.click({ button: "right", position: { x: 18, y: 12 } });
+    await menu.getByRole("menuitem", { name: /^Cut/ }).click();
+    await expect(tea).toHaveText("");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("|  | 2 |"));
+
+    // Paste in the next cell puts it back there.
+    await qty.click({ button: "right", position: { x: 18, y: 12 } });
+    await h.page
+      .getByRole("menu", { name: "Edit" })
+      .getByRole("menuitem", { name: /^Paste/ })
+      .click();
+    await expect(qty).toContainText("Tea");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("Tea"));
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -146,7 +146,7 @@ test("Enter at the end of a code block adds a line, a fence's blank first line s
   }
 });
 
-test("text typed into a table cell is kept by a row operation from the cell's own menu", async () => {
+test("text typed into a table cell is kept by a row operation from the row's grip", async () => {
   const md = "| Name | Qty |\n| --- | --- |\n| Tea | 2 |\n| Milk | 1 |\n";
   const h = await launchApp({ [NOTE]: md });
   try {
@@ -155,9 +155,11 @@ test("text typed into a table cell is kept by a row operation from the cell's ow
     await cell.click();
     await h.page.keyboard.press(END_OF_LINE);
     await h.page.keyboard.type(" leaves");
-    // The menu keeps focus in the cell, so nothing ever blurred it.
-    await cell.click({ button: "right" });
-    await h.page.getByText("Insert Row Below").click();
+    // The grip's press never takes focus from the cell, so the typing is
+    // still pending in the ref when the row operation reshapes the rows.
+    await cell.hover();
+    await h.page.getByRole("button", { name: "Row options, or drag to move", exact: true }).click();
+    await h.page.getByRole("menuitem", { name: "Insert below" }).click();
     await expect(h.page.locator("table.table-block tbody tr")).toHaveCount(3);
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("leaves") && t.includes("|  |"));
     await sleep(SETTLE_MS);

@@ -146,8 +146,8 @@ app's, made through state.**
 
 ## Right-click is Cut, Copy and Paste
 
-- `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only).
-  Media, code and table blocks keep their own menus.
+- `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only);
+  in a table cell (its own host and text) Delete table last. Media and code keep their own.
 - **Items run the keys' own path**: restore the captured range, then `execCommand` or the
   `paste` IPC, writing exactly what ⌘X/⌘C/⌘V do.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`): outside the selection selects the
@@ -273,8 +273,8 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
   passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
 - Content-sized, shrinking to a per-cell floor before scrolling (no column widths in
-  Markdown). Add boxes reveal on their own hover. Grip menus hang under the grip, Align a
-  submenu; only the cell menu deletes a table.
+  Markdown). Add boxes reveal on their own hover. Grip menus hang under the grip, aligns
+  inline.
   `table-block.spec.ts`.
 
 ## Dividers, images and tables are selectable blocks

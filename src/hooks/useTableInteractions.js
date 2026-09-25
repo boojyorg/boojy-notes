@@ -9,14 +9,7 @@ import {
   withRowMoved,
 } from "../utils/tableShape";
 
-export function useTableInteractions({
-  block,
-  noteId,
-  blockIndex,
-  onUpdateTableRows,
-  tableRef,
-  cellRefs,
-}) {
+export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableRows, cellRefs }) {
   const defaultRows = useMemo(
     () => [
       ["", ""],
@@ -39,25 +32,6 @@ export function useTableInteractions({
   /* ── Context menu ─────────────────────────────────────── */
   const [contextMenu, setContextMenu] = useState(null);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  const handleCellContextMenu = useCallback(
-    (e, rowIdx, colIdx) => {
-      e.preventDefault();
-      e.stopPropagation();
-      // The menu opens under the table, in line with the clicked column: the
-      // scroller's top and bottom for the vertical anchor (the grid plus its
-      // horizontal scrollbar when it has one, so the menu never covers a row
-      // or the bar, and flips above the whole grid when there is no room
-      // below), the cell's left and right for the horizontal (TableContextMenu).
-      const cell = e.currentTarget.getBoundingClientRect();
-      const grid = tableRef.current?.parentElement?.getBoundingClientRect() ?? cell;
-      setContextMenu({
-        anchor: { top: grid.top, bottom: grid.bottom, left: cell.left, right: cell.right },
-        context: { type: rowIdx === 0 ? "header" : "cell", rowIndex: rowIdx, colIndex: colIdx },
-      });
-    },
-    [tableRef],
-  );
 
   /** A grip's menu: its row or column, hung where the grip says (TableHandles). */
   const openGripMenu = useCallback((target, anchor) => {
@@ -349,7 +323,6 @@ export function useTableInteractions({
 
     contextMenu,
     openGripMenu,
-    handleCellContextMenu,
     closeContextMenu,
   };
 }

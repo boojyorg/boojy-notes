@@ -396,7 +396,7 @@ const EditorArea = memo(
     );
 
     // Remove a block addressed as a whole (the selected divider, image or
-    // table; the table's own Delete table) and land the caret at the start of
+    // table; Delete table in a cell's right-click menu) and land the caret at the start of
     // the next text block, or the end of the previous one if there is none,
     // so a Backspace that arrived from the block below can carry on from where
     // it was. Also the image's and file's own Delete.
@@ -541,6 +541,10 @@ const EditorArea = memo(
             : null;
         const anchor = e.target.closest("a");
         const wikilink = e.target.closest(".wikilink");
+        // A table cell is its own editing host: Cut, Copy and Paste run in it,
+        // and the table gets its Delete table.
+        const cell = e.target.closest('[data-block-type="table"] th, [data-block-type="table"] td');
+        const tableId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id") ?? null;
         const linkEl = anchor || wikilink;
         // A right-click on a word outside the selection selects the word, as
         // a Mac text field does; inside the selection it keeps it. A link is
@@ -567,6 +571,8 @@ const EditorArea = memo(
           linkType: null,
           range,
           field,
+          host: cell,
+          tableId,
           canCutCopy: field
             ? field.selectionStart !== field.selectionEnd
             : !!range && !range.collapsed,
@@ -601,7 +607,7 @@ const EditorArea = memo(
         if (menu.field) {
           menu.field.focus({ preventScroll: true });
         } else {
-          editorRef.current?.focus({ preventScroll: true });
+          (menu.host ?? editorRef.current)?.focus({ preventScroll: true });
           if (menu.range) {
             const sel = window.getSelection();
             sel.removeAllRanges();
@@ -1094,6 +1100,16 @@ const EditorArea = memo(
                 onCut={() => runOnSelection(() => document.execCommand("cut"))}
                 onCopy={() => runOnSelection(() => document.execCommand("copy"))}
                 onPaste={() => runOnSelection(() => getAPI()?.paste?.())}
+                onDeleteTable={
+                  linkCtxMenu.tableId
+                    ? () => {
+                        dismissCtxMenu();
+                        const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
+                        const i = blocks.findIndex((b) => b.id === linkCtxMenu.tableId);
+                        if (i !== -1) deleteWholeBlock(activeNote, i);
+                      }
+                    : undefined
+                }
                 onClose={dismissCtxMenu}
               />
             )}

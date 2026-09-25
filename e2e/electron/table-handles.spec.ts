@@ -99,7 +99,7 @@ test("the header row has a grip too: carried down, the row under it becomes the 
   }
 });
 
-test("a column's grip opens its menu under the grip; Align › Centre rewrites only the separator", async () => {
+test("a column's grip opens its menu under the grip; Align centre rewrites only the separator", async () => {
   const h = await launchApp({ [NOTE]: lines.join("\n") });
   try {
     await h.openNote("Prices");
@@ -119,11 +119,7 @@ test("a column's grip opens its menu under the grip; Align › Centre rewrites o
     expect(Math.abs((m?.y ?? 0) - ((g?.y ?? 0) + (g?.height ?? 0)))).toBeLessThan(12);
     expect(Math.abs((m?.x ?? 0) - (c?.x ?? 0))).toBeLessThan(3);
 
-    await menu.getByRole("menuitem", { name: /Align/ }).hover();
-    await h.page
-      .getByRole("menu", { name: "Align" })
-      .getByRole("menuitemradio", { name: /Centre/ })
-      .click();
+    await menu.getByRole("menuitemradio", { name: /Align centre/ }).click();
     await expect(menu).toHaveCount(0);
     await expect(cell(h, 1, 0)).toHaveCSS("text-align", "center");
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("| :---: | -------: |"));

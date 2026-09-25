@@ -13,6 +13,7 @@ import {
   OpenNoteIcon,
   PasteIcon,
   PencilIcon,
+  TrashIcon,
   UnlinkIcon,
 } from "./Icons";
 
@@ -42,6 +43,8 @@ interface EditorContextMenuProps {
   onCut: () => void;
   onCopy: () => void;
   onPaste: () => void;
+  /** Given in a table cell: the table's own last item, under a rule. */
+  onDeleteTable?: () => void;
   onClose: () => void;
 }
 
@@ -52,6 +55,7 @@ interface Item {
   shortcut?: string;
   disabled?: boolean;
   rule?: boolean;
+  danger?: boolean;
 }
 
 /**
@@ -60,6 +64,10 @@ interface Item {
  * Notion's and every native text menu has. Before this a right-click on text
  * did nothing at all (Electron supplies no menu) and a link's menu was a
  * hand-drawn list with no glyphs or keys.
+ *
+ * In a table cell it is the same menu, with Delete table last under a rule:
+ * the table's rows and columns are arranged from its grips (TableHandles),
+ * and this is the one pointer path to removing the whole table.
  *
  * The image menu's grammar: portalled to `body`, presses stopped on its own
  * element so they never reach the editor, placement divided by the UI scale.
@@ -78,6 +86,7 @@ export default function EditorContextMenu({
   onCut,
   onCopy,
   onPaste,
+  onDeleteTable,
   onClose,
 }: EditorContextMenuProps) {
   const { theme } = useTheme() as {
@@ -138,6 +147,15 @@ export default function EditorContextMenu({
       disabled: !canPaste,
     },
   );
+  if (onDeleteTable) {
+    items.push({
+      label: "Delete table",
+      icon: <TrashIcon />,
+      action: onDeleteTable,
+      rule: true,
+      danger: true,
+    });
+  }
 
   const run = (item: Item) => {
     if (item.disabled) return;
@@ -248,7 +266,11 @@ export default function EditorContextMenu({
                 borderRadius: MENU_ROW_RADIUS,
                 padding: "7px 10px",
                 cursor: item.disabled ? "default" : "pointer",
-                color: item.disabled ? TEXT.muted : TEXT.primary,
+                color: item.disabled
+                  ? TEXT.muted
+                  : item.danger
+                    ? theme.SEMANTIC.error
+                    : TEXT.primary,
                 opacity: item.disabled ? 0.6 : 1,
                 fontSize: 12.5,
                 fontFamily: "inherit",
