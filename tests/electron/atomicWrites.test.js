@@ -175,8 +175,8 @@ describe.skipIf(process.platform === "win32")("write-note — the file's permiss
     // write will use, are the two things a new file could pick a mode up from.
     fs.writeFileSync(path.join(notesDir, "Other.md"), "");
     fs.chmodSync(path.join(notesDir, "Other.md"), 0o600);
-    fs.writeFileSync(path.join(notesDir, ".Fresh.md.tmp"), "stale");
-    fs.chmodSync(path.join(notesDir, ".Fresh.md.tmp"), 0o600);
+    fs.writeFileSync(path.join(notesDir, ".~Fresh.md.tmp"), "stale");
+    fs.chmodSync(path.join(notesDir, ".~Fresh.md.tmp"), 0o600);
 
     const { filePath } = writeNote({
       id: "note-2-bbbb",
@@ -187,5 +187,15 @@ describe.skipIf(process.platform === "win32")("write-note — the file's permiss
     expect(fs.readFileSync(filePath, "utf-8")).toBe("new");
     expect(modeOf(filePath).toString(8)).toBe(referenceMode().toString(8));
     expect(modeOf(path.join(notesDir, "Other.md")).toString(8)).toBe("600");
+  });
+});
+
+describe("the save's temp file", () => {
+  it("is hidden and carries the prefix Dropbox never syncs", async () => {
+    const { tempPathFor } = await import("../../electron/atomicWrite");
+    expect(path.basename(tempPathFor(path.join("/v", "Uni", "Week 1.md")))).toBe(".~Week 1.md.tmp");
+    expect(path.dirname(tempPathFor(path.join("/v", "Uni", "Week 1.md")))).toBe(
+      path.join("/v", "Uni"),
+    );
   });
 });

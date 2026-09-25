@@ -57,7 +57,7 @@ describe("config and settings persistence is atomic", () => {
     saveConfig({ notesDir: "/Volumes/Vault/Notes" });
     // The temp file's name is taken by a directory, so opening it for the
     // write fails before a byte reaches the real file.
-    fs.mkdirSync(path.join(userData, ".config.json.tmp"));
+    fs.mkdirSync(path.join(userData, ".~config.json.tmp"));
 
     expect(() => saveConfig({ notesDir: "/elsewhere" })).toThrow();
 
