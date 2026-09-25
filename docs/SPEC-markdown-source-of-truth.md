@@ -107,8 +107,14 @@ Decisions the spec sanctions; the rule and its test live in the editor rule.
 - A newline inside a table cell is written as `<br>`, the line break GitHub and Obsidian read in
   a cell, and read back only in that exact form; a newline in a callout title is written as a
   space.
-- A table row whose cells are unchanged is written back as the line it was read from; an edited
-  row, and a table the app makes, take the app's spelling (`| a | b |`, `| --- |`).
+- A table keeps the spelling it was written in. **A table written with its pipes lined up stays
+  lined up:** an edit that fits its columns rewrites only its own row, padded to them, and one
+  that widens a column re-pads every row of that table (a column never narrows by itself).
+  **Any other table keeps every unchanged row's line;** an edited row takes the compact
+  spelling (`| a | b |`). A table the app makes, and one the user tidies (Tidy table), is
+  written lined up (`| a   | b   |`, `| --- | --- |`), columns measured in monospace columns
+  (wide scripts and emoji count two). A new alignment rewrites only the separator, keeping the
+  other columns' cells as written.
 - Tilde and backtick fences are one block type; a non-default opener or closer, or an absent
   closer, is carried on the block (`fenceSource`) and written back as authored. **A fence's info
   string is kept exactly as typed or imported** — ` ```js ` stays `js`, never normalised to

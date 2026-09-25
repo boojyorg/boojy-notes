@@ -326,7 +326,9 @@ export function useBlockOperations({
   // it reshapes; computed from the rendered rows instead, the operation
   // wrote the rows as they were before the keystrokes and the typed text
   // was gone (review 2026-09-07, §3.4). `reshape(rows, alignments)` returns
-  // `{ rows, alignments? }`; alignments left out are kept.
+  // `{ rows, alignments?, tidy? }`; alignments left out are kept, and `tidy`
+  // lets go of the lines the table was written with, so it is written lined
+  // up (Tidy table).
   const updateTableRows = useCallback(
     (noteId, blockIndex, reshape) => {
       commitNoteData((prev) => {
@@ -334,9 +336,10 @@ export function useBlockOperations({
         const n = { ...next[noteId] };
         const blocks = [...n.content.blocks];
         const block = blocks[blockIndex];
-        const { rows, alignments } = reshape(block.rows || [], block.alignments || []);
+        const { rows, alignments, tidy } = reshape(block.rows || [], block.alignments || []);
         const updated = { ...block, rows };
         if (alignments !== undefined) updated.alignments = alignments;
+        if (tidy) delete updated.tableSource;
         blocks[blockIndex] = updated;
         n.content = { ...n.content, blocks };
         next[noteId] = n;

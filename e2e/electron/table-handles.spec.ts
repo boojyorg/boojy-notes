@@ -121,9 +121,10 @@ test("a column's grip opens its menu under the grip; Align centre rewrites only 
     await menu.getByRole("menuitemradio", { name: /Align centre/ }).click();
     await expect(menu).toHaveCount(0);
     await expect(cell(h, 1, 0)).toHaveCSS("text-align", "center");
-    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| :---: | -------: |"));
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("|:-------:|-------:|"));
     const aligned = [...lines];
-    aligned[3] = "| :---: | -------: |";
+    // The table is written lined up, and stays so: only the separator changes.
+    aligned[3] = "|:-------:|-------:|";
     expect(h.vault.read(NOTE)).toBe(aligned.join("\n"));
     expect(h.pageErrors).toEqual([]);
   } finally {
@@ -138,7 +139,7 @@ test("Shift+Cmd+R and Shift+Cmd+L align the column the caret is in, from inside 
     await cell(h, 1, 0).click();
     await h.page.keyboard.press("ControlOrMeta+Shift+KeyR");
     await expect(cell(h, 2, 0)).toHaveCSS("text-align", "right");
-    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| ---: | -------: |"));
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("|--------:|-------:|"));
     await h.page.keyboard.press("ControlOrMeta+Shift+KeyL");
     await expect(cell(h, 2, 0)).toHaveCSS("text-align", "left");
     // Back to the alignments it was written with: the separator is its own line again.
@@ -178,7 +179,7 @@ test("a triple-click in a cell selects that cell's text, and typing replaces it"
     await h.page.keyboard.type("Milk");
     await expect(cell(h, 2, 0)).toHaveText("Milk");
     await expect(cell(h, 2, 1)).toHaveText("2.10");
-    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Milk | 2.10 |"));
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Milk    |   2.10 |"));
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -203,7 +204,10 @@ test("an insert from a grip takes the caret into what it made: a new row's first
     await h.page.getByRole("menuitem", { name: "Insert right" }).click();
     await h.page.keyboard.type("Size");
     await expect(cell(h, 0, 2)).toHaveText("Size");
-    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Size |") && t.includes("| Milk |"));
+    await waitForFile(
+      h.vault.file(NOTE),
+      (t) => t.includes("| Amount | Size |") && t.includes("| Milk    |        |      |"),
+    );
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

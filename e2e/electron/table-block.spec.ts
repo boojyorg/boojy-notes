@@ -179,11 +179,13 @@ test("right-click in a cell is the text menu, with Delete table last: it removes
     await table(h).locator("td").first().click({ button: "right" });
     const menu = h.page.getByRole("menu", { name: "Edit" });
     await expect(menu).toBeVisible();
-    // The shortcut beside each is the platform's (⌘X on a Mac, Ctrl+X elsewhere).
+    // A compact table offers Tidy table; the shortcut beside each edit item is
+    // the platform's (⌘X on a Mac, Ctrl+X elsewhere).
     await expect(menu.getByRole("menuitem")).toHaveText([
       /^Cut/,
       /^Copy/,
       /^Paste/,
+      "Tidy table",
       "Delete table",
     ]);
     await menu.getByRole("menuitem", { name: "Delete table" }).click();
@@ -291,6 +293,41 @@ test("Cut and Paste from a cell's right-click menu act in the cell, as ⌘X and 
       .click();
     await expect(qty).toContainText("Tea");
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("Tea"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Tidy table lines a compact table up in the file, and Cmd+Z puts it back", async () => {
+  const h = await launchApp({ [NOTE]: seeded });
+  try {
+    await h.openNote("Grid");
+    await table(h)
+      .locator("td")
+      .first()
+      .click({ button: "right", position: { x: 18, y: 12 } });
+    await h.page
+      .getByRole("menu", { name: "Edit" })
+      .getByRole("menuitem", { name: "Tidy table" })
+      .click();
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Name | Qty |\n| ---- | --- |"));
+    // Rewritten, the table is written apart from the prose under it, which
+    // every other reader would otherwise take for one more row.
+    expect(h.vault.read(NOTE)).toBe(
+      ["Above.", "| Name | Qty |", "| ---- | --- |", "| Tea  | 2   |", "", "Below.", ""].join("\n"),
+    );
+    // Lined up now: the menu offers it no more.
+    await table(h)
+      .locator("td")
+      .first()
+      .click({ button: "right", position: { x: 18, y: 12 } });
+    await expect(
+      h.page.getByRole("menu", { name: "Edit" }).getByRole("menuitem", { name: "Tidy table" }),
+    ).toHaveCount(0);
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press(`${MOD}+z`);
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Name | Qty |\n| --- | --- |"));
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

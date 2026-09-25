@@ -266,16 +266,14 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
 
 - **Ragged on disk, ragged forever**: a row holds exactly its line's cells; the grid draws the
   widest row; only an explicit column operation pads (`tableShape.ts`).
-- **A row keeps its written line until its cells change** (`tableSource`), header included,
-  wherever it moves; an alignment rewrites only the separator, other columns' cells kept.
-  `table-preservation.spec.ts`.
+- **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
+  (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, wherever
+  they move. New and tidied tables are lined up. `table-preservation.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`): first cell or margin shows
   the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
   passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
-- Content-sized, shrinking to a per-cell floor before scrolling (no column widths in
-  Markdown). Add boxes reveal on their own hover. Grip menus hang under the grip, aligns
-  inline; inserts take the caret.
-  `table-block.spec.ts`.
+- Content-sized, shrinking to a per-cell floor, then scrolling. Add boxes reveal on their own
+  hover. Grip menus hang under the grip; inserts take the caret. `table-block.spec.ts`.
 
 ## Dividers, images and tables are selectable blocks
 
