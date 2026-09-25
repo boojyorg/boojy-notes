@@ -136,10 +136,10 @@ none blocks the release. The shared question comes first because three candidate
   saying where its language comes from rather than showing a control that does nothing. Also
   still open from the Windows smoke test: dictionaries download from Google's CDN.
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
-  one. In the order daily use asks for them: row and column handles on hover (the strips left of the rows and above the columns are
-  invisible today: click selects, hold to drag; Obsidian and Notion show a small handle), a
-  paste from a spreadsheet (tab-separated text) becoming a table, and Tab in the last cell
-  adding a row.
+  one. Grips, alignment, Duplicate and Clear contents shipped (`CHANGELOG.md`). Left, in the
+  order daily use asks for them: a paste from a spreadsheet (tab-separated text) into a
+  paragraph becoming a table, a keyboard path for moving a row or column, and dragging several
+  rows at once. No colour, by decision: Markdown cannot hold it.
 - **Whole-block selection for code, callout and file blocks.** The table joined the divider
   and image as a block addressed as a whole on 2026-09-10 (Escape selects, Backspace from
   below and forward Delete from above select rather than step over). **The arrows caught up on

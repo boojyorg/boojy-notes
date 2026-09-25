@@ -65,7 +65,10 @@ export function wordRangeAt(root: Element, x: number, y: number): Range | null {
   const caret = document.caretRangeFromPoint?.(x, y);
   const node = caret?.startContainer;
   if (!caret || !node || node.nodeType !== Node.TEXT_NODE || !root.contains(node)) return null;
-  const block = node.parentElement?.closest("[data-block-id]") ?? node.parentElement;
+  // A field of its own (a table cell, a callout's body) is its own text: read
+  // as part of its block, a cell's words ran into the next cell's.
+  const block =
+    node.parentElement?.closest("[data-inline-field], [data-block-id]") ?? node.parentElement;
   if (!block) return null;
 
   // The block's text as one string, with where each node starts in it.

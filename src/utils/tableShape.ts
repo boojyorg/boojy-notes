@@ -67,3 +67,96 @@ export function withColumnInserted(rows: string[][], at: number): string[][] {
     return next;
   });
 }
+
+/** A copy of `arr` with the item at `from` moved to index `to`. */
+function moved<T>(arr: T[], from: number, to: number): T[] {
+  const next = [...arr];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+/**
+ * A copy of `rows` with row `from` moved to index `to`, the header (row 0)
+ * included: a row that lands first is the header, as Markdown reads it.
+ */
+export function withRowMoved(rows: string[][], from: number, to: number): string[][] {
+  return moved(rows, from, to);
+}
+
+/** A column moved in every row (`moveCell`) and in the alignments. */
+export function withColumnMoved(
+  rows: string[][],
+  alignments: string[],
+  from: number,
+  to: number,
+): { rows: string[][]; alignments: string[] } {
+  const aligns = [...alignments];
+  while (aligns.length <= Math.max(from, to)) aligns.push("left");
+  return { rows: rows.map((row) => moveCell(row, from, to)), alignments: moved(aligns, from, to) };
+}
+
+/** A copy of the row at `at`, inserted under it. */
+export function withRowDuplicated(rows: string[][], at: number): string[][] {
+  const next = [...rows];
+  next.splice(at + 1, 0, [...rows[at]]);
+  return next;
+}
+
+/**
+ * A copy of the column at `at`, inserted to its right with its alignment. A
+ * row that does not reach the column has nothing to copy and nothing after
+ * it to shift, so it stays as short as it is.
+ */
+export function withColumnDuplicated(
+  rows: string[][],
+  alignments: string[],
+  at: number,
+): { rows: string[][]; alignments: string[] } {
+  const aligns = [...alignments];
+  while (aligns.length <= at) aligns.push("left");
+  aligns.splice(at + 1, 0, aligns[at]);
+  return {
+    rows: rows.map((row) => {
+      if (row.length <= at) return row;
+      const next = [...row];
+      next.splice(at + 1, 0, row[at]);
+      return next;
+    }),
+    alignments: aligns,
+  };
+}
+
+/**
+ * The alignments with one column's set, or the same array when it already
+ * holds it (so a repeated choice writes nothing). A column the list does not
+ * reach yet is padded with the default, as the separator reads it.
+ */
+export function withAlignment(alignments: string[], col: number, value: string): string[] {
+  if ((alignments[col] ?? "left") === value) return alignments;
+  const next = [...alignments];
+  while (next.length <= col) next.push("left");
+  next[col] = value;
+  return next;
+}
+
+/**
+ * Where a row or column carried by its grip would land: the index it would
+ * take. `spans` are the rows' (or columns') [start, end] along the drag axis,
+ * `from` the one being carried, `start`/`end` the carried copy's own edges
+ * now. It passes a neighbour once its leading edge crosses that neighbour's
+ * middle, so one place is half a row of travel, not the pointer's full row.
+ */
+export function dropIndex(
+  spans: [number, number][],
+  from: number,
+  start: number,
+  end: number,
+): number {
+  const mid = (k: number) => (spans[k][0] + spans[k][1]) / 2;
+  let to = from;
+  while (to + 1 < spans.length && end > mid(to + 1)) to++;
+  if (to !== from) return to;
+  while (to - 1 >= 0 && start < mid(to - 1)) to--;
+  return to;
+}

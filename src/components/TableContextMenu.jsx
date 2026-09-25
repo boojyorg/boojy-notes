@@ -4,52 +4,59 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import {
+  AlignCenterIcon,
+  AlignEndIcon,
+  AlignStartIcon,
   ArrowDownToLineIcon,
   ArrowLeftToLineIcon,
   ArrowRightToLineIcon,
   ArrowUpToLineIcon,
+  CopyIcon,
   TrashIcon,
 } from "./Icons";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-
-const hBg = (el, c) => {
-  el.style.background = c;
-};
+import { isMac } from "../utils/platform";
 
 /**
- * The cell's right-click menu: rows and columns around the clicked cell and,
- * last, the whole table. Delete table is the discoverable path to what Escape
- * then Backspace also does (the table is addressed as a whole; see TableBlock).
+ * A column's three alignments, with the keys that set them from a cell
+ * (`useAppKeyboard`, the menu bar's Format → Align): Google Docs' and Word's.
+ */
+export const ALIGNMENTS = [
+  { value: "left", label: "Align left", key: "L", Icon: AlignStartIcon },
+  { value: "center", label: "Align centre", key: "E", Icon: AlignCenterIcon },
+  { value: "right", label: "Align right", key: "R", Icon: AlignEndIcon },
+];
+const shortcut = (key) => (isMac ? `⇧⌘${key}` : `Ctrl+Shift+${key}`);
+
+/**
+ * A table row's or column's menu, opened by its grip (TableHandles) and hung
+ * just under it. Short labels, since the outlined row or column already says
+ * what they act on, and no separators. A column's has its three alignments
+ * as items of their own, each with its key; the column shows which it has,
+ * so no tick (the menu bar's Format → Align carries one), and a choice
+ * closes the menu like any other item. The header row's Delete makes
+ * the row under it the header, as Markdown reads it. Right-click in a cell is
+ * the editor's text menu (EditorContextMenu), which carries Delete table.
  *
- * The note-row menu's grammar (2026-09-10, judged against the raw-div version
- * it replaced): `role="menu"` with arrow keys, Enter and Escape on a document
- * listener, a focus trap that parks focus on the container so a pointer-opened
- * menu shows no ring, the elevated ground with the divider border, 12.5px
- * labels in the app face, a Lucide glyph per item (the arrow-to-line family
- * for the inserts, where the direction is the meaning; Trash for the deletes,
- * red with their labels), and the shared viewport-aware placement. It is
- * **anchored under the table, in line with the clicked column**, not at the
- * pointer: the anchor is the grid's top and bottom with the cell's left and
- * right (useTableInteractions), so it opens 4px under the grid with its left
- * edge on the column's, never covers a row (from a header cell, "under the
- * cell" hid the very column it was about to act on), and flips above the
- * whole grid when there is no room below. Every item acts on that column or
- * the clicked row, and the menu reads as attached to the table rather than
- * floating where the click happened to land; on a very tall table it can sit
- * a way below the pointer, accepted for the short tables notes hold. Labels
- * are sentence case. No alignment items, by decision: a file's `:---:` still
- * renders and round-trips, but the app offers no control for it.
+ * The note-row menu's grammar: `role="menu"` with arrow keys, Enter and
+ * Escape on a document listener, a focus trap that parks focus on the
+ * container so a pointer-opened menu shows no ring, a Lucide glyph per item,
+ * deletes in red.
  */
 export default function TableContextMenu({
   anchor,
   context,
   colCount,
+  rowCount = 2,
+  alignment = "left",
+  onAlign,
+  onDuplicateRow,
+  onDuplicateColumn,
   onInsertRow,
   onDeleteRow,
   onInsertColumn,
   onDeleteColumn,
-  onDeleteTable,
   onDismiss,
 }) {
   const { theme } = useTheme();
@@ -110,68 +117,68 @@ export default function TableContextMenu({
     }
   };
 
-  const inserts = [];
-  if (type === "row" || type === "cell") {
-    inserts.push(
-      {
-        label: "Insert row above",
-        icon: <ArrowUpToLineIcon />,
-        action: act(() => onInsertRow(rowIndex, "above")),
-      },
-      {
-        label: "Insert row below",
-        icon: <ArrowDownToLineIcon />,
-        action: act(() => onInsertRow(rowIndex, "below")),
-      },
-    );
-  }
-  if (type === "column" || type === "cell" || type === "header") {
-    inserts.push(
-      {
-        label: "Insert column left",
-        icon: <ArrowLeftToLineIcon />,
-        action: act(() => onInsertColumn(colIndex, "left")),
-      },
-      {
-        label: "Insert column right",
-        icon: <ArrowRightToLineIcon />,
-        action: act(() => onInsertColumn(colIndex, "right")),
-      },
-    );
-  }
-
-  const deletes = [];
-  // The header row cannot be deleted (GFM needs one) and neither can the last column.
-  if ((type === "row" || type === "cell") && rowIndex > 0) {
-    deletes.push({
-      label: "Delete row",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteRow(rowIndex)),
-      danger: true,
-    });
-  }
-  if ((type === "column" || type === "cell" || type === "header") && colCount > 1) {
-    deletes.push({
-      label: "Delete column",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteColumn(colIndex)),
-      danger: true,
-    });
-  }
-  if (onDeleteTable) {
-    deletes.push({
-      label: "Delete table",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteTable()),
-      danger: true,
-    });
-  }
-
-  const groups = [inserts, deletes].filter((g) => g.length > 0);
-  const items = groups.flat();
+  const items =
+    type === "row"
+      ? [
+          {
+            label: "Insert above",
+            icon: <ArrowUpToLineIcon />,
+            action: act(() => onInsertRow(rowIndex, "above")),
+          },
+          {
+            label: "Insert below",
+            icon: <ArrowDownToLineIcon />,
+            action: act(() => onInsertRow(rowIndex, "below")),
+          },
+          { label: "Duplicate", icon: <CopyIcon />, action: act(() => onDuplicateRow(rowIndex)) },
+          ...(rowCount > 1
+            ? [
+                {
+                  label: "Delete",
+                  icon: <TrashIcon />,
+                  action: act(() => onDeleteRow(rowIndex)),
+                  danger: true,
+                },
+              ]
+            : []),
+        ]
+      : [
+          {
+            label: "Insert left",
+            icon: <ArrowLeftToLineIcon />,
+            action: act(() => onInsertColumn(colIndex, "left")),
+          },
+          {
+            label: "Insert right",
+            icon: <ArrowRightToLineIcon />,
+            action: act(() => onInsertColumn(colIndex, "right")),
+          },
+          {
+            label: "Duplicate",
+            icon: <CopyIcon />,
+            action: act(() => onDuplicateColumn(colIndex)),
+          },
+          ...ALIGNMENTS.map((a) => ({
+            label: a.label,
+            icon: <a.Icon />,
+            action: act(() => onAlign(colIndex, a.value)),
+            radio: true,
+            checked: a.value === alignment,
+            hint: shortcut(a.key),
+          })),
+          ...(colCount > 1
+            ? [
+                {
+                  label: "Delete",
+                  icon: <TrashIcon />,
+                  action: act(() => onDeleteColumn(colIndex)),
+                  danger: true,
+                },
+              ]
+            : []),
+        ];
   itemsRef.current = items;
 
-  let index = -1;
   return createPortal(
     <>
       <div
@@ -182,7 +189,7 @@ export default function TableContextMenu({
         ref={menuRef}
         className="table-context-menu"
         role="menu"
-        aria-label="Table cell menu"
+        aria-label={type === "row" ? "Row options" : "Column options"}
         aria-activedescendant={activeIndex >= 0 ? `table-ctx-item-${activeIndex}` : undefined}
         tabIndex={-1}
         style={{
@@ -195,54 +202,43 @@ export default function TableContextMenu({
           border: `1px solid ${BG.divider}`,
           borderRadius: MENU_RADIUS,
           padding: MENU_PAD,
-          minWidth: 180,
+          minWidth: type === "row" ? 168 : 216,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
         }}
       >
-        {groups.map((group, g) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: the groups are fixed in order
-          <div key={g}>
-            {g > 0 && <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />}
-            {group.map((item) => {
-              index += 1;
-              const i = index;
-              return (
-                <button
-                  key={item.label}
-                  id={`table-ctx-item-${i}`}
-                  role="menuitem"
-                  type="button"
-                  onClick={item.action}
-                  onMouseEnter={(e) => {
-                    setActiveIndex(i);
-                    hBg(e.currentTarget, BG.hover);
-                  }}
-                  onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-                  style={{
-                    width: "100%",
-                    background: i === activeIndex ? BG.hover : "none",
-                    border: "none",
-                    borderRadius: MENU_ROW_RADIUS,
-                    padding: "7px 10px",
-                    cursor: "pointer",
-                    color: item.danger ? SEMANTIC.error : TEXT.primary,
-                    fontSize: 12.5,
-                    fontFamily: "inherit",
-                    textAlign: "left",
-                    transition: "background 0.12s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  {/* The glyph inherits the item colour, so a delete's goes red with its label. */}
-                  {item.icon}
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+        {items.map((item, i) => (
+          <button
+            key={item.label}
+            id={`table-ctx-item-${i}`}
+            role={item.radio ? "menuitemradio" : "menuitem"}
+            aria-checked={item.radio ? item.checked : undefined}
+            type="button"
+            onClick={item.action}
+            onMouseEnter={() => setActiveIndex(i)}
+            onMouseLeave={() => setActiveIndex((a) => (a === i ? -1 : a))}
+            style={{
+              width: "100%",
+              background: i === activeIndex ? BG.hover : "none",
+              border: "none",
+              borderRadius: MENU_ROW_RADIUS,
+              padding: "7px 10px",
+              cursor: "pointer",
+              color: item.danger ? SEMANTIC.error : TEXT.primary,
+              fontSize: 12.5,
+              fontFamily: "inherit",
+              textAlign: "left",
+              transition: "background 0.12s",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {/* The glyph inherits the item colour, so a delete's goes red with its label. */}
+            {item.icon}
+            <span style={{ flex: 1 }}>{item.label}</span>
+            {item.hint && <span style={{ color: TEXT.muted, fontSize: 12 }}>{item.hint}</span>}
+          </button>
         ))}
       </div>
     </>,

@@ -1,18 +1,15 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useTheme } from "./useTheme";
-import { moveCell, tableColumnCount, withColumnInserted } from "../utils/tableShape";
+import {
+  tableColumnCount,
+  withAlignment,
+  withColumnDuplicated,
+  withColumnInserted,
+  withColumnMoved,
+  withRowDuplicated,
+  withRowMoved,
+} from "../utils/tableShape";
 
-export function useTableInteractions({
-  block,
-  noteId,
-  blockIndex,
-  onUpdateTableRows,
-  tableRef,
-  accentColor,
-  cellRefs,
-}) {
-  const { theme } = useTheme();
-  const accent = accentColor || theme.ACCENT.primary;
+export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableRows, cellRefs }) {
   const defaultRows = useMemo(
     () => [
       ["", ""],
@@ -32,75 +29,20 @@ export function useTableInteractions({
   const updateRef = useRef(onUpdateTableRows);
   updateRef.current = onUpdateTableRows;
 
-  /* ── Selection ────────────────────────────────────────── */
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [selectedCol, setSelectedCol] = useState(null);
-
-  const clearSelection = useCallback(() => {
-    setSelectedRow(null);
-    setSelectedCol(null);
-  }, []);
-
   /* ── Context menu ─────────────────────────────────────── */
   const [contextMenu, setContextMenu] = useState(null);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
-  const handleCellContextMenu = useCallback(
-    (e, rowIdx, colIdx) => {
-      e.preventDefault();
-      e.stopPropagation();
-      let type;
-      if (selectedRow !== null && selectedRow === rowIdx) {
-        type = "row";
-      } else if (selectedCol !== null && selectedCol === colIdx) {
-        type = "column";
-      } else if (rowIdx === 0) {
-        type = "header";
-      } else {
-        type = "cell";
-      }
-      // The menu opens under the table, in line with the clicked column: the
-      // scroller's top and bottom for the vertical anchor (the grid plus its
-      // horizontal scrollbar when it has one, so the menu never covers a row
-      // or the bar, and flips above the whole grid when there is no room
-      // below), the cell's left and right for the horizontal (TableContextMenu).
-      const cell = e.currentTarget.getBoundingClientRect();
-      const grid = tableRef.current?.parentElement?.getBoundingClientRect() ?? cell;
-      setContextMenu({
-        anchor: { top: grid.top, bottom: grid.bottom, left: cell.left, right: cell.right },
-        context: { type, rowIndex: rowIdx, colIndex: colIdx },
-      });
-    },
-    [selectedRow, selectedCol, tableRef],
-  );
-
-  /* ── Row / Column helpers ──────────────────────────────── */
-  const getRowAtY = useCallback(
-    (clientY) => {
-      if (!tableRef.current) return null;
-      const trs = tableRef.current.querySelectorAll("tr");
-      for (let i = 0; i < trs.length; i++) {
-        const r = trs[i].getBoundingClientRect();
-        if (clientY >= r.top && clientY <= r.bottom) return i;
-      }
-      return null;
-    },
-    [tableRef],
-  );
-
-  const getColAtX = useCallback(
-    (clientX) => {
-      if (!tableRef.current) return null;
-      const cells = tableRef.current.querySelector("tr")?.children;
-      if (!cells) return null;
-      for (let i = 0; i < cells.length; i++) {
-        const r = cells[i].getBoundingClientRect();
-        if (clientX >= r.left && clientX <= r.right) return i;
-      }
-      return null;
-    },
-    [tableRef],
-  );
+  /** A grip's menu: its row or column, hung where the grip says (TableHandles). */
+  const openGripMenu = useCallback((target, anchor) => {
+    setContextMenu({
+      anchor,
+      context:
+        target.kind === "row"
+          ? { type: "row", rowIndex: target.index, colIndex: 0 }
+          : { type: "column", rowIndex: 0, colIndex: target.index },
+    });
+  }, []);
 
   /* ── CRUD operations ──────────────────────────────────── */
   // Every operation reshapes the rows as the keystroke ref holds them
@@ -126,11 +68,11 @@ export function useTableInteractions({
     [reshape],
   );
 
+  // The header can go too: the row under it becomes the header, as Markdown
+  // reads it. A table keeps at least its header row.
   const deleteRowAt = useCallback(
     (index) => {
-      if (index === 0) return;
-      reshape((r) => ({ rows: r.filter((_, i) => i !== index) }));
-      setSelectedRow(null);
+      reshape((r) => (r.length > 1 ? { rows: r.filter((_, i) => i !== index) } : { rows: r }));
     },
     [reshape],
   );
@@ -157,375 +99,35 @@ export function useTableInteractions({
         rows: r.map((row) => row.filter((_, i) => i !== index)),
         alignments: a.filter((_, i) => i !== index),
       }));
-      setSelectedCol(null);
     },
     [reshape],
   );
 
-  /* ── Keyboard ─────────────────────────────────────────── */
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (selectedRow !== null) {
-        if (e.key === "Escape") {
-          clearSelection();
-        } else if (e.key === "Backspace" || e.key === "Delete") {
-          if (selectedRow > 0) {
-            e.preventDefault();
-            deleteRowAt(selectedRow);
-          }
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setSelectedRow((r) => Math.max(1, r - 1));
-        } else if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setSelectedRow((r) => Math.min(dataRef.current.rows.length - 1, r + 1));
-        }
-        return;
-      }
-      if (selectedCol !== null) {
-        if (e.key === "Escape") {
-          clearSelection();
-        } else if (e.key === "Backspace" || e.key === "Delete") {
-          if (dataRef.current.colCount > 1) {
-            e.preventDefault();
-            deleteColumnAt(selectedCol);
-          }
-        } else if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          setSelectedCol((c) => Math.max(0, c - 1));
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault();
-          setSelectedCol((c) => Math.min(dataRef.current.colCount - 1, c + 1));
-        }
-        return;
-      }
-    },
-    [selectedRow, selectedCol, clearSelection, deleteRowAt, deleteColumnAt],
+  const moveRow = useCallback(
+    (from, to) => reshape((r) => ({ rows: withRowMoved(r, from, to) })),
+    [reshape],
   );
-
-  /* ── Drag reorder ─────────────────────────────────────── */
-  const dragRef = useRef({
-    active: false,
-    type: null, // 'row' | 'col'
-    fromIndex: null,
-    insertAt: null,
-    holdTimer: null,
-    startX: 0,
-    startY: 0,
-    cloneEl: null,
-    lineEl: null,
-    moveHandler: null,
-    upHandler: null,
-  });
-
-  const cleanupDrag = useCallback(() => {
-    const d = dragRef.current;
-    if (d.holdTimer) clearTimeout(d.holdTimer);
-    if (d.cloneEl) {
-      d.cloneEl.remove();
-      d.cloneEl = null;
-    }
-    if (d.lineEl) {
-      d.lineEl.remove();
-      d.lineEl = null;
-    }
-    // Remove the exact handler references that were added
-    if (d.moveHandler) window.removeEventListener("pointermove", d.moveHandler);
-    if (d.upHandler) window.removeEventListener("pointerup", d.upHandler);
-    d.active = false;
-    d.type = null;
-    d.fromIndex = null;
-    d.insertAt = null;
-    d.holdTimer = null;
-    d.moveHandler = null;
-    d.upHandler = null;
-  }, []);
-
-  const startEdgeDrag = useCallback(
-    (type, e) => {
-      const d = dragRef.current;
-      const targetIndex = type === "row" ? getRowAtY(e.clientY) : getColAtX(e.clientX);
-      if (targetIndex === null) return;
-
-      // Header row can't be dragged (but can be selected)
-      if (type === "row" && targetIndex === 0) {
-        setSelectedRow(0);
-        setSelectedCol(null);
-        return;
-      }
-
-      d.type = type;
-      d.startX = e.clientX;
-      d.startY = e.clientY;
-
-      // Define move and up handlers inline to capture stable refs
-      const onMove = (me) => {
-        if (!d.active) {
-          // Before hold timer fires: if moved too far, cancel and select instead
-          const dx = Math.abs(me.clientX - d.startX);
-          const dy = Math.abs(me.clientY - d.startY);
-          if (dx > 5 || dy > 5) {
-            clearTimeout(d.holdTimer);
-            d.holdTimer = null;
-            if (d.type === "row") {
-              const row = getRowAtY(d.startY);
-              if (row !== null) {
-                setSelectedRow(row);
-                setSelectedCol(null);
-              }
-            } else {
-              const col = getColAtX(d.startX);
-              if (col !== null) {
-                setSelectedCol(col);
-                setSelectedRow(null);
-              }
-            }
-            cleanupDrag();
-          }
-          return;
-        }
-
-        // Move floating clone
-        if (d.cloneEl) {
-          if (d.type === "row") {
-            d.cloneEl.style.top = me.clientY - d.cloneEl._offsetY + "px";
-          } else {
-            d.cloneEl.style.left = me.clientX - d.cloneEl._offsetX + "px";
-          }
-        }
-
-        // Compute insertion position
-        if (!tableRef.current) return;
-        if (d.type === "row") {
-          const trs = tableRef.current.querySelectorAll("tr");
-          let bestIdx = 1;
-          let bestDist = Infinity;
-          for (let i = 1; i <= trs.length; i++) {
-            const y =
-              i < trs.length
-                ? trs[i].getBoundingClientRect().top
-                : trs[trs.length - 1].getBoundingClientRect().bottom;
-            const dist = Math.abs(me.clientY - y);
-            if (dist < bestDist) {
-              bestDist = dist;
-              bestIdx = i;
-            }
-          }
-          d.insertAt = bestIdx;
-
-          if (d.lineEl) {
-            const lineY =
-              bestIdx < trs.length
-                ? trs[bestIdx].getBoundingClientRect().top
-                : trs[trs.length - 1].getBoundingClientRect().bottom;
-            d.lineEl.style.top = lineY - 1 + "px";
-            const tr = tableRef.current.getBoundingClientRect();
-            d.lineEl.style.left = tr.left + "px";
-            d.lineEl.style.width = tr.width + "px";
-          }
-        } else {
-          const firstRow = tableRef.current.querySelector("tr");
-          const cells = firstRow?.children;
-          if (!cells) return;
-          let bestIdx = 0;
-          let bestDist = Infinity;
-          for (let i = 0; i <= cells.length; i++) {
-            const x =
-              i < cells.length
-                ? cells[i].getBoundingClientRect().left
-                : cells[cells.length - 1].getBoundingClientRect().right;
-            const dist = Math.abs(me.clientX - x);
-            if (dist < bestDist) {
-              bestDist = dist;
-              bestIdx = i;
-            }
-          }
-          d.insertAt = bestIdx;
-
-          if (d.lineEl) {
-            const lineX =
-              bestIdx < cells.length
-                ? cells[bestIdx].getBoundingClientRect().left
-                : cells[cells.length - 1].getBoundingClientRect().right;
-            d.lineEl.style.left = lineX - 1 + "px";
-            const tr = tableRef.current.getBoundingClientRect();
-            d.lineEl.style.top = tr.top + "px";
-            d.lineEl.style.height = tr.height + "px";
-          }
-        }
-      };
-
-      const onUp = () => {
-        if (!d.active) {
-          // Hold timer didn't fire → treat as click (select)
-          clearTimeout(d.holdTimer);
-          if (d.type === "row") {
-            const row = getRowAtY(d.startY);
-            if (row !== null) {
-              setSelectedRow(row);
-              setSelectedCol(null);
-            }
-          } else {
-            const col = getColAtX(d.startX);
-            if (col !== null) {
-              setSelectedCol(col);
-              setSelectedRow(null);
-            }
-          }
-          cleanupDrag();
-          return;
-        }
-
-        // Perform the reorder on the rows as the ref holds them
-        if (d.type === "row" && d.insertAt !== null && d.fromIndex !== null) {
-          if (d.insertAt !== d.fromIndex && d.insertAt !== d.fromIndex + 1) {
-            reshape((curRows) => {
-              const newRows = curRows.map((r) => [...r]);
-              const [moved] = newRows.splice(d.fromIndex, 1);
-              const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
-              newRows.splice(adj, 0, moved);
-              return { rows: newRows };
-            });
-          }
-        } else if (d.type === "col" && d.insertAt !== null && d.fromIndex !== null) {
-          if (d.insertAt !== d.fromIndex && d.insertAt !== d.fromIndex + 1) {
-            reshape((curRows, curAligns) => {
-              const adj = d.insertAt > d.fromIndex ? d.insertAt - 1 : d.insertAt;
-              const newAligns = [...curAligns];
-              const [movedA] = newAligns.splice(d.fromIndex, 1);
-              newAligns.splice(adj, 0, movedA);
-              return {
-                rows: curRows.map((row) => moveCell(row, d.fromIndex, adj)),
-                alignments: newAligns,
-              };
-            });
-          }
-        }
-
-        cleanupDrag();
-      };
-
-      // Store handler refs for cleanup
-      d.moveHandler = onMove;
-      d.upHandler = onUp;
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-
-      // Start hold timer
-      d.holdTimer = setTimeout(() => {
-        d.holdTimer = null;
-        d.active = true;
-        d.fromIndex = targetIndex;
-
-        // Create floating clone
-        if (!tableRef.current) return;
-        if (type === "row") {
-          const trs = tableRef.current.querySelectorAll("tr");
-          const tr = trs[targetIndex];
-          if (!tr) return;
-          const rect = tr.getBoundingClientRect();
-
-          const floatTable = document.createElement("table");
-          floatTable.className = "table-block";
-          const tbody = document.createElement("tbody");
-          tbody.appendChild(tr.cloneNode(true));
-          floatTable.appendChild(tbody);
-          Object.assign(floatTable.style, {
-            position: "fixed",
-            left: rect.left + "px",
-            top: rect.top + "px",
-            width: rect.width + "px",
-            zIndex: "1000",
-            pointerEvents: "none",
-            opacity: "0.85",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-            transform: "scale(1.02)",
-            borderRadius: "4px",
-            borderCollapse: "collapse",
-          });
-          floatTable._offsetY = e.clientY - rect.top;
-          document.body.appendChild(floatTable);
-          d.cloneEl = floatTable;
-          tr.style.opacity = "0.3";
-        } else {
-          const trs = tableRef.current.querySelectorAll("tr");
-          const firstCell = trs[0]?.children[targetIndex];
-          if (!firstCell) return;
-          const colRect = firstCell.getBoundingClientRect();
-          const tRect = tableRef.current.getBoundingClientRect();
-
-          const floatTable = document.createElement("table");
-          floatTable.className = "table-block";
-          for (const tr of trs) {
-            const newTr = document.createElement("tr");
-            const cell = tr.children[targetIndex];
-            if (cell) newTr.appendChild(cell.cloneNode(true));
-            floatTable.appendChild(newTr);
-          }
-          Object.assign(floatTable.style, {
-            position: "fixed",
-            left: colRect.left + "px",
-            top: tRect.top + "px",
-            width: colRect.width + "px",
-            zIndex: "1000",
-            pointerEvents: "none",
-            opacity: "0.85",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-            transform: "scale(1.02)",
-            borderRadius: "4px",
-            borderCollapse: "collapse",
-          });
-          floatTable._offsetX = e.clientX - colRect.left;
-          document.body.appendChild(floatTable);
-          d.cloneEl = floatTable;
-          for (const tr of trs) {
-            const cell = tr.children[targetIndex];
-            if (cell) cell.style.opacity = "0.3";
-          }
-        }
-
-        // Create insertion line
-        const line = document.createElement("div");
-        Object.assign(line.style, {
-          position: "fixed",
-          zIndex: "1000",
-          pointerEvents: "none",
-          borderRadius: "1px",
-        });
-        if (type === "row") {
-          Object.assign(line.style, {
-            height: "2px",
-            background: accent,
-            boxShadow: `0 0 6px ${accent}50`,
-          });
-        } else {
-          Object.assign(line.style, {
-            width: "2px",
-            background: accent,
-            boxShadow: `0 0 6px ${accent}50`,
-          });
-        }
-        document.body.appendChild(line);
-        d.lineEl = line;
-      }, 400);
-    },
-    [tableRef, accent, getRowAtY, getColAtX, cleanupDrag, reshape],
+  const moveColumn = useCallback(
+    (from, to) => reshape((r, a) => withColumnMoved(r, a, from, to)),
+    [reshape],
   );
-
-  const handleLeftZonePointerDown = useCallback(
-    (e) => {
-      e.preventDefault();
-      startEdgeDrag("row", e);
-    },
-    [startEdgeDrag],
+  const duplicateRow = useCallback(
+    (index) => reshape((r) => ({ rows: withRowDuplicated(r, index) })),
+    [reshape],
   );
-
-  const handleTopZonePointerDown = useCallback(
-    (e) => {
-      e.preventDefault();
-      startEdgeDrag("col", e);
+  const duplicateColumn = useCallback(
+    (index) => reshape((r, a) => withColumnDuplicated(r, a, index)),
+    [reshape],
+  );
+  // One column's alignment: the separator line is the only line it rewrites,
+  // and a choice the column already holds writes nothing.
+  const setAlignment = useCallback(
+    (index, alignment) => {
+      const current = dataRef.current.alignments;
+      if (withAlignment(current, index, alignment) === current) return;
+      reshape((r, a) => ({ rows: r, alignments: withAlignment(a, index, alignment) }));
     },
-    [startEdgeDrag],
+    [reshape],
   );
 
   /* ── Drag-to-create ───────────────────────────────────── */
@@ -698,34 +300,10 @@ export function useTableInteractions({
 
   /* ── Cleanup on unmount ───────────────────────────────── */
   useEffect(() => {
-    return () => {
-      cleanupDrag();
-      cleanupCreate();
-    };
-  }, [cleanupDrag, cleanupCreate]);
-
-  /* ── Reset drag opacity on rows change ────────────────── */
-  useEffect(() => {
-    if (!tableRef.current) return;
-    const trs = tableRef.current.querySelectorAll("tr");
-    for (const tr of trs) {
-      tr.style.opacity = "";
-      for (const cell of tr.children) {
-        cell.style.opacity = "";
-      }
-    }
-  }, [rows, tableRef]);
+    return () => cleanupCreate();
+  }, [cleanupCreate]);
 
   return {
-    selectedRow,
-    selectedCol,
-    clearSelection,
-
-    handleKeyDown,
-
-    handleLeftZonePointerDown,
-    handleTopZonePointerDown,
-
     handleBottomZonePointerDown,
     handleBottomZoneClick,
     handleRightZonePointerDown,
@@ -737,9 +315,14 @@ export function useTableInteractions({
     deleteRowAt,
     insertColumn,
     deleteColumnAt,
+    moveRow,
+    moveColumn,
+    duplicateRow,
+    duplicateColumn,
+    setAlignment,
 
     contextMenu,
-    handleCellContextMenu,
+    openGripMenu,
     closeContextMenu,
   };
 }

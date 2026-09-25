@@ -492,10 +492,22 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
     ]);
   });
 
-  it("a changed alignment rewrites the separator, and only it", () => {
+  it("a changed alignment rewrites the separator, and only it, keeping the other columns' cells", () => {
     const out = edit(md, () => ({ alignments: ["center", "right"] }));
-    expect(out[1]).toBe("| :---: | ---: |");
+    expect(out[1]).toBe("| :---: | -------: |");
+    expect(out[0]).toBe(md.split("\n")[0]);
     expect(out.slice(2)).toEqual(md.split("\n").slice(2));
+  });
+
+  it("a row moved into the header's place, and the header moved down, keep their lines", () => {
+    const out = edit(md, (t) => ({ rows: [t.rows[2], t.rows[0], t.rows[1], t.rows[3]] }));
+    expect(out).toEqual([
+      "| Tea     |   2.10 |",
+      "|:--------|-------:|",
+      "| Name    | Amount |",
+      "| Coffee  |   3.20 |",
+      "| Cake    |   4.00 |",
+    ]);
   });
 
   it("an added column rewrites the rows it pads", () => {

@@ -417,45 +417,54 @@ export function blocksToMarkdown(blocks) {
           // changed, and a table the app made, take the app's spelling. Before
           // this the first save rewrote every table not already in it.
           const source = block.tableSource;
-          const header = block.rows[0];
           const aligns = block.alignments || [];
-          if (source && sameCells(readRow(source.header), header)) {
-            lines.push(source.header);
-          } else {
-            lines.push(writeRow(header));
-          }
-          const sourceWidth = source ? readRow(source.header).length : -1;
+          // Every row, the header included, takes the first unused source line
+          // holding its cells, so a row inserted, deleted or moved (into the
+          // header's place too) leaves the others as written. Each row is
+          // written with its own cells, one more or one fewer than the header
+          // included; padding or trimming a row to the header here is what
+          // used to drop a wide row's extra cells.
+          const sourceLines = source ? [source.header, ...source.rows] : [];
+          const sourceCells = sourceLines.map(readRow);
+          const used = sourceLines.map(() => false);
+          const lineFor = (cells) => {
+            const k = sourceCells.findIndex((c, j) => !used[j] && sameCells(c, cells));
+            if (k === -1) return writeRow(cells);
+            used[k] = true;
+            return sourceLines[k];
+          };
+          const header = block.rows[0];
+          lines.push(lineFor(header));
+          // The separator is kept whole while its alignments are; one column's
+          // alignment changed rewrites the line, keeping each other column's
+          // cell as written (a `:---` stays, the app would write `---`).
+          const sourceWidth = source ? sourceCells[0].length : -1;
+          const sourceAligns = source ? readAlignments(source.separator, sourceWidth) : [];
+          const sourceSep = source ? readRow(source.separator) : [];
           if (
             source &&
             header.length === sourceWidth &&
-            sameCells(readAlignments(source.separator, sourceWidth), aligns.slice(0, header.length))
+            sameCells(sourceAligns, aligns.slice(0, header.length))
           ) {
             lines.push(source.separator);
           } else {
             const sep = header.map((_, i) => {
               const a = aligns[i];
+              if (
+                header.length === sourceWidth &&
+                sourceAligns[i] === (a || "left") &&
+                sourceSep[i]
+              ) {
+                return sourceSep[i].trim();
+              }
               if (a === "center") return ":---:";
               if (a === "right") return "---:";
               return "---";
             });
             lines.push("| " + sep.join(" | ") + " |");
           }
-          // Each body row takes the first unused source line holding its cells,
-          // so a row inserted, deleted or moved leaves the others as written.
-          // Each row is written with its own cells, one more or one fewer than
-          // the header included; padding or trimming a row to the header here
-          // is what used to drop a wide row's extra cells.
-          const sourceRows = source ? source.rows.map(readRow) : [];
-          const used = sourceRows.map(() => false);
           for (let r = 1; r < block.rows.length; r++) {
-            const row = block.rows[r].length > 0 ? block.rows[r] : [""];
-            const k = sourceRows.findIndex((cells, j) => !used[j] && sameCells(cells, row));
-            if (source && k !== -1) {
-              used[k] = true;
-              lines.push(source.rows[k]);
-            } else {
-              lines.push(writeRow(row));
-            }
+            lines.push(lineFor(block.rows[r].length > 0 ? block.rows[r] : [""]));
           }
         }
         break;

@@ -8,6 +8,7 @@ import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
+import TableHandles from "./TableHandles";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
@@ -15,7 +16,7 @@ import { Z } from "../constants/zIndex";
 export const ADD_BAR = 18;
 /** The Plus inside them: 16px on the navigation stroke, a step heavier than the 1px grid. */
 const ADD_PLUS = 16;
-/** The invisible row and column strips left of and above the grid. */
+/** The margin left of the grid where a row's grip shows, as it does from the first column. */
 const EDGE_ZONE = 24;
 
 /**
@@ -36,9 +37,7 @@ function TableCell({
   cellRefs,
   onInput,
   onKeyDown,
-  onFocus,
   onPaste,
-  onContextMenu,
   style,
 }) {
   const ref = useRef(null);
@@ -68,9 +67,7 @@ function TableCell({
       suppressContentEditableWarning
       onInput={(e) => onInput(e, rowIdx, colIdx)}
       onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
-      onFocus={onFocus}
       onPaste={(e) => onPaste(e, rowIdx, colIdx)}
-      onContextMenu={(e) => onContextMenu(e, rowIdx, colIdx)}
       style={style}
     />
   );
@@ -115,9 +112,9 @@ function caretOnLine(el, edge) {
  * height at its right edge and its width under its bottom edge, a Plus centred,
  * shown in CSS only while the pointer is past that edge, on the box itself
  * (`.table-add-bar:hover`); a table at rest, hovered or being typed in shows
- * none. Click adds one; drag adds several (useTableInteractions). The row and
- * column strips left of and above the grid stay invisible (click selects, hold
- * to drag); judged after this pass (2026-09-10).
+ * none. Click adds one; drag adds several (useTableInteractions). Rows and
+ * columns are moved, and their menus opened, by the grips on the table's
+ * edges (TableHandles).
  */
 export default memo(function TableBlock({
   block,
@@ -132,7 +129,6 @@ export default memo(function TableBlock({
   isSelected,
   onSelect,
   onBlockNav,
-  onDelete,
   registerRef,
 }) {
   const rhythm = useRhythm();
@@ -163,12 +159,6 @@ export default memo(function TableBlock({
   );
 
   const {
-    selectedRow,
-    selectedCol,
-    clearSelection,
-    handleKeyDown,
-    handleLeftZonePointerDown,
-    handleTopZonePointerDown,
     handleBottomZonePointerDown,
     handleBottomZoneClick,
     handleRightZonePointerDown,
@@ -179,18 +169,33 @@ export default memo(function TableBlock({
     deleteRowAt,
     insertColumn,
     deleteColumnAt,
+    moveRow,
+    moveColumn,
+    duplicateRow,
+    duplicateColumn,
+    setAlignment,
     contextMenu,
-    handleCellContextMenu,
+    openGripMenu,
     closeContextMenu,
   } = useTableInteractions({
     block,
     noteId,
     blockIndex,
     onUpdateTableRows,
-    tableRef,
-    accentColor,
     cellRefs,
   });
+  // The row or column whose grip menu is open: outlined by TableHandles.
+  const gripContext = contextMenu?.context;
+  const gripSelection =
+    gripContext?.type === "row"
+      ? { kind: "row", index: gripContext.rowIndex }
+      : gripContext?.type === "column"
+        ? { kind: "col", index: gripContext.colIndex }
+        : null;
+  const handleMove = useCallback(
+    (kind, from, to) => (kind === "row" ? moveRow(from, to) : moveColumn(from, to)),
+    [moveRow, moveColumn],
+  );
 
   /* ── Cell editing ─────────────────────────────────────── */
 
@@ -226,16 +231,40 @@ export default memo(function TableBlock({
   }, []);
   // A cell that does not exist yet (the row Enter or Tab has just added) is
   // focused as soon as it has rendered, not after a timer a fast typist
-  // could beat.
+  // could beat. A grip's insert waits for the table's new shape (`shape`),
+  // since the cell at the new row's place exists already and holds the row
+  // being pushed down; its caret is placed without scrolling the note.
   const focusOnRender = useRef(null);
   useLayoutEffect(() => {
-    if (!focusOnRender.current) return;
-    const { row, col } = focusOnRender.current;
-    if (cellRefs.current[`${row}-${col}`]) {
-      focusOnRender.current = null;
-      focusCell(row, col);
-    }
+    const pending = focusOnRender.current;
+    if (!pending) return;
+    if (pending.shape && pending.shape !== `${rows.length}x${colCount}`) return;
+    const { row, col } = pending;
+    const cell = cellRefs.current[`${row}-${col}`];
+    if (!cell) return;
+    focusOnRender.current = null;
+    if (pending.shape) placeCaret(cell, 0);
+    else focusCell(row, col);
   });
+
+  // An insert from a grip's menu takes the caret into what it made: a new
+  // row's first cell, a new column's header cell. It is why one inserts.
+  const insertRowAndEnter = useCallback(
+    (index, position) => {
+      const row = position === "above" ? index : index + 1;
+      focusOnRender.current = { row, col: 0, shape: `${rows.length + 1}x${colCount}` };
+      insertRow(index, position);
+    },
+    [rows.length, colCount, insertRow],
+  );
+  const insertColumnAndEnter = useCallback(
+    (index, position) => {
+      const col = position === "left" ? index : index + 1;
+      focusOnRender.current = { row: 0, col, shape: `${rows.length}x${colCount + 1}` };
+      insertColumn(index, position);
+    },
+    [rows.length, colCount, insertColumn],
+  );
 
   // Escape from a cell: the whole table is selected, and the keys go to the
   // editor root (handleSelectedBlockKey), so the next Backspace removes the
@@ -340,18 +369,6 @@ export default memo(function TableBlock({
     [noteId, blockIndex, onUpdateTableRows],
   );
 
-  /* ── Selection highlight helper ───────────────────────── */
-
-  const isRowSelected = (rowIdx) => selectedRow === rowIdx;
-  const isColSelected = (colIdx) => selectedCol === colIdx;
-
-  const cellHighlightStyle = (rowIdx, colIdx) => {
-    if (isRowSelected(rowIdx) || isColSelected(colIdx)) {
-      return { background: `${accent}20` };
-    }
-    return {};
-  };
-
   /* ── Render ────────────────────────────────────────────── */
 
   const band = isSelected ? bandFill(accent, theme.name) : null;
@@ -366,7 +383,6 @@ export default memo(function TableBlock({
       contentEditable="false"
       suppressContentEditableWarning
       tabIndex={-1}
-      onKeyDown={handleKeyDown}
       style={{
         position: "relative",
         outline: "none",
@@ -378,34 +394,18 @@ export default memo(function TableBlock({
         userSelect: "none",
       }}
     >
-      {/* Left edge zone — the row strip, left of the grid */}
+      {/* The margin left of the grid: a row's grip shows from here too */}
       <div
         className="table-left-zone"
+        onContextMenu={noTextMenu}
         style={{
           position: "absolute",
           left: -EDGE_ZONE,
           top: 0,
           width: EDGE_ZONE,
           bottom: ADD_BAR,
-          cursor: "grab",
           zIndex: Z.ELEMENT_OVERLAY,
         }}
-        onPointerDown={handleLeftZonePointerDown}
-      />
-
-      {/* Top edge zone — the column strip, above the grid */}
-      <div
-        className="table-top-zone"
-        style={{
-          position: "absolute",
-          left: -EDGE_ZONE,
-          top: -EDGE_ZONE,
-          right: 0,
-          height: EDGE_ZONE,
-          cursor: "grab",
-          zIndex: Z.ELEMENT_OVERLAY,
-        }}
-        onPointerDown={handleTopZonePointerDown}
       />
 
       {/* The grid, with the add-column bar at its right edge */}
@@ -440,14 +440,9 @@ export default memo(function TableBlock({
                       cellRefs={cellRefs}
                       onInput={handleCellInput}
                       onKeyDown={handleCellKeyDown}
-                      onFocus={clearSelection}
                       onPaste={handleCellPaste}
-                      onContextMenu={handleCellContextMenu}
                       style={{
                         fontWeight: 600,
-                        // Header cells carry no fill at rest — bold weight plus the border
-                        // grid is the whole signal. Only an active column selection tints.
-                        background: isColSelected(colIdx) ? `${accent}20` : "transparent",
                         textAlign: alignments[colIdx] || "left",
                       }}
                     />
@@ -475,13 +470,8 @@ export default memo(function TableBlock({
                           cellRefs={cellRefs}
                           onInput={handleCellInput}
                           onKeyDown={handleCellKeyDown}
-                          onFocus={clearSelection}
                           onPaste={handleCellPaste}
-                          onContextMenu={handleCellContextMenu}
-                          style={{
-                            textAlign: alignments[colIdx] || "left",
-                            ...cellHighlightStyle(rowIdx, colIdx),
-                          }}
+                          style={{ textAlign: alignments[colIdx] || "left" }}
                         />
                       ),
                     )}
@@ -533,6 +523,7 @@ export default memo(function TableBlock({
           }}
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
+          onContextMenu={noTextMenu}
         >
           <PlusIcon size={ADD_PLUS} nav />
         </div>
@@ -556,9 +547,19 @@ export default memo(function TableBlock({
         }}
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
+        onContextMenu={noTextMenu}
       >
         <PlusIcon size={ADD_PLUS} nav />
       </div>
+
+      <TableHandles
+        rootRef={rootRef}
+        tableRef={tableRef}
+        selection={gripSelection}
+        shapeKey={block}
+        onOpenMenu={openGripMenu}
+        onMove={handleMove}
+      />
 
       {/* Counter badge during drag-to-create */}
       {createBadge && (
@@ -588,17 +589,29 @@ export default memo(function TableBlock({
           anchor={contextMenu.anchor}
           context={contextMenu.context}
           colCount={colCount}
-          onInsertRow={insertRow}
+          rowCount={rows.length}
+          alignment={alignments[contextMenu.context.colIndex] || "left"}
+          onAlign={setAlignment}
+          onDuplicateRow={duplicateRow}
+          onDuplicateColumn={duplicateColumn}
+          onInsertRow={insertRowAndEnter}
           onDeleteRow={deleteRowAt}
-          onInsertColumn={insertColumn}
+          onInsertColumn={insertColumnAndEnter}
           onDeleteColumn={deleteColumnAt}
-          onDeleteTable={onDelete}
           onDismiss={closeContextMenu}
         />
       )}
     </div>
   );
 });
+
+/**
+ * The table's margin and add boxes hold no text: a right-click there is
+ * claimed, so the note's Cut, Copy and Paste menu does not open over them.
+ */
+function noTextMenu(e) {
+  e.preventDefault();
+}
 
 /** An arrow key with no modifier: the only kind that moves between cells. */
 function plainArrow(e) {

@@ -71,6 +71,7 @@ declare global {
         textField: boolean;
         formats: string[];
         kind: string | null;
+        align: string | null;
         sidebarVisible: boolean;
         sourceView: boolean;
       }) => void;

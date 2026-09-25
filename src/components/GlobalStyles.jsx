@@ -621,11 +621,13 @@ ${tagPillCss(theme)}
           color: ${theme.TEXT.primary};
           background: transparent;
         }
-        /* Edge zones */
-        .table-left-zone { cursor: grab; }
-        .table-left-zone:active { cursor: grabbing; }
-        .table-top-zone { cursor: grab; }
-        .table-top-zone:active { cursor: grabbing; }
+        /* A row or column carried by its grip leaves an empty slot: the grid
+           lines stay, its contents go (TableHandles). */
+        .table-block .table-cell-lifted {
+          color: transparent !important;
+          caret-color: transparent;
+        }
+        .table-block .table-cell-lifted * { visibility: hidden; }
         /* The add-row and add-column boxes, Obsidian's: a bordered box the
            grid's height at its right edge and its width under its bottom
            edge, sharing the grid's own border line, with a Plus centred.
