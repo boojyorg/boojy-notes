@@ -4,6 +4,8 @@ import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { tagRows } from "../utils/tags";
+import { visibleTreeRows, treeMove, noteKey, folderKey } from "../utils/treeNav";
+import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
 import {
   FolderIcon,
@@ -99,6 +101,10 @@ const NOTE_MENU_SHIFT = 8;
  * dots sat inside its last item, Delete, which took the hover highlight the
  * moment the menu opened (seen live on a folder low in the window).
  */
+/** Keys the tree claims even where they move nothing (an arrow at the end
+ *  would otherwise scroll the sidebar). */
+const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
+
 const rowMenuAnchor = (btn, row) => ({
   top: row.top - NOTE_MENU_GAP,
   bottom: row.bottom + NOTE_MENU_GAP,
@@ -400,6 +406,9 @@ const Sidebar = memo(function Sidebar({
   isMobile,
   // Desktop only: the Notes row's Search glyph opens the search palette.
   onOpenSearch,
+  // The tree's ⌘⌫: the same confirmed deletes as the row menus.
+  deleteNote,
+  deleteFolder,
 }) {
   const {
     accentColor,
@@ -464,6 +473,136 @@ const Sidebar = memo(function Sidebar({
     return tagRows(tags).filter((t) => !filter || t.tag.toLowerCase().includes(filter));
   }, [search, tags]);
 
+  // ── The tree from the keyboard (WAI-ARIA tree pattern) ─────────────
+  // One row is the tree's Tab stop (roving tabindex): the row last focused,
+  // else the open note, else the first. Arrows move between the rows that
+  // are showing; each row tells a screen reader its level and place.
+  const treeRef = useRef(null);
+  const [focusKey, setFocusKey] = useState(null);
+  const pendingFocus = useRef(null);
+  const treeRows = useMemo(
+    () =>
+      isMobile
+        ? []
+        : visibleTreeRows(folderTree, sortedRootNotes, expanded, (id) => {
+            const n = noteData[id];
+            return !n || n._draft ? null : n.title || "Untitled";
+          }),
+    [isMobile, folderTree, sortedRootNotes, expanded, noteData],
+  );
+  const rowByKey = useMemo(() => new Map(treeRows.map((r) => [r.key, r])), [treeRows]);
+  const tabKey = rowByKey.has(focusKey)
+    ? focusKey
+    : activeNote && rowByKey.has(noteKey(activeNote))
+      ? noteKey(activeNote)
+      : treeRows[0]?.key;
+  const focusRow = (key) => {
+    setFocusKey(key);
+    treeRef.current?.querySelector(`[data-tree-key="${CSS.escape(key)}"]`)?.focus();
+  };
+  const rowProps = (key) => {
+    if (isMobile) return {};
+    const r = rowByKey.get(key);
+    if (!r) return { tabIndex: -1 };
+    return {
+      "data-tree-key": key,
+      tabIndex: key === tabKey ? 0 : -1,
+      "aria-level": r.level,
+      "aria-setsize": r.setsize,
+      "aria-posinset": r.posinset,
+      onFocus: (e) => {
+        if (e.target === e.currentTarget) setFocusKey(key);
+      },
+    };
+  };
+  // A rename field closed by Enter or Escape hands focus back to its row
+  // (else it fell to the page). A renamed folder's row is a new one, under
+  // its new path once the rename lands: focus waits for it (`renamedTo`).
+  const refocusAfterRename = (field, renamedTo) => {
+    if (isMobile) return;
+    const row = field.closest("[data-tree-key]");
+    if (renamedTo) awaitFocus(renamedTo, row?.dataset.treeKey);
+    requestAnimationFrame(() => {
+      if (row?.isConnected) row.focus({ preventScroll: true });
+      else treeRef.current?.querySelector('[tabindex="0"]')?.focus({ preventScroll: true });
+    });
+  };
+  // Focus a row that is about to appear, once `gone` has left the tree: the
+  // neighbour after ⌘⌫ (a folder waits for its confirm), a renamed folder.
+  // A wish not met within a few seconds (a cancelled confirm) lapses.
+  const awaitFocus = (key, gone) => {
+    pendingFocus.current = { key, gone, until: Date.now() + 5000 };
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the rows change
+  useEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending) return;
+    if (Date.now() > pending.until) {
+      pendingFocus.current = null;
+      return;
+    }
+    if (rowByKey.has(pending.gone) || !rowByKey.has(pending.key)) return;
+    pendingFocus.current = null;
+    // A closing confirm still holds focus for a frame or two; wait it out.
+    // Focus anywhere else means the person has moved on.
+    let frames = 0;
+    const land = () => {
+      const at = document.activeElement;
+      if (at?.closest('[role="alertdialog"], [role="dialog"]') && ++frames < 30) {
+        requestAnimationFrame(land);
+        return;
+      }
+      if (at && at !== document.body && !treeRef.current?.contains(at)) return;
+      focusRow(pending.key);
+    };
+    requestAnimationFrame(land);
+  }, [rowByKey]);
+  const onTreeKeyDown = (e) => {
+    const rowEl = e.target;
+    const key = rowEl?.dataset?.treeKey;
+    const row = key && rowByKey.get(key);
+    if (!row || e.defaultPrevented) return;
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === "Escape" && !mod) {
+      // A layer that is open (a row's menu still taking focus) owns Escape.
+      if (document.querySelector('[role="menu"], [role="dialog"], [role="alertdialog"]')) return;
+      e.preventDefault();
+      focusNote();
+      return;
+    }
+    if (e.key === "F2") {
+      e.preventDefault();
+      if (row.kind === "note") setRenamingNote(row.id);
+      else setRenamingFolder(row.id);
+      return;
+    }
+    if ((mod && e.key === "Backspace") || (!mod && e.key === "Delete")) {
+      e.preventDefault();
+      const i = treeRows.indexOf(row);
+      // Past a folder's own contents: its next sibling, else the row above.
+      let j = i + 1;
+      while (j < treeRows.length && treeRows[j].level > row.level) j++;
+      const next = treeRows[j] ?? treeRows[i - 1];
+      if (next) awaitFocus(next.key, key);
+      if (row.kind === "note") deleteNote?.(row.id);
+      else deleteFolder?.(row.id);
+      return;
+    }
+    if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+      e.preventDefault();
+      const r = rowEl.getBoundingClientRect();
+      const anchor = rowMenuAnchor({ left: r.right - 28, right: r.right }, r);
+      setCtxMenu({ x: anchor.left, y: anchor.bottom, anchor, type: row.kind, id: row.id });
+      return;
+    }
+    if (mod || e.altKey) return;
+    const move = treeMove(treeRows, key, e.key);
+    if (NAV_KEYS.has(e.key) || move) e.preventDefault();
+    if (!move) return;
+    if ("focus" in move) focusRow(move.focus);
+    else toggle(rowByKey.get(move.expand ?? move.collapse).id);
+  };
+
   // Render a note row at given depth
   const renderNote = (nId, depth) => {
     const n = noteData[nId];
@@ -514,6 +653,7 @@ const Sidebar = memo(function Sidebar({
         data-note-id={nId}
         role="treeitem"
         aria-selected={act}
+        {...rowProps(noteKey(nId))}
         onClick={handleNoteClick ? (e) => handleNoteClick(nId, e) : () => openNote(nId)}
         // Double-click = rename in place: the row swaps its title for the same
         // inline input folders use. The two single-clicks it also fires just
@@ -587,10 +727,12 @@ const Sidebar = memo(function Sidebar({
                 e.preventDefault();
                 renameNote(nId, e.target.value);
                 setRenamingNote(null);
+                refocusAfterRename(e.currentTarget);
               }
               if (e.key === "Escape") {
                 e.preventDefault();
                 setRenamingNote(null);
+                refocusAfterRename(e.currentTarget);
               }
             }}
             style={renameFieldStyle(theme, mobFont)}
@@ -676,6 +818,7 @@ const Sidebar = memo(function Sidebar({
           data-folder-path={folderPath}
           role="treeitem"
           aria-expanded={isOpen}
+          {...rowProps(folderKey(folderPath))}
           className={[
             "sidebar-folder",
             renamingFolder === folderPath ? "is-renaming" : "",
@@ -767,13 +910,19 @@ const Sidebar = memo(function Sidebar({
                 if (e.key === "Enter") {
                   e.preventDefault();
                   e.currentTarget.dataset.committed = "1";
-                  renameFolder(folderPath, e.currentTarget.value.trim());
+                  const name = e.currentTarget.value.trim();
+                  renameFolder(folderPath, name);
                   setRenamingFolder(null);
+                  const parent = folderPath.includes("/")
+                    ? folderPath.slice(0, folderPath.lastIndexOf("/") + 1)
+                    : "";
+                  refocusAfterRename(e.currentTarget, name ? folderKey(parent + name) : undefined);
                 }
                 if (e.key === "Escape") {
                   e.preventDefault();
                   e.currentTarget.dataset.committed = "1";
                   setRenamingFolder(null);
+                  refocusAfterRename(e.currentTarget);
                 }
               }}
               style={renameFieldStyle(theme, isMobile ? 17 : 14)}
@@ -1401,7 +1550,7 @@ const Sidebar = memo(function Sidebar({
                     the desktop sidebar, which stays exactly as it was behind
                     the scrim (2026-09-20). Only the mobile face filters. */}
                 {(folderTree.length > 0 || sortedRootNotes.length > 0) && (
-                  <div role="tree" aria-label="Notes">
+                  <div role="tree" aria-label="Notes" ref={treeRef} onKeyDown={onTreeKeyDown}>
                     {folderTree.map((f) => renderFolder(f, 0))}
                     {/* No breath before the root notes: the guide line ending
                         says the folder ended; the row rhythm stays even. */}

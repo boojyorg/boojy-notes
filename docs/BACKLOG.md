@@ -403,8 +403,6 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
   grammar); the note, sort and table menus and the folder popup carry four copies of that grammar, and
   one shared menu primitive is the cleanup that would also fix the four above.
-- [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`
-  (`Sidebar.jsx`).
 - [ ] **Tab never leaves the editor** — `useKeyboardHandlers.js` prevents the default for every
   block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
   reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,

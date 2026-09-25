@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { getAPI } from "../services/apiProvider";
 import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
 import { withAlignment } from "../utils/tableShape";
+import { focusSidebar } from "../utils/domHelpers";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -101,6 +102,7 @@ export function useAppKeyboard({
     openFind,
     detectActiveFormats,
     toggleSourceView,
+    sidebarVisible,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -177,6 +179,15 @@ export function useAppKeyboard({
       if (mod && (e.key === "\\" || e.code === "Backslash")) {
         e.preventDefault();
         L.toggleSidebar?.();
+        return;
+      }
+      // Ctrl+Cmd+S moves the keyboard into the sidebar's tree (2026-09-25:
+      // Apple's sidebar key; Shift+Cmd+E, VS Code's, is a table column's
+      // Align Centre here). Ctrl+Alt+S off the Mac. Escape in the tree comes
+      // back to the note.
+      if (e.ctrlKey && (e.metaKey || e.altKey) && !e.shiftKey && key === "s") {
+        e.preventDefault();
+        goToSidebar(L);
         return;
       }
       // Shift+Cmd+L, E, R align the column the caret is in (Google Docs' and
@@ -263,6 +274,17 @@ export function useAppKeyboard({
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
+/** Shows the sidebar if it is hidden, then focuses it once it can take focus. */
+function goToSidebar(L) {
+  if (!L.sidebarVisible) L.revealSidebar?.();
+  let tries = 0;
+  const attempt = () => {
+    if (focusSidebar() || ++tries > 10) return;
+    requestAnimationFrame(attempt);
+  };
+  attempt();
+}
+
 function newNote(L, titleRef) {
   if (L.activeNote && L.noteData[L.activeNote]?._draft) {
     titleRef.current?.focus();
@@ -387,6 +409,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.openSearch?.();
     case "toggleSidebar":
       return L.toggleSidebar?.();
+    case "goToSidebar":
+      return goToSidebar(L);
   }
   if (!note) return;
   switch (id) {

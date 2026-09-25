@@ -135,6 +135,33 @@ describe("useAppKeyboard", () => {
     expect(deps.toggleSidebar).toHaveBeenCalledTimes(2);
   });
 
+  it("Ctrl+Cmd+S goes to the sidebar's tree, showing the sidebar first if hidden", () => {
+    mount(
+      '<div role="tree"><button tabindex="-1">a</button><button tabindex="0" id="stop">b</button></div>',
+      "#stop",
+    );
+    document.body.focus();
+    const hidden = makeDeps({ sidebarVisible: false });
+    renderHook(() => useAppKeyboard(hidden));
+    const e = key("s", { ctrlKey: true, metaKey: true });
+    expect(e.defaultPrevented).toBe(true);
+    expect(hidden.revealSidebar).toHaveBeenCalledTimes(1);
+    expect(document.activeElement?.id).toBe("stop");
+    // Cmd+S alone is not it.
+    key("s", { metaKey: true });
+    expect(hidden.revealSidebar).toHaveBeenCalledTimes(1);
+  });
+
+  it("Ctrl+Cmd+S with the sidebar showing only moves focus", () => {
+    mount('<div role="tree"><button tabindex="0" id="stop">b</button></div>', "#stop");
+    document.body.focus();
+    const shown = makeDeps({ sidebarVisible: true });
+    renderHook(() => useAppKeyboard(shown));
+    key("s", { ctrlKey: true, altKey: true });
+    expect(shown.revealSidebar).not.toHaveBeenCalled();
+    expect(document.activeElement?.id).toBe("stop");
+  });
+
   it("Cmd+/ switches the Markdown view, and only with a note open", () => {
     const toggleSourceView = vi.fn();
     renderHook(() => useAppKeyboard(makeDeps({ toggleSourceView })));
