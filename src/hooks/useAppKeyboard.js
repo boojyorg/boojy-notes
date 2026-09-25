@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getAPI } from "../services/apiProvider";
 import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
+import { withAlignment } from "../utils/tableShape";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -66,6 +67,7 @@ export function useAppKeyboard({
   deleteNote,
   applyFormat,
   setBlockKind,
+  updateTableRows,
   openFind,
   detectActiveFormats,
   sidebarVisible,
@@ -95,6 +97,7 @@ export function useAppKeyboard({
     deleteNote,
     applyFormat,
     setBlockKind,
+    updateTableRows,
     openFind,
     detectActiveFormats,
     toggleSourceView,
@@ -176,6 +179,12 @@ export function useAppKeyboard({
         L.toggleSidebar?.();
         return;
       }
+      // Shift+Cmd+L, E, R align the column the caret is in (Google Docs' and
+      // Word's keys). Outside a table cell they are not claimed.
+      if (mod && e.shiftKey && !e.altKey && key in ALIGN_KEYS && owner !== "field") {
+        if (alignColumn(L, ALIGN_KEYS[key])) e.preventDefault();
+        return;
+      }
       // Cmd+/ shows the note as its Markdown, and back (2026-09-24: Typora's
       // key; Obsidian's Cmd+E is inline code here). The slash is matched by
       // the physical key too, for layouts where the character needs Shift.
@@ -221,6 +230,7 @@ export function useAppKeyboard({
         textField: isTextField(document.activeElement),
         formats: formats ? Object.keys(formats).filter((f) => formats[f]) : [],
         kind: blocks.find((b) => b.id === caretBlock)?.type ?? null,
+        align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
       });
@@ -257,6 +267,48 @@ function isTextField(el) {
   if (!el) return false;
   const tag = el.tagName;
   return (tag === "INPUT" || tag === "TEXTAREA") && !el.closest("[data-editor]");
+}
+
+/** The alignment keys (with Shift and Cmd) and the menu's ids, by the value they set. */
+const ALIGN_KEYS = { l: "left", e: "center", r: "right" };
+const ALIGN_COMMANDS = { alignLeft: "left", alignCenter: "center", alignRight: "right" };
+
+/** The table cell holding focus, as its table's block id and its column. */
+function focusedTableColumn() {
+  const cell = document.activeElement?.closest?.(
+    '[data-block-type="table"] th, [data-block-type="table"] td',
+  );
+  const blockId = cell?.closest("[data-block-id]")?.getAttribute("data-block-id");
+  return blockId ? { blockId, col: cell.cellIndex } : null;
+}
+
+/** The focused column's alignment, for the menu's check; null outside a table cell. */
+function columnAlignment(blocks) {
+  const at = focusedTableColumn();
+  const block = at && blocks.find((b) => b.id === at.blockId);
+  return block ? (block.alignments?.[at.col] ?? "left") : null;
+}
+
+/**
+ * Align the column the caret is in: the keys and Format → Align. It rewrites
+ * only the table's separator line, and a choice the column already holds
+ * writes nothing. False when focus is not in a table cell.
+ */
+function alignColumn(L, value) {
+  const at = focusedTableColumn();
+  const note = L.activeNote;
+  if (!at || !note) return false;
+  const blocks = L.noteData[note]?.content?.blocks ?? [];
+  const index = blocks.findIndex((b) => b.id === at.blockId);
+  if (index === -1) return false;
+  const aligns = blocks[index].alignments ?? [];
+  if (withAlignment(aligns, at.col, value) !== aligns) {
+    L.updateTableRows?.(note, index, (rows, a) => ({
+      rows,
+      alignments: withAlignment(a, at.col, value),
+    }));
+  }
+  return true;
 }
 
 const INLINE_FORMATS = new Set(["bold", "italic", "strikethrough", "highlight", "code", "link"]);
@@ -356,6 +408,10 @@ function runMenuCommand(id, L, titleRef) {
       return L.openFind?.("prev");
     case "replace":
       return L.openFind?.("replace");
+  }
+  if (id in ALIGN_COMMANDS) {
+    alignColumn(L, ALIGN_COMMANDS[id]);
+    return;
   }
   const blocks = L.noteData[note]?.content?.blocks ?? [];
   if (INLINE_FORMATS.has(id)) {

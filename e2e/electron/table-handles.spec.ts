@@ -99,29 +99,58 @@ test("the header row has a grip too: carried down, the row under it becomes the 
   }
 });
 
-test("a column's grip opens its menu; Align centre rewrites only the separator and keeps the menu open", async () => {
+test("a column's grip opens its menu under the grip; Align › Centre rewrites only the separator", async () => {
   const h = await launchApp({ [NOTE]: lines.join("\n") });
   try {
     await h.openNote("Prices");
     await cell(h, 0, 0).hover();
-    await h.page
-      .getByRole("button", { name: "Column options, or drag to move", exact: true })
-      .click();
+    const grip = h.page.getByRole("button", {
+      name: "Column options, or drag to move",
+      exact: true,
+    });
+    await grip.click();
     const menu = h.page.getByRole("menu", { name: "Column options" });
     await expect(menu).toBeVisible();
     await expect(h.page.locator(".table-selection-outline")).toHaveCount(1);
+    // Hung just under the grip, its left edge on the column's.
+    const g = await grip.boundingBox();
+    const m = await menu.boundingBox();
+    const c = await cell(h, 0, 0).boundingBox();
+    expect(Math.abs((m?.y ?? 0) - ((g?.y ?? 0) + (g?.height ?? 0)))).toBeLessThan(12);
+    expect(Math.abs((m?.x ?? 0) - (c?.x ?? 0))).toBeLessThan(3);
 
-    await menu.getByRole("menuitemradio", { name: "Align centre" }).click();
-    await expect(menu).toBeVisible();
+    await menu.getByRole("menuitem", { name: /Align/ }).hover();
+    await h.page
+      .getByRole("menu", { name: "Align" })
+      .getByRole("menuitemradio", { name: /Centre/ })
+      .click();
+    await expect(menu).toHaveCount(0);
     await expect(cell(h, 1, 0)).toHaveCSS("text-align", "center");
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("| :---: | -------: |"));
     const aligned = [...lines];
     aligned[3] = "| :---: | -------: |";
     expect(h.vault.read(NOTE)).toBe(aligned.join("\n"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
 
-    await h.page.keyboard.press("Escape");
-    await expect(menu).toHaveCount(0);
-    await expect(h.page.locator(".table-selection-outline")).toHaveCount(0);
+test("Shift+Cmd+R and Shift+Cmd+L align the column the caret is in, from inside a cell", async () => {
+  const h = await launchApp({ [NOTE]: lines.join("\n") });
+  try {
+    await h.openNote("Prices");
+    await cell(h, 1, 0).click();
+    await h.page.keyboard.press("ControlOrMeta+Shift+KeyR");
+    await expect(cell(h, 2, 0)).toHaveCSS("text-align", "right");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| ---: | -------: |"));
+    await h.page.keyboard.press("ControlOrMeta+Shift+KeyL");
+    await expect(cell(h, 2, 0)).toHaveCSS("text-align", "left");
+    // Back to the alignments it was written with: the separator is its own line again.
+    await waitForFile(h.vault.file(NOTE), (t) => t === lines.join("\n"));
+    // The caret stayed in its cell: typing goes on in it.
+    await h.page.keyboard.type("!");
+    await expect(cell(h, 1, 0)).toContainText("!");
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -39,6 +39,8 @@ export type MenuState = {
   formats: string[];
   /** The kind of the line the caret is in (`p`, `h2`, `bullet`, …), or null outside the editor. */
   kind: string | null;
+  /** The alignment of the table column the caret is in, or null outside a table cell. */
+  align: string | null;
   sidebarVisible: boolean;
   /** The Markdown view is on, so View offers the formatted one back. */
   sourceView: boolean;
@@ -52,6 +54,7 @@ const INITIAL: MenuState = {
   textField: false,
   formats: [],
   kind: null,
+  align: null,
   sidebarVisible: true,
   sourceView: false,
 };
@@ -214,6 +217,24 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           ],
         },
         kind("quote", "blockquote", "Quote", ">"),
+        { type: "separator" },
+        // A table column's alignment, with the caret in one of its cells: the
+        // column's own is checked, as a line's kind is.
+        {
+          label: "Align",
+          enabled: state.align !== null,
+          submenu: [
+            ["alignLeft", "Left", "L", "left"],
+            ["alignCenter", "Centre", "E", "center"],
+            ["alignRight", "Right", "R", "right"],
+          ].map(([id, label, key, value]) =>
+            item(id, label, `Shift+CmdOrCtrl+${key}`, {
+              type: "checkbox",
+              enabled: state.align !== null,
+              checked: state.align === value,
+            }),
+          ),
+        },
       ],
     },
     {
@@ -247,7 +268,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         ...(isDev
           ? ([
               { role: "reload" },
-              { role: "forceReload" },
+              // Its own Shift+Cmd+R is a table column's Align Right.
+              { role: "forceReload", accelerator: "Alt+Shift+CmdOrCtrl+R" },
               { role: "toggleDevTools" },
               { type: "separator" },
             ] as const)

@@ -98,45 +98,47 @@ describe("TableContextMenu", () => {
     expect(menu.style.top).toBe(`${anchor.bottom + 4}px`);
     expect(menu.style.left).toBe(`${anchor.left}px`);
   });
-  it("a row's grip offers its row only: no Delete table, and the header's Delete is there", () => {
+  it("a row's grip offers its row only, in short labels: no Delete table, and the header's Delete is there", () => {
     render(<TableContextMenu {...props({ type: "row", rowIndex: 0, colIndex: 0 })} />);
     expect(screen.getByRole("menu", { name: "Row options" })).toBeInTheDocument();
-    expect(labels()).toEqual([
-      "Insert row above",
-      "Insert row below",
-      "Duplicate row",
-      "Clear contents",
-      "Delete row",
-    ]);
+    expect(labels()).toEqual(["Insert above", "Insert below", "Duplicate", "Delete"]);
     cleanup();
     const only = { ...props({ type: "row", rowIndex: 0, colIndex: 0 }), rowCount: 1 };
     render(<TableContextMenu {...only} />);
-    expect(labels()).not.toContain("Delete row");
+    expect(labels()).not.toContain("Delete");
   });
 
-  it("a column's grip starts with Align, whose press keeps the menu open", () => {
+  it("a column's Align shows the column's alignment and opens its three choices beside it", () => {
     const p = { ...props({ type: "column", rowIndex: 0, colIndex: 1 }), alignment: "center" };
     render(<TableContextMenu {...p} />);
     expect(screen.getByRole("menu", { name: "Column options" })).toBeInTheDocument();
-    const radios = screen.getAllByRole("menuitemradio");
-    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Align left",
-      "Align centre",
-      "Align right",
+    expect(labels()).toEqual(["Insert left", "Insert right", "Duplicate", "AlignCentre", "Delete"]);
+    expect(screen.queryByRole("menu", { name: "Align" })).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByRole("menuitem", { name: /Align/ }));
+    const choices = screen.getAllByRole("menuitemradio");
+    expect(choices.map((c) => c.textContent)).toEqual([
+      expect.stringMatching(/^Left.+L$/),
+      expect.stringMatching(/^Centre.+E$/),
+      expect.stringMatching(/^Right.+R$/),
     ]);
-    expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
-    fireEvent.click(radios[2]);
+    expect(choices.map((c) => c.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
+    fireEvent.click(choices[2]);
     expect(p.onAlign).toHaveBeenCalledWith(1, "right");
-    expect(p.onDismiss).not.toHaveBeenCalled();
-    expect(labels()).toEqual([
-      "Insert column left",
-      "Insert column right",
-      "Duplicate column",
-      "Clear contents",
-      "Delete column",
-    ]);
-    fireEvent.click(screen.getByText("Duplicate column"));
-    expect(p.onDuplicateColumn).toHaveBeenCalledWith(1);
     expect(p.onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("the keys reach the choices: ArrowRight opens them on the current one, Enter picks, ArrowLeft goes back", () => {
+    const p = { ...props({ type: "column", rowIndex: 0, colIndex: 0 }), alignment: "left" };
+    render(<TableContextMenu {...p} />);
+    for (let k = 0; k < 4; k++) fireEvent.keyDown(document, { key: "ArrowDown" });
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    expect(screen.getByRole("menu", { name: "Align" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    expect(screen.queryByRole("menu", { name: "Align" })).toBeNull();
+    fireEvent.keyDown(document, { key: "Enter" });
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    fireEvent.keyDown(document, { key: "Enter" });
+    expect(p.onAlign).toHaveBeenCalledWith(0, "center");
   });
 });

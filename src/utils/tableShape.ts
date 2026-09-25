@@ -127,14 +127,17 @@ export function withColumnDuplicated(
   };
 }
 
-/** The row at `at` emptied, keeping its cell count. */
-export function withRowCleared(rows: string[][], at: number): string[][] {
-  return rows.map((row, r) => (r === at ? row.map(() => "") : row));
-}
-
-/** The column at `at` emptied in every row that reaches it. */
-export function withColumnCleared(rows: string[][], at: number): string[][] {
-  return rows.map((row) => (row.length > at ? row.map((cell, c) => (c === at ? "" : cell)) : row));
+/**
+ * The alignments with one column's set, or the same array when it already
+ * holds it (so a repeated choice writes nothing). A column the list does not
+ * reach yet is padded with the default, as the separator reads it.
+ */
+export function withAlignment(alignments: string[], col: number, value: string): string[] {
+  if ((alignments[col] ?? "left") === value) return alignments;
+  const next = [...alignments];
+  while (next.length <= col) next.push("left");
+  next[col] = value;
+  return next;
 }
 
 /**

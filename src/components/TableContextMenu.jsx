@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
@@ -11,47 +11,44 @@ import {
   ArrowLeftToLineIcon,
   ArrowRightToLineIcon,
   ArrowUpToLineIcon,
+  CheckIcon,
+  ChevronRightIcon,
   CopyIcon,
-  EraserIcon,
   TrashIcon,
 } from "./Icons";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-
-const hBg = (el, c) => {
-  el.style.background = c;
-};
+import { isMac } from "../utils/platform";
 
 /**
- * The cell's right-click menu: rows and columns around the clicked cell and,
- * last, the whole table. Delete table is the discoverable path to what Escape
- * then Backspace also does (the table is addressed as a whole; see TableBlock).
+ * A column's three alignments, with the keys that set them from a cell
+ * (`useAppKeyboard`, the menu bar's Format → Align): Google Docs' and Word's.
+ */
+export const ALIGNMENTS = [
+  { value: "left", label: "Left", key: "L", Icon: AlignStartIcon },
+  { value: "center", label: "Centre", key: "E", Icon: AlignCenterIcon },
+  { value: "right", label: "Right", key: "R", Icon: AlignEndIcon },
+];
+const shortcut = (key) => (isMac ? `⇧⌘${key}` : `Ctrl+Shift+${key}`);
+
+/**
+ * The table's menus. Right-click on a cell: rows and columns around the
+ * clicked cell and, last, the whole table (Delete table is the discoverable
+ * path to what Escape then Backspace also does), anchored under the table in
+ * line with the clicked column so it never covers a row, and flipping above
+ * the grid when there is no room below.
  *
- * The note-row menu's grammar (2026-09-10, judged against the raw-div version
- * it replaced): `role="menu"` with arrow keys, Enter and Escape on a document
- * listener, a focus trap that parks focus on the container so a pointer-opened
- * menu shows no ring, the elevated ground with the divider border, 12.5px
- * labels in the app face, a Lucide glyph per item (the arrow-to-line family
- * for the inserts, where the direction is the meaning; Trash for the deletes,
- * red with their labels), and the shared viewport-aware placement. It is
- * **anchored under the table, in line with the clicked column**, not at the
- * pointer: the anchor is the grid's top and bottom with the cell's left and
- * right (useTableInteractions), so it opens 4px under the grid with its left
- * edge on the column's, never covers a row (from a header cell, "under the
- * cell" hid the very column it was about to act on), and flips above the
- * whole grid when there is no room below. Every item acts on that column or
- * the clicked row, and the menu reads as attached to the table rather than
- * floating where the click happened to land; on a very tall table it can sit
- * a way below the pointer, accepted for the short tables notes hold. Labels
- * are sentence case.
+ * A grip (TableHandles) opens its row's or column's own menu, hung just
+ * under the grip: short labels, since the outlined row or column already
+ * says what they act on, no separators and no Delete table. A column's has
+ * Align, one item showing the column's alignment with the three choices in a
+ * submenu beside it, each with its key. The header row's Delete makes the row
+ * under it the header, as Markdown reads it.
  *
- * A grip (TableHandles) opens the same menu for its row or column
- * (`type` "row" / "column"): the row's hangs under the row at its grip.
- * A column's starts with Align, three glyphs on one line whose press keeps
- * the menu open so the change can be seen; then Insert, Duplicate, Clear
- * contents and Delete. A grip's menu has no Delete table: it acts on its
- * row or column only. The header row's Delete makes the row under it the
- * header, as Markdown reads it.
+ * The note-row menu's grammar: `role="menu"` with arrow keys, Enter and
+ * Escape on a document listener (ArrowRight opens the submenu, ArrowLeft or
+ * Escape closes it), a focus trap that parks focus on the container so a
+ * pointer-opened menu shows no ring, a Lucide glyph per item, deletes in red.
  */
 export default function TableContextMenu({
   anchor,
@@ -62,8 +59,6 @@ export default function TableContextMenu({
   onAlign,
   onDuplicateRow,
   onDuplicateColumn,
-  onClearRow,
-  onClearColumn,
   onInsertRow,
   onDeleteRow,
   onInsertColumn,
@@ -74,32 +69,77 @@ export default function TableContextMenu({
   const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
   const menuRef = useRef(null);
+  const alignRowRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  // The Align submenu: open or not, and its highlighted choice.
+  const [sub, setSub] = useState(null);
+  const [subPos, setSubPos] = useState(null);
   const itemsRef = useRef([]);
   const open = !!anchor && !!context;
 
   useFocusTrap(menuRef, open, "container");
   const pos = useMenuPosition(menuRef, open, anchor, { gapY: 4 });
 
+  // The submenu stands beside its row, on whichever side the window has room.
+  useLayoutEffect(() => {
+    if (!sub || !alignRowRef.current || !menuRef.current) {
+      setSubPos(null);
+      return;
+    }
+    const row = alignRowRef.current.getBoundingClientRect();
+    const menu = menuRef.current.getBoundingClientRect();
+    const width = 200;
+    const right = menu.right + 4 + width <= window.innerWidth;
+    setSubPos({ top: row.top - MENU_PAD, left: right ? menu.right + 4 : menu.left - 4 - width });
+  }, [sub]);
+
+  const current = ALIGNMENTS.findIndex((a) => a.value === alignment);
+  const openSub = useCallback(
+    (fromKeys) => setSub({ active: fromKeys ? Math.max(0, current) : -1 }),
+    [current],
+  );
+
   const handleKeyDown = useCallback(
     (e) => {
       const items = itemsRef.current;
       if (!items.length || e.defaultPrevented) return;
+      if (sub) {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const step = e.key === "ArrowDown" ? 1 : ALIGNMENTS.length - 1;
+          setSub((s) => ({ active: (Math.max(0, s.active) + step) % ALIGNMENTS.length }));
+        } else if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (sub.active >= 0) {
+            onDismiss();
+            onAlign?.(context.colIndex, ALIGNMENTS[sub.active].value);
+          }
+        } else if (e.key === "ArrowLeft" || e.key === "Escape") {
+          e.preventDefault();
+          setSub(null);
+        }
+        return;
+      }
+      const active = items[activeIndex];
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex((i) => (i + 1) % items.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIndex((i) => (i - 1 + items.length) % items.length);
+      } else if (e.key === "ArrowRight" && active?.submenu) {
+        e.preventDefault();
+        openSub(true);
       } else if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        if (activeIndex >= 0 && activeIndex < items.length) items[activeIndex].action();
+        if (active?.submenu) openSub(true);
+        else active?.action();
       } else if (e.key === "Escape") {
         e.preventDefault();
         onDismiss();
       }
     },
-    [activeIndex, onDismiss],
+    [activeIndex, sub, openSub, onAlign, onDismiss, context],
   );
 
   // On the document, not the window: the app shell's shortcut handler is a
@@ -114,6 +154,7 @@ export default function TableContextMenu({
   if (!open) return null;
 
   const { type, rowIndex, colIndex } = context;
+  const grip = type === "row" || type === "column";
 
   // An action closes the menu first; the editor scroll is put back a frame
   // later because focus returning to the cell can scroll the note to its top.
@@ -129,39 +170,75 @@ export default function TableContextMenu({
     }
   };
 
-  const grip = type === "row" || type === "column";
-  const aligns = [];
-  if (type === "column" && onAlign) {
-    for (const [value, label, icon] of [
-      ["left", "Align left", <AlignStartIcon key="l" />],
-      ["center", "Align centre", <AlignCenterIcon key="c" />],
-      ["right", "Align right", <AlignEndIcon key="r" />],
-    ]) {
-      aligns.push({
-        label,
-        icon,
-        checked: alignment === value,
-        action: () => onAlign(colIndex, value),
-      });
-    }
-  }
-
-  const inserts = [];
-  if (type === "row" || type === "cell") {
-    inserts.push(
+  const groups = [];
+  if (type === "row") {
+    groups.push([
       {
-        label: "Insert row above",
+        label: "Insert above",
         icon: <ArrowUpToLineIcon />,
         action: act(() => onInsertRow(rowIndex, "above")),
       },
       {
-        label: "Insert row below",
+        label: "Insert below",
         icon: <ArrowDownToLineIcon />,
         action: act(() => onInsertRow(rowIndex, "below")),
       },
-    );
-  }
-  if (type === "column" || type === "cell" || type === "header") {
+      { label: "Duplicate", icon: <CopyIcon />, action: act(() => onDuplicateRow(rowIndex)) },
+      ...(rowCount > 1
+        ? [
+            {
+              label: "Delete",
+              icon: <TrashIcon />,
+              action: act(() => onDeleteRow(rowIndex)),
+              danger: true,
+            },
+          ]
+        : []),
+    ]);
+  } else if (type === "column") {
+    const shown = ALIGNMENTS[Math.max(0, current)];
+    groups.push([
+      {
+        label: "Insert left",
+        icon: <ArrowLeftToLineIcon />,
+        action: act(() => onInsertColumn(colIndex, "left")),
+      },
+      {
+        label: "Insert right",
+        icon: <ArrowRightToLineIcon />,
+        action: act(() => onInsertColumn(colIndex, "right")),
+      },
+      { label: "Duplicate", icon: <CopyIcon />, action: act(() => onDuplicateColumn(colIndex)) },
+      ...(onAlign
+        ? [{ label: "Align", icon: <shown.Icon />, submenu: true, value: shown.label }]
+        : []),
+      ...(colCount > 1
+        ? [
+            {
+              label: "Delete",
+              icon: <TrashIcon />,
+              action: act(() => onDeleteColumn(colIndex)),
+              danger: true,
+            },
+          ]
+        : []),
+    ]);
+  } else {
+    const inserts = [];
+    if (type === "cell") {
+      inserts.push(
+        {
+          label: "Insert row above",
+          icon: <ArrowUpToLineIcon />,
+          action: act(() => onInsertRow(rowIndex, "above")),
+        },
+        {
+          label: "Insert row below",
+          icon: <ArrowDownToLineIcon />,
+          action: act(() => onInsertRow(rowIndex, "below")),
+        },
+      );
+    }
     inserts.push(
       {
         label: "Insert column left",
@@ -174,62 +251,54 @@ export default function TableContextMenu({
         action: act(() => onInsertColumn(colIndex, "right")),
       },
     );
+    const deletes = [];
+    // From a cell the header row cannot be deleted (its grip can); the last
+    // column never can.
+    if (type === "cell" && rowIndex > 0) {
+      deletes.push({
+        label: "Delete row",
+        icon: <TrashIcon />,
+        action: act(() => onDeleteRow(rowIndex)),
+        danger: true,
+      });
+    }
+    if (colCount > 1) {
+      deletes.push({
+        label: "Delete column",
+        icon: <TrashIcon />,
+        action: act(() => onDeleteColumn(colIndex)),
+        danger: true,
+      });
+    }
+    if (onDeleteTable) {
+      deletes.push({
+        label: "Delete table",
+        icon: <TrashIcon />,
+        action: act(() => onDeleteTable()),
+        danger: true,
+      });
+    }
+    groups.push(inserts, deletes);
   }
-
-  const copies = [];
-  if (type === "row" && onDuplicateRow) {
-    copies.push(
-      { label: "Duplicate row", icon: <CopyIcon />, action: act(() => onDuplicateRow(rowIndex)) },
-      { label: "Clear contents", icon: <EraserIcon />, action: act(() => onClearRow(rowIndex)) },
-    );
-  }
-  if (type === "column" && onDuplicateColumn) {
-    copies.push(
-      {
-        label: "Duplicate column",
-        icon: <CopyIcon />,
-        action: act(() => onDuplicateColumn(colIndex)),
-      },
-      {
-        label: "Clear contents",
-        icon: <EraserIcon />,
-        action: act(() => onClearColumn(colIndex)),
-      },
-    );
-  }
-
-  const deletes = [];
-  // From a cell, the header row cannot be deleted (GFM needs one); from its
-  // grip it can, while another row is there to take its place. The last
-  // column never can.
-  if ((type === "cell" && rowIndex > 0) || (type === "row" && rowCount > 1)) {
-    deletes.push({
-      label: "Delete row",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteRow(rowIndex)),
-      danger: true,
-    });
-  }
-  if ((type === "column" || type === "cell" || type === "header") && colCount > 1) {
-    deletes.push({
-      label: "Delete column",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteColumn(colIndex)),
-      danger: true,
-    });
-  }
-  if (onDeleteTable && !grip) {
-    deletes.push({
-      label: "Delete table",
-      icon: <TrashIcon />,
-      action: act(() => onDeleteTable()),
-      danger: true,
-    });
-  }
-
-  const groups = [inserts, copies, deletes].filter((g) => g.length > 0);
-  const items = [...aligns, ...groups.flat()];
+  const items = groups.flat();
   itemsRef.current = items;
+
+  const rowStyle = (i, item) => ({
+    width: "100%",
+    background: i === activeIndex || (item.submenu && sub) ? BG.hover : "none",
+    border: "none",
+    borderRadius: MENU_ROW_RADIUS,
+    padding: "7px 10px",
+    cursor: "pointer",
+    color: item.danger ? SEMANTIC.error : TEXT.primary,
+    fontSize: 12.5,
+    fontFamily: "inherit",
+    textAlign: "left",
+    transition: "background 0.12s",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  });
 
   let index = -1;
   return createPortal(
@@ -257,61 +326,15 @@ export default function TableContextMenu({
           border: `1px solid ${BG.divider}`,
           borderRadius: MENU_RADIUS,
           padding: MENU_PAD,
-          minWidth: 180,
+          minWidth: grip ? 168 : 180,
           boxShadow: theme.modalShadow,
           animation: "fadeIn 0.1s ease",
         }}
       >
-        {aligns.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              padding: "2px 2px 2px 10px",
-            }}
-          >
-            <span style={{ fontSize: 12.5, color: TEXT.muted }}>Align</span>
-            <div style={{ display: "flex", gap: 2 }}>
-              {aligns.map((item) => {
-                index += 1;
-                const i = index;
-                return (
-                  <button
-                    key={item.label}
-                    id={`table-ctx-item-${i}`}
-                    role="menuitemradio"
-                    aria-checked={item.checked}
-                    aria-label={item.label}
-                    type="button"
-                    onClick={item.action}
-                    onMouseEnter={() => setActiveIndex(i)}
-                    style={{
-                      width: 30,
-                      height: 26,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "none",
-                      borderRadius: MENU_ROW_RADIUS,
-                      cursor: "pointer",
-                      background: item.checked || i === activeIndex ? BG.hover : "transparent",
-                      color: item.checked ? TEXT.primary : TEXT.muted,
-                      transition: "background 0.12s",
-                    }}
-                  >
-                    {item.icon}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
         {groups.map((group, g) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the groups are fixed in order
           <div key={g}>
-            {(g > 0 || aligns.length > 0) && (
+            {g > 0 && group.length > 0 && (
               <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />
             )}
             {group.map((item) => {
@@ -320,41 +343,78 @@ export default function TableContextMenu({
               return (
                 <button
                   key={item.label}
+                  ref={item.submenu ? alignRowRef : undefined}
                   id={`table-ctx-item-${i}`}
                   role="menuitem"
                   type="button"
-                  onClick={item.action}
-                  onMouseEnter={(e) => {
+                  aria-haspopup={item.submenu ? "menu" : undefined}
+                  aria-expanded={item.submenu ? !!sub : undefined}
+                  onClick={item.submenu ? () => (sub ? setSub(null) : openSub(false)) : item.action}
+                  onMouseEnter={() => {
                     setActiveIndex(i);
-                    hBg(e.currentTarget, BG.hover);
+                    if (item.submenu) openSub(false);
+                    else setSub(null);
                   }}
-                  onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-                  style={{
-                    width: "100%",
-                    background: i === activeIndex ? BG.hover : "none",
-                    border: "none",
-                    borderRadius: MENU_ROW_RADIUS,
-                    padding: "7px 10px",
-                    cursor: "pointer",
-                    color: item.danger ? SEMANTIC.error : TEXT.primary,
-                    fontSize: 12.5,
-                    fontFamily: "inherit",
-                    textAlign: "left",
-                    transition: "background 0.12s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
+                  onMouseLeave={() => setActiveIndex((a) => (a === i ? -1 : a))}
+                  style={rowStyle(i, item)}
                 >
                   {/* The glyph inherits the item colour, so a delete's goes red with its label. */}
                   {item.icon}
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.submenu && (
+                    <>
+                      <span style={{ color: TEXT.muted }}>{item.value}</span>
+                      <span style={{ display: "flex", color: TEXT.muted }}>
+                        <ChevronRightIcon size={14} />
+                      </span>
+                    </>
+                  )}
                 </button>
               );
             })}
           </div>
         ))}
       </div>
+      {sub && (
+        <div
+          role="menu"
+          aria-label="Align"
+          style={{
+            position: "fixed",
+            top: subPos?.top ?? -9999,
+            left: subPos?.left ?? -9999,
+            width: 200,
+            boxSizing: "border-box",
+            zIndex: Z.CONTEXT_MENU,
+            background: BG.elevated,
+            border: `1px solid ${BG.divider}`,
+            borderRadius: MENU_RADIUS,
+            padding: MENU_PAD,
+            boxShadow: theme.modalShadow,
+          }}
+        >
+          {ALIGNMENTS.map((a, k) => (
+            <button
+              key={a.value}
+              role="menuitemradio"
+              aria-checked={a.value === alignment}
+              type="button"
+              onClick={act(() => onAlign(colIndex, a.value))}
+              onMouseEnter={() => setSub({ active: k })}
+              style={{
+                ...rowStyle(-2, a),
+                background: sub.active === k ? BG.hover : "none",
+              }}
+            >
+              <span style={{ display: "flex", width: 16 }}>
+                {a.value === alignment && <CheckIcon />}
+              </span>
+              <span style={{ flex: 1 }}>{a.label}</span>
+              <span style={{ color: TEXT.muted }}>{shortcut(a.key)}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </>,
     document.body,
   );

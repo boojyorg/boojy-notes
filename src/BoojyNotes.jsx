@@ -901,6 +901,7 @@ export default function BoojyNotes() {
     deleteNote: confirmDeleteNote,
     applyFormat,
     setBlockKind,
+    updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
     sidebarVisible,

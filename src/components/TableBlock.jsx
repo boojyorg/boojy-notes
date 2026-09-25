@@ -176,8 +176,6 @@ export default memo(function TableBlock({
     moveColumn,
     duplicateRow,
     duplicateColumn,
-    clearRow,
-    clearColumn,
     setAlignment,
     contextMenu,
     openGripMenu,
@@ -576,8 +574,6 @@ export default memo(function TableBlock({
           onAlign={setAlignment}
           onDuplicateRow={duplicateRow}
           onDuplicateColumn={duplicateColumn}
-          onClearRow={clearRow}
-          onClearColumn={clearColumn}
           onInsertRow={insertRow}
           onDeleteRow={deleteRowAt}
           onInsertColumn={insertColumn}

@@ -49,8 +49,6 @@ vi.mock("../../src/hooks/useTableInteractions", () => ({
     moveColumn: vi.fn(),
     duplicateRow: vi.fn(),
     duplicateColumn: vi.fn(),
-    clearRow: vi.fn(),
-    clearColumn: vi.fn(),
     setAlignment: vi.fn(),
     openGripMenu: vi.fn(),
     contextMenu: null,

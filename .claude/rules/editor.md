@@ -178,8 +178,7 @@ app's, made through state.**
   opening screen; the rule lives in `filterSlashCommands()` for both menu and keys. Rows show
   their typed shortcut as a hint. Rows take selection on real mouse movement, not `mouseenter`.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
-- **The editor column never carries a transform** (it would become the containing block of
-  the `position: fixed` menus inside it). `editor-menus.spec.ts`.
+- **The editor column never carries a transform** (it would contain the `fixed` menus). `editor-menus.spec.ts`.
 - **A chosen block with its own field takes the caret** (`hasOwnField` in `useSlashCommands`: Code, Callout, Table
   focus their first field through `ownedField`); the rest hand it to the paragraph below.
   `slash-focus.spec.ts`.
@@ -272,9 +271,10 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   `table-preservation.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`): first cell or margin shows
   the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
-  passes a neighbour at its middle (`dropIndex`); one write, on the drop. `table-handles.spec.ts`.
+  passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
 - Content-sized, shrinking to a per-cell floor before scrolling (no column widths in
-  Markdown). Add boxes reveal on their own hover. Only the cell menu has Delete table.
+  Markdown). Add boxes reveal on their own hover. Grip menus hang under the grip, Align a
+  submenu; only the cell menu deletes a table.
   `table-block.spec.ts`.
 
 ## Dividers, images and tables are selectable blocks

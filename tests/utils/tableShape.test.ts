@@ -4,12 +4,11 @@ import {
   dropIndex,
   moveCell,
   tableColumnCount,
+  withAlignment,
   withCell,
-  withColumnCleared,
   withColumnDuplicated,
   withColumnInserted,
   withColumnMoved,
-  withRowCleared,
   withRowDuplicated,
   withRowMoved,
 } from "../../src/utils/tableShape";
@@ -110,13 +109,12 @@ describe("tableShape — the grips' operations", () => {
     expect(withColumnDuplicated(rows, [], 1).alignments).toEqual(["left", "left", "left"]);
   });
 
-  it("clears a row or a column without changing any row's length", () => {
-    expect(withRowCleared(rows, 1)).toEqual([rows[0], ["", "", ""], rows[2]]);
-    expect(withColumnCleared(rows, 2)).toEqual([
-      ["H1", "H2", ""],
-      ["a", "b", ""],
-      ["d", "e"],
-    ]);
+  it("sets one column's alignment, and hands back the same array when nothing changes", () => {
+    const aligns = ["left", "center"];
+    expect(withAlignment(aligns, 1, "right")).toEqual(["left", "right"]);
+    expect(withAlignment(aligns, 3, "center")).toEqual(["left", "center", "left", "center"]);
+    expect(withAlignment(aligns, 1, "center")).toBe(aligns);
+    expect(withAlignment(aligns, 5, "left")).toBe(aligns);
   });
 
   describe("dropIndex: the carried copy's leading edge decides", () => {

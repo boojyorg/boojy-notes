@@ -1,11 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   tableColumnCount,
-  withColumnCleared,
+  withAlignment,
   withColumnDuplicated,
   withColumnInserted,
   withColumnMoved,
-  withRowCleared,
   withRowDuplicated,
   withRowMoved,
 } from "../utils/tableShape";
@@ -146,24 +145,14 @@ export function useTableInteractions({
     (index) => reshape((r, a) => withColumnDuplicated(r, a, index)),
     [reshape],
   );
-  const clearRow = useCallback(
-    (index) => reshape((r) => ({ rows: withRowCleared(r, index) })),
-    [reshape],
-  );
-  const clearColumn = useCallback(
-    (index) => reshape((r) => ({ rows: withColumnCleared(r, index) })),
-    [reshape],
-  );
-  // One column's alignment: the separator line is the only line it rewrites.
+  // One column's alignment: the separator line is the only line it rewrites,
+  // and a choice the column already holds writes nothing.
   const setAlignment = useCallback(
-    (index, alignment) =>
-      reshape((r, a) => {
-        const next = [...a];
-        while (next.length <= index) next.push("left");
-        if (next[index] === alignment) return { rows: r };
-        next[index] = alignment;
-        return { rows: r, alignments: next };
-      }),
+    (index, alignment) => {
+      const current = dataRef.current.alignments;
+      if (withAlignment(current, index, alignment) === current) return;
+      reshape((r, a) => ({ rows: r, alignments: withAlignment(a, index, alignment) }));
+    },
     [reshape],
   );
 
@@ -356,8 +345,6 @@ export function useTableInteractions({
     moveColumn,
     duplicateRow,
     duplicateColumn,
-    clearRow,
-    clearColumn,
     setAlignment,
 
     contextMenu,

@@ -27,6 +27,8 @@ const DRAG_START = 4;
 /** The selection outline and the carried copy's, and the drop line's thickness. */
 const RING = 2;
 const LINE = 3;
+/** The carried copy's opacity: enough to read it, enough to see what it is over. */
+const GHOST_OPACITY = 0.85;
 
 interface Box {
   left: number;
@@ -114,9 +116,10 @@ function gripOf(g: Geometry, t: HandleTarget): Grip | null {
  * column's. Middle cells show none.
  *
  * A press that stays put is a click and opens the grip's menu (the owner
- * draws it, and hands the target back as `selection`, outlined here). A
- * press that travels carries the row or column: its copy follows the pointer
- * wearing the outline, the slot it left stays empty, and a line marks where
+ * draws it just under the grip, and hands the target back as `selection`,
+ * outlined here). A
+ * press that travels carries the row or column: its see-through copy follows
+ * the pointer wearing the outline, the slot it left stays empty, and a line marks where
  * it lands. It passes a neighbour once its leading edge crosses that
  * neighbour's middle (`dropIndex`). Nothing is written until the drop, and a
  * drop where it started writes nothing; Escape, blur or a cancelled pointer
@@ -308,6 +311,9 @@ export default function TableHandles({
         height: (g.table.height || 0) / g.z,
       };
     }
+    // The copy is see-through, so the rows it passes over show beneath it;
+    // its outline, on the frame around it, stays solid.
+    Object.assign(copy.style, { background: theme.BG.editor, opacity: String(GHOST_OPACITY) });
     ghost.appendChild(copy);
     Object.assign(ghost.style, {
       position: "absolute",
@@ -315,7 +321,6 @@ export default function TableHandles({
       top: `${box.top}px`,
       width: `${box.width}px`,
       overflow: "hidden",
-      background: theme.BG.editor,
       boxShadow: theme.dragShadow,
       outline: `${RING}px solid ${theme.ACCENT.primary}`,
       outlineOffset: `-${RING / 2}px`,
@@ -408,14 +413,13 @@ export default function TableHandles({
     const grip = e.currentTarget.getBoundingClientRect();
     const r = d.target.kind === "row" ? g.rowRects[d.target.index] : g.colRects[d.target.index];
     if (!r) return;
-    // A row's menu hangs under the row at its grip; a column's under the whole
-    // grid in line with the column (the cell menu's placement), so neither
-    // covers what it acts on.
+    // The menu hangs just under the grip: a row's at the grip's edge, a
+    // column's with its left edge on the column's (Notion's placement).
     onOpenMenu(
       d.target,
       d.target.kind === "row"
         ? { top: r.top, bottom: r.bottom, left: grip.left, right: grip.right }
-        : { top: g.sc.top, bottom: g.sc.bottom, left: r.left, right: r.right },
+        : { top: grip.top, bottom: grip.bottom, left: r.left, right: r.right },
     );
   };
 

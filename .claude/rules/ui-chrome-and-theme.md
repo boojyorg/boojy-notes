@@ -80,7 +80,8 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   shortcut is shown only where one exists and must match `useAppKeyboard`. Specs locate chrome
   by `aria-label`. `chrome-tooltips.spec.ts`.
 - **Shell keys**: `⌘N`, `⇧⌘N`, `⌘P` Search, `⌘K` link (never Search), `⌘,`, `⌘\` sidebar, `⌘/`
-  Markdown view, `⌘Z`/`⇧⌘Z`, `⌘±0` UI scale. Sort has none.
+  Markdown view, `⌘Z`/`⇧⌘Z`, `⌘±0` UI scale, `⇧⌘L`/`E`/`R` align the caret's table column
+  (claimed only in a cell; dev's Force Reload moved off `⇧⌘R`). Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and sticky
   block are `inert` (the whole column broke double-click rename). `header-controls.spec.ts`.

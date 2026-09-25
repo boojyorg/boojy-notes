@@ -40,7 +40,6 @@ import {
   FolderInput as LuFolderInput,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
-  Eraser as LuEraser,
   GripHorizontal as LuGripHorizontal,
   GripVertical as LuGripVertical,
   Highlighter as LuHighlighter,
@@ -182,10 +181,6 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
-/** A table row's or column's Clear contents. */
-export const EraserIcon = ({ size = ICON_INLINE }) => (
-  <LuEraser {...base} {...navBase} size={size} />
-);
 /** A table column's alignment: the three text-align glyphs. */
 export const AlignStartIcon = ({ size = ICON_INLINE }) => (
   <LuTextAlignStart {...base} {...navBase} size={size} />
