@@ -11,6 +11,7 @@ import {
   isSelectableBlock,
   placeCaret,
   focusTitleEnd,
+  focusBeyondNote,
 } from "../../utils/domHelpers";
 import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
 
@@ -171,8 +172,13 @@ export function useKeyboardHandlers({
       // save (round-trip data loss). Per the markdown-source-of-truth constraint
       // (docs/SPEC-markdown-source-of-truth.md): if it can't round-trip, we don't
       // ship it. The round-trip test (tests/utils/markdown.test.js) guards this.
+      // Anywhere else Tab leaves the note, as it does any text field; Shift+Tab
+      // goes back to its name. Swallowing it (Notion's way) was a keyboard trap.
       const INDENTABLE = ["bullet", "numbered", "checkbox"];
-      if (!INDENTABLE.includes(block.type)) return;
+      if (!INDENTABLE.includes(block.type)) {
+        focusBeyondNote(e.shiftKey ? -1 : 1);
+        return;
+      }
       updateBlockIndent(noteId, blockIndex, e.shiftKey ? -1 : 1);
       return;
     }

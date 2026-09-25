@@ -59,6 +59,11 @@ app's, made through state.**
 
 ## Keys and focus: the closest active surface owns them
 
+- **Tab in a text block that is not a list leaves the note** (`focusBeyondNote`: the next stop
+  outside the editor, Shift+Tab the name); lists indent, cells and code keep their own Tab.
+  Swallowing it was a keyboard trap. The no-mouse walkthrough (create, find, rename, move,
+  delete) is `keyboard-walkthrough.spec.ts`.
+
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
   listener; a surface never adds its own bubble-phase window listener.
@@ -278,6 +283,8 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
 - **Rows and columns move by grips on the edges** (`TableHandles`): first cell or margin shows
   the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
   passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
+  From the keyboard in a cell: `⌘⇧↑/↓` the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→` stays the
+  text's select-to-edge). `keyboard-walkthrough.spec.ts`.
 - Content-sized, shrinking to a per-cell floor, then scrolling. Add boxes reveal on their own
   hover. Grip menus hang under the grip; inserts take the caret. `table-block.spec.ts`.
 

@@ -178,7 +178,8 @@ duration. `sidebar-motion.spec.ts`.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
   `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
   carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
-  row's menu, Escape back to the note (not while a menu or dialog is open). Focus returns to the
+  row's menu, Escape back to the note (not while a menu or dialog is open); ⌃⌘S lands on the
+  open note's row. Focus returns to the
   row after a rename and to its neighbour after a delete. `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same

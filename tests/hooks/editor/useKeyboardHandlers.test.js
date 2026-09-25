@@ -9,6 +9,7 @@ vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
   // The real one: the name field is plain DOM here too.
   focusTitleEnd: (await importOriginal()).focusTitleEnd,
   findNearestBlock: vi.fn(),
+  focusBeyondNote: vi.fn(),
   // As the real ones: a block with a field of its own is not editable text.
   isEditableBlock: (block) =>
     !["image", "spacer", "embed", "file", "code", "table", "callout", "frontmatter"].includes(
@@ -181,6 +182,23 @@ describe("useKeyboardHandlers", () => {
 
     result.current.handleBlockKeyDown("note-1", 0, event);
     expect(deps.updateBlockIndent).not.toHaveBeenCalled();
+  });
+
+  it("Tab in a paragraph leaves the note; Shift+Tab goes back", async () => {
+    const { focusBeyondNote } = await import("../../../src/utils/domHelpers");
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    result.current.handleBlockKeyDown("note-1", 0, tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(focusBeyondNote).toHaveBeenLastCalledWith(1);
+    const back = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    result.current.handleBlockKeyDown("note-1", 0, back);
+    expect(focusBeyondNote).toHaveBeenLastCalledWith(-1);
   });
 
   it("Cmd+Shift+ArrowUp moves a block up", () => {

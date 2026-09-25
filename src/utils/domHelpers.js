@@ -700,17 +700,55 @@ export function focusTitleEnd() {
 }
 
 /**
- * Into the sidebar from anywhere (⌃⌘S, View → Go to Sidebar): the tree's one
- * Tab stop, else New note when the vault holds no rows. False if neither is
- * showing yet (the sidebar is still inert on its way in).
+ * Into the sidebar from anywhere (⌃⌘S, View → Go to Sidebar): the open note's
+ * row when it is showing (where you are, as VS Code's explorer), else the
+ * tree's one Tab stop, else New note when the vault holds no rows. False if
+ * none is showing yet (the sidebar is still inert on its way in).
  */
 export function focusSidebar() {
   const target =
+    document.querySelector('[role="tree"] [aria-selected="true"][data-tree-key]') ??
     document.querySelector('[role="tree"] [tabindex="0"]') ??
     document.querySelector(".sidebar-action-row");
   if (!(target instanceof HTMLElement) || target.closest("[inert]")) return false;
   target.focus({ preventScroll: false });
   return target === document.activeElement;
+}
+
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex], [contenteditable="true"]';
+
+/**
+ * Tab out of the note (Tab in a paragraph, 2026-09-25): the next control
+ * after the editor in the page's Tab order, or the one before it with
+ * Shift. Nothing inside the note is a stop on the way out (a code block or a
+ * cell would take the key and trap it again); past either end it wraps. The
+ * note's name, the usual Shift+Tab stop, takes the caret at its end.
+ * @param {1 | -1} dir
+ */
+export function focusBeyondNote(dir) {
+  const editor = document.querySelector("[data-editor]");
+  if (!(editor instanceof HTMLElement)) return;
+  const stops = [...document.querySelectorAll(TABBABLE)].filter(
+    (el) =>
+      el instanceof HTMLElement &&
+      // An editable with no tabindex is a Tab stop though Chromium reports -1.
+      (el.tabIndex >= 0 ||
+        (el.getAttribute("contenteditable") === "true" && !el.hasAttribute("tabindex"))) &&
+      !editor.contains(el) &&
+      !el.closest("[inert]") &&
+      el.getClientRects().length > 0,
+  );
+  if (stops.length === 0) return;
+  const after = stops.filter(
+    (el) => editor.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  const before = stops.filter(
+    (el) => editor.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING,
+  );
+  const target = dir === 1 ? (after[0] ?? stops[0]) : (before.at(-1) ?? stops.at(-1));
+  if (target.matches("[data-title]")) focusTitleEnd();
+  else target.focus({ preventScroll: true });
 }
 
 /**

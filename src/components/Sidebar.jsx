@@ -523,6 +523,10 @@ const Sidebar = memo(function Sidebar({
     const row = field.closest("[data-tree-key]");
     if (renamedTo) awaitFocus(renamedTo, row?.dataset.treeKey);
     requestAnimationFrame(() => {
+      // Only while nothing else has taken focus in the meantime (⌘N typed
+      // straight after Enter lands in the new note's name).
+      const at = document.activeElement;
+      if (at && at !== document.body && !treeRef.current?.contains(at)) return;
       if (row?.isConnected) row.focus({ preventScroll: true });
       else treeRef.current?.querySelector('[tabindex="0"]')?.focus({ preventScroll: true });
     });

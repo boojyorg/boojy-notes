@@ -116,6 +116,16 @@ function caretOnLine(el, edge) {
  * columns are moved, and their menus opened, by the grips on the table's
  * edges (TableHandles).
  */
+/** The key that moves the caret's row or column, or null. */
+function tableMoveKey(e) {
+  if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return null;
+  if (!e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown"))
+    return { kind: "row", step: e.key === "ArrowUp" ? -1 : 1 };
+  if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
+    return { kind: "column", step: e.key === "ArrowLeft" ? -1 : 1 };
+  return null;
+}
+
 export default memo(function TableBlock({
   block,
   noteId,
@@ -311,6 +321,24 @@ export default memo(function TableBlock({
           addRow();
           focusOnRender.current = { row: rows.length, col: colIdx };
         }
+      } else if (tableMoveKey(e)) {
+        // The grips' moves from the keyboard, the caret going with its cell:
+        // Cmd+Shift+Up/Down a row (a block moves on the same keys outside a
+        // table); Option+Shift+Cmd+Left/Right a column, since Cmd+Shift+
+        // Left/Right selects to the line's edge. One history entry each.
+        e.preventDefault();
+        const move = tableMoveKey(e);
+        if (move.kind === "row") {
+          const to = rowIdx + move.step;
+          if (to < 0 || to > lastRow) return;
+          moveRow(rowIdx, to);
+          focusOnRender.current = { row: to, col: colIdx };
+        } else {
+          const to = colIdx + move.step;
+          if (to < 0 || to > lastCol) return;
+          moveColumn(colIdx, to);
+          focusOnRender.current = { row: rowIdx, col: to };
+        }
       } else if (!plainArrow(e)) {
         // A modified arrow is the browser's: Shift extends the selection,
         // Cmd/Ctrl and Alt jump by line and word inside the cell (END_OF_LINE
@@ -339,7 +367,18 @@ export default memo(function TableBlock({
         else onBlockNav?.(blockIndex, "next");
       }
     },
-    [rows, colCount, addRow, focusCell, caretInto, selectWhole, onBlockNav, blockIndex],
+    [
+      rows,
+      colCount,
+      addRow,
+      focusCell,
+      caretInto,
+      selectWhole,
+      onBlockNav,
+      blockIndex,
+      moveRow,
+      moveColumn,
+    ],
   );
 
   const handleCellPaste = useCallback(
