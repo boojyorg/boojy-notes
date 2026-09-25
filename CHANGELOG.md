@@ -14,6 +14,7 @@
 
 ### Bug Fixes
 
+- **The menu bar no longer flickers as you move through a table** — Each arrow key that moved the cursor to another table cell made the menu bar at the top of the screen redraw twice, a visible flicker. It now stays still.
 - **Triple-clicking in a table cell or a callout selects its text** — A triple-click inside a table cell, or in a callout's title or body, tried to select the whole table or callout, which the app cannot hold as a selection, so nothing looked selected and typing or formatting went wrong. It now selects the text of the cell or field you clicked in, ready to type over or format.
 - **Pasting a long text into a note's name no longer breaks it** — Pasting a few paragraphs into the name at the top of a note made the whole text the name: a wall of text across the top of the window, and a file name too long for the Mac to save, so the note failed to save and kept retrying. A paste into the name now takes just the first line, and a name that is still too long for a file is cut to fit, so the note always saves.
 - **The folder and note name at the top no longer shift** — The path above the note moved a few pixels sideways whenever a note grew long enough to scroll, or got short enough to stop, because the scrollbar arriving narrowed the page. The space for the scrollbar is now always kept, so the path stays exactly centred and still.
