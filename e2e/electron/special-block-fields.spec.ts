@@ -290,3 +290,16 @@ test("a code block's body is literal: no strip over it, and Cmd+B changes nothin
     await h.close();
   }
 });
+
+test("a triple-click in a callout's body selects the body's text, not the callout", async () => {
+  const md = "Intro.\n\n> [!note] Note\n> body text here\n\nAfter.\n";
+  const h = await launchApp({ [NOTE]: md });
+  try {
+    await h.openNote("Note");
+    await h.page.locator(".callout-body").click({ clickCount: 3, position: { x: 10, y: 8 } });
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("body text here");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

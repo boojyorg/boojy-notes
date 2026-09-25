@@ -151,3 +151,36 @@ test("Shift+Cmd+R and Shift+Cmd+L align the column the caret is in, from inside 
     await h.close();
   }
 });
+
+test("a right-click on a grip opens the grip's menu, never the note's text menu", async () => {
+  const h = await launchApp({ [NOTE]: lines.join("\n") });
+  try {
+    await h.openNote("Prices");
+    await cell(h, 2, 0).hover();
+    await h.page
+      .getByRole("button", { name: "Row options, or drag to move", exact: true })
+      .click({ button: "right" });
+    await expect(h.page.getByRole("menu", { name: "Row options" })).toBeVisible();
+    await expect(h.page.getByRole("menu", { name: "Edit" })).toHaveCount(0);
+    await expect(h.page.locator(".table-selection-outline")).toHaveCount(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a triple-click in a cell selects that cell's text, and typing replaces it", async () => {
+  const h = await launchApp({ [NOTE]: lines.join("\n") });
+  try {
+    await h.openNote("Prices");
+    await cell(h, 2, 0).click({ clickCount: 3, position: { x: 20, y: 12 } });
+    expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("Tea");
+    await h.page.keyboard.type("Milk");
+    await expect(cell(h, 2, 0)).toHaveText("Milk");
+    await expect(cell(h, 2, 1)).toHaveText("2.10");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Milk | 2.10 |"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

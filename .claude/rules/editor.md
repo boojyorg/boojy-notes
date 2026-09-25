@@ -74,9 +74,9 @@ app's, made through state.**
 - **A key a menu consumed never reaches the editor** (`defaultPrevented`); no per-menu special
   case.
 - A completion from a native listener commits at once (`commitNoteData`). Tab/Shift+Tab keep
-  the caret on its character. A triple-click selects the block by the app's hand
-  (`selectClickedBlock`: Chromium's range ends on the next row's non-editable marker and
-  collapses). The click's caret rescue never takes focus back.
+  the caret on its character. A triple-click selects the block, or the field it is in, by the
+  app's hand (`selectClickedBlock`: Chromium's collapses on the next row's marker). The
+  click's caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 

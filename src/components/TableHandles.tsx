@@ -408,16 +408,21 @@ export default function TableHandles({
       return;
     }
     drag.current = null;
+    openMenu(d.target, e.currentTarget);
+  };
+
+  /** The grip's menu, hung from the grip: a click, and a right-click too. */
+  const openMenu = (target: HandleTarget, gripEl: HTMLElement) => {
     const g = geometry();
     if (!g) return;
-    const grip = e.currentTarget.getBoundingClientRect();
-    const r = d.target.kind === "row" ? g.rowRects[d.target.index] : g.colRects[d.target.index];
+    const grip = gripEl.getBoundingClientRect();
+    const r = target.kind === "row" ? g.rowRects[target.index] : g.colRects[target.index];
     if (!r) return;
     // The menu hangs from the grip, its left edge on the grip's (Notion's
     // placement): a row's under the row, a column's just under the grip.
     onOpenMenu(
-      d.target,
-      d.target.kind === "row"
+      target,
+      target.kind === "row"
         ? { top: r.top, bottom: r.bottom, left: grip.left, right: grip.right }
         : { top: grip.top, bottom: grip.bottom, left: grip.left, right: grip.right },
     );
@@ -481,6 +486,13 @@ export default function TableHandles({
             onPointerMove={onGripMove}
             onPointerUp={onGripUp}
             onPointerCancel={endDrag}
+            // A right-click on a grip is its menu, as on any Mac control;
+            // claimed so the note's text menu never opens over a handle.
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openMenu(grip.target, e.currentTarget);
+            }}
             style={{
               position: "absolute",
               left: grip.left,

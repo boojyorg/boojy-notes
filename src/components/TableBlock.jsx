@@ -373,6 +373,7 @@ export default memo(function TableBlock({
       {/* The margin left of the grid: a row's grip shows from here too */}
       <div
         className="table-left-zone"
+        onContextMenu={noTextMenu}
         style={{
           position: "absolute",
           left: -EDGE_ZONE,
@@ -498,6 +499,7 @@ export default memo(function TableBlock({
           }}
           onPointerDown={handleRightZonePointerDown}
           onClick={handleRightZoneClick}
+          onContextMenu={noTextMenu}
         >
           <PlusIcon size={ADD_PLUS} nav />
         </div>
@@ -521,6 +523,7 @@ export default memo(function TableBlock({
         }}
         onPointerDown={handleBottomZonePointerDown}
         onClick={handleBottomZoneClick}
+        onContextMenu={noTextMenu}
       >
         <PlusIcon size={ADD_PLUS} nav />
       </div>
@@ -577,6 +580,14 @@ export default memo(function TableBlock({
     </div>
   );
 });
+
+/**
+ * The table's margin and add boxes hold no text: a right-click there is
+ * claimed, so the note's Cut, Copy and Paste menu does not open over them.
+ */
+function noTextMenu(e) {
+  e.preventDefault();
+}
 
 /** An arrow key with no modifier: the only kind that moves between cells. */
 function plainArrow(e) {

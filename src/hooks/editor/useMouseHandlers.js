@@ -36,10 +36,17 @@ export function useMouseHandlers({
   // and a bullet's only when a number or a task followed it (2026-09-20).
   // Selecting the text root's own contents gives one answer for every block
   // and stops the selection at the row's end instead of the next block's start.
+  //
+  // A field of its own (a table cell, a callout's title or body) is its own
+  // text: the triple-click selects its contents, never the block around it,
+  // whose frame is not editable and cannot hold a selection (the whole table
+  // was selected, drawn as nothing). A native field keeps its own.
   const selectClickedBlock = (e) => {
-    if (e?.detail !== 3 || !e.target) return false;
-    const info = getBlock(e.target);
-    const root = info?.el;
+    if (e?.detail !== 3 || !e.target?.closest) return false;
+    if (e.target.closest("textarea, input")) return false;
+    const host = e.target.closest('[contenteditable="true"]');
+    const editor = editorRef?.current;
+    const root = host && host !== editor ? host : getBlock(e.target)?.el;
     if (!root?.isConnected || !root.contains(e.target)) return false;
     const range = document.createRange();
     range.selectNodeContents(root);
