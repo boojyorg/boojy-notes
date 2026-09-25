@@ -30,7 +30,7 @@ test("recents, an unchanged sidebar, Enter after typing, and the tag chip", asyn
     const dialog = page.getByRole("dialog", { name: "Search" });
     const field = page.getByRole("textbox", { name: "Search notes" });
     const rows = dialog.locator("[data-search-index]");
-    const current = dialog.locator('[data-search-index][aria-current="true"]');
+    const current = dialog.locator('[data-search-index][aria-selected="true"]');
     const chip = dialog.getByTestId("search-tag-chip");
 
     // Open three notes; the third is the open one when the palette opens.

@@ -59,7 +59,7 @@ describe("SlashMenu", () => {
     const hints = screen.getAllByTestId("slash-hint").map((el) => el.textContent);
     expect(hints).toEqual(PRIMARY.map((c) => c.hint));
     // The hint is a footnote, not part of the row's name.
-    expect(screen.getByRole("menuitem", { name: "Heading 1" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Heading 1" })).toBeInTheDocument();
     cleanup();
     // A tier-2 block has no typed trigger: the row ends at the label.
     render(
@@ -69,7 +69,7 @@ describe("SlashMenu", () => {
         executeSlashCommand={vi.fn()}
       />,
     );
-    const callout = screen.getByRole("menuitem", { name: "Callout" });
+    const callout = screen.getByRole("option", { name: "Callout" });
     expect(callout.querySelector('[data-testid="slash-hint"]')).toBeNull();
   });
 
@@ -124,7 +124,7 @@ describe("SlashMenu", () => {
         executeSlashCommand={vi.fn()}
       />,
     );
-    const lowerRow = screen.getByRole("menuitem", { name: PRIMARY.at(-1).label });
+    const lowerRow = screen.getByRole("option", { name: PRIMARY.at(-1).label });
 
     // A menu appearing beneath a stationary pointer may produce hover entry,
     // but must not replace the keyboard-first selection.

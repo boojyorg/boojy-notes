@@ -98,7 +98,7 @@ function setup(over: Record<string, unknown> = {}, props: Record<string, unknown
   return { ...utils, onOpenResult, onClose };
 }
 const rows = (c: HTMLElement) => [...c.querySelectorAll("[data-search-index]")];
-const current = (c: HTMLElement) => c.querySelector('[data-search-index][aria-current="true"]');
+const current = (c: HTMLElement) => c.querySelector('[data-search-index][aria-selected="true"]');
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);

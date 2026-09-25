@@ -398,21 +398,17 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 axe runs over five surfaces in both themes (`e2e/accessibility.spec.ts`) and the palette's contrast
 is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. Known gaps:
 
-- [ ] **Context menus are `<div onClick>`** (Link/Image/Slash/CalloutPicker): not
-  keyboard-reachable, no roles or focus traps. SlashMenu's `aria-selected` on `menuitem` is
-  invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
-  grammar); the note, sort and table menus and the folder popup carry four copies of that grammar, and
-  one shared menu primitive is the cleanup that would also fix the four above.
+- [ ] **The callout's type button is not a Tab stop** (a `div role="button"` inside the block);
+  it is named and announces its list since 2026-09-25. With the Tab pass.
 - [ ] **Tab never leaves the editor** — `useKeyboardHandlers.js` prevents the default for every
   block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
   reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,
   not in isolation.
 - [ ] **The crash screen loses its theme**: `GlobalStyles` renders inside the boundary.
-- **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
-  implemented seven times (`ContextMenu`, `SortMenu`, `PathTreeMenu`, `WikilinkMenu`, `TagMenu`,
-  `CalloutBlock`, `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning
-  three ways (`CodeBlock` keeps a hand-rolled clamp). One `useMenuKeyboard`/`useDismiss` pair
-  is worth it only because the accessibility pass touches every one of them anyway.
+- **Menu dismissal is still several spellings** (a backdrop's `onClick` or `onMouseDown`, or a
+  document press listener) and the callout picker positions itself by hand. The keys were
+  unified on 2026-09-25 (`useMenuKeys`); dismissal behaves the same to the eye, so it waits for
+  a reason.
 
 ### Technical debt
 

@@ -23,6 +23,7 @@ import {
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -109,29 +110,20 @@ const ContextMenu = memo(function ContextMenu({
   // opened 50px under and 60px right of the ··· at 125%.
   const zoom = cssZoom(document.documentElement);
 
-  // Keyboard navigation — hooks must be above early return
+  // Keyboard navigation — hooks must be above early return. The rows are
+  // built below, after the early return, so the keys read them at the press.
+  const menuKeys = useMenuKeys({
+    rows: () => itemsRef.current,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => itemsRef.current[i]?.action(),
+    close: () => setCtxMenu(null),
+  });
   const handleKeyDown = useCallback(
     (e) => {
-      const items = itemsRef.current;
-      if (!items.length || e.defaultPrevented) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActiveIndex((i) => (i + 1) % items.length);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIndex((i) => (i - 1 + items.length) % items.length);
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        const idx = activeIndex;
-        if (idx >= 0 && idx < items.length) {
-          items[idx].action();
-        }
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setCtxMenu(null);
-      }
+      if (itemsRef.current.length && menuKeys(e)) e.preventDefault();
     },
-    [activeIndex, setCtxMenu],
+    [menuKeys],
   );
 
   // On the document, not the window: the app shell's shortcut handler is a

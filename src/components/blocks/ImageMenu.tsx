@@ -2,6 +2,7 @@ import { type ReactNode, type RefObject, useCallback, useRef, useState } from "r
 import { createPortal } from "react-dom";
 import { useTheme } from "../../hooks/useTheme";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
+import { useMenuKeys } from "../../hooks/useMenuKeys";
 import { useMenuPosition } from "../../hooks/useMenuPosition";
 import { Z } from "../../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../../constants/layout";
@@ -112,25 +113,13 @@ export default function ImageMenu({
     rule: true,
   });
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.defaultPrevented) return false;
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((i) =>
-        i === -1 && step === -1 ? items.length - 1 : (i + step + items.length) % items.length,
-      );
-      return true;
-    }
-    if (e.key === "Enter" || e.key === " ") {
-      if (activeIndex >= 0) items[activeIndex].action();
-      return true;
-    }
-    if (e.key === "Escape") {
-      onClose();
-      return true;
-    }
-    return false;
-  };
+  const handleKeyDown = useMenuKeys({
+    rows: () => items,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => items[i].action(),
+    close: onClose,
+  });
 
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 

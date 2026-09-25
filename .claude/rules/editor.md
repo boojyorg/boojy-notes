@@ -178,6 +178,12 @@ app's, made through state.**
   opening screen; the rule lives in `filterSlashCommands()` for both menu and keys. Rows show
   their typed shortcut as a hint. Rows take selection on real mouse movement, not `mouseenter`.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
+- **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
+  disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
+  menu listens differs. A suggestion under the caret (`suggestion: true`: tag, callout type; the
+  slash menu steps with `stepIndex` in the editor's handler) leaves Space, letters, Home and End
+  to typing and is a `listbox` of `option`s (a `menuitem` cannot be selected).
+  `menuKeys.test.ts`, `callout-picker.spec.ts`.
 - **The editor column never carries a transform** (it would contain the `fixed` menus). `editor-menus.spec.ts`.
 - **A chosen block with its own field takes the caret** (`hasOwnField` in `useSlashCommands`: Code, Callout, Table
   focus their first field through `ownedField`); the rest hand it to the paragraph below.

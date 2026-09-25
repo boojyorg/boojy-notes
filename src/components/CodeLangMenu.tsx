@@ -1,8 +1,9 @@
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
@@ -55,25 +56,7 @@ interface CodeLangMenuProps {
   onClose: () => void;
 }
 
-/** How long a type-ahead buffer lives after the last letter. */
-export const TYPE_AHEAD_MS = 700;
-
-/**
- * The item a type-ahead buffer names: the first label starting with it, or,
- * for a repeated single letter, the next label starting with that letter
- * (pressing `s` twice walks SQL → …, as a native menu does).
- */
-export function typeAheadIndex(labels: string[], buffer: string, from: number): number {
-  const query = buffer.toLowerCase();
-  const repeated = buffer.length > 1 && [...buffer].every((c) => c === buffer[0]);
-  const needle = repeated ? buffer[0].toLowerCase() : query;
-  const start = repeated || buffer.length === 1 ? from + 1 : 0;
-  for (let i = 0; i < labels.length; i++) {
-    const at = (start + i + labels.length) % labels.length;
-    if (labels[at].toLowerCase().startsWith(needle)) return at;
-  }
-  return -1;
-}
+export { typeAheadIndex } from "../utils/menuKeys";
 
 const hBg = (el: HTMLElement, c: string) => {
   el.style.background = c;
@@ -92,11 +75,6 @@ export default function CodeLangMenu({
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
-  // The pending type-ahead: the letters and the timer that forgets them.
-  const typed = useRef<{ buffer: string; timer: ReturnType<typeof setTimeout> | null }>({
-    buffer: "",
-    timer: null,
-  });
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
 
   // The label sits at the block's right edge, so the menu's right edge meets
@@ -124,60 +102,13 @@ export default function CodeLangMenu({
   );
 
   /** Whether the menu takes this key; the caller stops the ones it does. */
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.defaultPrevented) return false;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        const step = e.key === "ArrowDown" ? 1 : -1;
-        setActiveIndex((i) =>
-          i === -1 && step === -1
-            ? languages.length - 1
-            : (i + step + languages.length) % languages.length,
-        );
-        return true;
-      }
-      if (e.key === "Home" || e.key === "End") {
-        setActiveIndex(e.key === "Home" ? 0 : languages.length - 1);
-        return true;
-      }
-      if (e.key === "Enter" || e.key === " ") {
-        if (activeIndex >= 0) choose(languages[activeIndex].value);
-        return true;
-      }
-      if (e.key === "Escape") {
-        onClose();
-        return true;
-      }
-      if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        // A letter names a language. The buffer is the run of letters typed
-        // inside TYPE_AHEAD_MS; a repeated letter walks its matches instead.
-        if (typed.current.timer) clearTimeout(typed.current.timer);
-        typed.current.buffer += e.key;
-        typed.current.timer = setTimeout(() => {
-          typed.current.buffer = "";
-          typed.current.timer = null;
-        }, TYPE_AHEAD_MS);
-        setActiveIndex((i) => {
-          const next = typeAheadIndex(
-            languages.map((l) => l.label),
-            typed.current.buffer,
-            i,
-          );
-          return next === -1 ? i : next;
-        });
-        return true;
-      }
-      return false;
-    },
-    [activeIndex, languages, choose, onClose],
-  );
-
-  useEffect(() => {
-    const pending = typed.current;
-    return () => {
-      if (pending.timer) clearTimeout(pending.timer);
-    };
-  }, []);
+  const handleKeyDown = useMenuKeys({
+    rows: () => languages,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => choose(languages[i].value),
+    close: onClose,
+  });
 
   return createPortal(
     <>

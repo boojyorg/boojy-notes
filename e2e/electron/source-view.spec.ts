@@ -167,7 +167,7 @@ test("a menu the keyboard opened in one view does not follow into the other", as
     await h.page.keyboard.press(`${MOD}+ArrowRight`);
     await h.page.keyboard.press("Enter");
     await h.page.keyboard.type("/");
-    const slash = h.page.getByRole("menu", { name: "Slash commands" });
+    const slash = h.page.getByRole("listbox", { name: "Slash commands" });
     await expect(slash).toBeVisible();
     await h.page.keyboard.press(`${MOD}+/`);
     await expect(h.page.getByRole("textbox", { name: "Markdown" })).toBeFocused();

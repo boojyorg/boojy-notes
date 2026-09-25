@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
@@ -165,29 +166,13 @@ export default function EditorContextMenu({
     });
   }
 
-  const run = (item: Item) => {
-    if (item.disabled) return;
-    item.action();
-  };
-
-  const step = (from: number, dir: 1 | -1) => {
-    for (let n = 1; n <= items.length; n++) {
-      const i = (((from + dir * n) % items.length) + items.length) % items.length;
-      if (!items[i].disabled) return i;
-    }
-    return from;
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      const dir = e.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((i) => step(i === -1 ? (dir === 1 ? -1 : items.length) : i, dir));
-    } else if (e.key === "Enter" || e.key === " ") {
-      if (activeIndex >= 0) run(items[activeIndex]);
-    } else if (e.key === "Escape") {
-      onClose();
-    }
-  };
+  const handleKeyDown = useMenuKeys({
+    rows: () => items,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => items[i].action(),
+    close: onClose,
+  });
   // The menu never takes focus: the editor keeps it, so the selection stays
   // the ordinary blue a drag gives (with focus in the menu it went inactive,
   // and a painted highlight over it drew the words twice). Every key goes to
@@ -197,9 +182,9 @@ export default function EditorContextMenu({
   keyRef.current = handleKeyDown;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      keyRef.current(e);
       e.preventDefault();
       e.stopPropagation();
-      keyRef.current(e);
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
@@ -262,7 +247,7 @@ export default function EditorContextMenu({
               // A press here must not move the editor's selection or focus
               // before the item acts on it.
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => run(item)}
+              onClick={() => !item.disabled && item.action()}
               onMouseMove={() => {
                 if (!item.disabled && activeIndex !== i) setActiveIndex(i);
               }}

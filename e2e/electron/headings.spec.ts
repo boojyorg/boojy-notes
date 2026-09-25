@@ -58,14 +58,14 @@ test("typed H1–H6 and searched H4–H6 share heading Enter and navigation beha
       ).toHaveCount(1);
       await h.page.keyboard.press("Enter");
     }
-    const menu = h.page.getByRole("menu", { name: "Slash commands" });
+    const menu = h.page.getByRole("listbox", { name: "Slash commands" });
     for (const level of [4, 5, 6]) {
       await h.page.keyboard.type("/");
-      await expect(menu.getByRole("menuitem")).toHaveCount(11);
-      await expect(menu.getByRole("menuitem").filter({ hasText: "Heading 4" })).toHaveCount(0);
+      await expect(menu.getByRole("option")).toHaveCount(11);
+      await expect(menu.getByRole("option").filter({ hasText: "Heading 4" })).toHaveCount(0);
       await h.page.keyboard.type(`h${level}`);
-      await expect(menu.getByRole("menuitem")).toHaveCount(1);
-      await expect(menu.getByRole("menuitem")).toContainText(`Heading ${level}`);
+      await expect(menu.getByRole("option")).toHaveCount(1);
+      await expect(menu.getByRole("option")).toContainText(`Heading ${level}`);
       await h.page.keyboard.press("Enter");
       await h.page.keyboard.type(`Searched ${level}`);
       await expect(h.page.locator(`h${level}[data-block-type]`).last()).toHaveText(

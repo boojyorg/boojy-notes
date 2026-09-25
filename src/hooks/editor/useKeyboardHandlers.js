@@ -61,6 +61,7 @@ import {
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
 import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
 import { reorderFloor } from "../../utils/blockOrder";
+import { stepIndex } from "../../utils/menuKeys";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -135,19 +136,14 @@ export function useKeyboardHandlers({
       // Same helper the menu renders from — arrowing must never index a
       // different list than the one on screen.
       const filtered = filterSlashCommands(sm.filter);
-      if (e.key === "ArrowDown") {
+      // The menus' one arrow rule (utils/menuKeys.ts): wrap at the ends.
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
+        const dir = e.key === "ArrowDown" ? 1 : -1;
         setSlashMenu((prev) =>
-          prev
-            ? { ...prev, selectedIndex: Math.min(prev.selectedIndex + 1, filtered.length - 1) }
-            : null,
-        );
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSlashMenu((prev) =>
-          prev ? { ...prev, selectedIndex: Math.max(prev.selectedIndex - 1, 0) } : null,
+          prev && filtered.length
+            ? { ...prev, selectedIndex: stepIndex(prev.selectedIndex, dir, filtered.length) }
+            : prev,
         );
         return;
       }

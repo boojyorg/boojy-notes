@@ -31,7 +31,7 @@ test("the highlighted row is the row Enter opens, and the arrows walk the list i
     expect(await rowTitles()).toEqual(["Plan", "Notes"]);
 
     // Opening resets to the first row drawn.
-    const current = h.page.locator('[data-search-index][aria-current="true"]');
+    const current = h.page.locator('[data-search-index][aria-selected="true"]');
     await expect(current).toHaveCount(1);
     await expect(current).toHaveText(/Plan/);
     expect(await current.getAttribute("data-search-index")).toBe("0");

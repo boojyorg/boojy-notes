@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { extractAllTags, tagKey, tagRows } from "../utils/tags";
@@ -52,28 +53,27 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   const shown = !!position && filtered.length > 0;
 
+  // The rows on screen, the only ones the arrows walk.
+  const rows = useMemo(() => filtered.slice(0, 10), [filtered]);
+  // The menus' one key rule (useMenuKeys), as a suggestion under the caret:
+  // letters and Space stay typing. Window capture, ahead of the editor, which
+  // skips a key already prevented.
+  const menuKeys = useMenuKeys({
+    rows: () => rows.map((t) => ({ label: t.tag })),
+    active: selectedIndex,
+    setActive: setSelectedIndex,
+    choose: (i) => onSelect(rows[i].tag),
+    close: onDismiss,
+    suggestion: true,
+  });
   useEffect(() => {
     if (!shown) return;
     const handler = (e) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === "Enter") {
-        const pick = filtered[selectedIndex]?.tag;
-        if (!pick) return;
-        e.preventDefault();
-        onSelect(pick);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onDismiss();
-      }
+      if (menuKeys(e)) e.preventDefault();
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [shown, filtered, selectedIndex, onSelect, onDismiss]);
+  }, [shown, menuKeys]);
 
   if (!shown) return null;
 
@@ -98,7 +98,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
         animation: "fadeIn 0.1s ease",
       }}
     >
-      {filtered.slice(0, 10).map((t, i) => (
+      {rows.map((t, i) => (
         <div
           key={t.tag}
           role="option"
