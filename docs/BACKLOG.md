@@ -209,14 +209,12 @@ none blocks the release. The shared question comes first because three candidate
 - **Export and print to PDF.** Wanted (Tyr, 2026-09-24). Electron prints a page to PDF, so the
   work is a clean print layout (no chrome, the note's own type, page breaks that never split a
   table row or a picture). Word export is later (Future).
-- **Other files in the tree.** Wanted (Tyr, 2026-09-24), replacing the muted "N other files"
-  hint. A folder is a directory, and hiding its PDFs and slides makes it look emptier than it
-  is; in Tyr's vault about 240 documents sit beside the notes of the module they belong to.
-  Shown dimmer than notes with a file-type glyph; a click opens the default app (Preview,
-  Keynote), with Show in Finder, Rename, Move to… and Delete on the row; a drag into a note
-  writes a link to it; Search finds them by name. A setting hides them. `attachments/` stays
-  hidden. Every file operation must then be right for a non-note file too. Built-in viewers are
-  the later step (Future), and "open in the default app" stays one click away when they come.
+- **Other files in the tree, the rest.** They show, open in their own app, and can be shown in
+  Finder or deleted (2026-09-25). Still to come: Rename and Move to… on the row, a drag into a
+  note that writes a link to it, and Search finding them by name. Every file operation must be
+  right for a non-note file too; an attachment stays open-only, because a rename rewrites no
+  links. A Finder change reaches the tree on window focus; watching them is a later step if
+  that proves slow to notice. Built-in viewers are later still (Future).
 - **Quick capture and a `boojy-notes://` link.** Wanted (Tyr, 2026-09-24): a global shortcut
   from anywhere on the Mac makes an ordinary new note, the same creation as Cmd+N (no inbox, no
   quick-note type). A `boojy-notes://new?title=…&text=…` scheme is the one door for it, a

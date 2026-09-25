@@ -406,3 +406,27 @@ describe("the highlight belongs to one open", () => {
     );
   });
 });
+
+describe("ContextMenu for a file that is not a note", () => {
+  afterEach(cleanup);
+
+  it("offers Open, Show in Finder and Delete, each with its glyph, and nothing that renames", () => {
+    const props = {
+      ...baseProps(),
+      ctxMenu: { x: 10, y: 10, type: "file", id: "Uni/handout.pdf" },
+      openFile: vi.fn(),
+      revealFile: vi.fn(),
+      trashFile: vi.fn(),
+    };
+    const { getAllByRole, getByRole } = render(<ContextMenu {...props} />);
+    const items = getAllByRole("menuitem");
+    expect(items.map((i) => i.textContent)).toEqual(["Open", "Show in Finder", "Delete"]);
+    for (const item of items) expect(item.querySelector("svg")).not.toBeNull();
+    fireEvent.click(getByRole("menuitem", { name: "Open" }));
+    expect(props.openFile).toHaveBeenCalledWith("Uni/handout.pdf");
+    fireEvent.click(getByRole("menuitem", { name: "Show in Finder" }));
+    expect(props.revealFile).toHaveBeenCalledWith("Uni/handout.pdf");
+    fireEvent.click(getByRole("menuitem", { name: "Delete" }));
+    expect(props.trashFile).toHaveBeenCalledWith("Uni/handout.pdf");
+  });
+});

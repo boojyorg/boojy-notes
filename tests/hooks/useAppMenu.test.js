@@ -95,6 +95,33 @@ afterEach(() => {
 });
 
 describe("the application menu", () => {
+  it("opens the vault menu from Open Vault… and ⌘O, and switches vault from Open Recent", () => {
+    const openVaultMenu = vi.fn();
+    const switchVault = vi.fn();
+    const vaults = [
+      { path: "/v/Notes", name: "Notes", current: true, exists: true, cloud: false },
+      { path: "/v/Uni", name: "Uni", current: false, exists: true, cloud: false },
+    ];
+    const deps = makeDeps({ activeNote: null, openVaultMenu, switchVault, vaults });
+    renderHook(() => useAppKeyboard(deps));
+    run("openVault");
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "o", metaKey: true }));
+    });
+    expect(openVaultMenu).toHaveBeenCalledTimes(2);
+    run("openVault:/v/Uni");
+    expect(switchVault).toHaveBeenCalledWith("/v/Uni");
+    // The menu is told the vaults, without what it does not show.
+    expect(api.setMenuState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        vaults: [
+          { path: "/v/Notes", name: "Notes", current: true, exists: true },
+          { path: "/v/Uni", name: "Uni", current: false, exists: true },
+        ],
+      }),
+    );
+  });
+
   it("runs a note's own commands on the open note", () => {
     const deps = makeDeps();
     mountEditor();

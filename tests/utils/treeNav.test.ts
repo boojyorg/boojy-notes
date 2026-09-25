@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { visibleTreeRows, treeMove, folderKey, noteKey } from "../../src/utils/treeNav";
+import {
+  ATTACHMENTS_KEY,
+  visibleTreeRows,
+  treeMove,
+  folderKey,
+  fileKey,
+  noteKey,
+} from "../../src/utils/treeNav";
 
 // Work/ (open)
 //   Plans/ (closed) → p1
@@ -107,5 +114,46 @@ describe("treeMove", () => {
 
   it("from a row that has gone, lands on the first", () => {
     expect(treeMove(rows, noteKey("gone"), "ArrowDown")).toEqual({ focus: folderKey("Work") });
+  });
+});
+
+describe("visibleTreeRows with files that are not notes", () => {
+  const withFiles = visibleTreeRows(tree, ["r1"], { Work: true, attachments: true }, label, {
+    inFolder: (p) => (p === "Work" ? ["Work/brief.pdf"] : p === "" ? ["list.pdf"] : []),
+    attachments: ["attachments/a.png"],
+    attachmentLabel: (p) => p.replace("attachments/", ""),
+  });
+
+  it("lists a folder's files after its notes, and the attachment store last at the root", () => {
+    expect(withFiles.map((r) => r.key)).toEqual([
+      folderKey("Work"),
+      folderKey("Work/Plans"),
+      noteKey("w1"),
+      noteKey("w2"),
+      fileKey("Work/brief.pdf"),
+      folderKey("Home"),
+      noteKey("r1"),
+      fileKey("list.pdf"),
+      ATTACHMENTS_KEY,
+      fileKey("attachments/a.png"),
+    ]);
+  });
+
+  it("counts files and the store among their siblings", () => {
+    const store = withFiles.find((r) => r.key === ATTACHMENTS_KEY);
+    expect(store).toMatchObject({ kind: "attachments", level: 1, posinset: 5, setsize: 5 });
+    expect(withFiles.find((r) => r.key === fileKey("attachments/a.png"))).toMatchObject({
+      level: 2,
+      parentKey: ATTACHMENTS_KEY,
+      label: "a.png",
+    });
+  });
+
+  it("opens and closes the store with the arrows, as a folder", () => {
+    const closed = visibleTreeRows([], [], {}, label, { attachments: ["attachments/a.png"] });
+    expect(treeMove(closed, ATTACHMENTS_KEY, "ArrowRight")).toEqual({ expand: ATTACHMENTS_KEY });
+    expect(treeMove(withFiles, ATTACHMENTS_KEY, "ArrowLeft")).toEqual({
+      collapse: ATTACHMENTS_KEY,
+    });
   });
 });

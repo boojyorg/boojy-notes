@@ -3,6 +3,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { Tooltip, useTooltip } from "../Tooltip";
 import { FolderIcon } from "../Icons";
 import { isElectronMac } from "../../utils/platform";
+import { displayPath } from "../../utils/storageLocations";
 
 /**
  * The parts Settings and first-run setup are built from (2026-09-17), so the
@@ -90,9 +91,7 @@ export function SmallButton({
   );
 }
 
-/** `~` for the home directory, on either platform. */
-export const displayPath = (dir) =>
-  dir ? dir.replace(/^\/Users\/[^/]+/, "~").replace(/^C:\\Users\\[^\\]+/, "~") : "\u2014";
+export { displayPath } from "../../utils/storageLocations";
 
 /** The path with a break opportunity after each separator, so a long one wraps at its folders. */
 function BreakablePath({ path }) {
@@ -118,9 +117,17 @@ export const SHOW_IN_FOLDER_LABEL = isElectronMac ? "Show in Finder" : "Show in 
  * ink lifts a step and the app's chip names it after the usual rest; keyboard
  * focus draws the inset accent ring (`settingsStyles`). Without `onReveal`
  * (a folder that does not exist yet, the web build) it is the same text and
- * does nothing.
+ * does nothing. With `name` (a storage location's row) the name leads and the
+ * path sits under it, quieter; `pathText` stands in for the path ("Not found").
  */
-export function FolderPathControl({ path, onReveal }) {
+export function FolderPathControl({
+  path,
+  onReveal,
+  name = null,
+  icon = <FolderIcon />,
+  pathText = null,
+  testId = "notes-folder-path",
+}) {
   const { theme } = useTheme();
   const { TEXT } = theme;
   const tip = useTooltip();
@@ -132,11 +139,27 @@ export function FolderPathControl({ path, onReveal }) {
         className="settings-path-glyph"
         style={{ display: "inline-flex", marginTop: 3, color: TEXT.muted }}
       >
-        <FolderIcon />
+        {icon}
       </span>
-      <span style={{ fontSize: 14, lineHeight: "22px", overflowWrap: "anywhere", minWidth: 0 }}>
-        <BreakablePath path={shown} />
-      </span>
+      {name ? (
+        <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <span style={{ fontSize: 14, lineHeight: "22px", color: TEXT.primary }}>{name}</span>
+          <span
+            style={{
+              fontSize: 12.5,
+              lineHeight: "18px",
+              color: TEXT.muted,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {pathText ?? <BreakablePath path={shown} />}
+          </span>
+        </span>
+      ) : (
+        <span style={{ fontSize: 14, lineHeight: "22px", overflowWrap: "anywhere", minWidth: 0 }}>
+          <BreakablePath path={shown} />
+        </span>
+      )}
     </>
   );
   const layout = {
@@ -153,7 +176,7 @@ export function FolderPathControl({ path, onReveal }) {
   };
   if (!onReveal) {
     return (
-      <div data-testid="notes-folder-path" style={layout}>
+      <div data-testid={testId} style={layout}>
         {inner}
       </div>
     );
@@ -164,7 +187,7 @@ export function FolderPathControl({ path, onReveal }) {
         ref={ref}
         type="button"
         className="settings-path-control"
-        data-testid="notes-folder-path"
+        data-testid={testId}
         aria-label={SHOW_IN_FOLDER_LABEL}
         onClick={onReveal}
         onMouseEnter={tip.handlers.onMouseEnter}
@@ -211,4 +234,10 @@ export const settingsStyles = (theme) => `
   .settings-reset:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); border-radius: 6px; }
   .theme-pill:not([aria-checked="true"]):hover { background: ${theme.BG.surface} !important; color: ${theme.TEXT.primary} !important; }
   .theme-pill:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
+  .settings-location-reveal:not([aria-disabled="true"]):hover { background: ${theme.BG.hover} !important; }
+  .settings-location-reveal:not([aria-disabled="true"]):hover .settings-location-path { color: ${theme.TEXT.primary} !important; }
+  .settings-location-reveal:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
+  .settings-location-action { opacity: 0; transition: opacity 120ms; }
+  .settings-location:hover .settings-location-action,
+  .settings-location:focus-within .settings-location-action { opacity: 1; }
 `;

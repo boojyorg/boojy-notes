@@ -109,6 +109,7 @@ export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
 export const SHORTCUTS = {
   newNote: shortcutLabel({ key: "N" }),
   newFolder: shortcutLabel({ key: "N", shift: true }),
+  openVault: shortcutLabel({ key: "O" }),
   search: shortcutLabel({ key: "P" }),
   settings: shortcutLabel({ key: "," }),
   toggleSidebar: shortcutLabel({ key: "\\" }),

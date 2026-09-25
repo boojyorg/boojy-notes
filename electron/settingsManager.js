@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { app } from "electron";
 import { autoUpdater } from "electron-updater";
 import { writeFileAtomic } from "./atomicWrite.js";
+import { forgetVault, isKnownVault, rememberVault, vaultEntries } from "./vaults.js";
 
 const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
 const SETTINGS_FILE = path.join(app.getPath("userData"), "settings.json");
@@ -144,10 +145,68 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
       defaultPath: path.dirname(getNotesDir()),
     });
     if (result.canceled || !result.filePaths[0]) return null;
-    const dir = result.filePaths[0];
-    saveConfig({ ...loadConfig(), notesDir: dir });
+    return openVault(result.filePaths[0]);
+  });
+
+  // The vault the window shows is config's `notesDir`; `vaults` remembers the
+  // others (electron/vaults.ts). Opening one saves it as the vault and
+  // restarts the watcher on it, as choosing a folder does.
+  const openVault = (dir) => {
+    const cfg = loadConfig();
+    const current = cfg.notesDir || getNotesDir();
+    // The vault being left is remembered only if it is there: the default
+    // folder a first run never made is not a vault to come back to.
+    const known = fs.existsSync(current) ? rememberVault(cfg.vaults, current) : cfg.vaults;
+    saveConfig({ ...cfg, notesDir: dir, vaults: rememberVault(known, dir) });
     restartWatcher();
     return dir;
+  };
+
+  ipcMain.handle("list-vaults", () => vaultEntries(loadConfig().vaults, getNotesDir()));
+
+  // Only a vault already in the list: the renderer never names a new path,
+  // which comes from the native picker alone. A missing one is refused, never made.
+  ipcMain.handle("open-vault", (_event, dir) => {
+    if (typeof dir !== "string" || !isKnownVault(loadConfig().vaults, dir)) return null;
+    if (!fs.existsSync(dir)) return null;
+    return openVault(dir);
+  });
+
+  // Settings' Add folder…: the picker, then the list gains the folder. It
+  // does not switch to it; the row's Open does.
+  ipcMain.handle("add-vault", async () => {
+    const { dialog } = await import("electron");
+    const result = await dialog.showOpenDialog(getMainWindow(), {
+      properties: ["openDirectory", "createDirectory"],
+      title: "Add Storage Location",
+      defaultPath: path.dirname(getNotesDir()),
+    });
+    const cfg = loadConfig();
+    const current = getNotesDir();
+    if (!result.canceled && result.filePaths[0]) {
+      const known = fs.existsSync(current) ? rememberVault(cfg.vaults, current) : cfg.vaults;
+      saveConfig({ ...cfg, vaults: rememberVault(known, result.filePaths[0]) });
+    }
+    return vaultEntries(loadConfig().vaults, current);
+  });
+
+  // Show in Finder for any listed location, the open one included.
+  ipcMain.handle("reveal-vault", async (_event, dir) => {
+    if (typeof dir !== "string" || !fs.existsSync(dir)) return;
+    const listed =
+      isKnownVault(loadConfig().vaults, dir) || path.resolve(dir) === path.resolve(getNotesDir());
+    if (!listed) return;
+    const { shell } = await import("electron");
+    shell.showItemInFolder(dir);
+  });
+
+  // Settings' Remove from list: the folder and its notes are not touched.
+  ipcMain.handle("forget-vault", (_event, dir) => {
+    const cfg = loadConfig();
+    const current = getNotesDir();
+    if (typeof dir === "string")
+      saveConfig({ ...cfg, vaults: forgetVault(cfg.vaults, dir, current) });
+    return vaultEntries(loadConfig().vaults, current);
   });
 
   // First-run setup (the renderer's SetupDialog): whether to show it, and

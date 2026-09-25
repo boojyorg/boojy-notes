@@ -152,11 +152,13 @@ test("a press anywhere off the picture deselects it: beside it in its row, the t
     await h.page.locator('[data-block-type="p"]', { hasText: "Two" }).click();
     await expect(wash).toHaveCount(0);
 
-    // Outside the editor: the sidebar's Notes label. Before: nothing there deselected.
+    // Outside the editor: the sidebar's location name. Before: nothing there deselected.
     await img.click();
     await expect(wash).toBeVisible();
-    await h.page.getByText("Notes", { exact: true }).first().click();
+    await h.page.getByTestId("vault-label").click();
     await expect(wash).toHaveCount(0);
+    await h.page.keyboard.press("Escape");
+    await expect(h.page.getByRole("menu", { name: "Storage location" })).toHaveCount(0);
 
     // A press on the picture's own controls keeps it (the pill, pressed and
     // released without moving), and Backspace then deletes it.

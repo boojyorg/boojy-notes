@@ -22,6 +22,7 @@ const {
   deleteFolderIfEmpty,
   duplicateFolder,
   readAllFolders,
+  readOtherFiles,
   renameFolder,
   resolveVaultDir,
 } = await import("../../electron/folders");
@@ -332,5 +333,31 @@ describe("duplicate-folder — one directory copy beside the original", () => {
     expect((notes[0] as Copied).id).not.toBe("note-1-abcd");
     expect(getIdIndex()["note-1-abcd"]).toBe(path.join("Work", "Legacy.md"));
     expect(Object.keys(readAllNotes(notesDir))).toHaveLength(2);
+  });
+});
+
+describe("readOtherFiles", () => {
+  it("lists every file that is not a note, attachments marked, hidden files and cruft skipped", () => {
+    write("Note.md");
+    write("reading-list.pdf");
+    write("Uni/lecture-3.pptx");
+    write("Uni/Week 1.md");
+    write("attachments/diagram-1.png");
+    write("attachments/pasted.md");
+    write(".obsidian/app.json");
+    write(".DS_Store");
+    write("Uni/Thumbs.db");
+    expect(readOtherFiles(notesDir)).toEqual([
+      { path: "Uni/lecture-3.pptx", attachment: false },
+      { path: "attachments/diagram-1.png", attachment: true },
+      { path: "attachments/pasted.md", attachment: true },
+      { path: "reading-list.pdf", attachment: false },
+    ]);
+  });
+
+  it("answers nothing for a missing vault, and never makes it", () => {
+    const gone = path.join(notesDir, "gone");
+    expect(readOtherFiles(gone)).toEqual([]);
+    expect(fs.existsSync(gone)).toBe(false);
   });
 });

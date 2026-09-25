@@ -119,7 +119,8 @@ test("choosing an existing Markdown folder in setup switches to it live and leav
     await expect(dialog).toHaveCount(0);
     await sleep(SETTLE_MS);
     expect(fs.existsSync(path.join(h.documents, "Boojy"))).toBe(false);
-    expect(config(h.userData)).toEqual({ notesDir: chosen, setupDone: true });
+    // The default folder was never made, so it is not a vault to list.
+    expect(config(h.userData)).toEqual({ notesDir: chosen, setupDone: true, vaults: [chosen] });
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

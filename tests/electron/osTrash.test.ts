@@ -12,7 +12,9 @@ vi.mock("electron", () => ({
   nativeImage: {},
 }));
 
-const { migrateLegacyTrash, trashManagedNote } = await import("../../electron/osTrash");
+const { migrateLegacyTrash, trashManagedNote, trashOtherFile } = await import(
+  "../../electron/osTrash"
+);
 const { getIdIndex, setIndexDir } = await import("../../electron/noteFileManager.js");
 
 let notesDir: string;
@@ -253,5 +255,39 @@ describe("trashManagedNote", () => {
     expect(result).toEqual({ trashed: false, missing: true });
     expect(trashItem).not.toHaveBeenCalled();
     expect(getIdIndex()["note-1"]).toBeUndefined();
+  });
+});
+
+describe("trashOtherFile", () => {
+  const put = (rel: string) => {
+    const abs = path.join(notesDir, ...rel.split("/"));
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, "x");
+    return abs;
+  };
+
+  it("sends a file that is not a note to the Trash", async () => {
+    const abs = put("Uni/handout.pdf");
+    const trashItem = vi.fn(async () => {});
+    expect(await trashOtherFile(notesDir, "Uni/handout.pdf", trashItem)).toEqual({ trashed: true });
+    expect(trashItem).toHaveBeenCalledWith(abs);
+  });
+
+  it("takes a Markdown file inside the attachment store, which is not a note", async () => {
+    put("attachments/pasted.md");
+    const trashItem = vi.fn(async () => {});
+    expect(await trashOtherFile(notesDir, "attachments/pasted.md", trashItem)).toEqual({
+      trashed: true,
+    });
+  });
+
+  it("refuses a note, a folder, the vault and anything outside it", async () => {
+    put("Note.md");
+    put("Uni/a.pdf");
+    const trashItem = vi.fn(async () => {});
+    for (const rel of ["Note.md", "Uni", "", "../elsewhere.pdf", "missing.pdf"]) {
+      expect(await trashOtherFile(notesDir, rel, trashItem)).toEqual({ trashed: false });
+    }
+    expect(trashItem).not.toHaveBeenCalled();
   });
 });

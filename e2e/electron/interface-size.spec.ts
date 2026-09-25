@@ -152,7 +152,7 @@ test("opened at 50%, 100% and 200%: the pane fits the window and its controls wo
       await expect(h.page.getByTestId("ui-scale-value")).toHaveText(`${size}%`);
 
       // Its controls still work at that size: the theme pills and the chip on
-      // the notes-folder path, which is portalled out of the pane.
+      // the Close button, which is portalled out of the pane.
       await h.page.getByRole("radio", { name: "Dark" }).click();
       await expect(h.page.getByRole("radio", { name: "Dark" })).toHaveAttribute(
         "aria-checked",
@@ -161,11 +161,11 @@ test("opened at 50%, 100% and 200%: the pane fits the window and its controls wo
       // Re-hovered until the chip shows: the Linux runner's stray mouseout
       // cancels the chip's rest timer (chrome-tooltips.spec.ts does the same).
       await expect(async () => {
-        await h.page.getByTestId("notes-folder-path").hover();
-        await expect(h.page.getByTestId("path-tooltip")).toBeVisible({ timeout: 1_500 });
+        await h.page.getByRole("button", { name: "Close settings" }).hover();
+        await expect(h.page.getByTestId("chrome-tooltip")).toBeVisible({ timeout: 1_500 });
       }).toPass({ timeout: 10_000 });
-      const chip = await h.page.getByTestId("path-tooltip").boundingBox();
-      const anchor = await h.page.getByTestId("notes-folder-path").boundingBox();
+      const chip = await h.page.getByTestId("chrome-tooltip").boundingBox();
+      const anchor = await h.page.getByRole("button", { name: "Close settings" }).boundingBox();
       // The chip is drawn at the app's scale, under the control it names.
       expect(Math.abs((chip?.x ?? 0) - (anchor?.x ?? 0))).toBeLessThan((box?.width ?? 0) / 2);
       expect(chip?.y ?? 0).toBeGreaterThan(anchor?.y ?? 0);

@@ -212,6 +212,19 @@ export default function GlobalStyles() {
         .sidebar-section-header.menu-open .sidebar-section-action {
           opacity: 0.55;
         }
+        /* The vault's name: muted at rest, and the controls' own grey and
+           ink on hover, keyboard focus, or while its menu is open. */
+        .sidebar-vault-label {
+          background: transparent;
+          color: ${theme.TEXT.muted};
+          transition: background 120ms, color 120ms;
+        }
+        .sidebar-vault-label:hover,
+        .sidebar-vault-label:focus-visible,
+        .sidebar-vault-label.is-open {
+          background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
+        }
         .sidebar-section-header .sidebar-section-action:hover,
         .sidebar-section-header .sidebar-section-action:focus-visible,
         .sidebar-section-header .sidebar-section-action.is-active {

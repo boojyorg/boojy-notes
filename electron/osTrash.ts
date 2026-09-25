@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   ensureUniqueFilePath,
   getIdIndex,
+  insideVault,
   sanitizeFilename,
   saveIndex,
 } from "./noteFileManager.js";
@@ -314,8 +315,30 @@ export async function trashManagedNote(
   return { trashed: true };
 }
 
+/**
+ * A file that is not a note (a PDF, an attachment) to the OS Trash, by its
+ * vault-relative path. A note is refused: it goes by id through
+ * `trashManagedNote`, which keeps the index and the watcher's claim. The
+ * watcher forwards nothing for these files, so there is nothing to claim.
+ */
+export async function trashOtherFile(
+  notesDir: string,
+  rel: string,
+  trashItem: (fullPath: string) => Promise<void> = shell.trashItem,
+): Promise<{ trashed: boolean }> {
+  const abs = insideVault(notesDir, rel);
+  if (!abs || abs === path.resolve(notesDir)) return { trashed: false };
+  const segments = path.relative(notesDir, abs).split(path.sep);
+  const inAttachments = segments.slice(0, -1).includes("attachments");
+  if (abs.endsWith(".md") && !inAttachments) return { trashed: false };
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) return { trashed: false };
+  await trashItem(abs);
+  return { trashed: true };
+}
+
 export function registerOSTrashIPC(getNotesDir: () => string, watcherGuard: WatcherGuard) {
   ipcMain.handle("trash-note", (_event, noteId: string) =>
     trashManagedNote(getNotesDir(), noteId, watcherGuard),
   );
+  ipcMain.handle("trash-file", (_event, rel: string) => trashOtherFile(getNotesDir(), rel));
 }

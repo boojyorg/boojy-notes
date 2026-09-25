@@ -15,7 +15,9 @@ import {
   MoveToIcon,
   NewFolderIcon,
   NewNoteIcon,
+  OpenLinkIcon,
   PencilIcon,
+  RevealIcon,
   SettingsIcon,
   SourceViewIcon,
   TrashIcon,
@@ -55,6 +57,10 @@ const ContextMenu = memo(function ContextMenu({
   // Opens the Move to… picker for `subject` ({ kind: "notes", ids } or
   // { kind: "folder", path }) at this menu's anchor; the menu closes first.
   onMoveTo,
+  // A file that is not a note (a PDF, an attachment), by its vault path.
+  openFile,
+  revealFile,
+  trashFile,
   wordCount,
   // The Markdown view: whether it is on, and the one switch (EditorArea's).
   sourceView,
@@ -215,6 +221,38 @@ const ContextMenu = memo(function ContextMenu({
     },
   };
 
+  // A file that is not a note: open it in its own app, find it, or remove it.
+  // Nothing renames or moves it here (an attachment renamed would break the
+  // notes that embed it, since a rename rewrites no links).
+  const fileItems = (path) => [
+    {
+      label: "Open",
+      icon: <OpenLinkIcon />,
+      action: () => {
+        setCtxMenu(null);
+        openFile?.(path);
+      },
+    },
+    {
+      label: "Show in Finder",
+      icon: <RevealIcon />,
+      action: () => {
+        setCtxMenu(null);
+        revealFile?.(path);
+      },
+    },
+    {
+      label: "Delete",
+      icon: <TrashIcon />,
+      separator: true,
+      action: () => {
+        setCtxMenu(null);
+        trashFile?.(path);
+      },
+      danger: true,
+    },
+  ];
+
   const items = isHeader
     ? [...(ctxMenu.id ? [...noteItems(ctxMenu.id), viewItem] : []), settingsItem]
     : ctxMenu.type === "note" && isBulk
@@ -236,59 +274,61 @@ const ContextMenu = memo(function ContextMenu({
         ]
       : ctxMenu.type === "note"
         ? noteItems(ctxMenu.id)
-        : [
-            // Five items, each with its glyph, and no rule (2026-09-16, Tyr's
-            // call): the menu opens from the folder's own row, so "here" and
-            // "inside" said what the anchoring already says; Duplicate and
-            // Delete keep their noun, because each takes the whole tree, notes
-            // and other files alike, unlike the note menu's pair. The glyphs
-            // are the ones the same actions already wear: the row's and pill's
-            // pen, the Notes row's FolderPlus, the note menu's Pencil, Copy and
-            // Trash. Reveal in Finder left the folder menu that day; it is
-            // Settings → Storage's now. Duplicate folder arrived 2026-09-17.
-            {
-              label: "New note",
-              icon: <NewNoteIcon />,
-              action: () => {
-                createNote(ctxMenu.id);
-                setCtxMenu(null);
+        : ctxMenu.type === "file"
+          ? fileItems(ctxMenu.id)
+          : [
+              // Five items, each with its glyph, and no rule (2026-09-16, Tyr's
+              // call): the menu opens from the folder's own row, so "here" and
+              // "inside" said what the anchoring already says; Duplicate and
+              // Delete keep their noun, because each takes the whole tree, notes
+              // and other files alike, unlike the note menu's pair. The glyphs
+              // are the ones the same actions already wear: the row's and pill's
+              // pen, the Notes row's FolderPlus, the note menu's Pencil, Copy and
+              // Trash. Reveal in Finder left the folder menu that day; it is
+              // Settings → Storage's now. Duplicate folder arrived 2026-09-17.
+              {
+                label: "New note",
+                icon: <NewNoteIcon />,
+                action: () => {
+                  createNote(ctxMenu.id);
+                  setCtxMenu(null);
+                },
               },
-            },
-            {
-              label: "New folder",
-              icon: <NewFolderIcon />,
-              action: () => {
-                createFolder(ctxMenu.id);
-                setCtxMenu(null);
+              {
+                label: "New folder",
+                icon: <NewFolderIcon />,
+                action: () => {
+                  createFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
               },
-            },
-            {
-              label: "Rename",
-              icon: <PencilIcon />,
-              action: () => {
-                setRenamingFolder(ctxMenu.id);
-                setCtxMenu(null);
+              {
+                label: "Rename",
+                icon: <PencilIcon />,
+                action: () => {
+                  setRenamingFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
               },
-            },
-            {
-              label: "Duplicate folder",
-              icon: <CopyIcon />,
-              action: () => {
-                duplicateFolder(ctxMenu.id);
-                setCtxMenu(null);
+              {
+                label: "Duplicate folder",
+                icon: <CopyIcon />,
+                action: () => {
+                  duplicateFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
               },
-            },
-            moveItem({ kind: "folder", path: ctxMenu.id }),
-            {
-              label: "Delete folder",
-              icon: <TrashIcon />,
-              action: () => {
-                deleteFolder(ctxMenu.id);
-                setCtxMenu(null);
+              moveItem({ kind: "folder", path: ctxMenu.id }),
+              {
+                label: "Delete folder",
+                icon: <TrashIcon />,
+                action: () => {
+                  deleteFolder(ctxMenu.id);
+                  setCtxMenu(null);
+                },
+                danger: true,
               },
-              danger: true,
-            },
-          ];
+            ];
 
   itemsRef.current = items;
 

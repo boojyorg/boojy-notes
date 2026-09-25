@@ -54,9 +54,12 @@ vi.mock("../../../src/components/settings/UpdatesTab", () => ({
   default: ({ isDesktop }) => (isDesktop ? <div data-testid="updates-tab">Updates</div> : null),
 }));
 vi.mock("../../../src/components/settings/StorageTab", () => ({
-  default: ({ isDesktop, revealNotesDir }) =>
+  default: ({ isDesktop, revealVault, switchVault, addVault, forgetVault }) =>
     isDesktop ? (
-      <div data-testid="storage-tab" data-reveal={revealNotesDir ? "yes" : "no"}>
+      <div
+        data-testid="storage-tab"
+        data-reveal={revealVault && switchVault && addVault && forgetVault ? "yes" : "no"}
+      >
         Storage
       </div>
     ) : null,
@@ -73,9 +76,11 @@ import SettingsModal from "../../../src/components/settings/SettingsModal.jsx";
 const defaultProps = {
   isMobile: false,
   isDesktop: true,
-  notesDir: "/notes",
-  changeNotesDir: vi.fn(),
-  revealNotesDir: vi.fn(),
+  vaults: [],
+  switchVault: vi.fn(),
+  addVault: vi.fn(),
+  forgetVault: vi.fn(),
+  revealVault: vi.fn(),
 };
 
 function renderModal(overrides = {}) {
@@ -133,7 +138,7 @@ describe("SettingsModal", () => {
     renderModal();
     expect(screen.getByTestId("appearance-tab")).toBeInTheDocument();
     expect(screen.getByTestId("storage-tab")).toBeInTheDocument();
-    // Show in Finder reaches the Storage section through the modal.
+    // Open, Add folder…, Remove and Show in Finder reach the section through the modal.
     expect(screen.getByTestId("storage-tab").dataset.reveal).toBe("yes");
     expect(screen.getByTestId("updates-tab")).toBeInTheDocument();
     expect(screen.getByTestId("settings-footer")).toBeInTheDocument();

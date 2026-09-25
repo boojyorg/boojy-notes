@@ -153,7 +153,13 @@ function renderSidebar(overrides = {}) {
     clearSelection: noop,
     isMobile: overrides.isMobile ?? false,
     onOpenSearch: overrides.onOpenSearch,
-    onChangeVault: overrides.onChangeVault,
+    notesDir: overrides.notesDir ?? "/v/University",
+    vaults: overrides.vaults ?? [],
+    otherFiles: overrides.otherFiles ?? [],
+    onSwitchVault: overrides.onSwitchVault,
+    onManageVaults: overrides.onManageVaults,
+    onOpenFile: overrides.onOpenFile,
+    trashFile: overrides.trashFile,
   };
 
   return render(<Sidebar {...props} />);
@@ -163,6 +169,7 @@ function renderSidebar(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.removeItem("boojy-vault-view");
   _sidebarOverrides = {};
   settingsState.setSettingsOpen = vi.fn();
 });
@@ -877,5 +884,106 @@ describe("Sidebar tag chips", () => {
     expect(filtered.getByText("Tags")).toBeInTheDocument();
     expect(filtered.getByText("#home")).toBeInTheDocument();
     expect(filtered.queryByText("#work")).not.toBeInTheDocument();
+  });
+
+  // ── The vault menu and files that are not notes ───────────────────────────
+  // The list's name is the vault folder's; it opens the vault menu, which
+  // switches vault, says what the tree shows besides notes, and finds another.
+
+  const VAULTS = [
+    { path: "/v/University", name: "University", current: true, exists: true, cloud: false },
+    { path: "/v/Notes", name: "Notes", current: false, exists: true, cloud: false },
+    { path: "/v/Old", name: "Old Journal", current: false, exists: false, cloud: false },
+  ];
+  const FILES = [
+    { path: "reading-list.pdf", attachment: false },
+    { path: "attachments/diagram-1.png", attachment: true },
+  ];
+
+  it("names the list after the open vault, and says Notes with no vault list (web)", () => {
+    const desktop = renderSidebar({ vaults: VAULTS });
+    expect(desktop.getByTestId("vault-label")).toHaveTextContent("University");
+    cleanup();
+    const web = renderSidebar();
+    expect(web.queryByTestId("vault-label")).toBeNull();
+    expect(web.getByText("Notes")).toBeInTheDocument();
+  });
+
+  it("opens the vault menu: the open vault checked, a missing one disabled, another switches", () => {
+    const onSwitchVault = vi.fn();
+    const { getByTestId, getByRole, queryByRole } = renderSidebar({
+      vaults: VAULTS,
+      onSwitchVault,
+    });
+    fireEvent.click(getByTestId("vault-label"));
+    expect(getByRole("menu", { name: "Storage location" })).toBeInTheDocument();
+    const current = getByRole("menuitemradio", { name: "University" });
+    expect(current).toHaveAttribute("aria-checked", "true");
+    const missing = getByRole("menuitemradio", { name: /Old Journal/ });
+    expect(missing).toHaveAttribute("aria-disabled", "true");
+    expect(missing).toHaveTextContent("Not found");
+    fireEvent.click(missing);
+    expect(onSwitchVault).not.toHaveBeenCalled();
+    fireEvent.click(getByRole("menuitemradio", { name: "Notes" }));
+    expect(onSwitchVault).toHaveBeenCalledWith("/v/Notes");
+    expect(queryByRole("menu", { name: "Storage location" })).toBeNull();
+  });
+
+  it("only switches: adding and revealing a location are Settings', through Manage", () => {
+    const onManageVaults = vi.fn();
+    const view = renderSidebar({ vaults: VAULTS, onManageVaults });
+    fireEvent.click(view.getByTestId("vault-label"));
+    const menu = view.getByRole("menu", { name: "Storage location" });
+    expect(menu).not.toHaveTextContent("Open folder");
+    expect(menu).not.toHaveTextContent("Show in Finder");
+    fireEvent.click(view.getByRole("menuitem", { name: "Manage storage locations…" }));
+    expect(onManageVaults).toHaveBeenCalled();
+    expect(view.queryByRole("menu", { name: "Storage location" })).toBeNull();
+  });
+
+  it("shows other files by default, opens one on click, and hides them from the vault menu", () => {
+    const onOpenFile = vi.fn();
+    const view = renderSidebar({ vaults: VAULTS, otherFiles: FILES, onOpenFile });
+    const row = view.getByRole("treeitem", { name: "reading-list.pdf" });
+    fireEvent.click(row);
+    expect(onOpenFile).toHaveBeenCalledWith("reading-list.pdf");
+    // The attachment store is hidden until asked for.
+    expect(view.queryByTestId("attachments-row")).toBeNull();
+    fireEvent.click(view.getByTestId("vault-label"));
+    const toggle = view.getByRole("menuitemcheckbox", { name: "Show other files" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(toggle);
+    expect(view.queryByRole("treeitem", { name: "reading-list.pdf" })).toBeNull();
+    // Remembered for this vault.
+    expect(JSON.parse(localStorage.getItem("boojy-vault-view"))["/v/University"]).toEqual({
+      otherFiles: false,
+      attachments: false,
+    });
+  });
+
+  it("shows the attachment store as its own row when asked, its files inside", () => {
+    const toggle = vi.fn();
+    const view = renderSidebar({
+      vaults: VAULTS,
+      otherFiles: FILES,
+      toggle,
+      expanded: { attachments: true },
+    });
+    fireEvent.click(view.getByTestId("vault-label"));
+    fireEvent.click(view.getByRole("menuitemcheckbox", { name: "Show attachments" }));
+    const store = view.getByTestId("attachments-row");
+    expect(store).toHaveAttribute("aria-expanded", "true");
+    expect(view.getByRole("treeitem", { name: "diagram-1.png" })).toBeInTheDocument();
+    fireEvent.click(store);
+    expect(toggle).toHaveBeenCalledWith("attachments");
+  });
+
+  it("opens a file's own menu on right-click", () => {
+    const setCtxMenu = vi.fn();
+    const view = renderSidebar({ vaults: VAULTS, otherFiles: FILES, setCtxMenu });
+    fireEvent.contextMenu(view.getByRole("treeitem", { name: "reading-list.pdf" }));
+    expect(setCtxMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "file", id: "reading-list.pdf" }),
+    );
   });
 });

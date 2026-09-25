@@ -44,6 +44,8 @@ export type MenuState = {
   sidebarVisible: boolean;
   /** The Markdown view is on, so View offers the formatted one back. */
   sourceView: boolean;
+  /** The vaults the app has opened, for Open Recent; the open one is checked. */
+  vaults: { name: string; path: string; current: boolean; exists: boolean }[];
 };
 
 const INITIAL: MenuState = {
@@ -57,6 +59,7 @@ const INITIAL: MenuState = {
   align: null,
   sidebarVisible: true,
   sourceView: false,
+  vaults: [],
 };
 
 const isMac = process.platform === "darwin";
@@ -143,6 +146,21 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
       submenu: [
         item("newNote", "New Note", "CmdOrCtrl+N", { icon: icon("square.and.pencil") }),
         item("newFolder", "New Folder", "Shift+CmdOrCtrl+N", { icon: icon("folder.badge.plus") }),
+        { type: "separator" },
+        // The sidebar's storage-location menu, opened from the keyboard; a
+        // new location is added in Settings.
+        item("openVault", "Switch Storage Location…", "CmdOrCtrl+O"),
+        {
+          label: "Open Recent",
+          enabled: state.vaults.length > 1,
+          submenu: state.vaults.map((v) => ({
+            label: v.name,
+            type: "checkbox" as const,
+            checked: v.current,
+            enabled: v.exists && !v.current,
+            click: send(`openVault:${v.path}`),
+          })),
+        },
         { type: "separator" },
         note("rename", "Rename…"),
         file("duplicate", "Duplicate"),
