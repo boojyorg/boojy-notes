@@ -104,6 +104,8 @@ test("Tab leaves a paragraph and Shift+Tab goes back to the name; a list keeps T
     Boolean(document.activeElement?.closest("[data-editor]")),
   );
   expect(inEditor).toBe(false);
+  // Not the skip link at the page's head: that is for arriving, not leaving.
+  await expect(page.getByRole("link", { name: "Skip to content" })).not.toBeFocused();
   // The paragraph is untouched: Tab typed nothing.
   await expect(page.locator("[data-editor]")).toHaveText("A line");
 

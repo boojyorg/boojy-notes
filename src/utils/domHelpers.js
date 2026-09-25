@@ -736,6 +736,8 @@ export function focusBeyondNote(dir) {
       (el.tabIndex >= 0 ||
         (el.getAttribute("contenteditable") === "true" && !el.hasAttribute("tabindex"))) &&
       !editor.contains(el) &&
+      // The skip link is the page's first stop, for arriving, not a place to land.
+      !el.matches(".skip-link") &&
       !el.closest("[inert]") &&
       el.getClientRects().length > 0,
   );
