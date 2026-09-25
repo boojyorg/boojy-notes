@@ -179,10 +179,11 @@ test("right-click in a cell is the text menu, with Delete table last: it removes
     await table(h).locator("td").first().click({ button: "right" });
     const menu = h.page.getByRole("menu", { name: "Edit" });
     await expect(menu).toBeVisible();
+    // The shortcut beside each is the platform's (⌘X on a Mac, Ctrl+X elsewhere).
     await expect(menu.getByRole("menuitem")).toHaveText([
-      "Cut⌘X",
-      "Copy⌘C",
-      "Paste⌘V",
+      /^Cut/,
+      /^Copy/,
+      /^Paste/,
       "Delete table",
     ]);
     await menu.getByRole("menuitem", { name: "Delete table" }).click();
