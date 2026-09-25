@@ -54,7 +54,7 @@ describe("TableContextMenu", () => {
     expect(labels()).not.toContain("Delete");
   });
 
-  it("a column's grip menu has its three alignments inline, the column's own ticked, each with its key", () => {
+  it("a column's grip menu has its three alignments inline, each with its key, the column's own checked for assistive tech", () => {
     const p = { ...props({ type: "column", rowIndex: 0, colIndex: 1 }), alignment: "center" };
     render(<TableContextMenu {...p} />);
     expect(screen.getByRole("menu", { name: "Column options" })).toBeInTheDocument();
@@ -66,6 +66,8 @@ describe("TableContextMenu", () => {
       expect.stringMatching(/^Align right.*R$/),
     ]);
     expect(aligns.map((a) => a.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
+    // No tick drawn: the glyph and the key are all a row carries.
+    for (const a of aligns) expect(a.querySelectorAll("svg")).toHaveLength(1);
     fireEvent.click(aligns[2]);
     expect(p.onAlign).toHaveBeenCalledWith(1, "right");
     expect(p.onDismiss).toHaveBeenCalledTimes(1);

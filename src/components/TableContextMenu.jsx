@@ -11,7 +11,6 @@ import {
   ArrowLeftToLineIcon,
   ArrowRightToLineIcon,
   ArrowUpToLineIcon,
-  CheckIcon,
   CopyIcon,
   TrashIcon,
 } from "./Icons";
@@ -34,8 +33,9 @@ const shortcut = (key) => (isMac ? `⇧⌘${key}` : `Ctrl+Shift+${key}`);
  * A table row's or column's menu, opened by its grip (TableHandles) and hung
  * just under it. Short labels, since the outlined row or column already says
  * what they act on, and no separators. A column's has its three alignments
- * as items of their own, each with its key, the column's own ticked; a
- * choice closes the menu like any other item. The header row's Delete makes
+ * as items of their own, each with its key; the column shows which it has,
+ * so no tick (the menu bar's Format → Align carries one), and a choice
+ * closes the menu like any other item. The header row's Delete makes
  * the row under it the header, as Markdown reads it. Right-click in a cell is
  * the editor's text menu (EditorContextMenu), which carries Delete table.
  *
@@ -238,11 +238,6 @@ export default function TableContextMenu({
             {item.icon}
             <span style={{ flex: 1 }}>{item.label}</span>
             {item.hint && <span style={{ color: TEXT.muted, fontSize: 12 }}>{item.hint}</span>}
-            {item.radio && (
-              <span style={{ display: "flex", width: 16, color: TEXT.primary }}>
-                {item.checked && <CheckIcon />}
-              </span>
-            )}
           </button>
         ))}
       </div>

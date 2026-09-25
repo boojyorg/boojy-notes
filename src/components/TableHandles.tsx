@@ -413,13 +413,13 @@ export default function TableHandles({
     const grip = e.currentTarget.getBoundingClientRect();
     const r = d.target.kind === "row" ? g.rowRects[d.target.index] : g.colRects[d.target.index];
     if (!r) return;
-    // The menu hangs just under the grip: a row's at the grip's edge, a
-    // column's with its left edge on the column's (Notion's placement).
+    // The menu hangs from the grip, its left edge on the grip's (Notion's
+    // placement): a row's under the row, a column's just under the grip.
     onOpenMenu(
       d.target,
       d.target.kind === "row"
         ? { top: r.top, bottom: r.bottom, left: grip.left, right: grip.right }
-        : { top: grip.top, bottom: grip.bottom, left: r.left, right: r.right },
+        : { top: grip.top, bottom: grip.bottom, left: grip.left, right: grip.right },
     );
   };
 

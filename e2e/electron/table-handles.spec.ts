@@ -112,12 +112,11 @@ test("a column's grip opens its menu under the grip; Align centre rewrites only 
     const menu = h.page.getByRole("menu", { name: "Column options" });
     await expect(menu).toBeVisible();
     await expect(h.page.locator(".table-selection-outline")).toHaveCount(1);
-    // Hung just under the grip, its left edge on the column's.
+    // Hung just under the grip, its left edge on the grip's.
     const g = await grip.boundingBox();
     const m = await menu.boundingBox();
-    const c = await cell(h, 0, 0).boundingBox();
     expect(Math.abs((m?.y ?? 0) - ((g?.y ?? 0) + (g?.height ?? 0)))).toBeLessThan(12);
-    expect(Math.abs((m?.x ?? 0) - (c?.x ?? 0))).toBeLessThan(3);
+    expect(Math.abs((m?.x ?? 0) - (g?.x ?? 0))).toBeLessThan(3);
 
     await menu.getByRole("menuitemradio", { name: /Align centre/ }).click();
     await expect(menu).toHaveCount(0);
