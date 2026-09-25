@@ -45,6 +45,48 @@ function isDeletableOsCruft(name: string): boolean {
 
 export const toPosix = (rel: string): string => rel.split(path.sep).join("/");
 
+/** A file in the vault that is not a note: a PDF, an image, anything else. */
+export interface OtherFile {
+  /** Vault-relative POSIX path. */
+  path: string;
+  /** Inside the attachment store, where the app keeps what notes embed. */
+  attachment: boolean;
+}
+
+/** Enough for any real vault; a folder pointed at a whole drive stops here. */
+const OTHER_FILES_CAP = 5000;
+
+/**
+ * Every file under the vault that is not a note, for the sidebar's Show other
+ * files and Show attachments. Hidden entries and OS cruft are skipped, as the
+ * note walk skips them; a note (`.md` outside the attachment store) is the
+ * note walk's. Sorted by path.
+ */
+export function readOtherFiles(notesDir: string): OtherFile[] {
+  const out: OtherFile[] = [];
+  if (!fs.existsSync(notesDir)) return out;
+  const walk = (dir: string, rel: string, attachment: boolean) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (out.length >= OTHER_FILES_CAP) return;
+      if (entry.name.startsWith(".") || isDeletableOsCruft(entry.name)) continue;
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name), childRel, attachment || entry.name === "attachments");
+      } else if (entry.isFile() && (attachment || !entry.name.endsWith(".md"))) {
+        out.push({ path: childRel, attachment });
+      }
+    }
+  };
+  walk(notesDir, "", false);
+  return out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
 /**
  * Every directory under the vault that can hold notes, as sorted
  * vault-relative POSIX paths. Dot-directories and `attachments` are skipped
@@ -290,6 +332,7 @@ export function deleteFolderIfEmpty(
 
 export function registerFolderIPC(getNotesDir: () => string, guard: FolderWatcherGuard) {
   ipcMain.handle("read-folders", () => readAllFolders(getNotesDir()));
+  ipcMain.handle("read-other-files", () => readOtherFiles(getNotesDir()));
   ipcMain.handle("create-folder", (_event, rel: string) => createFolder(getNotesDir(), rel));
   ipcMain.handle("rename-folder", (_event, oldRel: string, newRel: string) =>
     renameFolder(getNotesDir(), oldRel, newRel, guard),

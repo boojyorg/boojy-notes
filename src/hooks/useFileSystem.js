@@ -142,14 +142,35 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // The folder list is the disk walk, not "where notes happen to be": an empty
   // directory shows, and a new one survives a restart. On web the list stays
   // in memory (useNoteCrud's fallback) and this is a no-op.
+  // The files that are not notes (PDFs, the attachment store) are part of the
+  // same walk: re-read whenever the folders are, and when the window comes
+  // back to the front, since the watcher follows notes and directories only.
+  const [otherFiles, setOtherFiles] = useState([]);
   const refreshFolders = useCallback(async () => {
     const api = getAPI();
     if (typeof api?.readFolders !== "function") return;
-    const folders = await api.readFolders();
+    const [folders, files] = await Promise.all([
+      api.readFolders(),
+      typeof api.readOtherFiles === "function" ? api.readOtherFiles() : [],
+    ]);
     setCustomFolders((prev) =>
       prev.length === folders.length && prev.every((f, i) => f === folders[i]) ? prev : folders,
     );
+    setOtherFiles((prev) =>
+      prev.length === files.length &&
+      prev.every((f, i) => f.path === files[i].path && f.attachment === files[i].attachment)
+        ? prev
+        : files,
+    );
   }, [setCustomFolders]);
+
+  // The vaults the app has opened (electron/vaults.ts), for the vault menu.
+  const [vaults, setVaults] = useState([]);
+  const refreshVaults = useCallback(async () => {
+    const api = getAPI();
+    if (typeof api?.listVaults !== "function") return;
+    setVaults(await api.listVaults());
+  }, []);
 
   // ─── Initial load from disk ───
   useEffect(() => {
@@ -173,6 +194,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
           if (syncGeneration) syncGeneration.current++;
         }
         await refreshFolders();
+        await refreshVaults();
       } catch (err) {
         console.error("useFileSystem: initial load failed", err);
         onError?.("Failed to load notes from disk");
@@ -185,7 +207,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       cancelled = true;
     };
     // Deps deliberately not exhaustive: onError is not stable; including it would re-run initial load
-  }, [takeFromDisk, setCustomFolders, refreshFolders]);
+  }, [takeFromDisk, setCustomFolders, refreshFolders, refreshVaults]);
 
   // ─── Detect local changes and debounce writes ───
   useEffect(() => {
@@ -655,11 +677,16 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       })();
     });
 
+    // A PDF dropped into the vault in Finder is seen when the window is back.
+    const onFocus = () => syncFoldersFromDisk();
+    window.addEventListener("focus", onFocus);
+
     return () => {
       unsubChange();
       unsubMove();
       unsubDelete();
       unsubFolders();
+      window.removeEventListener("focus", onFocus);
     };
     // Deps deliberately not exhaustive: onError is not stable; setCustomFolders/syncGeneration are stable refs/setters
   }, [
@@ -686,32 +713,71 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // typed while it is up) and the old notes leave state before anything
   // else can run. Nothing of the old vault is ever written into the new one;
   // what could not be written before the switch is left behind, as at quit.
-  const changeNotesDir = useCallback(async () => {
-    if (!isElectron) return;
-    try {
-      const links = editorLinksRef.current;
-      await flushRef.current(links.latestNoteDataRef.current, [...links.unflushedNotes.current]);
-      const newDir = await window.electronAPI.chooseNotesDir();
-      if (!newDir) return; // user cancelled
-      takeFromDisk({});
-      dirtyNotes.current.clear();
-      deletedNotes.current.clear();
-      conflicted.current.clear();
-      clearTimeout(retryTimer.current);
-      retryTimer.current = null;
-      setNotesDir(newDir);
+  // With `target`, a vault already in the list (the vault menu, Open Recent);
+  // without, the native picker.
+  const changeNotesDir = useCallback(
+    async (target) => {
+      if (!isElectron) return;
+      try {
+        const links = editorLinksRef.current;
+        await flushRef.current(links.latestNoteDataRef.current, [...links.unflushedNotes.current]);
+        const newDir =
+          typeof target === "string"
+            ? await window.electronAPI.openVault(target)
+            : await window.electronAPI.chooseNotesDir();
+        if (!newDir) {
+          // Cancelled, or a listed vault that has gone since the menu opened.
+          await refreshVaults();
+          return;
+        }
+        takeFromDisk({});
+        dirtyNotes.current.clear();
+        deletedNotes.current.clear();
+        conflicted.current.clear();
+        clearTimeout(retryTimer.current);
+        retryTimer.current = null;
+        setNotesDir(newDir);
 
-      const diskNotes = await window.electronAPI.readAllNotes();
-      takeFromDisk(diskNotes);
-      if (syncGeneration) syncGeneration.current++;
-      // The new vault's directories replace the old vault's, never merge with them.
+        const diskNotes = await window.electronAPI.readAllNotes();
+        takeFromDisk(diskNotes);
+        if (syncGeneration) syncGeneration.current++;
+        // The new vault's directories replace the old vault's, never merge with them.
+        await refreshFolders();
+        await refreshVaults();
+      } catch (err) {
+        console.error("useFileSystem: changeNotesDir failed", err);
+        onError?.("Failed to change notes directory");
+      }
+      // Deps deliberately not exhaustive: onError is not stable
+    },
+    [takeFromDisk, refreshFolders, refreshVaults],
+  );
+
+  // Settings' Add folder…: the list gains a location; nothing switches.
+  const addVault = useCallback(async () => {
+    const api = getAPI();
+    if (typeof api?.addVault !== "function") return;
+    setVaults(await api.addVault());
+  }, []);
+
+  // Settings' Remove from list: the folder and its notes stay on disk.
+  const forgetVault = useCallback(async (dir) => {
+    const api = getAPI();
+    if (typeof api?.forgetVault !== "function") return;
+    setVaults(await api.forgetVault(dir));
+  }, []);
+
+  // A file that is not a note, to the OS Trash; the list follows the disk.
+  const trashFile = useCallback(
+    async (relPath) => {
+      const api = getAPI();
+      if (typeof api?.trashFile !== "function") return false;
+      const { trashed } = await api.trashFile(relPath);
       await refreshFolders();
-    } catch (err) {
-      console.error("useFileSystem: changeNotesDir failed", err);
-      onError?.("Failed to change notes directory");
-    }
-    // Deps deliberately not exhaustive: onError is not stable
-  }, [takeFromDisk, refreshFolders]);
+      return trashed;
+    },
+    [refreshFolders],
+  );
 
   // ─── Folder operations (desktop): the disk answers, state follows ───
   // Each call returns the vault-relative path the directory actually got, the
@@ -810,6 +876,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     notesDir,
     loading,
     changeNotesDir,
+    vaults,
+    forgetVault,
+    otherFiles,
+    trashFile,
+    refreshVaults,
+    addVault,
     flushToDisk: flush,
     folderOps,
   };

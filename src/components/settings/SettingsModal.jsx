@@ -20,9 +20,11 @@ export const SETTINGS_WIDTH = 540;
 export default function SettingsModal({
   isMobile,
   isDesktop,
-  notesDir,
-  changeNotesDir,
-  revealNotesDir,
+  vaults,
+  switchVault,
+  addVault,
+  forgetVault,
+  revealVault,
 }) {
   const { settingsOpen, setSettingsOpen, uiScale } = useSettings();
 
@@ -165,14 +167,16 @@ export default function SettingsModal({
 
           {isDesktop && (
             <>
-              <MobileSectionHeader title="Notes folder" />
+              <MobileSectionHeader title="Storage locations" />
               <MobileCard>
                 <StorageTab
                   isDesktop={isDesktop}
-                  notesDir={notesDir}
-                  changeNotesDir={changeNotesDir}
-                  revealNotesDir={revealNotesDir}
                   SectionHeader={() => null}
+                  vaults={vaults}
+                  switchVault={switchVault}
+                  addVault={addVault}
+                  forgetVault={forgetVault}
+                  revealVault={revealVault}
                 />
               </MobileCard>
             </>
@@ -298,10 +302,12 @@ export default function SettingsModal({
               <SettingsRule />
               <StorageTab
                 isDesktop={isDesktop}
-                notesDir={notesDir}
-                changeNotesDir={changeNotesDir}
-                revealNotesDir={revealNotesDir}
                 SectionHeader={SectionTitle}
+                vaults={vaults}
+                switchVault={switchVault}
+                addVault={addVault}
+                forgetVault={forgetVault}
+                revealVault={revealVault}
               />
               <SettingsRule />
               <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />

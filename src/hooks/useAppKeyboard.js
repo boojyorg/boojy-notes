@@ -75,6 +75,10 @@ export function useAppKeyboard({
   // The Markdown view: EditorArea's switch, and whether the view is on.
   toggleSourceView,
   sourceView,
+  // The vault menu (⌘O) and a vault chosen from File → Open Recent.
+  openVaultMenu,
+  switchVault,
+  vaults,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -103,6 +107,8 @@ export function useAppKeyboard({
     detectActiveFormats,
     toggleSourceView,
     sidebarVisible,
+    openVaultMenu,
+    switchVault,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -157,6 +163,13 @@ export function useAppKeyboard({
       if (mod && key === "n") {
         e.preventDefault();
         newNote(L, titleRef);
+        return;
+      }
+      // Cmd+O opens the vault menu, the platform's Open key: which vault is
+      // open, and Open folder… for another.
+      if (mod && key === "o" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        L.openVaultMenu?.();
         return;
       }
       // Search is a palette over the window, so it needs no sidebar. Cmd+P
@@ -223,7 +236,6 @@ export function useAppKeyboard({
   // kind, and Hide or Show Sidebar. Focus and the selection are watched, the
   // selection on a short timer since it moves on every keystroke; the main
   // process rebuilds the menu only when something it shows has changed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the selection's own reads go through `latest`
   useEffect(() => {
     const api = getAPI();
     if (!api?.setMenuState) return;
@@ -244,6 +256,12 @@ export function useAppKeyboard({
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
+        vaults: (vaults ?? []).map(({ name, path, current, exists }) => ({
+          name,
+          path,
+          current,
+          exists,
+        })),
       });
     };
     let timer = null;
@@ -270,7 +288,7 @@ export function useAppKeyboard({
       document.removeEventListener("focusout", soon);
       document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView]);
+  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView, vaults]);
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
@@ -411,7 +429,11 @@ function runMenuCommand(id, L, titleRef) {
       return L.toggleSidebar?.();
     case "goToSidebar":
       return goToSidebar(L);
+    case "openVault":
+      return L.openVaultMenu?.();
   }
+  // File → Open Recent: the vault's path rides on the id.
+  if (id.startsWith("openVault:")) return L.switchVault?.(id.slice("openVault:".length));
   if (!note) return;
   switch (id) {
     case "toggleSourceView":

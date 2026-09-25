@@ -19,9 +19,10 @@ import { CheckIcon, ClockIcon, SortAlphaIcon } from "./Icons";
  * a focus ring.
  *
  * Deliberately absent: "Collapse all folders" (removed 2026-09-05: folders
- * toggle on click and stay as left across launches); "Change vault folder…"
- * and "Show in Finder", both Settings → Storage only, beside the path they
- * act on.
+ * toggle on click and stay as left across launches). The vault's own items
+ * (switching, Open folder…, Show in Finder, what the tree shows besides
+ * notes) are the vault menu's, under the vault's name (`VaultMenu`): Sort
+ * orders the list, it never filters it.
  */
 
 interface SortMenuProps {

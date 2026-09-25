@@ -30,17 +30,26 @@ import {
   ChevronLeft as LuChevronLeft,
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
+  Cloud as LuCloud,
   Code as LuCode,
   CodeXml as LuCodeXml,
   ClipboardPaste as LuClipboardPaste,
   Columns3 as LuColumns3,
   Copy as LuCopy,
   ExternalLink as LuExternalLink,
+  File as LuFile,
+  FileArchive as LuFileArchive,
+  FileImage as LuFileImage,
+  FileMusic as LuFileMusic,
+  FileSpreadsheet as LuFileSpreadsheet,
+  FileVideoCamera as LuFileVideoCamera,
   FileText as LuFileText,
   Folder as LuFolder,
   FolderInput as LuFolderInput,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
+  FolderSearch as LuFolderSearch,
+  FolderX as LuFolderX,
   GripHorizontal as LuGripHorizontal,
   GripVertical as LuGripVertical,
   Highlighter as LuHighlighter,
@@ -67,6 +76,7 @@ import {
   Paperclip as LuPaperclip,
   Pencil as LuPencil,
   Plus as LuPlus,
+  Presentation as LuPresentation,
   Redo2 as LuRedo2,
   RotateCcw as LuRotateCcw,
   Search as LuSearch,
@@ -116,6 +126,36 @@ export const FileIcon = ({ active, color, size: sz }) => (
     // Preserves the previous active/inactive weighting without a second colour.
     opacity={color ? 1 : active ? 0.9 : 0.65}
   />
+);
+
+/** A file that is not a note: the kind its extension names (`utils/otherFiles.ts`). */
+const OTHER_FILE_GLYPHS = {
+  image: LuFileImage,
+  audio: LuFileMusic,
+  video: LuFileVideoCamera,
+  slides: LuPresentation,
+  sheet: LuFileSpreadsheet,
+  archive: LuFileArchive,
+  file: LuFile,
+};
+export const OtherFileIcon = ({ kind = "file", size = ICON_INLINE }) => {
+  const Cmp = OTHER_FILE_GLYPHS[kind] ?? LuFile;
+  return <Cmp {...base} {...navBase} size={size} />;
+};
+/** The attachment store's row: what notes embed, not one of the user's folders. */
+export const AttachmentsIcon = ({ size = ICON_INLINE }) => (
+  <LuPaperclip {...base} {...navBase} size={size} />
+);
+
+// ── Vaults ────────────────────────────────────────────────────────────────
+/** A vault in the vault menu: a folder, a cloud when it syncs, crossed when missing. */
+export const VaultIcon = ({ cloud = false, missing = false, size = ICON_INLINE }) => {
+  const Cmp = missing ? LuFolderX : cloud ? LuCloud : LuFolder;
+  return <Cmp {...base} {...navBase} size={size} />;
+};
+/** Show in Finder, for a vault or a file. */
+export const RevealIcon = ({ size = ICON_INLINE }) => (
+  <LuFolderSearch {...base} {...navBase} size={size} />
 );
 
 // ── Actions ───────────────────────────────────────────────────────────────

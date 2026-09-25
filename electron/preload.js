@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electronAPI", {
   getNotesDir: () => ipcRenderer.invoke("get-notes-dir"),
   chooseNotesDir: () => ipcRenderer.invoke("choose-notes-dir"),
+  // The vaults the app has opened (electron/vaults.ts); one is open at a time.
+  listVaults: () => ipcRenderer.invoke("list-vaults"),
+  openVault: (dir) => ipcRenderer.invoke("open-vault", dir),
+  forgetVault: (dir) => ipcRenderer.invoke("forget-vault", dir),
+  addVault: () => ipcRenderer.invoke("add-vault"),
+  revealVault: (dir) => ipcRenderer.invoke("reveal-vault", dir),
   // First-run setup: shown only on a launch that has never had a folder.
   getSetupState: () => ipcRenderer.invoke("get-setup-state"),
   // Ends setup however it ended; answers with the folder, made if it is the default.
@@ -34,10 +40,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),
+  // A file that is not a note, by its vault-relative path.
+  trashFile: (relPath) => ipcRenderer.invoke("trash-file", relPath),
 
   // Folders are directories. Paths are vault-relative with `/` separators;
   // each mutation answers with the path the disk actually holds.
   readFolders: () => ipcRenderer.invoke("read-folders"),
+  // Every file that is not a note: `{ path, attachment }`, vault-relative.
+  readOtherFiles: () => ipcRenderer.invoke("read-other-files"),
   createFolder: (relPath) => ipcRenderer.invoke("create-folder", relPath),
   renameFolder: (oldRelPath, newRelPath) =>
     ipcRenderer.invoke("rename-folder", oldRelPath, newRelPath),

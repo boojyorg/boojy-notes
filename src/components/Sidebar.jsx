@@ -4,12 +4,30 @@ import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { tagRows } from "../utils/tags";
-import { visibleTreeRows, treeMove, noteKey, folderKey } from "../utils/treeNav";
+import {
+  ATTACHMENTS_KEY,
+  ATTACHMENTS_PATH,
+  visibleTreeRows,
+  treeMove,
+  noteKey,
+  folderKey,
+  fileKey,
+} from "../utils/treeNav";
+import {
+  attachmentLabel,
+  baseName,
+  groupOtherFiles,
+  otherFileKind,
+  splitExtension,
+} from "../utils/otherFiles";
+import { useVaultView } from "../hooks/useVaultView";
 import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
 import {
+  AttachmentsIcon,
   FolderIcon,
   FileIcon,
+  OtherFileIcon,
   NewFolderIcon,
   SearchIcon,
   MoreHorizontalIcon,
@@ -28,6 +46,7 @@ import {
 } from "./EditorChrome";
 import { Tooltip, useTooltip } from "./Tooltip";
 import SortMenu from "./SortMenu";
+import VaultMenu from "./VaultMenu";
 import Collapsible from "./Collapsible";
 import { isElectronMac } from "../utils/platform";
 import { SEARCH_HEADING, TagChips, renderHighlightedTitle, renderSnippet } from "./SearchParts";
@@ -180,10 +199,11 @@ const SECTION_CONTENT_GAP = 2;
 /**
  * The one section lid: the list's name left, its controls right.
  * `role="presentation"` keeps it out of the tree below — the text still
- * reads, it just isn't announced as a row. The name is the plain word
- * `Notes`, quiet muted ink: a label for the list, not a second wordmark and
- * not the storage folder's name, which lives in Settings → Storage beside the
- * control that changes it (2026-09-12).
+ * reads, it just isn't announced as a row. The name is the vault folder's
+ * (`VaultLabel`, 2026-09-25, Tyr's call reversing the plain word `Notes` of
+ * 2026-09-12): quiet muted ink, a label for the list rather than a second
+ * wordmark, and the default vault still reads `Notes`. Without a vault list
+ * (the web build) it is the plain word.
  */
 function SectionHeader({ label, TEXT, children, dropRoot, menuOpen }) {
   return (
@@ -209,21 +229,25 @@ function SectionHeader({ label, TEXT, children, dropRoot, menuOpen }) {
         flexShrink: 0,
       }}
     >
-      <span
-        style={{
-          // Row size, a step quieter in ink, a step heavier in weight: a
-          // label for the list, not a heading over it.
-          fontSize: 14,
-          fontWeight: 500,
-          color: TEXT.muted,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          minWidth: 0,
-        }}
-      >
-        {label}
-      </span>
+      {typeof label === "string" ? (
+        <span
+          style={{
+            // Row size, a step quieter in ink, a step heavier in weight: a
+            // label for the list, not a heading over it.
+            fontSize: 14,
+            fontWeight: 500,
+            color: TEXT.muted,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {label}
+        </span>
+      ) : (
+        label
+      )}
       <span style={{ display: "flex", alignItems: "center", flexShrink: 0, gap: 2 }}>
         {children}
       </span>
@@ -387,6 +411,60 @@ function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, a
   );
 }
 
+/**
+ * The list's name is the vault's: its folder's own name, as a note's title
+ * is its filename, so the default vault reads `Notes`. A button that opens
+ * the vault menu (or ⌘O), in the row's control grammar: muted at rest, the
+ * controls' grey and full ink on hover, focus or while its menu is open
+ * (`.sidebar-vault-label` in GlobalStyles, so the tooltip's own hover
+ * handlers never compete with it). No chevron: the sidebar's rows carry none,
+ * and the hover and the chip say it opens something.
+ */
+function VaultLabel({ name, open, onOpen }) {
+  const tip = useTooltip();
+  const ref = useRef(null);
+  return (
+    <button
+      type="button"
+      ref={ref}
+      className={open ? "sidebar-vault-label is-open" : "sidebar-vault-label"}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      aria-label={`Storage location: ${name}`}
+      data-testid="vault-label"
+      onClick={(e) => onOpen(e.currentTarget.getBoundingClientRect())}
+      style={{
+        minWidth: 0,
+        height: 26,
+        // The pill reaches past the name so the name keeps its column.
+        margin: "0 0 0 -6px",
+        padding: "0 6px",
+        border: "none",
+        borderRadius: 8,
+        fontFamily: "inherit",
+        fontSize: 14,
+        fontWeight: 500,
+        cursor: "pointer",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+      {...tip.handlers}
+    >
+      {name}
+      {tip.shown && !open && (
+        <Tooltip
+          label="Switch storage location"
+          shortcut={SHORTCUTS.openVault}
+          anchor={ref.current}
+          placement="below"
+          testId="chrome-tooltip"
+        />
+      )}
+    </button>
+  );
+}
+
 const Sidebar = memo(function Sidebar({
   activeNote,
   toggle,
@@ -409,6 +487,22 @@ const Sidebar = memo(function Sidebar({
   // The tree's ⌘⌫: the same confirmed deletes as the row menus.
   deleteNote,
   deleteFolder,
+  // The vault: its path (the key its view is kept under), the vaults the app
+  // has opened, and the files that are not notes. Desktop; empty on web.
+  notesDir,
+  vaults = [],
+  otherFiles = [],
+  onSwitchVault,
+  // Settings, at the storage locations.
+  onManageVaults,
+  // A file that is not a note: opened in its own app, or trashed from the tree.
+  onOpenFile,
+  trashFile,
+  ctxMenuFileId,
+  // Bumped by ⌘O: open the vault menu from the keyboard.
+  vaultMenuRequest = 0,
+  // The menu re-reads the list as it opens: a vault may have gone since.
+  onVaultMenuOpen,
 }) {
   const {
     accentColor,
@@ -462,9 +556,32 @@ const Sidebar = memo(function Sidebar({
     setSortMode,
   } = useSidebar();
 
-  // Anchor rect of the ··· trigger, or null when the vault menu is closed.
+  // Anchor rect of the Sort button, or null when the Sort menu is closed.
   const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
   const closeSortMenu = () => setSortMenuAnchor(null);
+
+  // The vault menu under the vault's name: its anchor, and whether ⌘O opened it.
+  const [vaultMenu, setVaultMenuState] = useState(null);
+  const setVaultMenu = (next) => {
+    if (next) onVaultMenuOpen?.();
+    setVaultMenuState(next);
+  };
+  const closeVaultMenu = () => setVaultMenu(null);
+  const [vaultView, setVaultView] = useVaultView(notesDir || "web");
+  const vaultName = vaults.find((v) => v.current)?.name ?? "Notes";
+  // ⌘O, File → Open Vault…: the same menu from the keyboard, its open vault
+  // active. The app shows a hidden sidebar first and asks once it has arrived.
+  useEffect(() => {
+    if (!vaultMenuRequest) return;
+    const label = document.querySelector('[data-testid="vault-label"]');
+    if (!label) return;
+    onVaultMenuOpen?.();
+    setVaultMenuState({ anchor: label.getBoundingClientRect(), fromKeyboard: true });
+  }, [vaultMenuRequest, onVaultMenuOpen]);
+
+  // Files that are not notes, where the tree shows them (utils/otherFiles.ts).
+  const fileGroups = useMemo(() => groupOtherFiles(otherFiles, vaultView), [otherFiles, vaultView]);
+  const filesIn = (folderPath) => fileGroups.byFolder.get(folderPath) ?? [];
 
   // Tag suggestions for # search
   const tagSuggestions = useMemo(() => {
@@ -484,11 +601,22 @@ const Sidebar = memo(function Sidebar({
     () =>
       isMobile
         ? []
-        : visibleTreeRows(folderTree, sortedRootNotes, expanded, (id) => {
-            const n = noteData[id];
-            return !n || n._draft ? null : n.title || "Untitled";
-          }),
-    [isMobile, folderTree, sortedRootNotes, expanded, noteData],
+        : visibleTreeRows(
+            folderTree,
+            sortedRootNotes,
+            expanded,
+            (id) => {
+              const n = noteData[id];
+              return !n || n._draft ? null : n.title || "Untitled";
+            },
+            {
+              inFolder: (path) => fileGroups.byFolder.get(path) ?? [],
+              attachments: fileGroups.attachments,
+              fileLabel: baseName,
+              attachmentLabel,
+            },
+          ),
+    [isMobile, folderTree, sortedRootNotes, expanded, noteData, fileGroups],
   );
   const rowByKey = useMemo(() => new Map(treeRows.map((r) => [r.key, r])), [treeRows]);
   const tabKey = rowByKey.has(focusKey)
@@ -577,7 +705,7 @@ const Sidebar = memo(function Sidebar({
     if (e.key === "F2") {
       e.preventDefault();
       if (row.kind === "note") setRenamingNote(row.id);
-      else setRenamingFolder(row.id);
+      else if (row.kind === "folder") setRenamingFolder(row.id);
       return;
     }
     if ((mod && e.key === "Backspace") || (!mod && e.key === "Delete")) {
@@ -589,11 +717,13 @@ const Sidebar = memo(function Sidebar({
       const next = treeRows[j] ?? treeRows[i - 1];
       if (next) awaitFocus(next.key, key);
       if (row.kind === "note") deleteNote?.(row.id);
-      else deleteFolder?.(row.id);
+      else if (row.kind === "folder") deleteFolder?.(row.id);
+      else if (row.kind === "file") trashFile?.(row.id);
       return;
     }
     if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
       e.preventDefault();
+      if (row.kind === "attachments") return;
       const r = rowEl.getBoundingClientRect();
       const anchor = rowMenuAnchor({ left: r.right - 28, right: r.right }, r);
       setCtxMenu({ x: anchor.left, y: anchor.bottom, anchor, type: row.kind, id: row.id });
@@ -812,7 +942,8 @@ const Sidebar = memo(function Sidebar({
     // Coerced so aria-expanded is always announced — with no chevron it is the
     // only programmatic expansion signal (undefined would omit the attribute).
     const isOpen = !!expanded[folderPath];
-    const hasChildren = folder.children.length > 0 || folder.notes.length > 0;
+    const files = filesIn(folderPath);
+    const hasChildren = folder.children.length > 0 || folder.notes.length > 0 || files.length > 0;
     // The row that opened the folder menu (··· or right-click) holds its
     // actions visible until the menu closes, as a note row holds its dots.
     const folderMenuOpen = ctxMenuFolderId === folderPath;
@@ -1024,6 +1155,138 @@ const Sidebar = memo(function Sidebar({
               )}
               {folder.children.map((child) => renderFolder(child, depth + 1))}
               {folder.notes.map((nId) => renderNote(nId, depth + 1))}
+              {files.map((path) => renderFile(path, depth + 1))}
+            </div>
+          </Collapsible>
+        )}
+      </div>
+    );
+  };
+
+  // A file that is not a note: its kind's glyph, its name in the folder's
+  // ink with the extension a step quieter (it is what tells `report` the PDF
+  // from `report` the note). A click opens it in its own app; the tree never
+  // shows it. Not draggable and not renamed here (an attachment renamed
+  // would break the notes that embed it, since a rename rewrites no links).
+  const renderFile = (path, depth, label = baseName(path)) => {
+    const { stem, ext } = splitExtension(label);
+    const menuOpen = ctxMenuFileId === path;
+    return (
+      <button
+        key={path}
+        type="button"
+        data-file-path={path}
+        role="treeitem"
+        {...rowProps(fileKey(path))}
+        className="sidebar-file"
+        onClick={() => onOpenFile?.(path)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
+        }}
+        style={{
+          width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
+          marginLeft: ROW_INSET,
+          marginRight: ROW_INSET_RIGHT,
+          marginBottom: TREE_ROW_GAP,
+          height: TREE_ROW_H,
+          boxSizing: "border-box",
+          padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+          borderRadius: ACTION_RADIUS,
+          background: menuOpen ? BG.hover : "transparent",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: ICON_GAP,
+          color: TEXT.secondary,
+          fontSize: 14,
+          fontFamily: "inherit",
+          textAlign: "left",
+          transition: "background 0.12s",
+        }}
+        onMouseEnter={(e) => hBg(e.currentTarget, BG.hover)}
+        onMouseLeave={(e) => {
+          if (!menuOpen) hBg(e.currentTarget, "transparent");
+        }}
+      >
+        <OtherFileIcon kind={otherFileKind(label)} />
+        <span
+          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
+        >
+          {stem}
+          <span style={{ color: TEXT.muted }}>{ext}</span>
+        </span>
+      </button>
+    );
+  };
+
+  // The attachment store, the root's last row when shown: a paperclip, not a
+  // folder, because it is the app's store for what notes embed rather than
+  // one of the user's folders. It opens like a folder and holds nothing else.
+  const renderAttachments = () => {
+    const files = fileGroups.attachments;
+    if (!files) return null;
+    const isOpen = !!expanded[ATTACHMENTS_PATH];
+    return (
+      <div key={ATTACHMENTS_KEY}>
+        <button
+          type="button"
+          role="treeitem"
+          aria-expanded={isOpen}
+          {...rowProps(ATTACHMENTS_KEY)}
+          className="sidebar-attachments"
+          data-testid="attachments-row"
+          onClick={() => toggle(ATTACHMENTS_PATH)}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{
+            width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
+            marginLeft: ROW_INSET,
+            marginBottom: TREE_ROW_GAP,
+            height: TREE_ROW_H,
+            boxSizing: "border-box",
+            padding: `0 8px 0 ${TREE_SPINE - ROW_INSET}px`,
+            borderRadius: ACTION_RADIUS,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: ICON_GAP,
+            color: TEXT.secondary,
+            fontSize: 14,
+            fontFamily: "inherit",
+            textAlign: "left",
+            transition: "background 0.12s, color 0.12s",
+          }}
+          onMouseEnter={(e) => {
+            hBg(e.currentTarget, BG.hover);
+            e.currentTarget.style.color = TEXT.primary;
+          }}
+          onMouseLeave={(e) => {
+            hBg(e.currentTarget, "transparent");
+            e.currentTarget.style.color = TEXT.secondary;
+          }}
+        >
+          <AttachmentsIcon />
+          <span style={{ flex: 1 }}>Attachments</span>
+        </button>
+        {files.length > 0 && (
+          <Collapsible open={isOpen}>
+            <div style={{ position: "relative" }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: TREE_ROW_GAP,
+                  left: TREE_SPINE + SPINE_ICON / 2,
+                  width: 1,
+                  background: BG.divider,
+                  pointerEvents: "none",
+                }}
+              />
+              {files.map((path) => renderFile(path, 1, attachmentLabel(path)))}
             </div>
           </Collapsible>
         )}
@@ -1518,10 +1781,20 @@ const Sidebar = memo(function Sidebar({
                   <div style={{ height: COLUMN_HEAD_GAP }} />
                   <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
                   <SectionHeader
-                    label="Notes"
+                    label={
+                      vaults.length > 0 ? (
+                        <VaultLabel
+                          name={vaultName}
+                          open={vaultMenu !== null}
+                          onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+                        />
+                      ) : (
+                        "Notes"
+                      )
+                    }
                     TEXT={TEXT}
                     dropRoot
-                    menuOpen={sortMenuAnchor !== null}
+                    menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
                   >
                     <SectionAction
                       onClick={() => createFolder(null)}
@@ -1541,6 +1814,18 @@ const Sidebar = memo(function Sidebar({
                     </SectionAction>
                   </SectionHeader>
                 </div>
+                {vaultMenu && (
+                  <VaultMenu
+                    anchor={vaultMenu.anchor}
+                    fromKeyboard={vaultMenu.fromKeyboard}
+                    vaults={vaults}
+                    view={vaultView}
+                    setView={setVaultView}
+                    onSwitch={(path) => onSwitchVault?.(path)}
+                    onManage={() => onManageVaults?.()}
+                    onClose={closeVaultMenu}
+                  />
+                )}
                 {sortMenuAnchor && (
                   <SortMenu
                     anchor={sortMenuAnchor}
@@ -1553,12 +1838,17 @@ const Sidebar = memo(function Sidebar({
                 {/* The unfiltered tree: the palette's query never reaches
                     the desktop sidebar, which stays exactly as it was behind
                     the scrim (2026-09-20). Only the mobile face filters. */}
-                {(folderTree.length > 0 || sortedRootNotes.length > 0) && (
-                  <div role="tree" aria-label="Notes" ref={treeRef} onKeyDown={onTreeKeyDown}>
+                {(folderTree.length > 0 ||
+                  sortedRootNotes.length > 0 ||
+                  filesIn("").length > 0 ||
+                  fileGroups.attachments) && (
+                  <div role="tree" aria-label={vaultName} ref={treeRef} onKeyDown={onTreeKeyDown}>
                     {folderTree.map((f) => renderFolder(f, 0))}
                     {/* No breath before the root notes: the guide line ending
                         says the folder ended; the row rhythm stays even. */}
                     {sortedRootNotes.map((nId) => renderNote(nId, 0))}
+                    {filesIn("").map((path) => renderFile(path, 0))}
+                    {renderAttachments()}
                   </div>
                 )}
               </>

@@ -14,6 +14,21 @@ interface DesktopSettings {
   [key: string]: unknown;
 }
 
+/** One vault the app has opened (electron/vaults.ts). */
+export interface VaultEntry {
+  path: string;
+  name: string;
+  current: boolean;
+  exists: boolean;
+  cloud: boolean;
+}
+
+/** A file in the vault that is not a note (electron/folders.ts). */
+export interface OtherFile {
+  path: string;
+  attachment: boolean;
+}
+
 /** Payload of the update-status event. */
 interface UpdateStatus {
   state: "idle" | "checking" | "available" | "up-to-date" | "downloading" | "downloaded" | "error";
@@ -32,6 +47,13 @@ declare global {
       // Files / vault
       getNotesDir: () => Promise<string>;
       chooseNotesDir: () => Promise<string | null>;
+      listVaults: () => Promise<VaultEntry[]>;
+      /** Only a vault already listed and present; null otherwise. */
+      openVault: (dir: string) => Promise<string | null>;
+      forgetVault: (dir: string) => Promise<VaultEntry[]>;
+      /** The picker, then the list gains the folder; the open vault stays open. */
+      addVault: () => Promise<VaultEntry[]>;
+      revealVault: (dir: string) => Promise<void>;
       /** First-run setup: `firstRun` only on a launch that has never had a folder. */
       getSetupState: () => Promise<{ firstRun: boolean }>;
       /** Ends setup however it ended; answers with the notes folder, made if it is the default. */
@@ -74,15 +96,18 @@ declare global {
         align: string | null;
         sidebarVisible: boolean;
         sourceView: boolean;
+        vaults: { name: string; path: string; current: boolean; exists: boolean }[];
       }) => void;
       revealNote: (noteId: string) => Promise<void>;
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;
+      trashFile: (relPath: string) => Promise<{ trashed: boolean }>;
 
       // Folders are directories. Vault-relative `/` paths; each mutation
       // answers with the path the disk holds (sanitised, de-duplicated).
       readFolders: () => Promise<string[]>;
+      readOtherFiles: () => Promise<OtherFile[]>;
       createFolder: (relPath: string) => Promise<{ path: string }>;
       /** Rename (new name, same parent) or move (new parent) in one directory rename. */
       renameFolder: (oldRelPath: string, newRelPath: string) => Promise<{ path: string }>;

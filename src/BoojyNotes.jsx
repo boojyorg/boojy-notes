@@ -3,7 +3,7 @@ import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
 import { useLayout } from "./context/LayoutContext";
-import { panelTransition } from "./tokens/motion";
+import { PANEL_MS, panelTransition } from "./tokens/motion";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
@@ -20,7 +20,6 @@ import { useTheme } from "./hooks/useTheme";
 import { Z } from "./constants/zIndex";
 const SettingsModal = React.lazy(() => import("./components/settings/SettingsModal"));
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
-import { FolderOpenIcon } from "./components/Icons";
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
 import { ancestorFolders, parentFolder, sharedFolder } from "./utils/pathTree";
@@ -53,6 +52,7 @@ import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { readRecents, recordRecent } from "./utils/recentNotes";
+import { removeLocationPrompt } from "./utils/storageLocations";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
@@ -230,6 +230,12 @@ export default function BoojyNotes() {
     notesDir,
     loading: fsLoading,
     changeNotesDir,
+    vaults,
+    forgetVault,
+    otherFiles,
+    trashFile,
+    refreshVaults,
+    addVault,
     flushToDisk,
     folderOps,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
@@ -249,18 +255,52 @@ export default function BoojyNotes() {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
 
-  // Settings → Change folder… says first that the current notes stay where
-  // they are, then opens the picker; the app never moves notes (2026-09-17).
-  // Setup skips the question: a first launch has no notes to leave behind.
-  const changeNotesDirFromSettings = useCallback(async () => {
-    const ok = await requestConfirm({
-      title: "Change notes folder?",
-      message: "Your current notes will stay where they are.",
-      confirmLabel: "Choose folder…",
-      confirmIcon: <FolderOpenIcon />,
-    });
-    if (ok) changeNotesDir();
-  }, [requestConfirm, changeNotesDir]);
+  // Storage locations (electron/vaults.ts; code calls one a vault). The
+  // sidebar's menu switches at once, since nothing moves; adding, removing
+  // and revealing are Settings', where Manage storage locations… lands.
+  const switchVault = useCallback((dir) => changeNotesDir(dir), [changeNotesDir]);
+  const revealVaultAt = useCallback((dir) => getAPI()?.revealVault?.(dir), []);
+  // Settings lists the locations as they are now: one may have gone since.
+  useEffect(() => {
+    if (settingsOpen) refreshVaults();
+  }, [settingsOpen, refreshVaults]);
+  // Remove from list asks first, saying what stays where. The open location
+  // can go too: the app always needs one, so it switches to the first other
+  // that is there, then removes; with none, the row offers no ×.
+  const removeVault = useCallback(
+    async (vault) => {
+      const next = vault.current ? vaults.find((v) => !v.current && v.exists) : null;
+      if (vault.current && !next) return;
+      if (!(await requestConfirm(removeLocationPrompt(vault, next)))) return;
+      if (next) await changeNotesDir(next.path);
+      await forgetVault(vault.path);
+    },
+    [vaults, requestConfirm, changeNotesDir, forgetVault],
+  );
+  const manageVaults = useCallback(() => {
+    setSettingsOpen(true);
+    // Once the pane is up, bring its storage locations into view.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .querySelector('[data-settings-section="storage"]')
+          ?.scrollIntoView({ block: "nearest" }),
+      ),
+    );
+  }, [setSettingsOpen]);
+  // A file that is not a note, by its vault-relative path: opened in its own
+  // app, shown in Finder, or moved to the Trash at once with a toast, as a
+  // single note is.
+  const openOtherFile = useCallback((rel) => getAPI()?.openPath?.(rel), []);
+  const revealOtherFile = useCallback((rel) => getAPI()?.showItemInFolder?.(rel), []);
+  const trashOtherFile = useCallback(
+    async (rel) => {
+      if (await trashFile(rel)) {
+        showToast(trashedToast(rel.slice(rel.lastIndexOf("/") + 1)), "done", { icon: "trash" });
+      }
+    },
+    [trashFile, showToast],
+  );
 
   // ── First-run setup ──────────────────────────────────────────────────
   // Shown once, on a launch that has never had a notes folder (the main
@@ -875,6 +915,17 @@ export default function BoojyNotes() {
     setTagMenu(null);
     switchViewRef.current?.();
   }, [setSlashMenu, setWikilinkMenu, setTagMenu]);
+  // ⌘O: the sidebar's vault menu, from the keyboard. A hidden sidebar is
+  // shown first and the menu asked for once it has slid in.
+  const [vaultMenuRequest, setVaultMenuRequest] = useState(0);
+  const openVaultMenu = useCallback(() => {
+    if (!isDesktop) return;
+    if (sidebarVisible) setVaultMenuRequest((n) => n + 1);
+    else {
+      revealSidebar();
+      setTimeout(() => setVaultMenuRequest((n) => n + 1), PANEL_MS);
+    }
+  }, [isDesktop, sidebarVisible, revealSidebar]);
   useAppKeyboard({
     activeNote,
     noteData,
@@ -907,6 +958,9 @@ export default function BoojyNotes() {
     sidebarVisible,
     toggleSourceView,
     sourceView,
+    openVaultMenu,
+    switchVault,
+    vaults,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
@@ -1046,6 +1100,16 @@ export default function BoojyNotes() {
             onOpenSearch={openSearch}
             deleteNote={confirmDeleteNote}
             deleteFolder={confirmDeleteFolder}
+            notesDir={notesDir}
+            vaults={vaults}
+            otherFiles={otherFiles}
+            onSwitchVault={switchVault}
+            onManageVaults={manageVaults}
+            onOpenFile={openOtherFile}
+            trashFile={trashOtherFile}
+            ctxMenuFileId={ctxMenu?.type === "file" ? ctxMenu.id : null}
+            vaultMenuRequest={vaultMenuRequest}
+            onVaultMenuOpen={refreshVaults}
           />
           {isMobile && !activeNote && (
             <FloatingActionButton
@@ -1238,6 +1302,9 @@ export default function BoojyNotes() {
         wordCount={wordCount}
         sourceView={sourceView}
         onToggleSourceView={toggleSourceView}
+        openFile={openOtherFile}
+        revealFile={revealOtherFile}
+        trashFile={trashOtherFile}
       />
       {pickTarget && (
         <PathTreeMenu
@@ -1311,9 +1378,11 @@ export default function BoojyNotes() {
         <SettingsModal
           isMobile={isMobile}
           isDesktop={isDesktop}
-          notesDir={notesDir}
-          changeNotesDir={changeNotesDirFromSettings}
-          revealNotesDir={isElectron ? revealVault : undefined}
+          vaults={vaults}
+          switchVault={switchVault}
+          addVault={addVault}
+          forgetVault={removeVault}
+          revealVault={revealVaultAt}
         />
         {firstRun && !isMobile && (
           <SetupDialog

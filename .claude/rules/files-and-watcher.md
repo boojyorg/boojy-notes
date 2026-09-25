@@ -58,6 +58,13 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   fresh ids via `applyExternalNote`, nothing dirty. The copy is revealed and pill-marked in the
   sidebar, never toasted.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
+- **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults` lists them;
+  `add-vault` adds from the native picker without switching; `open-vault` takes only a listed,
+  present path. A never-made default is not listed. Remove from list never touches the folder.
+  A switch flushes, empties, reloads.
+- **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
+  folders and on window focus. `trash-file` refuses a note (notes go by id through `trash-note`,
+  which keeps the index and the watcher's claim). `vault-switcher.spec.ts`.
 - **First run** (`settleSetupState`): an existing config or `Documents/Boojy/Notes` means an
   existing user; otherwise the default folder is not made until `complete-setup`. Tests use
   `firstRun` in `launchApp`. `folders.spec.ts`, `vault-root.spec.ts`, `first-run.spec.ts`.

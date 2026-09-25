@@ -19,8 +19,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
-  Selected rows are neutral. The only tints: the tag pill, a mode that is on, whole-block
-  selection.
+  Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
+  a location's Active), whole-block selection.
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
@@ -95,8 +95,7 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
 ## Settings, setup and UI scale
 
 - Settings is one pane on the palette's surface: Appearance (theme pills, Interface size),
-  Notes folder, Updates. Accent never marks the chosen pill. **Change folder asks first**,
-  because the app never moves notes. The Updates button's label is its state.
+  Storage locations, Updates. Accent never marks the chosen pill. Switching never asks. The Updates button's label is its state.
 - **Interface size is one segmented control; every press applies at once** — no timer in this
   row (a debounce still moved and could overwrite newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
@@ -155,8 +154,15 @@ duration. `sidebar-motion.spec.ts`.
 ## Sidebar
 
 - Three rows then the tree: the window row (wordmark, Search, toggle), the `New note` pill (the
-  one labelled action, neutral, never a filled accent), the `Notes` row (New folder, Sort,
+  one labelled action, neutral, never a filled accent), the vault row (New folder, Sort,
   revealed on hover; never more than three glyphs).
+- **The row is named after the storage location's folder** (default `Notes`; code: vault).
+  It and ⌘O open `VaultMenu`, a switcher only; Settings adds, uses, reveals, removes (added
+  rarely). A row: name and place (the Finder control), teal `Active` or hover `Use`, hover ×,
+  which asks and moves off the open one first. `vault-switcher.spec.ts`.
+- **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
+  its own app; its menu is Open, Show in Finder, Delete. Never renamed or dragged (a rename
+  rewrites no links). The attachment store is the root's last row, a paperclip.
 - The wordmark is one generated asset per theme, never the master PNG; regenerate both when
   `MARK` or `TEXT.primary` changes: `magick assets/boojy-notes-wordmark.png \( +clone -alpha
   extract \) \( -clone 0 -alpha off -fuzz 12% -fill "<MARK>" -opaque "#A4CACE" +fuzz -fill
@@ -173,20 +179,20 @@ duration. `sidebar-motion.spec.ts`.
   (`rowMenuAnchor`) so a flipped menu clears the row.
 - A note renames inline on double-click; a folder only from its menu. The rename input commits
   once.
-- One `role="tree"`, the Notes row a sibling (axe). Folders first, alphabetical; the root is a
+- One `role="tree"`, the vault row a sibling (axe). Folders first, alphabetical; the root is a
   folder.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
   `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
   carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
   row's menu, Escape back to the note (not while a menu or dialog is open); ⌃⌘S lands on the
-  open note's row. Focus returns to the
-  row after a rename and to its neighbour after a delete. `tree-keyboard.spec.ts`.
+  open note's row. Focus returns to the row after a rename, to its neighbour after a delete.
+  `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
   reference when already sorted.
 - **Drag means location, not order**: dragging moves the file or directory. A mouse drag starts
   past `DRAG_THRESHOLD` with no hold; touch keeps the hold. Dropping on the editor doesn't open
-  the note. `.boojy-meta.json` is never read.
+  the note.
 
 ## Search is a palette, not a panel
 
