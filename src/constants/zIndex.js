@@ -14,10 +14,10 @@ export const Z = {
   BASE: 1,
   TOPBAR_INNER: 2,
   ELEMENT_OVERLAY: 5,
-  /** The gutter grip. Above ELEMENT_OVERLAY because the table's invisible
-   *  row strip (24px at `left: -24px`) sits on that layer exactly where the
-   *  grip is drawn, and a press there selected a row instead of lifting the
-   *  table (2026-09-10). */
+  /** The gutter grip. Above ELEMENT_OVERLAY because the table's margin
+   *  (24px at `left: -24px`, where a row's grip shows from) sits on that
+   *  layer near where the grip is drawn, and a press there must lift the
+   *  table. */
   BLOCK_HANDLE: 6,
   /** The chrome row's path band, sticky at the top of the editor scroller:
    *  above the blocks and the grip the note scrolls under it with, below the

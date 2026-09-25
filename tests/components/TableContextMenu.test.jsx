@@ -27,6 +27,11 @@ const props = (context) => ({
   onInsertColumn: vi.fn(),
   onDeleteColumn: vi.fn(),
   onDeleteTable: vi.fn(),
+  onAlign: vi.fn(),
+  onDuplicateRow: vi.fn(),
+  onDuplicateColumn: vi.fn(),
+  onClearRow: vi.fn(),
+  onClearColumn: vi.fn(),
   onDismiss: vi.fn(),
 });
 
@@ -35,8 +40,8 @@ const labels = () => screen.getAllByRole("menuitem").map((el) => el.textContent)
 afterEach(cleanup);
 
 describe("TableContextMenu", () => {
-  it("is a real menu: role, a glyph per item, sentence-case labels, Delete table last in every context", () => {
-    for (const type of ["cell", "header", "row", "column"]) {
+  it("is a real menu: role, a glyph per item, sentence-case labels, Delete table last from a cell", () => {
+    for (const type of ["cell", "header"]) {
       const p = props({ type, rowIndex: type === "header" ? 0 : 1, colIndex: 0 });
       const { unmount } = render(<TableContextMenu {...p} />);
       const menu = screen.getByRole("menu", { name: "Table cell menu" });
@@ -92,5 +97,46 @@ describe("TableContextMenu", () => {
     // jsdom measures every box as 0×0, so positionMenu keeps the anchor: 4px under it.
     expect(menu.style.top).toBe(`${anchor.bottom + 4}px`);
     expect(menu.style.left).toBe(`${anchor.left}px`);
+  });
+  it("a row's grip offers its row only: no Delete table, and the header's Delete is there", () => {
+    render(<TableContextMenu {...props({ type: "row", rowIndex: 0, colIndex: 0 })} />);
+    expect(screen.getByRole("menu", { name: "Row options" })).toBeInTheDocument();
+    expect(labels()).toEqual([
+      "Insert row above",
+      "Insert row below",
+      "Duplicate row",
+      "Clear contents",
+      "Delete row",
+    ]);
+    cleanup();
+    const only = { ...props({ type: "row", rowIndex: 0, colIndex: 0 }), rowCount: 1 };
+    render(<TableContextMenu {...only} />);
+    expect(labels()).not.toContain("Delete row");
+  });
+
+  it("a column's grip starts with Align, whose press keeps the menu open", () => {
+    const p = { ...props({ type: "column", rowIndex: 0, colIndex: 1 }), alignment: "center" };
+    render(<TableContextMenu {...p} />);
+    expect(screen.getByRole("menu", { name: "Column options" })).toBeInTheDocument();
+    const radios = screen.getAllByRole("menuitemradio");
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
+      "Align left",
+      "Align centre",
+      "Align right",
+    ]);
+    expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
+    fireEvent.click(radios[2]);
+    expect(p.onAlign).toHaveBeenCalledWith(1, "right");
+    expect(p.onDismiss).not.toHaveBeenCalled();
+    expect(labels()).toEqual([
+      "Insert column left",
+      "Insert column right",
+      "Duplicate column",
+      "Clear contents",
+      "Delete column",
+    ]);
+    fireEvent.click(screen.getByText("Duplicate column"));
+    expect(p.onDuplicateColumn).toHaveBeenCalledWith(1);
+    expect(p.onDismiss).toHaveBeenCalledTimes(1);
   });
 });

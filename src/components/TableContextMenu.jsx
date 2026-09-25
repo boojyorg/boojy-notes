@@ -4,10 +4,15 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import {
+  AlignCenterIcon,
+  AlignEndIcon,
+  AlignStartIcon,
   ArrowDownToLineIcon,
   ArrowLeftToLineIcon,
   ArrowRightToLineIcon,
   ArrowUpToLineIcon,
+  CopyIcon,
+  EraserIcon,
   TrashIcon,
 } from "./Icons";
 import { Z } from "../constants/zIndex";
@@ -38,13 +43,27 @@ const hBg = (el, c) => {
  * the clicked row, and the menu reads as attached to the table rather than
  * floating where the click happened to land; on a very tall table it can sit
  * a way below the pointer, accepted for the short tables notes hold. Labels
- * are sentence case. No alignment items, by decision: a file's `:---:` still
- * renders and round-trips, but the app offers no control for it.
+ * are sentence case.
+ *
+ * A grip (TableHandles) opens the same menu for its row or column
+ * (`type` "row" / "column"): the row's hangs under the row at its grip.
+ * A column's starts with Align, three glyphs on one line whose press keeps
+ * the menu open so the change can be seen; then Insert, Duplicate, Clear
+ * contents and Delete. A grip's menu has no Delete table: it acts on its
+ * row or column only. The header row's Delete makes the row under it the
+ * header, as Markdown reads it.
  */
 export default function TableContextMenu({
   anchor,
   context,
   colCount,
+  rowCount = 2,
+  alignment = "left",
+  onAlign,
+  onDuplicateRow,
+  onDuplicateColumn,
+  onClearRow,
+  onClearColumn,
   onInsertRow,
   onDeleteRow,
   onInsertColumn,
@@ -110,6 +129,23 @@ export default function TableContextMenu({
     }
   };
 
+  const grip = type === "row" || type === "column";
+  const aligns = [];
+  if (type === "column" && onAlign) {
+    for (const [value, label, icon] of [
+      ["left", "Align left", <AlignStartIcon key="l" />],
+      ["center", "Align centre", <AlignCenterIcon key="c" />],
+      ["right", "Align right", <AlignEndIcon key="r" />],
+    ]) {
+      aligns.push({
+        label,
+        icon,
+        checked: alignment === value,
+        action: () => onAlign(colIndex, value),
+      });
+    }
+  }
+
   const inserts = [];
   if (type === "row" || type === "cell") {
     inserts.push(
@@ -140,9 +176,33 @@ export default function TableContextMenu({
     );
   }
 
+  const copies = [];
+  if (type === "row" && onDuplicateRow) {
+    copies.push(
+      { label: "Duplicate row", icon: <CopyIcon />, action: act(() => onDuplicateRow(rowIndex)) },
+      { label: "Clear contents", icon: <EraserIcon />, action: act(() => onClearRow(rowIndex)) },
+    );
+  }
+  if (type === "column" && onDuplicateColumn) {
+    copies.push(
+      {
+        label: "Duplicate column",
+        icon: <CopyIcon />,
+        action: act(() => onDuplicateColumn(colIndex)),
+      },
+      {
+        label: "Clear contents",
+        icon: <EraserIcon />,
+        action: act(() => onClearColumn(colIndex)),
+      },
+    );
+  }
+
   const deletes = [];
-  // The header row cannot be deleted (GFM needs one) and neither can the last column.
-  if ((type === "row" || type === "cell") && rowIndex > 0) {
+  // From a cell, the header row cannot be deleted (GFM needs one); from its
+  // grip it can, while another row is there to take its place. The last
+  // column never can.
+  if ((type === "cell" && rowIndex > 0) || (type === "row" && rowCount > 1)) {
     deletes.push({
       label: "Delete row",
       icon: <TrashIcon />,
@@ -158,7 +218,7 @@ export default function TableContextMenu({
       danger: true,
     });
   }
-  if (onDeleteTable) {
+  if (onDeleteTable && !grip) {
     deletes.push({
       label: "Delete table",
       icon: <TrashIcon />,
@@ -167,8 +227,8 @@ export default function TableContextMenu({
     });
   }
 
-  const groups = [inserts, deletes].filter((g) => g.length > 0);
-  const items = groups.flat();
+  const groups = [inserts, copies, deletes].filter((g) => g.length > 0);
+  const items = [...aligns, ...groups.flat()];
   itemsRef.current = items;
 
   let index = -1;
@@ -182,7 +242,9 @@ export default function TableContextMenu({
         ref={menuRef}
         className="table-context-menu"
         role="menu"
-        aria-label="Table cell menu"
+        aria-label={
+          type === "row" ? "Row options" : type === "column" ? "Column options" : "Table cell menu"
+        }
         aria-activedescendant={activeIndex >= 0 ? `table-ctx-item-${activeIndex}` : undefined}
         tabIndex={-1}
         style={{
@@ -200,10 +262,58 @@ export default function TableContextMenu({
           animation: "fadeIn 0.1s ease",
         }}
       >
+        {aligns.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              padding: "2px 2px 2px 10px",
+            }}
+          >
+            <span style={{ fontSize: 12.5, color: TEXT.muted }}>Align</span>
+            <div style={{ display: "flex", gap: 2 }}>
+              {aligns.map((item) => {
+                index += 1;
+                const i = index;
+                return (
+                  <button
+                    key={item.label}
+                    id={`table-ctx-item-${i}`}
+                    role="menuitemradio"
+                    aria-checked={item.checked}
+                    aria-label={item.label}
+                    type="button"
+                    onClick={item.action}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    style={{
+                      width: 30,
+                      height: 26,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "none",
+                      borderRadius: MENU_ROW_RADIUS,
+                      cursor: "pointer",
+                      background: item.checked || i === activeIndex ? BG.hover : "transparent",
+                      color: item.checked ? TEXT.primary : TEXT.muted,
+                      transition: "background 0.12s",
+                    }}
+                  >
+                    {item.icon}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {groups.map((group, g) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the groups are fixed in order
           <div key={g}>
-            {g > 0 && <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />}
+            {(g > 0 || aligns.length > 0) && (
+              <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />
+            )}
             {group.map((item) => {
               index += 1;
               const i = index;

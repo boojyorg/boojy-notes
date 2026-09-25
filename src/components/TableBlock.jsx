@@ -8,6 +8,7 @@ import { cellAt, tableColumnCount, withCell } from "../utils/tableShape";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { useTableInteractions } from "../hooks/useTableInteractions";
 import TableContextMenu from "./TableContextMenu";
+import TableHandles from "./TableHandles";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
@@ -15,7 +16,7 @@ import { Z } from "../constants/zIndex";
 export const ADD_BAR = 18;
 /** The Plus inside them: 16px on the navigation stroke, a step heavier than the 1px grid. */
 const ADD_PLUS = 16;
-/** The invisible row and column strips left of and above the grid. */
+/** The margin left of the grid where a row's grip shows, as it does from the first column. */
 const EDGE_ZONE = 24;
 
 /**
@@ -36,7 +37,6 @@ function TableCell({
   cellRefs,
   onInput,
   onKeyDown,
-  onFocus,
   onPaste,
   onContextMenu,
   style,
@@ -68,7 +68,6 @@ function TableCell({
       suppressContentEditableWarning
       onInput={(e) => onInput(e, rowIdx, colIdx)}
       onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
-      onFocus={onFocus}
       onPaste={(e) => onPaste(e, rowIdx, colIdx)}
       onContextMenu={(e) => onContextMenu(e, rowIdx, colIdx)}
       style={style}
@@ -115,9 +114,9 @@ function caretOnLine(el, edge) {
  * height at its right edge and its width under its bottom edge, a Plus centred,
  * shown in CSS only while the pointer is past that edge, on the box itself
  * (`.table-add-bar:hover`); a table at rest, hovered or being typed in shows
- * none. Click adds one; drag adds several (useTableInteractions). The row and
- * column strips left of and above the grid stay invisible (click selects, hold
- * to drag); judged after this pass (2026-09-10).
+ * none. Click adds one; drag adds several (useTableInteractions). Rows and
+ * columns are moved, and their menus opened, by the grips on the table's
+ * edges (TableHandles).
  */
 export default memo(function TableBlock({
   block,
@@ -163,12 +162,6 @@ export default memo(function TableBlock({
   );
 
   const {
-    selectedRow,
-    selectedCol,
-    clearSelection,
-    handleKeyDown,
-    handleLeftZonePointerDown,
-    handleTopZonePointerDown,
     handleBottomZonePointerDown,
     handleBottomZoneClick,
     handleRightZonePointerDown,
@@ -179,7 +172,15 @@ export default memo(function TableBlock({
     deleteRowAt,
     insertColumn,
     deleteColumnAt,
+    moveRow,
+    moveColumn,
+    duplicateRow,
+    duplicateColumn,
+    clearRow,
+    clearColumn,
+    setAlignment,
     contextMenu,
+    openGripMenu,
     handleCellContextMenu,
     closeContextMenu,
   } = useTableInteractions({
@@ -188,9 +189,20 @@ export default memo(function TableBlock({
     blockIndex,
     onUpdateTableRows,
     tableRef,
-    accentColor,
     cellRefs,
   });
+  // The row or column whose grip menu is open: outlined by TableHandles.
+  const gripContext = contextMenu?.context;
+  const gripSelection =
+    gripContext?.type === "row"
+      ? { kind: "row", index: gripContext.rowIndex }
+      : gripContext?.type === "column"
+        ? { kind: "col", index: gripContext.colIndex }
+        : null;
+  const handleMove = useCallback(
+    (kind, from, to) => (kind === "row" ? moveRow(from, to) : moveColumn(from, to)),
+    [moveRow, moveColumn],
+  );
 
   /* ── Cell editing ─────────────────────────────────────── */
 
@@ -340,18 +352,6 @@ export default memo(function TableBlock({
     [noteId, blockIndex, onUpdateTableRows],
   );
 
-  /* ── Selection highlight helper ───────────────────────── */
-
-  const isRowSelected = (rowIdx) => selectedRow === rowIdx;
-  const isColSelected = (colIdx) => selectedCol === colIdx;
-
-  const cellHighlightStyle = (rowIdx, colIdx) => {
-    if (isRowSelected(rowIdx) || isColSelected(colIdx)) {
-      return { background: `${accent}20` };
-    }
-    return {};
-  };
-
   /* ── Render ────────────────────────────────────────────── */
 
   const band = isSelected ? bandFill(accent, theme.name) : null;
@@ -366,7 +366,6 @@ export default memo(function TableBlock({
       contentEditable="false"
       suppressContentEditableWarning
       tabIndex={-1}
-      onKeyDown={handleKeyDown}
       style={{
         position: "relative",
         outline: "none",
@@ -378,7 +377,7 @@ export default memo(function TableBlock({
         userSelect: "none",
       }}
     >
-      {/* Left edge zone — the row strip, left of the grid */}
+      {/* The margin left of the grid: a row's grip shows from here too */}
       <div
         className="table-left-zone"
         style={{
@@ -387,25 +386,8 @@ export default memo(function TableBlock({
           top: 0,
           width: EDGE_ZONE,
           bottom: ADD_BAR,
-          cursor: "grab",
           zIndex: Z.ELEMENT_OVERLAY,
         }}
-        onPointerDown={handleLeftZonePointerDown}
-      />
-
-      {/* Top edge zone — the column strip, above the grid */}
-      <div
-        className="table-top-zone"
-        style={{
-          position: "absolute",
-          left: -EDGE_ZONE,
-          top: -EDGE_ZONE,
-          right: 0,
-          height: EDGE_ZONE,
-          cursor: "grab",
-          zIndex: Z.ELEMENT_OVERLAY,
-        }}
-        onPointerDown={handleTopZonePointerDown}
       />
 
       {/* The grid, with the add-column bar at its right edge */}
@@ -440,14 +422,10 @@ export default memo(function TableBlock({
                       cellRefs={cellRefs}
                       onInput={handleCellInput}
                       onKeyDown={handleCellKeyDown}
-                      onFocus={clearSelection}
                       onPaste={handleCellPaste}
                       onContextMenu={handleCellContextMenu}
                       style={{
                         fontWeight: 600,
-                        // Header cells carry no fill at rest — bold weight plus the border
-                        // grid is the whole signal. Only an active column selection tints.
-                        background: isColSelected(colIdx) ? `${accent}20` : "transparent",
                         textAlign: alignments[colIdx] || "left",
                       }}
                     />
@@ -475,13 +453,9 @@ export default memo(function TableBlock({
                           cellRefs={cellRefs}
                           onInput={handleCellInput}
                           onKeyDown={handleCellKeyDown}
-                          onFocus={clearSelection}
                           onPaste={handleCellPaste}
                           onContextMenu={handleCellContextMenu}
-                          style={{
-                            textAlign: alignments[colIdx] || "left",
-                            ...cellHighlightStyle(rowIdx, colIdx),
-                          }}
+                          style={{ textAlign: alignments[colIdx] || "left" }}
                         />
                       ),
                     )}
@@ -560,6 +534,15 @@ export default memo(function TableBlock({
         <PlusIcon size={ADD_PLUS} nav />
       </div>
 
+      <TableHandles
+        rootRef={rootRef}
+        tableRef={tableRef}
+        selection={gripSelection}
+        shapeKey={block}
+        onOpenMenu={openGripMenu}
+        onMove={handleMove}
+      />
+
       {/* Counter badge during drag-to-create */}
       {createBadge && (
         <div
@@ -588,6 +571,13 @@ export default memo(function TableBlock({
           anchor={contextMenu.anchor}
           context={contextMenu.context}
           colCount={colCount}
+          rowCount={rows.length}
+          alignment={alignments[contextMenu.context.colIndex] || "left"}
+          onAlign={setAlignment}
+          onDuplicateRow={duplicateRow}
+          onDuplicateColumn={duplicateColumn}
+          onClearRow={clearRow}
+          onClearColumn={clearColumn}
           onInsertRow={insertRow}
           onDeleteRow={deleteRowAt}
           onInsertColumn={insertColumn}

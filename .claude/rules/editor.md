@@ -137,8 +137,8 @@ app's, made through state.**
   immediately on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field` field, with Link dropped.
-- Measured once when shown, never re-measured (the strip slid under the pointer); centred but
-  clamped `EDGE` inside the scroller (which clips horizontally).
+- Measured once when shown (re-measuring slid it under the pointer); centred, clamped `EDGE`
+  inside the scroller.
 - Active = the glyph in the accent, nothing else. The pressed glyph outranks the text-only
   render skip in `EditorArea`'s comparator.
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.** Inline code is shown
@@ -149,7 +149,7 @@ app's, made through state.**
 - `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only).
   Media, code and table blocks keep their own menus.
 - **Items run the keys' own path**: restore the captured range, then `execCommand` or the
-  `paste` IPC, so the handlers write exactly what ⌘X/⌘C/⌘V do. The toolbar stands down.
+  `paste` IPC, writing exactly what ⌘X/⌘C/⌘V do.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`): outside the selection selects the
   word, inside keeps it, on no word places the caret. **The menu never takes focus**: it listens
   in document capture, so the selection stays the ordinary blue. `text-context-menu.spec.ts`.
@@ -200,15 +200,14 @@ preview). `sourceView` is app-wide in `LayoutContext`, never saved.
 
 - **Switching commits nothing**, so it changes no byte. Each input is parsed with
   `markdownToBlocks` and committed via `commitTextChange` (one undo burst).
-- **It repaints only when the blocks aren't the ones it committed** (identity, not text; a text
+- **It repaints only when the blocks aren't the ones it committed** (identity: a text
   comparison respelled under the caret).
 - The caret crosses by block (`utils/sourceView.ts`). The entry place is read once in
   `useState` (StrictMode runs effects twice). `source-view.spec.ts`.
 
 ## Lists
 
-- Bullets alternate filled dot / ring by depth, primary ink, drawn as boxes, never glyphs or
-  the accent. Presentation only.
+- Bullets alternate dot / ring by depth, primary ink, drawn as boxes.
 - **The caret never rests beside a marker**: arrows at a row's edge cross by the app's hand,
   the click rescue and `caretIntoTextRoot` in `beforeinput` guard the rest (text typed there
   never reached the file). `list-caret.spec.ts`.
@@ -252,28 +251,31 @@ Every `.code-line` takes at least `1lh` (or the layers drift). `fenceSource` kee
 fences, including an absent closer; the editor never normalises code. **The info string is kept
 as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
 same language writes nothing. The language menu portals to `body` and takes its own keys (the
-caret rescue and the editor's `onKeyDown` would steal them otherwise). `code-language.spec.ts`.
+caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
 
 ## Images
 
 - **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
   never enlarged (`imageDisplayWidth`). An image added in the app gets a width only when it is a
   Retina PNG (`pHYs`). An existing image is never rewritten by being shown.
-- Nothing at rest; the pointer shows a bar and a resize pill; a selected picture shows its wash
-  only. Click selects, double-click opens full size. The menu doesn't select the picture.
-- Deliberately absent: alignment, crop, caption, Replace image. `image-controls.spec.ts`,
+- Nothing at rest; the pointer shows a bar and a resize pill; selected shows its wash only.
+  Click selects, double-click opens full size.
+- Absent by decision: alignment, crop, caption, Replace. `image-controls.spec.ts`,
   `image-size.spec.ts`.
 
 ## Tables
 
 - **Ragged on disk, ragged forever**: a row holds exactly its line's cells; the grid draws the
-  widest row; only an explicit column operation pads. Shape arithmetic lives in
-  `tableShape.ts`.
-- **A row keeps its written line until its cells change** (`tableSource`), so saving never
-  respaces a table. `table-preservation.spec.ts`.
-- Content-sized, shrinking to a per-cell floor before scrolling (Markdown holds no column
-  width, so no resizing). Add-row/column boxes reveal on their own hover only. The cell menu
-  has no alignment items and always ends with Delete table. `table-block.spec.ts`.
+  widest row; only an explicit column operation pads (`tableShape.ts`).
+- **A row keeps its written line until its cells change** (`tableSource`), header included,
+  wherever it moves; an alignment rewrites only the separator, other columns' cells kept.
+  `table-preservation.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`): first cell or margin shows
+  the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
+  passes a neighbour at its middle (`dropIndex`); one write, on the drop. `table-handles.spec.ts`.
+- Content-sized, shrinking to a per-cell floor before scrolling (no column widths in
+  Markdown). Add boxes reveal on their own hover. Only the cell menu has Delete table.
+  `table-block.spec.ts`.
 
 ## Dividers, images and tables are selectable blocks
 

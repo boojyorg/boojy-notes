@@ -40,6 +40,8 @@ import {
   FolderInput as LuFolderInput,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
+  Eraser as LuEraser,
+  GripHorizontal as LuGripHorizontal,
   GripVertical as LuGripVertical,
   Highlighter as LuHighlighter,
   Heading1 as LuHeading1,
@@ -80,6 +82,9 @@ import {
   Type as LuType,
   Undo2 as LuUndo2,
   X as LuX,
+  TextAlignCenter as LuTextAlignCenter,
+  TextAlignEnd as LuTextAlignEnd,
+  TextAlignStart as LuTextAlignStart,
 } from "lucide-react";
 
 const ICON_INLINE = 16;
@@ -146,6 +151,10 @@ export const SortAlphaIcon = ({ size = ICON_INLINE }) => (
 export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
   <LuGripVertical {...base} size={size} fill="currentColor" />
 );
+/** Its sideways twin, for a table column's grip. */
+export const GripHorizontalIcon = ({ size = ICON_INLINE }) => (
+  <LuGripHorizontal {...base} size={size} fill="currentColor" />
+);
 /** `nav` takes the navigation stroke: a standalone control (the table's add boxes). */
 export const PlusIcon = ({ size = ICON_INLINE, nav = false }) => (
   <LuPlus {...(nav ? navBase : base)} size={size} />
@@ -173,6 +182,20 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+/** A table row's or column's Clear contents. */
+export const EraserIcon = ({ size = ICON_INLINE }) => (
+  <LuEraser {...base} {...navBase} size={size} />
+);
+/** A table column's alignment: the three text-align glyphs. */
+export const AlignStartIcon = ({ size = ICON_INLINE }) => (
+  <LuTextAlignStart {...base} {...navBase} size={size} />
+);
+export const AlignCenterIcon = ({ size = ICON_INLINE }) => (
+  <LuTextAlignCenter {...base} {...navBase} size={size} />
+);
+export const AlignEndIcon = ({ size = ICON_INLINE }) => (
+  <LuTextAlignEnd {...base} {...navBase} size={size} />
+);
 /** An image's full-size view: the hover bar's glyph (content stroke) and the
  *  menu's (`nav`, like every context-menu glyph). */
 export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (

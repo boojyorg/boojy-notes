@@ -35,6 +35,11 @@ export const HANDLE_W = 20;
 export const HANDLE_H = 24;
 /** Gap between the grip's right edge and the block's left edge. */
 export const HANDLE_GAP = 4;
+/**
+ * A table's own row grips sit across its left edge, 7px out; beside a table
+ * the block's grip stands this much further off so the two never touch.
+ */
+export const TABLE_GRIP_CLEARANCE = 14;
 
 /**
  * The first line box of a block: the rect of its first rendered text line
@@ -113,7 +118,11 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
             blockId: els[i].dataset.blockId,
             top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
             // Negative on purpose: the grip lives in the column's left padding.
-            left: (r.left - origin.left) / zoom - HANDLE_W - HANDLE_GAP,
+            left:
+              (r.left - origin.left) / zoom -
+              HANDLE_W -
+              HANDLE_GAP -
+              (els[i].dataset.blockType === "table" ? TABLE_GRIP_CLEARANCE : 0),
           };
         }
       }
