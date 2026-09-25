@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
 
 test.describe("Boojy Notes", () => {
   test("app loads and shows editor", async ({ page }) => {
@@ -68,15 +67,5 @@ test.describe("Boojy Notes", () => {
     await tag.click();
     await expect(page.getByTestId("search-tag-chip")).toHaveText(/#alpha/, { timeout: 5000 });
     await expect(page.locator('input[aria-label="Search notes"]')).toHaveValue("");
-  });
-
-  test("no critical accessibility violations", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForSelector("[data-editor]", { timeout: 10000 });
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa"])
-      .disableRules(["color-contrast"]) // Skip color contrast for now — theme-dependent
-      .analyze();
-    expect(results.violations.filter((v) => v.impact === "critical")).toEqual([]);
   });
 });

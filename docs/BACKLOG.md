@@ -395,32 +395,21 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
 
 ### Accessibility
 
-E2E axe only catches critical violations on the initial screen. Known gaps below that:
+axe runs over five surfaces in both themes (`e2e/accessibility.spec.ts`) and the palette's contrast
+is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. Known gaps:
 
-- [ ] **Sidebar focus ring is invisible** — inline `outline:none` overrides the global ring, and
-  the global ring is 25% opacity (`Sidebar.jsx`, `GlobalStyles.jsx`).
 - [ ] **Context menus are `<div onClick>`** (Link/Image/Slash/CalloutPicker): not
   keyboard-reachable, no roles or focus traps. SlashMenu's `aria-selected` on `menuitem` is
   invalid. The table's cell menu left this list on 2026-09-10 (rebuilt on the note menu's
   grammar); the note, sort and table menus and the folder popup carry four copies of that grammar, and
   one shared menu primitive is the cleanup that would also fix the four above.
-- [ ] **NIGHT `TEXT.muted` fails AA contrast** (`themes.js`); DAY was fixed, NIGHT was left for
-  a later pass.
 - [ ] **Sidebar tree has no arrow-key navigation** and lacks `aria-level`/`setsize`/`posinset`
   (`Sidebar.jsx`).
 - [ ] **Tab never leaves the editor** — `useKeyboardHandlers.js` prevents the default for every
   block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
   reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,
   not in isolation.
-- [ ] **Contrast and focus, from the review's script over `themes.js`** (2026-09-07, both
-  themes, every text token on every surface): Dark `SEMANTIC.error` on `BG.hover` 2.65 (a
-  hovered Delete row), `TEXT.secondary` on `BG.hover` 3.16; Light `TEXT.muted` on `BG.hover`
-  3.95 (the slash-menu hint on the selected row, by rule); `SEMANTIC.warning` as text 2.5 on
-  every light surface. The theme segments
-  (Light / Dark / System) have no visible focus ring and no `aria-pressed`; the 400 ms theme
-  crossfade ignores `prefers-reduced-motion`; the crash screen loses its theme because
-  `GlobalStyles` renders inside the boundary. The toasts, empty state and focus ring are under
-  Known issues.
+- [ ] **The crash screen loses its theme**: `GlobalStyles` renders inside the boundary.
 - **Do the menu unification inside this pass, not before it.** Menu keyboard grammar is
   implemented seven times (`ContextMenu`, `SortMenu`, `PathTreeMenu`, `WikilinkMenu`, `TagMenu`,
   `CalloutBlock`, `SearchPalette`, plus the sidebar's own), outside-click dismissal fourteen times, positioning

@@ -16,7 +16,7 @@ describe("GlobalStyles", () => {
 
     const css = container.querySelector("style")?.textContent;
     expect(css).toContain("--boojy-error-bg: #FCFCFC");
-    expect(css).toContain("--boojy-error-danger: #D43030");
+    expect(css).toContain("--boojy-error-danger: #C62D2D");
     expect(css).not.toContain("undefined");
   });
 });

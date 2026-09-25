@@ -17,6 +17,9 @@ export default function GlobalStyles() {
           --boojy-error-muted: ${theme.TEXT.muted};
           --boojy-error-accent: ${theme.ACCENT.primary};
           --boojy-error-danger: ${theme.SEMANTIC.error};
+          /* The focus ring is accent as ink, not the mark: the mark is 2:1 on
+             Light's grounds and a ring has to show (3:1). */
+          --boojy-focus-ring: ${theme.ACCENT.text};
         }
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -34,7 +37,7 @@ export default function GlobalStyles() {
         /* Everything on the panel's clock (tokens/motion.js) carries this
            class; a reduced-motion user gets the two states and no travel. */
         @media (prefers-reduced-motion: reduce) {
-          .panel-motion { transition: none !important; animation: none !important; }
+          .panel-motion, .theme-fade { transition: none !important; animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
@@ -229,11 +232,14 @@ export default function GlobalStyles() {
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
-        *:focus-visible { outline: 2px solid ${theme.ACCENT.primary}40; outline-offset: 2px; border-radius: 2px; }
+        *:focus-visible { outline: 2px solid var(--boojy-focus-ring); outline-offset: 2px; border-radius: 2px; }
         [contenteditable]:focus-visible { outline: none; }
-        /* Sidebar action rows opt out of the global 25%-alpha ring for a solid 2px accent. */
-        .sidebar-action-row:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 12px; }
-        .sidebar-section-action:focus-visible { outline: 2px solid ${theme.ACCENT.primary}; outline-offset: 2px; border-radius: 6px; }
+        .sidebar-action-row:focus-visible { border-radius: 12px; }
+        .sidebar-section-action:focus-visible { border-radius: 6px; }
+        /* Tree rows touch their neighbours, so the ring sits inside the pill. */
+        .sidebar-note:focus-visible, .sidebar-folder:focus-visible {
+          outline: 2px solid var(--boojy-focus-ring); outline-offset: -2px;
+        }
         /* The press squeezes the drawn box; the hit area around it never
            transforms. On .checkbox-box itself the scale pulled the element's
            own edges 1.2px in from under the pointer, so a press near an edge
