@@ -231,16 +231,40 @@ export default memo(function TableBlock({
   }, []);
   // A cell that does not exist yet (the row Enter or Tab has just added) is
   // focused as soon as it has rendered, not after a timer a fast typist
-  // could beat.
+  // could beat. A grip's insert waits for the table's new shape (`shape`),
+  // since the cell at the new row's place exists already and holds the row
+  // being pushed down; its caret is placed without scrolling the note.
   const focusOnRender = useRef(null);
   useLayoutEffect(() => {
-    if (!focusOnRender.current) return;
-    const { row, col } = focusOnRender.current;
-    if (cellRefs.current[`${row}-${col}`]) {
-      focusOnRender.current = null;
-      focusCell(row, col);
-    }
+    const pending = focusOnRender.current;
+    if (!pending) return;
+    if (pending.shape && pending.shape !== `${rows.length}x${colCount}`) return;
+    const { row, col } = pending;
+    const cell = cellRefs.current[`${row}-${col}`];
+    if (!cell) return;
+    focusOnRender.current = null;
+    if (pending.shape) placeCaret(cell, 0);
+    else focusCell(row, col);
   });
+
+  // An insert from a grip's menu takes the caret into what it made: a new
+  // row's first cell, a new column's header cell. It is why one inserts.
+  const insertRowAndEnter = useCallback(
+    (index, position) => {
+      const row = position === "above" ? index : index + 1;
+      focusOnRender.current = { row, col: 0, shape: `${rows.length + 1}x${colCount}` };
+      insertRow(index, position);
+    },
+    [rows.length, colCount, insertRow],
+  );
+  const insertColumnAndEnter = useCallback(
+    (index, position) => {
+      const col = position === "left" ? index : index + 1;
+      focusOnRender.current = { row: 0, col, shape: `${rows.length}x${colCount + 1}` };
+      insertColumn(index, position);
+    },
+    [rows.length, colCount, insertColumn],
+  );
 
   // Escape from a cell: the whole table is selected, and the keys go to the
   // editor root (handleSelectedBlockKey), so the next Backspace removes the
@@ -570,9 +594,9 @@ export default memo(function TableBlock({
           onAlign={setAlignment}
           onDuplicateRow={duplicateRow}
           onDuplicateColumn={duplicateColumn}
-          onInsertRow={insertRow}
+          onInsertRow={insertRowAndEnter}
           onDeleteRow={deleteRowAt}
-          onInsertColumn={insertColumn}
+          onInsertColumn={insertColumnAndEnter}
           onDeleteColumn={deleteColumnAt}
           onDismiss={closeContextMenu}
         />

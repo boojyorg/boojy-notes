@@ -184,3 +184,28 @@ test("a triple-click in a cell selects that cell's text, and typing replaces it"
     await h.close();
   }
 });
+
+test("an insert from a grip takes the caret into what it made: a new row's first cell, a new column's header", async () => {
+  const h = await launchApp({ [NOTE]: lines.join("\n") });
+  try {
+    await h.openNote("Prices");
+    await cell(h, 1, 0).hover();
+    await h.page.getByRole("button", { name: "Row options, or drag to move", exact: true }).click();
+    await h.page.getByRole("menuitem", { name: "Insert below" }).click();
+    await h.page.keyboard.type("Milk");
+    await expect(cell(h, 2, 0)).toHaveText("Milk");
+    await expect(cell(h, 3, 0)).toHaveText("Tea");
+
+    await cell(h, 0, 1).hover();
+    await h.page
+      .getByRole("button", { name: "Column options, or drag to move", exact: true })
+      .click();
+    await h.page.getByRole("menuitem", { name: "Insert right" }).click();
+    await h.page.keyboard.type("Size");
+    await expect(cell(h, 0, 2)).toHaveText("Size");
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Size |") && t.includes("| Milk |"));
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

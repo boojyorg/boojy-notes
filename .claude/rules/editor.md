@@ -206,7 +206,7 @@ preview). `sourceView` is app-wide in `LayoutContext`, never saved.
 
 ## Lists
 
-- Bullets alternate dot / ring by depth, primary ink, drawn as boxes.
+- Bullets alternate dot / ring by depth, primary ink, as boxes.
 - **The caret never rests beside a marker**: arrows at a row's edge cross by the app's hand,
   the click rescue and `caretIntoTextRoot` in `beforeinput` guard the rest (text typed there
   never reached the file). `list-caret.spec.ts`.
@@ -259,7 +259,7 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   Retina PNG (`pHYs`). An existing image is never rewritten by being shown.
 - Nothing at rest; the pointer shows a bar and a resize pill; selected shows its wash only.
   Click selects, double-click opens full size.
-- Absent by decision: alignment, crop, caption, Replace. `image-controls.spec.ts`,
+- Absent: alignment, crop, caption, Replace. `image-controls.spec.ts`,
   `image-size.spec.ts`.
 
 ## Tables
@@ -274,7 +274,7 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
 - Content-sized, shrinking to a per-cell floor before scrolling (no column widths in
   Markdown). Add boxes reveal on their own hover. Grip menus hang under the grip, aligns
-  inline.
+  inline; inserts take the caret.
   `table-block.spec.ts`.
 
 ## Dividers, images and tables are selectable blocks
