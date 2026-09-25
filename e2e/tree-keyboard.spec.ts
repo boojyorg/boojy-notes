@@ -116,8 +116,8 @@ test("Escape goes back to the note; ⌃⌘S comes back, showing a hidden sidebar
   expect(await focusedKey(page)).toBeNull();
   await page.keyboard.press(`${MOD}+\\`);
   await page.keyboard.press(TO_SIDEBAR);
-  // The row last focused (the folder, after its rename in setUp) is the stop.
-  await expect(row(page, "Work")).toBeFocused();
+  // The open note's row, where you are.
+  await expect(row(page, "Plan")).toBeFocused();
 });
 
 test("Escape while a row's menu is open closes the menu, however soon", async ({ page }) => {

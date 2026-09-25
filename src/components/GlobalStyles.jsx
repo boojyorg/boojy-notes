@@ -234,6 +234,17 @@ export default function GlobalStyles() {
         [contenteditable]:focus:not(:focus-visible) { outline: none; }
         *:focus-visible { outline: 2px solid var(--boojy-focus-ring); outline-offset: 2px; border-radius: 2px; }
         [contenteditable]:focus-visible { outline: none; }
+        /* Skip to content: off-screen until the first Tab of a session, then a
+           quiet chip centred at the top, clear of the traffic lights and the
+           wordmark; never the browser's blue link. */
+        .skip-link {
+          position: fixed; top: 8px; left: 50%; translate: -50% -200%;
+          padding: 6px 12px; border-radius: 8px;
+          background: ${theme.BG.elevated}; color: ${theme.TEXT.primary};
+          border: 1px solid ${theme.BG.divider}; box-shadow: ${theme.floatShadow};
+          font-size: 13px; font-weight: 500; text-decoration: none;
+        }
+        .skip-link:focus { translate: -50% 0; }
         .sidebar-action-row:focus-visible { border-radius: 12px; }
         .sidebar-section-action:focus-visible { border-radius: 6px; }
         /* Tree rows touch their neighbours, so the ring sits inside the pill. */

@@ -951,29 +951,8 @@ export default function BoojyNotes() {
         transition: `background-color ${theme.transitionMs}ms ease, color ${theme.transitionMs}ms ease`,
       }}
     >
-      <a
-        href="#main-content"
-        style={{
-          position: "absolute",
-          left: "-9999px",
-          top: "auto",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
-          zIndex: Z.ERROR_BOUNDARY,
-        }}
-        onFocus={(e) => {
-          e.target.style.left = "10px";
-          e.target.style.top = "10px";
-          e.target.style.width = "auto";
-          e.target.style.height = "auto";
-        }}
-        onBlur={(e) => {
-          e.target.style.left = "-9999px";
-          e.target.style.width = "1px";
-          e.target.style.height = "1px";
-        }}
-      >
+      {/* The page's first Tab stop, shown only while focused (.skip-link). */}
+      <a href="#main-content" className="skip-link" style={{ zIndex: Z.ERROR_BOUNDARY }}>
         Skip to content
       </a>
 

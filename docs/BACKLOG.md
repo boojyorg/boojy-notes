@@ -138,8 +138,8 @@ none blocks the release. The shared question comes first because three candidate
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
   one. Grips, alignment, Duplicate and Clear contents shipped (`CHANGELOG.md`). Left, in the
   order daily use asks for them: a paste from a spreadsheet (tab-separated text) into a
-  paragraph becoming a table, a keyboard path for moving a row or column, and dragging several
-  rows at once. No colour, by decision: Markdown cannot hold it.
+  paragraph becoming a table, and dragging several rows at once (the keyboard path shipped
+  2026-09-25). No colour, by decision: Markdown cannot hold it.
 - **Whole-block selection for code, callout and file blocks.** The table joined the divider
   and image as a block addressed as a whole on 2026-09-10 (Escape selects, Backspace from
   below and forward Delete from above select rather than step over). **The arrows caught up on
@@ -235,9 +235,6 @@ none blocks the release. The shared question comes first because three candidate
   drop settles. Enter under 150 ms, exit faster; tokens in `tokens/motion.js`; nothing moves
   under reduced motion; the editor column still never carries a transform (opacity alone
   there). Nothing animates on a key that repeats (filtering, arrowing through a menu).
-- **Keyboard-only use.** Create, find, move, rename and delete a note without the mouse; that
-  walkthrough is the Accessibility pass's test (below), done with the menu unification. Not a
-  vim mode (Not doing).
 - **The vault in your own sync and version control, verified.** It works by design, since the
   notes are a folder; the work is proving it and writing the help page. Run a real vault in
   iCloud Drive (files evicted to placeholders), Dropbox and Google Drive (their conflicted
@@ -400,10 +397,6 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 
 - [ ] **The callout's type button is not a Tab stop** (a `div role="button"` inside the block);
   it is named and announces its list since 2026-09-25. With the Tab pass.
-- [ ] **Tab never leaves the editor** — `useKeyboardHandlers.js` prevents the default for every
-  block type and indents only lists, so Tab in a paragraph is swallowed and Shift+Tab cannot
-  reach the chrome. Notion does the same; a keyboard trap to resolve in the accessibility pass,
-  not in isolation.
 - [ ] **The crash screen loses its theme**: `GlobalStyles` renders inside the boundary.
 - **Menu dismissal is still several spellings** (a backdrop's `onClick` or `onMouseDown`, or a
   document press listener) and the callout picker positions itself by hand. The keys were

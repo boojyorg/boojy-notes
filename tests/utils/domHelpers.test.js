@@ -21,6 +21,9 @@ import {
   caretRect,
   focusOwnedField,
   hasOwnField,
+  focusBeyondNote,
+  focusNote,
+  focusSidebar,
 } from "../../src/utils/domHelpers.js";
 
 function editable(html) {
@@ -730,5 +733,73 @@ describe("caretIntoTextRoot — a caret beside a list marker moves into the item
     expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
     setCaret(ed.querySelector('[data-block-id="b"]'), 0);
     expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
+  });
+});
+
+/** jsdom lays nothing out; every element counts as showing here. */
+function showAll() {
+  for (const el of document.querySelectorAll("*")) el.getClientRects = () => [{}];
+}
+
+describe("focusBeyondNote — Tab out of the note", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <button id="side">Side</button>
+      <div data-title contenteditable="true" id="name">Name</div>
+      <div data-editor contenteditable="true"><p>Text</p><textarea id="code"></textarea></div>
+      <button id="after">After</button>
+      <button id="hidden" inert>Hidden</button>`;
+    showAll();
+  });
+
+  it("goes to the next stop after the note, never one inside it", () => {
+    focusBeyondNote(1);
+    expect(document.activeElement.id).toBe("after");
+  });
+
+  it("goes back to the name, caret at its end", () => {
+    // jsdom focuses an editable only with a tabindex; Chromium without one.
+    document.getElementById("name").setAttribute("tabindex", "0");
+    focusBeyondNote(-1);
+    expect(document.activeElement.id).toBe("name");
+    expect(window.getSelection().anchorOffset).toBe(1);
+  });
+
+  it("wraps past the end", () => {
+    document.getElementById("after").remove();
+    focusBeyondNote(1);
+    expect(document.activeElement.id).toBe("side");
+  });
+});
+
+describe("focusSidebar and focusNote — into the tree and back", () => {
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div role="tree">
+        <button data-tree-key="f:A" tabindex="0" id="stop">A</button>
+        <button data-tree-key="n:1" tabindex="-1" aria-selected="true" id="open">Open</button>
+      </div>
+      <div data-title contenteditable="true" tabindex="0">Name</div>
+      <div data-editor contenteditable="true" tabindex="0"><p id="p">Text</p></div>`;
+  });
+
+  it("lands on the open note's row, else the tree's stop", () => {
+    expect(focusSidebar()).toBe(true);
+    expect(document.activeElement.id).toBe("open");
+    document.getElementById("open").removeAttribute("aria-selected");
+    focusSidebar();
+    expect(document.activeElement.id).toBe("stop");
+  });
+
+  it("goes back to the editor where the caret was, else to the name", () => {
+    const text = document.getElementById("p").firstChild;
+    document.getElementById("stop").focus();
+    // A press on a row leaves the document's selection in the note.
+    window.getSelection().collapse(text, 2);
+    focusNote();
+    expect(document.activeElement.hasAttribute("data-editor")).toBe(true);
+    window.getSelection().removeAllRanges();
+    focusNote();
+    expect(document.activeElement.hasAttribute("data-title")).toBe(true);
   });
 });
