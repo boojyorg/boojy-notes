@@ -1,6 +1,7 @@
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -71,24 +72,18 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
     [setSortMode, onClose],
   );
 
+  const menuKeys = useMenuKeys({
+    rows: () => items,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => choose(items[i].mode),
+    close: onClose,
+  });
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        const step = e.key === "ArrowDown" ? 1 : -1;
-        setActiveIndex((i) =>
-          i === -1 && step === -1 ? items.length - 1 : (i + step + items.length) % items.length,
-        );
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        if (activeIndex >= 0) choose(items[activeIndex].mode);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
+      if (menuKeys(e)) e.preventDefault();
     },
-    [activeIndex, items, choose, onClose],
+    [menuKeys],
   );
 
   // On the document, as ContextMenu: a window listener added on open would

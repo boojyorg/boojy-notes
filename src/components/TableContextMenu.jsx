@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import {
   AlignCenterIcon,
@@ -69,25 +70,18 @@ export default function TableContextMenu({
   useFocusTrap(menuRef, open, "container");
   const pos = useMenuPosition(menuRef, open, anchor, { gapY: 4 });
 
+  const menuKeys = useMenuKeys({
+    rows: () => itemsRef.current,
+    active: activeIndex,
+    setActive: setActiveIndex,
+    choose: (i) => itemsRef.current[i]?.action(),
+    close: onDismiss,
+  });
   const handleKeyDown = useCallback(
     (e) => {
-      const items = itemsRef.current;
-      if (!items.length || e.defaultPrevented) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActiveIndex((i) => (i + 1) % items.length);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActiveIndex((i) => (i - 1 + items.length) % items.length);
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        if (activeIndex >= 0 && activeIndex < items.length) items[activeIndex].action();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onDismiss();
-      }
+      if (itemsRef.current.length && menuKeys(e)) e.preventDefault();
     },
-    [activeIndex, onDismiss],
+    [menuKeys],
   );
 
   // On the document, not the window: the app shell's shortcut handler is a

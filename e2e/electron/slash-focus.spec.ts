@@ -17,8 +17,8 @@ async function chooseFromSlashMenu(h: Awaited<ReturnType<typeof launchApp>>, com
   await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.press("Enter");
   await h.page.keyboard.type(`/${command}`);
-  const menu = h.page.getByRole("menu", { name: "Slash commands" });
-  await expect(menu.getByRole("menuitem").first()).toHaveAttribute("aria-selected", "true");
+  const menu = h.page.getByRole("listbox", { name: "Slash commands" });
+  await expect(menu.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
   await h.page.keyboard.press("Enter");
   await expect(menu).toBeHidden();
 }

@@ -62,6 +62,14 @@ for (const themeMode of ["day", "night"] as const) {
       await expectNoSeriousViolations(page);
     });
 
+    test("the slash menu", async ({ page }) => {
+      await open(page, themeMode);
+      await page.locator("[data-editor] [data-block-id]").first().click();
+      await page.keyboard.type("/");
+      await expect(page.getByRole("listbox", { name: "Slash commands" })).toBeVisible();
+      await expectNoSeriousViolations(page);
+    });
+
     test("Settings", async ({ page }) => {
       await open(page, themeMode);
       await page.getByTestId("wordmark-settings-button").click();

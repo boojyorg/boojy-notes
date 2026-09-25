@@ -261,7 +261,12 @@ export default function SearchPalette({
   const rowProps = (i: number) => ({
     type: "button" as const,
     "data-search-index": i,
-    "aria-current": i === active || undefined,
+    // The rows are the listbox's options; focus stays in the field, which
+    // names the highlighted one (aria-activedescendant).
+    id: `search-option-${i}`,
+    role: "option",
+    "aria-selected": i === active,
+    tabIndex: -1,
     onMouseMove: () => setActive(i),
     onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
       if (i !== active) e.currentTarget.style.background = BG.surface;
@@ -366,6 +371,8 @@ export default function SearchPalette({
             type="text"
             autoFocus
             aria-label="Search notes"
+            aria-controls={rows.length > 0 ? "search-results" : undefined}
+            aria-activedescendant={rows[active] ? `search-option-${active}` : undefined}
             placeholder={placeholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -435,55 +442,61 @@ export default function SearchPalette({
                 {emptyText}
               </div>
             )}
-            {rows.map((row, i) => {
-              if (row.kind === "recent")
-                return (
-                  <button key={row.noteId} {...rowProps(i)} onClick={() => act(row)}>
-                    <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                      <span style={titleStyle}>{row.title || "Untitled"}</span>
-                      {folderPath(row.folder)}
-                    </span>
-                  </button>
-                );
-              if (row.kind === "tag")
-                return (
-                  <button key={row.tag} {...rowProps(i)} onClick={() => act(row)}>
-                    <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                      <span style={{ ...titleStyle, color: accentText }}>#{row.tag}</span>
-                      <span style={{ flexShrink: 0, fontSize: 12, color: TEXT.muted }}>
-                        {row.count}
+            <div
+              id="search-results"
+              role="listbox"
+              aria-label={mode === "recent" ? "Recent notes" : "Results"}
+            >
+              {rows.map((row, i) => {
+                if (row.kind === "recent")
+                  return (
+                    <button key={row.noteId} {...rowProps(i)} onClick={() => act(row)}>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                        <span style={titleStyle}>{row.title || "Untitled"}</span>
+                        {folderPath(row.folder)}
                       </span>
+                    </button>
+                  );
+                if (row.kind === "tag")
+                  return (
+                    <button key={row.tag} {...rowProps(i)} onClick={() => act(row)}>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                        <span style={{ ...titleStyle, color: accentText }}>#{row.tag}</span>
+                        <span style={{ flexShrink: 0, fontSize: 12, color: TEXT.muted }}>
+                          {row.count}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                const r = row.result;
+                return (
+                  <button key={r.noteId} {...rowProps(i)} onClick={() => act(row)}>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                      <span style={titleStyle}>
+                        {renderHighlightedTitle(r.title || "Untitled", r.titleRanges, accentText)}
+                      </span>
+                      {folderPath(r.folder)}
                     </span>
+                    {/* One line of context, only when the title does not explain the hit. */}
+                    {r.matchIn === "body" && r.snippet && (
+                      <span
+                        style={{
+                          fontSize: 12.5,
+                          lineHeight: "16px",
+                          color: TEXT.muted,
+                          paddingLeft: 12,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {renderSnippet(r.snippet, accentText)}
+                      </span>
+                    )}
                   </button>
                 );
-              const r = row.result;
-              return (
-                <button key={r.noteId} {...rowProps(i)} onClick={() => act(row)}>
-                  <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                    <span style={titleStyle}>
-                      {renderHighlightedTitle(r.title || "Untitled", r.titleRanges, accentText)}
-                    </span>
-                    {folderPath(r.folder)}
-                  </span>
-                  {/* One line of context, only when the title does not explain the hit. */}
-                  {r.matchIn === "body" && r.snippet && (
-                    <span
-                      style={{
-                        fontSize: 12.5,
-                        lineHeight: "16px",
-                        color: TEXT.muted,
-                        paddingLeft: 12,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {renderSnippet(r.snippet, accentText)}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+              })}
+            </div>
           </div>
         )}
       </div>

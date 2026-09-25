@@ -54,7 +54,10 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
       />
       <div
         ref={menuRef}
-        role="menu"
+        // A suggestion list under the caret, which keeps focus: a listbox of
+        // options (a menuitem cannot be "selected"), the highlight announced
+        // through aria-selected.
+        role="listbox"
         aria-label="Slash commands"
         style={{
           position: "fixed",
@@ -80,7 +83,8 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
             return (
               <div
                 key={cmd.id}
-                role="menuitem"
+                id={`slash-option-${i}`}
+                role="option"
                 aria-selected={selected}
                 onClick={() => {
                   executeSlashCommand(slashMenu.noteId, slashMenu.blockIndex, cmd);

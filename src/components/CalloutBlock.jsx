@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from 
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
+import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { inlineMarkdownToHtml, domNodeToMarkdown } from "../utils/inlineFormatting";
@@ -91,32 +92,27 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
     style.left = anchorRect.left;
   }
 
+  // The menus' one key rule (useMenuKeys). The picker never takes focus, so
+  // it listens in the document's capture phase, ahead of the field under it
+  // and the shell, and only for the keys it takes; letters stay typing.
+  const menuKeys = useMenuKeys({
+    rows: () => CALLOUT_TYPE_KEYS.map((key) => ({ label: CALLOUT_TYPES[key].defaultTitle })),
+    active: focusIdx,
+    setActive: setFocusIdx,
+    choose: (i) => onSelect(CALLOUT_TYPE_KEYS[i]),
+    close: onClose,
+    suggestion: true,
+  });
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") {
+      if (menuKeys(e)) {
         e.preventDefault();
-        onClose();
-        return;
-      }
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setFocusIdx((p) => Math.min(p + 1, CALLOUT_TYPE_KEYS.length - 1));
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setFocusIdx((p) => Math.max(p - 1, 0));
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        onSelect(CALLOUT_TYPE_KEYS[focusIdx]);
-        return;
+        e.stopPropagation();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [focusIdx, onSelect, onClose]);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [menuKeys]);
 
   // Scroll focused item into view (manual to avoid page scroll jump)
   useEffect(() => {
@@ -146,7 +142,7 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
         ref={listRef}
         className="callout-picker"
         role="listbox"
-        aria-label="Callout type picker"
+        aria-label="Callout type"
         style={{
           position: "fixed",
           zIndex: Z.TOAST,
@@ -169,6 +165,9 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
           return (
             <div
               key={key}
+              id={`callout-option-${key}`}
+              role="option"
+              aria-selected={isFocused}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onSelect(key)}
               onMouseEnter={() => setFocusIdx(idx)}
@@ -417,6 +416,9 @@ export default memo(function CalloutBlock({
         <div
           ref={iconBtnRef}
           role="button"
+          aria-label="Change callout type"
+          aria-haspopup="listbox"
+          aria-expanded={pickerOpen}
           onClick={openPicker}
           onMouseDown={(e) => {
             e.preventDefault();
