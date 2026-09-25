@@ -45,6 +45,7 @@ import { blocksToMarkdown } from "../utils/markdown";
 import { blockOffsetFor, sourceOffsetFor } from "../utils/sourceView";
 import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
+import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 
 /*
@@ -622,6 +623,14 @@ const EditorArea = memo(
 
     const dismissCtxMenu = useCallback(() => setLinkCtxMenu(null), []);
 
+    // A table written compact or by hand, whose columns Tidy table would
+    // line up; one the app writes, or one already lined up, needs none.
+    const tableNeedsTidy = (tableId) => {
+      const block = noteDataRef.current[activeNote]?.content?.blocks?.find((b) => b.id === tableId);
+      const source = block?.tableSource;
+      return !!source && !isAligned([source.header, source.separator, ...source.rows]);
+    };
+
     // Width the editor actually has: the viewport less whatever the sidebar and
     // its handle are occupying. Mobile keeps its own fixed geometry.
     const editorW = `(100vw - ${sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
@@ -1100,6 +1109,17 @@ const EditorArea = memo(
                 onCut={() => runOnSelection(() => document.execCommand("cut"))}
                 onCopy={() => runOnSelection(() => document.execCommand("copy"))}
                 onPaste={() => runOnSelection(() => getAPI()?.paste?.())}
+                onTidyTable={
+                  linkCtxMenu.tableId && tableNeedsTidy(linkCtxMenu.tableId)
+                    ? () => {
+                        dismissCtxMenu();
+                        const blocks = noteDataRef.current[activeNote]?.content?.blocks ?? [];
+                        const i = blocks.findIndex((b) => b.id === linkCtxMenu.tableId);
+                        if (i !== -1)
+                          updateTableRows(activeNote, i, (rows) => ({ rows, tidy: true }));
+                      }
+                    : undefined
+                }
                 onDeleteTable={
                   linkCtxMenu.tableId
                     ? () => {

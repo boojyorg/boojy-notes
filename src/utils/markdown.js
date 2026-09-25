@@ -4,6 +4,14 @@
 
 import { LINK_DEST } from "./linkDestination";
 import { listLayout, readListIndents } from "./listStructure";
+import {
+  alignedRow,
+  alignedSeparator,
+  columnWidths,
+  isAligned,
+  neededWidths,
+  separatorStyle,
+} from "./tableAlign";
 
 /** A line that is one `![alt](src)` and nothing else; `src` may hold balanced parens. */
 const MD_IMAGE_LINE_RE = new RegExp(String.raw`^!\[([^\]]*)\]\((${LINK_DEST})\)$`);
@@ -411,42 +419,70 @@ export function blocksToMarkdown(blocks) {
           // exact form back, so the bytes round-trip.
           const esc = (cell) => cell.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
           const writeRow = (row) => "| " + row.map((cell) => esc(cell ?? "")).join(" | ") + " |";
-          // A row still holding the cells its line was read with is written as
-          // that line, byte for byte: its padding, a `|---|` with no spaces, an
-          // indent, an unescaped pipe in a `[[Note|alias]]`. Only a row the user
-          // changed, and a table the app made, take the app's spelling. Before
-          // this the first save rewrote every table not already in it.
+          // A table keeps the spelling it was written in. A row still holding
+          // the cells its line was read with is written as that line, byte for
+          // byte: its padding, a `|---|` with no spaces, an indent, an
+          // unescaped pipe in a `[[Note|alias]]`. Before this the first save
+          // rewrote every table not already in the app's spelling.
           const source = block.tableSource;
           const aligns = block.alignments || [];
+          const rows = block.rows.map((r) => (r.length > 0 ? r : [""]));
+          const header = rows[0];
+          // A table the app makes, or one written with its pipes lined up,
+          // is written lined up (utils/tableAlign.ts). An edit that fits the
+          // columns rewrites only its own row, still lined up; one that
+          // widens a column re-pads every row. Columns never narrow by
+          // themselves (the widths as written are the floor), so a file
+          // changes no more than it must.
+          const aligned = !source || isAligned([source.header, source.separator, ...source.rows]);
+          const escaped = rows.map((r) => r.map((c) => esc(c ?? "")));
+          const floor = source && aligned ? columnWidths(source.header) : [];
+          const widths = aligned ? neededWidths(escaped, floor, aligns) : [];
+          const sepStyle = source
+            ? separatorStyle(source.separator, readRow(source.separator))
+            : undefined;
+          const sameWidths =
+            !!source && widths.length === floor.length && widths.every((w, i) => w === floor[i]);
+          const freshRow = (r) =>
+            aligned ? alignedRow(escaped[r], widths, aligns) : writeRow(rows[r]);
           // Every row, the header included, takes the first unused source line
           // holding its cells, so a row inserted, deleted or moved (into the
           // header's place too) leaves the others as written. Each row is
           // written with its own cells, one more or one fewer than the header
           // included; padding or trimming a row to the header here is what
           // used to drop a wide row's extra cells.
-          const sourceLines = source ? [source.header, ...source.rows] : [];
+          // A table whose cells and alignments are as they were read is its
+          // lines, whatever the widths measure: it is never re-padded unasked.
+          const untouched =
+            !!source &&
+            rows.length === source.rows.length + 1 &&
+            sameCells(readAlignments(source.separator, readRow(source.header).length), aligns) &&
+            [source.header, ...source.rows].every((line, r) => sameCells(readRow(line), rows[r]));
+          const reuse = source && (untouched || !aligned || sameWidths);
+          const sourceLines = reuse ? [source.header, ...source.rows] : [];
           const sourceCells = sourceLines.map(readRow);
           const used = sourceLines.map(() => false);
-          const lineFor = (cells) => {
-            const k = sourceCells.findIndex((c, j) => !used[j] && sameCells(c, cells));
-            if (k === -1) return writeRow(cells);
+          const lineFor = (r) => {
+            const k = sourceCells.findIndex((c, j) => !used[j] && sameCells(c, rows[r]));
+            if (k === -1) return freshRow(r);
             used[k] = true;
             return sourceLines[k];
           };
-          const header = block.rows[0];
-          lines.push(lineFor(header));
-          // The separator is kept whole while its alignments are; one column's
-          // alignment changed rewrites the line, keeping each other column's
-          // cell as written (a `:---` stays, the app would write `---`).
-          const sourceWidth = source ? sourceCells[0].length : -1;
+          lines.push(lineFor(0));
+          // The separator is kept whole while its alignments and widths are;
+          // one column's alignment changed rewrites the line, keeping each
+          // other column's cell as written (a `:---` stays, the app would
+          // write `---`).
+          const sourceWidth = source ? readRow(source.header).length : -1;
           const sourceAligns = source ? readAlignments(source.separator, sourceWidth) : [];
           const sourceSep = source ? readRow(source.separator) : [];
-          if (
-            source &&
+          const sameAligns =
             header.length === sourceWidth &&
-            sameCells(sourceAligns, aligns.slice(0, header.length))
-          ) {
+            sameCells(sourceAligns, aligns.slice(0, header.length));
+          if (reuse && sameAligns) {
             lines.push(source.separator);
+          } else if (aligned) {
+            lines.push(alignedSeparator(widths, aligns, sepStyle));
           } else {
             const sep = header.map((_, i) => {
               const a = aligns[i];
@@ -463,9 +499,7 @@ export function blocksToMarkdown(blocks) {
             });
             lines.push("| " + sep.join(" | ") + " |");
           }
-          for (let r = 1; r < block.rows.length; r++) {
-            lines.push(lineFor(block.rows[r].length > 0 ? block.rows[r] : [""]));
-          }
+          for (let r = 1; r < rows.length; r++) lines.push(lineFor(r));
         }
         break;
       }

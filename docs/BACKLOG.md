@@ -176,8 +176,9 @@ none blocks the release. The shared question comes first because three candidate
   in it** (`/` is typed there constantly, in addresses, paths and dates, and the view is where
   the syntax is written by hand), and **no table alignment as you type** (padding every row
   when one cell grows is the rewrite the table preservation fix removed, and it moves text
-  under the caret). A candidate if hand-aligning pipes becomes a chore: an explicit **Tidy
-  table** command for the table under the caret, one undo entry, nothing changed unless asked.
+  under the caret). Tidy table shipped in the formatted view's cell menu (`CHANGELOG.md`); a
+  Tidy for the table under the caret in this view is the candidate if hand-aligning pipes here
+  becomes a chore.
 - **Local version history**, brought forward from Future (Tyr, 2026-09-24: version control
   matters). Undo reverses recent actions; history recovers older saved states: preview, restore,
   restore as a copy, and a restore keeps the current version. Snapshots in userData, never in

@@ -33,6 +33,7 @@ import {
   Code as LuCode,
   CodeXml as LuCodeXml,
   ClipboardPaste as LuClipboardPaste,
+  Columns3 as LuColumns3,
   Copy as LuCopy,
   ExternalLink as LuExternalLink,
   FileText as LuFileText,
@@ -181,6 +182,10 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+/** Tidy table: lines a table's columns up. */
+export const TidyTableIcon = ({ size = ICON_INLINE }) => (
+  <LuColumns3 {...base} {...navBase} size={size} />
+);
 /** A table column's alignment: the three text-align glyphs. */
 export const AlignStartIcon = ({ size = ICON_INLINE }) => (
   <LuTextAlignStart {...base} {...navBase} size={size} />

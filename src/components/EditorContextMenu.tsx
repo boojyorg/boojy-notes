@@ -13,6 +13,7 @@ import {
   OpenNoteIcon,
   PasteIcon,
   PencilIcon,
+  TidyTableIcon,
   TrashIcon,
   UnlinkIcon,
 } from "./Icons";
@@ -43,6 +44,8 @@ interface EditorContextMenuProps {
   onCut: () => void;
   onCopy: () => void;
   onPaste: () => void;
+  /** Given in a table cell whose columns are not lined up: lines them up. */
+  onTidyTable?: () => void;
   /** Given in a table cell: the table's own last item, under a rule. */
   onDeleteTable?: () => void;
   onClose: () => void;
@@ -65,7 +68,8 @@ interface Item {
  * did nothing at all (Electron supplies no menu) and a link's menu was a
  * hand-drawn list with no glyphs or keys.
  *
- * In a table cell it is the same menu, with Delete table last under a rule:
+ * In a table cell it is the same menu, with Tidy table (only while its
+ * columns are not lined up) and Delete table last under a rule:
  * the table's rows and columns are arranged from its grips (TableHandles),
  * and this is the one pointer path to removing the whole table.
  *
@@ -86,6 +90,7 @@ export default function EditorContextMenu({
   onCut,
   onCopy,
   onPaste,
+  onTidyTable,
   onDeleteTable,
   onClose,
 }: EditorContextMenuProps) {
@@ -147,12 +152,15 @@ export default function EditorContextMenu({
       disabled: !canPaste,
     },
   );
+  if (onTidyTable) {
+    items.push({ label: "Tidy table", icon: <TidyTableIcon />, action: onTidyTable, rule: true });
+  }
   if (onDeleteTable) {
     items.push({
       label: "Delete table",
       icon: <TrashIcon />,
       action: onDeleteTable,
-      rule: true,
+      rule: !onTidyTable,
       danger: true,
     });
   }

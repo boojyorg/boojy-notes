@@ -452,13 +452,13 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
     return blocksToMarkdown([{ ...table, ...change(table) }]).split("\n");
   };
 
-  it("an edited cell rewrites its own row and nothing else", () => {
+  it("an edited cell rewrites its own row and nothing else, lined up with the rest", () => {
     const out = edit(md, (t) => ({ rows: withCell(t.rows, 2, 1, "2.50") }));
     expect(out).toEqual([
       "| Name    | Amount |",
       "|:--------|-------:|",
       "| Coffee  |   3.20 |",
-      "| Tea | 2.50 |",
+      "| Tea     |   2.50 |",
       "| Cake    |   4.00 |",
     ]);
   });
@@ -466,7 +466,7 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
   it("an edited header cell keeps the separator as written", () => {
     const out = edit(md, (t) => ({ rows: withCell(t.rows, 0, 1, "Price") }));
     expect(out.slice(0, 3)).toEqual([
-      "| Name | Price |",
+      "| Name    |  Price |",
       "|:--------|-------:|",
       "| Coffee  |   3.20 |",
     ]);
@@ -478,7 +478,7 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
     }));
     expect(added.slice(2)).toEqual([
       "| Coffee  |   3.20 |",
-      "| Milk | 1.00 |",
+      "| Milk    |   1.00 |",
       "| Tea     |   2.10 |",
       "| Cake    |   4.00 |",
     ]);
@@ -494,7 +494,7 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
 
   it("a changed alignment rewrites the separator, and only it, keeping the other columns' cells", () => {
     const out = edit(md, () => ({ alignments: ["center", "right"] }));
-    expect(out[1]).toBe("| :---: | -------: |");
+    expect(out[1]).toBe("|:-------:|-------:|");
     expect(out[0]).toBe(md.split("\n")[0]);
     expect(out.slice(2)).toEqual(md.split("\n").slice(2));
   });
@@ -516,11 +516,11 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
       alignments: [...t.alignments, "left"],
     }));
     expect(out).toEqual([
-      "| Name | Amount |  |",
-      "| --- | ---: | --- |",
-      "| Coffee | 3.20 |  |",
-      "| Tea | 2.10 |  |",
-      "| Cake | 4.00 |  |",
+      "| Name    | Amount |     |",
+      "|:--------|-------:|-----|",
+      "| Coffee  |   3.20 |     |",
+      "| Tea     |   2.10 |     |",
+      "| Cake    |   4.00 |     |",
     ]);
   });
 
@@ -539,8 +539,95 @@ describe("a table keeps the lines it was written with (2026-09-24)", () => {
   });
 
   it("a table in the app's own spelling carries no source", () => {
-    const [table] = markdownToBlocks("| a | b |\n| --- | ---: |\n| 1 | 2 |");
+    const [table] = markdownToBlocks("| a   |    b |\n| --- | ---: |\n| 1   |    2 |");
     expect(table.tableSource).toBeUndefined();
+  });
+
+  it("an edit that widens a column re-pads every row; columns never narrow by themselves", () => {
+    const wide = edit(md, (t) => ({ rows: withCell(t.rows, 2, 0, "Tea with milk") }));
+    expect(wide).toEqual([
+      "| Name          | Amount |",
+      "|:--------------|-------:|",
+      "| Coffee        |   3.20 |",
+      "| Tea with milk |   2.10 |",
+      "| Cake          |   4.00 |",
+    ]);
+    const short = edit(md, (t) => ({ rows: withCell(t.rows, 2, 0, "T") }));
+    expect(short[3]).toBe("| T       |   2.10 |");
+    expect(short.filter((_, i) => i !== 3)).toEqual(md.split("\n").filter((_, i) => i !== 3));
+  });
+
+  it("a table written compact or by hand keeps its lines; an edited row takes the compact spelling", () => {
+    const compact = "| Name | Qty |\n| --- | --- |\n| Tea | 2 |\n| Milk | 1 |";
+    expect(edit(compact, (t) => ({ rows: withCell(t.rows, 1, 1, "20") }))).toEqual([
+      "| Name | Qty |",
+      "| --- | --- |",
+      "| Tea | 20 |",
+      "| Milk | 1 |",
+    ]);
+    const ragged = "| a | bb |\n|---|---|\n| 1 | 2 |";
+    expect(edit(ragged, (t) => ({ rows: withCell(t.rows, 1, 0, "one") }))).toEqual([
+      "| a | bb |",
+      "|---|---|",
+      "| one | 2 |",
+    ]);
+  });
+
+  it("a table the app makes is lined up, and a tidied one too (no source)", () => {
+    const made = blocksToMarkdown([
+      {
+        type: "table",
+        rows: [
+          ["Script", "What it does"],
+          ["`dev`", "Vite + Electron"],
+        ],
+        alignments: ["left", "center"],
+        text: "",
+      },
+    ]);
+    expect(made.split("\n")).toEqual([
+      "| Script |  What it does   |",
+      "| ------ | :-------------: |",
+      "| `dev`  | Vite + Electron |",
+    ]);
+    const [table] = markdownToBlocks("| a | b |\n| --- | --- |\n| long cell | 2 |");
+    const { tableSource: _, ...tidied } = table;
+    expect(blocksToMarkdown([tidied]).split("\n")).toEqual([
+      "| a         | b   |",
+      "| --------- | --- |",
+      "| long cell | 2   |",
+    ]);
+  });
+
+  it("an aligned table narrower than the app would make it keeps its widths, read and edited", () => {
+    const narrow = "| a  | b  |\n|----|----|\n| 1  | 2  |";
+    expect(blocksToMarkdown(markdownToBlocks(narrow))).toBe(narrow);
+    expect(edit(narrow, (t) => ({ rows: withCell(t.rows, 1, 0, "3") }))).toEqual([
+      "| a  | b  |",
+      "|----|----|",
+      "| 3  | 2  |",
+    ]);
+  });
+
+  it("counts wide characters and emoji as two columns, so they line up", () => {
+    const out = blocksToMarkdown([
+      {
+        type: "table",
+        rows: [
+          ["Word", "Note"],
+          ["日本", "🍵"],
+          ["tea", "ok"],
+        ],
+        alignments: ["left", "left"],
+        text: "",
+      },
+    ]);
+    expect(out.split("\n")).toEqual([
+      "| Word | Note |",
+      "| ---- | ---- |",
+      "| 日本 | 🍵   |",
+      "| tea  | ok   |",
+    ]);
   });
 });
 
@@ -913,7 +1000,9 @@ describe("a special block's Markdown is never structurally invalid (review 2026-
       },
     ];
     const md = blocksToMarkdown(blocks);
-    expect(md).toBe("| A | B |\n| --- | --- |\n| one<br>two | x |\n| three | y |");
+    expect(md).toBe(
+      "| A          | B   |\n| ---------- | --- |\n| one<br>two | x   |\n| three      | y   |",
+    );
     const [out, ...rest] = markdownToBlocks(md);
     expect(rest).toEqual([]);
     expect(out.rows).toEqual(blocks[0].rows);

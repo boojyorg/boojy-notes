@@ -111,7 +111,7 @@ describe("blocksToMarkdown", () => {
         ],
       },
     ]);
-    expect(result).toBe("| A | B |\n| --- | --- |\n| 1 | 2 |");
+    expect(result).toBe("| A   | B   |\n| --- | --- |\n| 1   | 2   |");
   });
 
   it("handles empty text gracefully", () => {
