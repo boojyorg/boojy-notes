@@ -245,4 +245,45 @@ describe("the application menu", () => {
     );
     vi.useRealTimers();
   });
+
+  it("tells the menu a table column's alignment, and never blinks it off as focus crosses cells", () => {
+    vi.useFakeTimers();
+    const deps = makeDeps({
+      noteData: {
+        n1: {
+          title: "A",
+          content: {
+            blocks: [
+              {
+                id: "t1",
+                type: "table",
+                rows: [["a", "b"]],
+                alignments: ["left", "right"],
+                text: "",
+              },
+            ],
+          },
+        },
+      },
+    });
+    const host = document.createElement("div");
+    host.innerHTML = `<div data-editor contenteditable="true"><div data-block-id="t1" data-block-type="table" contenteditable="false">
+      <table><tbody><tr><td contenteditable="true">a</td><td contenteditable="true">b</td></tr></tbody></table>
+    </div></div>`;
+    document.body.appendChild(host);
+    const [a, b] = host.querySelectorAll("td");
+    renderHook(() => useAppKeyboard(deps));
+    act(() => a.focus());
+    expect(api.setMenuState).toHaveBeenLastCalledWith(expect.objectContaining({ align: "left" }));
+
+    // An arrow key into the next cell moves focus, with nothing focused for
+    // an instant between; the menu must not rebuild without Align there.
+    api.setMenuState.mockClear();
+    act(() => b.focus());
+    act(() => vi.advanceTimersByTime(200));
+    const aligns = api.setMenuState.mock.calls.map(([state]) => state.align);
+    expect(aligns).not.toContain(null);
+    expect(api.setMenuState).toHaveBeenLastCalledWith(expect.objectContaining({ align: "right" }));
+    vi.useRealTimers();
+  });
 });

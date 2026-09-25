@@ -240,14 +240,23 @@ export function useAppKeyboard({
       clearTimeout(timer);
       timer = setTimeout(publish, 120);
     };
+    // Focus arriving is told at once; focus leaving waits a beat, because
+    // focus moving from one field to the next (an arrow key between table
+    // cells) passes through nothing focused, and told at once that instant
+    // rebuilt the menu bar twice a keystroke, a visible flicker. The arrival
+    // publishes first and the late one finds nothing changed.
+    const arrive = () => {
+      clearTimeout(timer);
+      publish();
+    };
     publish();
-    document.addEventListener("focusin", publish);
-    document.addEventListener("focusout", publish);
+    document.addEventListener("focusin", arrive);
+    document.addEventListener("focusout", soon);
     document.addEventListener("selectionchange", soon);
     return () => {
       clearTimeout(timer);
-      document.removeEventListener("focusin", publish);
-      document.removeEventListener("focusout", publish);
+      document.removeEventListener("focusin", arrive);
+      document.removeEventListener("focusout", soon);
       document.removeEventListener("selectionchange", soon);
     };
   }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView]);
