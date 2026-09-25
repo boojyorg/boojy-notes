@@ -246,6 +246,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           state.sidebarVisible ? "Hide Sidebar" : "Show Sidebar",
           "CmdOrCtrl+\\",
         ),
+        // Moves the keyboard into the sidebar's tree; Escape there comes back.
+        item("goToSidebar", "Go to Sidebar", isMac ? "Ctrl+Cmd+S" : "Ctrl+Alt+S"),
         { type: "separator" },
         // The note as its file, and back: says what it will do, as the
         // sidebar item does, because a view is switched where a format is

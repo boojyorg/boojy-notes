@@ -1065,6 +1065,8 @@ export default function BoojyNotes() {
             clearSelection={clearSelection}
             isMobile={isMobile}
             onOpenSearch={openSearch}
+            deleteNote={confirmDeleteNote}
+            deleteFolder={confirmDeleteFolder}
           />
           {isMobile && !activeNote && (
             <FloatingActionButton

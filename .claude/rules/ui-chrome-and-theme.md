@@ -86,7 +86,8 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   by `aria-label`. `chrome-tooltips.spec.ts`.
 - **Shell keys**: `⌘N`, `⇧⌘N`, `⌘P` Search, `⌘K` link (never Search), `⌘,`, `⌘\` sidebar, `⌘/`
   Markdown view, `⌘Z`/`⇧⌘Z`, `⌘±0` UI scale, `⇧⌘L`/`E`/`R` align the caret's table column
-  (claimed only in a cell; dev's Force Reload moved off `⇧⌘R`). Sort has none.
+  (claimed only in a cell; dev's Force Reload moved off `⇧⌘R`), `⌃⌘S` Go to Sidebar (`⇧⌘E` is
+  Align Centre). Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and sticky
   block are `inert` (the whole column broke double-click rename). `header-controls.spec.ts`.
@@ -174,6 +175,11 @@ duration. `sidebar-motion.spec.ts`.
   once.
 - One `role="tree"`, the Notes row a sibling (axe). Folders first, alphabetical; the root is a
   folder.
+- **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
+  `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
+  carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
+  row's menu, Escape back to the note (not while a menu or dialog is open). Focus returns to the
+  row after a rename and to its neighbour after a delete. `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
   reference when already sorted.

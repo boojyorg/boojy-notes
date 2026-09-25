@@ -698,3 +698,38 @@ export function focusTitleEnd() {
   sel.removeAllRanges();
   sel.addRange(range);
 }
+
+/**
+ * Into the sidebar from anywhere (⌃⌘S, View → Go to Sidebar): the tree's one
+ * Tab stop, else New note when the vault holds no rows. False if neither is
+ * showing yet (the sidebar is still inert on its way in).
+ */
+export function focusSidebar() {
+  const target =
+    document.querySelector('[role="tree"] [tabindex="0"]') ??
+    document.querySelector(".sidebar-action-row");
+  if (!(target instanceof HTMLElement) || target.closest("[inert]")) return false;
+  target.focus({ preventScroll: false });
+  return target === document.activeElement;
+}
+
+/**
+ * Back to the note from outside it (Escape in the sidebar tree): the
+ * Markdown view's field, else the editor where the caret was, else the name.
+ * The caret is the document's selection, which a press on a sidebar row
+ * leaves in place, so focusing the editor puts it back where it was.
+ */
+export function focusNote() {
+  const source = document.querySelector(".source-field");
+  if (source instanceof HTMLElement) {
+    source.focus({ preventScroll: true });
+    return;
+  }
+  const editor = document.querySelector("[data-editor]");
+  const anchor = window.getSelection()?.anchorNode;
+  if (editor instanceof HTMLElement && anchor && editor.contains(anchor)) {
+    editor.focus({ preventScroll: true });
+    return;
+  }
+  focusTitleEnd();
+}
