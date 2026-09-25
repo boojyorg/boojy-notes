@@ -32,7 +32,7 @@ export const NIGHT = {
   TEXT: {
     primary: "#E7E6E5", // 13.9:1 on the sheet; one step warm (three read cream, judged live 2026-09-14)
     secondary: "#ACABAA", // 7.0:1 on the sidebar
-    muted: "#8D8C8B", // 4.7:1 on the sidebar
+    muted: "#969594", // 4.6:1 on a hovered row, its lowest ground (2026-09-25)
   },
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with DAY
@@ -42,7 +42,8 @@ export const NIGHT = {
   },
   SEMANTIC: {
     warning: "#FFC107",
-    error: "#FF5722",
+    error: "#FF6B3D", // 4.9:1 on a hovered row (a hovered Delete)
+    onError: ON_MARK_TEXT, // the danger button's label: white on this orange is 2.8:1
   },
   scrollbar: {
     thumb: "#313131",
@@ -154,7 +155,7 @@ export const DAY = {
   TEXT: {
     primary: "#14110F", // 18.3:1 on ground
     secondary: "#47403A", // 9.9:1
-    muted: "#7A736C", // 4.6:1
+    muted: "#6F6861", // 4.6:1 on a hovered row, its lowest ground (2026-09-25)
   },
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with NIGHT
@@ -163,8 +164,9 @@ export const DAY = {
     onAccentText: ON_MARK_TEXT,
   },
   SEMANTIC: {
-    warning: "#D4920A",
-    error: "#D43030",
+    warning: "#B07808", // a toast's glyph, never words: 3.2:1 on a hovered row
+    error: "#C62D2D", // 4.7:1 on a hovered row
+    onError: "#FFFFFF", // 5.5:1
   },
   scrollbar: {
     // thumb matches BG.divider on purpose — that is the resting grey the app has

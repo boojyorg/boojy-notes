@@ -137,9 +137,9 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
               borderRadius: 8,
               border: "none",
               background: confirmBg,
-              // danger uses SEMANTIC.error (dark in both themes) under white;
-              // the mark takes the dark label ink (2:1 for white on the teal).
-              color: danger ? "#fff" : theme.ACCENT.onAccentText,
+              // Each ground takes the label ink that reads on it (white on the
+              // teal is 2:1, and on Dark's orange 2.8:1).
+              color: danger ? theme.SEMANTIC.onError : theme.ACCENT.onAccentText,
               fontSize: 13,
               fontWeight: 600,
               fontFamily: "inherit",

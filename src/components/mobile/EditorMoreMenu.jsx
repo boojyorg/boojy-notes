@@ -196,7 +196,7 @@ export default function EditorMoreMenu({
                 borderRadius: 8,
                 border: "none",
                 background: theme.SEMANTIC.error,
-                color: "#fff",
+                color: theme.SEMANTIC.onError,
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",

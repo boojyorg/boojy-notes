@@ -937,6 +937,7 @@ export default function BoojyNotes() {
   return (
     <div
       data-testid="app-ground"
+      className="theme-fade"
       style={{
         width: "100%",
         height: `${10000 / uiScale}vh`,

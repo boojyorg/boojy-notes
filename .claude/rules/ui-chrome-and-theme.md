@@ -15,7 +15,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected (hover previews
   selection), `BG.divider` borders. Text is `primary` / `secondary` / `muted`.
-- **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, rings, markers);
+- **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
   `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
@@ -23,8 +23,13 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   selection.
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
-- Known leaks: black alphas in some tokens, hand-picked callout/syntax colours, `#fff` on the
-  danger `ConfirmDialog` (deliberate).
+- **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
+  hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
+  `SEMANTIC.onError`). `themeContrast.test.js`; axe checks the components, contrast on, both
+  themes: `e2e/accessibility.spec.ts`.
+- **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
+  tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
+- Known leaks: black alphas in some tokens, hand-picked callout/syntax colours.
 
 ## Toasts
 
