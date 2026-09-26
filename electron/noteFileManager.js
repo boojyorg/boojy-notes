@@ -613,7 +613,15 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     const realPath = path.join(path.dirname(finalPath), realBasename(finalPath));
     _idIndex[note.id] = path.relative(notesDir, realPath);
     // The atomic write made a new inode; the note's identity is that file now.
-    recordIdentity(note.id, fs.statSync(realPath), bodyMd);
+    // The file can be gone already, deleted outside the app the moment it
+    // landed. The write still happened, so it still answers as done: thrown,
+    // the renderer kept the note dirty and its retry wrote the deleted file
+    // back. With no identity, the watcher's unlink is the delete it is.
+    try {
+      recordIdentity(note.id, fs.statSync(realPath), bodyMd);
+    } catch {
+      _identity.delete(note.id);
+    }
     saveIndex(notesDir);
     history.recordWrite(note.id, bodyMd);
 
