@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -26,17 +27,26 @@ import path from "node:path";
  * from the process umask alone: a temp file a crash left under the same name
  * is removed first rather than reopened, or its mode would be the new file's.
  * Only the nine permission bits are kept; setuid, setgid and sticky mean
- * nothing on a text file. Birthtime and extended attributes (Finder tags) are
- * not carried over; that is a separate decision (backlog).
+ * nothing on a text file.
+ *
+ * On macOS the rest of what Finder shows is kept too: the temp file starts as
+ * `cp -p` of the file it replaces (Finder tags and other extended attributes,
+ * ACLs, the created date), then takes the new text. Node has no xattr API,
+ * and `cp` costs ~2 ms a save. A symlinked note is written through to its
+ * target, so the link survives the save (the rename would replace it with a
+ * plain file).
  */
 export const tempPathFor = (filePath: string): string =>
   path.join(path.dirname(filePath), `.~${path.basename(filePath)}.tmp`);
 
 export function writeFileAtomic(filePath: string, data: string, modeFrom = filePath): void {
+  const sameTarget = modeFrom === filePath;
+  filePath = throughSymlink(filePath);
+  if (sameTarget) modeFrom = filePath;
   const tmpPath = tempPathFor(filePath);
   const mode = existingMode(modeFrom);
   fs.rmSync(tmpPath, { force: true });
-  const fd = fs.openSync(tmpPath, "w");
+  const fd = openCarrying(modeFrom, tmpPath, mode !== null);
   try {
     if (mode !== null) fs.fchmodSync(fd, mode);
     fs.writeSync(fd, data, null, "utf-8");
@@ -57,6 +67,34 @@ export function writeFileAtomic(filePath: string, data: string, modeFrom = fileP
   } catch {
     /* directory fsync unsupported on this platform */
   }
+}
+
+/** The file a symlink at `p` points to (a link to a link, to the last); `p` otherwise. */
+function throughSymlink(p: string): string {
+  try {
+    return fs.lstatSync(p).isSymbolicLink() ? fs.realpathSync(p) : p;
+  } catch {
+    return p;
+  }
+}
+
+/**
+ * The temp file, open for the new text: on macOS a `cp -p` of the file it
+ * replaces, emptied, so its attributes and created date come along; anywhere
+ * else, or when the copy fails, a new file.
+ */
+function openCarrying(source: string, tmpPath: string, sourceExists: boolean): number {
+  if (process.platform === "darwin" && sourceExists) {
+    try {
+      execFileSync("/bin/cp", ["-p", source, tmpPath], { stdio: "ignore" });
+      const fd = fs.openSync(tmpPath, "r+");
+      fs.ftruncateSync(fd, 0);
+      return fd;
+    } catch {
+      fs.rmSync(tmpPath, { force: true });
+    }
+  }
+  return fs.openSync(tmpPath, "w");
 }
 
 /** The permission bits of the regular file at `p`, or null when there is none to keep. */
