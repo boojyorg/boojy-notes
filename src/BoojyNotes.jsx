@@ -39,7 +39,8 @@ import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
-import { useToast } from "./hooks/useToast";
+import { toastPersists, useToast } from "./hooks/useToast";
+import { useSavePoint } from "./hooks/useSavePoint";
 import UiScaleChip from "./components/UiScaleChip";
 import { atScale } from "./utils/uiScale";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
@@ -71,7 +72,7 @@ const TOUCH_LAYOUT = false;
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
-  const { toasts, showToast, dismissToast } = useToast();
+  const { toasts, showToast, dismissToast, holdToast, updateToast } = useToast();
   const touchDevice = useIsMobile();
   const isMobile = TOUCH_LAYOUT && touchDevice;
   const mobileKeyboard = useKeyboard();
@@ -251,6 +252,17 @@ export default function BoojyNotes() {
     remapNoteFolders,
   });
   useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
+  const savePoint = useSavePoint({
+    activeNote,
+    activeNoteRef,
+    flushToDisk,
+    noteDataRef,
+    unflushedNotes,
+    toasts,
+    showToast,
+    updateToast,
+    holdToast,
+  });
   const revealVault = useCallback(() => {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
@@ -961,6 +973,7 @@ export default function BoojyNotes() {
     openVaultMenu,
     switchVault,
     vaults,
+    savePoint,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
@@ -1443,6 +1456,25 @@ export default function BoojyNotes() {
               icon={t.icon}
               theme={theme}
               onDismiss={() => dismissToast(t.id)}
+              nameable={!!t.nameable}
+              editing={!!t.editing}
+              onHold={(held) => {
+                if (!toastPersists(t.kind) && !t.editing) holdToast(t.id, held);
+              }}
+              onStartEditing={() => {
+                holdToast(t.id, true);
+                updateToast(t.id, { editing: true });
+              }}
+              onEndEditing={(name) => {
+                if (name) t.nameable?.onCommit(name);
+                updateToast(
+                  t.id,
+                  name
+                    ? { editing: false, message: name, nameable: undefined }
+                    : { editing: false },
+                );
+                holdToast(t.id, false);
+              }}
             />
           ))}
         </div>

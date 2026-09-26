@@ -93,6 +93,23 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 **path, never the host** (Chromium refuses spaces and brackets in a host), served only through
 `insideVault`. `attachment-names.spec.ts`.
 
+## Version history keeps what the file held
+
+- **A version is the file's text, taken where it is written or read** (`electron/history.ts`,
+  fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
+  back what the file was. Kept outside the vault (`userData/history/`): gzipped texts named by
+  hash, an append-only log per note id.
+- **What makes one**: a session's end (the note left, the window closed, 30 minutes without a
+  write; within the hour it replaces the last session's), a note's text before its first edit,
+  and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
+  point (`useSavePoint`). Nothing unchanged is kept twice. None is announced but `⌘S`'s, the
+  one toast whose words are a button: they open its name field, as `⌘S` again does.
+- **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
+  Autosave makes it a save point. A deleted note keeps its last text for 30 days. History off
+  keeps nothing new; turning it off with Delete removes the texts at once.
+- **A note renamed while the app was closed keeps its id** when it holds exactly the text its
+  history last kept (`_adoptable`). `version-store.spec.ts`, `history.test.ts`.
+
 ## Tracing
 
 `BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`) logs watcher

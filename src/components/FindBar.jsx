@@ -1,3 +1,4 @@
+import { getAPI } from "../services/apiProvider";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
@@ -197,6 +198,9 @@ export default function FindBar({
 
   const handleReplaceAll = useCallback(() => {
     if (matches.length === 0 || !searchTerm) return;
+    // The note as its file holds it, kept in its history before every match
+    // changes at once (the write that follows is at least a debounce away).
+    getAPI()?.history?.mark(noteId, "Before Replace All");
     const touched = new Map();
     // Ranges are live: editing one adjusts the others in the same text node,
     // so document order is safe.
@@ -208,7 +212,7 @@ export default function FindBar({
     }
     for (const [blockIndex, el] of touched) readBack(blockIndex, el);
     findMatches(searchTerm);
-  }, [matches, searchTerm, replaceTerm, blockOf, findMatches, readBack]);
+  }, [matches, searchTerm, replaceTerm, blockOf, findMatches, readBack, noteId]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {

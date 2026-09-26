@@ -59,6 +59,7 @@ import {
   Heading4 as LuHeading4,
   Heading5 as LuHeading5,
   Heading6 as LuHeading6,
+  History as LuHistory,
   Image as LuImage,
   Info as LuInfo,
   Italic as LuItalic,
@@ -366,6 +367,7 @@ export const FormatIcon = ({ name, size = ICON_INLINE }) => {
 // with a mark beside it, not a control.
 const TOAST_GLYPHS = {
   check: LuCheck,
+  history: LuHistory,
   trash: LuTrash,
   info: LuInfo,
   warning: LuTriangleAlert,

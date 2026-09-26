@@ -20,11 +20,16 @@ export interface ToastItem {
    * saving works again is what ends it.
    */
   key?: string;
+  /** A receipt whose words can be clicked to give the thing it names a name (⌘S's save point). */
+  nameable?: { onCommit: (name: string) => void };
+  /** Its name field is open: it waits, whatever its kind, until the field closes. */
+  editing?: boolean;
 }
 
 export interface ToastOptions {
   icon?: string;
   key?: string;
+  nameable?: ToastItem["nameable"];
 }
 
 /** How long a receipt stays: long enough to read a name in it, no longer. */
@@ -45,9 +50,9 @@ export function useToast() {
   }, []);
 
   const showToast = useCallback(
-    (message: string, kind: ToastKind = "error", { icon, key }: ToastOptions = {}) => {
+    (message: string, kind: ToastKind = "error", { icon, key, nameable }: ToastOptions = {}) => {
       const id = Date.now() + Math.random();
-      const toast: ToastItem = { id, message, kind, icon, key };
+      const toast: ToastItem = { id, message, kind, icon, key, nameable };
       setToasts((prev) => (key ? prev.filter((t) => t.key !== key) : prev).concat(toast));
       if (!toastPersists(kind)) {
         timers.current.set(
@@ -62,6 +67,25 @@ export function useToast() {
 
   const dismissToast = drop;
 
+  /** A receipt waits while it is pointed at or being named, and fades on its own clock after. */
+  const holdToast = useCallback(
+    (id: number, held: boolean) => {
+      const timer = timers.current.get(id);
+      if (timer) clearTimeout(timer);
+      timers.current.delete(id);
+      if (!held)
+        timers.current.set(
+          id,
+          setTimeout(() => drop(id), DONE_MS),
+        );
+    },
+    [drop],
+  );
+
+  const updateToast = useCallback((id: number, patch: Partial<ToastItem>) => {
+    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
   useEffect(
     () => () => {
       for (const timer of timers.current.values()) clearTimeout(timer);
@@ -70,5 +94,5 @@ export function useToast() {
     [],
   );
 
-  return { toasts, showToast, dismissToast };
+  return { toasts, showToast, dismissToast, holdToast, updateToast };
 }

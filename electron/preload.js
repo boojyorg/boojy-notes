@@ -40,6 +40,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),
+  history: {
+    savePoint: (noteId) => ipcRenderer.invoke("history-save-point", noteId),
+    name: (noteId, versionId, name) => ipcRenderer.invoke("history-name", noteId, versionId, name),
+    mark: (noteId, reason) => ipcRenderer.invoke("history-mark", noteId, reason),
+    leave: (noteId) => ipcRenderer.invoke("history-leave", noteId),
+    list: (noteId) => ipcRenderer.invoke("history-list", noteId),
+    read: (noteId, versionId) => ipcRenderer.invoke("history-read", noteId, versionId),
+    remove: (noteId, versionId) => ipcRenderer.invoke("history-delete", noteId, versionId),
+    setOff: (noteId, off, keep) => ipcRenderer.invoke("history-set-off", noteId, off, keep),
+  },
   // A file that is not a note, by its vault-relative path.
   trashFile: (relPath) => ipcRenderer.invoke("trash-file", relPath),
 
