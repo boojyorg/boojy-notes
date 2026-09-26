@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -187,6 +188,62 @@ describe.skipIf(process.platform === "win32")("write-note — the file's permiss
     expect(fs.readFileSync(filePath, "utf-8")).toBe("new");
     expect(modeOf(filePath).toString(8)).toBe(referenceMode().toString(8));
     expect(modeOf(path.join(notesDir, "Other.md")).toString(8)).toBe("600");
+  });
+});
+
+describe.skipIf(process.platform !== "darwin")(
+  "write-note — what Finder shows about a file",
+  () => {
+    const xattr = (...args) => execFileSync("/usr/bin/xattr", args, { encoding: "utf-8" }).trim();
+    const TAGS = "com.apple.metadata:_kMDItemUserTags";
+    const save = (text, title = "Tagged") =>
+      writeNote({ id: "note-1-aaaa", title, content: { blocks: [{ type: "p", text }] } });
+
+    it("keeps Finder tags and the created date across a save", () => {
+      const { filePath } = save("one");
+      xattr("-w", TAGS, '("Red\n6")', filePath);
+      const old = new Date("2020-01-01T00:00:00Z");
+      fs.utimesSync(filePath, old, old); // an earlier mtime moves the birthtime back too
+      const born = fs.statSync(filePath).birthtimeMs;
+
+      save("two");
+
+      expect(fs.readFileSync(filePath, "utf-8")).toBe("two");
+      expect(xattr("-p", TAGS, filePath)).toBe('("Red\n6")');
+      expect(fs.statSync(filePath).birthtimeMs).toBe(born);
+      expect(fs.statSync(filePath).mtimeMs).toBeGreaterThan(old.getTime());
+    });
+
+    it("carries the tags to the new name when the note is renamed", () => {
+      const { filePath } = save("one");
+      xattr("-w", TAGS, '("Blue\n4")', filePath);
+      const renamed = save("one", "Renamed");
+      expect(fs.existsSync(filePath)).toBe(false);
+      expect(xattr("-p", TAGS, renamed.filePath)).toBe('("Blue\n4")');
+    });
+  },
+);
+
+describe.skipIf(process.platform === "win32")("write-note — a symlinked note", () => {
+  it("writes through the link to its target, and the link stays a link", () => {
+    const { filePath } = writeNote({
+      id: "note-1-aaaa",
+      title: "Linked",
+      content: { blocks: [{ type: "p", text: "one" }] },
+    });
+    const target = path.join(indexDir, "elsewhere.md");
+    fs.renameSync(filePath, target);
+    fs.symlinkSync(target, filePath);
+
+    writeNote({
+      id: "note-1-aaaa",
+      title: "Linked",
+      content: { blocks: [{ type: "p", text: "two" }] },
+    });
+
+    expect(fs.lstatSync(filePath).isSymbolicLink()).toBe(true);
+    expect(fs.readFileSync(target, "utf-8")).toBe("two");
+    expect(fs.readdirSync(indexDir).filter((f) => f.endsWith(".tmp"))).toEqual([]);
   });
 });
 
