@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { watch } from "chokidar";
+import { watchTree } from "./treeWatcher.js";
 import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
 import { trace, traceEnabled } from "./trace.js";
 
@@ -43,7 +43,7 @@ const FOLDERS_CHANGED_DEBOUNCE_MS = 300;
 let foldersChangedTimer = null;
 
 /**
- * Start (or restart) the chokidar file watcher on the notes directory.
+ * Start (or restart) the file watcher on the notes directory.
  * Sends `file-changed` / `file-deleted` events to the renderer.
  */
 function startWatcher(getNotesDir, getMainWindow) {
@@ -58,11 +58,15 @@ function startWatcher(getNotesDir, getMainWindow) {
   ownTrees.clear();
   ownBytes.clear();
 
-  watcher = watch(notesDir, {
-    ignoreInitial: true,
-    awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 50 },
+  // One watch for the whole vault (treeWatcher: one FSEvents stream), never
+  // one open file per note. A file is reported once it has held still for
+  // 300 ms, so a save in flight is never read half-written.
+  watcher = watchTree(notesDir, {
+    stabilityMs: 300,
+    pollMs: 50,
     ignored: (filePath) => isIgnoredPath(notesDir, filePath),
   });
+  watcher.on("error", (error) => trace("M", "watcher error", String(error)));
 
   if (traceEnabled) {
     watcher.on("all", (event, filePath) => {

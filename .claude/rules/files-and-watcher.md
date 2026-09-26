@@ -15,14 +15,16 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 
 ## The watcher drops only an event it can trace to the app's own operation
 
-`electron/fileWatcher.js`, never decided on the clock alone:
+`electron/fileWatcher.js`, never decided on the clock alone. **One watch for the whole vault**
+(`treeWatcher.ts`, a recursive `fs.watch`), never a file open per note (it blocked iCloud
+eviction). `watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
-  is the echo, however late (macOS sends a metadata `change` up to ~3 s after). The claim ends at
+  is the echo, however late (macOS sends a metadata `change` ~3 s after). The claim ends at
   the first event showing other bytes or the file gone. **Don't replace the bytes with a timer.**
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. An
   unclaimed unlink is real, however soon.
-- A folder rename, removal or copy is the one timed suppression (`claimTree`, 1.5 s).
+- A folder rename, removal or copy is the one timed suppression (`claimTree`).
 - `watcher-ownership.spec.ts`.
 - **A vault in a sync folder**: a version renamed over a note is an outside edit, a sync
   client's conflicted copy is its own note, `Icon\r` is OS clutter, and the save's temp file
@@ -60,9 +62,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
 - Rename and move are one `renameSync`, after flushing pending edits under the folder; not an
   edit, not undoable. Delete waits for the Trash flush. A folder outlives its notes.
-- Duplicate folder is one directory copy (`Name (copy)`); the copies are adopted from disk with
-  fresh ids via `applyExternalNote`, nothing dirty. The copy is revealed and pill-marked in the
-  sidebar, never toasted.
+- Duplicate folder is one directory copy (`Name (copy)`); the copies are adopted from disk
+  (fresh ids), nothing dirty. Revealed and pill-marked, never
+  toasted.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
 - **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults` lists them;
   `add-vault` adds from the native picker without switching; `open-vault` takes only a listed,
@@ -110,7 +112,7 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
   Autosave makes it a save point. A deleted note keeps its last text for 30 days. History off
   keeps nothing new; turning it off with Delete removes the texts at once.
-- **The list is the ··· menu in place** (`VersionHistoryList`, `useVersionHistory`). A chosen
+- **The list is the ··· menu in place** (`VersionHistoryList`). A chosen
   version shows read-only in the note (`PastVersionView`: the real blocks, painted from a ref
   holding only the version; every edit is stopped and asks), with a pill in the `</>` slot.
   A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z
@@ -120,6 +122,5 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 
 ## Tracing
 
-`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`) logs watcher
-events, saves, reloads, keystrokes, caret moves and repaints from both processes on one clock.
-Quit the installed app first. `syncGeneration` is editor plumbing, not cloud sync.
+`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`, installed app quit)
+logs both processes on one clock. `syncGeneration` is editor plumbing, not cloud sync.
