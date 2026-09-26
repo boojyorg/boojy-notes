@@ -724,20 +724,11 @@ ${tagPillCss(theme)}
         .empty-block {
           position: relative;
         }
-        /* Placeholder shows only while the first block is visually empty.
-           An "empty" contentEditable block holds a single <br> (set in
-           EditableBlock for caret placement), so match that — and also a
-           truly-empty node. As soon as real text is typed, neither matches
-           and the placeholder hides immediately (no dependency on the
-           debounced block.text, which was the cause of it lingering). */
-        .empty-block:empty::before {
-          content: attr(data-placeholder);
-          color: ${theme.TEXT.muted};
-          opacity: 0.4;
-          position: absolute;
-          pointer-events: none;
-        }
-        .empty-block:has(> br:only-child)::before {
+        /* Placeholder shows only while the first block holds no text:
+           \`data-empty\`, kept by EditableBlock from the live DOM, so it hides
+           on the keystroke (never the debounced block.text, which lingered).
+           Not \`:has(> br:only-child)\`: a soft break is one <br> too. */
+        .empty-block[data-empty]::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
           opacity: 0.4;

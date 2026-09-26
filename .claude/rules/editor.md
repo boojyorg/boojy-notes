@@ -133,7 +133,9 @@ app's, made through state.**
 - **Block triggers wait for their space, and Enter does what the space does**
   (`utils/blockTriggers.ts`): `# `, `- `, `1. `, `> `, `[] `, ` ``` `, `--- `, `||| `, `![] `.
   The marker carries an argument (fence language, pipe count = columns + 1), which a trigger
-  firing on its last character could never read.
+  firing on its last character could never read. **A line kind's marker typed before a
+  one-line paragraph's text converts it too** (`LINE_MARKER_RE`); Cmd+Z gives the literal
+  back. `marker-on-text.spec.ts`.
 
 ## The selection toolbar waits for the selection to finish
 
@@ -152,8 +154,7 @@ app's, made through state.**
 
 - `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only);
   in a table cell (its own host and text) Delete table last. Media and code keep their own.
-- **Items run the keys' own path**: restore the captured range, then `execCommand` or the
-  `paste` IPC, writing exactly what ⌘X/⌘C/⌘V do.
+- **Items run the keys' own path** (the captured range, then `execCommand` or `paste` IPC).
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`): outside the selection selects the
   word, inside keeps it, on no word places the caret. **The menu never takes focus**: it listens
   in document capture, so the selection stays the ordinary blue. `text-context-menu.spec.ts`.
@@ -195,11 +196,10 @@ app's, made through state.**
 ## Headings
 
 H1–H6 are native heading elements on one editing path; type and margins from `headingStyle`
-(`tokens/rhythm.ts`: much more space above than below). **Every editor spacing value lives in
+(`tokens/rhythm.ts`). **Every editor spacing value lives in
 `DEFAULT_RHYTHM`**, read through `useRhythm`; `?tweak` / `pnpm dev:tweak` drags it live. New headings
 are ATX; imported spacing and closers live in `headingSource`. Setext is deferred. An empty
-heading shows `Heading N` via a CSS `data-placeholder` pseudo-element (never in the file),
-focused or not. `heading-placeholder.spec.ts`.
+heading shows `Heading N` from CSS (never in the file). `heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file, edited as typing
 
