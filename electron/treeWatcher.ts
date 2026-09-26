@@ -46,6 +46,16 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
   const known = new Map<string, Entry>();
   const pending = new Map<string, ReturnType<typeof setTimeout>>();
   let closed = false;
+  // Recursive watching is native on macOS (FSEvents) and Windows: one stream.
+  // Elsewhere (Linux) Node emulates it by watching every file, which loses a
+  // file the moment a save renames a new copy over it; there each directory
+  // is watched on its own instead, which sees every entry in it change.
+  // BOOJY_WATCH_PER_DIRECTORY forces the per-directory way anywhere, so it
+  // can be tested on a Mac.
+  const native =
+    !process.env.BOOJY_WATCH_PER_DIRECTORY &&
+    (process.platform === "darwin" || process.platform === "win32");
+  const dirWatchers = new Map<string, fs.FSWatcher>();
 
   const emit = (event: string, p: string) => {
     emitter.emit(event, p);
@@ -93,6 +103,7 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
       if (st.isDirectory()) {
         if (d.isSymbolicLink()) continue; // never walk into a link: a loop
         known.set(p, entryOf(st));
+        watchDir(p);
         if (report) emit("addDir", p);
         scan(p, report);
       } else if (st.isFile()) {
@@ -111,6 +122,7 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
     }
     for (const k of under.filter((k) => known.get(k)?.dir).sort((a, b) => b.length - a.length)) {
       known.delete(k);
+      unwatchDir(k);
       emit("unlinkDir", k);
     }
   };
@@ -125,6 +137,7 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
       if (prev.dir) {
         goneUnder(p);
         known.delete(p);
+        unwatchDir(p);
         emit("unlinkDir", p);
       } else {
         known.delete(p);
@@ -139,6 +152,7 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
           emit("unlink", p);
         }
         known.set(p, entryOf(st));
+        watchDir(p);
         emit("addDir", p);
         scan(p, true);
         return;
@@ -196,14 +210,33 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
     pending.set(p, setTimeout(check, stabilityMs));
   };
 
-  scan(root, false);
-  const fsWatcher = fs.watch(root, { recursive: true }, (_type, filename) => {
+  const onEvent = (base: string) => (_type: string, filename: string | Buffer | null) => {
     if (closed || !filename) return;
-    const p = path.join(root, filename.toString());
+    const p = path.join(base, filename.toString());
     if (ignored(p)) return;
     schedule(p);
-  });
-  fsWatcher.on("error", (error) => emitter.emit("error", error));
+  };
+
+  function watchDir(dir: string) {
+    if (native || closed || dirWatchers.has(dir)) return;
+    try {
+      const w = fs.watch(dir, onEvent(dir));
+      w.on("error", () => unwatchDir(dir));
+      dirWatchers.set(dir, w);
+    } catch {
+      /* gone already; its parent reports it */
+    }
+  }
+
+  function unwatchDir(dir: string) {
+    dirWatchers.get(dir)?.close();
+    dirWatchers.delete(dir);
+  }
+
+  const fsWatcher = native ? fs.watch(root, { recursive: true }, onEvent(root)) : null;
+  fsWatcher?.on("error", (error) => emitter.emit("error", error));
+  watchDir(root);
+  scan(root, false);
 
   const api: TreeWatcher = {
     on(event, listener) {
@@ -214,7 +247,9 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
       closed = true;
       for (const t of pending.values()) clearTimeout(t);
       pending.clear();
-      fsWatcher.close();
+      fsWatcher?.close();
+      for (const w of dirWatchers.values()) w.close();
+      dirWatchers.clear();
       emitter.removeAllListeners();
       return Promise.resolve();
     },
