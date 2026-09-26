@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type ToastKind, toastPersists } from "../hooks/useToast";
 import { CloseIcon, ToastIcon } from "./Icons";
 
@@ -16,6 +16,13 @@ interface ToastProps {
   icon?: string;
   onDismiss: () => void;
   theme: ToastTheme;
+  /** Its words name something the user can name (a save point): click them to type one. */
+  nameable?: boolean;
+  editing?: boolean;
+  onStartEditing?: () => void;
+  onEndEditing?: (name: string | null) => void;
+  /** Pointed at: a receipt waits rather than fading under the pointer. */
+  onHold?: (held: boolean) => void;
 }
 
 /** The mark a kind carries when the message does not ask for its own. */
@@ -48,17 +55,66 @@ function markColour(kind: ToastKind, theme: ToastTheme): string {
  * out and the message can be selected and copied rather than being a click
  * target the user may not have finished reading.
  */
-export default function Toast({ message, kind = "error", icon, onDismiss, theme }: ToastProps) {
+export default function Toast({
+  message,
+  kind = "error",
+  icon,
+  onDismiss,
+  theme,
+  nameable = false,
+  editing = false,
+  onStartEditing,
+  onEndEditing,
+  onHold,
+}: ToastProps) {
   const persists = toastPersists(kind);
   const [hovered, setHovered] = useState(false);
+  const [wordsHovered, setWordsHovered] = useState(false);
+  const [draft, setDraft] = useState("");
+  // Where the writing was when the name field took the keys, to put it back
+  // exactly there (focused without scrolling the note) when the field closes.
+  const returnTo = useRef<{ el: HTMLElement | null; range: Range | null } | null>(null);
+  const field = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    const sel = window.getSelection();
+    returnTo.current = {
+      el: document.activeElement as HTMLElement | null,
+      range: sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null,
+    };
+    setDraft("");
+    field.current?.focus({ preventScroll: true });
+  }, [editing]);
+
+  const endEditing = (name: string | null) => {
+    // Enter moves focus back to the note, and that blur must not end it twice.
+    const back = returnTo.current;
+    if (!back) return;
+    returnTo.current = null;
+    onEndEditing?.(name);
+    if (back?.el && document.contains(back.el)) {
+      back.el.focus({ preventScroll: true });
+      if (back.range) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(back.range);
+      }
+    }
+  };
+
   return (
     <div
+      onMouseEnter={() => onHold?.(true)}
+      onMouseLeave={() => {
+        if (!editing) onHold?.(false);
+      }}
       // A receipt is news; anything waiting to be dismissed is worth
       // interrupting a screen reader for, and nothing else is.
       role={persists ? "alert" : "status"}
       aria-live={persists ? "assertive" : "polite"}
       data-toast-kind={kind}
-      onClick={persists ? undefined : onDismiss}
+      onClick={persists || nameable ? undefined : onDismiss}
       style={{
         display: "flex",
         alignItems: "flex-start",
@@ -76,7 +132,7 @@ export default function Toast({ message, kind = "error", icon, onDismiss, theme 
         // Light the elevated ground *is* the sheet's white, so without it the
         // receipt was a hairline outline on white (judged live 2026-09-19).
         boxShadow: theme.modalShadow,
-        cursor: persists ? "default" : "pointer",
+        cursor: persists || nameable ? "default" : "pointer",
         animation: "fadeIn 0.2s ease",
       }}
     >
@@ -93,7 +149,57 @@ export default function Toast({ message, kind = "error", icon, onDismiss, theme 
       >
         <ToastIcon name={icon || KIND_GLYPH[kind]} />
       </span>
-      <span>{message}</span>
+      {editing ? (
+        <input
+          ref={field}
+          value={draft}
+          placeholder="Name this save point"
+          aria-label="Save point name"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              endEditing(draft.trim() || null);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              endEditing(null);
+            }
+          }}
+          onBlur={() => endEditing(draft.trim() || null)}
+          style={{
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            font: "inherit",
+            color: theme.TEXT.primary,
+            width: 200,
+            padding: 0,
+          }}
+        />
+      ) : nameable ? (
+        <button
+          type="button"
+          aria-label={`${message}. Name this save point`}
+          onClick={onStartEditing}
+          onMouseEnter={() => setWordsHovered(true)}
+          onMouseLeave={() => setWordsHovered(false)}
+          style={{
+            border: "none",
+            font: "inherit",
+            color: "inherit",
+            textAlign: "left",
+            cursor: "text",
+            padding: "0 4px",
+            margin: "0 -4px",
+            borderRadius: 4,
+            background: wordsHovered ? theme.BG.surface : "transparent",
+          }}
+        >
+          {message}
+        </button>
+      ) : (
+        <span>{message}</span>
+      )}
       {persists && (
         <button
           type="button"

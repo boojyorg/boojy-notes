@@ -25,7 +25,7 @@ The rules files are updated in the same commit as the code they describe, and wi
 file when they disagree.
 
 **Rules files have a budget** (they load into every session): editor 20k characters, UI 15k,
-files 7k, CI 7k. A bullet is the rule, one reason, and the spec that proves it; never dates,
+files 8k, CI 7k. A bullet is the rule, one reason, and the spec that proves it; never dates,
 measurements or "before this" stories (git and `CHANGELOG.md` keep those), never values the
 code already holds. A change that adds to a file at its budget cuts something.
 

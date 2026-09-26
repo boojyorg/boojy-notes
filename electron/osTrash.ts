@@ -1,3 +1,4 @@
+import { noteDeleted } from "./history.js";
 import { ipcMain, shell } from "electron";
 import fs from "node:fs";
 import os from "node:os";
@@ -303,6 +304,7 @@ export async function trashManagedNote(
     throw error;
   }
 
+  noteDeleted(noteId);
   delete idIndex[noteId];
   try {
     saveIndex(notesDir);

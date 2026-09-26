@@ -79,6 +79,8 @@ export function useAppKeyboard({
   openVaultMenu,
   switchVault,
   vaults,
+  // ⌘S: the open note as a save point in its history.
+  savePoint,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -109,6 +111,7 @@ export function useAppKeyboard({
     sidebarVisible,
     openVaultMenu,
     switchVault,
+    savePoint,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -163,6 +166,15 @@ export function useAppKeyboard({
       if (mod && key === "n") {
         e.preventDefault();
         newNote(L, titleRef);
+        return;
+      }
+      // Cmd+S is a save point (2026-09-26): notes save as they are typed, so
+      // the platform's Save key keeps the note as it is now in its history.
+      // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
+      if (mod && key === "s" && !e.shiftKey && !e.altKey && !(e.ctrlKey && e.metaKey)) {
+        if (!L.activeNote) return;
+        e.preventDefault();
+        L.savePoint?.();
         return;
       }
       // Cmd+O opens the vault menu, the platform's Open key: which vault is
@@ -455,6 +467,8 @@ function runMenuCommand(id, L, titleRef) {
       return getAPI()?.revealNote?.(note);
     case "trash":
       return L.deleteNote?.(note);
+    case "savePoint":
+      return L.savePoint?.();
     case "find":
       return L.openFind?.("find");
     case "findNext":

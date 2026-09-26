@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { writeFileAtomic } from "./atomicWrite.js";
+import * as history from "./history.js";
 import {
   applyEol,
   blocksToMarkdown,
@@ -314,6 +315,10 @@ function relocateNote(filePath, notesDir) {
 
 // ─── Parse a single note file ───
 
+// While the vault loads: the history hash of each note whose indexed file is
+// missing, so a file renamed while the app was closed keeps its id.
+const _adoptable = new Map(); // hash → noteId
+
 function parseNoteFile(filePath, notesDir) {
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
@@ -348,11 +353,20 @@ function parseNoteFile(filePath, notesDir) {
     // A legacy id already indexed at another path is that note's: this file is
     // a copy of it (Finder, Duplicate folder) and gets an id of its own.
     if (!id && migratedId && !(migratedId in _idIndex)) id = migratedId;
+    // A note renamed or moved while the app was closed: its indexed path is
+    // gone and this file holds exactly the text its history last kept, so it
+    // is that note, and its versions follow it.
+    if (!id && _adoptable.size) {
+      const hash = history.hashText(raw);
+      id = _adoptable.get(hash) ?? null;
+      if (id) _adoptable.delete(hash);
+    }
     if (!id) id = `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     // Update index
     _idIndex[id] = relPath;
     recordIdentity(id, stat, raw);
+    history.observe(id, raw);
 
     const blocks = markdownToBlocks(body);
 
@@ -387,11 +401,21 @@ function readAllNotes(notesDir) {
   if (!fs.existsSync(notesDir)) return notes;
 
   loadIndex(notesDir);
+  history.openVault(notesDir);
+
+  // Notes whose indexed file is gone, by the text their history last kept.
+  _adoptable.clear();
+  for (const [id, relPath] of Object.entries(_idIndex)) {
+    if (fs.existsSync(path.join(notesDir, relPath))) continue;
+    const hash = history.latestHash(id);
+    if (hash) _adoptable.set(hash, id);
+  }
 
   walkNoteFiles(notesDir, (filePath) => {
     const note = parseNoteFile(filePath, notesDir);
     if (note) notes[note.id] = note;
   });
+  _adoptable.clear();
 
   // Clean stale index entries
   for (const [id, relPath] of Object.entries(_idIndex)) {
@@ -518,6 +542,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // The atomic write made a new inode; the note's identity is that file now.
     recordIdentity(note.id, fs.statSync(realPath), bodyMd);
     saveIndex(notesDir);
+    history.recordWrite(note.id, bodyMd);
 
     trace(
       "M",

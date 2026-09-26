@@ -14,6 +14,7 @@ import { WINDOW_MIN_W } from "../src/constants/layout.js";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { insideVault, registerNoteFileIPC } from "./noteFileManager.js";
+import { endAllSessions, registerHistoryIPC } from "./history.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
 import {
@@ -131,6 +132,8 @@ function createWindow() {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+    // Closing the window ends every writing session (the edits flushed above).
+    endAllSessions();
   });
 
   if (!hiddenForTests) {
@@ -225,6 +228,7 @@ function restartWatcher() {
 }
 
 registerNoteFileIPC(getMainWindow, getNotesDir, { claimWrite, claimUnlink, releaseUnlinkClaim });
+registerHistoryIPC();
 // Diagnostic trace (electron/trace.js): the renderer asks once whether it is
 // on, then sends its lines here to be stamped on the same clock as main's.
 ipcMain.on("trace-enabled", (event) => {
@@ -354,3 +358,5 @@ app.on("before-quit", () => {
   isQuitting = true;
   closeWatcher();
 });
+
+app.on("will-quit", () => endAllSessions());

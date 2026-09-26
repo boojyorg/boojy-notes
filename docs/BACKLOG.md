@@ -179,14 +179,25 @@ none blocks the release. The shared question comes first because three candidate
   under the caret). Tidy table shipped in the formatted view's cell menu (`CHANGELOG.md`); a
   Tidy for the table under the caret in this view is the candidate if hand-aligning pipes here
   becomes a chore.
-- **Local version history**, brought forward from Future (Tyr, 2026-09-24: version control
-  matters). Undo reverses recent actions; history recovers older saved states: preview, restore,
-  restore as a copy, and a restore keeps the current version. Snapshots in userData, never in
-  the vault; Previous versions from the note's ··· menu. For reference, Obsidian keeps local
-  snapshots five minutes apart for seven days, both configurable; Notion gives 7/30/90 days by
-  tier; Apple offers 30-day deleted-note recovery and no general version browser. Open:
-  retention, attachment recovery, storage budget, a readable comparison. Not a git interface:
-  a vault kept in git keeps git. Neither sync nor history replaces an independent backup.
+- **Version History**, designed 2026-09-25/26 from an interactive prototype. Step 1, the store, Autosaves and `⌘S`,
+  is shipping (files rule). Step 2, the list: ··· → Version History (history icon) turns the
+  menu into the list in place; one line per row: a dot (teal save point, grey ring Autosave,
+  teal ring Now), the name, `Save point`, `Autosave` or its reason, and the time right-aligned
+  (`15:48`, `Yesterday 21:40`, `Tue 10:12`, `25 Aug`, `25 Aug 2025`; never numeric dates; the
+  Mac's 24-hour setting). Now shows its last-edited time; nothing is selected on opening. ↑↓
+  show each version read-only in the note; ↵ restores (keeping `Before restore`, toast with
+  Undo); F2, double-click or right-click renames; ⌫ deletes (Undo toast). A hovered row shows
+  ↺ and a bin, icons only. While a past version shows, a teal-tint pill (history icon and
+  short time) sits in the lit `</>` slot: its time hides or shows the list, its × and Esc go
+  back to Now, another note goes back to Now; the path never changes. Typing into the past
+  opens a small popover under the pill: Back to Now or Restore. Clicking outside hides the
+  list and keeps the version. A switch in the list's header turns history off for the note,
+  asking Cancel / Keep Them / Delete Them; off hides the old versions and says they come back.
+  Opening the list switches the Markdown view off until it closes. Step 3, **Recently
+  Deleted**: a pinned sidebar footer row, a popover of `Folder / Name` rows with hover ↺ and ×
+  (× asks first, red), "Notes here are deleted after 30 days." Red text only for what can't be
+  undone (note Delete in ··· goes neutral). Later: a Settings switch for all notes, history
+  through Boojy Cloud. Neither sync nor history replaces an independent backup.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
 - **Notion import.** The first migration priority; whether it ships in Beta is undecided.

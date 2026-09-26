@@ -102,6 +102,32 @@ declare global {
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;
+      /** Version history (electron/history.ts): a note's past, kept outside the vault. */
+      history: {
+        savePoint: (
+          noteId: string,
+        ) => Promise<
+          | { ok: true; id: string; at: number }
+          | { ok: false; reason: "off" | "nothing" | "unknown"; at?: number }
+        >;
+        name: (noteId: string, versionId: string, name: string) => Promise<boolean>;
+        mark: (noteId: string, reason: "Before Replace All" | "Before restore") => Promise<void>;
+        leave: (noteId: string) => Promise<void>;
+        list: (noteId: string) => Promise<{
+          versions: {
+            id: string;
+            at: number;
+            kind: "auto" | "point";
+            hash: string;
+            name?: string;
+            reason?: string;
+          }[];
+          off: boolean;
+        }>;
+        read: (noteId: string, versionId: string) => Promise<string | null>;
+        remove: (noteId: string, versionId: string) => Promise<boolean>;
+        setOff: (noteId: string, off: boolean, keep?: boolean) => Promise<void>;
+      };
       trashFile: (relPath: string) => Promise<{ trashed: boolean }>;
 
       // Folders are directories. Vault-relative `/` paths; each mutation
