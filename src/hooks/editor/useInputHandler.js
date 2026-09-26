@@ -36,6 +36,28 @@ const MD_PATTERNS = [
 ];
 
 /**
+ * A line kind's marker typed at the start of a paragraph that already has
+ * text: `- ` before `Full stack or frontend?` makes that line the bullet, as
+ * it does on an empty line (2026-09-26). Before, the dash stayed text and was
+ * written `\- ` to keep it so: a bullet without a dot on screen, a backslash
+ * nobody typed in the file. Only the kinds a line can be; a fence, a divider
+ * or a table makes a block of its own and still wants an empty line. Cmd+Z
+ * straight after brings the literal marker back, for the rare line that
+ * starts with one.
+ */
+const LINE_MARKER_RE = new RegExp(`^(#{1,6}|[-*]|1\\.|\\[${S}?\\]|>)${S}(?=\\S)`);
+const LINE_MARKER_TYPE = (marker) =>
+  marker.startsWith("#")
+    ? `h${marker.length}`
+    : marker === "-" || marker === "*"
+      ? "bullet"
+      : marker === "1."
+        ? "numbered"
+        : marker === ">"
+          ? "blockquote"
+          : "checkbox";
+
+/**
  * Typed triggers for the two blocks the menu makes through its own path (a
  * table needs a shape, an image a picker), so they run the menu's command
  * rather than a second copy of it. Both wait for the space: the table's pipes
@@ -150,6 +172,36 @@ export function useInputHandler({
         focusCursorPos.current = 0;
         return;
       }
+    }
+
+    // A marker typed at the start of a line with text: the space just typed
+    // is the marker's, and the caret sits right after it.
+    const lineMarker =
+      currentBlock.type === "p" &&
+      native?.inputType === "insertText" &&
+      !native.isComposing &&
+      /^[\s\u00a0]$/.test(native.data ?? "") &&
+      !text.includes("\n")
+        ? LINE_MARKER_RE.exec(text)
+        : null;
+    if (lineMarker && getCaretOffset(el) === lineMarker[0].length) {
+      const type = LINE_MARKER_TYPE(lineMarker[1]);
+      const rest = text.slice(lineMarker[0].length);
+      commitNoteData((prev) => {
+        const next = { ...prev };
+        const n = { ...next[noteId] };
+        const blks = [...n.content.blocks];
+        const updated = { ...blks[blockIndex], text: rest, type };
+        if (type === "checkbox") updated.checked = false;
+        else delete updated.checked;
+        blks[blockIndex] = updated;
+        n.content = { ...n.content, blocks: blks };
+        next[noteId] = n;
+        return next;
+      });
+      focusBlockId.current = currentBlock.id;
+      focusCursorPos.current = 0;
+      return;
     }
 
     for (const trig of MENU_TRIGGERS) {
