@@ -194,7 +194,7 @@ none blocks the release. The shared question comes first because three candidate
   list and keeps the version. A switch in the list's header turns history off for the note,
   asking Cancel / Keep Them / Delete Them; off hides the old versions and says they come back.
   Opening the list switches the Markdown view off until it closes. Step 3, **Recently
-  Deleted**: a pinned sidebar footer row, a popover of `Folder / Name` rows with hover ↺ and ×
+  Deleted** (shipping): a pinned sidebar footer row, a popover of `Folder / Name` rows with hover ↺ and ×
   (× asks first, red), "Notes here are deleted after 30 days." Red text only for what can't be
   undone (note Delete in ··· goes neutral). Later: a Settings switch for all notes, history
   through Boojy Cloud. Neither sync nor history replaces an independent backup.

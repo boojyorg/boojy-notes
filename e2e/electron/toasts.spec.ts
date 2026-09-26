@@ -14,14 +14,19 @@ import { MOD, SETTLE_MS, launchApp, sleep } from "./harness";
 
 const seed = { "Note one.md": "One.\n", "Note two.md": "Two.\n" };
 
-/** Where the toast stack's left edge is, and where the sidebar ends. */
+/** Where the toast sits, where the sidebar ends, and the middle of the pane beside it. */
 async function edges(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
-    const toast = document.querySelector("[data-toast-kind]") as HTMLElement;
-    const tree = document.querySelector("[role=tree]") as HTMLElement;
+    const toast = (
+      document.querySelector("[data-toast-kind]") as HTMLElement
+    ).getBoundingClientRect();
+    const tree = document.querySelector("[role=tree]") as HTMLElement | null;
+    const sidebarRight = tree && tree.offsetParent ? tree.getBoundingClientRect().right : 0;
     return {
-      toastLeft: toast?.parentElement?.getBoundingClientRect().left ?? -1,
-      sidebarRight: tree ? tree.getBoundingClientRect().right : 0,
+      toastLeft: toast.left,
+      toastMiddle: (toast.left + toast.right) / 2,
+      sidebarRight,
+      paneMiddle: (sidebarRight + window.innerWidth) / 2,
     };
   });
 }
@@ -38,7 +43,9 @@ test("a note sent to the Trash is a receipt: the Trash mark, no ×, gone by itse
 
     const toast = h.page.locator("[data-toast-kind]");
     await expect(toast).toHaveAttribute("data-toast-kind", "done");
-    await expect(toast).toContainText("moved to the Trash");
+    // It waits in Recently Deleted (and the OS Trash), and Undo puts it back.
+    await expect(toast).toContainText("moved to Recently Deleted");
+    await expect(toast.getByRole("button", { name: "Undo" })).toBeVisible();
     // Its own mark, not a tick, and no × — it is going anyway.
     expect(await toast.locator("svg.lucide-trash").count()).toBe(1);
     await expect(toast.getByRole("button", { name: "Dismiss" })).toHaveCount(0);
@@ -73,21 +80,22 @@ test("the stack stands at the foot of the editor, and follows the sidebar", asyn
     await h.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
     await expect(h.page.locator("[data-toast-kind]")).toBeVisible();
 
-    // Sidebar showing: the stack starts past the tree, so a row the deletion
-    // changed is never behind it.
+    // Sidebar showing: the toast stands past the tree, so a row the deletion
+    // changed is never behind it, centred on the pane as the path and note are.
     const open = await edges(h.page);
     expect(open.sidebarRight).toBeGreaterThan(100);
     expect(open.toastLeft).toBeGreaterThanOrEqual(open.sidebarRight - 1);
+    expect(Math.abs(open.toastMiddle - open.paneMiddle)).toBeLessThan(3);
 
-    // Hidden: it comes back to the window's own edge. The note is opened first,
-    // because its row is what a click would need.
+    // The note is opened first, because its row is what a click would need.
     await h.openNote("Note two");
     await h.page.keyboard.press(`${MOD}+\\`);
     await sleep(500);
     await h.page.getByRole("button", { name: "Note actions" }).click();
     await h.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+    // Hidden: centred on the window, which is all pane now.
     const collapsed = await edges(h.page);
-    expect(collapsed.toastLeft).toBeLessThan(40);
+    expect(Math.abs(collapsed.toastMiddle - collapsed.paneMiddle)).toBeLessThan(3);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -4,11 +4,14 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 
 ## Delete follows the platform
 
-- Electron sends `.md` files to the OS Trash (the recovery surface; no undo UI). Web deletion is
-  permanent behind confirmation. A folder's directory goes only once nothing but OS cruft is
-  left; non-note files are never touched.
-- Desktop confirms only more than one file (a folder with notes, a bulk selection); a single
-  note goes at once with a toast. Wording in `utils/deletionPrompt.ts`.
+- Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
+  note's last text and history stay in the store 30 days (never a folder in the vault), listed
+  by where it was; put back there (folder remade, `-2` on a clash, same id), or deleted for
+  good after asking. `recently-deleted.spec.ts`. Web deletion is permanent behind confirmation.
+  A folder's directory goes only once nothing but OS cruft is left; non-note files are never
+  touched.
+- Desktop confirms only more than one file; a single note goes at once, its toast offering
+  Undo. Wording in `utils/deletionPrompt.ts`.
 
 ## The watcher drops only an event it can trace to the app's own operation
 
@@ -102,8 +105,8 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 - **What makes one**: a session's end (the note left, the window closed, 30 minutes without a
   write; within the hour it replaces the last session's), a note's text before its first edit,
   and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
-  point (`useSavePoint`). Nothing unchanged is kept twice. None is announced but `⌘S`'s, the
-  one toast whose words are a button: they open its name field, as `⌘S` again does.
+  point (`useSavePoint`). Nothing unchanged is kept twice. Only `⌘S` says so; its toast's words
+  open a name field, as `⌘S` again does.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
   Autosave makes it a save point. A deleted note keeps its last text for 30 days. History off
   keeps nothing new; turning it off with Delete removes the texts at once.
@@ -112,8 +115,8 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
   holding only the version; every edit is stopped and asks), with a pill in the `</>` slot.
   A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z
   take it back. `version-history.spec.ts`.
-- **A note renamed while the app was closed keeps its id** when it holds exactly the text its
-  history last kept (`_adoptable`). `version-store.spec.ts`, `history.test.ts`.
+- **A note renamed while the app was closed keeps its id** if it holds the text its history
+  last kept. `version-store.spec.ts`, `history.test.ts`.
 
 ## Tracing
 

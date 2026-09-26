@@ -40,6 +40,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Move Boojy-managed Markdown files to the platform Trash / Recycle Bin.
   trashNote: (noteId) => ipcRenderer.invoke("trash-note", noteId),
+  listDeletedNotes: () => ipcRenderer.invoke("list-deleted-notes"),
+  restoreDeletedNote: (noteId) => ipcRenderer.invoke("restore-deleted-note", noteId),
+  purgeDeletedNote: (noteId) => ipcRenderer.invoke("purge-deleted-note", noteId),
+  onDeletedNotesChanged: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("deleted-notes-changed", handler);
+    return () => ipcRenderer.removeListener("deleted-notes-changed", handler);
+  },
   history: {
     savePoint: (noteId) => ipcRenderer.invoke("history-save-point", noteId),
     name: (noteId, versionId, name) => ipcRenderer.invoke("history-name", noteId, versionId, name),

@@ -82,6 +82,8 @@ export function useAppKeyboard({
   // ⌘S: the open note as a save point in its history; ⌥⌘S its Version History.
   savePoint,
   openVersionHistory,
+  // File → Recently Deleted…
+  openRecentlyDeleted,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -114,6 +116,7 @@ export function useAppKeyboard({
     switchVault,
     savePoint,
     openVersionHistory,
+    openRecentlyDeleted,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -453,6 +456,8 @@ function runMenuCommand(id, L, titleRef) {
       return goToSidebar(L);
     case "openVault":
       return L.openVaultMenu?.();
+    case "recentlyDeleted":
+      return L.openRecentlyDeleted?.();
   }
   // File → Open Recent: the vault's path rides on the id.
   if (id.startsWith("openVault:")) return L.switchVault?.(id.slice("openVault:".length));

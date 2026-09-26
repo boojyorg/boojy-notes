@@ -82,6 +82,11 @@ export function deletionPrompt(kind: DeletionKind, ctx: DeletionContext): Deleti
 }
 
 /** The toast after a single desktop note has been sent to the Trash. */
+/** A note the app deleted: it waits in Recently Deleted (and the OS Trash) for 30 days. */
+export function binnedToast(name?: string): string {
+  return `"${name || "Untitled"}" moved to Recently Deleted`;
+}
+
 export function trashedToast(name?: string): string {
   return `"${name || "Untitled"}" moved to the Trash`;
 }

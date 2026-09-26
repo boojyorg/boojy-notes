@@ -182,6 +182,39 @@ describe("retention", () => {
   });
 });
 
+describe("Recently Deleted", () => {
+  it("lists a deleted note by where it was, gives back its text, and forgets it when restored", () => {
+    history.observe("n1", "Plan text");
+    history.noteDeleted("n1", "Projects/Old plan.md");
+    expect(history.listDeleted()).toEqual([{ id: "n1", path: "Projects/Old plan.md", at: now }]);
+    expect(history.deletedText("n1")).toEqual({ path: "Projects/Old plan.md", text: "Plan text" });
+    history.noteRestored("n1");
+    expect(history.listDeleted()).toEqual([]);
+    // Its history is its own again.
+    expect(texts("n1")).toEqual(["Plan text"]);
+  });
+
+  it("deletes for good at once, texts and all, and tells the window", () => {
+    const told = vi.fn();
+    history.onDeletedChanged(told);
+    history.observe("n1", "Secret");
+    history.noteDeleted("n1", "Secret.md");
+    expect(history.purgeDeleted("n1")).toBe(true);
+    expect(history.listDeleted()).toEqual([]);
+    expect(history.deletedText("n1")).toBeNull();
+    expect(told).toHaveBeenCalledTimes(2);
+    history.onDeletedChanged(null);
+    expect(history.purgeDeleted("n1")).toBe(false);
+  });
+
+  it("stops listing a note after its 30 days", () => {
+    history.observe("n1", "Old");
+    history.noteDeleted("n1", "Old.md");
+    now += 31 * DAY;
+    expect(history.listDeleted()).toEqual([]);
+  });
+});
+
 describe("identity", () => {
   it("follows a note renamed while the app was closed", () => {
     const indexDir = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-history-index-"));

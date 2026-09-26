@@ -45,14 +45,15 @@ import { useVersionHistory } from "./hooks/useVersionHistory";
 import VersionHistoryList from "./components/VersionHistoryList";
 import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
-import { atScale } from "./utils/uiScale";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
 import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
 import { getCaretOffset, placeCaret } from "./utils/domHelpers";
-import { deletionPrompt, trashedToast } from "./utils/deletionPrompt";
+import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
+import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
+import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { readRecents, recordRecent } from "./utils/recentNotes";
@@ -280,6 +281,24 @@ export default function BoojyNotes() {
     showToast,
     requestConfirm,
   });
+  const recentlyDeleted = useRecentlyDeleted({
+    notesDir,
+    applyExternalNote,
+    markNewRows,
+    requestConfirm,
+  });
+  const [binOpen, setBinOpen] = useState(false);
+  // The bin's menu stands beside its row: with the sidebar gone, it goes too.
+  useEffect(() => {
+    if (!sidebarVisible) setBinOpen(false);
+  }, [sidebarVisible]);
+  const openRecentlyDeleted = useCallback(() => {
+    if (sidebarVisible) setBinOpen(true);
+    else {
+      revealSidebar();
+      setTimeout(() => setBinOpen(true), PANEL_MS);
+    }
+  }, [sidebarVisible, revealSidebar]);
   const pastShown = versionHistory.state.selected
     ? versionHistory.state.versions.find((v) => v.id === versionHistory.state.selected)
     : null;
@@ -834,10 +853,32 @@ export default function BoojyNotes() {
       const note = noteDataRef.current?.[id];
       if (!(await askBeforeDeleting("note", { count: 1, name: note?.title }))) return false;
       deleteNote(id);
-      if (!isWeb) showToast(trashedToast(note?.title), "done", { icon: "trash" });
+      if (recentlyDeleted.available)
+        showToast(binnedToast(note?.title), "done", {
+          icon: "trash",
+          // The note's file goes to the Trash on the next write; Undo waits for
+          // that, then puts it back where it was.
+          action: {
+            label: "Undo",
+            run: async () => {
+              await flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
+              await recentlyDeleted.restore(id);
+            },
+          },
+        });
+      else if (!isWeb) showToast(trashedToast(note?.title), "done", { icon: "trash" });
       return true;
     },
-    [deleteNote, askBeforeDeleting, noteDataRef, showToast],
+    [
+      deleteNote,
+      askBeforeDeleting,
+      noteDataRef,
+      showToast,
+      recentlyDeleted.available,
+      recentlyDeleted.restore,
+      flushToDisk,
+      unflushedNotes,
+    ],
   );
 
   const confirmDeleteFolder = useCallback(
@@ -995,6 +1036,7 @@ export default function BoojyNotes() {
     vaults,
     savePoint,
     openVersionHistory: versionHistory.open,
+    openRecentlyDeleted: recentlyDeleted.available ? openRecentlyDeleted : undefined,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
@@ -1162,6 +1204,14 @@ export default function BoojyNotes() {
             ctxMenuFileId={ctxMenu?.type === "file" ? ctxMenu.id : null}
             vaultMenuRequest={vaultMenuRequest}
             onVaultMenuOpen={refreshVaults}
+            recentlyDeleted={
+              recentlyDeleted.available
+                ? {
+                    open: binOpen,
+                    onToggle: () => setBinOpen((o) => !o),
+                  }
+                : undefined
+            }
           />
           {isMobile && !activeNote && (
             <FloatingActionButton
@@ -1361,6 +1411,14 @@ export default function BoojyNotes() {
         trashFile={trashOtherFile}
         onVersionHistory={window.electronAPI?.history ? versionHistory.open : undefined}
       />
+      {binOpen && (
+        <RecentlyDeletedMenu
+          items={recentlyDeleted.items}
+          restore={recentlyDeleted.restore}
+          purge={recentlyDeleted.purge}
+          onClose={() => setBinOpen(false)}
+        />
+      )}
       {versionHistory.state.listOpen && (
         <VersionHistoryList
           state={versionHistory.state}
@@ -1489,20 +1547,20 @@ export default function BoojyNotes() {
           style={{
             position: "fixed",
             bottom: 24,
-            // At the foot of the editor, not of the window: the sidebar is the
-            // one surface whose rows a toast could hide, and the row a
-            // deletion just took away is the worst thing to cover. It travels
-            // with the panel on the panel's own clock.
+            // At the foot of the editor, centred on it as the path and the note
+            // are, never on the window: the sidebar is the one surface whose
+            // rows a toast could hide, and the row a deletion just took away
+            // is the worst thing to cover. It travels with the panel on the
+            // panel's own clock. The band spans the pane; only the toasts
+            // take the pointer, and none is wider than the pane.
             left: 24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth),
-            // Never wider than the pane it stands in: at the window's minimum
-            // the editor is 316px and a 360px toast would hang off the edge.
-            // Divided by the UI scale, because `vw` ignores the zoom it is
-            // made of (`atScale`).
-            maxWidth: atScale(`100vw - ${(isMobile || !sidebarVisible ? 0 : sidebarWidth) + 48}px`),
+            right: 24,
             transition: isMobile ? undefined : panelTransition("left"),
             display: "flex",
             flexDirection: "column",
+            alignItems: "center",
             gap: 8,
+            pointerEvents: "none",
             zIndex: Z.TOAST,
           }}
         >

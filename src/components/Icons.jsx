@@ -147,6 +147,10 @@ export const OtherFileIcon = ({ kind = "file", size = ICON_INLINE }) => {
 export const AttachmentsIcon = ({ size = ICON_INLINE }) => (
   <LuPaperclip {...base} {...navBase} size={size} />
 );
+/** Recently Deleted: the sidebar's footer row and its menu. */
+export const RecentlyDeletedIcon = ({ size = ICON_INLINE }) => (
+  <LuTrash {...base} {...navBase} size={size} />
+);
 
 // ── Vaults ────────────────────────────────────────────────────────────────
 /** A vault in the vault menu: a folder, a cloud when it syncs, crossed when missing. */

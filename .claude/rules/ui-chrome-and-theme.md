@@ -37,8 +37,8 @@ A quiet surface (`BG.elevated`, primary text) with **one coloured glyph that car
 meaning**; never an accent fill. `done` fades and is click-dismissable; `notice`, `warning`,
 `error` wait for their ×, because a timed save failure is one nobody saw. **Notices about one
 condition share a key and the newer replaces the older; a keyed notice ends when it stops being
-true** (`writeRecovered`). The stack sits at the foot of the editor, not the window, so it never
-covers sidebar rows. `toasts.spec.ts`.
+true** (`writeRecovered`). The stack is centred at the editor's foot, not the window's, so it
+never covers sidebar rows. `toasts.spec.ts`.
 
 ## Scrollbars
 
