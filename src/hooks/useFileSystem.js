@@ -405,6 +405,25 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         !!local &&
         !local._draft &&
         (dirtyNotes.current.has(external.id) || !!links?.unflushedNotes?.current?.has(external.id));
+      // A note a sync client took off this Mac arrives by name only. A new
+      // one is listed; one the app holds keeps its text (search still finds
+      // it) and is only marked, so opening it downloads the current version.
+      // Pending edits, or the note on screen, ignore it: a save compares the
+      // downloaded bytes before it writes, like any save.
+      if (external.offloaded) {
+        trace("outside version", external.id, "offloaded", pending ? "pending (ignored)" : "");
+        if (!local) applyExternal(external);
+        else if (!pending && links?.activeNoteRef?.current !== external.id && !local.offloaded) {
+          // The disk's news, not an edit: the scan must not write it back.
+          externalIds.current.add(external.id);
+          links.adoptNoteData((prev) =>
+            prev[external.id]
+              ? { ...prev, [external.id]: { ...prev[external.id], offloaded: true } }
+              : prev,
+          );
+        }
+        return Promise.resolve(false);
+      }
       trace(
         "outside version",
         external.id,
@@ -484,6 +503,11 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
               written?.title !== note.title ? `TITLE-ADOPT "${written?.title}"` : "",
             );
             writeRecovered(noteId);
+            // An offloaded note was downloaded to be written: it holds its text now.
+            if (written?.downloaded) {
+              const { _filePath, ...downloaded } = written.downloaded;
+              applyExternal(downloaded);
+            }
             if (typeof written?.title === "string" && written.title !== note.title)
               editorLinksRef.current?.onTitleResolved?.(noteId, note, written.title);
           } catch (err) {
@@ -556,10 +580,41 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       }
       // Deps deliberately not exhaustive: onError is not stable
     },
-    [keepBothVersions, takeOutsideVersion],
+    [keepBothVersions, takeOutsideVersion, applyExternal],
   );
 
   const flushRef = useRef(flush);
+
+  // An offloaded note, downloaded to be shown. The text is the disk's; a
+  // rename or move still waiting to be written keeps its name and folder.
+  // Resolves false when the download failed.
+  const downloadOffloaded = useCallback(
+    async (id) => {
+      if (!isElectron) return false;
+      const downloaded = await window.electronAPI.downloadNote(id);
+      if (!downloaded) return false;
+      const { _filePath, ...external } = downloaded;
+      const links = editorLinksRef.current;
+      const local = links?.latestNoteDataRef?.current?.[id] ?? noteDataRef.current[id];
+      if (!local) return true;
+      const pending = dirtyNotes.current.has(id) || !!links?.unflushedNotes?.current?.has(id);
+      trace("download done", id, pending ? "name pending, text taken" : "applied");
+      if (!pending) {
+        applyExternal(external);
+        return true;
+      }
+      links.adoptNoteData((prev) => {
+        const n = prev[id];
+        if (!n) return prev;
+        const { offloaded: _, ...rest } = n;
+        return { ...prev, [id]: { ...rest, content: { ...external.content, title: n.title } } };
+      });
+      if (syncGeneration && links.activeNoteRef.current === id) syncGeneration.current++;
+      return true;
+    },
+    // Deps deliberately not exhaustive: refs only
+    [applyExternal],
+  );
   flushRef.current = flush;
 
   // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
@@ -883,6 +938,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     refreshVaults,
     addVault,
     flushToDisk: flush,
+    downloadOffloaded,
     folderOps,
   };
 }

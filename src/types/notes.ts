@@ -131,6 +131,8 @@ export interface Note {
   content: NoteContent;
   lastModified?: number;
   _draft?: boolean;
+  /** Its text is not on this Mac (a sync client removed the download); opening downloads it. */
+  offloaded?: true;
 }
 
 /** The app's note store: note id → note. */

@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   completeSetup: () => ipcRenderer.invoke("complete-setup"),
   readAllNotes: () => ipcRenderer.invoke("read-all-notes"),
   writeNote: (note) => ipcRenderer.invoke("write-note", note),
+  downloadNote: (id) => ipcRenderer.invoke("download-note", id),
   saveImage: (data) => ipcRenderer.invoke("save-image", data),
   saveAttachment: (data) => ipcRenderer.invoke("save-attachment", data),
   pickImageFile: () => ipcRenderer.invoke("pick-image-file"),

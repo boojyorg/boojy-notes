@@ -31,6 +31,7 @@ import {
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Cloud as LuCloud,
+  CloudDownload as LuCloudDownload,
   Code as LuCode,
   CodeXml as LuCodeXml,
   ClipboardPaste as LuClipboardPaste,
@@ -158,6 +159,10 @@ export const VaultIcon = ({ cloud = false, missing = false, size = ICON_INLINE }
   const Cmp = missing ? LuFolderX : cloud ? LuCloud : LuFolder;
   return <Cmp {...base} {...navBase} size={size} />;
 };
+/** A note whose text a sync service keeps online until it is opened. */
+export const OffloadedIcon = ({ size = ICON_INLINE }) => (
+  <LuCloudDownload {...base} {...navBase} size={size} />
+);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = ({ size = ICON_INLINE }) => (
   <LuFolderSearch {...base} {...navBase} size={size} />

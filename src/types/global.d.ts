@@ -78,8 +78,11 @@ declare global {
       writeNote: (
         note: Note,
       ) => Promise<
-        { filePath: string; title: string; stale?: undefined } | { stale: true; note: Note }
+        | { filePath: string; title: string; stale?: undefined; downloaded?: Note }
+        | { stale: true; note: Note }
       >;
+      /** An offloaded note's text, downloaded; null when it could not be. */
+      downloadNote: (id: string) => Promise<Note | null>;
       saveImage: (data: { fileName: string; dataBase64: string }) => Promise<string>;
       saveAttachment: (data: {
         fileName: string;

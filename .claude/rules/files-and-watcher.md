@@ -25,10 +25,12 @@ eviction). `watcher-scale.spec.ts`.
 - **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. An
   unclaimed unlink is real, however soon.
 - A folder rename, removal or copy is the one timed suppression (`claimTree`).
-- `watcher-ownership.spec.ts`.
-- **A vault in a sync folder**: a version renamed over a note is an outside edit, a sync
-  client's conflicted copy is its own note, `Icon\r` is OS clutter, and the save's temp file
-  is `.~name.tmp` (a prefix Dropbox never syncs). `cloud-sync.spec.ts`.
+  `watcher-ownership.spec.ts`.
+- **A sync folder**: a version renamed over a note is an outside edit, a conflicted copy is
+  its own note, `Icon\r` is clutter, the temp file is `.~name.tmp` (never synced).
+  `cloud-sync.spec.ts`.
+- **An offloaded (dataless) note is never read unasked** (reading downloads it): greyed by
+  name, downloaded on open; a save fetches its text first. `offloaded-notes.spec.ts`.
 
 ## An outside rename or move is the same note
 
@@ -62,14 +64,13 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
 - Rename and move are one `renameSync`, after flushing pending edits under the folder; not an
   edit, not undoable. Delete waits for the Trash flush. A folder outlives its notes.
-- Duplicate folder is one directory copy (`Name (copy)`); the copies are adopted from disk
-  (fresh ids), nothing dirty. Revealed and pill-marked, never
-  toasted.
+- Duplicate folder is one directory copy (`Name (copy)`), adopted from disk (fresh ids),
+  nothing dirty; revealed, never toasted.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
 - **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults` lists them;
-  `add-vault` adds from the native picker without switching; `open-vault` takes only a listed,
-  present path. A never-made default is not listed. Remove from list never touches the folder.
-  A switch flushes, empties, reloads.
+  `add-vault` adds without switching; `open-vault` takes only a listed, present path. A
+  never-made default is not listed. Remove never touches the folder. A switch flushes,
+  empties, reloads.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id through `trash-note`,
   which keeps the index and the watcher's claim). `vault-switcher.spec.ts`.
@@ -90,7 +91,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   `Untitled` placeholder. A paste into the name keeps its first non-empty line.
   `title-is-filename.spec.ts`.
 - A save keeps the file's permission bits (`writeFileAtomic`); birthtime, xattrs and symlinks
-  are still lost (needs a backup-strategy decision). `file-mode.spec.ts`.
+  are still lost. `file-mode.spec.ts`.
 
 ## Attachments
 
@@ -122,5 +123,5 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 
 ## Tracing
 
-`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`, installed app quit)
-logs both processes on one clock. `syncGeneration` is editor plumbing, not cloud sync.
+`BOOJY_TRACE=/path/to/log node_modules/.bin/electron .` (after `pnpm build`, app quit) logs
+both processes on one clock. `syncGeneration` is editor plumbing, not cloud sync.

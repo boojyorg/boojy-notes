@@ -5,6 +5,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { writeFileAtomic } from "./atomicWrite.js";
 import * as history from "./history.js";
+import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
 import {
   applyEol,
   blocksToMarkdown,
@@ -299,15 +300,20 @@ function relocateNote(filePath, notesDir) {
       _identity.delete(other);
     }
   }
-  let raw;
-  try {
-    raw = fs.readFileSync(newPath, "utf-8");
-  } catch {
-    return null;
+  // An offloaded file is not read (that would download it): its text is
+  // whatever the app already holds, and the watcher leaves its add alone.
+  const offloaded = isOffloaded(newPath);
+  let raw = null;
+  if (!offloaded) {
+    try {
+      raw = fs.readFileSync(newPath, "utf-8");
+    } catch {
+      return null;
+    }
   }
-  const sameBytes = hashOf(raw) === identity.hash;
+  const sameBytes = offloaded || hashOf(raw) === identity.hash;
   _idIndex[id] = newRelPath;
-  const note = parseNoteFile(newPath, notesDir);
+  const note = parseNoteFile(newPath, notesDir, offloaded);
   if (!note) return null;
   saveIndex(notesDir);
   return { note, raw, sameBytes, displaced };
@@ -319,8 +325,40 @@ function relocateNote(filePath, notesDir) {
 // missing, so a file renamed while the app was closed keeps its id.
 const _adoptable = new Map(); // hash → noteId
 
-function parseNoteFile(filePath, notesDir) {
+/** The id the index holds for a vault-relative path, or null. */
+function indexedIdAt(relPath) {
+  for (const [noteId, p] of Object.entries(_idIndex)) if (p === relPath) return noteId;
+  return null;
+}
+
+/**
+ * A note whose text is not on this Mac (`offloaded.ts`): listed by its name,
+ * never read, marked `offloaded` so the renderer downloads it before showing
+ * or saving it. Its history and identity bytes wait for that download.
+ */
+function offloadedNote(filePath, notesDir, stat) {
+  const relPath = path.relative(notesDir, filePath);
+  const relDir = path.relative(notesDir, path.dirname(filePath));
+  const title = path.basename(filePath, ".md");
+  const id = indexedIdAt(relPath) ?? `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  _idIndex[id] = relPath;
+  // Offloading keeps the bytes the app last saw, so a save still compares
+  // against them (it downloads the file to do so); a note never read has none.
+  _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: _identity.get(id)?.hash ?? null });
+  return {
+    id,
+    title,
+    folder: relDir ? relDir.split(path.sep).join("/") : null,
+    content: { title, blocks: [] },
+    lastModified: Math.round(stat.mtimeMs),
+    offloaded: true,
+    _filePath: filePath,
+  };
+}
+
+function parseNoteFile(filePath, notesDir, offloaded = false) {
   try {
+    if (offloaded) return offloadedNote(filePath, notesDir, fs.statSync(filePath));
     const raw = fs.readFileSync(filePath, "utf-8");
     const stat = fs.statSync(filePath);
     const relPath = path.relative(notesDir, filePath);
@@ -343,13 +381,7 @@ function parseNoteFile(filePath, notesDir) {
     }
 
     // Look up existing ID from index, or use migrated ID, or generate new
-    let id = null;
-    for (const [noteId, p] of Object.entries(_idIndex)) {
-      if (p === relPath) {
-        id = noteId;
-        break;
-      }
-    }
+    let id = indexedIdAt(relPath);
     // A legacy id already indexed at another path is that note's: this file is
     // a copy of it (Finder, Duplicate folder) and gets an id of its own.
     if (!id && migratedId && !(migratedId in _idIndex)) id = migratedId;
@@ -411,10 +443,14 @@ function readAllNotes(notesDir) {
     if (hash) _adoptable.set(hash, id);
   }
 
-  walkNoteFiles(notesDir, (filePath) => {
-    const note = parseNoteFile(filePath, notesDir);
+  // Offloaded notes are found in one batch before anything is read.
+  const filePaths = [];
+  walkNoteFiles(notesDir, (filePath) => filePaths.push(filePath));
+  const offloaded = offloadedAmong(filePaths);
+  for (const filePath of filePaths) {
+    const note = parseNoteFile(filePath, notesDir, offloaded.has(filePath));
     if (note) notes[note.id] = note;
-  });
+  }
   _adoptable.clear();
 
   // Clean stale index entries
@@ -450,7 +486,42 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   // name the disk already holds is never rewritten (`noteToFilePath`). This
   // handler is the one place that knows the final name; nothing in the UI
   // second-guesses it.
+  // An offloaded note, downloaded: its text off the main thread, then parsed
+  // as any note is. Null when its file is gone or the download failed.
+  ipcMain.handle("download-note", async (_event, id) => {
+    const notesDir = getNotesDir();
+    const relPath = _idIndex[id];
+    if (!relPath) return null;
+    const filePath = path.join(notesDir, relPath);
+    try {
+      await readDownloading(filePath);
+    } catch (error) {
+      trace("M", "download-note failed", relPath, String(error));
+      return null;
+    }
+    return parseNoteFile(filePath, notesDir);
+  });
+
+  // An offloaded note holds no text here, so only its name or folder can
+  // have changed: its file is downloaded first (off the main thread) and its
+  // own text is what it writes. Every other save is synchronous, so from the
+  // write on no watcher event can arrive before the claim.
   ipcMain.handle("write-note", (_event, note) => {
+    const notesDir = getNotesDir();
+    assertVaultPresent(notesDir);
+    const relPath = _idIndex[note.id];
+    const filePath = relPath ? path.join(notesDir, relPath) : null;
+    if (!filePath || !(note.offloaded || isOffloaded(filePath))) return writeNote(note, null);
+    return readDownloading(filePath).then((diskBody) => {
+      if (!note.offloaded) return writeNote(note, diskBody);
+      const n = parseNoteFile(filePath, notesDir);
+      if (!n) throw new Error("The offloaded note could not be read");
+      return writeNote({ ...note, content: { ...n.content, title: note.title } }, diskBody);
+    });
+  });
+
+  /** `diskBody`: the file's text when a download has just read it. */
+  function writeNote(note, diskBody) {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);
     // The note's own file, if it has one (a title or folder change is a rename away from it).
@@ -469,8 +540,8 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // change the watcher reports first. Reading the file records it as seen,
     // so the write that follows the conflict copy goes through.
     const identity = _identity.get(note.id);
-    if (existingPath && identity && fs.existsSync(existingPath)) {
-      const onDisk = fs.readFileSync(existingPath, "utf-8");
+    if (existingPath && identity?.hash && fs.existsSync(existingPath)) {
+      const onDisk = diskBody ?? fs.readFileSync(existingPath, "utf-8");
       if (hashOf(onDisk) !== identity.hash) {
         trace("M", "write-note refused: file changed on disk", existingRelPath);
         return { stale: true, note: parseNoteFile(existingPath, notesDir) };
@@ -551,8 +622,11 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       `${Date.now() - traceStart}ms`,
       `${bodyMd.length}b`,
     );
-    return { filePath: realPath, title: path.basename(realPath, ".md") };
-  });
+    const result = { filePath: realPath, title: path.basename(realPath, ".md") };
+    // The downloaded text goes back with the answer, so the note stops being offloaded.
+    if (note.offloaded) result.downloaded = { ...note, offloaded: undefined };
+    return result;
+  }
 
   // Recently Deleted: the notes the app sent to the Trash in the last 30 days,
   // by the place they had; one put back where it was (its folder made again if

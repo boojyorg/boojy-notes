@@ -55,3 +55,12 @@ export function removeLocationPrompt(vault: StorageLocation, next?: StorageLocat
     danger: false,
   };
 }
+
+/** The sync service a location lives in, by name (`iCloud`, `Dropbox`), or null. */
+export function cloudProvider(dir: string | null | undefined): string | null {
+  if (!dir) return null;
+  if (dir.includes("/Library/Mobile Documents/")) return "iCloud";
+  const m = dir.match(/\/Library\/CloudStorage\/([^/-]+)/);
+  if (!m) return null;
+  return m[1] === "GoogleDrive" ? "Google Drive" : m[1];
+}
