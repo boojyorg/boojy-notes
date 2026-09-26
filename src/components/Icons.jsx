@@ -49,7 +49,9 @@ import {
   FolderInput as LuFolderInput,
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
+  FileX as LuFileX,
   FolderSearch as LuFolderSearch,
+  ImageOff as LuImageOff,
   FolderX as LuFolderX,
   GripHorizontal as LuGripHorizontal,
   GripVertical as LuGripVertical,
@@ -157,6 +159,11 @@ export const RecentlyDeletedIcon = ({ size = ICON_INLINE }) => (
 /** A vault in the vault menu: a folder, a cloud when it syncs, crossed when missing. */
 export const VaultIcon = ({ cloud = false, missing = false, size = ICON_INLINE }) => {
   const Cmp = missing ? LuFolderX : cloud ? LuCloud : LuFolder;
+  return <Cmp {...base} {...navBase} size={size} />;
+};
+/** An attachment a note links to that is not in the vault: a picture or a file. */
+export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => {
+  const Cmp = image ? LuImageOff : LuFileX;
   return <Cmp {...base} {...navBase} size={size} />;
 };
 /** A note whose text a sync service keeps online until it is opened. */

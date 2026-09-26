@@ -6,6 +6,7 @@ import { imageWashFill } from "../../utils/selectionBand";
 import { ExpandIcon, MoreHorizontalIcon } from "../Icons";
 import { Tooltip, useTooltip } from "../Tooltip";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
+import MissingAttachment, { findable } from "./MissingAttachment";
 
 interface ImageBlockProps {
   src: string;
@@ -157,6 +158,14 @@ function ImageBlock({
   const imgRef = useRef<HTMLImageElement>(null);
 
   const resolvedSrc = src ? resolveAttachmentUrl(src) : "";
+  // Found again (Find it…): a new load, remounted so no failed load is reused.
+  const [attempt, setAttempt] = useState(0);
+  const findMissing = async () => {
+    if (!(await window.electronAPI?.findAttachment(src))) return;
+    setErrored(false);
+    setLoading(true);
+    setAttempt((a) => a + 1);
+  };
 
   // Opening the menu does not select the picture: it wears the wash only
   // while its menu is open, so the menu says which picture it is for, and is
@@ -218,50 +227,12 @@ function ImageBlock({
 
   if (errored || !src) {
     return (
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          position: "relative",
-          border: `1.5px dashed ${TEXT.muted}`,
-          borderRadius: 6,
-          padding: "24px 16px",
-          textAlign: "center",
-          color: TEXT.muted,
-          fontSize: 13,
-        }}
-      >
-        Image not found: {src || "(empty)"}
-        {hovered && (
-          <button
-            type="button"
-            aria-label="Remove image"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            style={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
-              background: "rgba(0,0,0,0.7)",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              lineHeight: 1,
-            }}
-          >
-            &times;
-          </button>
-        )}
-      </div>
+      <MissingAttachment
+        src={src}
+        image
+        onFind={findable(src) ? findMissing : undefined}
+        onRemove={onDelete}
+      />
     );
   }
 
@@ -319,6 +290,7 @@ function ImageBlock({
         )}
         <style>{`@keyframes img-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
         <img
+          key={attempt}
           ref={imgRef}
           src={resolvedSrc}
           alt={alt || ""}

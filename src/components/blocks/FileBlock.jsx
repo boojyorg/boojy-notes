@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { getAPI } from "../../services/apiProvider";
+import MissingAttachment, { findable } from "./MissingAttachment";
 
 function formatFileSize(bytes) {
   if (bytes == null) return "";
@@ -32,6 +33,18 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
   const [hovered, setHovered] = useState(false);
   const [fileSize, setFileSize] = useState(size);
   const [ctxMenu, setCtxMenu] = useState(null);
+  // A file the vault does not hold (moved, renamed, never synced): shown as
+  // missing, never as a card that opens nothing. Asked again after Find it….
+  const [missing, setMissing] = useState(false);
+  const [found, setFound] = useState(0);
+  useEffect(() => {
+    if (!findable(src)) return;
+    let live = true;
+    window.electronAPI.resolveAttachment(src).then((abs) => live && setMissing(!abs));
+    return () => {
+      live = false;
+    };
+  }, [src, found]);
 
   useEffect(() => {
     if (fileSize == null && src && getAPI()?.getFileSize) {
@@ -68,6 +81,17 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
     e.stopPropagation();
     setCtxMenu({ top: e.clientY, left: e.clientX });
   };
+
+  if (missing)
+    return (
+      <MissingAttachment
+        src={src}
+        onFind={async () => {
+          if (await window.electronAPI.findAttachment(src)) setFound((n) => n + 1);
+        }}
+        onRemove={onDelete}
+      />
+    );
 
   const displayName = formatFriendlyFilename(filename || src || "Unknown");
   const typePill = getFileTypePill(filename || src || "");

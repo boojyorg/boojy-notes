@@ -33,10 +33,11 @@ const props = {
 afterEach(cleanup);
 
 describe("ImageBlock", () => {
-  it("draws the missing-image box when its picture fails to load", () => {
+  it("draws the Not found card when its picture fails to load", () => {
     const { container, getByText } = render(<ImageBlock {...props} src="gone.png" />);
     fireEvent.error(container.querySelector("img"));
-    expect(getByText("Image not found: gone.png")).toBeTruthy();
+    expect(getByText("gone.png")).toBeTruthy();
+    expect(getByText("Not found")).toBeTruthy();
   });
 
   it("loads a replacement picture after an error rather than staying broken", () => {
@@ -46,7 +47,7 @@ describe("ImageBlock", () => {
     rerender(<ImageBlock {...props} src="new.png" />);
 
     // Before: `errored` outlived the source it was about, so the box stayed.
-    expect(queryByText(/Image not found/)).toBeNull();
+    expect(queryByText("Not found")).toBeNull();
     expect(container.querySelector("img")?.getAttribute("src")).toMatch(/new\.png$/);
   });
 
