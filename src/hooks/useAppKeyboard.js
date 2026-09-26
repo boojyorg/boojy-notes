@@ -79,8 +79,9 @@ export function useAppKeyboard({
   openVaultMenu,
   switchVault,
   vaults,
-  // ⌘S: the open note as a save point in its history.
+  // ⌘S: the open note as a save point in its history; ⌥⌘S its Version History.
   savePoint,
+  openVersionHistory,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -112,6 +113,7 @@ export function useAppKeyboard({
     openVaultMenu,
     switchVault,
     savePoint,
+    openVersionHistory,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -171,6 +173,14 @@ export function useAppKeyboard({
       // Cmd+S is a save point (2026-09-26): notes save as they are typed, so
       // the platform's Save key keeps the note as it is now in its history.
       // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
+      // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
+      // physical key is matched).
+      if (mod && e.altKey && !e.shiftKey && e.code === "KeyS" && !(e.ctrlKey && e.metaKey)) {
+        if (!L.activeNote) return;
+        e.preventDefault();
+        L.openVersionHistory?.();
+        return;
+      }
       if (mod && key === "s" && !e.shiftKey && !e.altKey && !(e.ctrlKey && e.metaKey)) {
         if (!L.activeNote) return;
         e.preventDefault();
@@ -469,6 +479,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.deleteNote?.(note);
     case "savePoint":
       return L.savePoint?.();
+    case "versionHistory":
+      return L.openVersionHistory?.();
     case "find":
       return L.openFind?.("find");
     case "findNext":

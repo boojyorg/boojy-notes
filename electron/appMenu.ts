@@ -165,6 +165,7 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         // Notes save as they are typed; Save Point keeps the note as it is now
         // in its history, under the key every app taught for Save.
         item("savePoint", "Save Point", "CmdOrCtrl+S", { enabled: !fileless }),
+        item("versionHistory", "Version History…", "Alt+CmdOrCtrl+S", { enabled: !fileless }),
         { type: "separator" },
         note("rename", "Rename…"),
         file("duplicate", "Duplicate"),

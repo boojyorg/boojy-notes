@@ -219,6 +219,14 @@ export const ArrowRightToLineIcon = ({ size = ICON_INLINE }) => (
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
  *  12.5px menu labels (judged live 2026-08-23). */
 export const TrashIcon = () => <LuTrash {...base} {...navBase} size={ICON_INLINE} />;
+/** Restore a version (Version History's rows, Recently Deleted). */
+export const RestoreIcon = ({ size = ICON_INLINE }) => (
+  <LuRotateCcw {...base} {...navBase} size={size} />
+);
+/** Version History: the ··· item, the list's header and the past-version pill. */
+export const HistoryIcon = ({ size = ICON_INLINE }) => (
+  <LuHistory {...base} {...navBase} size={size} />
+);
 export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );

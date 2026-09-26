@@ -21,6 +21,7 @@ import {
   SettingsIcon,
   SourceViewIcon,
   TrashIcon,
+  HistoryIcon,
 } from "./Icons";
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
@@ -61,6 +62,8 @@ const ContextMenu = memo(function ContextMenu({
   openFile,
   revealFile,
   trashFile,
+  // Version History (desktop): the ··· menu becomes the note's past in place.
+  onVersionHistory,
   wordCount,
   // The Markdown view: whether it is on, and the one switch (EditorArea's).
   sourceView,
@@ -191,9 +194,26 @@ const ContextMenu = memo(function ContextMenu({
         deleteNote(id);
         setCtxMenu(null);
       },
-      danger: true,
+      // Ordinary ink: a note goes to the Trash, so this can be taken back.
+      // Red is kept for what cannot.
     },
   ];
+
+  // The open note's own items: its Version History sits before Delete.
+  const headerNoteItems = (id) => {
+    const items = noteItems(id);
+    if (!onVersionHistory) return items;
+    items.splice(items.length - 1, 0, {
+      label: "Version History",
+      icon: <HistoryIcon />,
+      shortcut: "⌥⌘S",
+      action: () => {
+        setCtxMenu(null);
+        onVersionHistory();
+      },
+    });
+    return items;
+  };
 
   const settingsItem = {
     label: "Settings",
@@ -254,7 +274,7 @@ const ContextMenu = memo(function ContextMenu({
   ];
 
   const items = isHeader
-    ? [...(ctxMenu.id ? [...noteItems(ctxMenu.id), viewItem] : []), settingsItem]
+    ? [...(ctxMenu.id ? [...headerNoteItems(ctxMenu.id), viewItem] : []), settingsItem]
     : ctxMenu.type === "note" && isBulk
       ? [
           // The bulk menu: Move first, since it is what a selection is

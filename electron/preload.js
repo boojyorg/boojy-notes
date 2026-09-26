@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     read: (noteId, versionId) => ipcRenderer.invoke("history-read", noteId, versionId),
     remove: (noteId, versionId) => ipcRenderer.invoke("history-delete", noteId, versionId),
     setOff: (noteId, off, keep) => ipcRenderer.invoke("history-set-off", noteId, off, keep),
+    undelete: (noteId, version) => ipcRenderer.invoke("history-undelete", noteId, version),
+    clock24h: () => ipcRenderer.invoke("history-clock-24h"),
   },
   // A file that is not a note, by its vault-relative path.
   trashFile: (relPath) => ipcRenderer.invoke("trash-file", relPath),

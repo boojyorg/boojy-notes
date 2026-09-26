@@ -107,6 +107,11 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
   Autosave makes it a save point. A deleted note keeps its last text for 30 days. History off
   keeps nothing new; turning it off with Delete removes the texts at once.
+- **The list is the ··· menu in place** (`VersionHistoryList`, `useVersionHistory`). A chosen
+  version shows read-only in the note (`PastVersionView`: the real blocks, painted from a ref
+  holding only the version; every edit is stopped and asks), with a pill in the `</>` slot.
+  A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z
+  take it back. `version-history.spec.ts`.
 - **A note renamed while the app was closed keeps its id** when it holds exactly the text its
   history last kept (`_adoptable`). `version-store.spec.ts`, `history.test.ts`.
 

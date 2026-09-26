@@ -8,6 +8,8 @@ import {
   SearchIcon,
   NewNoteIcon,
   SourceViewIcon,
+  HistoryIcon,
+  CloseIcon,
 } from "./Icons";
 import { isElectronMac } from "../utils/platform";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
@@ -225,8 +227,13 @@ export default function EditorChrome({
   onNewNote,
   onOpenSearch,
   onToggleSourceView,
+  // Version History with a version on screen: the pill that says so, and the
+  // question typing into it asks. { time, moment, listOpen, onToggleList,
+  // onBack, ask, onRestore, onDismissAsk }
+  past,
 }) {
   const { sidebarVisible, fullScreen, toggleSidebar, sourceView } = useLayout();
+  const { theme } = useTheme();
   const collapsed = !sidebarVisible;
 
   // The left controls belong to the editor, so they start at its left edge,
@@ -279,7 +286,101 @@ export default function EditorChrome({
           gap: BTN_GAP,
         }}
       >
-        {sourceView && activeNote && (
+        {past && (
+          // A version on screen is a mode, shown as the Markdown view's is: lit,
+          // in the same slot, and the way back. The time shows or hides the
+          // list; the × is Now.
+          <div data-past-pill style={{ display: "flex", alignItems: "center" }}>
+            <ChromeButton
+              onClick={past.onToggleList}
+              label={`${past.moment} · ${past.listOpen ? "Hide the list" : "Show the list"}`}
+              lit
+              style={{
+                width: "auto",
+                gap: 6,
+                padding: "0 8px 0 10px",
+                borderRadius: "6px 0 0 6px",
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <HistoryIcon />
+              {past.time}
+            </ChromeButton>
+            <ChromeButton
+              onClick={past.onBack}
+              label="Back to now"
+              shortcut="Esc"
+              lit
+              style={{ width: 26, borderRadius: "0 6px 6px 0" }}
+            >
+              <CloseIcon size={14} />
+            </ChromeButton>
+          </div>
+        )}
+        {past?.ask && (
+          <div
+            data-past-ask
+            role="dialog"
+            aria-label="Viewing an earlier version"
+            style={{
+              position: "fixed",
+              top: CHROME_TOP + CHROME_BTN + 6,
+              right: CHROME_INSET + CHROME_BTN + BTN_GAP,
+              width: 290,
+              background: theme.BG.elevated,
+              border: `1px solid ${theme.BG.divider}`,
+              borderRadius: 12,
+              boxShadow: theme.modalShadow,
+              padding: "14px 14px 12px",
+              zIndex: Z.CONTEXT_MENU + 2,
+              color: theme.TEXT.primary,
+              fontSize: 13.5,
+              lineHeight: 1.5,
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                past.onDismissAsk();
+              }
+            }}
+          >
+            <p style={{ margin: "0 0 12px" }}>
+              You’re viewing {past.time}. To edit, go back to now or restore this version.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { label: "Back to Now", run: past.onBack },
+                { label: "Restore", run: past.onRestore },
+              ].map((b, i) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  // biome-ignore lint/a11y/noAutofocus: the question takes the keys it answers
+                  autoFocus={i === 0}
+                  onClick={b.run}
+                  className="settings-button"
+                  style={{
+                    height: 30,
+                    padding: "0 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${theme.button.border}`,
+                    background: theme.button.bg,
+                    color: theme.TEXT.primary,
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                  }}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {sourceView && activeNote && !past && (
           // Lit while the view is on: it says the mode is on, and it is the
           // way back. The chip names what a press does.
           <ChromeButton

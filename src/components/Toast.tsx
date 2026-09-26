@@ -23,6 +23,8 @@ interface ToastProps {
   onEndEditing?: (name: string | null) => void;
   /** Pointed at: a receipt waits rather than fading under the pointer. */
   onHold?: (held: boolean) => void;
+  /** One thing it offers to do about what it reports (Undo), then it goes. */
+  action?: { label: string; run: () => void };
 }
 
 /** The mark a kind carries when the message does not ask for its own. */
@@ -66,6 +68,7 @@ export default function Toast({
   onStartEditing,
   onEndEditing,
   onHold,
+  action,
 }: ToastProps) {
   const persists = toastPersists(kind);
   const [hovered, setHovered] = useState(false);
@@ -114,7 +117,7 @@ export default function Toast({
       role={persists ? "alert" : "status"}
       aria-live={persists ? "assertive" : "polite"}
       data-toast-kind={kind}
-      onClick={persists || nameable ? undefined : onDismiss}
+      onClick={persists || nameable || action ? undefined : onDismiss}
       style={{
         display: "flex",
         alignItems: "flex-start",
@@ -132,7 +135,7 @@ export default function Toast({
         // Light the elevated ground *is* the sheet's white, so without it the
         // receipt was a hairline outline on white (judged live 2026-09-19).
         boxShadow: theme.modalShadow,
-        cursor: persists || nameable ? "default" : "pointer",
+        cursor: persists || nameable || action ? "default" : "pointer",
         animation: "fadeIn 0.2s ease",
       }}
     >
@@ -199,6 +202,29 @@ export default function Toast({
         </button>
       ) : (
         <span>{message}</span>
+      )}
+      {action && (
+        <button
+          type="button"
+          onClick={() => {
+            action.run();
+            onDismiss();
+          }}
+          style={{
+            border: "none",
+            background: "transparent",
+            font: "inherit",
+            fontWeight: 600,
+            color: theme.ACCENT.text,
+            cursor: "pointer",
+            padding: "0 4px",
+            margin: "0 -4px 0 4px",
+            borderRadius: 4,
+            flexShrink: 0,
+          }}
+        >
+          {action.label}
+        </button>
       )}
       {persists && (
         <button

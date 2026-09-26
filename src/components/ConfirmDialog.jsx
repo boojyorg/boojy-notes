@@ -19,7 +19,7 @@ import { Z } from "../constants/zIndex";
  * "safer" default was no protection at all. The dialog takes only Escape.
  * Focus is placed once per dialog and Tab stays inside it.
  */
-export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel }) {
+export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel, onAlt }) {
   const { theme } = useTheme();
   const dialogRef = useRef(null);
   const cancelRef = useRef(null);
@@ -127,6 +127,29 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
           >
             {confirm.cancelLabel || "Cancel"}
           </button>
+          {/* A middle way, where there is one (Keep Them beside Delete Them):
+              an ordinary button, never the mark. */}
+          {confirm.altLabel && (
+            <button
+              type="button"
+              onClick={onAlt}
+              className="settings-button"
+              style={{
+                height: 34,
+                padding: "0 20px",
+                borderRadius: 8,
+                border: `1px solid ${theme.button.border}`,
+                background: theme.button.bg,
+                color: theme.TEXT.primary,
+                fontSize: 13,
+                fontWeight: 500,
+                fontFamily: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              {confirm.altLabel}
+            </button>
+          )}
           <button
             ref={confirmRef}
             onClick={onConfirm}

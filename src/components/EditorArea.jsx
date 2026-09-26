@@ -17,6 +17,7 @@ import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
+import PastVersionView from "./PastVersionView";
 import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle from "./BlockDragHandle";
@@ -165,6 +166,9 @@ const EditorArea = memo(
     openFindRef,
     // Show Markdown / Show Formatted, from the menus, ⌘/ and the lit `</>`.
     switchViewRef,
+    // Version History: a version on screen instead of the note, read-only.
+    pastVersion,
+    onTypeIntoPast,
   }) {
     const rhythm = useRhythm();
     const {
@@ -864,7 +868,16 @@ const EditorArea = memo(
           >
             {isMobile && titleField}
 
-            {sourceView ? (
+            {pastVersion ? (
+              <PastVersionView
+                versionId={pastVersion.id}
+                noteId={activeNote}
+                blocks={pastVersion.blocks}
+                noteTitleSet={noteTitleSet}
+                accentColor={accentColor}
+                onTypeIntoPast={onTypeIntoPast}
+              />
+            ) : sourceView ? (
               <SourceView
                 key={activeNote}
                 noteId={activeNote}
@@ -1163,6 +1176,8 @@ const EditorArea = memo(
     // shortcut here, because a text-only undo looks exactly like a text-only
     // edit to the checks below — and those exist to *skip* the repaint.
     if (prev.syncGen !== next.syncGen) return false;
+    // Version History swapped the note for a version, or back.
+    if (prev.pastVersion !== next.pastVersion) return false;
 
     // The selection toolbar is an interaction, not a keystroke, and it must
     // paint now: applying a format re-reads the block (which sets the

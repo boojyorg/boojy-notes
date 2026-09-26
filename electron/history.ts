@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { app, ipcMain } from "electron";
+import { app, ipcMain, systemPreferences } from "electron";
 import { writeFileAtomic } from "./atomicWrite.js";
 import { trace } from "./trace.js";
 
@@ -377,6 +377,17 @@ export function nameVersion(id: string, versionId: string, name: string): boolea
   return true;
 }
 
+/** Undo of a delete: the version back where it was (its text is kept until the next launch). */
+export function undeleteVersion(id: string, v: Version): boolean {
+  if (!v || typeof v.id !== "string" || !/^[0-9a-f]{64}$/.test(v.hash)) return false;
+  if (readLog(id).versions.some((x) => x.id === v.id) || !objectPath(v.hash)) return false;
+  if (!fs.existsSync(objectPath(v.hash) as string)) return false;
+  append(id, { op: "add", v });
+  const log = readLog(id);
+  log.versions.sort((a, b) => a.at - b.at);
+  return true;
+}
+
 export function deleteVersion(id: string, versionId: string): boolean {
   if (!readLog(id).versions.some((v) => v.id === versionId)) return false;
   append(id, { op: "drop", id: versionId });
@@ -516,6 +527,19 @@ export function registerHistoryIPC(): void {
   ipcMain.handle("history-delete", (_e, id: unknown, versionId: unknown) =>
     isId(id) && typeof versionId === "string" ? deleteVersion(id, versionId) : false,
   );
+  ipcMain.handle("history-undelete", (_e, id: unknown, v: unknown) =>
+    isId(id) && v && typeof v === "object" ? undeleteVersion(id, v as Version) : false,
+  );
+  // The Mac's own 24-hour clock setting, which Chromium's Intl doesn't see:
+  // true or false where the user set it, null to follow the locale.
+  ipcMain.handle("history-clock-24h", () => {
+    if (process.platform !== "darwin") return null;
+    try {
+      return systemPreferences.getUserDefault("AppleICUForce24HourTime", "boolean") ? true : null;
+    } catch {
+      return null;
+    }
+  });
   ipcMain.handle("history-set-off", (_e, id: unknown, off: unknown, keep: unknown) => {
     if (isId(id)) setOff(id, off === true, keep !== false);
   });
