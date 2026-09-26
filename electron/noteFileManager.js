@@ -111,10 +111,12 @@ function isSameFile(a, b) {
 /**
  * The name the directory entry actually carries, which on a case-insensitive
  * or normalising volume can differ from the name that was asked for. Falls
- * back to the requested basename if the volume can't answer.
+ * back to the requested basename if the volume can't answer. A symlinked
+ * note is named by its link, never by the file the link points to.
  */
 function realBasename(filePath) {
   try {
+    if (fs.lstatSync(filePath).isSymbolicLink()) return path.basename(filePath);
     return path.basename(fs.realpathSync.native(filePath));
   } catch {
     return path.basename(filePath);

@@ -90,8 +90,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   (`settleTitle`); nothing is painted into a focused field. A new note starts blank with an
   `Untitled` placeholder. A paste into the name keeps its first non-empty line.
   `title-is-filename.spec.ts`.
-- A save keeps the file's permission bits (`writeFileAtomic`); birthtime, xattrs and symlinks
-  are still lost. `file-mode.spec.ts`.
+- A save keeps the mode, and on macOS xattrs (tags) and birthtime (`cp -p` to temp); a
+  symlink is written through. `file-mode.spec.ts`.
 
 ## Attachments
 
