@@ -104,7 +104,7 @@ Each has caused a real bug.
 3. **`EditorContext` is frozen at mount** (memoised with `[]`): handlers read changing state
    through refs (`activeNoteRef`, `noteDataRef`, `blockRefs`), as does any listener registered
    once.
-4. **Every desktop save echoes back through chokidar, up to ~3 s later.** The watcher drops only
+4. **Every desktop save echoes back through the watcher, up to ~3 s later.** The watcher drops only
    events it can trace to the app's own operation, by bytes, never by timer (files rule). An
    escaped echo re-parses the note, remounts every block and loses the caret and keystroke.
    Reproduce desktop bugs in real Electron, not jsdom.
