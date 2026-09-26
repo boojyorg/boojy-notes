@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cloudProvider,
   locationPath,
   removeLocationPrompt,
   splitLocation,
@@ -46,5 +47,19 @@ describe("removeLocationPrompt", () => {
     );
     expect(p.message).toContain('switch to "Uni"');
     expect(p.confirmLabel).toBe("Remove and switch");
+  });
+});
+
+describe("cloudProvider", () => {
+  it("names the service a location syncs with, or null", () => {
+    expect(cloudProvider("/Users/t/Library/Mobile Documents/com~apple~CloudDocs/Notes")).toBe(
+      "iCloud",
+    );
+    expect(cloudProvider("/Users/t/Library/CloudStorage/Dropbox/Notes")).toBe("Dropbox");
+    expect(cloudProvider("/Users/t/Library/CloudStorage/GoogleDrive-t@x.com/My Drive")).toBe(
+      "Google Drive",
+    );
+    expect(cloudProvider("/Users/t/Documents/Boojy/Notes")).toBeNull();
+    expect(cloudProvider(null)).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { PANEL_MS, panelTransition } from "./tokens/motion";
 import { useSidebar } from "./context/SidebarContext";
 import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
+import { useOffloadedNote } from "./hooks/useOffloadedNote";
 import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
@@ -57,7 +58,7 @@ import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
 import { useSearchNavigation } from "./hooks/useSearchNavigation";
 import SearchPalette from "./components/SearchPalette";
 import { readRecents, recordRecent } from "./utils/recentNotes";
-import { removeLocationPrompt } from "./utils/storageLocations";
+import { cloudProvider, removeLocationPrompt } from "./utils/storageLocations";
 import { useTagHandlers } from "./hooks/useTagHandlers";
 import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
@@ -244,6 +245,7 @@ export default function BoojyNotes() {
     refreshVaults,
     addVault,
     flushToDisk,
+    downloadOffloaded,
     folderOps,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
@@ -740,6 +742,11 @@ export default function BoojyNotes() {
 
   // ── Derived data ────────────────────────────────────────────────────
   const note = activeNote ? noteData[activeNote] : null;
+  const offloadedNote = useOffloadedNote(activeNote, !!note?.offloaded, downloadOffloaded);
+  const offloaded = useMemo(
+    () => offloadedNote && { ...offloadedNote, provider: cloudProvider(notesDir) },
+    [offloadedNote, notesDir],
+  );
   const noteTitle = note?.title;
   const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
 
@@ -1328,6 +1335,7 @@ export default function BoojyNotes() {
               onPathRowPointerDown={handleSidebarPointerDown}
               onTitleBlur={settleTitle}
               pastVersion={versionHistory.state.past}
+              offloaded={offloaded}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
             />
             {isMobile && (

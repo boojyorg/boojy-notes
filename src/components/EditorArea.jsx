@@ -17,6 +17,7 @@ import { SIDEBAR_HANDLE_W } from "./EditorChrome";
 import NotePath, { NAME_WEIGHT, PATH_FONT } from "./NotePath";
 import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
+import OffloadedNoteView from "./OffloadedNoteView";
 import PastVersionView from "./PastVersionView";
 import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
@@ -169,6 +170,8 @@ const EditorArea = memo(
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
+    // A note whose text a sync service keeps online: shown downloading, never empty.
+    offloaded,
   }) {
     const rhythm = useRhythm();
     const {
@@ -868,7 +871,13 @@ const EditorArea = memo(
           >
             {isMobile && titleField}
 
-            {pastVersion ? (
+            {offloaded ? (
+              <OffloadedNoteView
+                provider={offloaded.provider}
+                failed={offloaded.failed}
+                retry={offloaded.retry}
+              />
+            ) : pastVersion ? (
               <PastVersionView
                 versionId={pastVersion.id}
                 noteId={activeNote}
@@ -1178,6 +1187,7 @@ const EditorArea = memo(
     if (prev.syncGen !== next.syncGen) return false;
     // Version History swapped the note for a version, or back.
     if (prev.pastVersion !== next.pastVersion) return false;
+    if (prev.offloaded !== next.offloaded) return false;
 
     // The selection toolbar is an interaction, not a keystroke, and it must
     // paint now: applying a format re-reads the block (which sets the

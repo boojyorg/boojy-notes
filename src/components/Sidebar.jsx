@@ -28,6 +28,7 @@ import {
   RecentlyDeletedIcon,
   FolderIcon,
   FileIcon,
+  OffloadedIcon,
   OtherFileIcon,
   NewFolderIcon,
   SearchIcon,
@@ -884,10 +885,21 @@ const Sidebar = memo(function Sidebar({
               // An unnamed note (a new one under the caret, a cleared name)
               // reads `Untitled` a step quieter, so the row is never blank
               // and a note really called Untitled still looks named.
-              color: n.title ? undefined : TEXT.muted,
+              // So does a note whose text a sync service keeps online.
+              color: n.title && !n.offloaded ? undefined : TEXT.muted,
             }}
           >
             {n.title || "Untitled"}
+          </span>
+        )}
+        {n.offloaded && renamingNote !== nId && (
+          <span
+            role="img"
+            aria-label="Not downloaded"
+            data-testid="offloaded-mark"
+            style={{ display: "flex", flexShrink: 0, color: TEXT.muted }}
+          >
+            <OffloadedIcon />
           </span>
         )}
         {/* Trailing ··· opens the same note menu as right-click. The slot is

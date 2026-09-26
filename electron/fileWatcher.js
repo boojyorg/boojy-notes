@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { watchTree } from "./treeWatcher.js";
 import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
+import { isOffloaded } from "./offloaded.js";
 import { trace, traceEnabled } from "./trace.js";
 
 let watcher = null;
@@ -98,9 +99,13 @@ function startWatcher(getNotesDir, getMainWindow) {
 
   const onWriteEvent = (filePath) => {
     if (!filePath.endsWith(".md")) return;
-    if (isOwnWriteEvent(filePath)) return;
+    // An offloaded file is never read here (reading downloads it, and the
+    // download's own event would undo every eviction): it is reported by
+    // name, and the renderer downloads it when it is opened.
+    const offloaded = isOffloaded(filePath);
+    if (!offloaded && isOwnWriteEvent(filePath)) return;
     const notesDir = getNotesDir();
-    const note = parseNoteFile(filePath, notesDir);
+    const note = parseNoteFile(filePath, notesDir, offloaded);
     if (note && getMainWindow()) {
       saveIndex(notesDir);
       trace(
@@ -135,7 +140,7 @@ function startWatcher(getNotesDir, getMainWindow) {
       win?.webContents.send("file-deleted", { filePath });
       return;
     }
-    if (moved.sameBytes) claimWrite(moved.note._filePath, moved.raw);
+    if (moved.sameBytes && moved.raw !== null) claimWrite(moved.note._filePath, moved.raw);
     trace(
       "M",
       "send file-moved",
