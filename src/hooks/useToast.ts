@@ -24,12 +24,15 @@ export interface ToastItem {
   nameable?: { onCommit: (name: string) => void };
   /** Its name field is open: it waits, whatever its kind, until the field closes. */
   editing?: boolean;
+  /** One thing the receipt offers to do about what it reports: Undo. */
+  action?: { label: string; run: () => void };
 }
 
 export interface ToastOptions {
   icon?: string;
   key?: string;
   nameable?: ToastItem["nameable"];
+  action?: ToastItem["action"];
 }
 
 /** How long a receipt stays: long enough to read a name in it, no longer. */
@@ -50,9 +53,13 @@ export function useToast() {
   }, []);
 
   const showToast = useCallback(
-    (message: string, kind: ToastKind = "error", { icon, key, nameable }: ToastOptions = {}) => {
+    (
+      message: string,
+      kind: ToastKind = "error",
+      { icon, key, nameable, action }: ToastOptions = {},
+    ) => {
       const id = Date.now() + Math.random();
-      const toast: ToastItem = { id, message, kind, icon, key, nameable };
+      const toast: ToastItem = { id, message, kind, icon, key, nameable, action };
       setToasts((prev) => (key ? prev.filter((t) => t.key !== key) : prev).concat(toast));
       if (!toastPersists(kind)) {
         timers.current.set(

@@ -165,6 +165,10 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         // Notes save as they are typed; Save Point keeps the note as it is now
         // in its history, under the key every app taught for Save.
         item("savePoint", "Save Point", "CmdOrCtrl+S", { enabled: !fileless }),
+        // ⌥⌘S on the Mac; elsewhere Ctrl+Alt+S is Go to Sidebar, so it has none.
+        item("versionHistory", "Version History…", isMac ? "Alt+Cmd+S" : undefined, {
+          enabled: !fileless,
+        }),
         { type: "separator" },
         note("rename", "Rename…"),
         file("duplicate", "Duplicate"),

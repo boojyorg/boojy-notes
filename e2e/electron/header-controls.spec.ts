@@ -180,6 +180,7 @@ test("Settings is in the header menu, with a note open and with none", async () 
     "Rename",
     "Duplicate",
     "Move to…",
+    expect.stringMatching(/^Version History/),
     "Delete",
     // The view item carries its shortcut (⌘/ on a Mac, Ctrl+/ elsewhere).
     expect.stringMatching(/^Show Markdown/),

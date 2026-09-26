@@ -14,6 +14,16 @@ interface DesktopSettings {
   [key: string]: unknown;
 }
 
+/** One version in a note's history (electron/history.ts), without its text. */
+export interface HistoryVersion {
+  id: string;
+  at: number;
+  kind: "auto" | "point";
+  hash: string;
+  name?: string;
+  reason?: string;
+}
+
 /** One vault the app has opened (electron/vaults.ts). */
 export interface VaultEntry {
   path: string;
@@ -114,19 +124,14 @@ declare global {
         mark: (noteId: string, reason: "Before Replace All" | "Before restore") => Promise<void>;
         leave: (noteId: string) => Promise<void>;
         list: (noteId: string) => Promise<{
-          versions: {
-            id: string;
-            at: number;
-            kind: "auto" | "point";
-            hash: string;
-            name?: string;
-            reason?: string;
-          }[];
+          versions: HistoryVersion[];
           off: boolean;
         }>;
         read: (noteId: string, versionId: string) => Promise<string | null>;
         remove: (noteId: string, versionId: string) => Promise<boolean>;
         setOff: (noteId: string, off: boolean, keep?: boolean) => Promise<void>;
+        undelete: (noteId: string, version: HistoryVersion) => Promise<boolean>;
+        clock24h: () => Promise<boolean | null>;
       };
       trashFile: (relPath: string) => Promise<{ trashed: boolean }>;
 

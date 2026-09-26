@@ -154,6 +154,7 @@ test("Move to… from the editor's ··· with the sidebar hidden: the root is a
       "Rename",
       "Duplicate",
       "Move to…",
+      /^Version History/,
       "Delete",
       /^Show Markdown/,
       "Settings",

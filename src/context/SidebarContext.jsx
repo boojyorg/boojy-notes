@@ -222,8 +222,11 @@ export function SidebarProvider({ children }) {
       sortMode,
       setSortMode,
       markEdited,
+      // When each note was last edited this session (Version History's Now).
+      editedAt,
     }),
     [
+      editedAt,
       search,
       searchFocused,
       expanded,

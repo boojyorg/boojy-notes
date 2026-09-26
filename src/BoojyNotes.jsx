@@ -41,6 +41,9 @@ import EditorChrome from "./components/EditorChrome";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { toastPersists, useToast } from "./hooks/useToast";
 import { useSavePoint } from "./hooks/useSavePoint";
+import { useVersionHistory } from "./hooks/useVersionHistory";
+import VersionHistoryList from "./components/VersionHistoryList";
+import { versionMoment, versionTime } from "./utils/versionTime";
 import UiScaleChip from "./components/UiScaleChip";
 import { atScale } from "./utils/uiScale";
 import { useAppKeyboard } from "./hooks/useAppKeyboard";
@@ -107,6 +110,7 @@ export default function BoojyNotes() {
     revealSidebar,
     toggleSidebar,
     sourceView,
+    setSourceView,
     chromeBg,
     accentColor,
     sidebarHandles,
@@ -131,6 +135,7 @@ export default function BoojyNotes() {
     fNotes,
     folderList,
     markEdited,
+    editedAt,
   } = useSidebar();
 
   const {
@@ -263,6 +268,21 @@ export default function BoojyNotes() {
     updateToast,
     holdToast,
   });
+  const versionHistory = useVersionHistory({
+    activeNote,
+    noteDataRef,
+    unflushedNotes,
+    flushToDisk,
+    commitNoteData,
+    syncGeneration,
+    sourceView,
+    setSourceView,
+    showToast,
+    requestConfirm,
+  });
+  const pastShown = versionHistory.state.selected
+    ? versionHistory.state.versions.find((v) => v.id === versionHistory.state.selected)
+    : null;
   const revealVault = useCallback(() => {
     if (notesDir) window.electronAPI?.showItemInFolder(notesDir);
   }, [notesDir]);
@@ -974,6 +994,7 @@ export default function BoojyNotes() {
     switchVault,
     vaults,
     savePoint,
+    openVersionHistory: versionHistory.open,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {
@@ -1031,7 +1052,25 @@ export default function BoojyNotes() {
           activeNote={activeNote}
           // Its own menu type: the active note's actions plus Settings, never
           // the sidebar's multi-selection, and open with no note at all.
-          onNoteActions={({ x, y }) => setCtxMenu({ x, y, type: "header", id: activeNote })}
+          onNoteActions={({ x, y }) => {
+            // The ··· again closes Version History, which stands in its menu's place.
+            if (versionHistory.state.listOpen) versionHistory.close();
+            else setCtxMenu({ x, y, type: "header", id: activeNote });
+          }}
+          past={
+            pastShown
+              ? {
+                  time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
+                  moment: versionMoment(pastShown.at, versionHistory.hour12),
+                  listOpen: versionHistory.state.listOpen,
+                  onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
+                  onBack: versionHistory.close,
+                  ask: versionHistory.state.ask,
+                  onRestore: () => versionHistory.restore(pastShown.id),
+                  onDismissAsk: () => versionHistory.setAsk(false),
+                }
+              : null
+          }
           onNewNote={() => createNote(null)}
           onOpenSearch={openSearch}
           onToggleSourceView={toggleSourceView}
@@ -1238,6 +1277,8 @@ export default function BoojyNotes() {
               openNote={openNote}
               onPathRowPointerDown={handleSidebarPointerDown}
               onTitleBlur={settleTitle}
+              pastVersion={versionHistory.state.past}
+              onTypeIntoPast={() => versionHistory.setAsk(true)}
             />
             {isMobile && (
               <MobileToolbar
@@ -1318,7 +1359,23 @@ export default function BoojyNotes() {
         openFile={openOtherFile}
         revealFile={revealOtherFile}
         trashFile={trashOtherFile}
+        onVersionHistory={window.electronAPI?.history ? versionHistory.open : undefined}
       />
+      {versionHistory.state.listOpen && (
+        <VersionHistoryList
+          state={versionHistory.state}
+          hour12={versionHistory.hour12}
+          editedAt={editedAt?.[activeNote] ?? note?.lastModified ?? null}
+          select={versionHistory.select}
+          restore={versionHistory.restore}
+          rename={versionHistory.rename}
+          remove={versionHistory.remove}
+          setOff={versionHistory.setOff}
+          hide={() => versionHistory.setListOpen(false)}
+          close={versionHistory.close}
+          onTypeIntoPast={() => versionHistory.setAsk(true)}
+        />
+      )}
       {pickTarget && (
         <PathTreeMenu
           anchor={movePicker.anchor}
@@ -1415,6 +1472,7 @@ export default function BoojyNotes() {
         accentColor={accentColor}
         onConfirm={() => resolveConfirm(true)}
         onCancel={() => resolveConfirm(false)}
+        onAlt={() => resolveConfirm("alt")}
       />
 
       <UiScaleChip
@@ -1456,6 +1514,7 @@ export default function BoojyNotes() {
               icon={t.icon}
               theme={theme}
               onDismiss={() => dismissToast(t.id)}
+              action={t.action}
               nameable={!!t.nameable}
               editing={!!t.editing}
               onHold={(held) => {

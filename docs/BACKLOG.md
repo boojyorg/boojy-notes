@@ -179,8 +179,8 @@ none blocks the release. The shared question comes first because three candidate
   under the caret). Tidy table shipped in the formatted view's cell menu (`CHANGELOG.md`); a
   Tidy for the table under the caret in this view is the candidate if hand-aligning pipes here
   becomes a chore.
-- **Version History**, designed 2026-09-25/26 from an interactive prototype. Step 1, the store, Autosaves and `⌘S`,
-  is shipping (files rule). Step 2, the list: ··· → Version History (history icon) turns the
+- **Version History**, designed 2026-09-25/26 from an interactive prototype. Steps 1 (the store, Autosaves, `⌘S`)
+  and 2 (the list) are shipping (files rule). Step 2, as built: ··· → Version History (history icon) turns the
   menu into the list in place; one line per row: a dot (teal save point, grey ring Autosave,
   teal ring Now), the name, `Save point`, `Autosave` or its reason, and the time right-aligned
   (`15:48`, `Yesterday 21:40`, `Tue 10:12`, `25 Aug`, `25 Aug 2025`; never numeric dates; the
