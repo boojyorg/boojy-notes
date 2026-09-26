@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deletionPrompt, trashedToast } from "../../src/utils/deletionPrompt";
+import { binnedToast, deletionPrompt, trashedToast } from "../../src/utils/deletionPrompt";
 
 describe("deletionPrompt — desktop (files move to the OS Trash)", () => {
   it("does not prompt for a single note", () => {
@@ -37,6 +37,7 @@ describe("deletionPrompt — desktop (files move to the OS Trash)", () => {
   it("names the trashed note in the toast", () => {
     expect(trashedToast("Loose one")).toBe('"Loose one" moved to the Trash');
     expect(trashedToast("")).toBe('"Untitled" moved to the Trash');
+    expect(binnedToast("Old plan")).toBe('"Old plan" moved to Recently Deleted');
   });
 });
 

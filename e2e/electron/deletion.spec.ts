@@ -94,7 +94,7 @@ test("confirmed deletion moves only the notes; a single note goes at once with a
     // A receipt is role=status (news, not an interruption); the notice about the
     // folder that kept its budget.txt is the role=alert that can be up beside it.
     await expect(h.page.getByRole("status").filter({ hasText: "Loose one" })).toContainText(
-      "moved to the Trash",
+      "moved to Recently Deleted",
     );
     await expect.poll(() => h.vault.exists("Loose one.md"), { timeout: 5_000 }).toBe(false);
     await sleep(SETTLE_MS);

@@ -25,6 +25,7 @@ import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
 import {
   AttachmentsIcon,
+  RecentlyDeletedIcon,
   FolderIcon,
   FileIcon,
   OtherFileIcon,
@@ -503,6 +504,8 @@ const Sidebar = memo(function Sidebar({
   vaultMenuRequest = 0,
   // The menu re-reads the list as it opens: a vault may have gone since.
   onVaultMenuOpen,
+  // Desktop: the pinned Recently Deleted row. { open, onToggle }
+  recentlyDeleted,
 }) {
   const {
     accentColor,
@@ -1856,6 +1859,53 @@ const Sidebar = memo(function Sidebar({
           </>
         )}
       </div>
+      {recentlyDeleted && !isMobile && (
+        // Pinned under the tree however long it is: where a deleted note
+        // waits, always in the same place (Apple Notes hides it when empty;
+        // a row that comes and goes is harder to trust).
+        <div style={{ borderTop: `1px solid ${BG.divider}`, padding: "6px 0", flexShrink: 0 }}>
+          <button
+            type="button"
+            data-testid="recently-deleted-row"
+            aria-haspopup="dialog"
+            aria-expanded={recentlyDeleted.open}
+            onClick={recentlyDeleted.onToggle}
+            style={{
+              width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
+              marginLeft: ROW_INSET,
+              height: TREE_ROW_H,
+              boxSizing: "border-box",
+              padding: `0 8px 0 ${TREE_SPINE - ROW_INSET}px`,
+              borderRadius: ACTION_RADIUS,
+              background: recentlyDeleted.open ? BG.hover : "none",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: ICON_GAP,
+              color: recentlyDeleted.open ? TEXT.primary : TEXT.secondary,
+              fontSize: 14,
+              fontFamily: "inherit",
+              textAlign: "left",
+              transition: "background 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              hBg(e.currentTarget, BG.hover);
+              e.currentTarget.style.color = TEXT.primary;
+            }}
+            onMouseLeave={(e) => {
+              if (recentlyDeleted.open) return;
+              hBg(e.currentTarget, "transparent");
+              e.currentTarget.style.color = TEXT.secondary;
+            }}
+          >
+            <RecentlyDeletedIcon />
+            {/* No count: no other row in the sidebar carries one, and a number
+                reads as something to clear, which a safety net is not. */}
+            <span style={{ flex: 1 }}>Recently Deleted</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 });

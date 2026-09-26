@@ -111,11 +111,17 @@ export function useVersionHistory({
       hadSourceView.current = true;
       setSourceView(false);
     }
+    // The list opens with its versions in it: shown empty first, an arrow
+    // pressed before they arrived landed on Now (seen under load).
+    const api = historyAPI();
+    if (!api) return;
+    const { versions, off } = await api.list(noteId);
     setState((s) =>
-      s.noteId === noteId ? { ...s, listOpen: true } : { ...CLOSED, noteId, listOpen: true },
+      s.noteId === noteId
+        ? { ...s, listOpen: true, versions, off }
+        : { ...CLOSED, noteId, listOpen: true, versions, off },
     );
-    await load(noteId);
-  }, [activeNote, flushToDisk, noteDataRef, unflushedNotes, sourceView, setSourceView, load]);
+  }, [activeNote, flushToDisk, noteDataRef, unflushedNotes, sourceView, setSourceView]);
 
   // Escape is Now from anywhere while a version is on screen and the list is
   // hidden (the list takes its own Escape). On the document, before the

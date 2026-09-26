@@ -112,6 +112,11 @@ declare global {
 
       // Platform Trash / Recycle Bin
       trashNote: (noteId: string) => Promise<{ trashed: boolean; missing?: boolean }>;
+      /** Recently Deleted: notes the app sent to the Trash in the last 30 days. */
+      listDeletedNotes: () => Promise<{ id: string; name: string; folder: string; at: number }[]>;
+      restoreDeletedNote: (noteId: string) => Promise<Note | null>;
+      purgeDeletedNote: (noteId: string) => Promise<boolean>;
+      onDeletedNotesChanged: (callback: () => void) => () => void;
       /** Version history (electron/history.ts): a note's past, kept outside the vault. */
       history: {
         savePoint: (

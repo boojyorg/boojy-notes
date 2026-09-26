@@ -129,7 +129,10 @@ export default function Toast({
         color: theme.TEXT.primary,
         fontSize: 13,
         lineHeight: 1.45,
-        maxWidth: 360,
+        maxWidth: "min(360px, 100%)",
+        boxSizing: "border-box",
+        // The stack's band lets the pointer through; the toast itself takes it.
+        pointerEvents: "auto",
         // The menus' own shadow, not the tooltip chip's none: a chip labels the
         // control it points at, while this floats free over the sheet — and in
         // Light the elevated ground *is* the sheet's white, so without it the

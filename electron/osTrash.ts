@@ -304,7 +304,7 @@ export async function trashManagedNote(
     throw error;
   }
 
-  noteDeleted(noteId);
+  noteDeleted(noteId, relativePath.split(path.sep).join("/"));
   delete idIndex[noteId];
   try {
     saveIndex(notesDir);

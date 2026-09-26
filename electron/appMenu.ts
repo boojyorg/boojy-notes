@@ -150,6 +150,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         // The sidebar's storage-location menu, opened from the keyboard; a
         // new location is added in Settings.
         item("openVault", "Switch Storage Location…", "CmdOrCtrl+O"),
+        // The notes the app deleted in the last 30 days, waiting to come back.
+        item("recentlyDeleted", "Recently Deleted…"),
         {
           label: "Open Recent",
           enabled: state.vaults.length > 1,

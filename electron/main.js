@@ -14,7 +14,7 @@ import { WINDOW_MIN_W } from "../src/constants/layout.js";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { insideVault, registerNoteFileIPC } from "./noteFileManager.js";
-import { endAllSessions, registerHistoryIPC } from "./history.js";
+import { endAllSessions, onDeletedChanged, registerHistoryIPC } from "./history.js";
 import { migrateLegacyTrash, registerOSTrashIPC } from "./osTrash.js";
 import { registerFolderIPC } from "./folders.js";
 import {
@@ -229,6 +229,8 @@ function restartWatcher() {
 
 registerNoteFileIPC(getMainWindow, getNotesDir, { claimWrite, claimUnlink, releaseUnlinkClaim });
 registerHistoryIPC();
+// Recently Deleted re-reads its list when a note goes in or comes out.
+onDeletedChanged(() => getMainWindow()?.webContents.send("deleted-notes-changed"));
 // Diagnostic trace (electron/trace.js): the renderer asks once whether it is
 // on, then sends its lines here to be stamped on the same clock as main's.
 ipcMain.on("trace-enabled", (event) => {

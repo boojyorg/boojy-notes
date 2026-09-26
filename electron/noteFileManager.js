@@ -554,6 +554,46 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return { filePath: realPath, title: path.basename(realPath, ".md") };
   });
 
+  // Recently Deleted: the notes the app sent to the Trash in the last 30 days,
+  // by the place they had; one put back where it was (its folder made again if
+  // it went, a `-2` if the name is taken), keeping its id so its history is its
+  // own again; one deleted for good.
+  ipcMain.handle("list-deleted-notes", () =>
+    history.listDeleted().map(({ id, path: rel, at }) => {
+      const dir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+      return {
+        id,
+        name: rel.slice(rel.lastIndexOf("/") + 1).replace(/\.md$/, ""),
+        folder: dir,
+        at,
+      };
+    }),
+  );
+
+  ipcMain.handle("restore-deleted-note", (_event, id) => {
+    if (typeof id !== "string") return null;
+    const found = history.deletedText(id);
+    if (!found) return null;
+    const notesDir = getNotesDir();
+    assertVaultPresent(notesDir);
+    const target = insideVault(notesDir, found.path);
+    if (!target || !target.endsWith(".md")) return null;
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const finalPath = ensureUniqueFilePath(target);
+    writeFileAtomic(finalPath, found.text);
+    watcher.claimWrite(finalPath, found.text);
+    _idIndex[id] = path.relative(notesDir, finalPath);
+    saveIndex(notesDir);
+    const note = parseNoteFile(finalPath, notesDir);
+    history.noteRestored(id);
+    trace("M", "restored deleted note", path.relative(notesDir, finalPath));
+    return note;
+  });
+
+  ipcMain.handle("purge-deleted-note", (_event, id) =>
+    typeof id === "string" ? history.purgeDeleted(id) : false,
+  );
+
   ipcMain.handle("save-image", (_event, { fileName, dataBase64 }) => {
     const notesDir = getNotesDir();
     assertVaultPresent(notesDir);

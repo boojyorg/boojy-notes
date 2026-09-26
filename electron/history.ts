@@ -46,13 +46,15 @@ type Op =
   | { op: "name"; id: string; name: string }
   | { op: "off" }
   | { op: "on" }
-  | { op: "deleted"; at: number }
+  | { op: "deleted"; at: number; path?: string }
   | { op: "undeleted" };
 
 interface NoteLog {
   versions: Version[]; // oldest first
   off: boolean;
   deletedAt: number | null;
+  /** Where the note's file was, vault-relative, when it was deleted. */
+  deletedPath: string | null;
 }
 
 interface Head {
@@ -124,7 +126,7 @@ function objectPath(hash: string): string | null {
 // ─── Reading and writing the store ───
 
 function foldLog(lines: string[]): NoteLog {
-  const log: NoteLog = { versions: [], off: false, deletedAt: null };
+  const log: NoteLog = { versions: [], off: false, deletedAt: null, deletedPath: null };
   for (const line of lines) {
     let op: Op;
     try {
@@ -147,8 +149,13 @@ function foldLog(lines: string[]): NoteLog {
       }
     } else if (op.op === "off") log.off = true;
     else if (op.op === "on") log.off = false;
-    else if (op.op === "deleted") log.deletedAt = op.at;
-    else if (op.op === "undeleted") log.deletedAt = null;
+    else if (op.op === "deleted") {
+      log.deletedAt = op.at;
+      log.deletedPath = op.path ?? null;
+    } else if (op.op === "undeleted") {
+      log.deletedAt = null;
+      log.deletedPath = null;
+    }
   }
   return log;
 }
@@ -182,7 +189,10 @@ function append(id: string, op: Op): void {
 function serialise(log: NoteLog): string[] {
   const lines = log.versions.map((v) => JSON.stringify({ op: "add", v }));
   if (log.off) lines.push(JSON.stringify({ op: "off" }));
-  if (log.deletedAt !== null) lines.push(JSON.stringify({ op: "deleted", at: log.deletedAt }));
+  if (log.deletedAt !== null)
+    lines.push(
+      JSON.stringify({ op: "deleted", at: log.deletedAt, path: log.deletedPath ?? undefined }),
+    );
   return lines;
 }
 
@@ -411,20 +421,88 @@ export function setOff(id: string, off: boolean, keep = true): void {
   if (off) {
     if (!keep) {
       // Deleted means gone from disk now, not at the next launch's tidy.
-      rewriteLog(id, { versions: [], off: true, deletedAt: log.deletedAt });
+      rewriteLog(id, {
+        versions: [],
+        off: true,
+        deletedAt: log.deletedAt,
+        deletedPath: log.deletedPath,
+      });
       tidy();
     } else if (!log.off) append(id, { op: "off" });
   } else if (log.off) append(id, { op: "on" });
 }
 
-/** The note went to the Trash: its last state is kept, and so is its history for 30 days. */
-export function noteDeleted(id: string): void {
+/** The note went to the Trash from `path`: its last state is kept, and so is its history for 30 days. */
+export function noteDeleted(id: string, path?: string): void {
   endSession(id);
   const head = _heads.get(id);
   // Its last state, even untouched this session: Recently Deleted brings back this.
   if (head) autosave(id, head.text, "base");
   _heads.delete(id);
-  if (readLog(id).versions.length) append(id, { op: "deleted", at: _clock() });
+  if (readLog(id).versions.length) append(id, { op: "deleted", at: _clock(), path });
+  changed();
+}
+
+// ─── Recently Deleted ───
+
+let _onDeletedChanged: (() => void) | null = null;
+/** Main tells the window when the bin's contents change. */
+export function onDeletedChanged(fn: (() => void) | null): void {
+  _onDeletedChanged = fn;
+}
+function changed(): void {
+  _onDeletedChanged?.();
+}
+
+export interface DeletedNote {
+  id: string;
+  /** Vault-relative path the note's file had. */
+  path: string;
+  at: number;
+}
+
+/** Notes deleted in the app in the last 30 days, newest first. */
+export function listDeleted(): DeletedNote[] {
+  const dir = storeDir();
+  const notesDir = dir && path.join(dir, "notes");
+  if (!notesDir || !fs.existsSync(notesDir)) return [];
+  const now = _clock();
+  const out: DeletedNote[] = [];
+  for (const file of fs.readdirSync(notesDir)) {
+    if (!file.endsWith(".jsonl")) continue;
+    const id = file.slice(0, -".jsonl".length);
+    const log = readLog(id);
+    if (log.deletedAt === null || !log.deletedPath || now - log.deletedAt > DELETED_KEEP_MS)
+      continue;
+    if (!log.versions.length) continue;
+    out.push({ id, path: log.deletedPath, at: log.deletedAt });
+  }
+  return out.sort((a, b) => b.at - a.at);
+}
+
+/** A deleted note's last text, for putting it back. */
+export function deletedText(id: string): { path: string; text: string } | null {
+  const log = readLog(id);
+  const last = log.versions[log.versions.length - 1];
+  if (log.deletedAt === null || !log.deletedPath || !last) return null;
+  const text = getObject(last.hash);
+  return text === null ? null : { path: log.deletedPath, text };
+}
+
+/** It is back in the vault: out of the bin, its history its own again. */
+export function noteRestored(id: string): void {
+  if (readLog(id).deletedAt !== null) append(id, { op: "undeleted" });
+  changed();
+}
+
+/** Delete for good: the note's history and its texts, now. */
+export function purgeDeleted(id: string): boolean {
+  const log = readLog(id);
+  if (log.deletedAt === null) return false;
+  rewriteLog(id, { versions: [], off: false, deletedAt: null, deletedPath: null });
+  tidy();
+  changed();
+  return true;
 }
 
 /** The newest version's hash, for recognising a note renamed while the app was closed. */
