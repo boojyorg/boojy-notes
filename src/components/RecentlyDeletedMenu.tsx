@@ -122,7 +122,11 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
         position: "fixed",
         left: pos?.left ?? 248,
         bottom: pos?.bottom ?? 10,
-        width: 300,
+        // As wide as what it holds, no wider (the 30-days line, usually), and
+        // never past 320: a longer name is cut with an ellipsis.
+        width: "fit-content",
+        minWidth: 220,
+        maxWidth: 320,
         zIndex: Z.CONTEXT_MENU,
         background: BG.elevated,
         border: `1px solid ${BG.divider}`,
@@ -183,8 +187,12 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
                 )}
                 {item.name || "Untitled"}
               </span>
-              {actions && (
-                <span style={{ display: "flex", gap: 2 }}>
+              {/* Always there, shown only on the row that offers them: the
+                  menu keeps its width when the pointer moves. */}
+              {
+                <span
+                  style={{ display: "flex", gap: 2, visibility: actions ? "visible" : "hidden" }}
+                >
                   {iconButton(`Put back “${item.name}”`, <RestoreIcon size={14} />, () =>
                     restore(item.id),
                   )}
@@ -192,7 +200,7 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
                     purge(item),
                   )}
                 </span>
-              )}
+              }
             </div>
           );
         })}
