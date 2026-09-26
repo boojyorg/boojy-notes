@@ -174,8 +174,8 @@ export function useAppKeyboard({
       // the platform's Save key keeps the note as it is now in its history.
       // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
       // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
-      // physical key is matched).
-      if (mod && e.altKey && !e.shiftKey && e.code === "KeyS" && !(e.ctrlKey && e.metaKey)) {
+      // physical key is matched). Mac only: Ctrl+Alt+S elsewhere is Go to Sidebar.
+      if (e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && e.code === "KeyS") {
         if (!L.activeNote) return;
         e.preventDefault();
         L.openVersionHistory?.();
