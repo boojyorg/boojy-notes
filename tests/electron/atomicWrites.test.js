@@ -111,6 +111,24 @@ describe("write-note — crash-safe writes", () => {
     renameSpy.mockRestore();
   });
 
+  it("answers as written when the file is deleted outside the app the moment it lands", () => {
+    // The outside delete lands between the rename and the stat that follows
+    // it. Thrown, the renderer retried and wrote the deleted note back.
+    const realRename = fs.renameSync.bind(fs);
+    const renameSpy = vi.spyOn(fs, "renameSync").mockImplementation((from, to) => {
+      realRename(from, to);
+      if (String(to).endsWith("Gone.md")) fs.unlinkSync(to);
+    });
+    const written = writeNote({
+      id: "note-1-gone",
+      title: "Gone",
+      content: { blocks: [{ type: "p", text: "short-lived" }] },
+    });
+    renameSpy.mockRestore();
+    expect(written.title).toBe("Gone");
+    expect(fs.existsSync(written.filePath)).toBe(false);
+  });
+
   it("keeps the index as valid JSON after writes", () => {
     writeNote({
       id: "note-1-aaaa",

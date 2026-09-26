@@ -32,6 +32,7 @@
 
 ### Bug Fixes
 
+- **A note deleted in Finder right after you typed in it stays deleted** — If a note was deleted outside the app (Finder, a sync client) within a moment of being saved, the app could treat that save as failed, try again, and bring the file back. The save now counts as done, and the note leaves the sidebar.
 - **"Type / for commands…" no longer shows behind your first line** — In a note whose first paragraph had exactly one line break (Shift+Enter), the faint placeholder was drawn over the words. It now shows only while the first line is truly empty.
 - **The menu bar no longer flickers as you move through a table** — Each arrow key that moved the cursor to another table cell made the menu bar at the top of the screen redraw twice, a visible flicker. It now stays still.
 - **Triple-clicking in a table cell or a callout selects its text** — A triple-click inside a table cell, or in a callout's title or body, tried to select the whole table or callout, which the app cannot hold as a selection, so nothing looked selected and typing or formatting went wrong. It now selects the text of the cell or field you clicked in, ready to type over or format.
