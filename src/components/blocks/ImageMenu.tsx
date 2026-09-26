@@ -22,23 +22,28 @@ interface ImageMenuProps {
   anchor: MenuAnchor;
   /** The bar's ··· sits at the picture's right edge, so the menu's right edge meets it. */
   fromBar: boolean;
-  onView: () => void;
-  onCopy: () => void;
+  /** Other rows in place of the image's own (a missing attachment's), with their label. */
+  entries?: Item[];
+  label?: string;
+  onView?: () => void;
+  onCopy?: () => void;
   /** Desktop only: the web build has no folder to show. */
   onShowInFolder?: () => void;
   /** Only while the picture carries a width set by hand. */
   onOriginalSize?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   onClose: () => void;
 }
 
-interface Item {
+export interface Item {
   label: string;
   icon: ReactNode;
   action: () => void;
   danger?: boolean;
   rule?: boolean;
 }
+
+const noop = () => {};
 
 const hBg = (el: HTMLElement, c: string) => {
   el.style.background = c;
@@ -63,6 +68,8 @@ const hBg = (el: HTMLElement, c: string) => {
 export default function ImageMenu({
   anchor,
   fromBar,
+  entries,
+  label = "Image options",
   onView,
   onCopy,
   onShowInFolder,
@@ -91,27 +98,30 @@ export default function ImageMenu({
     [onClose],
   );
 
-  const items: Item[] = [
-    { label: "View full size", icon: <ExpandIcon nav />, action: act(onView) },
-    { label: "Copy image", icon: <CopyIcon />, action: act(onCopy) },
-  ];
-  if (onShowInFolder) {
+  const items: Item[] = entries
+    ? entries.map((e) => ({ ...e, action: act(e.action) }))
+    : [
+        { label: "View full size", icon: <ExpandIcon nav />, action: act(onView ?? noop) },
+        { label: "Copy image", icon: <CopyIcon />, action: act(onCopy ?? noop) },
+      ];
+  if (!entries && onShowInFolder) {
     items.push({
       label: isMac ? "Show in Finder" : "Show in folder",
       icon: <FolderIcon />,
       action: act(onShowInFolder),
     });
   }
-  if (onOriginalSize) {
+  if (!entries && onOriginalSize) {
     items.push({ label: "Original size", icon: <ResetSizeIcon />, action: act(onOriginalSize) });
   }
-  items.push({
-    label: "Delete",
-    icon: <TrashIcon />,
-    action: act(onDelete),
-    danger: true,
-    rule: true,
-  });
+  if (!entries)
+    items.push({
+      label: "Delete",
+      icon: <TrashIcon />,
+      action: act(onDelete ?? noop),
+      danger: true,
+      rule: true,
+    });
 
   const handleKeyDown = useMenuKeys({
     rows: () => items,
@@ -143,7 +153,7 @@ export default function ImageMenu({
         ref={menuRef}
         className="image-context-menu"
         role="menu"
-        aria-label="Image options"
+        aria-label={label}
         aria-activedescendant={activeIndex >= 0 ? `image-menu-item-${activeIndex}` : undefined}
         tabIndex={-1}
         onKeyDown={(e) => {

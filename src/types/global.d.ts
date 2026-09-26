@@ -94,6 +94,8 @@ declare global {
       openPath: (absolutePath: string) => Promise<void>;
       showItemInFolder: (absolutePath: string) => Promise<void>;
       resolveAttachment: (filename: string) => Promise<string | null>;
+      /** Picks a missing attachment and copies it in under `filename`; false when cancelled. */
+      findAttachment: (filename: string) => Promise<boolean>;
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
       paste: () => Promise<void>;

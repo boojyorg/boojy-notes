@@ -74,8 +74,7 @@ app's, made through state.**
 - **A closing surface hands focus back only while it holds it, with `preventScroll`**
   (focusing the editor otherwise scrolls the note). `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
-  completion; the tag menu offers only tags that start with the typed letters, never the typed
-  tag itself. The `[[` picker is the exception: a dialog that takes focus.
+  completion; the tag menu offers only tags that start with the typed letters. The `[[` picker is the exception: a dialog that takes focus.
 - **A key a menu consumed never reaches the editor** (`defaultPrevented`); no per-menu special
   case.
 - A completion from a native listener commits at once (`commitNoteData`). Tab/Shift+Tab keep
@@ -170,8 +169,7 @@ app's, made through state.**
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or release over
   the sidebar cancel. A multi-block selection drags as one run.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
-  CSS `zoom`; rects are already scaled). Not yet applied to the link/code/image/file menus, the
-  table's badge and cell menu, `SortMenu`.
+  CSS `zoom`; rects are already scaled). Not yet: `SortMenu`, table and file menus, links.
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
@@ -270,8 +268,8 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   Retina PNG (`pHYs`). An existing image is never rewritten by being shown.
 - Nothing at rest; the pointer shows a bar and a resize pill; selected shows its wash only.
   Click selects, double-click opens full size.
-- Absent: alignment, crop, caption, Replace. `image-controls.spec.ts`,
-  `image-size.spec.ts`.
+- **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
+  name. Absent: alignment, crop, caption, Replace. `image-controls.spec.ts`, `missing-attachments.spec.ts`.
 
 ## Tables
 
@@ -320,5 +318,5 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
   sanitised to inline nodes and inserted with `insertNode`, never `insertHTML`.
   `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A link
-  becomes a bare URL only if it is the editor's own `bare-url` autolink with unchanged text.
+  becomes a bare URL only if it is the editor's own unchanged `bare-url` autolink.
   `domRoundTrip.test.js`, `inline-preservation.spec.ts`.

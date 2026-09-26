@@ -735,6 +735,28 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     if (abs && fs.existsSync(abs)) shell.showItemInFolder(abs);
   });
 
+  // A note links to an attachment that is not in the vault: the person picks
+  // the file wherever it went, and it is copied in under the name the note
+  // already links to, so the link resolves and the note changes no byte.
+  // True once the file is there (already, or copied); false when cancelled.
+  ipcMain.handle("find-attachment", async (_event, filename) => {
+    const notesDir = getNotesDir();
+    if (typeof filename !== "string" || !filename) return false;
+    const dest = insideVault(notesDir, path.join("attachments", filename));
+    if (!dest) return false;
+    if (fs.existsSync(dest)) return true;
+    const result = await dialog.showOpenDialog(getMainWindow(), {
+      properties: ["openFile"],
+      defaultPath: _lastPickDir,
+      message: `Find ${path.basename(filename)}`,
+    });
+    if (result.canceled || !result.filePaths[0]) return false;
+    _lastPickDir = path.dirname(result.filePaths[0]);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(result.filePaths[0], dest, fs.constants.COPYFILE_EXCL);
+    return true;
+  });
+
   ipcMain.handle("pick-file", async () => {
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openFile"],
