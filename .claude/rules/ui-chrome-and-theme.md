@@ -89,7 +89,7 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   table column (claimed only in a cell), `⌃⌘S` Go to Sidebar (`⇧⌘E` is Align Centre). Sort has
   none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
-  renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and sticky
+  renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
   block are `inert` (the whole column broke double-click rename). `header-controls.spec.ts`.
 
 ## Settings, setup and UI scale
@@ -155,14 +155,15 @@ duration. `sidebar-motion.spec.ts`.
 
 - Three rows then the tree: the window row (wordmark, Search, toggle), the `New note` pill (the
   one labelled action, neutral, never a filled accent), the vault row (New folder, Sort,
-  revealed on hover; never more than three glyphs).
+  on hover; never more than three glyphs). **Only the tree scrolls**; the rows above it share its
+  drop zone (`data-drop-zone`).
 - **The row is named after the storage location's folder** (default `Notes`; code: vault).
   It and ⌘O open `VaultMenu`, a switcher only; Settings adds, uses, reveals, removes (added
   rarely). A row: name and place (the Finder control), teal `Active` or hover `Use`, hover ×,
   which asks and moves off the open one first. `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
-  its own app; its menu is Open, Show in Finder, Delete. Never renamed or dragged (a rename
-  rewrites no links). The attachment store is the root's last row, a paperclip.
+  its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
+  store is the root's last row.
 - The wordmark is one generated asset per theme, never the master PNG; regenerate both when
   `MARK` or `TEXT.primary` changes: `magick assets/boojy-notes-wordmark.png \( +clone -alpha
   extract \) \( -clone 0 -alpha off -fuzz 12% -fill "<MARK>" -opaque "#A4CACE" +fuzz -fill
@@ -172,8 +173,7 @@ duration. `sidebar-motion.spec.ts`.
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` is the
   sidebar's own and never baked into the shared constants.
 - Rows are neutral `BG.hover` pills for hover and selection; the active note is never bold or
-  accent. Only structure and actions get a glyph (no note icon, no chevron). An unnamed note
-  reads `Untitled` muted.
+  accent. Only structure and actions get a glyph. An unnamed note reads `Untitled` muted.
 - Row controls (note ···, folder New note + ···) are zero-width at rest and `span
   role="button" tabIndex={-1}` (a nested button fails axe). A row's ··· passes its rectangle
   (`rowMenuAnchor`) so a flipped menu clears the row.
