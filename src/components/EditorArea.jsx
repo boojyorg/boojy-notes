@@ -52,7 +52,7 @@ import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
-import { COL_MAX, columnGeometry, useColumnFit } from "../tokens/columnFit";
+import { COL_MAX, columnGeometry, isDefaultFit, useColumnFit } from "../tokens/columnFit";
 import { useWindowWidth } from "../hooks/useWindowWidth";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
 import BlockMenu from "./BlockMenu";
@@ -822,7 +822,7 @@ const EditorArea = memo(
     const columnFit = useColumnFit();
     const windowWidth = useWindowWidth();
     const fitted =
-      columnFit === "fixed" || isMobile
+      isDefaultFit(columnFit) || isMobile
         ? null
         : columnGeometry(
             columnFit,

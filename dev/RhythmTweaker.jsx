@@ -9,7 +9,7 @@
 // rhythm.ts holds it.
 import { useEffect, useState } from "react";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
-import { setColumnFit, useColumnFit } from "../src/tokens/columnFit";
+import { DEFAULT_COLUMN_FIT, setColumnFit, useColumnFit } from "../src/tokens/columnFit";
 
 /** The full-screen experiment's three fits (tokens/columnFit). */
 const FITS = [
@@ -87,7 +87,8 @@ export default function RhythmTweaker() {
   const [values, setValues] = useState(load);
   const [open, setOpen] = useState(true);
   const [copied, setCopied] = useState(false);
-  const fit = useColumnFit();
+  const column = useColumnFit();
+  const fit = column.fit;
 
   useEffect(() => {
     setRhythm(values);
@@ -163,7 +164,7 @@ export default function RhythmTweaker() {
             key={f.fit}
             type="button"
             aria-pressed={fit === f.fit}
-            onClick={() => setColumnFit(f.fit)}
+            onClick={() => setColumnFit({ fit: f.fit })}
             style={{
               ...btn,
               flexGrow: 1,
@@ -175,6 +176,47 @@ export default function RhythmTweaker() {
           </button>
         ))}
       </div>
+      {[
+        {
+          key: "wideCap",
+          label: "Wider cap",
+          min: 720,
+          max: 1000,
+          step: 10,
+          shown: (v) => `${v}px`,
+          note: fit === "wider" ? null : "(Wider only)",
+        },
+        {
+          key: "leftShare",
+          label: "Left share",
+          min: 0.25,
+          max: 0.5,
+          step: 0.01,
+          shown: (v) => (v === 0.5 ? "centred" : `${Math.round(v * 100)}%`),
+          note: null,
+        },
+      ].map(({ key, label, min, max, step, shown, note }) => (
+        <label key={key} style={{ display: "block", marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>
+              {label} {note && <span style={{ color: "#888" }}>{note}</span>}
+            </span>
+            <span style={{ color: column[key] === DEFAULT_COLUMN_FIT[key] ? "#888" : "#9CC9CE" }}>
+              {shown(column[key])}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={column[key]}
+            onChange={(e) => setColumnFit({ [key]: Number(e.target.value) })}
+            style={{ width: "100%" }}
+          />
+        </label>
+      ))}
+      <div style={{ borderTop: "1px solid #333", margin: "6px 0 10px" }} />
       {CONTROLS.map(({ key, label, min, max, step, unit }) => (
         <label key={key} style={{ display: "block", marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>

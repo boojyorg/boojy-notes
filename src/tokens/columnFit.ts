@@ -9,9 +9,19 @@ import { useSyncExternalStore } from "react";
  * - `scale`: past half a large screen the whole note grows together, type,
  *   spacing and column, up to SCALE_MAX, so a line holds the same words and
  *   full screen reads as the half-screen view, larger (iA Writer's way).
- * - `wider`: the column alone grows, to WIDER_MAX; lines get longer.
+ * - `wider`: the column alone grows, to `wideCap`; lines get longer.
+ *
+ * Two dials ride with it: `wideCap` (the widest the wider column gets) and
+ * `leftShare` (how much of the spare room goes left of the column: 0.5
+ * centres it, less sits it nearer the sidebar).
  */
-export type ColumnFit = "fixed" | "scale" | "wider";
+export type Fit = "fixed" | "scale" | "wider";
+export interface ColumnFit {
+  fit: Fit;
+  wideCap: number;
+  leftShare: number;
+}
+export const DEFAULT_COLUMN_FIT: ColumnFit = { fit: "fixed", wideCap: 820, leftShare: 0.5 };
 
 /** The column's width at rest, gutters included. */
 export const COL_MAX = 720;
@@ -19,22 +29,20 @@ export const COL_MAX = 720;
 const GROW_FROM = 900;
 const GROW_TO = 1500;
 const SCALE_MAX = 1.12;
-const WIDER_MAX = 820;
 
-const LS_KEY = "boojy-dev-column-fit";
-let current: ColumnFit = "fixed";
+const LS_KEY = "boojy-dev-column-fit-v2";
+let current: ColumnFit = DEFAULT_COLUMN_FIT;
 if (import.meta.env.DEV) {
   try {
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved === "scale" || saved === "wider") current = saved;
+    current = { ...DEFAULT_COLUMN_FIT, ...JSON.parse(localStorage.getItem(LS_KEY) || "{}") };
   } catch {}
 }
 const listeners = new Set<() => void>();
 
-export function setColumnFit(next: ColumnFit): void {
-  current = next;
+export function setColumnFit(next: Partial<ColumnFit>): void {
+  current = { ...current, ...next };
   try {
-    localStorage.setItem(LS_KEY, next);
+    localStorage.setItem(LS_KEY, JSON.stringify(current));
   } catch {}
   for (const listener of listeners) listener();
 }
@@ -61,11 +69,14 @@ const grown = (pane: number) =>
  * zoomed with it).
  */
 export function columnGeometry(
-  fit: ColumnFit,
+  { fit, wideCap, leftShare }: ColumnFit,
   pane: number,
 ): { maxWidth: number; zoom: number; marginLeft: number } {
   const zoom = fit === "scale" ? 1 + (SCALE_MAX - 1) * grown(pane) : 1;
-  const maxWidth = fit === "wider" ? COL_MAX + (WIDER_MAX - COL_MAX) * grown(pane) : COL_MAX;
-  const marginLeft = Math.max(0, (pane - maxWidth * zoom) / 2) / zoom;
+  const maxWidth = fit === "wider" ? COL_MAX + (wideCap - COL_MAX) * grown(pane) : COL_MAX;
+  const marginLeft = (Math.max(0, pane - maxWidth * zoom) * leftShare) / zoom;
   return { maxWidth, zoom, marginLeft };
 }
+
+/** True when the column is today's: one width, centred (CSS alone places it). */
+export const isDefaultFit = (f: ColumnFit) => f.fit === "fixed" && f.leftShare === 0.5;
