@@ -2,6 +2,7 @@ import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { useRhythm } from "../tokens/rhythm";
+import { bandFill } from "../utils/selectionBand";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
@@ -333,11 +334,16 @@ ${tagPillCss(theme)}
         [data-block-id] .wikilink:hover {
           text-decoration-color: ${theme.wikilink.color};
         }
-        /* The words the link picker will link, while it holds focus: a
-           neutral wash the selection's own strength, unwrapped before the
-           block is read back (useLinkPicker). Never the saved ==highlight==. */
+        /* Selected text in the note wears the selection's one colour, the
+           band a selected block wears (utils/selectionBand). */
+        [data-editor] ::selection {
+          background: ${bandFill(theme.ACCENT.primary, theme.name)};
+        }
+        /* The words the link picker will link, while it holds focus: the
+           selection's colour, standing in for it, unwrapped before the block
+           is read back (useLinkPicker). Never the saved ==highlight==. */
         [data-block-id] mark.link-picker-wash {
-          background: ${theme.selectionWash};
+          background: ${bandFill(theme.ACCENT.primary, theme.name)};
           color: inherit;
           border-radius: 2px;
         }

@@ -20,7 +20,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
-  a location's Active), whole-block selection.
+  a location's Active), and the selection in a note: text and whole blocks share one teal
+  (`bandFill`), stronger by opacity, never saturation, and below the ==highlight==.
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),

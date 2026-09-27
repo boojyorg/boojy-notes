@@ -62,6 +62,12 @@ const OWN_FIRST_ROW = ".code-line, hr";
 
 const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 
+/** What the grip's chip says: the gesture, then what it does. */
+const GRIP_GESTURES = [
+  ["Drag", "to move"],
+  ["Click", "to select"],
+];
+
 function firstLineRect(el, zoom) {
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
@@ -241,7 +247,13 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
         </div>
       )}
       {pos && tip.shown && (
-        <Tooltip label="Click to select, drag to move" anchor={gripEl} testId="grip-tooltip" />
+        <Tooltip
+          label="Drag to move, click to select"
+          lines={GRIP_GESTURES}
+          anchor={gripEl}
+          placement="below"
+          testId="grip-tooltip"
+        />
       )}
     </>
   );

@@ -61,7 +61,7 @@ test.afterEach(async () => {
 
 test("the grip names its gestures after a rest", async () => {
   await hoverGrip(h.page, 0);
-  await expect(h.page.getByTestId("grip-tooltip")).toHaveText("Click to select, drag to move");
+  await expect(h.page.getByTestId("grip-tooltip")).toHaveText("Drag to moveClick to select");
 });
 
 test("a click on the grip selects the whole row, and a letter typed deselects and writes on", async () => {

@@ -309,10 +309,10 @@ describe("TableBlock", () => {
       // The divider's band behind the cells (the theme mock carries no name,
       // so the Light alpha, 10%), reaching past the grid by its reach.
       expect(container.querySelector(".table-scroller").style.background).toBe(
-        "rgba(164, 202, 206, 0.1)",
+        "rgba(164, 202, 206, 0.2)",
       );
       expect(container.querySelector(".table-scroller").style.boxShadow).toBe(
-        "0 0 0 4px rgba(164, 202, 206, 0.1)",
+        "0 0 0 4px rgba(164, 202, 206, 0.2)",
       );
     });
 
