@@ -87,10 +87,12 @@ Rule + one reason. Incidents and measurements are in git; command details in
 - **Build input and output are separate**: `dist/` and `dist-electron/` are packaged input,
   installers go to `release/` (in `dist/`, each build packed the previous one).
   `build:electron` empties `dist-electron/` first. `files` takes only
-  `assets/boojy-notes-app-icon.png` from `assets/`.
-- **The app icon is generated, never hand-edited**, from the full-bleed source:
+  the two app icons from `assets/`.
+- **The app icons are generated, never hand-edited**, from the full-bleed source. macOS:
   `magick assets/boojy-notes-app-icon-source.png -resize 824x824 -background none -gravity center -extent 1024x1024 assets/boojy-notes-app-icon.png`
-  (Apple's icon grid; full-bleed renders too large in the Dock).
+  (Apple's icon grid; full-bleed renders too large in the Dock). Windows and Linux fill the
+  canvas (the Mac margin reads a fifth smaller there): `magick
+  assets/boojy-notes-app-icon-source.png -resize 1024x1024 assets/boojy-notes-app-icon-full.png`.
 - **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
   saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
   --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.

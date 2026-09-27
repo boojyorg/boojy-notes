@@ -102,7 +102,9 @@ function createWindow() {
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).
     backgroundColor: "#FCFCFC",
-    icon: path.join(__dirname, "../assets/boojy-notes-app-icon.png"),
+    // Windows and Linux draw the icon edge to edge; the Mac one sits on Apple's
+    // grid with a margin and would show a fifth smaller on the taskbar.
+    icon: path.join(__dirname, `../assets/boojy-notes-app-icon${isMac ? "" : "-full"}.png`),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

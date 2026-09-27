@@ -80,13 +80,14 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "assets/boojy-notes-app-icon.png"
+      "assets/boojy-notes-app-icon.png",
+      "assets/boojy-notes-app-icon-full.png"
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "assets/boojy-notes-app-icon.png"
+      "icon": "assets/boojy-notes-app-icon-full.png"
     },
     "mac": {
       "target": [
@@ -101,7 +102,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "assets/boojy-notes-app-icon.png",
+      "icon": "assets/boojy-notes-app-icon-full.png",
       "category": "Office",
       "executableName": "boojy-notes",
       "artifactName": "Boojy-Notes-${version}-${arch}.${ext}",
