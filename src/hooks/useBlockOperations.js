@@ -139,6 +139,31 @@ export function useBlockOperations({
     });
   };
 
+  /**
+   * Remove blocks `from` to `to` in one commit (a whole-block selection's
+   * Backspace or Cut). A note is never left without a line to type on: when
+   * nothing of the body remains, an empty paragraph takes the caret.
+   */
+  const deleteBlockRange = (noteId, from, to) => {
+    let fresh = null;
+    commitNoteData((prev) => {
+      if (!prev[noteId]) return prev;
+      const n = { ...prev[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks.splice(from, to - from + 1);
+      if (blocks.length <= reorderFloor(blocks)) {
+        fresh = { id: genBlockId(), type: "p", text: "" };
+        blocks.push(fresh);
+      }
+      n.content = { ...n.content, blocks };
+      return { ...prev, [noteId]: n };
+    });
+    if (fresh) {
+      focusBlockId.current = fresh.id;
+      focusCursorPos.current = 0;
+    }
+  };
+
   const updateBlockProperty = (noteId, blockIndex, updates) => {
     commitNoteData((prev) => {
       const next = { ...prev };
@@ -461,6 +486,7 @@ export function useBlockOperations({
     openCodeBlock,
     openDivider,
     deleteBlock,
+    deleteBlockRange,
     updateBlockProperty,
     saveAndInsertImage,
     saveAndInsertFiles,

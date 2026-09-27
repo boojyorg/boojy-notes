@@ -120,6 +120,7 @@ export function useKeyboardHandlers({
   updateBlockIndent,
   moveBlock,
   selectBlock,
+  selectBlockRun,
   getBlock,
   executeSlashCommand,
   handleBlockInput: _handleBlockInput,
@@ -610,6 +611,28 @@ export function useKeyboardHandlers({
     }
     const range = sel.getRangeAt(0);
     const getBlockAt = (i) => noteDataRef.current[currentNote]?.content?.blocks?.[i];
+
+    // Escape in the text selects the block the caret is in, or every block a
+    // selection touches: the keyboard's way to whole-block selection (the
+    // grip is the pointer's). Whatever else is open under the caret closes
+    // first: a menu prevents the key, and the slash menu is closed below.
+    if (
+      e.key === "Escape" &&
+      !e.shiftKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.altKey &&
+      !slashMenuRef.current
+    ) {
+      const start = getBlock(range.startContainer);
+      const end = getBlock(range.endContainer) || start;
+      if (start) {
+        e.preventDefault();
+        sel.collapse(range.endContainer, range.endOffset);
+        selectBlockRun(start.blockId, end.blockId);
+        return;
+      }
+    }
 
     // Inline formatting goes through applyFormat, which knows which block
     // roots the selection touches and formats each of them within itself. The

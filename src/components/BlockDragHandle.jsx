@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GripVerticalIcon } from "./Icons";
 import { cssZoom } from "../utils/domHelpers";
 import { Z } from "../constants/zIndex";
+import { Tooltip, useTooltip } from "./Tooltip";
 
 /**
  * The block drag handle — one floating grip for the whole editor.
@@ -13,8 +14,10 @@ import { Z } from "../constants/zIndex";
  * hover surface; the gutter stays part of the page. Press it and move to drag
  * (`startHandleDrag` in useBlockDrag, which commits on drop). It hides
  * the moment a key is pressed and while a drag is live, so the note stays a
- * document until the hand reaches for structure. Deliberately nothing else: no
- * "+" beside it (the slash menu creates blocks), no click menu.
+ * document until the hand reaches for structure. A press released without
+ * moving selects the block (`onGripClick`; Shift extends the run), and the
+ * grip names both gestures in its chip. No "+" beside it: the keyboard and
+ * the slash menu create blocks.
  *
  * One handle rather than one per block, because every block root is a
  * contentEditable and a control inside it would be inside the text. Geometry
@@ -57,6 +60,8 @@ export const TABLE_GRIP_CLEARANCE = 14;
  */
 const OWN_FIRST_ROW = ".code-line, hr";
 
+const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
+
 function firstLineRect(el, zoom) {
   const ownRow = el.querySelector(OWN_FIRST_ROW);
   if (ownRow) return ownRow.getBoundingClientRect();
@@ -79,8 +84,13 @@ function firstLineRect(el, zoom) {
   return { top: r.top + padTop * zoom, height: Math.min(line, r.height || line) };
 }
 
-export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag }) {
+export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag, onGripClick }) {
   const [pos, setPos] = useState(null); // { blockId, top, left } | null
+  const [gripEl, setGripEl] = useState(null);
+  const tip = useTooltip();
+  // Read by the key listener below, registered once: a hidden grip hides its chip.
+  const hideTip = useRef(null);
+  hideTip.current = tip.handlers.onMouseLeave;
   const rafRef = useRef(null);
   const hoveringHandle = useRef(false);
   const anchorRef = useRef(null);
@@ -153,8 +163,11 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
     // (Cmd+Z was the natural one) left `hoveringHandle` true for the life of
     // the mount and every mousemove was ignored from then on — the grip was
     // gone until the next note switch (2026-09-20). Hidden means not hovered.
-    const onKey = () => {
+    const onKey = (e) => {
+      // A modifier alone is the hand getting ready to Shift-click the grip.
+      if (MODIFIER_KEYS.has(e.key)) return;
       hoveringHandle.current = false;
+      hideTip.current?.();
       setPos(null);
     };
 
@@ -179,25 +192,34 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
       />
       {pos && (
         <div
+          ref={setGripEl}
           className="block-drag-handle"
           data-testid="block-drag-handle"
           data-target-block={pos.blockId}
+          // A press here keeps a selection (Shift-click extends it).
+          data-selection-surface
           aria-hidden="true"
           onMouseEnter={() => {
             hoveringHandle.current = true;
+            tip.handlers.onMouseEnter();
           }}
           onMouseLeave={() => {
             hoveringHandle.current = false;
+            tip.handlers.onMouseLeave();
           }}
           onMouseDown={(e) => {
             // Don't let the editor-scroll mousedown focus/caret logic run.
             e.preventDefault();
             e.stopPropagation();
+            tip.handlers.onMouseDown();
           }}
+          onMouseUp={tip.handlers.onMouseUp}
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            startHandleDrag(pos.blockId, e);
+            const { blockId } = pos;
+            const extend = e.shiftKey;
+            startHandleDrag(blockId, e, () => onGripClick?.(blockId, extend));
           }}
           style={{
             position: "absolute",
@@ -217,6 +239,9 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag 
         >
           <GripVerticalIcon size={16} />
         </div>
+      )}
+      {pos && tip.shown && (
+        <Tooltip label="Click to select, drag to move" anchor={gripEl} testId="grip-tooltip" />
       )}
     </>
   );

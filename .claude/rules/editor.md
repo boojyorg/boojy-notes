@@ -59,28 +59,24 @@ app's, made through state.**
 
 ## Keys and focus: the closest active surface owns them
 
-- **Tab in a text block that is not a list leaves the note** (`focusBeyondNote`: the next stop
-  outside the editor, Shift+Tab the name); lists indent, cells and code keep their own Tab.
-  Swallowing it was a keyboard trap. The no-mouse walkthrough (create, find, rename, move,
-  delete) is `keyboard-walkthrough.spec.ts`.
+- **Tab outside a list leaves the note** (`focusBeyondNote`; Shift+Tab the name); lists indent,
+  cells and code keep their own Tab. Swallowing it was a keyboard trap.
+  `keyboard-walkthrough.spec.ts`.
 
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
   listener; a surface never adds its own bubble-phase window listener.
 - **An open modal, or a focused menu, owns every key beneath it** (`focusOwner()`). Each
   surface closes itself on Escape; Escape never hides the sidebar.
-- A native text field outside the editor owns its editing keys. Enter activates the focused
-  button natively.
+- A native text field outside the editor owns its editing keys.
 - **A closing surface hands focus back only while it holds it, with `preventScroll`**
-  (focusing the editor otherwise scrolls the note). `useFocusTrap`.
+  (else the note scrolls). `useFocusTrap`.
 - **Suggestion menus under the caret never take focus** and own a key only while offering a
-  completion; the tag menu offers only tags that start with the typed letters. The `[[` picker is the exception: a dialog that takes focus.
-- **A key a menu consumed never reaches the editor** (`defaultPrevented`); no per-menu special
-  case.
-- A completion from a native listener commits at once (`commitNoteData`). Tab/Shift+Tab keep
-  the caret on its character. A triple-click selects the block, or the field it is in, by the
-  app's hand (`selectClickedBlock`: Chromium's collapses on the next row's marker). The
-  click's caret rescue never takes focus back.
+  completion (tags: prefix match). The `[[` picker is a dialog and takes focus.
+- **A key a menu consumed never reaches the editor** (`defaultPrevented`).
+- A completion from a native listener commits at once (`commitNoteData`). A triple-click
+  selects the block or its field by the app's hand (`selectClickedBlock`: Chromium's collapses
+  on the next row's marker). The click's caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
 
@@ -104,31 +100,27 @@ app's, made through state.**
   (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
   Rename and move rewrite no links, by decision. `link-resolution.spec.ts`.
-- **One link picker** (`LinkPicker.tsx`, `useLinkPicker`) for Cmd+K, the toolbar, `[[`, Edit
-  link and an unresolved click. Address first, then notes, `Create note` last. What it writes:
-  words+URL `[words](url)`; URL alone verbatim; words+note `[[Target|words]]`; note alone
-  `[[Target]]`, the shortest unambiguous target (`linkTargetFor`). Create doesn't open the note.
-  The `[[` route is notes only, rewrites from the `[[`. The words being linked wear a wash that
-  is unwrapped before anything is read back. Not offered in a cell or callout yet.
-  `link-picker.spec.ts`.
-- The destination chip (`LinkTooltip`) shows after a rest, on hover or a key-placed caret only.
+- **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
+  unresolved click: address, notes, `Create note` (doesn't open it). Writes `[words](url)`, a
+  bare URL, `[[Target|words]]` or `[[Target]]`, the shortest unambiguous target
+  (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
+  Not in a cell or callout yet. `link-picker.spec.ts`.
+- The destination chip (`LinkTooltip`) shows after a rest.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
-  URLs and link addresses. The pill appears on the first letter (painted by hand). A space or
+  URLs and link addresses. The pill shows from the first letter. A space or
   punctuation typed at a pill's end lands outside it (`caretOutOfTagEnd`). `tag-pill.spec.ts`.
-- A backslash escape is shown as written (hiding it lost it on edit). Bare URLs autolink in prose
-  only; `<url>` brackets are text. **`LINK_DEST` is the one reading of a link destination**
-  (balanced parentheses); bare URLs trim trailing punctuation by GitHub's rule.
+- A backslash escape is shown as written. Bare URLs autolink in prose only (GitHub's trailing
+  punctuation rule); `<url>` is text. **`LINK_DEST` is the one reading of a link destination.**
 
 ## Typed inline formatting converts on the closing marker, and changes no bytes
 
 - `**b**`, `*i*`, `` `c` ``, `~~s~~`, `==h==`, `***bi***` become elements when the closing
   marker is typed; the literal run *is* the Markdown, so it is a repaint and Cmd+Z is typing
   undo. The one byte change: `_i_`/`__b__` typed are committed in star form.
-- **The trigger is the native `insertText` InputEvent of one marker character**, outside
-  composition, never the text alone (Backspace re-converted). The matcher is strict
-  (`closingFormatAt`). **The paint is verified** (`paintTypedFormat`): if the renderer paired
-  markers differently, the old DOM and caret are restored. No `syncGeneration` bump.
+- **The trigger is the native `insertText` of one marker character**, outside composition,
+  never the text alone (Backspace re-converted); strict matcher (`closingFormatAt`). **The paint
+  is verified** (`paintTypedFormat`): paired differently, the old DOM and caret come back.
   `typed-formatting.spec.ts`.
 - **Block triggers wait for their space, and Enter does what the space does**
   (`utils/blockTriggers.ts`): `# `, `- `, `1. `, `> `, `[] `, ` ``` `, `--- `, `||| `, `![] `.
@@ -143,10 +135,8 @@ app's, made through state.**
   immediately on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field` field, with Link dropped.
-- Measured once when shown (re-measuring slid it under the pointer); centred, clamped `EDGE`
-  inside the scroller.
-- Active = the glyph in the accent, nothing else. The pressed glyph outranks the text-only
-  render skip in `EditorArea`'s comparator.
+- Measured once when shown (re-measuring slid it under the pointer). Active = the glyph in the
+  accent; it outranks the text-only render skip in `EditorArea`'s comparator.
 - **`FORMATS` in `FloatingToolbar.jsx` must match `useKeyboardHandlers`.** Inline code is shown
   as `⌘E` (the backtick is a dead key on European layouts). `formatting-toolbar.spec.ts`.
 
@@ -162,13 +152,13 @@ app's, made through state.**
 ## Block drag: the gutter handle, never the text
 
 - **Text never starts a block drag.** One floating grip (`BlockDragHandle`) in the left
-  padding, revealed by CSS on hover, desktop only, `aria-hidden`; `Cmd/Ctrl+Shift+↑/↓` is the
+  padding, on hover, desktop only, `aria-hidden`; a click selects the block. `⌘⇧↑/↓` is the
   keyboard path. Absent with fewer than two blocks.
-- The keydown that hides the grip also clears `hoveringHandle` (an unmounted element never
-  fires mouseleave). **Blur cancels a press unconditionally** (else a Cmd-Tab left a phantom
-  drag). `grip-reveal.spec.ts`.
-- **Commits on drop**, one history entry, only if order changed. Escape, blur or release over
-  the sidebar cancel. A multi-block selection drags as one run.
+- A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
+  **Blur cancels a press unconditionally** (else a Cmd-Tab left a phantom drag).
+  `grip-reveal.spec.ts`.
+- **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
+  cancel. A selection, or a text range over several blocks, drags as one run.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
   CSS `zoom`; rects are already scaled). Not yet: `SortMenu`, table and file menus, links.
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
@@ -195,16 +185,15 @@ app's, made through state.**
 
 ## Headings
 
-H1–H6 are native heading elements on one editing path; type and margins from `headingStyle`
-(`tokens/rhythm.ts`). **Every editor spacing value lives in
-`DEFAULT_RHYTHM`**, read through `useRhythm`; `?tweak` / `pnpm dev:tweak` drags it live. New headings
-are ATX; imported spacing and closers live in `headingSource`. Setext is deferred. An empty
-heading shows `Heading N` from CSS (never in the file). `heading-placeholder.spec.ts`.
+H1–H6 are native elements styled by `headingStyle`. **Every editor spacing value lives in
+`DEFAULT_RHYTHM`** (`useRhythm`; `pnpm dev:tweak` drags it live). New headings are ATX;
+imported spelling lives in `headingSource`. An empty heading shows `Heading N` from CSS.
+`heading-placeholder.spec.ts`.
 
 ## The Markdown view is the file, edited as typing
 
-`SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field (never a live
-preview). `sourceView` is app-wide in `LayoutContext`, never saved.
+`SourceView`: the note as `blocksToMarkdown` writes it, a plain monospace field. `sourceView`
+is app-wide in `LayoutContext`, never saved.
 
 - **Switching commits nothing**, so it changes no byte. Each input is parsed with
   `markdownToBlocks` and committed via `commitTextChange` (one undo burst).
@@ -216,12 +205,11 @@ preview). `sourceView` is app-wide in `LayoutContext`, never saved.
 ## Lists
 
 - Bullets alternate dot / ring by depth, primary ink, as boxes.
-- **The caret never rests beside a marker**: arrows at a row's edge cross by the app's hand,
-  the click rescue and `caretIntoTextRoot` in `beforeinput` guard the rest (text typed there
-  never reached the file). `list-caret.spec.ts`.
-- `listLayout` (`utils/listStructure.ts`) owns numbers and prefixes. Depth is read from
-  indentation in context; authored spellings stay; a text edit never renumbers an imported
-  list. `reconcileListEdit` repairs ordered sequences at structural commits only.
+- **The caret never rests beside a marker** (arrows cross by the app's hand; the click rescue
+  and `caretIntoTextRoot` guard the rest). Tab/Shift+Tab keep the caret on its character.
+  `list-caret.spec.ts`.
+- `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
+  an imported list (`reconcileListEdit` runs at structural commits only).
 
 ## The paragraph model
 
@@ -234,8 +222,8 @@ Blocks are Markdown structure, not lines (`structureParagraphs`).
   Spacing comes from the block's kind (`tokens/rhythm.ts`), never from blank lines. The app
   writes one blank between blocks, none between list items; a file's other spelling is kept as
   `tightAbove` / `looseAbove`, and `mustSeparate` pairs are always written apart.
-- **On screen a newline is a `<br>`**, plus a trailing `<br>` for an empty last line that both
-  walkers ignore. Never clamp a caret to `textContent.length`.
+- **On screen a newline is a `<br>`** (plus a trailing one both walkers ignore). Never clamp a
+  caret to `textContent.length`.
 - **A soft-break line that would open a block is written escaped** (`readsBackAsText`), asking
   the app's own parser, so authored files are never rewritten. `paragraph-model.spec.ts`.
 
@@ -248,9 +236,8 @@ never holds a byte sequence the syntax cannot.**
 - **`data-inline-field`** (cell, callout body) marks a field that owns its inline formatting
   (`formatInlineField`): wrapped in the field, then an `input` event so its own handler commits.
   Chromium's `Cmd+B` must never run in a field. `special-block-fields.spec.ts`.
-- **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`); the
-  render prop lags a keystroke. Structural operations reshape the block as the ref holds it
-  (`updateTableRows`).
+- **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
+  structural operations reshape the block as the ref holds it (`updateTableRows`).
 - The serializer enforces the syntax: a newline in a cell is `<br>`, in a callout title a space.
 
 ## Code blocks
@@ -258,8 +245,8 @@ never holds a byte sequence the syntax cannot.**
 Every `.code-line` takes at least `1lh` (or the layers drift). `fenceSource` keeps authored
 fences, including an absent closer; the editor never normalises code. **The info string is kept
 as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
-same language writes nothing. The language menu portals to `body` and takes its own keys (the
-caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
+same language writes nothing. The language menu portals to `body` and takes its own keys.
+`code-language.spec.ts`.
 
 ## Images
 
@@ -278,27 +265,30 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
 - **A table keeps its spelling** (`tableSource`, `tableAlign.ts`): lined up stays lined up
   (widening re-pads, nothing narrows); otherwise unchanged rows keep their lines, wherever
   they move. New and tidied tables are lined up. `table-preservation.spec.ts`.
-- **Rows and columns move by grips on the edges** (`TableHandles`): first cell or margin shows
-  the row's, a header cell the column's. Drawn on the root (the scroller clips). A carried row
-  passes a neighbour at its middle (`dropIndex`); one write, on drop. `table-handles.spec.ts`.
-  From the keyboard in a cell: `⌘⇧↑/↓` the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→` stays the
-  text's select-to-edge). `keyboard-walkthrough.spec.ts`.
+- **Rows and columns move by grips on the edges** (`TableHandles`), drawn on the root (the
+  scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
+  `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
+  stays select-to-edge).
 - Content-sized, shrinking to a per-cell floor, then scrolling. Add boxes reveal on their own
   hover. Grip menus hang under the grip; inserts take the caret. `table-block.spec.ts`.
 
-## Dividers, images and tables are selectable blocks
+## Whole-block selection
 
-- Selected as a whole (`isSelectableBlock`, `selectedBlockId`): Backspace/Delete removes, Enter
-  opens a paragraph below, Escape deselects, a printable character deselects and types. A press
-  selects; a press anywhere off `data-selection-surface` deselects. Escape from a cell selects
-  the table.
-- Backspace from below / Delete from above selects it first (`reachAcross`), removing an empty
-  row between in the same press; the caret is hidden while a block is selected.
+- **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
+  the grip's click (Shift-click extends), Escape in the text, a press on a divider, image or
+  table, Escape from a cell. **A list item brings its nested items** (`subtreeEnd`), for the
+  selection and the drag alike. Text blocks wear the band's wash; the caret rests there, hidden.
+- On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
+  (`wholeBlocksCopy`, raised by hand: no range covers it); Enter opens a paragraph below;
+  Shift+↑/↓ resize it; arrows and Escape give the caret back; a letter deselects and types. A
+  press off `data-selection-surface` deselects. `block-selection.spec.ts`.
+- Backspace from below / Delete from above selects a divider, image or table first
+  (`reachAcross`), removing an empty row between in the same press.
 - **Arrows stop on a divider or image and enter every block with a field**; deletion still
   steps over code (`landingBefore` vs `caretLandingBefore`).
 - Roots register themselves in the ref map, never via `elRef`.
-- **Taking the caret back never scrolls the note**: `placeCaret` focuses with `preventScroll`,
-  then scrolls the block minimally.
+- **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`, then the
+  block scrolled minimally).
 - **Measure a caret's line with `caretRect`** (a collapsed range in an empty node reports
   zeros). `caret-navigation.spec.ts`.
 
@@ -313,10 +303,9 @@ caret rescue and `onKeyDown` steal them). `code-language.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`). Whole blocks write
   `blocksToMarkdown` as text and structural HTML; a partial selection writes visible text and
   inline HTML. `copy-clipboard.spec.ts`.
-- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`) then through the
-  same block rules; HTML with no semantic formatting is ignored. A single-line rich paste is
-  sanitised to inline nodes and inserted with `insertNode`, never `insertHTML`.
-  `rich-paste.spec.ts`.
+- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`); HTML with no
+  semantic formatting is ignored. A single-line one is sanitised inline nodes via `insertNode`,
+  never `insertHTML`. `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A link
   becomes a bare URL only if it is the editor's own unchanged `bare-url` autolink.
   `domRoundTrip.test.js`, `inline-preservation.spec.ts`.

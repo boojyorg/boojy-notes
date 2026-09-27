@@ -49,6 +49,9 @@ import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
+import { selectionRange, stepHead } from "../utils/blockRun";
+import { bandFill } from "../utils/selectionBand";
+import { wholeBlocksCopy } from "../utils/clipboardCopy";
 
 /*
  * The note name is a FILE LABEL, not the document's heading.
@@ -154,8 +157,9 @@ const EditorArea = memo(
     onEditLink,
     onRemoveLink,
     describeLink,
-    selectedBlockId,
-    setSelectedBlockId,
+    // The whole-block selection (utils/blockRun): anchor and head block ids.
+    blockSelection,
+    setBlockSelection,
     lightbox: _lightbox,
     setLightbox,
     openNote: openNoteProp,
@@ -211,9 +215,22 @@ const EditorArea = memo(
       updateBlockProperty,
       detectActiveFormats,
       applyFormat,
+      deleteBlockRange,
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
+    // The run the selection covers, children included; null once its blocks
+    // have left the note, so a stale selection neither hides the caret nor
+    // takes a key.
+    const selectedRun = useMemo(
+      () => selectionRange(note?.content?.blocks || [], blockSelection),
+      [note?.content?.blocks, blockSelection],
+    );
+    const selectedBlockId = selectedRun ? blockSelection.anchor : null;
+    const setSelectedBlockId = useCallback(
+      (id) => setBlockSelection(id ? { anchor: id, head: id } : null),
+      [setBlockSelection],
+    );
     const {
       accentColor,
       editorBg,
@@ -403,16 +420,17 @@ const EditorArea = memo(
       [setSelectedBlockId],
     );
 
-    // Remove a block addressed as a whole (the selected divider, image or
-    // table; Delete table in a cell's right-click menu) and land the caret at the start of
-    // the next text block, or the end of the previous one if there is none,
-    // so a Backspace that arrived from the block below can carry on from where
-    // it was. Also the image's and file's own Delete.
+    // Remove blocks addressed as a whole (a selection's run; the selected
+    // divider, image or table; Delete table in a cell's right-click menu) and
+    // land the caret at the start of the next text block, or the end of the
+    // previous one if there is none, so a Backspace that arrived from the
+    // block below can carry on from where it was. Also the image's and file's
+    // own Delete.
     const deleteWholeBlock = useCallback(
-      (noteId, idx) => {
+      (noteId, from, to = from) => {
         const blocks = noteDataRef.current[noteId]?.content?.blocks || [];
-        const next = nearestTextIndex(blocks, idx + 1, 1);
-        const prev = nearestTextIndex(blocks, idx - 1, -1);
+        const next = nearestTextIndex(blocks, to + 1, 1);
+        const prev = nearestTextIndex(blocks, from - 1, -1);
         if (next >= 0) {
           focusBlockId.current = blocks[next].id;
           focusCursorPos.current = 0;
@@ -420,35 +438,61 @@ const EditorArea = memo(
           focusBlockId.current = blocks[prev].id;
           focusCursorPos.current = (blocks[prev].text || "").length;
         }
-        deleteBlock(noteId, idx);
+        deleteBlockRange(noteId, from, to);
         setSelectedBlockId(null);
       },
-      [noteDataRef, deleteBlock, focusBlockId, focusCursorPos, setSelectedBlockId],
+      [noteDataRef, deleteBlockRange, focusBlockId, focusCursorPos, setSelectedBlockId],
     );
 
-    // Keys while a whole block is selected. Escape deselects and moves nothing;
-    // the arrows put the caret in the nearest text block on that side;
-    // Backspace and Delete remove the block (deleteWholeBlock); Enter opens a
-    // paragraph under the block; a printable character deselects and types
-    // where the caret already is. True when consumed.
+    // Copy the selected blocks whole. No range covers them (the caret rests,
+    // hidden, in one), so the copy is raised by hand and answered here, in
+    // capture, before the editor's own copy reads the empty selection.
+    const copySelectedBlocks = useCallback((blocks, range) => {
+      const { json, payload } = wholeBlocksCopy(blocks, range.from, range.to);
+      const onCopy = (ev) => {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        ev.clipboardData.setData("text/boojy-blocks", json);
+        ev.clipboardData.setData("text/plain", payload.text);
+        ev.clipboardData.setData("text/html", payload.html);
+      };
+      document.addEventListener("copy", onCopy, true);
+      try {
+        document.execCommand("copy");
+      } finally {
+        document.removeEventListener("copy", onCopy, true);
+      }
+    }, []);
+
+    // Keys while blocks are selected (utils/blockRun). Escape deselects and
+    // moves nothing; the arrows put the caret in the nearest text block on
+    // that side, and Shift+arrows grow or shrink the run; Backspace and Delete
+    // remove it, Cmd+C copies it whole and Cmd+X both; Enter opens a paragraph
+    // under it; a printable character deselects and types where the caret
+    // already is. True when consumed.
     const handleSelectedBlockKey = useCallback(
       (e) => {
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
-        const idx = blocks.findIndex((b) => b.id === selectedBlockId);
-        if (idx < 0) {
+        const range = selectionRange(blocks, blockSelection);
+        if (!range) {
           setSelectedBlockId(null);
           return false;
         }
+        const mod = e.metaKey || e.ctrlKey;
         const nearestText = (from, step) => nearestTextIndex(blocks, from, step);
         if (e.key === "Escape") {
           e.preventDefault();
           setSelectedBlockId(null);
           return true;
         }
-        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !mod && !e.altKey) {
           e.preventDefault();
           const up = e.key === "ArrowUp";
-          const target = nearestText(idx + (up ? -1 : 1), up ? -1 : 1);
+          if (e.shiftKey) {
+            setBlockSelection(stepHead(blocks, blockSelection, up ? -1 : 1));
+            return true;
+          }
+          const target = nearestText(up ? range.from - 1 : range.to + 1, up ? -1 : 1);
           setSelectedBlockId(null);
           if (target >= 0) {
             const el = blockRefs.current[blocks[target].id];
@@ -456,30 +500,70 @@ const EditorArea = memo(
           }
           return true;
         }
+        if (mod && !e.shiftKey && !e.altKey && (e.code === "KeyC" || e.code === "KeyX")) {
+          e.preventDefault();
+          copySelectedBlocks(blocks, range);
+          if (e.code === "KeyX") deleteWholeBlock(activeNote, range.from, range.to);
+          return true;
+        }
         if (e.key === "Backspace" || e.key === "Delete") {
           e.preventDefault();
-          deleteWholeBlock(activeNote, idx);
+          deleteWholeBlock(activeNote, range.from, range.to);
           return true;
         }
         if (e.key === "Enter") {
           e.preventDefault();
           setSelectedBlockId(null);
-          insertBlockAfter(activeNote, idx, "p", "");
+          insertBlockAfter(activeNote, range.to, "p", "");
           return true;
         }
-        if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) setSelectedBlockId(null);
+        if (e.key.length === 1 && !mod) setSelectedBlockId(null);
         return false;
       },
       [
         activeNote,
-        selectedBlockId,
+        blockSelection,
+        setBlockSelection,
         setSelectedBlockId,
         noteDataRef,
         blockRefs,
         deleteWholeBlock,
+        copySelectedBlocks,
         insertBlockAfter,
       ],
     );
+
+    // A press on a block's grip that never became a drag: select the block
+    // (Shift extends the run from its anchor). The caret rests, hidden, at the
+    // end of a text block, so keys reach the editor and a letter typed
+    // deselects and carries on writing there.
+    const handleGripClick = useCallback(
+      (blockId, extend) => {
+        setBlockSelection((s) =>
+          extend && s ? { anchor: s.anchor, head: blockId } : { anchor: blockId, head: blockId },
+        );
+        if (extend) return;
+        const block = noteDataRef.current[activeNote]?.content?.blocks?.find(
+          (b) => b.id === blockId,
+        );
+        const el = blockRefs.current[blockId];
+        if (block && el && isEditableBlock(block)) placeCaret(el, caretLength(el));
+        else editorRef.current?.focus({ preventScroll: true });
+      },
+      [activeNote, noteDataRef, blockRefs, editorRef, setBlockSelection],
+    );
+
+    // The wash on a selected text block: the band's tint over the whole row,
+    // marker included. A divider, an image and a table draw their own.
+    const selectionWashCss = useMemo(() => {
+      if (!selectedRun) return null;
+      const blocks = note.content.blocks.slice(selectedRun.from, selectedRun.to + 1);
+      const selectors = blocks
+        .filter((b) => !isSelectableBlock(b))
+        .map((b) => `[data-editor] > [data-block-id="${b.id}"]`);
+      if (!selectors.length) return null;
+      return `${selectors.join(",")}{background:${bandFill(accentColor, theme.name)};border-radius:4px}`;
+    }, [selectedRun, note, accentColor, theme.name]);
 
     const handleImageLightbox = useCallback(
       (src, alt) => {
@@ -913,6 +997,8 @@ const EditorArea = memo(
                       onClose={() => setFindBarOpen(false)}
                     />
                   )}
+                  {/* Outside the contentEditable, so no walker or caret ever meets it. */}
+                  {selectionWashCss && <style>{selectionWashCss}</style>}
                   <div
                     ref={editorRef}
                     contentEditable
@@ -929,7 +1015,7 @@ const EditorArea = memo(
                         setFindBarOpen((v) => !v);
                         return;
                       }
-                      // A selected whole block (divider or image) takes the key first.
+                      // Selected whole blocks (utils/blockRun) take the key first.
                       if (selectedBlockId && handleSelectedBlockKey(e)) return;
                       handleEditorKeyDown(e);
                     }}
@@ -1024,7 +1110,9 @@ const EditorArea = memo(
                               onUpdateTableRows={updateTableRows}
                               noteTitleSet={noteTitleSet}
                               onBlockNav={handleBlockNav}
-                              isBlockSelected={selectedBlockId === block.id}
+                              isBlockSelected={
+                                !!selectedRun && i >= selectedRun.from && i <= selectedRun.to
+                              }
                               onBlockSelect={handleBlockSelect}
                               onImageLightbox={handleImageLightbox}
                               onImageCopyImage={handleImageCopyImage}
@@ -1044,6 +1132,7 @@ const EditorArea = memo(
                       columnRef={columnRef}
                       editorRef={editorRef}
                       startHandleDrag={startHandleDrag}
+                      onGripClick={handleGripClick}
                     />
                   )}
                   <FloatingToolbar
@@ -1214,7 +1303,7 @@ const EditorArea = memo(
       prev.editorFadeIn === next.editorFadeIn &&
       // toolbarState is decided above, before the text-only fast path.
       prev.noteTitleSet === next.noteTitleSet &&
-      prev.selectedBlockId === next.selectedBlockId &&
+      prev.blockSelection === next.blockSelection &&
       prev.lightbox === next.lightbox
     );
   },

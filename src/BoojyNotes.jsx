@@ -464,6 +464,7 @@ export default function BoojyNotes() {
     openCodeBlock,
     openDivider,
     deleteBlock,
+    deleteBlockRange,
     updateBlockProperty,
     saveAndInsertImage,
     saveAndInsertFiles,
@@ -486,8 +487,16 @@ export default function BoojyNotes() {
     onError: showToast,
   });
 
-  // The selected whole block (a divider or an image; see isSelectableBlock) + lightbox state
-  const [selectedBlockId, setSelectedBlockId] = useState(null);
+  // The whole-block selection (utils/blockRun): the block it started on and
+  // the one Shift last reached; the grip's drag reads it through the ref.
+  const [blockSelection, setBlockSelection] = useState(null);
+  const blockSelectionRef = useRef(null);
+  blockSelectionRef.current = blockSelection;
+  const setSelectedBlockId = useCallback(
+    (id) => setBlockSelection(id ? { anchor: id, head: id } : null),
+    [],
+  );
+  const selectBlockRun = useCallback((anchor, head) => setBlockSelection({ anchor, head }), []);
 
   // The link picker (useLinkPicker, below): Cmd+K and the toolbar's Link
   // reach it through this ref, because the format hook is made first.
@@ -515,6 +524,7 @@ export default function BoojyNotes() {
     editorRef,
     editorScrollRef,
     setToolbarState,
+    blockSelectionRef,
   });
   const multiSelectRef = useRef(null);
   const clearSelectionRef = useRef(null);
@@ -575,6 +585,7 @@ export default function BoojyNotes() {
     updateBlockIndent,
     moveBlock,
     selectBlock: setSelectedBlockId,
+    selectBlockRun,
     onError: showToast,
   });
   // Search-result navigation (clear multi-select on search; scroll + highlight on open)
@@ -1296,6 +1307,7 @@ export default function BoojyNotes() {
               syncGeneration,
               flipCheck,
               deleteBlock,
+              deleteBlockRange,
               registerBlockRef,
               insertBlockAfter,
               updateBlockText,
@@ -1327,8 +1339,8 @@ export default function BoojyNotes() {
               onEditLink={linkPicker.openForLink}
               onRemoveLink={removeLink}
               describeLink={describeLink}
-              selectedBlockId={selectedBlockId}
-              setSelectedBlockId={setSelectedBlockId}
+              blockSelection={blockSelection}
+              setBlockSelection={setBlockSelection}
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}
