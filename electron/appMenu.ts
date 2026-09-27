@@ -1,9 +1,9 @@
 import {
+  BrowserWindow,
   Menu,
   ipcMain,
   nativeImage,
   shell,
-  type BrowserWindow,
   type MenuItemConstructorOptions,
   type NativeImage,
 } from "electron";
@@ -44,8 +44,6 @@ export type MenuState = {
   sidebarVisible: boolean;
   /** The Markdown view is on, so View offers the formatted one back. */
   sourceView: boolean;
-  /** The vaults the app has opened, for Open Recent; the open one is checked. */
-  vaults: { name: string; path: string; current: boolean; exists: boolean }[];
 };
 
 const INITIAL: MenuState = {
@@ -59,7 +57,6 @@ const INITIAL: MenuState = {
   align: null,
   sidebarVisible: true,
   sourceView: false,
-  vaults: [],
 };
 
 const isMac = process.platform === "darwin";
@@ -118,6 +115,10 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
 
   const settings = item("settings", isMac ? "Settings…" : "Settings", "CmdOrCtrl+,");
   const checkUpdates = item("checkUpdates", "Check for Updates…");
+  const website: MenuItemConstructorOptions = {
+    label: "Boojy Notes Website",
+    click: () => shell.openExternal("https://boojy.org/notes"),
+  };
 
   return [
     ...(isMac
@@ -152,17 +153,6 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         item("openVault", "Switch Storage Location…", "CmdOrCtrl+O"),
         // The notes the app deleted in the last 30 days, waiting to come back.
         item("recentlyDeleted", "Recently Deleted…"),
-        {
-          label: "Open Recent",
-          enabled: state.vaults.length > 1,
-          submenu: state.vaults.map((v) => ({
-            label: v.name,
-            type: "checkbox" as const,
-            checked: v.current,
-            enabled: v.exists && !v.current,
-            click: send(`openVault:${v.path}`),
-          })),
-        },
         { type: "separator" },
         // Notes save as they are typed; Save Point keeps the note as it is now
         // in its history, under the key every app taught for Save.
@@ -180,8 +170,9 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { type: "separator" },
         file("trash", isMac ? "Move to Trash" : "Delete", { icon: icon("trash") }),
         { type: "separator" },
-        ...(isMac ? [] : [settings, checkUpdates, { type: "separator" } as const]),
-        isMac ? { role: "close" } : { role: "quit" },
+        // Elsewhere Settings closes the menu with Exit; Check for Updates and
+        // the website live in Settings (its Updates section and footer).
+        ...(isMac ? [{ role: "close" } as const] : [settings, { role: "quit" } as const]),
       ],
     },
     {
@@ -310,23 +301,23 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { role: "togglefullscreen" },
       ],
     },
-    {
-      label: "Window",
-      submenu: [
-        { role: "minimize" },
-        { role: "zoom" },
-        ...(isMac ? [{ type: "separator" } as const, { role: "front" } as const] : []),
-      ],
-    },
-    {
-      role: "help",
-      submenu: [
-        {
-          label: "Boojy Notes Website",
-          click: () => shell.openExternal("https://boojy.org/notes"),
-        },
-      ],
-    },
+    // Mac only. Elsewhere Window held only what the window's own buttons do,
+    // and Help one link, now in File: four names fit the narrowest sidebar's
+    // strip. On the Mac, Window is where ⌘M lives and Help holds the menu search.
+    ...(isMac
+      ? [
+          {
+            label: "Window",
+            submenu: [
+              { role: "minimize" },
+              { role: "zoom" },
+              { type: "separator" },
+              { role: "front" },
+            ],
+          },
+          { role: "help", label: "Help", submenu: [website] },
+        ]
+      : []),
   ] as MenuItemConstructorOptions[];
 }
 
@@ -349,4 +340,24 @@ export function buildAppMenu({
   };
   apply(INITIAL);
   ipcMain.on("menu-state", (_event, state: Partial<MenuState>) => apply({ ...INITIAL, ...state }));
+
+  // Windows and Linux: the window has no title bar, and the app's own strip
+  // (WindowStrip) shows these menus' names; a click opens the real menu under
+  // its name, so the strip and the keys can never disagree about an item.
+  ipcMain.handle("menu-labels", () =>
+    (Menu.getApplicationMenu()?.items ?? []).map((i) => i.label).filter(Boolean),
+  );
+  ipcMain.on("popup-menu", (event, { label, x, y }: { label: string; x: number; y: number }) => {
+    const menu = Menu.getApplicationMenu()?.items.find((i) => i.label === label)?.submenu;
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!menu || !window) return;
+    menu.popup({
+      window,
+      x: Math.round(x),
+      y: Math.round(y),
+      callback: () => {
+        if (!event.sender.isDestroyed()) event.sender.send("menu-closed", label);
+      },
+    });
+  });
 }

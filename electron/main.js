@@ -10,7 +10,7 @@ import {
   shell,
 } from "electron";
 import path from "node:path";
-import { WINDOW_MIN_W } from "../src/constants/layout.js";
+import { WINDOW_MIN_W, WINDOW_STRIP_H } from "../src/constants/layout.js";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { insideVault, registerNoteFileIPC } from "./noteFileManager.js";
@@ -65,6 +65,7 @@ function getMainWindow() {
 const hiddenForTests = process.env.BOOJY_TEST_HIDDEN === "1";
 
 const stripHash = (url) => url.split("#")[0];
+const isMac = process.platform === "darwin";
 
 // How long the window may wait for its first frame before it is shown anyway,
 // so a renderer that never paints still leaves the user a window to see.
@@ -82,7 +83,14 @@ function createWindow() {
     minWidth: WINDOW_MIN_W,
     minHeight: 400,
     title: "Boojy Notes",
-    titleBarStyle: "hiddenInset",
+    // macOS: no title bar, the lights inset in the sidebar header. Windows and
+    // Linux: no title bar either; the app draws its own strip with the menu
+    // (WindowStrip) and the system draws its window buttons over the strip's
+    // right end (the overlay), recoloured to the theme by the renderer.
+    titleBarStyle: isMac ? "hiddenInset" : "hidden",
+    ...(isMac
+      ? {}
+      : { titleBarOverlay: { color: "#FFFFFF", symbolColor: "#14110F", height: WINDOW_STRIP_H } }),
     // The lights share the sidebar header row, whose wordmark centres at
     // ~25px. macOS 26 draws each light 14px across, so y = 25 - 7. The old
     // y: 23 was judged in a dev window Chromium had zoomed to 131%, where the
@@ -94,7 +102,9 @@ function createWindow() {
     // the default theme; a NIGHT user gets one brief light flash at launch
     // until the renderer can report its saved theme back (not wired up).
     backgroundColor: "#FCFCFC",
-    icon: path.join(__dirname, "../assets/boojy-notes-app-icon.png"),
+    // Windows and Linux draw the icon edge to edge; the Mac one sits on Apple's
+    // grid with a margin and would show a fifth smaller on the taskbar.
+    icon: path.join(__dirname, `../assets/boojy-notes-app-icon${isMac ? "" : "-full"}.png`),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -103,6 +113,11 @@ function createWindow() {
       backgroundThrottling: !hiddenForTests,
     },
   });
+
+  // The menu's names live in the app's own strip (WindowStrip); the native
+  // bar under a hidden title bar would be a second copy. Its accelerators
+  // stay live.
+  if (!isMac) mainWindow.setMenuBarVisibility(false);
 
   // Hold the close (Cmd+W or quit) until the renderer flushes pending edits to
   // disk, so quitting right after typing can't lose the last keystrokes. The 2s
@@ -310,6 +325,16 @@ app.whenReady().then(async () => {
 
   // The application menu: every command with its shortcut (electron/appMenu.ts).
   buildAppMenu({ isDev: !!process.env.VITE_DEV_SERVER_URL, getMainWindow });
+  // Windows and Linux: the window buttons are drawn over the strip's right
+  // end; the renderer gives them its theme's ground and ink.
+  ipcMain.on("set-title-bar-overlay", (_event, { color, symbolColor }) => {
+    if (isMac || !mainWindow || mainWindow.isDestroyed()) return;
+    try {
+      mainWindow.setTitleBarOverlay({ color, symbolColor, height: WINDOW_STRIP_H });
+    } catch {
+      // A window manager that draws no overlay (some Linux desktops) has none to recolour.
+    }
+  });
 
   createWindow();
 

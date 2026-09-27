@@ -19,7 +19,11 @@ vi.mock("../../src/context/NoteDataContext", () => ({
   useNoteDataActions: () => ({ canUndo: false, canRedo: false, undo: vi.fn(), redo: vi.fn() }),
 }));
 // jsdom reports no platform; the labels are tested on a Mac here and both ways below.
-vi.mock("../../src/utils/platform", () => ({ isMac: true, isElectronMac: false }));
+vi.mock("../../src/utils/platform", () => ({
+  isMac: true,
+  isElectronMac: false,
+  hasWindowStrip: false,
+}));
 
 import { ChromeButton } from "../../src/components/EditorChrome.jsx";
 import {

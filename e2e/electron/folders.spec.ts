@@ -101,7 +101,8 @@ test("a folder row's New note makes the note inside that folder and opens the fo
     await folderRow(h.page, "Work").hover();
     await folderRow(h.page, "Work").locator("[title='Folder actions']").click();
     await expect(h.page.getByRole("menu")).toBeVisible();
-    await expect(h.page.getByRole("menuitem")).toHaveText([
+    // In the menu: on Windows and Linux the window strip's names are menu items too.
+    await expect(h.page.getByRole("menu").getByRole("menuitem")).toHaveText([
       "New note",
       "New folder",
       "Rename",

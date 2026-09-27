@@ -8,6 +8,12 @@ export const isWeb = !isNative;
 export const isElectronMac =
   isElectron && typeof navigator !== "undefined" && navigator.userAgent.includes("Macintosh");
 /**
+ * Windows and Linux: the window has no title bar of its own, and the app
+ * draws a strip across its top with the menu and the system's window buttons
+ * (WindowStrip). The Mac's lights sit in the sidebar header instead.
+ */
+export const hasWindowStrip = isElectron && !isElectronMac;
+/**
  * Whether the app runs on a Mac, in Electron or a browser alike: what decides
  * whether a shortcut is shown as ⌘B or Ctrl+B. `isElectronMac` above is
  * Electron-gated and decides the window chrome, not the labels.

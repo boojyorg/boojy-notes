@@ -26,7 +26,11 @@ vi.mock("../../src/context/LayoutContext", () => ({
 
 // macOS Electron: the traffic lights hold the viewport's top-left corner once
 // the sidebar is hidden, so the collapsed group shifts right of them.
-vi.mock("../../src/utils/platform", () => ({ isElectronMac: true, isMac: true }));
+vi.mock("../../src/utils/platform", () => ({
+  isElectronMac: true,
+  isMac: true,
+  hasWindowStrip: false,
+}));
 
 import EditorChrome, {
   CHROME_INSET,

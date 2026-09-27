@@ -12,7 +12,11 @@ vi.mock("../../src/hooks/useTheme", () => ({
     isDark: false,
   }),
 }));
-vi.mock("../../src/utils/platform", () => ({ isElectronMac: false, isMac: true }));
+vi.mock("../../src/utils/platform", () => ({
+  isElectronMac: false,
+  isMac: true,
+  hasWindowStrip: false,
+}));
 
 vi.mock("../../src/components/PathTreeMenu", () => ({
   default: ({ scope, initialExpanded, activeNote, onOpen, onClose }) => (
