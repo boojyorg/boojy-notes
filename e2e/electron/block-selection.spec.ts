@@ -245,13 +245,23 @@ test("Delete in the menu removes the selection in one step", async () => {
   expect(await texts(h.page)).toEqual(["Intro.", "Sibling", "Outro."]);
 });
 
-test("the space between the grip and the text is the grip's: a click there selects the block", async () => {
-  const text = h.page.locator("[data-editor] > [data-block-id]").first();
-  const box = (await text.boundingBox())!;
-  await h.page.mouse.move(box.x + 40, box.y + 8);
-  await h.page.locator('[data-testid="block-drag-handle"]').waitFor();
-  // Just left of the text's edge, in the gap the grip's face does not cover.
-  await h.page.mouse.click(box.x - 4, box.y + 10);
-  expect(await washed(h.page)).toEqual(["Intro."]);
-  await expect(menu(h.page)).toBeVisible();
+test("a click on a bullet's dot selects the item with its nested items: no menu, the grip plain", async () => {
+  const row = roots(h.page).nth(1);
+  const dot = (await row.locator("[data-marker]").boundingBox())!;
+  await h.page.mouse.click(dot.x + dot.width / 2, dot.y + dot.height / 2);
+  expect(await washed(h.page)).toEqual(["Parent", "Child"]);
+  await expect(h.page.getByRole("menu", { name: "Block options" })).toHaveCount(0);
+  await expect(h.page.locator('[data-testid="block-drag-handle"][data-pressed]')).toHaveCount(0);
+  // The keys act on it as on any selection.
+  await h.page.keyboard.press("Shift+ArrowDown");
+  expect(await washed(h.page)).toEqual(["Parent", "Child", "Sibling"]);
+  // A click in the item's text is the text's.
+  await h.page.keyboard.press("Escape");
+  await row.locator('[role="textbox"]').click();
+  expect(await washed(h.page)).toEqual([]);
+});
+
+test("a grip click leaves the grip pressed", async () => {
+  await clickGrip(h.page, 1);
+  await expect(h.page.locator('[data-testid="block-drag-handle"][data-pressed]')).toHaveCount(1);
 });

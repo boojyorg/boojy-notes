@@ -43,13 +43,6 @@ export const HANDLE_H = 24;
  */
 export const HANDLE_GAP = 8;
 /**
- * The grip's target reaches across the gap to within this much of the text:
- * the space between the grip and the text is the grip's too, so it never
- * reads as dead, while a click on the first letter still reaches the text.
- * What is drawn (the face) stays HANDLE_W wide.
- */
-const TEXT_CLEARANCE = 2;
-/**
  * A table's own row grips sit across its left edge, 7px out; beside a table
  * the block's grip stands this much further off so the two never touch.
  */
@@ -247,6 +240,7 @@ export default function BlockDragHandle({
       />
       {pos && (
         <div
+          ref={setGripEl}
           className="block-drag-handle"
           data-testid="block-drag-handle"
           data-target-block={pos.blockId}
@@ -290,31 +284,19 @@ export default function BlockDragHandle({
             position: "absolute",
             top: pos.top,
             left: pos.left,
-            width: HANDLE_W + HANDLE_GAP - TEXT_CLEARANCE,
+            width: HANDLE_W,
             height: HANDLE_H,
+            borderRadius: 6,
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             cursor: "grab",
             userSelect: "none",
             // Over the table's row strip, which shares the grip's footprint.
             zIndex: Z.BLOCK_HANDLE,
           }}
         >
-          <span
-            ref={setGripEl}
-            className="grip-face"
-            style={{
-              width: HANDLE_W,
-              height: HANDLE_H,
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <GripVerticalIcon size={16} />
-          </span>
+          <GripVerticalIcon size={16} />
         </div>
       )}
       {pos && tip.shown && (

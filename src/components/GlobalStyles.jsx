@@ -51,21 +51,14 @@ export default function GlobalStyles() {
           opacity: 0.55;
           color: ${theme.TEXT.muted};
           animation: blockHandleIn 120ms ease;
-          transition: opacity 120ms ease, color 120ms ease;
+          transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
-        /* The target is wider than the face (it reaches across the gap to the
-           text); only the face greys, so the pressed grip never meets a
-           selected block's band. */
         .block-drag-handle:hover,
         .block-drag-handle[data-pressed] {
           opacity: 1;
-          color: ${theme.TEXT.primary};
-        }
-        .block-drag-handle .grip-face { transition: background 120ms ease; }
-        .block-drag-handle:hover .grip-face,
-        .block-drag-handle[data-pressed] .grip-face {
           background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
         }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
         /* Insertion marker (useBlockDrag, painted on <body>): where the block

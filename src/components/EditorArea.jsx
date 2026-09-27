@@ -597,8 +597,12 @@ const EditorArea = memo(
     // reach the editor and a letter typed deselects and carries on writing.
     const handleGripClick = useCallback(
       (blockId, extend, gripRect) => {
+        // `grip`: the selection was made on the grip, whose face then stays
+        // pressed; a list marker's click selects with the grip left plain.
         setBlockSelection((s) =>
-          extend && s ? { anchor: s.anchor, head: blockId } : { anchor: blockId, head: blockId },
+          extend && s
+            ? { ...s, head: blockId }
+            : { anchor: blockId, head: blockId, grip: !!gripRect },
         );
         if (extend) return;
         if (gripRect) {
@@ -613,6 +617,26 @@ const EditorArea = memo(
         else editorRef.current?.focus({ preventScroll: true });
       },
       [activeNote, noteDataRef, blockRefs, editorRef, setBlockSelection],
+    );
+
+    // A press on a list item's dot or number, or anywhere left of its text,
+    // selects the item with the items nested under it (Notion's gesture): no
+    // menu, the grip left plain. A to-do's box is not here: it ticks.
+    const selectFromMarker = useCallback(
+      (e) => {
+        if (e.button !== 0 || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return false;
+        const root = e.target.closest?.("[data-editor] > [data-block-id]");
+        const type = root?.getAttribute("data-block-type");
+        if (type !== "bullet" && type !== "numbered") return false;
+        const id = root.getAttribute("data-block-id");
+        const text = blockRefs.current[id];
+        if (!text || text.contains(e.target)) return false;
+        if (e.clientX >= text.getBoundingClientRect().left) return false;
+        e.preventDefault();
+        handleGripClick(id, false);
+        return true;
+      },
+      [blockRefs, handleGripClick],
     );
 
     // The wash on a selected text block: the band's tint over the whole row,
@@ -686,7 +710,7 @@ const EditorArea = memo(
           e.stopPropagation();
           const head = root.getAttribute("data-block-id");
           setBlockMenu(null);
-          setBlockSelection((s) => (s ? { anchor: s.anchor, head } : s));
+          setBlockSelection((s) => (s ? { ...s, head } : s));
           return;
         }
         if (e.target.closest?.("[data-selection-surface], .image-context-menu")) return;
@@ -1123,6 +1147,7 @@ const EditorArea = memo(
                     onMouseLeave={handleEditorMouseLeave}
                     onContextMenu={handleEditorContextMenu}
                     onMouseDown={(e) => {
+                      if (selectFromMarker(e)) return;
                       handleEditorMouseDown(e);
                       // Prevent caret placement inside links on click (for instant open feel)
                       if (!e.shiftKey && e.button === 0) {
@@ -1229,7 +1254,9 @@ const EditorArea = memo(
                       editorRef={editorRef}
                       startHandleDrag={startHandleDrag}
                       onGripClick={handleGripClick}
-                      pinnedBlockId={selectedRun ? blockSelection.anchor : null}
+                      pinnedBlockId={
+                        selectedRun && blockSelection.grip ? blockSelection.anchor : null
+                      }
                       pinKey={note.content.blocks}
                     />
                   )}

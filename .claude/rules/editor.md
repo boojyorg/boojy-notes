@@ -84,7 +84,7 @@ app's, made through state.**
 
 - Backspace at the start of a heading, list item, quote or task makes it a paragraph and nothing
   else (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
-- Enter at the start of a heading with text opens a paragraph above.
+- Enter at the start of a titled heading opens a paragraph above.
 - **Caret positions count visible characters** (`caretLength`), never Markdown length. A split
   on a soft break's edge spends the break. `enter-backspace.spec.ts`.
 
@@ -105,7 +105,6 @@ app's, made through state.**
   bare URL, `[[Target|words]]` or `[[Target]]`, the shortest unambiguous target
   (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
   Not in a cell or callout yet. `link-picker.spec.ts`.
-- The destination chip (`LinkTooltip`) shows after a rest.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
   URLs and link addresses. The pill shows from the first letter. A space or
@@ -274,8 +273,8 @@ same language writes nothing. The language menu portals to `body` and takes its 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
-  the grip's click, Escape in the text, a press on a divider, image or table, Escape from a
-  cell; Shift-click on a grip or block extends. **A list item brings its nested items**
+  the grip's click, a list marker's (the grip stays plain), Escape in the text, a press on a
+  divider, image or table, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
   (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
 - On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
   (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
