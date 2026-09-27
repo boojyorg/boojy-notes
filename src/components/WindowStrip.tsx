@@ -4,6 +4,8 @@ import { getAPI } from "../services/apiProvider";
 import { WINDOW_STRIP_H } from "../constants/layout";
 import { panelTransition } from "../tokens/motion";
 
+const MENU_GAP = 4;
+
 interface WindowStripProps {
   sidebarVisible: boolean;
   sidebarWidth: number;
@@ -58,7 +60,8 @@ export default function WindowStrip({
     if (!el || !api?.popupMenu) return;
     const r = el.getBoundingClientRect();
     setOpen(label);
-    api.popupMenu(label, r.left, r.bottom);
+    // A little below the name, as Windows 11's own menus hang.
+    api.popupMenu(label, r.left, r.bottom + MENU_GAP);
   };
 
   // Alt pressed and let go on its own opens the first menu.

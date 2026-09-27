@@ -1116,8 +1116,6 @@ export default function BoojyNotes() {
     toggleSourceView,
     sourceView,
     openVaultMenu,
-    switchVault,
-    vaults,
     savePoint,
     openVersionHistory: versionHistory.open,
     openRecentlyDeleted: recentlyDeleted.available ? openRecentlyDeleted : undefined,

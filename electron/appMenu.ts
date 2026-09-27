@@ -44,8 +44,6 @@ export type MenuState = {
   sidebarVisible: boolean;
   /** The Markdown view is on, so View offers the formatted one back. */
   sourceView: boolean;
-  /** The vaults the app has opened, for Open Recent; the open one is checked. */
-  vaults: { name: string; path: string; current: boolean; exists: boolean }[];
 };
 
 const INITIAL: MenuState = {
@@ -59,7 +57,6 @@ const INITIAL: MenuState = {
   align: null,
   sidebarVisible: true,
   sourceView: false,
-  vaults: [],
 };
 
 const isMac = process.platform === "darwin";
@@ -156,17 +153,6 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         item("openVault", "Switch Storage Location…", "CmdOrCtrl+O"),
         // The notes the app deleted in the last 30 days, waiting to come back.
         item("recentlyDeleted", "Recently Deleted…"),
-        {
-          label: "Open Recent",
-          enabled: state.vaults.length > 1,
-          submenu: state.vaults.map((v) => ({
-            label: v.name,
-            type: "checkbox" as const,
-            checked: v.current,
-            enabled: v.exists && !v.current,
-            click: send(`openVault:${v.path}`),
-          })),
-        },
         { type: "separator" },
         // Notes save as they are typed; Save Point keeps the note as it is now
         // in its history, under the key every app taught for Save.
@@ -184,8 +170,9 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { type: "separator" },
         file("trash", isMac ? "Move to Trash" : "Delete", { icon: icon("trash") }),
         { type: "separator" },
-        ...(isMac ? [] : [settings, checkUpdates, website, { type: "separator" } as const]),
-        isMac ? { role: "close" } : { role: "quit" },
+        // Elsewhere Settings closes the menu with Exit; Check for Updates and
+        // the website live in Settings (its Updates section and footer).
+        ...(isMac ? [{ role: "close" } as const] : [settings, { role: "quit" } as const]),
       ],
     },
     {

@@ -113,7 +113,6 @@ declare global {
         align: string | null;
         sidebarVisible: boolean;
         sourceView: boolean;
-        vaults: { name: string; path: string; current: boolean; exists: boolean }[];
       }) => void;
       /** Windows and Linux: the application menu's names, for the app's own strip. */
       menuLabels: () => Promise<string[]>;
