@@ -7,8 +7,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto` (renaming
-  orphans saved preferences). Light is the first-run default for existing users; a fresh
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Light is the first-run default for existing users; a fresh
   install starts on System.
 - Neutral palettes; teal is the identity, never gold. `?tweak` (dev only) overrides live; a
   judged value goes into `themes.js`.
@@ -212,9 +211,9 @@ duration. `sidebar-motion.spec.ts`.
 
 - **The touch layout is switched off** (`TOUCH_LAYOUT`); every device gets the desktop layout.
 - The sidebar is always in the layout, never an overlay; don't bring the overlay back.
-- **The sidebar yields before the note**: `sidebarWidthFor()` keeps `EDITOR_FLOOR_W`.
-  `SIDEBAR_MIN_W` derives from the header row; `WINDOW_MIN_W` is imported by
-  `electron/main.js`, never set by hand. Gutters shrink before text.
+- **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
+  is imported by `electron/main.js`. **The column is one width, centred under the name**,
+  sidebar or not; margins go first, then gutters.
 
 ## Testing notes
 

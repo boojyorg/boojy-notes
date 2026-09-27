@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GripVerticalIcon } from "./Icons";
 import { cssZoom } from "../utils/domHelpers";
 import { Z } from "../constants/zIndex";
@@ -90,7 +90,47 @@ function firstLineRect(el, zoom) {
   return { top: r.top + padTop * zoom, height: Math.min(line, r.height || line) };
 }
 
-export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag, onGripClick }) {
+/**
+ * The frontmatter root is left out: it is the file's head, never lifted and
+ * never dropped past (utils/blockOrder), so it gets no grip and the block
+ * under it is the first there is to reorder.
+ */
+function topLevelBlocks(root) {
+  if (!root) return [];
+  return Array.from(root.children).filter(
+    (el) => el.dataset?.blockId && el.dataset.blockType !== "frontmatter",
+  );
+}
+
+/** Where the grip stands beside `els[i]`, in the anchor's CSS pixels. */
+function gripAt(els, i, anchor) {
+  const origin = anchor.getBoundingClientRect(); // top-left of our containing block
+  const zoom = cssZoom(anchor);
+  const r = els[i].getBoundingClientRect();
+  const line = firstLineRect(els[i], zoom);
+  return {
+    blockId: els[i].dataset.blockId,
+    top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
+    // Negative on purpose: the grip lives in the column's left padding.
+    left:
+      (r.left - origin.left) / zoom -
+      HANDLE_W -
+      HANDLE_GAP -
+      (els[i].dataset.blockType === "table" ? TABLE_GRIP_CLEARANCE : 0),
+  };
+}
+
+export default function BlockDragHandle({
+  columnRef,
+  editorRef,
+  startHandleDrag,
+  onGripClick,
+  // The selected block's grip stays up, pressed, until the selection ends
+  // (Notion's): the grip the menu hangs from, wherever the pointer goes.
+  pinnedBlockId,
+  // Changes when the blocks do, so a pinned grip follows its block.
+  pinKey,
+}) {
   const [pos, setPos] = useState(null); // { blockId, top, left } | null
   const [gripEl, setGripEl] = useState(null);
   const tip = useTooltip();
@@ -100,59 +140,56 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
   const rafRef = useRef(null);
   const hoveringHandle = useRef(false);
   const anchorRef = useRef(null);
+  const pinnedRef = useRef(null);
+  pinnedRef.current = pinnedBlockId ?? null;
+  // Whether the pointer is over the column: an unpinned grip hides only when it isn't.
+  const pointerIn = useRef(false);
+
+  // The pinned block's grip, or null.
+  const pinnedPos = useCallback(() => {
+    const id = pinnedRef.current;
+    const els = topLevelBlocks(editorRef.current);
+    const i = els.findIndex((el) => el.dataset.blockId === id);
+    if (!id || i < 0 || els.length < 2 || !anchorRef.current) return null;
+    return gripAt(els, i, anchorRef.current);
+  }, [editorRef]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pinKey is the signal that the blocks moved
+  useLayoutEffect(() => {
+    if (hoveringHandle.current) return;
+    const pinned = pinnedPos();
+    if (pinned) setPos(pinned);
+    else if (!pointerIn.current) setPos(null);
+  }, [pinnedBlockId, pinKey, pinnedPos]);
 
   useEffect(() => {
     const column = columnRef.current;
     if (!column) return;
 
-    // The frontmatter root is left out: it is the file's head, never lifted
-    // and never dropped past (utils/blockOrder), so it gets no grip and the
-    // block under it is the first there is to reorder.
-    const topLevelBlocks = () => {
-      const root = editorRef.current;
-      if (!root) return [];
-      return Array.from(root.children).filter(
-        (el) => el.dataset?.blockId && el.dataset.blockType !== "frontmatter",
-      );
-    };
-
     const locate = (clientY) => {
-      const els = topLevelBlocks();
+      const els = topLevelBlocks(editorRef.current);
       if (els.length < 2) return null; // nothing to reorder
       const anchor = anchorRef.current;
       if (!anchor) return null;
-      const origin = anchor.getBoundingClientRect(); // top-left of our containing block
-      const zoom = cssZoom(anchor);
       // The block whose vertical band (its top → the next block's top) holds
       // the pointer, so the gaps between blocks belong to the block above.
       for (let i = 0; i < els.length; i++) {
         const r = els[i].getBoundingClientRect();
         const bottom = i + 1 < els.length ? els[i + 1].getBoundingClientRect().top : r.bottom;
-        if (clientY >= r.top && clientY < bottom) {
-          const line = firstLineRect(els[i], zoom);
-          return {
-            blockId: els[i].dataset.blockId,
-            top: (line.top - origin.top) / zoom + (line.height / zoom - HANDLE_H) / 2,
-            // Negative on purpose: the grip lives in the column's left padding.
-            left:
-              (r.left - origin.left) / zoom -
-              HANDLE_W -
-              HANDLE_GAP -
-              (els[i].dataset.blockType === "table" ? TABLE_GRIP_CLEARANCE : 0),
-          };
-        }
+        if (clientY >= r.top && clientY < bottom) return gripAt(els, i, anchor);
       }
       return null;
     };
 
     const onMove = (e) => {
+      pointerIn.current = true;
       if (document.body.classList.contains("block-dragging")) return;
       if (hoveringHandle.current) return;
       if (rafRef.current) return;
       const { clientY } = e;
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = null;
-        const next = locate(clientY);
+        const next = locate(clientY) ?? pinnedPos();
         setPos((prev) =>
           prev && next && prev.blockId === next.blockId && prev.top === next.top ? prev : next,
         );
@@ -161,8 +198,9 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
     const onLeave = (e) => {
       // Leaving the column onto the handle itself is not leaving.
       if (e.relatedTarget && column.contains(e.relatedTarget)) return;
+      pointerIn.current = false;
       if (hoveringHandle.current) return;
-      setPos(null);
+      setPos(pinnedPos());
     };
     // A key unmounts the grip, and an element unmounted while hovered never
     // fires mouseleave: with the pointer resting on the grip, one keystroke
@@ -174,7 +212,7 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
       if (MODIFIER_KEYS.has(e.key)) return;
       hoveringHandle.current = false;
       hideTip.current?.();
-      setPos(null);
+      setPos(pinnedPos());
     };
 
     column.addEventListener("mousemove", onMove);
@@ -187,7 +225,7 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [columnRef, editorRef]);
+  }, [columnRef, editorRef, pinnedPos]);
 
   return (
     <>
@@ -202,6 +240,7 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
           className="block-drag-handle"
           data-testid="block-drag-handle"
           data-target-block={pos.blockId}
+          data-pressed={pos.blockId === pinnedBlockId || undefined}
           // A press here keeps a selection (Shift-click extends it).
           data-selection-surface
           aria-hidden="true"

@@ -54,7 +54,8 @@ export default function GlobalStyles() {
           transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
-        .block-drag-handle:hover {
+        .block-drag-handle:hover,
+        .block-drag-handle[data-pressed] {
           opacity: 1;
           background: ${theme.BG.surface};
           color: ${theme.TEXT.primary};

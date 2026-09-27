@@ -8,6 +8,7 @@ import {
   LABEL_PAD_X,
   ROW_LABEL_LINE_HEIGHT,
   ROW_LABEL_SIZE,
+  SCROLLBAR_W,
 } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
@@ -49,6 +50,7 @@ import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
+import { atScale } from "../utils/uiScale";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
@@ -100,16 +102,13 @@ const MOBILE_LABEL_GAP = 26;
 /*
  * The writing column is fluid, because the window is.
  *
- * Width should change how much room the prose has, never what the app is. So
- * as the window narrows the column gives up its decorative left offset first
- * and its gutters second — losing them in that order keeps text comfortable
- * for roughly 200px longer than shrinking both at once would.
- *
- * Both ramps are linear between two anchors and clamped at each end. The
- * offset is fully spent at 640px of editor width and the gutters bottom out
- * at 560px (2026-09-14; they were 560 and 400, so the 600px window still
- * carried 45px gutters and the minimum could go no lower); below that the
- * column only gets narrower. The gutter floor is the drag grip's: 20px plus
+ * Width should change how much room the prose has, never what the app is. The
+ * column is one width, COL_MAX, with the sidebar or without (so hiding it
+ * never re-wraps the text), centred in the pane under the note's centred
+ * name; the spare room is its margins, spent first as the window narrows.
+ * Then the gutters ramp down, bottoming out at 560px of editor width; below
+ * that the column only gets narrower. The centring is a computed margin, not
+ * `auto`, so it eases with the sidebar's slide. The gutter floor is the drag grip's: 20px plus
  * its 4px gap live in the left padding, and the right side matches it. The
  * sidebar stays in the layout at every width and yields before the note does
  * (`EDITOR_FLOOR_W`), so at the 545px window minimum the editor has 316px
@@ -126,10 +125,8 @@ const COL_PAD_MIN = 24;
 const COL_PAD_MAX = 56;
 const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;
-/** Decorative left offset: 0 at the editor floor, COL_OFFSET_MAX at _TO. */
-const COL_OFFSET_MAX = 40;
-const COL_OFFSET_FROM = 640;
-const COL_OFFSET_TO = 880;
+/** The column's width, gutters included. */
+const COL_MAX = 720;
 
 /** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
 function nearestTextIndex(blocks, from, step) {
@@ -812,9 +809,13 @@ const EditorArea = memo(
 
     // Width the editor actually has: the viewport less whatever the sidebar and
     // its handle are occupying. Mobile keeps its own fixed geometry.
-    const editorW = `(100vw - ${sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0}px)`;
+    // In CSS pixels: `vw` ignores the UI scale (`atScale`), and the scroller
+    // keeps a stable scrollbar gutter the column is centred beside.
+    const editorW = `(${atScale("100vw")} - ${
+      (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) + SCROLLBAR_W
+    }px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
-    const colOffset = ramp(editorW, [COL_OFFSET_FROM, 0], [COL_OFFSET_TO, COL_OFFSET_MAX]);
+    const colMargin = `max(0px, calc((${editorW} - ${COL_MAX}px) / 2))`;
     // The name's field, one element wherever it is rendered: in the chrome
     // row's path band on the desktop, at the head of the column on a touch
     // device. Its handlers are the title's own and do not change with the
@@ -1017,8 +1018,8 @@ const EditorArea = memo(
               padding: isMobile
                 ? "12px 20px 80px 20px"
                 : `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : sidebarVisible ? 720 : 840,
-              marginLeft: isMobile ? 0 : colOffset,
+              maxWidth: isMobile ? "100%" : COL_MAX,
+              marginLeft: isMobile ? 0 : colMargin,
               marginRight: "auto",
               width: "100%",
               // The fade is opacity alone. No transform, ever: a transformed
@@ -1227,6 +1228,8 @@ const EditorArea = memo(
                       editorRef={editorRef}
                       startHandleDrag={startHandleDrag}
                       onGripClick={handleGripClick}
+                      pinnedBlockId={selectedRun ? blockSelection.anchor : null}
+                      pinKey={note.content.blocks}
                     />
                   )}
                   {blockMenu && selectedRun && (

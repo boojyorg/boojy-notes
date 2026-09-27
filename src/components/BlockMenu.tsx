@@ -37,7 +37,7 @@ export function kindLabel(type: string): string {
 const MENU_GAP = 4;
 
 interface BlockMenuProps {
-  /** Viewport rect the menu hangs under: the grip, or the block's first line. */
+  /** Viewport rect of the grip (or where it stands): the menu opens beside it. */
   anchor: { top: number; bottom: number; left: number; right: number };
   /** The selected blocks' types, in order. */
   types: string[];
@@ -86,7 +86,18 @@ export default function BlockMenu({
   const [subOpen, setSubOpen] = useState(false);
   const [subActive, setSubActive] = useState(-1);
   const [subPos, setSubPos] = useState<{ left: number; top: number } | null>(null);
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: MENU_GAP }) as {
+  // Beside the grip, never over the block it acts on: to its left, top edges
+  // level (Notion's place), or to its right when the margin has no room.
+  // Said to positionMenu as a line at the grip's top whose right end is the
+  // grip's left side and whose left end is its right side: `align: "end"`
+  // puts the menu's right edge on the first, and the flip takes the second.
+  const side = {
+    top: anchor.top,
+    bottom: anchor.top,
+    left: anchor.right + MENU_GAP,
+    right: anchor.left - MENU_GAP,
+  };
+  const pos = useMenuPosition(menuRef, true, side, { align: "end" }) as {
     top: number;
     left: number;
   } | null;
@@ -249,8 +260,9 @@ export default function BlockMenu({
         onContextMenu={(e) => e.preventDefault()}
         style={{
           ...surface,
-          top: (pos?.top ?? anchor.bottom) / zoom,
+          top: (pos?.top ?? anchor.top) / zoom,
           left: (pos?.left ?? anchor.left) / zoom,
+          visibility: pos ? "visible" : "hidden",
           minWidth: 200,
         }}
       >

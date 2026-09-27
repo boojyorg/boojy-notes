@@ -153,7 +153,7 @@ app's, made through state.**
 
 - **Text never starts a block drag.** One floating grip (`BlockDragHandle`) in the left
   padding, on hover, desktop only, `aria-hidden`; a click selects the block. `⌘⇧↑/↓` is the
-  keyboard path. Absent with fewer than two blocks.
+  keyboard path. None under two blocks.
 - A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
   **Blur cancels a press unconditionally** (else a Cmd-Tab left a phantom drag).
   `grip-reveal.spec.ts`.
@@ -281,8 +281,8 @@ same language writes nothing. The language menu portals to `body` and takes its 
   (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
   line); Enter opens a paragraph below; Shift+↑/↓ resize it; arrows and Escape give the caret
   back; a letter deselects and types. A press off `data-selection-surface` deselects.
-- **The grip's click also opens `BlockMenu`** (right-click, Shift+F10): the kind, Turn into
-  (`setBlockKind`, as Format), Duplicate, Copy, Delete; its shown keys work while open.
+- **The grip's click also opens `BlockMenu`** beside it (right-click, Shift+F10); the grip
+  stays up, pressed. Turn into (`setBlockKind`), Duplicate, Copy, Delete; shown keys work.
   `block-selection.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`), removing an empty row between in the same press.
