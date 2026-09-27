@@ -29,7 +29,6 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   themes: `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
   tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
-- Known leaks: black alphas in some tokens, hand-picked callout/syntax colours.
 
 ## Toasts
 
@@ -62,6 +61,9 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   loading). `first-paint.spec.ts` (CI only).
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
+- **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): the menu's names
+  open the real menus (`popup-menu`), the system's buttons are the overlay; each column's colour,
+  no title. Fixed chrome stands `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag` (Playwright never sees
   it). Regions stand down while a popup is open. `chrome-row.spec.ts`.
@@ -75,15 +77,12 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
   nothing itself**: it sends its id (`menu-command`) and `useAppKeyboard` runs what the key runs,
   under the key's ownership rules. The window reports its state (`menu-state`) and the menu is
-  rebuilt only on change. A format or kind the selection holds is checked, never a renamed
-  item. Undo is not the `undo` role (the browser's undo would bypass the app's history). No
-  zoom roles (they would steal the shortcut for Chromium's page zoom). Reload is dev only (it
-  drops debounced typing). `app-menu.spec.ts`.
+  rebuilt only on change. A held format or kind is checked. Undo is not the `undo` role (it
+  bypasses the app's history); no zoom roles (they steal the UI scale's keys); Reload is dev
+  only. `app-menu.spec.ts`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
-  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` and placed via `cssZoom`
-  (inside the control it was clipped). No shadow (a label is not a surface to act on). A
-  shortcut is shown only where one exists and must match `useAppKeyboard`. Specs locate chrome
-  by `aria-label`. `chrome-tooltips.spec.ts`.
+  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body`, placed via `cssZoom`. No
+  shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys**: `⌘N`, `⇧⌘N`, `⌘P` Search, `⌘K` link (never Search), `⌘,`, `⌘\` sidebar, `⌘/`
   Markdown view, `⌘S` save point, `⌘Z`/`⇧⌘Z`, `⌘±0` UI scale, `⇧⌘L`/`E`/`R` align the caret's
   table column (claimed only in a cell), `⌃⌘S` Go to Sidebar (`⇧⌘E` is Align Centre). Sort has

@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "v*"
+  # By hand, for a branch: the installers are built as a tag would build them
+  # but published nowhere; they wait on the run's page (Artifacts) for a try
+  # in a virtual machine.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -105,3 +109,23 @@ jobs:
         run: pnpm build:electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Linux build: an AppImage, which runs on most distributions and updates
+      # itself (latest-linux.yml). Unsigned, as AppImages usually are.
+      - name: Build and package (Linux)
+        if: runner.os == 'Linux'
+        run: pnpm build:electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Keep the installers (a build by hand)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: installers-${{ runner.os }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
+          if-no-files-found: error
+          retention-days: 14

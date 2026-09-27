@@ -11,7 +11,8 @@ import {
   HistoryIcon,
   CloseIcon,
 } from "./Icons";
-import { isElectronMac } from "../utils/platform";
+import { hasWindowStrip, isElectronMac } from "../utils/platform";
+import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
 import { PANEL_MS } from "../tokens/motion";
 import { Tooltip, shortcutLabel, useTooltip } from "./Tooltip";
@@ -54,6 +55,11 @@ export const CHROME_INSET = 10;
 /** Top of the chrome row's buttons; centres them on the traffic lights
  *  (main.js trafficLightPosition.y = CHROME_TOP + CHROME_BTN / 2). */
 export const CHROME_TOP = 7;
+/**
+ * The Windows and Linux menu strip's height (WindowStrip), which every control
+ * fixed to the window's top stands below; 0 on the Mac and the web.
+ */
+export const WINDOW_STRIP_H = hasWindowStrip ? STRIP_H : 0;
 export {
   CHROME_BTN,
   BTN_GAP,
@@ -249,7 +255,7 @@ export default function EditorChrome({
           className="panel-motion"
           style={{
             position: "fixed",
-            top: CHROME_TOP,
+            top: CHROME_TOP + WINDOW_STRIP_H,
             left: trioLeft,
             zIndex: Z.TOOLBAR,
             // In after the panel has gone, not over it: the sidebar's own
@@ -278,7 +284,7 @@ export default function EditorChrome({
       <div
         style={{
           position: "fixed",
-          top: CHROME_TOP,
+          top: CHROME_TOP + WINDOW_STRIP_H,
           right: CHROME_INSET,
           zIndex: Z.TOOLBAR,
           display: "flex",
@@ -327,7 +333,7 @@ export default function EditorChrome({
             aria-label="Viewing an earlier version"
             style={{
               position: "fixed",
-              top: CHROME_TOP + CHROME_BTN + 6,
+              top: CHROME_TOP + WINDOW_STRIP_H + CHROME_BTN + 6,
               right: CHROME_INSET + CHROME_BTN + BTN_GAP,
               width: 290,
               background: theme.BG.elevated,

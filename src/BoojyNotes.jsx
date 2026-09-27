@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import WindowStrip from "./components/WindowStrip";
 import { useWindowResizing } from "./hooks/useWindowResizing";
 import { selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
@@ -66,7 +67,7 @@ import { useWikilinkHandlers } from "./hooks/useWikilinkHandlers";
 import { removeLinkElement, useLinkPicker } from "./hooks/useLinkPicker";
 import { wikilinkStatus } from "./utils/wikilinkTarget";
 import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
-import { isElectron, isWeb } from "./utils/platform";
+import { hasWindowStrip, isElectron, isWeb } from "./utils/platform";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -1116,6 +1117,11 @@ export default function BoojyNotes() {
       <a href="#main-content" className="skip-link" style={{ zIndex: Z.ERROR_BOUNDARY }}>
         Skip to content
       </a>
+
+      {/* Windows and Linux: the menu and the window buttons, over the app's own row. */}
+      {!isMobile && hasWindowStrip && (
+        <WindowStrip sidebarVisible={sidebarVisible} sidebarWidth={sidebarWidth} />
+      )}
 
       {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web).
           The old desktop TitleBar (28px faux title strip) is gone — the window

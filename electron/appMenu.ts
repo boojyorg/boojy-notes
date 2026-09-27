@@ -1,9 +1,9 @@
 import {
+  BrowserWindow,
   Menu,
   ipcMain,
   nativeImage,
   shell,
-  type BrowserWindow,
   type MenuItemConstructorOptions,
   type NativeImage,
 } from "electron";
@@ -348,4 +348,24 @@ export function buildAppMenu({
   };
   apply(INITIAL);
   ipcMain.on("menu-state", (_event, state: Partial<MenuState>) => apply({ ...INITIAL, ...state }));
+
+  // Windows and Linux: the window has no title bar, and the app's own strip
+  // (WindowStrip) shows these menus' names; a click opens the real menu under
+  // its name, so the strip and the keys can never disagree about an item.
+  ipcMain.handle("menu-labels", () =>
+    (Menu.getApplicationMenu()?.items ?? []).map((i) => i.label).filter(Boolean),
+  );
+  ipcMain.on("popup-menu", (event, { label, x, y }: { label: string; x: number; y: number }) => {
+    const menu = Menu.getApplicationMenu()?.items.find((i) => i.label === label)?.submenu;
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!menu || !window) return;
+    menu.popup({
+      window,
+      x: Math.round(x),
+      y: Math.round(y),
+      callback: () => {
+        if (!event.sender.isDestroyed()) event.sender.send("menu-closed", label);
+      },
+    });
+  });
 }
