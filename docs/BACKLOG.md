@@ -7,8 +7,8 @@ is added because it sounds plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-24, the
-v0.9.1 release pass (Known issues checked live the same day), then the planning pass for the
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-27, the
+v0.10.0 release pass (dates and the release path only); before that 2026-09-24, the v0.9.1 release pass (Known issues checked live the same day), then the planning pass for the
 phase before cloud the same day (the Direction, Beta and Not doing sections). The 2026-09-12
 pass for the v0.7.0 release closed out the whole-app review of 2026-09-07 (its fixes are in
 `CHANGELOG.md` v0.7.0, PRs #144–#158; the residue is here, marked *review §n* where it came
