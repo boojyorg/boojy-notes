@@ -192,8 +192,11 @@ export function usePasteHandler({
     // pastes inline below. Several lines of formatted HTML (a browser, Google
     // Docs, Apple Notes) are read as Markdown first, so their bold, italics,
     // links, headings and lists survive; HTML with no formatting of its own
-    // is left for the plain text (`richPasteMarkdown`).
-    const htmlData = e.clipboardData.getData("text/html");
+    // is left for the plain text (`richPasteMarkdown`). A code editor's copy
+    // (VS Code, Cursor: `vscode-editor-data`) is its text, whatever its
+    // highlighting looks like: that text is the Markdown source.
+    const fromCodeEditor = Array.from(e.clipboardData.types ?? []).includes("vscode-editor-data");
+    const htmlData = fromCodeEditor ? "" : e.clipboardData.getData("text/html");
     const caretInEmptyBlock = () => !crossing && scope.start.el.textContent.trim() === "";
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;

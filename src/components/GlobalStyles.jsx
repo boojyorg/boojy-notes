@@ -2,6 +2,7 @@ import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { useRhythm } from "../tokens/rhythm";
+import { bandFill } from "../utils/selectionBand";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
@@ -33,7 +34,7 @@ export default function GlobalStyles() {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .sidebar-dragging * { transition: none !important; }
+        .sidebar-dragging *, .window-resizing * { transition: none !important; }
         /* Everything on the panel's clock (tokens/motion.js) carries this
            class; a reduced-motion user gets the two states and no travel. */
         @media (prefers-reduced-motion: reduce) {
@@ -43,18 +44,22 @@ export default function GlobalStyles() {
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         /* Block drag handle (BlockDragHandle.jsx) follows the note-row ···
            grammar for reveal: muted ink at 0.55 beside the hovered block, gone
-           while a drag is live. Hovering the grip itself lifts the ink to full
-           muted and nothing else — deliberately NO hover surface (judged live
-           2026-09-03 against an ink-8% fill): the gutter stays part of the
-           page, not a control strip. All states are CSS — no JS opacity handlers. */
+           while a drag is live. The grip is a control (a click selects), so
+           hovering it takes the chrome controls' grey and ink. All states are
+           CSS — no JS opacity handlers. */
         .block-drag-handle {
           opacity: 0.55;
           color: ${theme.TEXT.muted};
           animation: blockHandleIn 120ms ease;
-          transition: opacity 120ms ease, color 120ms ease;
+          transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
-        .block-drag-handle:hover { opacity: 1; }
+        .block-drag-handle:hover,
+        .block-drag-handle[data-pressed] {
+          opacity: 1;
+          background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
+        }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
         /* Insertion marker (useBlockDrag, painted on <body>): where the block
            lands on release. 3px of the accent at 40% — accent is allowed as a
@@ -330,11 +335,16 @@ ${tagPillCss(theme)}
         [data-block-id] .wikilink:hover {
           text-decoration-color: ${theme.wikilink.color};
         }
-        /* The words the link picker will link, while it holds focus: a
-           neutral wash the selection's own strength, unwrapped before the
-           block is read back (useLinkPicker). Never the saved ==highlight==. */
+        /* Selected text in the note wears the selection's one colour, the
+           band a selected block wears (utils/selectionBand). */
+        [data-editor] ::selection {
+          background: ${bandFill(theme.ACCENT.primary, theme.name)};
+        }
+        /* The words the link picker will link, while it holds focus: the
+           selection's colour, standing in for it, unwrapped before the block
+           is read back (useLinkPicker). Never the saved ==highlight==. */
         [data-block-id] mark.link-picker-wash {
-          background: ${theme.selectionWash};
+          background: ${bandFill(theme.ACCENT.primary, theme.name)};
           color: inherit;
           border-radius: 2px;
         }

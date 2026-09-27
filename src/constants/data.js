@@ -31,6 +31,9 @@ export const SCALE_OPTIONS = [50, 67, 80, 90, 100, 110, 120, 133, 150, 170, 200]
  */
 /** @type {SlashCommand[]} */
 export const SLASH_COMMANDS = [
+  // Search-only: an empty line is already text; typed, it turns a heading or
+  // a list item back into a paragraph, as Turn into does.
+  { id: "text", label: "Text", hint: "", icon: "type", type: "p", advanced: true },
   { id: "h1", label: "Heading 1", hint: "#", icon: "heading-1", type: "h1" },
   { id: "h2", label: "Heading 2", hint: "##", icon: "heading-2", type: "h2" },
   { id: "h3", label: "Heading 3", hint: "###", icon: "heading-3", type: "h3" },

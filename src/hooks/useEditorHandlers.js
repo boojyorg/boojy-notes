@@ -36,6 +36,7 @@ export function useEditorHandlers({
   updateBlockIndent,
   moveBlock,
   selectBlock,
+  selectBlockRun,
   onError,
 }) {
   // Use a ref for activeNote so inner helpers don't need it as a dependency
@@ -98,6 +99,7 @@ export function useEditorHandlers({
     updateBlockIndent,
     moveBlock,
     selectBlock,
+    selectBlockRun,
     executeSlashCommand,
     handleBlockInput,
   });

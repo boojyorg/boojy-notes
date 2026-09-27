@@ -270,7 +270,7 @@ describe("EditableBlock", () => {
 
     rerender(<EditableBlock {...baseProps(block, { isBlockSelected: true })} />);
     // accentColor #A4CACE at 10% (Light) around it, the rule at 40% inside; still 1px.
-    expect(root().style.background).toBe("rgba(164, 202, 206, 0.1)");
+    expect(root().style.background).toBe("rgba(164, 202, 206, 0.2)");
     expect(container.querySelector("hr").style.borderTop).toBe(
       "1px solid rgba(164, 202, 206, 0.4)",
     );

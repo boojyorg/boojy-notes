@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import { useWindowResizing } from "./hooks/useWindowResizing";
+import { selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -464,6 +466,8 @@ export default function BoojyNotes() {
     openCodeBlock,
     openDivider,
     deleteBlock,
+    deleteBlockRange,
+    duplicateBlockRange,
     updateBlockProperty,
     saveAndInsertImage,
     saveAndInsertFiles,
@@ -486,8 +490,18 @@ export default function BoojyNotes() {
     onError: showToast,
   });
 
-  // The selected whole block (a divider or an image; see isSelectableBlock) + lightbox state
-  const [selectedBlockId, setSelectedBlockId] = useState(null);
+  // The whole-block selection (utils/blockRun): the block it started on and
+  // the one Shift last reached; the grip's drag reads it through the ref.
+  const [blockSelection, setBlockSelection] = useState(null);
+  // A window resize follows the hand; only a sidebar toggle eases.
+  useWindowResizing();
+  const blockSelectionRef = useRef(null);
+  blockSelectionRef.current = blockSelection;
+  const setSelectedBlockId = useCallback(
+    (id) => setBlockSelection(id ? { anchor: id, head: id } : null),
+    [],
+  );
+  const selectBlockRun = useCallback((anchor, head) => setBlockSelection({ anchor, head }), []);
 
   // The link picker (useLinkPicker, below): Cmd+K and the toolbar's Link
   // reach it through this ref, because the format hook is made first.
@@ -515,6 +529,7 @@ export default function BoojyNotes() {
     editorRef,
     editorScrollRef,
     setToolbarState,
+    blockSelectionRef,
   });
   const multiSelectRef = useRef(null);
   const clearSelectionRef = useRef(null);
@@ -575,6 +590,7 @@ export default function BoojyNotes() {
     updateBlockIndent,
     moveBlock,
     selectBlock: setSelectedBlockId,
+    selectBlockRun,
     onError: showToast,
   });
   // Search-result navigation (clear multi-select on search; scroll + highlight on open)
@@ -986,6 +1002,8 @@ export default function BoojyNotes() {
   // Show Markdown / Show Formatted: EditorArea's switch, which reads the
   // caret's place on the way (the ··· menu, View, ⌘/ and the lit `</>`).
   const switchViewRef = useRef(null);
+  // Edit → Duplicate Block: EditorArea's ⌘D.
+  const blockActionsRef = useRef(null);
   const toggleSourceView = useCallback(() => {
     // The menus a keystroke opened under the caret (`/`, `[[`, `#`) belong to
     // the view being left; left open, the slash menu stood over the Markdown
@@ -1032,6 +1050,12 @@ export default function BoojyNotes() {
     deleteNote: confirmDeleteNote,
     applyFormat,
     setBlockKind,
+    duplicateBlocks: () => blockActionsRef.current?.duplicate(),
+    blockSelectionIds: () =>
+      selectedIds(
+        noteDataRef.current[activeNote]?.content?.blocks ?? [],
+        blockSelectionRef.current,
+      ),
     updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
@@ -1296,6 +1320,9 @@ export default function BoojyNotes() {
               syncGeneration,
               flipCheck,
               deleteBlock,
+              deleteBlockRange,
+              duplicateBlockRange,
+              setBlockKind,
               registerBlockRef,
               insertBlockAfter,
               updateBlockText,
@@ -1313,6 +1340,7 @@ export default function BoojyNotes() {
             <EditorArea
               openFindRef={openFindRef}
               switchViewRef={switchViewRef}
+              blockActionsRef={blockActionsRef}
               isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}
@@ -1327,8 +1355,8 @@ export default function BoojyNotes() {
               onEditLink={linkPicker.openForLink}
               onRemoveLink={removeLink}
               describeLink={describeLink}
-              selectedBlockId={selectedBlockId}
-              setSelectedBlockId={setSelectedBlockId}
+              blockSelection={blockSelection}
+              setBlockSelection={setBlockSelection}
               lightbox={lightbox}
               setLightbox={setLightbox}
               openNote={openNote}

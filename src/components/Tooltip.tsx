@@ -71,6 +71,11 @@ export function shortcutLabel(spec: ShortcutSpec, mac: boolean = isMac): string 
 
 interface TooltipProps {
   label: string;
+  /**
+   * Gestures, one to a line, in place of the label's one line (the block
+   * grip): the gesture in the label's ink, what it does muted.
+   */
+  lines?: ReadonlyArray<readonly [gesture: string, does: string]>;
   shortcut?: string;
   /** The control the chip names; the chip is centred on it. */
   anchor: HTMLElement | null;
@@ -88,7 +93,14 @@ interface TooltipProps {
  * element inside the zoom is multiplied again on paint, so the placement is
  * divided by the zoom before it becomes a style (the menus do the same).
  */
-export function Tooltip({ label, shortcut, anchor, placement = "above", testId }: TooltipProps) {
+export function Tooltip({
+  label,
+  lines,
+  shortcut,
+  anchor,
+  placement = "above",
+  testId,
+}: TooltipProps) {
   const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
@@ -140,7 +152,17 @@ export function Tooltip({ label, shortcut, anchor, placement = "above", testId }
         animation: "fadeIn 0.1s ease-out",
       }}
     >
-      <span>{label}</span>
+      {lines ? (
+        <span aria-label={label} style={{ display: "flex", flexDirection: "column" }}>
+          {lines.map(([gesture, does]) => (
+            <span key={gesture}>
+              {gesture} <span style={{ color: TEXT.muted, fontWeight: 400 }}>{does}</span>
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span>{label}</span>
+      )}
       {shortcut && (
         <span
           style={{

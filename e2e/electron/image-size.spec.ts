@@ -103,9 +103,15 @@ test("images already in a note: a file width is pixels, and a large picture stop
     await h.openNote("Pics");
     const column = await columnWidth(h.page);
     expect(column).toBeGreaterThan(300);
-    // Wide: capped at the column, less the 2px frame either side.
+    // Wide: capped at the column, less the 2px frame either side (within the
+    // pixel the column's and the picture's roundings can each take).
     // Sized: `|300` is 300px, as Obsidian reads it; before, 300 / 7 = 43% of the column.
-    await expect.poll(() => drawnWidths(h.page)).toEqual([column - 4, 300]);
+    await expect
+      .poll(async () => {
+        const [wide, sized] = await drawnWidths(h.page);
+        return [Math.abs(wide - (column - 4)) <= 1, sized];
+      })
+      .toEqual([true, 300]);
     // Reading and drawing rewrites nothing.
     expect(h.vault.read("Pics.md")).toBe(note);
   } finally {

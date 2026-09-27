@@ -1,6 +1,7 @@
 import type { Block, BlockType } from "../types/notes";
 import { inlineMarkdownToHtml } from "./inlineFormatting";
 import { blocksToMarkdown } from "./markdown";
+import { listLayout } from "./listStructure";
 
 /**
  * The two public clipboard formats a copy writes, `text/plain` and
@@ -202,4 +203,31 @@ export function blockCopyPayload(blocks: CopiedBlock[]): CopyPayload {
     }
   }
   return { text: blocksToMarkdown(blocks as Block[]), html };
+}
+
+/**
+ * A whole-block selection's copy (`utils/blockRun`): blocks `from` to `to`,
+ * each whole, so the private format carries structure and the public pair is
+ * the blocks' Markdown and block HTML. The numbers are the ones the list
+ * shows; the file's blank-line spelling stays with the file.
+ */
+export function wholeBlocksCopy(
+  blocks: readonly Block[],
+  from: number,
+  to: number,
+): { json: string; payload: CopyPayload } {
+  const positions = listLayout(blocks as Block[]);
+  const copied: CopiedBlock[] = [];
+  for (let i = from; i <= to; i++) {
+    const entry: CopiedBlock = { ...blocks[i], fullBlock: true };
+    delete entry.id;
+    delete entry.tightAbove;
+    delete entry.looseAbove;
+    copied.push(entry);
+  }
+  const numbered = copied.map((b, k) => {
+    const num = positions[from + k]?.number;
+    return b.type === "numbered" && num !== undefined ? { ...b, num } : b;
+  });
+  return { json: JSON.stringify(copied), payload: blockCopyPayload(numbered) };
 }

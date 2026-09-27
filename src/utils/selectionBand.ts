@@ -1,16 +1,13 @@
 /**
- * The whole-block selection band, shared by every block that is addressed as
- * a whole (a divider, a table; see `isSelectableBlock`). The one sanctioned
- * accent tint on the desktop: a transient selection state, closer to a focus
- * ring than a surface.
- *
- * Light: accent at 10%, a whisper of teal that still lets the content read.
- * Dark: the same alpha vanishes against the near-black sheet, so 18%. Judged
- * live 2026-09-05 on the divider against a recoloured rule (read as "a styled
- * line", not "a selected object") and a neutral band (two greys three steps
- * apart, and the rule disappeared).
+ * The selection's one colour: the band on a block addressed as a whole (a
+ * divider, a table, a run of text blocks) and the editor's text selection
+ * alike, so "selected" looks the same however it was made. The one
+ * sanctioned accent tint on the desktop: a transient state, closer to a focus
+ * ring than a surface. Stronger by opacity, never saturation (a more
+ * saturated teal reads blue); kept below the ==highlight==, which is the same
+ * teal at 35–40%, so a selected word and a highlighted one stay apart.
  */
-export const BAND_ALPHA = { day: 0.1, night: 0.18 } as const;
+export const BAND_ALPHA = { day: 0.2, night: 0.26 } as const;
 
 /** How far the band reaches past the text column on each side. */
 export const BAND_REACH = 4;

@@ -139,6 +139,56 @@ export function useBlockOperations({
     });
   };
 
+  /**
+   * Remove blocks `from` to `to` in one commit (a whole-block selection's
+   * Backspace or Cut). A note is never left without a line to type on: when
+   * nothing of the body remains, an empty paragraph takes the caret.
+   */
+  const deleteBlockRange = (noteId, from, to) => {
+    let fresh = null;
+    commitNoteData((prev) => {
+      if (!prev[noteId]) return prev;
+      const n = { ...prev[noteId] };
+      const blocks = [...n.content.blocks];
+      blocks.splice(from, to - from + 1);
+      if (blocks.length <= reorderFloor(blocks)) {
+        fresh = { id: genBlockId(), type: "p", text: "" };
+        blocks.push(fresh);
+      }
+      n.content = { ...n.content, blocks };
+      return { ...prev, [noteId]: n };
+    });
+    if (fresh) {
+      focusBlockId.current = fresh.id;
+      focusCursorPos.current = 0;
+    }
+  };
+
+  /**
+   * Copy blocks `from` to `to` in place, right under the run, in one commit
+   * (Duplicate, ⌘D). The copies take fresh ids; the file's blank-line
+   * spelling stays with the originals. Returns the copies' ids.
+   */
+  const duplicateBlockRange = (noteId, from, to) => {
+    // Made before the commit: an updater may run more than once.
+    const ids = Array.from({ length: to - from + 1 }, () => genBlockId());
+    commitNoteData((prev) => {
+      if (!prev[noteId]) return prev;
+      const n = { ...prev[noteId] };
+      const blocks = [...n.content.blocks];
+      const copies = blocks.slice(from, to + 1).map((b, k) => {
+        const copy = { ...b, id: ids[k] };
+        delete copy.tightAbove;
+        delete copy.looseAbove;
+        return copy;
+      });
+      blocks.splice(to + 1, 0, ...copies);
+      n.content = { ...n.content, blocks };
+      return { ...prev, [noteId]: n };
+    });
+    return ids;
+  };
+
   const updateBlockProperty = (noteId, blockIndex, updates) => {
     commitNoteData((prev) => {
       const next = { ...prev };
@@ -461,6 +511,8 @@ export function useBlockOperations({
     openCodeBlock,
     openDivider,
     deleteBlock,
+    deleteBlockRange,
+    duplicateBlockRange,
     updateBlockProperty,
     saveAndInsertImage,
     saveAndInsertFiles,

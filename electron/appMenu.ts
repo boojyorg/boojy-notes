@@ -202,6 +202,8 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { role: "copy" },
         { role: "paste" },
         { role: "selectAll" },
+        // The selected blocks, or the caret's line: the grip menu's Duplicate.
+        note("duplicateBlock", "Duplicate Block", "CmdOrCtrl+D"),
         { type: "separator" },
         {
           label: "Find",
@@ -239,9 +241,9 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
           label: "List",
           enabled: !noteless,
           submenu: [
-            kind("bullet", "bullet", "Bulleted List", "-"),
+            kind("bullet", "bullet", "Bullet List", "-"),
             kind("numbered", "numbered", "Numbered List", "1."),
-            kind("todo", "checkbox", "Checklist", "[]"),
+            kind("todo", "checkbox", "To-do List", "[]"),
           ],
         },
         kind("quote", "blockquote", "Quote", ">"),

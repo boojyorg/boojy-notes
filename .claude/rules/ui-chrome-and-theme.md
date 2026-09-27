@@ -7,8 +7,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto` (renaming
-  orphans saved preferences). Light is the first-run default for existing users; a fresh
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Light is the first-run default for existing users; a fresh
   install starts on System.
 - Neutral palettes; teal is the identity, never gold. `?tweak` (dev only) overrides live; a
   judged value goes into `themes.js`.
@@ -20,7 +19,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
-  a location's Active), whole-block selection.
+  a location's Active), a note's selection: text and blocks, one teal (`bandFill`),
+  raised by opacity, below the ==highlight==.
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
@@ -211,9 +211,9 @@ duration. `sidebar-motion.spec.ts`.
 
 - **The touch layout is switched off** (`TOUCH_LAYOUT`); every device gets the desktop layout.
 - The sidebar is always in the layout, never an overlay; don't bring the overlay back.
-- **The sidebar yields before the note**: `sidebarWidthFor()` keeps `EDITOR_FLOOR_W`.
-  `SIDEBAR_MIN_W` derives from the header row; `WINDOW_MIN_W` is imported by
-  `electron/main.js`, never set by hand. Gutters shrink before text.
+- **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
+  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems** (same characters
+  at any size), centred under the name; margins go first, then gutters.
 
 ## Testing notes
 

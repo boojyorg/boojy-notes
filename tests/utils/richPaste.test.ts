@@ -73,6 +73,17 @@ describe("richPasteMarkdown", () => {
     expect(richPasteMarkdown(docs)).toBe("**Heavy** plain\n\n*Slanted* plain");
   });
 
+  it("a code editor's bold highlighting is colour, not bold: Markdown source stays source", () => {
+    // Cursor's (VS Code's) copy of a README: the theme draws a heading line
+    // bold with an inline style, which once read as Google Docs' bold.
+    const cursor =
+      '<div style="font-family: Menlo; white-space: pre;">' +
+      '<div><span style="color: #569cd6; font-weight: bold;"># Boojy Notes</span></div>' +
+      "<div><br></div><div><span>A simple desktop notes app.</span></div>" +
+      '<div><span style="font-style: italic;">*aside*</span></div></div>';
+    expect(richPasteMarkdown(cursor)).toBeNull();
+  });
+
   it("keeps only links with a web or mail address", () => {
     expect(
       richPasteMarkdown(

@@ -10,6 +10,22 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
 
+/**
+ * About how many characters of ordinary prose a line of `ems` holds at the
+ * editor's own face and size: measured on a sentence, since a letter's
+ * average width is the font's, not a constant.
+ */
+const SAMPLE = "The idea is to combine the simplicity of a notes app with plain files.";
+function charsPerLine(ems, bodySize) {
+  const editor = document.querySelector("[data-editor]");
+  const family = editor ? getComputedStyle(editor).fontFamily : "sans-serif";
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return null;
+  ctx.font = `${bodySize}px ${family}`;
+  const perChar = ctx.measureText(SAMPLE).width / SAMPLE.length;
+  return Math.round((ems * bodySize) / perChar);
+}
+
 const LS_KEY = "boojy-dev-rhythm";
 
 /**
@@ -39,6 +55,7 @@ const CONTROLS = [
   { key: "headingAbove", label: "Above heading (H2)", min: 8, max: 64, step: 2, unit: "px" },
   { key: "headingBelow", label: "Below heading (H2)", min: 0, max: 24, step: 1, unit: "px" },
   { key: "blockGap", label: "Code, table, callout", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "measure", label: "Line length", min: 30, max: 50, step: 0.5, unit: "em" },
 ];
 
 function load() {
@@ -154,6 +171,7 @@ export default function RhythmTweaker() {
             <span style={{ color: values[key] === DEFAULT_RHYTHM[key] ? "#888" : "#9CC9CE" }}>
               {values[key]}
               {unit}
+              {key === "measure" && ` ≈ ${charsPerLine(values.measure, values.bodySize)} chars`}
             </span>
           </div>
           <input

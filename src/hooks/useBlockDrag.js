@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { reorderFloor } from "../utils/blockOrder";
+import { selectedIds, subtreeEnd } from "../utils/blockRun";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
@@ -43,6 +44,7 @@ export function useBlockDrag({
   editorRef,
   editorScrollRef,
   setToolbarState,
+  blockSelectionRef,
 }) {
   const blockDrag = useRef({
     active: false,
@@ -85,17 +87,29 @@ export function useBlockDrag({
 
     const blockId = blockInfo.blockId;
     const blockIndex = blockInfo.blockIndex;
-    const el = blockRefs.current[blockId];
+    // The block's root, marker and indent included: a list item's ref is its
+    // text span, and a copy of that was the words alone, without its bullet or
+    // the depth that shows which items are nested.
+    const rootOf = (id) => {
+      const ref = blockRefs.current[id];
+      return ref?.closest?.("[data-block-id]") ?? ref;
+    };
+    const el = rootOf(blockId);
     if (!el) return;
 
-    // A selection spanning several blocks, one of them the grabbed block, drags
-    // them all — the one multi-block gesture, and it costs no extra UI. A range
-    // that reaches the frontmatter root takes the body alone (Chromium makes
-    // none today: Select All starts in the first paragraph's text, probed
-    // 2026-09-15; the rule holds whatever a range says).
-    let draggedIds = [blockId];
+    // What moves: the whole-block selection when the grabbed block is in it;
+    // else a text selection spanning several blocks, one of them the grabbed
+    // block; else the block with the items nested under it (utils/blockRun,
+    // the rule the selection uses). A range that reaches the frontmatter root
+    // takes the body alone (Chromium makes none today: Select All starts in
+    // the first paragraph's text, probed 2026-09-15; the rule holds whatever a
+    // range says).
+    const run = selectedIds(blocks, blockSelectionRef?.current ?? null);
+    let draggedIds = run.includes(blockId)
+      ? run
+      : blocks.slice(blockIndex, subtreeEnd(blocks, blockIndex) + 1).map((b) => b.id);
     const sel = window.getSelection();
-    if (sel.rangeCount && !sel.isCollapsed) {
+    if (!run.includes(blockId) && sel.rangeCount && !sel.isCollapsed) {
       const floor = reorderFloor(blocks);
       const range = sel.getRangeAt(0);
       const multiIds = blocks
@@ -134,7 +148,7 @@ export function useBlockDrag({
     // copy is the only thing that moves.
     const clone = document.createElement("div");
     for (const id of draggedIds) {
-      const srcEl = blockRefs.current[id];
+      const srcEl = rootOf(id);
       if (!srcEl) continue;
       const c = srcEl.cloneNode(true);
       c.removeAttribute("contenteditable");
@@ -375,9 +389,10 @@ export function useBlockDrag({
 
   /**
    * Press on the gutter grip for `blockId`. The drag lifts on the first real
-   * movement — no timer — and a press released without moving does nothing.
+   * movement — no timer — and a press released without moving is a click
+   * (`onClick`: the grip selects its block).
    */
-  const startHandleDrag = (blockId, e) => {
+  const startHandleDrag = (blockId, e, onClick) => {
     if (e.button !== 0) return;
     const blocks = noteDataRef.current[activeNoteRef.current]?.content?.blocks;
     if (!blocks || blocks.length <= 1) return;
@@ -406,6 +421,7 @@ export function useBlockDrag({
       bd.moveHandler = null;
       bd.upHandler = null;
       if (bd.active) finalizeBlockDrag();
+      else onClick?.();
     };
     bd.moveHandler = onMove;
     bd.upHandler = onUp;
