@@ -7,6 +7,7 @@ import {
   CARET_ANCHOR,
   CARET_ANCHOR_CLASS,
   caretIntoTextRoot,
+  selectionIntoTextRoots,
   caretLength,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
@@ -733,6 +734,53 @@ describe("caretIntoTextRoot — a caret beside a list marker moves into the item
     expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
     setCaret(ed.querySelector('[data-block-id="b"]'), 0);
     expect(caretIntoTextRoot(ed, blocks, refs)).toBe(false);
+  });
+});
+
+describe("selectionIntoTextRoots — a selection's ends move into their items' text", () => {
+  const blocks = [
+    { id: "a", type: "bullet", text: "one" },
+    { id: "b", type: "code", text: "x" },
+  ];
+  const mount = () => {
+    document.body.innerHTML =
+      '<div contenteditable="true" id="ed">' +
+      '<div data-block-id="a"><span contenteditable="false" data-marker="filled"></span><span id="t">one</span></div>' +
+      '<div data-block-id="b"><span contenteditable="false"></span><div id="c">x</div></div>' +
+      "</div>";
+    const $ = (id) => document.getElementById(id);
+    return { ed: $("ed"), row: $("ed").firstChild, refs: { a: $("t"), b: $("c") } };
+  };
+  const select = (an, ao, fn, fo) => window.getSelection().setBaseAndExtent(an, ao, fn, fo);
+
+  it("a drag from past the end back over the marker ends at the text's edges, backwards still", () => {
+    const { ed, row, refs } = mount();
+    select(row, 2, row, 0);
+    expect(selectionIntoTextRoots(ed, blocks, refs)).toBe(true);
+    const sel = window.getSelection();
+    expect(sel.toString()).toBe("one");
+    expect([sel.anchorNode, sel.anchorOffset]).toEqual([refs.a, 1]);
+    expect([sel.focusNode, sel.focusOffset]).toEqual([refs.a, 0]);
+  });
+
+  it("moves only the end that is outside the text", () => {
+    const { ed, row, refs } = mount();
+    select(refs.a.firstChild, 1, row, 0);
+    expect(selectionIntoTextRoots(ed, blocks, refs)).toBe(true);
+    const sel = window.getSelection();
+    expect([sel.anchorNode, sel.anchorOffset]).toEqual([refs.a.firstChild, 1]);
+    expect([sel.focusNode, sel.focusOffset]).toEqual([refs.a, 0]);
+  });
+
+  it("leaves a selection inside the text, a caret, and a block that is not text", () => {
+    const { ed, refs } = mount();
+    select(refs.a.firstChild, 0, refs.a.firstChild, 2);
+    expect(selectionIntoTextRoots(ed, blocks, refs)).toBe(false);
+    select(refs.a.firstChild, 1, refs.a.firstChild, 1);
+    expect(selectionIntoTextRoots(ed, blocks, refs)).toBe(false);
+    const code = ed.querySelector('[data-block-id="b"]');
+    select(code, 0, code, 2);
+    expect(selectionIntoTextRoots(ed, blocks, refs)).toBe(false);
   });
 });
 
