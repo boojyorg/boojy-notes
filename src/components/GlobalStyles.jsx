@@ -34,7 +34,7 @@ export default function GlobalStyles() {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .sidebar-dragging * { transition: none !important; }
+        .sidebar-dragging *, .window-resizing * { transition: none !important; }
         /* Everything on the panel's clock (tokens/motion.js) carries this
            class; a reduced-motion user gets the two states and no travel. */
         @media (prefers-reduced-motion: reduce) {

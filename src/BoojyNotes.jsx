@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import { useWindowResizing } from "./hooks/useWindowResizing";
 import { selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
@@ -492,6 +493,8 @@ export default function BoojyNotes() {
   // The whole-block selection (utils/blockRun): the block it started on and
   // the one Shift last reached; the grip's drag reads it through the ref.
   const [blockSelection, setBlockSelection] = useState(null);
+  // A window resize follows the hand; only a sidebar toggle eases.
+  useWindowResizing();
   const blockSelectionRef = useRef(null);
   blockSelectionRef.current = blockSelection;
   const setSelectedBlockId = useCallback(
