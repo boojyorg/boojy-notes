@@ -83,8 +83,8 @@ test("Move to… from a note's menu: the picker ticks where it is, Right expands
     await noteRow(h.page, "Todd's Note").click({ button: "right" });
     await expect(menu(h.page).getByRole("menuitem")).toHaveText([
       "Rename",
-      "Duplicate",
       "Copy",
+      "Duplicate",
       "Move to…",
       "Delete",
     ]);
@@ -153,8 +153,8 @@ test("Move to… from the editor's ··· with the sidebar hidden: the root is a
     await h.page.locator("button[aria-label='Note actions']").click();
     await expect(menu(h.page).getByRole("menuitem")).toHaveText([
       /^Rename/,
-      /^Duplicate/,
       /^Copy/,
+      /^Duplicate/,
       "Move to…",
       /^Version History/,
       /^Show Markdown/,
