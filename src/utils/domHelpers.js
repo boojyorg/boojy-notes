@@ -350,6 +350,37 @@ export function caretIntoTextRoot(editorEl, blocks, blockRefs) {
 }
 
 /**
+ * A selection's ends into their blocks' text: an end that lies in a list row
+ * but outside its text (beside the marker, or past the text's end) moves to
+ * that edge of the text. A drag that ran from past a bullet's end back over
+ * its dot ended beside the dot; Backspace then emptied the text on screen,
+ * but the edit had no text root to be read from, so the file kept the words,
+ * and the next Backspace merged them into the line above (2026-09-27).
+ * True when the selection moved. Direction is kept.
+ */
+export function selectionIntoTextRoots(editorEl, blocks, blockRefs) {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount || sel.isCollapsed) return false;
+  const into = (node, offset) => {
+    const info = node && getBlockFromNode(node, editorEl, blocks, blockRefs);
+    const el = info?.el;
+    if (!el?.isConnected || el.contains(node) || !isEditableBlock(blocks[info.blockIndex])) {
+      return null;
+    }
+    const around = document.createRange();
+    around.selectNode(el);
+    return around.comparePoint(node, offset) < 0 ? [el, 0] : [el, el.childNodes.length];
+  };
+  const a = into(sel.anchorNode, sel.anchorOffset);
+  const f = into(sel.focusNode, sel.focusOffset);
+  if (!a && !f) return false;
+  const [an, ao] = a ?? [sel.anchorNode, sel.anchorOffset];
+  const [fn, fo] = f ?? [sel.focusNode, sel.focusOffset];
+  sel.setBaseAndExtent(an, ao, fn, fo);
+  return true;
+}
+
+/**
  * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
  * an empty text node — an empty paragraph, or one of the editor's own caret
  * anchors — and the arrow keys ask "is the caret on this block's first or last

@@ -224,4 +224,48 @@ describe("useEditorFocusUX", () => {
       removeSpy.mockRestore();
     });
   });
+
+  it("a delete over a selection ending beside a list marker is made in the item's text", () => {
+    const editor = document.createElement("div");
+    editor.innerHTML =
+      '<div data-block-id="b1"><span contenteditable="false"></span><span id="t">one</span></div>';
+    document.body.appendChild(editor);
+    const row = editor.firstChild;
+    const text = editor.querySelector("#t");
+    window.getSelection().setBaseAndExtent(row, 2, row, 0);
+    const exec = vi.fn();
+    document.execCommand = exec;
+    renderHook(() =>
+      useEditorFocusUX(
+        baseDeps({
+          editorRef: { current: editor },
+          blockRefs: { current: { b1: text } },
+          noteDataRef: {
+            current: { n1: { content: { blocks: [{ id: "b1", type: "bullet", text: "one" }] } } },
+          },
+        }),
+      ),
+    );
+    const del = new InputEvent("beforeinput", {
+      inputType: "deleteContentBackward",
+      bubbles: true,
+      cancelable: true,
+    });
+    row.dispatchEvent(del);
+    expect(del.defaultPrevented).toBe(true);
+    expect(exec).toHaveBeenCalledWith("delete");
+    expect(window.getSelection().toString()).toBe("one");
+
+    // Typed over such a selection: the same, as the typed character.
+    window.getSelection().setBaseAndExtent(row, 2, row, 0);
+    const typed = new InputEvent("beforeinput", {
+      inputType: "insertText",
+      data: "x",
+      bubbles: true,
+      cancelable: true,
+    });
+    row.dispatchEvent(typed);
+    expect(exec).toHaveBeenCalledWith("insertText", false, "x");
+    editor.remove();
+  });
 });

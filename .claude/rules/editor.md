@@ -204,9 +204,9 @@ is app-wide in `LayoutContext`, never saved.
 
 ## Lists
 
-- Bullets alternate dot / ring by depth, primary ink, as boxes.
-- **The caret never rests beside a marker** (arrows cross by the app's hand; the click rescue
-  and `caretIntoTextRoot` guard the rest). Tab/Shift+Tab keep the caret on its character.
+- Bullets alternate dot / ring by depth, as boxes.
+- **The caret, and a selection's ends, never rest beside a marker** (arrows cross by hand;
+  `caretIntoTextRoot`, `selectionIntoTextRoots` guard the rest). Tab keeps the caret on its character.
   `list-caret.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
   an imported list (`reconcileListEdit` runs at structural commits only).
