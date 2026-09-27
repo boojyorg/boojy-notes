@@ -29,7 +29,6 @@ import EditorContextMenu from "./EditorContextMenu";
 import { menuAnchorFor, pointInRange, wordRangeAt } from "../utils/contextSelection";
 import {
   getBlockFromNode,
-  cssZoom,
   placeCaret,
   caretLength,
   isEditableBlock,
@@ -52,8 +51,6 @@ import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
-import { COL_MAX, columnGeometry, isDefaultFit, useColumnFit } from "../tokens/columnFit";
-import { useWindowWidth } from "../hooks/useWindowWidth";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
@@ -105,10 +102,12 @@ const MOBILE_LABEL_GAP = 26;
 /*
  * The writing column is fluid, because the window is.
  *
- * Width should change how much room the prose has, never what the app is. The
- * column is one width, COL_MAX, with the sidebar or without (so hiding it
- * never re-wraps the text), centred in the pane under the note's centred
- * name; the spare room is its margins, spent first as the window narrows.
+ * Width should change how much room the prose has, never what the app is. A
+ * line is at most `rhythm.measure` ems long, so it holds the same number of
+ * characters at every body size and interface size; the column is that plus
+ * its gutters, with the sidebar or without (so hiding it never re-wraps the
+ * text), centred in the pane under the note's centred name. The spare room
+ * is its margins, spent first as the window narrows.
  * Then the gutters ramp down, bottoming out at 560px of editor width; below
  * that the column only gets narrower. The centring is a computed margin, not
  * `auto`, so it eases with the sidebar's slide. The gutter floor is the drag grip's: 20px plus
@@ -816,20 +815,8 @@ const EditorArea = memo(
       (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) + SCROLLBAR_W
     }px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
-    const colMargin = `max(0px, calc((${editorW} - ${COL_MAX}px) / 2))`;
-    // EXPERIMENT (tokens/columnFit): the dev panel's other two fits are
-    // worked out from the pane's width in JS, since they zoom or widen it.
-    const columnFit = useColumnFit();
-    const windowWidth = useWindowWidth();
-    const fitted =
-      isDefaultFit(columnFit) || isMobile
-        ? null
-        : columnGeometry(
-            columnFit,
-            windowWidth / cssZoom(document.documentElement) -
-              (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) -
-              SCROLLBAR_W,
-          );
+    const colMax = `calc(${rhythm.measure * rhythm.bodySize}px + 2 * ${colPad})`;
+    const colMargin = `max(0px, calc((${editorW} - ${colMax}) / 2))`;
     // The name's field, one element wherever it is rendered: in the chrome
     // row's path band on the desktop, at the head of the column on a touch
     // device. Its handlers are the title's own and do not change with the
@@ -1032,9 +1019,8 @@ const EditorArea = memo(
               padding: isMobile
                 ? "12px 20px 80px 20px"
                 : `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : (fitted?.maxWidth ?? COL_MAX),
-              marginLeft: isMobile ? 0 : fitted ? fitted.marginLeft : colMargin,
-              zoom: fitted && fitted.zoom !== 1 ? fitted.zoom : undefined,
+              maxWidth: isMobile ? "100%" : colMax,
+              marginLeft: isMobile ? 0 : colMargin,
               marginRight: "auto",
               width: "100%",
               // The fade is opacity alone. No transform, ever: a transformed

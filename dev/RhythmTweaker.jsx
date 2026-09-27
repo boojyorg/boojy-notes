@@ -9,14 +9,22 @@
 // rhythm.ts holds it.
 import { useEffect, useState } from "react";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
-import { DEFAULT_COLUMN_FIT, setColumnFit, useColumnFit } from "../src/tokens/columnFit";
 
-/** The full-screen experiment's three fits (tokens/columnFit). */
-const FITS = [
-  { fit: "fixed", label: "Fixed" },
-  { fit: "scale", label: "Scale" },
-  { fit: "wider", label: "Wider" },
-];
+/**
+ * About how many characters of ordinary prose a line of `ems` holds at the
+ * editor's own face and size: measured on a sentence, since a letter's
+ * average width is the font's, not a constant.
+ */
+const SAMPLE = "The idea is to combine the simplicity of a notes app with plain files.";
+function charsPerLine(ems, bodySize) {
+  const editor = document.querySelector("[data-editor]");
+  const family = editor ? getComputedStyle(editor).fontFamily : "sans-serif";
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return null;
+  ctx.font = `${bodySize}px ${family}`;
+  const perChar = ctx.measureText(SAMPLE).width / SAMPLE.length;
+  return Math.round((ems * bodySize) / perChar);
+}
 
 const LS_KEY = "boojy-dev-rhythm";
 
@@ -47,6 +55,7 @@ const CONTROLS = [
   { key: "headingAbove", label: "Above heading (H2)", min: 8, max: 64, step: 2, unit: "px" },
   { key: "headingBelow", label: "Below heading (H2)", min: 0, max: 24, step: 1, unit: "px" },
   { key: "blockGap", label: "Code, table, callout", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "measure", label: "Line length", min: 30, max: 50, step: 0.5, unit: "em" },
 ];
 
 function load() {
@@ -87,8 +96,6 @@ export default function RhythmTweaker() {
   const [values, setValues] = useState(load);
   const [open, setOpen] = useState(true);
   const [copied, setCopied] = useState(false);
-  const column = useColumnFit();
-  const fit = column.fit;
 
   useEffect(() => {
     setRhythm(values);
@@ -157,66 +164,6 @@ export default function RhythmTweaker() {
           );
         })}
       </div>
-      <div style={{ marginBottom: 4 }}>Full-screen fit</div>
-      <div style={{ display: "flex", gap: 4, marginBottom: 10 }} data-testid="column-fit">
-        {FITS.map((f) => (
-          <button
-            key={f.fit}
-            type="button"
-            aria-pressed={fit === f.fit}
-            onClick={() => setColumnFit({ fit: f.fit })}
-            style={{
-              ...btn,
-              flexGrow: 1,
-              background: fit === f.fit ? "#9CC9CE" : btn.background,
-              color: fit === f.fit ? "#14110F" : btn.color,
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      {[
-        {
-          key: "wideCap",
-          label: "Wider cap",
-          min: 720,
-          max: 1000,
-          step: 10,
-          shown: (v) => `${v}px`,
-          note: fit === "wider" ? null : "(Wider only)",
-        },
-        {
-          key: "leftShare",
-          label: "Left share",
-          min: 0.25,
-          max: 0.5,
-          step: 0.01,
-          shown: (v) => (v === 0.5 ? "centred" : `${Math.round(v * 100)}%`),
-          note: null,
-        },
-      ].map(({ key, label, min, max, step, shown, note }) => (
-        <label key={key} style={{ display: "block", marginBottom: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>
-              {label} {note && <span style={{ color: "#888" }}>{note}</span>}
-            </span>
-            <span style={{ color: column[key] === DEFAULT_COLUMN_FIT[key] ? "#888" : "#9CC9CE" }}>
-              {shown(column[key])}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={column[key]}
-            onChange={(e) => setColumnFit({ [key]: Number(e.target.value) })}
-            style={{ width: "100%" }}
-          />
-        </label>
-      ))}
-      <div style={{ borderTop: "1px solid #333", margin: "6px 0 10px" }} />
       {CONTROLS.map(({ key, label, min, max, step, unit }) => (
         <label key={key} style={{ display: "block", marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -224,6 +171,7 @@ export default function RhythmTweaker() {
             <span style={{ color: values[key] === DEFAULT_RHYTHM[key] ? "#888" : "#9CC9CE" }}>
               {values[key]}
               {unit}
+              {key === "measure" && ` ≈ ${charsPerLine(values.measure, values.bodySize)} chars`}
             </span>
           </div>
           <input

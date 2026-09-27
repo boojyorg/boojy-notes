@@ -21,6 +21,13 @@ export interface Rhythm {
   headingBelow: number;
   /** Space above and below a code block, table or callout. */
   blockGap: number;
+  /**
+   * The longest a line of text gets, in ems of the body size, so it holds the
+   * same number of characters at any body size and any interface size (the
+   * UI scale enlarges text and column together). The window decides how close
+   * a line gets to it; the column is centred and the margins take the rest.
+   */
+  measure: number;
 }
 
 /** v3, judged live against Obsidian and Notion on 2026-09-24 (v1 32/8/10 had
@@ -32,6 +39,7 @@ export const DEFAULT_RHYTHM: Rhythm = {
   headingAbove: 28,
   headingBelow: 8,
   blockGap: 16,
+  measure: 40,
 };
 
 /** Heading type at a 15px body: size, weight, line height, tracking. */
