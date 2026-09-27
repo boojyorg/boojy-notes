@@ -33,7 +33,7 @@ test("the strip names the application menu's own menus, and the chrome stands be
   );
   await expect(strip().getByRole("menuitem")).toHaveText(labels);
   const bottom = (await strip().boundingBox())!.y + (await strip().boundingBox())!.height;
-  const more = await h.page.getByRole("button", { name: "Note actions" }).boundingBox();
+  const more = await h.page.locator("button[aria-label='Note actions']").boundingBox();
   expect(more!.y).toBeGreaterThanOrEqual(bottom);
   // The native menu bar is hidden: the names live in the strip alone.
   expect(
