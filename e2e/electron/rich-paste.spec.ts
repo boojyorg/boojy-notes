@@ -27,13 +27,14 @@ test.afterEach(async () => {
   await h?.close();
 });
 
-/** Paste `plain` and `html` at the caret, as another app's copy would. */
-const paste = (plain: string, html: string) =>
+/** Paste `plain` and `html` (and any other formats) at the caret, as another app's copy would. */
+const paste = (plain: string, html: string, extra: Record<string, string> = {}) =>
   h.page.evaluate(
-    ([p, m]) => {
+    ([p, m, x]) => {
       const dt = new DataTransfer();
       dt.setData("text/plain", p);
       dt.setData("text/html", m);
+      for (const [type, data] of Object.entries(x)) dt.setData(type, data);
       const ev = new ClipboardEvent("paste", {
         clipboardData: dt,
         bubbles: true,
@@ -41,7 +42,7 @@ const paste = (plain: string, html: string) =>
       });
       (document.activeElement as HTMLElement).dispatchEvent(ev);
     },
-    [plain, html],
+    [plain, html, extra] as const,
   );
 
 test("several formatted lines from a browser keep their bold, italics, links and list", async () => {
@@ -77,4 +78,18 @@ test("an editor's unformatted HTML pastes as its plain text, so a code fence sta
   expect(text).toBe(`Start\n\n${code}\n`);
   await expect(h.page.locator('[data-block-type="code"]')).toHaveCount(1);
   expect(h.pageErrors).toEqual([]);
+});
+
+test("a copy from a code editor (Cursor, VS Code) pastes its text: Markdown headings stay headings", async () => {
+  // The theme draws a heading bold; read as HTML it arrived as **# Title**.
+  const plain = "# Title\n\nSome words.";
+  const html =
+    '<div style="font-family: Menlo; white-space: pre;">' +
+    '<div><b style="color: #569cd6;"># Title</b></div><div><br></div>' +
+    "<div><span>Some words.</span></div></div>";
+  await paste(plain, html, { "vscode-editor-data": '{"version":1,"mode":"markdown"}' });
+  const text = await waitForFile(h.vault.file("P.md"), (t) => t.includes("Some words."), {
+    label: "the paste to be written",
+  });
+  expect(text).toBe("Start\n\n# Title\n\nSome words.\n");
 });

@@ -301,12 +301,11 @@ same language writes nothing. The language menu portals to `body` and takes its 
   structure. One trailing newline is stripped.
 - **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); a drop lands
   where the block-drag marker says. `file-drop.spec.ts`.
-- **Copy**: structure travels only for whole blocks (`fullBlock`). Whole blocks write
-  `blocksToMarkdown` as text and structural HTML; a partial selection writes visible text and
-  inline HTML. `copy-clipboard.spec.ts`.
-- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`); HTML with no
-  semantic formatting is ignored. A single-line one is sanitised inline nodes via `insertNode`,
-  never `insertHTML`. `rich-paste.spec.ts`.
+- **Copy**: structure travels only for whole blocks (`fullBlock`: Markdown and structural
+  HTML); a partial selection writes visible text and inline HTML. `copy-clipboard.spec.ts`.
+- **A multi-line rich paste is read as Markdown first** (`utils/richPaste.ts`) unless it has no
+  semantic formatting (styled spans count only from Google Docs) or comes from a code editor
+  (`vscode-editor-data`). One line: sanitised nodes via `insertNode`. `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A link
   becomes a bare URL only if it is the editor's own unchanged `bare-url` autolink.
   `domRoundTrip.test.js`, `inline-preservation.spec.ts`.

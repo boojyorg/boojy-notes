@@ -12,7 +12,9 @@ import { htmlToInlineMarkdown, sanitizeInlineHtml } from "./inlineFormatting";
  * editor such as VS Code puts a `<div>` per line and colour spans on the
  * clipboard, and read as blocks every line of a pasted code fence would be a
  * paragraph of its own. Only semantic markup counts (`FORMATTING`), plus the
- * two inline styles Google Docs uses in place of it.
+ * two inline styles Google Docs uses in place of it, and only in Google Docs'
+ * own HTML: a code editor's highlighting bolds a Markdown heading the same
+ * way, and read as bold, `# Title` arrived as `**# Title**`.
  *
  * Text is read verbatim, as the single-line path reads it, so Markdown source
  * copied as text still arrives as structure; HTML's own whitespace (the
@@ -84,10 +86,13 @@ export function richPasteMarkdown(html: string): string | null {
  * links with an address, collapse
  * source whitespace outside `<pre>`, unwrap Google Docs' whole-document `<b>`
  * (it is `font-weight: normal`), and turn the inline bold and italic styles
- * Google Docs uses for real formatting into the elements they mean.
+ * Google Docs uses for real formatting into the elements they mean. Its HTML
+ * is known by the id on that `<b>`; anyone else's styled span is colour.
  */
 function normalise(root: HTMLElement) {
   const doc = root.ownerDocument;
+  // Asked first: the <b> that carries the id is unwrapped below.
+  const googleDocs = !!root.querySelector('[id^="docs-internal-guid"]');
   for (const el of Array.from(root.querySelectorAll("*"))) {
     if (DROPPED.has(el.nodeName)) el.remove();
   }
@@ -100,7 +105,7 @@ function normalise(root: HTMLElement) {
   for (const el of Array.from(root.querySelectorAll("b, strong"))) {
     if (/font-weight\s*:\s*(normal|[1-4]00)\b/i.test(el.getAttribute("style") ?? "")) unwrap(el);
   }
-  for (const el of Array.from(root.querySelectorAll("span[style]"))) {
+  for (const el of googleDocs ? Array.from(root.querySelectorAll("span[style]")) : []) {
     const style = el.getAttribute("style") ?? "";
     let wrapped: Element = el;
     if (/font-weight\s*:\s*(bold|[6-9]00)\b/i.test(style))

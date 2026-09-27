@@ -35,6 +35,8 @@
 
 ### Bug Fixes
 
+- **Markdown copied from Cursor or VS Code pastes as Markdown** — Copying a Markdown file's text from a code editor and pasting it into a note turned its headings into bold text reading `**# Title**`, because the editor's bold colouring of heading lines was taken for real bold. A copy from a code editor now pastes as the text it is, so `# Title` becomes a heading. Bold and italics pasted from Google Docs still come through.
+
 - **A note deleted in Finder right after you typed in it stays deleted** — If a note was deleted outside the app (Finder, a sync client) within a moment of being saved, the app could treat that save as failed, try again, and bring the file back. The save now counts as done, and the note leaves the sidebar.
 - **"Type / for commands…" no longer shows behind your first line** — In a note whose first paragraph had exactly one line break (Shift+Enter), the faint placeholder was drawn over the words. It now shows only while the first line is truly empty.
 - **The menu bar no longer flickers as you move through a table** — Each arrow key that moved the cursor to another table cell made the menu bar at the top of the screen redraw twice, a visible flicker. It now stays still.
