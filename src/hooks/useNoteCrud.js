@@ -72,17 +72,20 @@ export function useNoteCrud({
     const src = noteDataRef.current[noteId];
     if (!src) return;
     const id = genNoteId();
+    // The same name: the write names the file by the one clash rule
+    // (`Name-2`), and the name field, selected, is where it is changed.
     const dup = {
       ...src,
       id,
-      title: src.title + " (copy)",
+      title: src.title,
       content: {
-        title: src.title + " (copy)",
+        title: src.title,
         blocks: src.content.blocks.map((b) => ({ ...b, id: genBlockId() })),
       },
     };
     commitNoteData((prev) => ({ ...prev, [id]: dup }));
     open(id);
+    return id;
   };
 
   // Commit a new title from the sidebar's inline rename input. Mirrors the

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useTheme } from "../hooks/useTheme";
 import {
+  ClipboardIcon,
   CopyIcon,
   FormattedViewIcon,
   MoveToIcon,
@@ -45,6 +46,8 @@ const ContextMenu = memo(function ContextMenu({
   ctxMenu,
   setCtxMenu,
   duplicateNote,
+  // Copy text: the note as its Markdown (BoojyNotes.copyNoteText).
+  copyNoteText,
   deleteNote,
   deleteFolder,
   duplicateFolder,
@@ -167,7 +170,12 @@ const ContextMenu = memo(function ContextMenu({
     },
   });
 
-  const noteItems = (id) => [
+  // A note's menu (2026-09-27, version A): what acts on the note, then how
+  // it is seen, then Settings, then Delete alone at the foot, each group under
+  // a rule. The labels are short because the menu is the note's. The keys are
+  // shown only in the header's menu, the open note's, which is what they act
+  // on; a sidebar row's menu may be another note's.
+  const noteItems = (id, keys = false) => [
     {
       label: "Rename",
       icon: <PencilIcon />,
@@ -181,42 +189,57 @@ const ContextMenu = memo(function ContextMenu({
     {
       label: "Duplicate",
       icon: <CopyIcon />,
+      shortcut: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
       action: () => {
         duplicateNote(id);
         setCtxMenu(null);
       },
     },
+    ...(copyNoteText
+      ? [
+          {
+            label: "Copy",
+            icon: <ClipboardIcon />,
+            shortcut: keys ? shortcutLabel({ key: "C", shift: true }) : undefined,
+            action: () => {
+              setCtxMenu(null);
+              copyNoteText(id);
+            },
+          },
+        ]
+      : []),
     moveItem({ kind: "notes", ids: [id] }),
-    {
-      label: "Delete",
-      icon: <TrashIcon />,
-      action: () => {
-        deleteNote(id);
-        setCtxMenu(null);
-      },
-      // Ordinary ink: a note goes to the Trash, so this can be taken back.
-      // Red is kept for what cannot.
-    },
   ];
 
-  // The open note's own items: its Version History sits before Delete.
-  const headerNoteItems = (id) => {
-    const items = noteItems(id);
-    if (!onVersionHistory) return items;
-    items.splice(items.length - 1, 0, {
-      label: "Version History",
-      icon: <HistoryIcon />,
-      shortcut: "⌥⌘S",
-      action: () => {
-        setCtxMenu(null);
-        onVersionHistory();
-      },
-    });
-    return items;
-  };
+  const deleteItem = (id) => ({
+    label: "Delete",
+    icon: <TrashIcon />,
+    separator: true,
+    action: () => {
+      deleteNote(id);
+      setCtxMenu(null);
+    },
+    // Ordinary ink: a note goes to the Trash, so this can be taken back.
+    // Red is kept for what cannot.
+  });
+
+  // Version History opens the header's second group, how the note is seen.
+  const versionItem = onVersionHistory
+    ? {
+        label: "Version History",
+        icon: <HistoryIcon />,
+        shortcut: "⌥⌘S",
+        separator: true,
+        action: () => {
+          setCtxMenu(null);
+          onVersionHistory();
+        },
+      }
+    : null;
 
   const settingsItem = {
     label: "Settings",
+    shortcut: shortcutLabel({ key: "," }),
     // The cog is what sets it apart from the note's own items; a rule above
     // it as well cut a six-row menu into three compartments (judged live
     // 2026-09-16).
@@ -274,7 +297,14 @@ const ContextMenu = memo(function ContextMenu({
   ];
 
   const items = isHeader
-    ? [...(ctxMenu.id ? [...headerNoteItems(ctxMenu.id), viewItem] : []), settingsItem]
+    ? ctxMenu.id
+      ? [
+          ...noteItems(ctxMenu.id, true),
+          ...(versionItem ? [versionItem, { ...viewItem, separator: false }] : [viewItem]),
+          { ...settingsItem, separator: true },
+          deleteItem(ctxMenu.id),
+        ]
+      : [settingsItem]
     : ctxMenu.type === "note" && isBulk
       ? [
           // The bulk menu: Move first, since it is what a selection is
@@ -293,7 +323,7 @@ const ContextMenu = memo(function ContextMenu({
           },
         ]
       : ctxMenu.type === "note"
-        ? noteItems(ctxMenu.id)
+        ? [...noteItems(ctxMenu.id), deleteItem(ctxMenu.id)]
         : ctxMenu.type === "file"
           ? fileItems(ctxMenu.id)
           : [

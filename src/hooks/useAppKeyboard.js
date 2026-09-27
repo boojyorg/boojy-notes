@@ -70,6 +70,7 @@ export function useAppKeyboard({
   setBlockKind,
   duplicateBlocks,
   blockSelectionIds,
+  copyNoteText,
   updateTableRows,
   openFind,
   detectActiveFormats,
@@ -111,6 +112,7 @@ export function useAppKeyboard({
     setBlockKind,
     duplicateBlocks,
     blockSelectionIds,
+    copyNoteText,
     updateTableRows,
     openFind,
     detectActiveFormats,
@@ -186,6 +188,16 @@ export function useAppKeyboard({
         if (!L.activeNote) return;
         e.preventDefault();
         L.openVersionHistory?.();
+        return;
+      }
+      // Shift+Cmd+D duplicates the open note and Shift+Cmd+C copies it, the
+      // ··· menu's Duplicate and Copy; without Shift the two are the line's
+      // and the selection's (the editor's own).
+      if (mod && e.shiftKey && !e.altKey && (e.code === "KeyD" || e.code === "KeyC")) {
+        if (!L.activeNote) return;
+        e.preventDefault();
+        if (e.code === "KeyD") L.duplicateNote?.(L.activeNote);
+        else L.copyNoteText?.(L.activeNote);
         return;
       }
       if (mod && key === "s" && !e.shiftKey && !e.altKey && !(e.ctrlKey && e.metaKey)) {
@@ -475,6 +487,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.duplicateNote?.(note);
     case "duplicateBlock":
       return L.duplicateBlocks?.();
+    case "copyText":
+      return L.copyNoteText?.(note);
     case "moveTo": {
       // The picker opens under the note's name in the top row, the place the
       // path of the note already stands.

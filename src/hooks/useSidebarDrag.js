@@ -217,8 +217,11 @@ export function useSidebarDrag({
   const updateSidebarDropTarget = (pointerX, pointerY) => {
     const sd = sidebarDrag.current;
     if (!sd.active) return;
-    const scrollEl = sd.scrollEl;
-    if (!scrollEl) return;
+    if (!sd.scrollEl) return;
+    // Where targets are looked for: the sidebar's drop zone, which holds the
+    // vault row above the list's scroller as well as the list; a popup's own
+    // scroller is its whole zone.
+    const scrollEl = sd.scrollEl.closest("[data-drop-zone]") || sd.scrollEl;
     const scrollRect = scrollEl.getBoundingClientRect();
 
     if (

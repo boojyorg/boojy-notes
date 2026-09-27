@@ -178,15 +178,16 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await expect(menu.getByTestId("note-stats")).toHaveText("3 words");
   expect(await menu.getByRole("menuitem").allTextContents()).toEqual([
     "Rename",
-    "Duplicate",
+    expect.stringMatching(/^Duplicate/),
+    expect.stringMatching(/^Copy/),
     "Move to…",
     expect.stringMatching(/^Version History/),
-    "Delete",
     // The view item carries its shortcut (⌘/ on a Mac, Ctrl+/ elsewhere).
     expect.stringMatching(/^Show Markdown/),
-    "Settings",
+    expect.stringMatching(/^Settings/),
+    "Delete",
   ]);
-  await menu.getByRole("menuitem", { name: "Settings" }).click();
+  await menu.getByRole("menuitem", { name: /^Settings/ }).click();
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await h.page.keyboard.press("Escape");
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);

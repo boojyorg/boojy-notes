@@ -146,7 +146,7 @@ describe("useNoteCrud", () => {
   });
 
   describe("duplicateNote", () => {
-    it("creates copy with '(copy)' title and new block IDs", () => {
+    it("creates a copy under the same name (the write adds -2) with new block IDs", () => {
       const note = makeNote("n1", "Original");
       const { result, getNoteData, setActiveNote } = setup({ n1: note });
 
@@ -157,8 +157,8 @@ describe("useNoteCrud", () => {
       const data = getNoteData();
       const dupId = "note-1";
       expect(data[dupId]).toBeDefined();
-      expect(data[dupId].title).toBe("Original (copy)");
-      expect(data[dupId].content.title).toBe("Original (copy)");
+      expect(data[dupId].title).toBe("Original");
+      expect(data[dupId].content.title).toBe("Original");
       // Block IDs should differ from original
       const origBlockIds = note.content.blocks.map((b) => b.id);
       const dupBlockIds = data[dupId].content.blocks.map((b) => b.id);
