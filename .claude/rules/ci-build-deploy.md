@@ -19,7 +19,7 @@ Rule + one reason. Incidents and measurements are in git; command details in
 
 ## Releases
 
-- A `v*` tag runs `release.yml` (macOS, Windows, Linux AppImage and .deb; `pnpm build:electron`,
+- A `v*` tag runs `release.yml` (macOS, Windows, Linux AppImage and .deb for x64 and arm64; `pnpm build:electron`,
   electron-builder's GitHub publisher). Run by hand on a branch, it publishes nothing and keeps
   the installers as the run's artifacts, for a try in a VM. macOS signs when `MACOS_CERTIFICATE` is set; builds before v0.7.0 are
   unsigned, and electron-updater silently refuses to update an unsigned app.

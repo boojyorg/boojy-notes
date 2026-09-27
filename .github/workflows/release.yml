@@ -112,8 +112,9 @@ jobs:
 
       # Linux build: an AppImage, which runs on most distributions and updates
       # itself (latest-linux.yml), and a .deb for Ubuntu and Debian (installed
-      # like any package; updated by installing the next one). Unsigned, as
-      # both usually are.
+      # like any package; updated by installing the next one). Each for Intel
+      # (x64) and ARM (arm64: ARM laptops, and Ubuntu in a VM on an Apple Mac),
+      # built from the one x64 runner. Unsigned, as both usually are.
       - name: Build and package (Linux)
         if: runner.os == 'Linux'
         run: pnpm build:electron
