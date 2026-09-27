@@ -19,8 +19,9 @@ Rule + one reason. Incidents and measurements are in git; command details in
 
 ## Releases
 
-- A `v*` tag runs `release.yml` (macOS + Windows, `pnpm build:electron`, electron-builder's
-  GitHub publisher). macOS signs when `MACOS_CERTIFICATE` is set; builds before v0.7.0 are
+- A `v*` tag runs `release.yml` (macOS, Windows, Linux AppImage and .deb for x64 and arm64; `pnpm build:electron`,
+  electron-builder's GitHub publisher). Run by hand on a branch, it publishes nothing and keeps
+  the installers as the run's artifacts, for a try in a VM. macOS signs when `MACOS_CERTIFICATE` is set; builds before v0.7.0 are
   unsigned, and electron-updater silently refuses to update an unsigned app.
 - **The `.p12` must be legacy-encoded** (`openssl pkcs12 -export -legacy …`, PBE-SHA1-3DES): the
   runner's `security import` rejects an OpenSSL 3 default export as "MAC verification failed",
@@ -51,7 +52,8 @@ Rule + one reason. Incidents and measurements are in git; command details in
   before adding anything. The browser is cached on the lockfile hash; the install runs in a
   `timeout` + three-attempt loop sized to the work, not to patience.
 - **`ci.yml` is side-by-side jobs plus a `ci` summary job**: `checks` (audit, lint, format,
-  typecheck, coverage, web build), `web-e2e`, and `electron-e2e` in six `fullyParallel` shards.
+  typecheck, coverage, web build), `web-e2e`, `electron-e2e` in six `fullyParallel` shards, and
+  `electron-windows` (the window-chrome specs on a Windows runner).
   Branch protection requires the `ci` job name; keep it. More shards stop paying past six;
   a faster runner doesn't help (the suite waits on debounces). New pushes cancel a PR's run;
   master runs are never cancelled.
@@ -85,10 +87,10 @@ Rule + one reason. Incidents and measurements are in git; command details in
 - **Build input and output are separate**: `dist/` and `dist-electron/` are packaged input,
   installers go to `release/` (in `dist/`, each build packed the previous one).
   `build:electron` empties `dist-electron/` first. `files` takes only
-  `assets/boojy-notes-app-icon.png` from `assets/`.
-- **The app icon is generated, never hand-edited**, from the full-bleed source:
-  `magick assets/boojy-notes-app-icon-source.png -resize 824x824 -background none -gravity center -extent 1024x1024 assets/boojy-notes-app-icon.png`
-  (Apple's icon grid; full-bleed renders too large in the Dock).
+  the two app icons from `assets/`.
+- **The app icons are generated, never hand-edited**: `assets/make-app-icons.sh`, from the
+  full-bleed source. macOS on Apple's grid (full-bleed is too large in the Dock); Windows and
+  Linux fill the canvas, wordmark enlarged (the Mac margin reads smaller on a taskbar).
 - **Daily-driver build**: `pnpm build:electron` on master, quit the running app (its quit flush
   saves edits), replace `/Applications/Boojy Notes.app`, check `codesign --verify --deep
   --strict` and the version in Settings. Rebuild at coherent checkpoints, not per PR.

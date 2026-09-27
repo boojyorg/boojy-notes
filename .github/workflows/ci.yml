@@ -149,10 +149,42 @@ jobs:
             test-results/electron
           retention-days: 14
 
+  # Windows: the app's window chrome there is its own (the title bar is the
+  # app's strip, WindowStrip), so the chrome specs run on a real Windows
+  # runner too. A focused set, not the suite: the rest is platform-neutral and
+  # already runs on Linux above.
+  electron-windows:
+    name: Electron E2E (Windows chrome)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm exec vite build
+      - name: Window chrome tests
+        timeout-minutes: 15
+        run: pnpm exec playwright test -c playwright.electron.config.ts e2e/electron/window-strip.spec.ts e2e/electron/header-controls.spec.ts e2e/electron/note-path.spec.ts
+      - name: Keep the report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: electron-windows-report
+          path: |
+            playwright-report/electron
+            test-results/electron
+          retention-days: 14
+
   # The single status branch protection requires. Runs even when a job above
   # failed or was cancelled, and reports that as a failure of its own.
   ci:
-    needs: [checks, web-e2e, electron-e2e]
+    needs: [checks, web-e2e, electron-e2e, electron-windows]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -162,6 +194,8 @@ jobs:
           echo "checks: ${{ needs.checks.result }}"
           echo "web-e2e: ${{ needs.web-e2e.result }}"
           echo "electron-e2e: ${{ needs.electron-e2e.result }}"
+          echo "electron-windows: ${{ needs.electron-windows.result }}"
           test "${{ needs.checks.result }}" = success
           test "${{ needs.web-e2e.result }}" = success
           test "${{ needs.electron-e2e.result }}" = success
+          test "${{ needs.electron-windows.result }}" = success

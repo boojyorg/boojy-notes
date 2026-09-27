@@ -239,8 +239,9 @@ test("a wide sidebar yields to the editor in a narrow window, and comes back", a
     const sidebarWidth = async () => {
       // The wrapper the width is set on is the row's nearest ancestor with an
       // explicit pixel width; read it off the drag handle's left edge instead,
-      // which sits exactly at the sidebar's right edge.
-      const handle = await h.page.locator("[style*='col-resize']").boundingBox();
+      // which sits exactly at the sidebar's right edge. (On Windows and Linux
+      // its top piece in the window strip is a second match; take the main one.)
+      const handle = await h.page.locator("#main-content [style*='col-resize']").boundingBox();
       expect(handle, "drag handle").not.toBeNull();
       return Math.round(handle!.x);
     };

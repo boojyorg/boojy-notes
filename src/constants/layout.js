@@ -18,6 +18,11 @@
 
 /** Control hit box in the chrome rows (the 18px navigation glyph sits in it). */
 export const CHROME_BTN = 32;
+/**
+ * Windows and Linux: the strip across the window's top with the menu and the
+ * system's window buttons (WindowStrip, the title bar overlay's height).
+ */
+export const WINDOW_STRIP_H = 32;
 /** The name field's hover pill: its side padding, pulled back out with a
  *  negative margin so the path centres on the letters. Shared with the
  *  stylesheet, which sizes the empty field to its placeholder plus this. */

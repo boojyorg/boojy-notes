@@ -78,10 +78,8 @@ export function useAppKeyboard({
   // The Markdown view: EditorArea's switch, and whether the view is on.
   toggleSourceView,
   sourceView,
-  // The vault menu (⌘O) and a vault chosen from File → Open Recent.
+  // The vault menu (⌘O and File → Switch Storage Location…).
   openVaultMenu,
-  switchVault,
-  vaults,
   // ⌘S: the open note as a save point in its history; ⌥⌘S its Version History.
   savePoint,
   openVersionHistory,
@@ -119,7 +117,6 @@ export function useAppKeyboard({
     toggleSourceView,
     sidebarVisible,
     openVaultMenu,
-    switchVault,
     savePoint,
     openVersionHistory,
     openRecentlyDeleted,
@@ -297,12 +294,6 @@ export function useAppKeyboard({
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
-        vaults: (vaults ?? []).map(({ name, path, current, exists }) => ({
-          name,
-          path,
-          current,
-          exists,
-        })),
       });
     };
     let timer = null;
@@ -329,7 +320,7 @@ export function useAppKeyboard({
       document.removeEventListener("focusout", soon);
       document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView, vaults]);
+  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView]);
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
@@ -475,8 +466,6 @@ function runMenuCommand(id, L, titleRef) {
     case "recentlyDeleted":
       return L.openRecentlyDeleted?.();
   }
-  // File → Open Recent: the vault's path rides on the id.
-  if (id.startsWith("openVault:")) return L.switchVault?.(id.slice("openVault:".length));
   if (!note) return;
   switch (id) {
     case "toggleSourceView":

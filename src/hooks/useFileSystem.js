@@ -768,7 +768,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // typed while it is up) and the old notes leave state before anything
   // else can run. Nothing of the old vault is ever written into the new one;
   // what could not be written before the switch is left behind, as at quit.
-  // With `target`, a vault already in the list (the vault menu, Open Recent);
+  // With `target`, a vault already in the list (the vault menu);
   // without, the native picker.
   const changeNotesDir = useCallback(
     async (target) => {
