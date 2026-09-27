@@ -53,7 +53,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
-import { focusTitleEnd, getCaretOffset, placeCaret } from "./utils/domHelpers";
+import { getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
@@ -462,17 +462,30 @@ export default function BoojyNotes() {
     folderOps,
     onError: showToast,
   });
-  // Duplicate (the ··· menus, ⇧⌘D, File → Duplicate): the copy opens with its
-  // name ready to edit, caret at the end as Rename leaves it, since renaming
-  // "Name (copy)" is nearly always what comes next. No toast: the copy is on
-  // screen and in the sidebar.
+  // Duplicate (the ··· menus, ⇧⌘D, File → Duplicate): the copy opens under
+  // the original's name, selected whole in the name field, since renaming it
+  // is nearly always next. Left as it is, the write names the file by the
+  // clash rule (`Name-2`) and the field adopts it on blur. The toast says it
+  // happened: for that moment the copy's name is the original's.
   const duplicateNote = useCallback(
     (id) => {
+      const name = noteDataRef.current[id]?.title || "Untitled";
       const copy = duplicateNoteRaw(id);
-      if (copy) setTimeout(focusTitleEnd, 60);
+      if (!copy) return copy;
+      showToast(`Duplicated ${name}`, "done");
+      setTimeout(() => {
+        const el = titleRef.current;
+        if (!el) return;
+        el.focus({ preventScroll: true });
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }, 60);
       return copy;
     },
-    [duplicateNoteRaw],
+    [duplicateNoteRaw, noteDataRef, showToast],
   );
   const {
     updateBlockText,

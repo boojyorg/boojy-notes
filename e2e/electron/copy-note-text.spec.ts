@@ -51,9 +51,12 @@ test("⇧⌘C copies the open note, ⇧⌘D duplicates it", async () => {
   await h.page.keyboard.press(`${MOD}+Shift+c`);
   await expect.poll(async () => (await clip()).text).toBe(NOTE);
   await h.page.keyboard.press(`${MOD}+Shift+d`);
-  await expect.poll(() => h.vault.exists("Plan (copy).md")).toBe(true);
-  // The copy opens with its name ready to edit, caret at the end.
+  // The copy opens under the original's name, selected whole; the file takes
+  // the clash rule's name, and the field adopts it once left.
+  await expect(h.page.getByText("Duplicated Plan")).toBeVisible();
   await expect(h.page.locator("[data-title]")).toBeFocused();
-  await h.page.keyboard.press("Backspace");
-  await expect(h.page.locator("[data-title]")).toHaveText("Plan (copy");
+  expect(await h.page.evaluate(() => getSelection()?.toString())).toBe("Plan");
+  await expect.poll(() => h.vault.exists("Plan-2.md")).toBe(true);
+  await h.page.locator("[data-editor] [data-block-id]").first().click();
+  await expect(h.page.locator("[data-title]")).toHaveText("Plan-2");
 });
