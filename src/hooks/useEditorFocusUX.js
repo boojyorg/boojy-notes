@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import {
   caretIntoTextRoot,
+  selectionIntoTextRoots,
   caretOutOfLinkEnd,
   caretOutOfLinkStart,
   caretOutOfTagEnd,
@@ -159,10 +160,29 @@ export function useEditorFocusUX({
   // and can fire after the insertion has already happened.
   useEffect(() => {
     const onBeforeInput = (e) => {
-      if (e.isComposing || !e.inputType?.startsWith("insert")) return;
+      if (e.isComposing || e.defaultPrevented) return;
       const root = editorRef.current;
       // No editor on screen: the Markdown view's field is typing.
       if (!root) return;
+      // A selection ending beside a list marker (a keyboard or script made
+      // one the mouse-up never saw): its ends go into the text, and the edit
+      // is made there, where the input that follows can read it.
+      const kind = e.inputType ?? "";
+      if (
+        (kind.startsWith("delete") || kind === "insertText") &&
+        root.contains(e.target) &&
+        selectionIntoTextRoots(
+          root,
+          noteDataRef.current[activeNote]?.content?.blocks ?? [],
+          blockRefs.current,
+        )
+      ) {
+        e.preventDefault();
+        if (kind === "insertText") document.execCommand("insertText", false, e.data ?? "");
+        else document.execCommand("delete");
+        return;
+      }
+      if (!kind.startsWith("insert")) return;
       // A caret beside a list marker, outside the item's text, types into
       // nothing the file will hold: put it in the text first.
       const blocks = noteDataRef.current[activeNote]?.content?.blocks;

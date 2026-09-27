@@ -35,6 +35,7 @@
 
 ### Bug Fixes
 
+- **Deleting a list item's text no longer brings it back** — Selecting a bullet's words by dragging backwards over its dot, then pressing Backspace, emptied the line on screen but not in the file; a second Backspace then joined the old words onto the line above (a heading could turn into "Bugshave bug…"). A drag that ends beside a list's dot now ends at its text, so the delete is saved and the next Backspace just turns the empty bullet into a plain line.
 - **Markdown copied from Cursor or VS Code pastes as Markdown** — Copying a Markdown file's text from a code editor and pasting it into a note turned its headings into bold text reading `**# Title**`, because the editor's bold colouring of heading lines was taken for real bold. A copy from a code editor now pastes as the text it is, so `# Title` becomes a heading. Bold and italics pasted from Google Docs still come through.
 
 - **A note deleted in Finder right after you typed in it stays deleted** — If a note was deleted outside the app (Finder, a sync client) within a moment of being saved, the app could treat that save as failed, try again, and bring the file back. The save now counts as done, and the note leaves the sidebar.
