@@ -98,13 +98,17 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ],
       "icon": "assets/boojy-notes-app-icon.png",
       "category": "Office",
       "executableName": "boojy-notes",
       "artifactName": "Boojy-Notes-${version}-${arch}.${ext}",
-      "synopsis": "Markdown notes you own"
+      "synopsis": "Markdown notes you own",
+      "maintainer": "Tyr Bujac <tyr@boojy.org>",
+      "vendor": "Boojy"
     }
-  }
+  },
+  "homepage": "https://boojy.org/notes"
 }

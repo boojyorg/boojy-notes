@@ -111,7 +111,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Linux build: an AppImage, which runs on most distributions and updates
-      # itself (latest-linux.yml). Unsigned, as AppImages usually are.
+      # itself (latest-linux.yml), and a .deb for Ubuntu and Debian (installed
+      # like any package; updated by installing the next one). Unsigned, as
+      # both usually are.
       - name: Build and package (Linux)
         if: runner.os == 'Linux'
         run: pnpm build:electron
@@ -127,5 +129,6 @@ jobs:
             release/*.dmg
             release/*.exe
             release/*.AppImage
+            release/*.deb
           if-no-files-found: error
           retention-days: 14
