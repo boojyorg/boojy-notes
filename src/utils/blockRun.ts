@@ -9,6 +9,8 @@ import { reorderFloor } from "./blockOrder";
 export interface BlockSelection {
   anchor: string;
   head: string;
+  /** Made on the grip (its face stays pressed), not a list marker or the keys. */
+  grip?: boolean;
 }
 
 const LIST_KINDS = new Set(["bullet", "numbered", "checkbox"]);
@@ -75,7 +77,7 @@ export function stepHead(
     if (dir === 1) h = h >= a ? range.to + 1 : h + 1;
     else h -= 1;
     if (h < floor || h >= blocks.length) return sel;
-    const next = { anchor: sel.anchor, head: blocks[h].id };
+    const next = { ...sel, head: blocks[h].id };
     const r = selectionRange(blocks, next);
     if (r && (r.from !== range.from || r.to !== range.to)) return next;
   }

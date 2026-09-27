@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import {
   caretIntoTextRoot,
+  selectionIntoTextRoots,
   findNearestBlock,
   isEditableBlock,
   placeCaret,
@@ -63,8 +64,12 @@ export function useMouseHandlers({
     requestAnimationFrame(() => {
       if (focusLeftEditor()) return;
       const sel = window.getSelection();
-      if (sel.rangeCount && !sel.getRangeAt(0).collapsed) return;
       const blocks = noteDataRef.current[currentNote]?.content?.blocks;
+      if (sel.rangeCount && !sel.getRangeAt(0).collapsed) {
+        // A drag that ended beside a marker ends in the text instead.
+        if (blocks) selectionIntoTextRoots(editorRef.current, blocks, blockRefs.current);
+        return;
+      }
       if (sel.rangeCount) {
         const info = getBlock(sel.anchorNode);
         if (info) {

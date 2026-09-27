@@ -481,11 +481,13 @@ describe("Sidebar", () => {
   });
 
   // Both stay reachable however far the tree is scrolled.
-  it("keeps New note and the Notes row in one sticky block above the tree", () => {
-    const { getByRole, getByText } = renderSidebar();
+  it("keeps New note and the Notes row in one block above the list's scroller, never in it", () => {
+    const { getByRole, getByText, container } = renderSidebar();
     const block = getByRole("button", { name: "New note" }).parentElement;
-    expect(block.style.position).toBe("sticky");
     expect(getByText("Notes").closest("div").parentElement).toBe(block);
+    const scroller = container.querySelector(".sidebar-scroll");
+    expect(scroller.contains(block)).toBe(false);
+    expect(block.compareDocumentPosition(scroller) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("makes a root folder from the header's New folder control", () => {

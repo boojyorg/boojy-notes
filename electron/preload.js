@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   resolveAttachment: (filename) => ipcRenderer.invoke("resolve-attachment", filename),
   getFileSize: (filename) => ipcRenderer.invoke("get-file-size", filename),
   copyImageToClipboard: (filename) => ipcRenderer.invoke("copy-image-to-clipboard", filename),
+  copyTextToClipboard: (payload) => ipcRenderer.invoke("copy-text-to-clipboard", payload),
   // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
   paste: () => ipcRenderer.invoke("paste"),
   // The application menu (electron/appMenu.ts): its items arrive as command

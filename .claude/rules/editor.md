@@ -84,7 +84,7 @@ app's, made through state.**
 
 - Backspace at the start of a heading, list item, quote or task makes it a paragraph and nothing
   else (`DEMOTES_TO_PARAGRAPH`); an indented item outdents first; only a paragraph merges.
-- Enter at the start of a heading with text opens a paragraph above.
+- Enter at the start of a titled heading opens a paragraph above.
 - **Caret positions count visible characters** (`caretLength`), never Markdown length. A split
   on a soft break's edge spends the break. `enter-backspace.spec.ts`.
 
@@ -105,7 +105,6 @@ app's, made through state.**
   bare URL, `[[Target|words]]` or `[[Target]]`, the shortest unambiguous target
   (`linkTargetFor`). `[[` is notes only. The linked words' wash is unwrapped before read-back.
   Not in a cell or callout yet. `link-picker.spec.ts`.
-- The destination chip (`LinkTooltip`) shows after a rest.
 - **`#tag` is a pill; the Markdown stays `#tag`.** One grammar, `TAG_RE` in `utils/tags.ts`,
   read by renderer, completion, search and filter. `extractAllTags` skips code, frontmatter,
   URLs and link addresses. The pill shows from the first letter. A space or
@@ -204,9 +203,9 @@ is app-wide in `LayoutContext`, never saved.
 
 ## Lists
 
-- Bullets alternate dot / ring by depth, primary ink, as boxes.
-- **The caret never rests beside a marker** (arrows cross by the app's hand; the click rescue
-  and `caretIntoTextRoot` guard the rest). Tab/Shift+Tab keep the caret on its character.
+- Bullets alternate dot / ring by depth, as boxes.
+- **The caret, and a selection's ends, never rest beside a marker** (arrows cross by hand;
+  `caretIntoTextRoot`, `selectionIntoTextRoots` guard the rest). Tab keeps the caret on its character.
   `list-caret.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
   an imported list (`reconcileListEdit` runs at structural commits only).
@@ -274,15 +273,15 @@ same language writes nothing. The language menu portals to `body` and takes its 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
-  the grip's click, Escape in the text, a press on a divider, image or table, Escape from a
-  cell; Shift-click on a grip or block extends. **A list item brings its nested items**
+  the grip's click, a press in a block's gutter strip (`gutterSelect`; grip left plain), Escape
+  in the text, a divider, image or table's press, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
   (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
 - On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
   (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
   line); Enter opens a paragraph below; Shift+↑/↓ resize it; arrows and Escape give the caret
   back; a letter deselects and types. A press off `data-selection-surface` deselects.
 - **The grip's click also opens `BlockMenu`** beside it (right-click, Shift+F10); the grip
-  stays up, pressed. Turn into (`setBlockKind`), Duplicate, Copy, Delete; shown keys work.
+  stays up, pressed. Turn into (`setBlockKind`), Copy, Duplicate, Delete; shown keys work.
   `block-selection.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`), removing an empty row between in the same press.

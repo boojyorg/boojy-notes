@@ -92,7 +92,7 @@ test("File → Duplicate, and Edit → Find and Find and Replace open the find b
     await expect(h.page.getByPlaceholder("Replace with...")).toBeVisible();
 
     await click(h, "duplicate");
-    await expect.poll(() => h.vault.list()).toEqual(["Alpha (copy).md", "Alpha.md"]);
+    await expect.poll(() => h.vault.list()).toEqual(["Alpha-2.md", "Alpha.md"]);
   } finally {
     await h.close();
   }

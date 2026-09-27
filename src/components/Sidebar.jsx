@@ -1567,309 +1567,309 @@ const Sidebar = memo(function Sidebar({
         </div>
       )}
 
-      {/* One scroller for every sidebar state (judged live 2026-08-23): the
-          desktop action group lives INSIDE it as a sticky block, so the
-          scrollbar track spans from New note down while the actions stay
-          pinned and the search field keeps its DOM position (no remount
-          mid-typing) across search-mode flips. It also puts every pill on
-          the same right boundary beside the gutter. */}
+      {/* The drop zone (useSidebarDrag): the vault row above the scroller is
+          a target as much as the rows in it. */}
       <div
-        ref={sidebarScrollRef}
-        className="sidebar-scroll"
-        onPointerDown={handleSidebarPointerDown}
-        style={{
-          flex: 1,
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          padding: isMobile ? "2px 0" : "0 0 2px",
-        }}
+        data-drop-zone=""
+        style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
       >
-        {/* Search results and the empty state are mobile-only: on desktop
-            the palette owns them and the tree stays put behind it. */}
-        {isMobile && searchMode && searchResults.results.length > 0 ? (
+        {!isMobile && (
           <>
-            {tagSuggestions && tagSuggestions.length > 0 && (
-              <TagChips
-                title="Tags"
-                tags={tagSuggestions}
-                limit={20}
-                onPick={(tag) => setSearch(`#${tag}`)}
+            {/* New note and the list's controls, above the list's scroller:
+            they never scroll, so the scrollbar spans the list alone, from
+            under the vault row down to Recently Deleted (2026-09-27; they
+            were a sticky block inside one scroller, whose track ran from
+            the window's top). */}
+            <div inert={hiddenControls} style={{ background: chromeBg, flexShrink: 0 }}>
+              <div style={{ height: COLUMN_HEAD_GAP }} />
+              <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
+              <SectionHeader
+                label={
+                  vaults.length > 0 ? (
+                    <VaultLabel
+                      name={vaultName}
+                      open={vaultMenu !== null}
+                      onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
+                    />
+                  ) : (
+                    "Notes"
+                  )
+                }
                 TEXT={TEXT}
-                ACCENT={ACCENT}
+                dropRoot
+                menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
               >
-                <div
-                  style={{ ...SEARCH_HEADING, color: TEXT.muted, marginTop: 10, marginBottom: 2 }}
+                <SectionAction
+                  onClick={() => createFolder(null)}
+                  label="New folder"
+                  shortcut={SHORTCUTS.newFolder}
                 >
-                  Notes
-                </div>
-              </TagChips>
-            )}
-            <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
-              {searchResults.totalCount <= 20
-                ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
-                : `Showing 20 of ${searchResults.totalCount}`}
+                  <NewFolderIcon size={16} />
+                </SectionAction>
+                <SectionAction
+                  onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
+                  label="Sort"
+                  aria-haspopup="menu"
+                  aria-expanded={sortMenuAnchor !== null}
+                  active={sortMenuAnchor !== null}
+                >
+                  <SortIcon size={16} />
+                </SectionAction>
+              </SectionHeader>
             </div>
-            {searchResults.results.map((result, i) => {
-              const isActive = i === activeResultIndex;
-              const folderPath = result.folder ? result.folder.split("/").join(" / ") : null;
-              return (
-                <button
-                  key={result.noteId}
-                  data-search-index={i}
-                  aria-current={isActive || undefined}
-                  onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
-                  style={{
-                    width: "calc(100% - 8px)",
-                    marginLeft: 5,
-                    marginRight: 3,
-                    border: "none",
-                    appearance: "none",
-                    WebkitAppearance: "none",
-                    cursor: "pointer",
-                    background: isActive ? `${accentColor}15` : "transparent",
-                    borderRadius: 6,
-                    padding: "5px 10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    textAlign: "left",
-                    fontFamily: "inherit",
-                    transition: "background 0.12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) hBg(e.currentTarget, BG.hover);
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) hBg(e.currentTarget, "transparent");
-                  }}
+          </>
+        )}
+
+        {/* The list's scroller: the tree alone on the desktop, results and the
+          tree on a phone. */}
+        <div
+          ref={sidebarScrollRef}
+          className="sidebar-scroll"
+          onPointerDown={handleSidebarPointerDown}
+          style={{
+            flex: 1,
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            padding: isMobile ? "2px 0" : "0 0 2px",
+          }}
+        >
+          {/* Search results and the empty state are mobile-only: on desktop
+            the palette owns them and the tree stays put behind it. */}
+          {isMobile && searchMode && searchResults.results.length > 0 ? (
+            <>
+              {tagSuggestions && tagSuggestions.length > 0 && (
+                <TagChips
+                  title="Tags"
+                  tags={tagSuggestions}
+                  limit={20}
+                  onPick={(tag) => setSearch(`#${tag}`)}
+                  TEXT={TEXT}
+                  ACCENT={ACCENT}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <FileIcon active={isActive} />
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                        fontSize: 14,
-                        fontWeight: isActive ? 600 : 400,
-                        color: isActive ? TEXT.primary : TEXT.secondary,
-                      }}
-                    >
-                      {renderHighlightedTitle(result.title, result.titleRanges, accentText)}
-                    </span>
-                    {folderPath && (
+                  <div
+                    style={{ ...SEARCH_HEADING, color: TEXT.muted, marginTop: 10, marginBottom: 2 }}
+                  >
+                    Notes
+                  </div>
+                </TagChips>
+              )}
+              <div style={{ fontSize: 11, color: TEXT.muted, padding: "4px 14px 8px" }}>
+                {searchResults.totalCount <= 20
+                  ? `${searchResults.totalCount} result${searchResults.totalCount !== 1 ? "s" : ""}`
+                  : `Showing 20 of ${searchResults.totalCount}`}
+              </div>
+              {searchResults.results.map((result, i) => {
+                const isActive = i === activeResultIndex;
+                const folderPath = result.folder ? result.folder.split("/").join(" / ") : null;
+                return (
+                  <button
+                    key={result.noteId}
+                    data-search-index={i}
+                    aria-current={isActive || undefined}
+                    onClick={() => handleSearchResultOpen?.(result.noteId, result.matchBlockId)}
+                    style={{
+                      width: "calc(100% - 8px)",
+                      marginLeft: 5,
+                      marginRight: 3,
+                      border: "none",
+                      appearance: "none",
+                      WebkitAppearance: "none",
+                      cursor: "pointer",
+                      background: isActive ? `${accentColor}15` : "transparent",
+                      borderRadius: 6,
+                      padding: "5px 10px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                      textAlign: "left",
+                      fontFamily: "inherit",
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) hBg(e.currentTarget, BG.hover);
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) hBg(e.currentTarget, "transparent");
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <FileIcon active={isActive} />
                       <span
                         style={{
-                          flexShrink: 0,
-                          maxWidth: "45%",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
-                          fontSize: 11,
-                          color: TEXT.muted,
+                          flex: 1,
+                          fontSize: 14,
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? TEXT.primary : TEXT.secondary,
                         }}
                       >
-                        {folderPath}
+                        {renderHighlightedTitle(result.title, result.titleRanges, accentText)}
                       </span>
-                    )}
-                  </div>
-                  {result.snippet ? (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: TEXT.muted,
-                        paddingLeft: 19,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        lineHeight: "16px",
-                      }}
-                    >
-                      {renderSnippet(result.snippet, accentText)}
+                      {folderPath && (
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            maxWidth: "45%",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: 11,
+                            color: TEXT.muted,
+                          }}
+                        >
+                          {folderPath}
+                        </span>
+                      )}
                     </div>
-                  ) : result.matchIn === "title" ? (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: TEXT.muted,
-                        paddingLeft: 19,
-                        fontStyle: "italic",
-                        lineHeight: "16px",
-                      }}
-                    >
-                      title match
-                    </div>
-                  ) : null}
-                </button>
-              );
-            })}
-          </>
-        ) : isMobile && searchMode && searchResults.results.length === 0 ? (
-          tagSuggestions && tagSuggestions.length > 0 ? (
-            <TagChips
-              title={search === "#" ? "All Tags" : "Tags"}
-              tags={tagSuggestions}
-              limit={30}
-              onPick={(tag) => setSearch(`#${tag}`)}
-              TEXT={TEXT}
-              ACCENT={ACCENT}
-            />
+                    {result.snippet ? (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: TEXT.muted,
+                          paddingLeft: 19,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          lineHeight: "16px",
+                        }}
+                      >
+                        {renderSnippet(result.snippet, accentText)}
+                      </div>
+                    ) : result.matchIn === "title" ? (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: TEXT.muted,
+                          paddingLeft: 19,
+                          fontStyle: "italic",
+                          lineHeight: "16px",
+                        }}
+                      >
+                        title match
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </>
+          ) : isMobile && searchMode && searchResults.results.length === 0 ? (
+            tagSuggestions && tagSuggestions.length > 0 ? (
+              <TagChips
+                title={search === "#" ? "All Tags" : "Tags"}
+                tags={tagSuggestions}
+                limit={30}
+                onPick={(tag) => setSearch(`#${tag}`)}
+                TEXT={TEXT}
+                ACCENT={ACCENT}
+              />
+            ) : (
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  color: TEXT.muted,
+                }}
+              >
+                <div style={{ fontSize: 14 }}>No results for &ldquo;{search}&rdquo;</div>
+                <div style={{ fontSize: 12 }}>Try searching with #tags</div>
+              </div>
+            )
           ) : (
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                color: TEXT.muted,
-              }}
-            >
-              <div style={{ fontSize: 14 }}>No results for &ldquo;{search}&rdquo;</div>
-              <div style={{ fontSize: 12 }}>Try searching with #tags</div>
-            </div>
-          )
-        ) : (
-          <>
-            {/* One tree under one header. The header is a sibling above the
+            <>
+              {/* One tree under one header. The header is a sibling above the
                 tree, never inside it: a header is not a legal child of
                 role="tree" (axe aria-required-children, caught by the e2e a11y
                 gate). Mobile has no header and keeps its inline rows. */}
-            {isMobile ? (
-              <div role="tree" aria-label="Notes">
-                <div style={{ height: 5 }} />
-                {filteredTree.map((f) => renderFolder(f, 0))}
-                {/* Desktop's New Folder moved up into the Folders header. */}
-                {!search && (
-                  <MobileTreeAction
-                    label="New Folder"
-                    onClick={() => createFolder(null)}
-                    paddingLeft={10}
-                    TEXT={TEXT}
-                    BG={BG}
-                    accentColor={accentColor}
-                  />
-                )}
-                {(filteredTree.length > 0 || fNotes.length > 0) && <div style={{ height: 16 }} />}
-                {fNotes.map((nId) => renderNote(nId, 0))}
-                {/* Desktop's New Note moved up into the primary action group. */}
-                {!search && (
-                  <MobileTreeAction
-                    label="New Note"
-                    onClick={() => createNote(null)}
-                    paddingLeft={7 + 19}
-                    borderLeft="3px solid transparent"
-                    TEXT={TEXT}
-                    BG={BG}
-                    accentColor={accentColor}
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                {/* The vault header: where you are, and everything that makes
+              {isMobile ? (
+                <div role="tree" aria-label="Notes">
+                  <div style={{ height: 5 }} />
+                  {filteredTree.map((f) => renderFolder(f, 0))}
+                  {/* Desktop's New Folder moved up into the Folders header. */}
+                  {!search && (
+                    <MobileTreeAction
+                      label="New Folder"
+                      onClick={() => createFolder(null)}
+                      paddingLeft={10}
+                      TEXT={TEXT}
+                      BG={BG}
+                      accentColor={accentColor}
+                    />
+                  )}
+                  {(filteredTree.length > 0 || fNotes.length > 0) && <div style={{ height: 16 }} />}
+                  {fNotes.map((nId) => renderNote(nId, 0))}
+                  {/* Desktop's New Note moved up into the primary action group. */}
+                  {!search && (
+                    <MobileTreeAction
+                      label="New Note"
+                      onClick={() => createNote(null)}
+                      paddingLeft={7 + 19}
+                      borderLeft="3px solid transparent"
+                      TEXT={TEXT}
+                      BG={BG}
+                      accentColor={accentColor}
+                    />
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* The vault header: where you are, and everything that makes
                     something. It is also the root drop target, so it stays
                     put however empty the vault is. Folders come first,
                     alphabetical; root notes follow in the sort preference,
                     exactly as inside a folder — the root is a folder. */}
-                {/* The vault row is a title with quiet controls: New folder and
+                  {/* The vault row is a title with quiet controls: New folder and
                     Sort, revealed on row hover or focus (held while the Sort
                     menu is open), at the 16px row tier so they read with the
                     folder glyphs below, not with the chrome row above. */}
-                {/* New note and the list's controls stay reachable however
-                    far the tree is scrolled: they are a sticky block at the
-                    top of the sidebar's one scroller, and rows slide under
-                    them with no separator (2026-09-12). */}
-                <div
-                  inert={hiddenControls}
-                  style={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 1,
-                    background: chromeBg,
-                    flexShrink: 0,
-                  }}
-                >
-                  <div style={{ height: COLUMN_HEAD_GAP }} />
-                  <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
-                  <SectionHeader
-                    label={
-                      vaults.length > 0 ? (
-                        <VaultLabel
-                          name={vaultName}
-                          open={vaultMenu !== null}
-                          onOpen={(anchor) => setVaultMenu({ anchor, fromKeyboard: false })}
-                        />
-                      ) : (
-                        "Notes"
-                      )
-                    }
-                    TEXT={TEXT}
-                    dropRoot
-                    menuOpen={sortMenuAnchor !== null || vaultMenu !== null}
-                  >
-                    <SectionAction
-                      onClick={() => createFolder(null)}
-                      label="New folder"
-                      shortcut={SHORTCUTS.newFolder}
-                    >
-                      <NewFolderIcon size={16} />
-                    </SectionAction>
-                    <SectionAction
-                      onClick={(e) => setSortMenuAnchor(e.currentTarget.getBoundingClientRect())}
-                      label="Sort"
-                      aria-haspopup="menu"
-                      aria-expanded={sortMenuAnchor !== null}
-                      active={sortMenuAnchor !== null}
-                    >
-                      <SortIcon size={16} />
-                    </SectionAction>
-                  </SectionHeader>
-                </div>
-                {vaultMenu && (
-                  <VaultMenu
-                    anchor={vaultMenu.anchor}
-                    fromKeyboard={vaultMenu.fromKeyboard}
-                    vaults={vaults}
-                    view={vaultView}
-                    setView={setVaultView}
-                    onSwitch={(path) => onSwitchVault?.(path)}
-                    onManage={() => onManageVaults?.()}
-                    onClose={closeVaultMenu}
-                  />
-                )}
-                {sortMenuAnchor && (
-                  <SortMenu
-                    anchor={sortMenuAnchor}
-                    sortMode={sortMode}
-                    setSortMode={setSortMode}
-                    onClose={closeSortMenu}
-                  />
-                )}
-                {/* An empty tree fails axe, so the element exists only with rows. */}
-                {/* The unfiltered tree: the palette's query never reaches
+                  {vaultMenu && (
+                    <VaultMenu
+                      anchor={vaultMenu.anchor}
+                      fromKeyboard={vaultMenu.fromKeyboard}
+                      vaults={vaults}
+                      view={vaultView}
+                      setView={setVaultView}
+                      onSwitch={(path) => onSwitchVault?.(path)}
+                      onManage={() => onManageVaults?.()}
+                      onClose={closeVaultMenu}
+                    />
+                  )}
+                  {sortMenuAnchor && (
+                    <SortMenu
+                      anchor={sortMenuAnchor}
+                      sortMode={sortMode}
+                      setSortMode={setSortMode}
+                      onClose={closeSortMenu}
+                    />
+                  )}
+                  {/* An empty tree fails axe, so the element exists only with rows. */}
+                  {/* The unfiltered tree: the palette's query never reaches
                     the desktop sidebar, which stays exactly as it was behind
                     the scrim (2026-09-20). Only the mobile face filters. */}
-                {(folderTree.length > 0 ||
-                  sortedRootNotes.length > 0 ||
-                  filesIn("").length > 0 ||
-                  fileGroups.attachments) && (
-                  <div role="tree" aria-label={vaultName} ref={treeRef} onKeyDown={onTreeKeyDown}>
-                    {folderTree.map((f) => renderFolder(f, 0))}
-                    {/* No breath before the root notes: the guide line ending
+                  {(folderTree.length > 0 ||
+                    sortedRootNotes.length > 0 ||
+                    filesIn("").length > 0 ||
+                    fileGroups.attachments) && (
+                    <div role="tree" aria-label={vaultName} ref={treeRef} onKeyDown={onTreeKeyDown}>
+                      {folderTree.map((f) => renderFolder(f, 0))}
+                      {/* No breath before the root notes: the guide line ending
                         says the folder ended; the row rhythm stays even. */}
-                    {sortedRootNotes.map((nId) => renderNote(nId, 0))}
-                    {filesIn("").map((path) => renderFile(path, 0))}
-                    {renderAttachments()}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
+                      {sortedRootNotes.map((nId) => renderNote(nId, 0))}
+                      {filesIn("").map((path) => renderFile(path, 0))}
+                      {renderAttachments()}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
       {recentlyDeleted && !isMobile && (
         // Pinned under the tree however long it is: where a deleted note

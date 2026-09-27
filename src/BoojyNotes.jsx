@@ -70,6 +70,8 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isWeb } from "./utils/platform";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
+import { blocksToMarkdown } from "./utils/markdown";
+import { wholeBlocksCopy } from "./utils/clipboardCopy";
 import { useIsMobile } from "./hooks/useIsMobile";
 
 // The touch layout is switched off (2026-09-24): about 1,700 untested lines in
@@ -438,7 +440,7 @@ export default function BoojyNotes() {
   const {
     createNote,
     deleteNote,
-    duplicateNote,
+    duplicateNote: duplicateNoteRaw,
     renameNote,
     renameFolder,
     moveFolder,
@@ -461,6 +463,31 @@ export default function BoojyNotes() {
     folderOps,
     onError: showToast,
   });
+  // Duplicate (the ··· menus, ⇧⌘D, File → Duplicate): the copy opens under
+  // the original's name, selected whole in the name field, since renaming it
+  // is nearly always next. Left as it is, the write names the file by the
+  // clash rule (`Name-2`) and the field adopts it on blur. The toast says it
+  // happened: for that moment the copy's name is the original's.
+  const duplicateNote = useCallback(
+    (id) => {
+      const name = noteDataRef.current[id]?.title || "Untitled";
+      const copy = duplicateNoteRaw(id);
+      if (!copy) return copy;
+      showToast(`Duplicated ${name}`, "done");
+      setTimeout(() => {
+        const el = titleRef.current;
+        if (!el) return;
+        el.focus({ preventScroll: true });
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }, 60);
+      return copy;
+    },
+    [duplicateNoteRaw, noteDataRef, showToast],
+  );
   const {
     updateBlockText,
     insertBlockAfter,
@@ -496,6 +523,30 @@ export default function BoojyNotes() {
   const [blockSelection, setBlockSelection] = useState(null);
   // A window resize follows the hand; only a sidebar toggle eases.
   useWindowResizing();
+
+  // Copy text (the ··· menus, File → Copy Text): the note as its Markdown,
+  // the file's own spelling, and as HTML for apps that take formatting.
+  const copyNoteText = useCallback(
+    async (id) => {
+      const blocks = noteDataRef.current[id]?.content?.blocks ?? [];
+      const text = blocksToMarkdown(blocks);
+      const { html } = wholeBlocksCopy(blocks, 0, blocks.length - 1).payload;
+      const api = getAPI();
+      let ok = false;
+      try {
+        if (api?.copyTextToClipboard) ok = await api.copyTextToClipboard({ text, html });
+        else {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch {
+        ok = false;
+      }
+      if (ok) showToast("Copied to clipboard", "done");
+      else showToast("Couldn't copy the note's text", "error");
+    },
+    [noteDataRef, showToast],
+  );
   const blockSelectionRef = useRef(null);
   blockSelectionRef.current = blockSelection;
   const setSelectedBlockId = useCallback(
@@ -1052,6 +1103,7 @@ export default function BoojyNotes() {
     applyFormat,
     setBlockKind,
     duplicateBlocks: () => blockActionsRef.current?.duplicate(),
+    copyNoteText,
     blockSelectionIds: () =>
       selectedIds(
         noteDataRef.current[activeNote]?.content?.blocks ?? [],
@@ -1434,6 +1486,7 @@ export default function BoojyNotes() {
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
         duplicateNote={duplicateNote}
+        copyNoteText={copyNoteText}
         deleteNote={confirmDeleteNote}
         deleteFolder={confirmDeleteFolder}
         duplicateFolder={duplicateFolder}

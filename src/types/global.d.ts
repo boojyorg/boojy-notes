@@ -98,6 +98,8 @@ declare global {
       findAttachment: (filename: string) => Promise<boolean>;
       getFileSize: (filename: string) => Promise<number | null>;
       copyImageToClipboard: (filename: string) => Promise<boolean>;
+      /** A note's Markdown as plain text, with HTML for apps that take formatting. */
+      copyTextToClipboard: (payload: { text: string; html?: string }) => Promise<boolean>;
       paste: () => Promise<void>;
       onMenuCommand: (callback: (id: string) => void) => () => void;
       setMenuState: (state: {

@@ -11,8 +11,8 @@ import { shortcutLabel } from "./Tooltip";
 import {
   CheckIcon,
   ChevronRightIcon,
+  ClipboardIcon,
   CopyIcon,
-  DuplicateIcon,
   SlashCommandIcon,
   TrashIcon,
   TurnIntoIcon,
@@ -123,13 +123,19 @@ export default function BlockMenu({
     });
   }
   items.push(
+    // Copy before Duplicate, as in the note's ··· menu.
+    {
+      label: "Copy",
+      icon: <ClipboardIcon />,
+      action: onCopy,
+      shortcut: shortcutLabel({ key: "C" }),
+    },
     {
       label: "Duplicate",
-      icon: <DuplicateIcon />,
+      icon: <CopyIcon />,
       action: onDuplicate,
       shortcut: shortcutLabel({ key: "D" }),
     },
-    { label: "Copy", icon: <CopyIcon />, action: onCopy, shortcut: shortcutLabel({ key: "C" }) },
     { label: "Delete", icon: <TrashIcon />, action: onDelete, shortcut: "⌫", danger: true },
   );
 
