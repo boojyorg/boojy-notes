@@ -37,7 +37,7 @@ test("the header's ··· → Copy puts the note's Markdown on the clipboard, an
   await h.page.getByRole("menuitem", { name: /^Copy/ }).click();
   await expect.poll(async () => (await clip()).text).toBe(NOTE);
   expect((await clip()).html).toContain("<strong>bold</strong>");
-  await expect(h.page.getByText("Text copied")).toBeVisible();
+  await expect(h.page.getByText("Copied to clipboard")).toBeVisible();
 });
 
 test("File → Copy Note copies the open note too", async () => {
@@ -52,4 +52,8 @@ test("⇧⌘C copies the open note, ⇧⌘D duplicates it", async () => {
   await expect.poll(async () => (await clip()).text).toBe(NOTE);
   await h.page.keyboard.press(`${MOD}+Shift+d`);
   await expect.poll(() => h.vault.exists("Plan (copy).md")).toBe(true);
+  // The copy opens with its name ready to edit, caret at the end.
+  await expect(h.page.locator("[data-title]")).toBeFocused();
+  await h.page.keyboard.press("Backspace");
+  await expect(h.page.locator("[data-title]")).toHaveText("Plan (copy");
 });

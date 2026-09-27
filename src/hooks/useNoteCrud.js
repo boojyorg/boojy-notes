@@ -83,6 +83,7 @@ export function useNoteCrud({
     };
     commitNoteData((prev) => ({ ...prev, [id]: dup }));
     open(id);
+    return id;
   };
 
   // Commit a new title from the sidebar's inline rename input. Mirrors the

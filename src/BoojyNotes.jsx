@@ -53,7 +53,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
-import { getCaretOffset, placeCaret } from "./utils/domHelpers";
+import { focusTitleEnd, getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
@@ -439,7 +439,7 @@ export default function BoojyNotes() {
   const {
     createNote,
     deleteNote,
-    duplicateNote,
+    duplicateNote: duplicateNoteRaw,
     renameNote,
     renameFolder,
     moveFolder,
@@ -462,6 +462,18 @@ export default function BoojyNotes() {
     folderOps,
     onError: showToast,
   });
+  // Duplicate (the ··· menus, ⇧⌘D, File → Duplicate): the copy opens with its
+  // name ready to edit, caret at the end as Rename leaves it, since renaming
+  // "Name (copy)" is nearly always what comes next. No toast: the copy is on
+  // screen and in the sidebar.
+  const duplicateNote = useCallback(
+    (id) => {
+      const copy = duplicateNoteRaw(id);
+      if (copy) setTimeout(focusTitleEnd, 60);
+      return copy;
+    },
+    [duplicateNoteRaw],
+  );
   const {
     updateBlockText,
     insertBlockAfter,
@@ -516,7 +528,7 @@ export default function BoojyNotes() {
       } catch {
         ok = false;
       }
-      if (ok) showToast("Text copied", "done");
+      if (ok) showToast("Copied to clipboard", "done");
       else showToast("Couldn't copy the note's text", "error");
     },
     [noteDataRef, showToast],
