@@ -29,6 +29,7 @@ import EditorContextMenu from "./EditorContextMenu";
 import { menuAnchorFor, pointInRange, wordRangeAt } from "../utils/contextSelection";
 import {
   getBlockFromNode,
+  cssZoom,
   placeCaret,
   caretLength,
   isEditableBlock,
@@ -51,6 +52,8 @@ import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
+import { COL_MAX, columnGeometry, useColumnFit } from "../tokens/columnFit";
+import { useWindowWidth } from "../hooks/useWindowWidth";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
@@ -125,8 +128,6 @@ const COL_PAD_MIN = 28;
 const COL_PAD_MAX = 56;
 const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;
-/** The column's width, gutters included. */
-const COL_MAX = 720;
 
 /** The nearest block that holds a caret, walking from `from` by `step`; -1 when none. */
 function nearestTextIndex(blocks, from, step) {
@@ -816,6 +817,19 @@ const EditorArea = memo(
     }px)`;
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colMargin = `max(0px, calc((${editorW} - ${COL_MAX}px) / 2))`;
+    // EXPERIMENT (tokens/columnFit): the dev panel's other two fits are
+    // worked out from the pane's width in JS, since they zoom or widen it.
+    const columnFit = useColumnFit();
+    const windowWidth = useWindowWidth();
+    const fitted =
+      columnFit === "fixed" || isMobile
+        ? null
+        : columnGeometry(
+            columnFit,
+            windowWidth / cssZoom(document.documentElement) -
+              (sidebarVisible ? sidebarWidth + SIDEBAR_HANDLE_W : 0) -
+              SCROLLBAR_W,
+          );
     // The name's field, one element wherever it is rendered: in the chrome
     // row's path band on the desktop, at the head of the column on a touch
     // device. Its handlers are the title's own and do not change with the
@@ -1018,8 +1032,9 @@ const EditorArea = memo(
               padding: isMobile
                 ? "12px 20px 80px 20px"
                 : `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : COL_MAX,
-              marginLeft: isMobile ? 0 : colMargin,
+              maxWidth: isMobile ? "100%" : (fitted?.maxWidth ?? COL_MAX),
+              marginLeft: isMobile ? 0 : fitted ? fitted.marginLeft : colMargin,
+              zoom: fitted && fitted.zoom !== 1 ? fitted.zoom : undefined,
               marginRight: "auto",
               width: "100%",
               // The fade is opacity alone. No transform, ever: a transformed

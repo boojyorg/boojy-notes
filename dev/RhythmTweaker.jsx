@@ -9,6 +9,14 @@
 // rhythm.ts holds it.
 import { useEffect, useState } from "react";
 import { DEFAULT_RHYTHM, setRhythm } from "../src/tokens/rhythm";
+import { setColumnFit, useColumnFit } from "../src/tokens/columnFit";
+
+/** The full-screen experiment's three fits (tokens/columnFit). */
+const FITS = [
+  { fit: "fixed", label: "Fixed" },
+  { fit: "scale", label: "Scale" },
+  { fit: "wider", label: "Wider" },
+];
 
 const LS_KEY = "boojy-dev-rhythm";
 
@@ -79,6 +87,7 @@ export default function RhythmTweaker() {
   const [values, setValues] = useState(load);
   const [open, setOpen] = useState(true);
   const [copied, setCopied] = useState(false);
+  const fit = useColumnFit();
 
   useEffect(() => {
     setRhythm(values);
@@ -146,6 +155,25 @@ export default function RhythmTweaker() {
             </button>
           );
         })}
+      </div>
+      <div style={{ marginBottom: 4 }}>Full-screen fit</div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 10 }} data-testid="column-fit">
+        {FITS.map((f) => (
+          <button
+            key={f.fit}
+            type="button"
+            aria-pressed={fit === f.fit}
+            onClick={() => setColumnFit(f.fit)}
+            style={{
+              ...btn,
+              flexGrow: 1,
+              background: fit === f.fit ? "#9CC9CE" : btn.background,
+              color: fit === f.fit ? "#14110F" : btn.color,
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
       {CONTROLS.map(({ key, label, min, max, step, unit }) => (
         <label key={key} style={{ display: "block", marginBottom: 8 }}>
