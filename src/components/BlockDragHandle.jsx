@@ -223,6 +223,8 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            // A prevented pointerdown sends no mousedown, so the chip is told here.
+            tip.handlers.onMouseDown();
             const { blockId } = pos;
             const extend = e.shiftKey;
             startHandleDrag(blockId, e, () => onGripClick?.(blockId, extend));

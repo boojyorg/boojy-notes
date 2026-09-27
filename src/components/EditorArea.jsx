@@ -604,12 +604,25 @@ const EditorArea = memo(
     useEffect(() => {
       if (!selectedBlockId) return;
       const onPress = (e) => {
+        // Shift-click on another block grows the selection to it (Notion's
+        // gesture), in place of the text selection the press would make.
+        const root =
+          e.shiftKey && e.button === 0
+            ? e.target.closest?.("[data-editor] > [data-block-id]")
+            : null;
+        if (root) {
+          e.preventDefault();
+          e.stopPropagation();
+          const head = root.getAttribute("data-block-id");
+          setBlockSelection((s) => (s ? { anchor: s.anchor, head } : s));
+          return;
+        }
         if (e.target.closest?.("[data-selection-surface], .image-context-menu")) return;
         setSelectedBlockId(null);
       };
       document.addEventListener("mousedown", onPress, true);
       return () => document.removeEventListener("mousedown", onPress, true);
-    }, [selectedBlockId, setSelectedBlockId]);
+    }, [selectedBlockId, setSelectedBlockId, setBlockSelection]);
 
     // The editor's right-click menu: a link's own actions when the pointer is
     // on one, then Cut, Copy and Paste (EditorContextMenu). What the menu acts

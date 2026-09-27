@@ -65,7 +65,13 @@ test("the grip names its gestures after a rest", async () => {
 });
 
 test("a click on the grip selects the whole row, and a letter typed deselects and writes on", async () => {
-  await clickGrip(h.page, 0);
+  await hoverGrip(h.page, 0);
+  await expect(h.page.getByTestId("grip-tooltip")).toBeVisible();
+  await h.page.mouse.down();
+  await h.page.mouse.up();
+  // The press answers the chip: it goes, and stays gone while the pointer rests.
+  await sleep(600);
+  await expect(h.page.getByTestId("grip-tooltip")).toHaveCount(0);
   expect(await washed(h.page)).toEqual(["Intro."]);
   await h.page.keyboard.type("!");
   expect(await washed(h.page)).toEqual([]);
@@ -79,7 +85,8 @@ test("a list item is selected with its nested items, and Shift extends the run",
   expect(await washed(h.page)).toEqual(["Parent", "Child", "Sibling"]);
   await h.page.keyboard.press("Shift+ArrowUp");
   expect(await washed(h.page)).toEqual(["Parent", "Child"]);
-  await clickGrip(h.page, 4, true);
+  // Shift-click on another block's text grows the run to it.
+  await outro(h.page).click({ modifiers: ["Shift"] });
   expect(await washed(h.page)).toEqual(["Parent", "Child", "Sibling", "Outro."]);
 });
 
