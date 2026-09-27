@@ -37,7 +37,7 @@ import {
   ClipboardPaste as LuClipboardPaste,
   Columns3 as LuColumns3,
   Copy as LuCopy,
-  CopyPlus as LuCopyPlus,
+  Clipboard as LuClipboard,
   ExternalLink as LuExternalLink,
   File as LuFile,
   FileArchive as LuFileArchive,
@@ -249,8 +249,9 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
-export const DuplicateIcon = ({ size = ICON_INLINE }) => (
-  <LuCopyPlus {...base} {...navBase} size={size} />
+/** Copy to the clipboard (a note's or blocks' Copy); Duplicate keeps the two sheets. */
+export const ClipboardIcon = ({ size = ICON_INLINE }) => (
+  <LuClipboard {...base} {...navBase} size={size} />
 );
 export const TurnIntoIcon = ({ size = ICON_INLINE }) => (
   <LuRepeat2 {...base} {...navBase} size={size} />

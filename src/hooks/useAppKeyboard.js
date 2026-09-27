@@ -190,6 +190,16 @@ export function useAppKeyboard({
         L.openVersionHistory?.();
         return;
       }
+      // Shift+Cmd+D duplicates the open note and Shift+Cmd+C copies it, the
+      // ··· menu's Duplicate and Copy; without Shift the two are the line's
+      // and the selection's (the editor's own).
+      if (mod && e.shiftKey && !e.altKey && (e.code === "KeyD" || e.code === "KeyC")) {
+        if (!L.activeNote) return;
+        e.preventDefault();
+        if (e.code === "KeyD") L.duplicateNote?.(L.activeNote);
+        else L.copyNoteText?.(L.activeNote);
+        return;
+      }
       if (mod && key === "s" && !e.shiftKey && !e.altKey && !(e.ctrlKey && e.metaKey)) {
         if (!L.activeNote) return;
         e.preventDefault();

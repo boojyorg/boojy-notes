@@ -1,5 +1,5 @@
 /**
- * Copy text (the ··· menus, File → Copy Text): the whole note as its
+ * Copy (the ··· menus, File → Copy Note, ⇧⌘C): the whole note as its
  * Markdown, the file's own spelling, on the OS clipboard, with HTML beside it
  * for apps that take formatting. The clipboard is the machine's, so it is
  * saved before and put back after.
@@ -32,15 +32,24 @@ const clip = () =>
     return { text: await read("text/plain"), html: await read("text/html") };
   });
 
-test("the header's ··· → Copy text puts the note's Markdown on the clipboard, and says so", async () => {
+test("the header's ··· → Copy puts the note's Markdown on the clipboard, and says so", async () => {
   await h.page.locator("button[aria-label='Note actions']").click();
-  await h.page.getByRole("menuitem", { name: "Copy text" }).click();
+  await h.page.getByRole("menuitem", { name: /^Copy/ }).click();
   await expect.poll(async () => (await clip()).text).toBe(NOTE);
   expect((await clip()).html).toContain("<strong>bold</strong>");
   await expect(h.page.getByText("Text copied")).toBeVisible();
 });
 
-test("File → Copy Text copies the open note too", async () => {
+test("File → Copy Note copies the open note too", async () => {
   await menuClick(h, "copyText");
   await expect.poll(async () => (await clip()).text).toContain("# Plan");
+});
+
+test("⇧⌘C copies the open note, ⇧⌘D duplicates it", async () => {
+  const MOD = process.platform === "darwin" ? "Meta" : "Control";
+  await h.page.locator("[data-editor] [data-block-id]").first().click();
+  await h.page.keyboard.press(`${MOD}+Shift+c`);
+  await expect.poll(async () => (await clip()).text).toBe(NOTE);
+  await h.page.keyboard.press(`${MOD}+Shift+d`);
+  await expect.poll(() => h.vault.exists("Plan (copy).md")).toBe(true);
 });

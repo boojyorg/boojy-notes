@@ -222,31 +222,33 @@ describe("the header menu", () => {
     return props;
   };
 
-  it("carries the open note's actions, the view, and Settings, each with a glyph", () => {
-    const { getByText, getByRole, queryAllByRole } = render(<ContextMenu {...headerProps("n1")} />);
+  it("carries the note's actions, the view, Settings, then Delete alone, each with a glyph", () => {
+    const { getByText, getByRole, queryAllByRole, getAllByRole } = render(
+      <ContextMenu {...headerProps("n1")} />,
+    );
     for (const label of ["Rename", "Duplicate", "Delete", "Show Markdown", "Settings"]) {
       expect(getByText(label)).toBeInTheDocument();
       expect(getByText(label).closest("button").querySelector("svg")).toBeInTheDocument();
     }
     expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
-    // The view has a group of its own under one rule, since it acts on how
-    // the note is shown (2026-09-24); Settings shares it with no rule of its
-    // own (judged live 2026-09-16: two rules cut the menu into three
-    // compartments), and the same padding as every row.
-    const view = getByText("Show Markdown").closest("button");
-    expect(view.previousElementSibling).toHaveAttribute("role", "separator");
-    expect(view.previousElementSibling.previousElementSibling).toBe(
-      getByText("Delete").closest("button"),
-    );
+    // Version A (2026-09-27): the note's own actions, then how it is seen,
+    // then Settings, then Delete alone at the foot, each group under a rule.
+    const rows = getAllByRole("menuitem").map((b) => b.querySelector("span")?.textContent);
+    expect(rows.slice(0, 2)).toEqual(["Rename", "Duplicate"]);
+    expect(rows.at(-1)).toBe("Delete");
+    expect(rows.at(-2)).toBe("Settings");
     const settings = getByText("Settings").closest("button");
-    expect(settings.previousElementSibling).toBe(view);
-    expect(settings.style.paddingTop).toBe("7px");
+    const del = getByText("Delete").closest("button");
+    expect(settings.previousElementSibling).toHaveAttribute("role", "separator");
+    expect(del.previousElementSibling).toHaveAttribute("role", "separator");
+    // The keys the open note answers to are shown beside their items.
+    expect(getByText("Duplicate").closest("button").textContent).toMatch(/D$/);
+    expect(settings.textContent).toMatch(/,$/);
     // Every edge set on every item: an edge left unset by the inline style
     // showed Chromium's own 2px outset button border (2026-09-14).
-    const rename = getByText("Rename").closest("button");
-    expect(rename.style.borderTopWidth).toBe("0px");
-    // No count without one, so the view's rule is the only one.
-    expect(queryAllByRole("separator")).toHaveLength(1);
+    expect(getByText("Rename").closest("button").style.borderTopWidth).toBe("0px");
+    // The view's group (with or without Version History), Settings, Delete.
+    expect(queryAllByRole("separator")).toHaveLength(3);
   });
 
   it("offers the Markdown view with its shortcut, and the formatted view back", () => {
@@ -271,8 +273,8 @@ describe("the header menu", () => {
     expect(stats).toHaveTextContent("412 words");
     expect(stats).not.toHaveTextContent("character");
     expect(stats.previousElementSibling).toHaveAttribute("role", "separator");
-    // The view's rule, and the count's.
-    expect(getAllByRole("separator")).toHaveLength(2);
+    // The three groups' rules, and the count's.
+    expect(getAllByRole("separator")).toHaveLength(4);
     // Not an item: the arrows never land on it.
     expect(queryByRole("menuitem", { name: /words/ })).toBeNull();
   });
@@ -430,7 +432,7 @@ describe("ContextMenu for a file that is not a note", () => {
     expect(props.trashFile).toHaveBeenCalledWith("Uni/handout.pdf");
   });
 
-  it("Copy text copies the note it was opened for, and closes", () => {
+  it("Copy copies the note it was opened for, and closes", () => {
     const copyNoteText = vi.fn();
     const setCtxMenu = vi.fn();
     const { getByText } = render(
@@ -441,7 +443,7 @@ describe("ContextMenu for a file that is not a note", () => {
         ctxMenu={{ x: 10, y: 10, type: "note", id: "n1" }}
       />,
     );
-    fireEvent.click(getByText("Copy text"));
+    fireEvent.click(getByText("Copy"));
     expect(setCtxMenu).toHaveBeenCalledWith(null);
     expect(copyNoteText).toHaveBeenCalledWith("n1");
   });
