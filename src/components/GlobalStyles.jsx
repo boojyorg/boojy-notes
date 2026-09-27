@@ -43,18 +43,21 @@ export default function GlobalStyles() {
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }
         /* Block drag handle (BlockDragHandle.jsx) follows the note-row ···
            grammar for reveal: muted ink at 0.55 beside the hovered block, gone
-           while a drag is live. Hovering the grip itself lifts the ink to full
-           muted and nothing else — deliberately NO hover surface (judged live
-           2026-09-03 against an ink-8% fill): the gutter stays part of the
-           page, not a control strip. All states are CSS — no JS opacity handlers. */
+           while a drag is live. The grip is a control (a click selects), so
+           hovering it takes the chrome controls' grey and ink. All states are
+           CSS — no JS opacity handlers. */
         .block-drag-handle {
           opacity: 0.55;
           color: ${theme.TEXT.muted};
           animation: blockHandleIn 120ms ease;
-          transition: opacity 120ms ease, color 120ms ease;
+          transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
-        .block-drag-handle:hover { opacity: 1; }
+        .block-drag-handle:hover {
+          opacity: 1;
+          background: ${theme.BG.surface};
+          color: ${theme.TEXT.primary};
+        }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
         /* Insertion marker (useBlockDrag, painted on <body>): where the block
            lands on release. 3px of the accent at 40% — accent is allowed as a

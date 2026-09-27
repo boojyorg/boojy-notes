@@ -87,7 +87,14 @@ export function useBlockDrag({
 
     const blockId = blockInfo.blockId;
     const blockIndex = blockInfo.blockIndex;
-    const el = blockRefs.current[blockId];
+    // The block's root, marker and indent included: a list item's ref is its
+    // text span, and a copy of that was the words alone, without its bullet or
+    // the depth that shows which items are nested.
+    const rootOf = (id) => {
+      const ref = blockRefs.current[id];
+      return ref?.closest?.("[data-block-id]") ?? ref;
+    };
+    const el = rootOf(blockId);
     if (!el) return;
 
     // What moves: the whole-block selection when the grabbed block is in it;
@@ -141,7 +148,7 @@ export function useBlockDrag({
     // copy is the only thing that moves.
     const clone = document.createElement("div");
     for (const id of draggedIds) {
-      const srcEl = blockRefs.current[id];
+      const srcEl = rootOf(id);
       if (!srcEl) continue;
       const c = srcEl.cloneNode(true);
       c.removeAttribute("contenteditable");

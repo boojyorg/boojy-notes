@@ -122,6 +122,18 @@ test("dragging a list item's grip carries its nested items", async () => {
   await h.page.mouse.down();
   await h.page.mouse.move(gx, gy + 8, { steps: 2 });
   await h.page.waitForFunction(() => document.body.classList.contains("block-dragging"));
+  // The copy under the pointer is the whole rows: both items, each with its marker.
+  const ghost = await h.page.evaluate(() => {
+    const clone = Array.from(document.body.children).find(
+      (el) =>
+        (el as HTMLElement).style.pointerEvents === "none" && el.querySelector("[data-block-id]"),
+    ) as HTMLElement | undefined;
+    return {
+      text: clone?.innerText.replace(/\s+/g, " ").trim(),
+      markers: clone?.querySelectorAll("[data-marker]").length,
+    };
+  });
+  expect(ghost).toEqual({ text: "Parent Child", markers: 2 });
   const below = await outro(h.page).boundingBox();
   await h.page.mouse.move(gx, below!.y + below!.height - 2, { steps: 6 });
   await sleep(50);
