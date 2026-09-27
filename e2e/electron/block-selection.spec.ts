@@ -8,6 +8,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { type AppHandle, launchApp, MOD, sleep } from "./harness";
 
+// One at a time: each test saves and restores the OS clipboard, and a
+// neighbour's restore landing mid-copy read back the wrong text.
+test.describe.configure({ mode: "default" });
+
 let h: AppHandle;
 let savedClipboard = "";
 
@@ -119,9 +123,12 @@ test("Escape in the text selects the block; Escape again gives the caret back wh
   await expect(outro(h.page)).toHaveText("Outro.!");
 });
 
-test("a press anywhere off the selection deselects", async () => {
+test("a press anywhere off the selection deselects, through the open menu's backdrop too", async () => {
   await clickGrip(h.page, 0);
-  await outro(h.page).click();
+  // The menu is open: the press lands on its backdrop, as a real pointer's does.
+  const box = await outro(h.page).boundingBox();
+  await h.page.mouse.click(box!.x + 10, box!.y + box!.height / 2);
+  await expect(h.page.getByRole("menu", { name: "Block options" })).toHaveCount(0);
   expect(await washed(h.page)).toEqual([]);
 });
 
