@@ -7,6 +7,8 @@ import { panelTransition } from "../tokens/motion";
 interface WindowStripProps {
   sidebarVisible: boolean;
   sidebarWidth: number;
+  /** The sidebar's divider, continued up through the strip at its right edge. */
+  resizeHandle?: React.ReactNode;
 }
 
 /**
@@ -23,7 +25,11 @@ interface WindowStripProps {
  * where the window is dragged from; the names are not. Alt alone opens the
  * first menu, as a Windows menu bar does.
  */
-export default function WindowStrip({ sidebarVisible, sidebarWidth }: WindowStripProps) {
+export default function WindowStrip({
+  sidebarVisible,
+  sidebarWidth,
+  resizeHandle,
+}: WindowStripProps) {
   const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
   const { BG, TEXT } = theme;
   const api = getAPI() as Window["electronAPI"] | null;
@@ -105,6 +111,7 @@ export default function WindowStrip({ sidebarVisible, sidebarWidth }: WindowStri
           transition: panelTransition("width"),
         }}
       />
+      {resizeHandle}
       <div
         role="menubar"
         aria-label="Application menu"

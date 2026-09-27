@@ -1147,6 +1147,46 @@ export default function BoojyNotes() {
     };
   }, [movePicker, noteData, moveFolderTo, moveNotesTo]);
 
+  // The sidebar's divider, desktop only and only while the sidebar shows
+  // (collapsed, its fill left a hairline down the window's left edge). On
+  // Windows and Linux a second piece continues it up through the strip; the
+  // pieces share one hover and one drag through `sidebarHandles`.
+  const sidebarHandle = (slot, style) => (
+    <div
+      ref={(el) => {
+        // Assign null on unmount too, so the hover handlers don't restyle a
+        // detached node once the sidebar collapses.
+        sidebarHandles.current[slot] = el;
+      }}
+      onMouseDown={startDrag}
+      style={{
+        cursor: "col-resize",
+        // The sidebar and editor already use different surface tones, so a
+        // permanent border would repeat the same separation signal.
+        background: chromeBg,
+        transition: "background 0.15s",
+        ...style,
+      }}
+      onMouseEnter={() => {
+        // Neutral, never accent: the handle is chrome, and the accent is
+        // reserved for identity/focus/markers. Hover is a whisper; the
+        // col-resize cursor is what actually announces the affordance.
+        if (!isDragging.current) {
+          for (const handle of sidebarHandles.current) {
+            if (handle) handle.style.background = theme.sidebarHandle.hover;
+          }
+        }
+      }}
+      onMouseLeave={() => {
+        if (!isDragging.current) {
+          for (const handle of sidebarHandles.current) {
+            if (handle) handle.style.background = chromeBg;
+          }
+        }
+      }}
+    />
+  );
+
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div
@@ -1172,7 +1212,23 @@ export default function BoojyNotes() {
 
       {/* Windows and Linux: the menu and the window buttons, over the app's own row. */}
       {!isMobile && hasWindowStrip && (
-        <WindowStrip sidebarVisible={sidebarVisible} sidebarWidth={sidebarWidth} />
+        <WindowStrip
+          sidebarVisible={sidebarVisible}
+          sidebarWidth={sidebarWidth}
+          // The divider continues up through the strip, so it can be taken
+          // from the window's top and the sidebar's grey ends where it does below.
+          resizeHandle={
+            sidebarVisible &&
+            sidebarHandle(0, {
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: sidebarWidth,
+              width: 4,
+              WebkitAppRegion: "no-drag",
+            })
+          }
+        />
       )}
 
       {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web).
@@ -1313,42 +1369,7 @@ export default function BoojyNotes() {
             showing. Hidden when collapsed (its 4px fill + 1px border left a
             hairline strip down the left edge instead of the sidebar fully
             disappearing). */}
-        {!isMobile && sidebarVisible && (
-          <div
-            ref={(el) => {
-              // Assign null on unmount too, so the hover handlers don't restyle a
-              // detached node once the sidebar collapses.
-              sidebarHandles.current[1] = el;
-            }}
-            onMouseDown={startDrag}
-            style={{
-              width: 4,
-              cursor: "col-resize",
-              background: chromeBg,
-              // The sidebar and editor already use different surface tones, so a
-              // permanent border would repeat the same separation signal.
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={() => {
-              // Neutral, never accent: the handle is chrome, and the accent is
-              // reserved for identity/focus/markers. Hover is a whisper; the
-              // col-resize cursor is what actually announces the affordance.
-              if (!isDragging.current) {
-                for (const handle of sidebarHandles.current) {
-                  if (handle) handle.style.background = theme.sidebarHandle.hover;
-                }
-              }
-            }}
-            onMouseLeave={() => {
-              if (!isDragging.current) {
-                for (const handle of sidebarHandles.current) {
-                  if (handle) handle.style.background = chromeBg;
-                }
-              }
-            }}
-          />
-        )}
+        {!isMobile && sidebarVisible && sidebarHandle(1, { width: 4, flexShrink: 0 })}
         {/* Editor area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <EditorProvider

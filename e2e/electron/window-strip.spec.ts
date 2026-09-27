@@ -51,3 +51,31 @@ test("the sidebar's grey runs under the menu's names only while the sidebar show
   await h.page.locator("[aria-label='Toggle sidebar']:not([inert] *)").click();
   await expect.poll(grey).toBe(0);
 });
+
+test("the sidebar's divider runs up through the strip, and dragging it there resizes", async () => {
+  test.skip(process.platform === "darwin", "the Mac has no strip");
+  const box = (await strip().boundingBox())!;
+  const grey = await strip().evaluate(
+    (el) => (el.querySelector('[aria-hidden="true"]') as HTMLElement).offsetWidth,
+  );
+  // The divider's top piece: the col-resize point just right of the grey.
+  const x = box.x + grey + 2;
+  const y = box.y + box.height / 2;
+  expect(
+    await h.page.evaluate(
+      ([px, py]) => getComputedStyle(document.elementFromPoint(px, py)!).cursor,
+      [x, y],
+    ),
+  ).toBe("col-resize");
+  await h.page.mouse.move(x, y);
+  await h.page.mouse.down();
+  await h.page.mouse.move(x + 60, y, { steps: 5 });
+  await h.page.mouse.up();
+  await expect
+    .poll(() =>
+      strip().evaluate(
+        (el) => (el.querySelector('[aria-hidden="true"]') as HTMLElement).offsetWidth,
+      ),
+    )
+    .toBeGreaterThan(grey + 40);
+});

@@ -44,7 +44,12 @@ beforeEach(() => {
 describe("the window strip's menu calls", () => {
   it("menu-labels answers the application menu's top-level names", async () => {
     const labels = (await state.handlers.get("menu-labels")?.()) as string[];
-    expect(labels).toEqual(expect.arrayContaining(["File", "Edit", "Format", "View", "Window"]));
+    // Window and Help are the Mac's; elsewhere the window's buttons and File cover them.
+    expect(labels).toEqual(
+      process.platform === "darwin"
+        ? ["Boojy Notes", "File", "Edit", "Format", "View", "Window", "Help"]
+        : ["File", "Edit", "Format", "View"],
+    );
   });
 
   it("popup-menu opens that menu at the point, and says when it closes", () => {

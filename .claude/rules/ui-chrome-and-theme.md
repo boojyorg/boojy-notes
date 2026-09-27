@@ -61,9 +61,10 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   loading). `first-paint.spec.ts` (CI only).
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
-- **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): the menu's names
-  open the real menus (`popup-menu`), the system's buttons are the overlay; each column's colour,
-  no title. Fixed chrome stands `WINDOW_STRIP_H` lower.
+- **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
+  Format, View open the real menus (`popup-menu`); Window and Help are the Mac's (⌘M, menu
+  search), so four fit a narrow sidebar. The system's buttons are the overlay; each
+  column's colour, the divider through it; no title. Fixed chrome stands `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag` (Playwright never sees
   it). Regions stand down while a popup is open. `chrome-row.spec.ts`.
@@ -216,5 +217,4 @@ duration. `sidebar-motion.spec.ts`.
 ## Testing notes
 
 `Sidebar.test.jsx` asserts CSS hook classes, not computed styles (jsdom). Theme mocks carry
-`ACCENT.onAccent`. `activeTabBg`, `settingsTab`, `settingsFontSize` don't exist; don't
-reintroduce them.
+`ACCENT.onAccent`.

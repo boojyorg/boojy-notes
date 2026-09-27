@@ -13,7 +13,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 
 let closed: ((label: string) => void) | null = null;
 const api = {
-  menuLabels: vi.fn(async () => ["File", "Edit", "View", "Window"]),
+  menuLabels: vi.fn(async () => ["File", "Edit", "Format", "View"]),
   popupMenu: vi.fn(),
   onMenuClosed: vi.fn((cb: (label: string) => void) => {
     closed = cb;
@@ -44,8 +44,8 @@ describe("WindowStrip", () => {
     expect(getAllByRole("menuitem").map((b) => b.textContent)).toEqual([
       "File",
       "Edit",
+      "Format",
       "View",
-      "Window",
     ]);
     expect(api.setTitleBarOverlay).toHaveBeenCalledWith({
       color: "#FFFFFF",
@@ -81,5 +81,19 @@ describe("WindowStrip", () => {
     expect(grey().style.width).toBe("240px");
     shown.rerender(<WindowStrip sidebarVisible={false} sidebarWidth={240} />);
     expect(grey().style.width).toBe("0px");
+  });
+
+  it("carries the sidebar's divider up through it", async () => {
+    render(
+      <WindowStrip
+        sidebarVisible
+        sidebarWidth={240}
+        resizeHandle={<div data-testid="divider" />}
+      />,
+    );
+    await act(async () => {});
+    expect(
+      document.querySelector('[data-testid="window-strip"] [data-testid="divider"]'),
+    ).not.toBeNull();
   });
 });

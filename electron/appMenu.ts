@@ -118,6 +118,10 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
 
   const settings = item("settings", isMac ? "Settings…" : "Settings", "CmdOrCtrl+,");
   const checkUpdates = item("checkUpdates", "Check for Updates…");
+  const website: MenuItemConstructorOptions = {
+    label: "Boojy Notes Website",
+    click: () => shell.openExternal("https://boojy.org/notes"),
+  };
 
   return [
     ...(isMac
@@ -180,7 +184,7 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { type: "separator" },
         file("trash", isMac ? "Move to Trash" : "Delete", { icon: icon("trash") }),
         { type: "separator" },
-        ...(isMac ? [] : [settings, checkUpdates, { type: "separator" } as const]),
+        ...(isMac ? [] : [settings, checkUpdates, website, { type: "separator" } as const]),
         isMac ? { role: "close" } : { role: "quit" },
       ],
     },
@@ -310,23 +314,23 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { role: "togglefullscreen" },
       ],
     },
-    {
-      label: "Window",
-      submenu: [
-        { role: "minimize" },
-        { role: "zoom" },
-        ...(isMac ? [{ type: "separator" } as const, { role: "front" } as const] : []),
-      ],
-    },
-    {
-      role: "help",
-      submenu: [
-        {
-          label: "Boojy Notes Website",
-          click: () => shell.openExternal("https://boojy.org/notes"),
-        },
-      ],
-    },
+    // Mac only. Elsewhere Window held only what the window's own buttons do,
+    // and Help one link, now in File: four names fit the narrowest sidebar's
+    // strip. On the Mac, Window is where ⌘M lives and Help holds the menu search.
+    ...(isMac
+      ? [
+          {
+            label: "Window",
+            submenu: [
+              { role: "minimize" },
+              { role: "zoom" },
+              { type: "separator" },
+              { role: "front" },
+            ],
+          },
+          { role: "help", label: "Help", submenu: [website] },
+        ]
+      : []),
   ] as MenuItemConstructorOptions[];
 }
 
