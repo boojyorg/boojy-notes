@@ -168,9 +168,9 @@ app's, made through state.**
 
 ## Menus
 
-- **The slash menu is tiered**: `advanced: true` keeps H4–H6, Callout, File, Embed off the
-  opening screen; the rule lives in `filterSlashCommands()` for both menu and keys. Rows show
-  their typed shortcut as a hint. Rows take selection on real mouse movement, not `mouseenter`.
+- **The slash menu is tiered**: `advanced: true` keeps Text, H4–H6, Callout, File, Embed off
+  the opening screen; the rule lives in `filterSlashCommands()` for both menu and keys. Rows show
+  their typed shortcut as a hint. Rows take selection on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
   disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
@@ -253,10 +253,9 @@ same language writes nothing. The language menu portals to `body` and takes its 
 - **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
   never enlarged (`imageDisplayWidth`). An image added in the app gets a width only when it is a
   Retina PNG (`pHYs`). An existing image is never rewritten by being shown.
-- Nothing at rest; the pointer shows a bar and a resize pill; selected shows its wash only.
-  Click selects, double-click opens full size.
+- Nothing at rest; hover shows a bar and a resize pill. Double-click opens full size.
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
-  name. Absent: alignment, crop, caption, Replace. `image-controls.spec.ts`, `missing-attachments.spec.ts`.
+  name. `image-controls.spec.ts`, `missing-attachments.spec.ts`.
 
 ## Tables
 
@@ -269,19 +268,22 @@ same language writes nothing. The language menu portals to `body` and takes its 
   scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
   `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
   stays select-to-edge).
-- Content-sized, shrinking to a per-cell floor, then scrolling. Add boxes reveal on their own
-  hover. Grip menus hang under the grip; inserts take the caret. `table-block.spec.ts`.
+- Content-sized to a per-cell floor, then scrolling. Grip menus hang under the grip; inserts
+  take the caret. `table-block.spec.ts`.
 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
-  the grip's click (Shift-click extends), Escape in the text, a press on a divider, image or
-  table, Escape from a cell. **A list item brings its nested items** (`subtreeEnd`), for the
-  selection and the drag alike. Text blocks wear the band's wash; the caret rests there, hidden.
+  the grip's click, Escape in the text, a press on a divider, image or table, Escape from a
+  cell; Shift-click on a grip or block extends. **A list item brings its nested items**
+  (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
 - On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
-  (`wholeBlocksCopy`, raised by hand: no range covers it); Enter opens a paragraph below;
-  Shift+↑/↓ resize it; arrows and Escape give the caret back; a letter deselects and types. A
-  press off `data-selection-surface` deselects. `block-selection.spec.ts`.
+  (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
+  line); Enter opens a paragraph below; Shift+↑/↓ resize it; arrows and Escape give the caret
+  back; a letter deselects and types. A press off `data-selection-surface` deselects.
+- **The grip's click also opens `BlockMenu`** (right-click, Shift+F10): the kind, Turn into
+  (`setBlockKind`, as Format), Duplicate, Copy, Delete; its shown keys work while open.
+  `block-selection.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`), removing an empty row between in the same press.
 - **Arrows stop on a divider or image and enter every block with a field**; deletion still
@@ -297,9 +299,8 @@ same language writes nothing. The language menu portals to `body` and takes its 
 - **A block holding text never changes type on paste** (`utils/pasteBlocks.ts`). Plain lines
   stay soft breaks; a blank line starts a block; only an empty block is taken over by
   structure. One trailing newline is stripped.
-- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`). A drop is
-  the whole pane's (`.editor-scroll`) and lands where the block-drag marker says.
-  `file-drop.spec.ts`.
+- **Files, pasted or dropped, go through one ordered loop** (`saveAndInsertFiles`); a drop lands
+  where the block-drag marker says. `file-drop.spec.ts`.
 - **Copy**: structure travels only for whole blocks (`fullBlock`). Whole blocks write
   `blocksToMarkdown` as text and structural HTML; a partial selection writes visible text and
   inline HTML. `copy-clipboard.spec.ts`.

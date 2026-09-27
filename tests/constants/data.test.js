@@ -23,6 +23,7 @@ describe("SLASH_COMMANDS", () => {
 
   it("has valid block types", () => {
     const validTypes = new Set([
+      "p",
       "h1",
       "h2",
       "h3",
@@ -46,9 +47,13 @@ describe("SLASH_COMMANDS", () => {
     }
   });
 
-  it("keeps deeper headings, callout, file and embed off the opening screen", () => {
+  it("keeps Text, deeper headings, callout, file and embed off the opening screen", () => {
     const advanced = SLASH_COMMANDS.filter((c) => c.advanced).map((c) => c.id);
-    expect(advanced).toEqual(["h4", "h5", "h6", "callout", "file", "embed"]);
+    expect(advanced).toEqual(["text", "h4", "h5", "h6", "callout", "file", "embed"]);
+  });
+
+  it("finds Text when it is typed, to turn a heading or list item back into a paragraph", () => {
+    expect(filterSlashCommands("text").map((c) => c.id)).toEqual(["text"]);
   });
 
   it("shows only the first tier for an empty query", () => {

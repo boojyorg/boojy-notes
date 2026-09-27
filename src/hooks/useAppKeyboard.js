@@ -68,6 +68,8 @@ export function useAppKeyboard({
   deleteNote,
   applyFormat,
   setBlockKind,
+  duplicateBlocks,
+  blockSelectionIds,
   updateTableRows,
   openFind,
   detectActiveFormats,
@@ -107,6 +109,8 @@ export function useAppKeyboard({
     deleteNote,
     applyFormat,
     setBlockKind,
+    duplicateBlocks,
+    blockSelectionIds,
     updateTableRows,
     openFind,
     detectActiveFormats,
@@ -469,6 +473,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.renameNote?.(note);
     case "duplicate":
       return L.duplicateNote?.(note);
+    case "duplicateBlock":
+      return L.duplicateBlocks?.();
     case "moveTo": {
       // The picker opens under the note's name in the top row, the place the
       // path of the note already stands.
@@ -505,7 +511,10 @@ function runMenuCommand(id, L, titleRef) {
     return;
   }
   if (id in BLOCK_KINDS) {
-    const ids = selectedBlockIds(blocks);
+    // Selected blocks first (the grip's selection), else the lines the text
+    // selection runs through.
+    const chosen = L.blockSelectionIds?.() ?? [];
+    const ids = chosen.length ? chosen : selectedBlockIds(blocks);
     if (ids.length > 0) L.setBlockKind?.(note, ids, BLOCK_KINDS[id]);
   }
 }

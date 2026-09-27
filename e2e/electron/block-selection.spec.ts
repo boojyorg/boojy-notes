@@ -61,7 +61,7 @@ test.afterEach(async () => {
 
 test("the grip names its gestures after a rest", async () => {
   await hoverGrip(h.page, 0);
-  await expect(h.page.getByTestId("grip-tooltip")).toHaveText("Drag to moveClick to select");
+  await expect(h.page.getByTestId("grip-tooltip")).toHaveText("Drag to moveClick for options");
 });
 
 test("a click on the grip selects the whole row, and a letter typed deselects and writes on", async () => {
@@ -73,6 +73,7 @@ test("a click on the grip selects the whole row, and a letter typed deselects an
   await sleep(600);
   await expect(h.page.getByTestId("grip-tooltip")).toHaveCount(0);
   expect(await washed(h.page)).toEqual(["Intro."]);
+  await h.page.keyboard.press("Escape"); // the menu the click opened
   await h.page.keyboard.type("!");
   expect(await washed(h.page)).toEqual([]);
   await expect(roots(h.page).first()).toHaveText("Intro.!");
@@ -81,6 +82,7 @@ test("a click on the grip selects the whole row, and a letter typed deselects an
 test("a list item is selected with its nested items, and Shift extends the run", async () => {
   await clickGrip(h.page, 1);
   expect(await washed(h.page)).toEqual(["Parent", "Child"]);
+  await h.page.keyboard.press("Escape"); // the menu the click opened
   await h.page.keyboard.press("Shift+ArrowDown");
   expect(await washed(h.page)).toEqual(["Parent", "Child", "Sibling"]);
   await h.page.keyboard.press("Shift+ArrowUp");
@@ -92,6 +94,7 @@ test("a list item is selected with its nested items, and Shift extends the run",
 
 test("Cmd+C copies the run as Markdown; Backspace removes it in one step and Cmd+Z brings it back", async () => {
   await clickGrip(h.page, 1);
+  await h.page.keyboard.press("Escape");
   await h.page.keyboard.press("Shift+ArrowDown");
   await h.page.keyboard.press(`${MOD}+c`);
   await expect
@@ -148,4 +151,88 @@ test("dragging a list item's grip carries its nested items", async () => {
   await expect
     .poll(() => texts(h.page))
     .toEqual(["Intro.", "Sibling", "Outro.", "Parent", "Child"]);
+});
+
+// ── The grip's menu ───────────────────────────────────────────────────────
+
+const menu = (page: Page) => page.getByRole("menu", { name: "Block options" });
+const types = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>("[data-editor] > [data-block-id]"))
+      .filter((el) => el.innerText.trim())
+      .map((el) => `${el.dataset.blockType}:${el.innerText.trim()}`),
+  );
+
+test("a click on the grip opens its menu: what is selected, then Turn into, Duplicate, Copy, Delete", async () => {
+  await clickGrip(h.page, 0);
+  await expect(menu(h.page)).toBeVisible();
+  await expect(menu(h.page)).toContainText("Text");
+  expect(await menu(h.page).getByRole("menuitem").allInnerTexts()).toEqual([
+    "Turn into",
+    "Duplicate\n⌘D",
+    "Copy\n⌘C",
+    "Delete\n⌫",
+  ]);
+  // Escape closes the menu and keeps the selection; again gives the caret back.
+  await h.page.keyboard.press("Escape");
+  await expect(menu(h.page)).toHaveCount(0);
+  expect(await washed(h.page)).toEqual(["Intro."]);
+  await h.page.keyboard.press("Escape");
+  expect(await washed(h.page)).toEqual([]);
+});
+
+test("Turn into by pointer: hover opens the kinds beside the menu, a click converts", async () => {
+  await clickGrip(h.page, 0);
+  await menu(h.page).getByRole("menuitem", { name: "Turn into" }).hover();
+  const kinds = h.page.getByRole("menu", { name: "Turn into" });
+  await expect(kinds.getByRole("menuitemradio", { name: "Text" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await kinds.getByRole("menuitemradio", { name: "Heading 1" }).click();
+  await expect(menu(h.page)).toHaveCount(0);
+  expect((await types(h.page))[0]).toBe("h1:Intro.");
+});
+
+test("Turn into by keyboard: Escape selects, Shift+F10 opens the menu, → the kinds", async () => {
+  await outro(h.page).click();
+  await h.page.keyboard.press("Escape");
+  await h.page.keyboard.press("Shift+F10");
+  await expect(menu(h.page)).toBeVisible();
+  await h.page.keyboard.press("ArrowDown"); // Turn into
+  await h.page.keyboard.press("ArrowRight");
+  // The kinds open on the current one (Text); two down is Heading 2.
+  await h.page.keyboard.press("ArrowDown");
+  await h.page.keyboard.press("ArrowDown");
+  await h.page.keyboard.press("Enter");
+  expect(await types(h.page)).toContain("h2:Outro.");
+});
+
+test("⌘D duplicates the selected blocks under them and selects the copies; with a caret, its line", async () => {
+  await clickGrip(h.page, 1);
+  await h.page.keyboard.press("Escape"); // close the menu, keep the selection
+  await h.page.keyboard.press(`${MOD}+d`);
+  expect(await texts(h.page)).toEqual([
+    "Intro.",
+    "Parent",
+    "Child",
+    "Parent",
+    "Child",
+    "Sibling",
+    "Outro.",
+  ]);
+  const selected = await washed(h.page);
+  expect(selected).toEqual(["Parent", "Child"]);
+  await h.page.keyboard.press("Escape");
+  await outro(h.page).click();
+  await h.page.keyboard.press(`${MOD}+d`);
+  expect((await texts(h.page)).slice(-2)).toEqual(["Outro.", "Outro."]);
+});
+
+test("Delete in the menu removes the selection in one step", async () => {
+  await clickGrip(h.page, 1);
+  await menu(h.page)
+    .getByRole("menuitem", { name: /Delete/ })
+    .click();
+  expect(await texts(h.page)).toEqual(["Intro.", "Sibling", "Outro."]);
 });

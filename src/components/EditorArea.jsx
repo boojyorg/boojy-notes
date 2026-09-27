@@ -49,8 +49,9 @@ import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
 import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
-import { selectionRange, stepHead } from "../utils/blockRun";
-import { bandFill } from "../utils/selectionBand";
+import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
+import BlockMenu from "./BlockMenu";
+import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
 
 /*
@@ -171,6 +172,8 @@ const EditorArea = memo(
     openFindRef,
     // Show Markdown / Show Formatted, from the menus, ⌘/ and the lit `</>`.
     switchViewRef,
+    // Edit → Duplicate reaches the editor's ⌘D through this.
+    blockActionsRef,
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
@@ -216,6 +219,8 @@ const EditorArea = memo(
       detectActiveFormats,
       applyFormat,
       deleteBlockRange,
+      duplicateBlockRange,
+      setBlockKind,
     } = useEditorContext();
     const { theme } = useTheme();
     const { TEXT, BG } = theme;
@@ -464,6 +469,56 @@ const EditorArea = memo(
       }
     }, []);
 
+    // The grip's menu (BlockMenu): the viewport rect it hangs under, or null.
+    const [blockMenu, setBlockMenu] = useState(null);
+    useEffect(() => {
+      if (!selectedRun) setBlockMenu(null);
+    }, [selectedRun]);
+
+    // Duplicate (⌘D, Edit → Duplicate, the grip's menu): the selected blocks,
+    // then selecting the copies; else the block the caret is in, with the
+    // items nested under it, the caret staying where it is.
+    const duplicateBlocks = useCallback(() => {
+      const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+      let range = selectionRange(blocks, blockSelection);
+      const selected = !!range;
+      if (!range) {
+        const sel = window.getSelection();
+        const info = sel?.rangeCount
+          ? getBlockFromNode(sel.anchorNode, editorRef.current, blocks, blockRefs.current)
+          : null;
+        if (!info || blocks[info.blockIndex]?.type === "frontmatter") return;
+        range = { from: info.blockIndex, to: subtreeEnd(blocks, info.blockIndex) };
+      }
+      const ids = duplicateBlockRange(activeNote, range.from, range.to);
+      setBlockMenu(null);
+      if (selected && ids.length) setBlockSelection({ anchor: ids[0], head: ids[ids.length - 1] });
+    }, [
+      activeNote,
+      blockSelection,
+      noteDataRef,
+      editorRef,
+      blockRefs,
+      duplicateBlockRange,
+      setBlockSelection,
+    ]);
+    useEffect(() => {
+      if (blockActionsRef) blockActionsRef.current = { duplicate: duplicateBlocks };
+    }, [blockActionsRef, duplicateBlocks]);
+
+    // The menu opened from the keyboard (Shift+F10) hangs where the grip
+    // would stand beside the first selected block.
+    const openBlockMenuAt = useCallback(
+      (blockId) => {
+        const ref = blockRefs.current[blockId];
+        const root = ref?.closest?.("[data-block-id]") ?? ref;
+        if (!root) return;
+        const r = root.getBoundingClientRect();
+        setBlockMenu({ top: r.top, bottom: r.top + 24, left: r.left - 24, right: r.left });
+      },
+      [blockRefs],
+    );
+
     // Keys while blocks are selected (utils/blockRun). Escape deselects and
     // moves nothing; the arrows put the caret in the nearest text block on
     // that side, and Shift+arrows grow or shrink the run; Backspace and Delete
@@ -511,6 +566,11 @@ const EditorArea = memo(
           deleteWholeBlock(activeNote, range.from, range.to);
           return true;
         }
+        if (e.key === "F10" && e.shiftKey) {
+          e.preventDefault();
+          openBlockMenuAt(blocks[range.from].id);
+          return true;
+        }
         if (e.key === "Enter") {
           e.preventDefault();
           setSelectedBlockId(null);
@@ -530,19 +590,24 @@ const EditorArea = memo(
         deleteWholeBlock,
         copySelectedBlocks,
         insertBlockAfter,
+        openBlockMenuAt,
       ],
     );
 
-    // A press on a block's grip that never became a drag: select the block
-    // (Shift extends the run from its anchor). The caret rests, hidden, at the
-    // end of a text block, so keys reach the editor and a letter typed
-    // deselects and carries on writing there.
+    // A press on a block's grip that never became a drag: select the block and
+    // open its menu under the grip (Shift extends the run from its anchor
+    // instead). The caret rests, hidden, at the end of a text block, so keys
+    // reach the editor and a letter typed deselects and carries on writing.
     const handleGripClick = useCallback(
-      (blockId, extend) => {
+      (blockId, extend, gripRect) => {
         setBlockSelection((s) =>
           extend && s ? { anchor: s.anchor, head: blockId } : { anchor: blockId, head: blockId },
         );
         if (extend) return;
+        if (gripRect) {
+          const { top, bottom, left, right } = gripRect;
+          setBlockMenu({ top, bottom, left, right });
+        }
         const block = noteDataRef.current[activeNote]?.content?.blocks?.find(
           (b) => b.id === blockId,
         );
@@ -562,7 +627,10 @@ const EditorArea = memo(
         .filter((b) => !isSelectableBlock(b))
         .map((b) => `[data-editor] > [data-block-id="${b.id}"]`);
       if (!selectors.length) return null;
-      return `${selectors.join(",")}{background:${bandFill(accentColor, theme.name)};border-radius:4px}`;
+      // The band's reach past the text on each side, as a divider's band has:
+      // side shadows only, so selected neighbours never overlap and darken.
+      const fill = bandFill(accentColor, theme.name);
+      return `${selectors.join(",")}{background:${fill};border-radius:4px;box-shadow:-${BAND_REACH}px 0 0 ${fill},${BAND_REACH}px 0 0 ${fill}}`;
     }, [selectedRun, note, accentColor, theme.name]);
 
     const handleImageLightbox = useCallback(
@@ -606,14 +674,21 @@ const EditorArea = memo(
       const onPress = (e) => {
         // Shift-click on another block grows the selection to it (Notion's
         // gesture), in place of the text selection the press would make.
+        // Through the grip menu's backdrop too: the block under the pointer.
+        const ROOT = "[data-editor] > [data-block-id]";
         const root =
           e.shiftKey && e.button === 0
-            ? e.target.closest?.("[data-editor] > [data-block-id]")
+            ? (e.target.closest?.(ROOT) ??
+              document
+                .elementsFromPoint(e.clientX, e.clientY)
+                .map((el) => el.closest(ROOT))
+                .find(Boolean))
             : null;
         if (root) {
           e.preventDefault();
           e.stopPropagation();
           const head = root.getAttribute("data-block-id");
+          setBlockMenu(null);
           setBlockSelection((s) => (s ? { anchor: s.anchor, head } : s));
           return;
         }
@@ -1028,6 +1103,12 @@ const EditorArea = memo(
                         setFindBarOpen((v) => !v);
                         return;
                       }
+                      // ⌘D duplicates the selected blocks, or the caret's.
+                      if (mod && e.code === "KeyD" && !e.shiftKey && !e.altKey) {
+                        e.preventDefault();
+                        duplicateBlocks();
+                        return;
+                      }
                       // Selected whole blocks (utils/blockRun) take the key first.
                       if (selectedBlockId && handleSelectedBlockKey(e)) return;
                       handleEditorKeyDown(e);
@@ -1146,6 +1227,35 @@ const EditorArea = memo(
                       editorRef={editorRef}
                       startHandleDrag={startHandleDrag}
                       onGripClick={handleGripClick}
+                    />
+                  )}
+                  {blockMenu && selectedRun && (
+                    <BlockMenu
+                      anchor={blockMenu}
+                      types={note.content.blocks
+                        .slice(selectedRun.from, selectedRun.to + 1)
+                        .map((b) => b.type)}
+                      onTurnInto={(type) => {
+                        setBlockMenu(null);
+                        setBlockKind(
+                          activeNote,
+                          selectedIds(note.content.blocks, blockSelection),
+                          type,
+                        );
+                      }}
+                      onDuplicate={duplicateBlocks}
+                      onCopy={() => {
+                        setBlockMenu(null);
+                        // The ref, not the render: it holds the last keystroke.
+                        const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
+                        const range = selectionRange(blocks, blockSelection);
+                        if (range) copySelectedBlocks(blocks, range);
+                      }}
+                      onDelete={() => {
+                        setBlockMenu(null);
+                        deleteWholeBlock(activeNote, selectedRun.from, selectedRun.to);
+                      }}
+                      onClose={() => setBlockMenu(null)}
                     />
                   )}
                   <FloatingToolbar

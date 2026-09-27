@@ -15,8 +15,8 @@ import { Tooltip, useTooltip } from "./Tooltip";
  * (`startHandleDrag` in useBlockDrag, which commits on drop). It hides
  * the moment a key is pressed and while a drag is live, so the note stays a
  * document until the hand reaches for structure. A press released without
- * moving selects the block (`onGripClick`; Shift extends the run), and the
- * grip names both gestures in its chip. No "+" beside it: the keyboard and
+ * moving selects the block and opens its menu (`onGripClick`, BlockMenu;
+ * Shift extends the run instead), and the grip names both gestures in its chip. No "+" beside it: the keyboard and
  * the slash menu create blocks.
  *
  * One handle rather than one per block, because every block root is a
@@ -65,7 +65,7 @@ const MODIFIER_KEYS = new Set(["Shift", "Meta", "Control", "Alt"]);
 /** What the grip's chip says: the gesture, then what it does. */
 const GRIP_GESTURES = [
   ["Drag", "to move"],
-  ["Click", "to select"],
+  ["Click", "for options"],
 ];
 
 function firstLineRect(el, zoom) {
@@ -227,7 +227,15 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
             tip.handlers.onMouseDown();
             const { blockId } = pos;
             const extend = e.shiftKey;
-            startHandleDrag(blockId, e, () => onGripClick?.(blockId, extend));
+            const grip = e.currentTarget.getBoundingClientRect();
+            startHandleDrag(blockId, e, () => onGripClick?.(blockId, extend, grip));
+          }}
+          onContextMenu={(e) => {
+            // The same menu as a click, as the table's grips do.
+            e.preventDefault();
+            e.stopPropagation();
+            tip.handlers.onMouseDown();
+            onGripClick?.(pos.blockId, false, e.currentTarget.getBoundingClientRect());
           }}
           style={{
             position: "absolute",
@@ -250,7 +258,7 @@ export default function BlockDragHandle({ columnRef, editorRef, startHandleDrag,
       )}
       {pos && tip.shown && (
         <Tooltip
-          label="Drag to move, click to select"
+          label="Drag to move, click for options"
           lines={GRIP_GESTURES}
           anchor={gripEl}
           placement="below"

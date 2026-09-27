@@ -37,6 +37,7 @@ import {
   ClipboardPaste as LuClipboardPaste,
   Columns3 as LuColumns3,
   Copy as LuCopy,
+  CopyPlus as LuCopyPlus,
   ExternalLink as LuExternalLink,
   File as LuFile,
   FileArchive as LuFileArchive,
@@ -82,6 +83,7 @@ import {
   Plus as LuPlus,
   Presentation as LuPresentation,
   Redo2 as LuRedo2,
+  Repeat2 as LuRepeat2,
   RotateCcw as LuRotateCcw,
   Search as LuSearch,
   Settings as LuSettings,
@@ -247,6 +249,12 @@ export const PencilIcon = ({ size = ICON_INLINE }) => (
   <LuPencil {...base} {...navBase} size={size} />
 );
 export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+export const DuplicateIcon = ({ size = ICON_INLINE }) => (
+  <LuCopyPlus {...base} {...navBase} size={size} />
+);
+export const TurnIntoIcon = ({ size = ICON_INLINE }) => (
+  <LuRepeat2 {...base} {...navBase} size={size} />
+);
 /** Tidy table: lines a table's columns up. */
 export const TidyTableIcon = ({ size = ICON_INLINE }) => (
   <LuColumns3 {...base} {...navBase} size={size} />
@@ -330,6 +338,7 @@ export const FormattedViewIcon = ({ size = ICON_INLINE }) => (
 // bordered 24px chips — the characters rendered differently on every platform and
 // the chips read as a stack of buttons. Bare glyph, inherits the row's colour.
 const SLASH_GLYPHS = {
+  type: LuType,
   "heading-1": LuHeading1,
   "heading-2": LuHeading2,
   "heading-3": LuHeading3,

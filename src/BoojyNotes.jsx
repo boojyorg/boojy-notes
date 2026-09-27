@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import { selectedIds } from "./utils/blockRun";
 import { trace } from "./utils/trace";
 import { useNoteData, useNoteDataActions } from "./context/NoteDataContext";
 import { useSettings } from "./context/SettingsContext";
@@ -465,6 +466,7 @@ export default function BoojyNotes() {
     openDivider,
     deleteBlock,
     deleteBlockRange,
+    duplicateBlockRange,
     updateBlockProperty,
     saveAndInsertImage,
     saveAndInsertFiles,
@@ -997,6 +999,8 @@ export default function BoojyNotes() {
   // Show Markdown / Show Formatted: EditorArea's switch, which reads the
   // caret's place on the way (the ··· menu, View, ⌘/ and the lit `</>`).
   const switchViewRef = useRef(null);
+  // Edit → Duplicate Block: EditorArea's ⌘D.
+  const blockActionsRef = useRef(null);
   const toggleSourceView = useCallback(() => {
     // The menus a keystroke opened under the caret (`/`, `[[`, `#`) belong to
     // the view being left; left open, the slash menu stood over the Markdown
@@ -1043,6 +1047,12 @@ export default function BoojyNotes() {
     deleteNote: confirmDeleteNote,
     applyFormat,
     setBlockKind,
+    duplicateBlocks: () => blockActionsRef.current?.duplicate(),
+    blockSelectionIds: () =>
+      selectedIds(
+        noteDataRef.current[activeNote]?.content?.blocks ?? [],
+        blockSelectionRef.current,
+      ),
     updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
@@ -1308,6 +1318,8 @@ export default function BoojyNotes() {
               flipCheck,
               deleteBlock,
               deleteBlockRange,
+              duplicateBlockRange,
+              setBlockKind,
               registerBlockRef,
               insertBlockAfter,
               updateBlockText,
@@ -1325,6 +1337,7 @@ export default function BoojyNotes() {
             <EditorArea
               openFindRef={openFindRef}
               switchViewRef={switchViewRef}
+              blockActionsRef={blockActionsRef}
               isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}
