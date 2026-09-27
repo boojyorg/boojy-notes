@@ -41,14 +41,14 @@ const kinds = () => document.body.querySelector('[aria-label="Turn into"]') as H
 afterEach(cleanup);
 
 describe("BlockMenu", () => {
-  it("names what is selected, then Turn into, Duplicate, Copy and Delete", () => {
+  it("names what is selected, then Turn into, Copy, Duplicate and Delete", () => {
     const { menu } = mount(["bullet"]);
     expect(menu.textContent).toContain("Bullet list");
     const rows = [...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent);
     expect(rows[0]).toBe("Turn into");
     expect(rows.slice(1).map((r) => r?.replace(/[⌘⌫].*$/, "").replace(/Ctrl.*$/, ""))).toEqual([
-      "Duplicate",
       "Copy",
+      "Duplicate",
       "Delete",
     ]);
   });

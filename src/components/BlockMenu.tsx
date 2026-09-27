@@ -123,17 +123,18 @@ export default function BlockMenu({
     });
   }
   items.push(
-    {
-      label: "Duplicate",
-      icon: <CopyIcon />,
-      action: onDuplicate,
-      shortcut: shortcutLabel({ key: "D" }),
-    },
+    // Copy before Duplicate, as in the note's ··· menu.
     {
       label: "Copy",
       icon: <ClipboardIcon />,
       action: onCopy,
       shortcut: shortcutLabel({ key: "C" }),
+    },
+    {
+      label: "Duplicate",
+      icon: <CopyIcon />,
+      action: onDuplicate,
+      shortcut: shortcutLabel({ key: "D" }),
     },
     { label: "Delete", icon: <TrashIcon />, action: onDelete, shortcut: "⌫", danger: true },
   );

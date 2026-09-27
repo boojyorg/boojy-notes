@@ -282,7 +282,7 @@ same language writes nothing. The language menu portals to `body` and takes its 
   line); Enter opens a paragraph below; Shift+↑/↓ resize it; arrows and Escape give the caret
   back; a letter deselects and types. A press off `data-selection-surface` deselects.
 - **The grip's click also opens `BlockMenu`** beside it (right-click, Shift+F10); the grip
-  stays up, pressed. Turn into (`setBlockKind`), Duplicate, Copy, Delete; shown keys work.
+  stays up, pressed. Turn into (`setBlockKind`), Copy, Duplicate, Delete; shown keys work.
   `block-selection.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`), removing an empty row between in the same press.

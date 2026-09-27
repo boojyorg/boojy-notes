@@ -170,15 +170,15 @@ const types = (page: Page) =>
       .map((el) => `${el.dataset.blockType}:${el.innerText.trim()}`),
   );
 
-test("a click on the grip opens its menu: what is selected, then Turn into, Duplicate, Copy, Delete", async () => {
+test("a click on the grip opens its menu: what is selected, then Turn into, Copy, Duplicate, Delete", async () => {
   await clickGrip(h.page, 0);
   await expect(menu(h.page)).toBeVisible();
   await expect(menu(h.page)).toContainText("Text");
   const mod = process.platform === "darwin" ? "⌘" : "Ctrl+";
   expect(await menu(h.page).getByRole("menuitem").allInnerTexts()).toEqual([
     "Turn into",
-    `Duplicate\n${mod}D`,
     `Copy\n${mod}C`,
+    `Duplicate\n${mod}D`,
     "Delete\n⌫",
   ]);
   // Escape closes the menu and keeps the selection; again gives the caret back.
@@ -243,4 +243,15 @@ test("Delete in the menu removes the selection in one step", async () => {
     .getByRole("menuitem", { name: /Delete/ })
     .click();
   expect(await texts(h.page)).toEqual(["Intro.", "Sibling", "Outro."]);
+});
+
+test("the space between the grip and the text is the grip's: a click there selects the block", async () => {
+  const text = h.page.locator("[data-editor] > [data-block-id]").first();
+  const box = (await text.boundingBox())!;
+  await h.page.mouse.move(box.x + 40, box.y + 8);
+  await h.page.locator('[data-testid="block-drag-handle"]').waitFor();
+  // Just left of the text's edge, in the gap the grip's face does not cover.
+  await h.page.mouse.click(box.x - 4, box.y + 10);
+  expect(await washed(h.page)).toEqual(["Intro."]);
+  await expect(menu(h.page)).toBeVisible();
 });
