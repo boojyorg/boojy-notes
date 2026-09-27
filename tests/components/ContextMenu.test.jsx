@@ -224,7 +224,7 @@ describe("the header menu", () => {
 
   it("carries the note's actions, the view, Settings, then Delete alone, each with a glyph", () => {
     const { getByText, getByRole, queryAllByRole, getAllByRole } = render(
-      <ContextMenu {...headerProps("n1")} />,
+      <ContextMenu {...headerProps("n1")} copyNoteText={vi.fn()} />,
     );
     for (const label of ["Rename", "Duplicate", "Delete", "Show Markdown", "Settings"]) {
       expect(getByText(label)).toBeInTheDocument();
@@ -234,7 +234,7 @@ describe("the header menu", () => {
     // Version A (2026-09-27): the note's own actions, then how it is seen,
     // then Settings, then Delete alone at the foot, each group under a rule.
     const rows = getAllByRole("menuitem").map((b) => b.querySelector("span")?.textContent);
-    expect(rows.slice(0, 2)).toEqual(["Rename", "Duplicate"]);
+    expect(rows.slice(0, 3)).toEqual(["Rename", "Copy", "Duplicate"]);
     expect(rows.at(-1)).toBe("Delete");
     expect(rows.at(-2)).toBe("Settings");
     const settings = getByText("Settings").closest("button");

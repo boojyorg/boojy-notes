@@ -87,23 +87,25 @@ test("a caret left in the row beside a marker types into the item", async () => 
   }
 });
 
-test("a click between the dot and the text puts the caret in the text", async () => {
+test("a click between the dot and the text selects the item, and a letter then writes in its text", async () => {
   const h = await launchApp({ "Alpha.md": "Intro\n\n- one\n- two\n" });
   try {
     await h.openNote("Alpha");
     // Typing in the note already, as you would be.
     await h.page.locator('[data-block-type="p"]').first().click();
     // The gap between the second dot and its text: Chromium put the caret in
-    // the row there, before the dot.
+    // the row there, before the dot; a press there now selects the item
+    // (Notion's gesture), its caret resting, hidden, at the end of its text.
     const box = await h.page.locator("[data-marker]").nth(1).boundingBox();
     if (!box) throw new Error("no bullet marker");
     await h.page.mouse.click(box.x + box.width + 4, box.y + box.height / 2);
     await expect.poll(() => caretAt(h.page)).toBe("bullet:two");
-    await h.page.keyboard.type("A ");
+    // A letter deselects and writes on in the item's text, never beside the dot.
+    await h.page.keyboard.type("A");
 
-    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("A two"));
+    await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("twoA"));
     await sleep(SETTLE_MS);
-    expect(h.vault.read("Alpha.md")).toBe("Intro\n\n- one\n- A two\n");
+    expect(h.vault.read("Alpha.md")).toBe("Intro\n\n- one\n- twoA\n");
   } finally {
     await h.close();
   }

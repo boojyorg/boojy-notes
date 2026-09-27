@@ -170,7 +170,8 @@ const ContextMenu = memo(function ContextMenu({
     },
   });
 
-  // A note's menu (2026-09-27, version A): what acts on the note, then how
+  // A note's menu (2026-09-27, version A; Copy before Duplicate, as in the
+  // grip's menu): what acts on the note, then how
   // it is seen, then Settings, then Delete alone at the foot, each group under
   // a rule. The labels are short because the menu is the note's. The keys are
   // shown only in the header's menu, the open note's, which is what they act
@@ -183,15 +184,6 @@ const ContextMenu = memo(function ContextMenu({
         // Inline in the sidebar row (BoojyNotes.startNoteRename);
         // falls back to the editor title if the sidebar is hidden.
         onRenameNote(id);
-        setCtxMenu(null);
-      },
-    },
-    {
-      label: "Duplicate",
-      icon: <CopyIcon />,
-      shortcut: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
-      action: () => {
-        duplicateNote(id);
         setCtxMenu(null);
       },
     },
@@ -208,6 +200,15 @@ const ContextMenu = memo(function ContextMenu({
           },
         ]
       : []),
+    {
+      label: "Duplicate",
+      icon: <CopyIcon />,
+      shortcut: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
+      action: () => {
+        duplicateNote(id);
+        setCtxMenu(null);
+      },
+    },
     moveItem({ kind: "notes", ids: [id] }),
   ];
 

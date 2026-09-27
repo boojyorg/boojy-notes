@@ -178,8 +178,8 @@ test("Settings is in the header menu, with a note open and with none", async () 
   await expect(menu.getByTestId("note-stats")).toHaveText("3 words");
   expect(await menu.getByRole("menuitem").allTextContents()).toEqual([
     "Rename",
-    expect.stringMatching(/^Duplicate/),
     expect.stringMatching(/^Copy/),
+    expect.stringMatching(/^Duplicate/),
     "Move to…",
     expect.stringMatching(/^Version History/),
     // The view item carries its shortcut (⌘/ on a Mac, Ctrl+/ elsewhere).

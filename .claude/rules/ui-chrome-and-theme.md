@@ -67,8 +67,8 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
   it). Regions stand down while a popup is open. `chrome-row.spec.ts`.
 - One active note; no tabs. Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
-- **The header ··· is the active note's menu**, four groups under rules: Rename, Duplicate,
-  Copy, Move to… | Version History, the view item (`Show Markdown`/`Show Formatted`) | Settings |
+- **The header ··· is the active note's menu**, four groups under rules: Rename, Copy,
+  Duplicate, Move to… | Version History, the view item (`Show Markdown`/`Show Formatted`) | Settings |
   Delete; then the word count, muted. A row's ··· is the first group and Delete. While the
   Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its room.
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
