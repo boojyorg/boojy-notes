@@ -212,8 +212,8 @@ duration. `sidebar-motion.spec.ts`.
 - **The touch layout is switched off** (`TOUCH_LAYOUT`); every device gets the desktop layout.
 - The sidebar is always in the layout, never an overlay; don't bring the overlay back.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
-  is imported by `electron/main.js`. **The column is one width, centred under the name**,
-  sidebar or not; margins go first, then gutters.
+  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems** (same characters
+  at any size), centred under the name; margins go first, then gutters.
 
 ## Testing notes
 
