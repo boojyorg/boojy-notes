@@ -822,6 +822,22 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     }
   });
 
+  // Copy text: the note's Markdown as text, and as HTML for apps that take
+  // formatting. Written here rather than by the page's copy event, so it works
+  // from the menu bar too, which gives the page no gesture to copy with.
+  ipcMain.handle("copy-text-to-clipboard", async (_event, { text, html } = {}) => {
+    if (typeof text !== "string") return false;
+    try {
+      const item = { "text/plain": new Blob([text], { type: "text/plain" }) };
+      if (typeof html === "string" && html)
+        item["text/html"] = new Blob([html], { type: "text/html" });
+      await clipboard.write([new ClipboardItem(item)]);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   ipcMain.handle("open-external", async (_event, url) => {
     if (typeof url === "string" && /^https?:\/\//i.test(url)) {
       await shell.openExternal(url);

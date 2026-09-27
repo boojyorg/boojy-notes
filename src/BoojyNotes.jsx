@@ -69,6 +69,8 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { isElectron, isWeb } from "./utils/platform";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
+import { blocksToMarkdown } from "./utils/markdown";
+import { wholeBlocksCopy } from "./utils/clipboardCopy";
 import { useIsMobile } from "./hooks/useIsMobile";
 
 // The touch layout is switched off (2026-09-24): about 1,700 untested lines in
@@ -495,6 +497,30 @@ export default function BoojyNotes() {
   const [blockSelection, setBlockSelection] = useState(null);
   // A window resize follows the hand; only a sidebar toggle eases.
   useWindowResizing();
+
+  // Copy text (the ··· menus, File → Copy Text): the note as its Markdown,
+  // the file's own spelling, and as HTML for apps that take formatting.
+  const copyNoteText = useCallback(
+    async (id) => {
+      const blocks = noteDataRef.current[id]?.content?.blocks ?? [];
+      const text = blocksToMarkdown(blocks);
+      const { html } = wholeBlocksCopy(blocks, 0, blocks.length - 1).payload;
+      const api = getAPI();
+      let ok = false;
+      try {
+        if (api?.copyTextToClipboard) ok = await api.copyTextToClipboard({ text, html });
+        else {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch {
+        ok = false;
+      }
+      if (ok) showToast("Text copied", "done");
+      else showToast("Couldn't copy the note's text", "error");
+    },
+    [noteDataRef, showToast],
+  );
   const blockSelectionRef = useRef(null);
   blockSelectionRef.current = blockSelection;
   const setSelectedBlockId = useCallback(
@@ -1051,6 +1077,7 @@ export default function BoojyNotes() {
     applyFormat,
     setBlockKind,
     duplicateBlocks: () => blockActionsRef.current?.duplicate(),
+    copyNoteText,
     blockSelectionIds: () =>
       selectedIds(
         noteDataRef.current[activeNote]?.content?.blocks ?? [],
@@ -1428,6 +1455,7 @@ export default function BoojyNotes() {
         ctxMenu={ctxMenu}
         setCtxMenu={setCtxMenu}
         duplicateNote={duplicateNote}
+        copyNoteText={copyNoteText}
         deleteNote={confirmDeleteNote}
         deleteFolder={confirmDeleteFolder}
         duplicateFolder={duplicateFolder}

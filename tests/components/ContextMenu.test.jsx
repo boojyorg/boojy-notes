@@ -429,4 +429,20 @@ describe("ContextMenu for a file that is not a note", () => {
     fireEvent.click(getByRole("menuitem", { name: "Delete" }));
     expect(props.trashFile).toHaveBeenCalledWith("Uni/handout.pdf");
   });
+
+  it("Copy text copies the note it was opened for, and closes", () => {
+    const copyNoteText = vi.fn();
+    const setCtxMenu = vi.fn();
+    const { getByText } = render(
+      <ContextMenu
+        {...baseProps()}
+        copyNoteText={copyNoteText}
+        setCtxMenu={setCtxMenu}
+        ctxMenu={{ x: 10, y: 10, type: "note", id: "n1" }}
+      />,
+    );
+    fireEvent.click(getByText("Copy text"));
+    expect(setCtxMenu).toHaveBeenCalledWith(null);
+    expect(copyNoteText).toHaveBeenCalledWith("n1");
+  });
 });

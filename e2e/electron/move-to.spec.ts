@@ -84,6 +84,7 @@ test("Move to… from a note's menu: the picker ticks where it is, Right expands
     await expect(menu(h.page).getByRole("menuitem")).toHaveText([
       "Rename",
       "Duplicate",
+      "Copy text",
       "Move to…",
       "Delete",
     ]);
@@ -153,6 +154,7 @@ test("Move to… from the editor's ··· with the sidebar hidden: the root is a
     await expect(menu(h.page).getByRole("menuitem")).toHaveText([
       "Rename",
       "Duplicate",
+      "Copy text",
       "Move to…",
       /^Version History/,
       "Delete",

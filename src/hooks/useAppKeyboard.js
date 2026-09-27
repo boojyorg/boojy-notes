@@ -70,6 +70,7 @@ export function useAppKeyboard({
   setBlockKind,
   duplicateBlocks,
   blockSelectionIds,
+  copyNoteText,
   updateTableRows,
   openFind,
   detectActiveFormats,
@@ -111,6 +112,7 @@ export function useAppKeyboard({
     setBlockKind,
     duplicateBlocks,
     blockSelectionIds,
+    copyNoteText,
     updateTableRows,
     openFind,
     detectActiveFormats,
@@ -475,6 +477,8 @@ function runMenuCommand(id, L, titleRef) {
       return L.duplicateNote?.(note);
     case "duplicateBlock":
       return L.duplicateBlocks?.();
+    case "copyText":
+      return L.copyNoteText?.(note);
     case "moveTo": {
       // The picker opens under the note's name in the top row, the place the
       // path of the note already stands.

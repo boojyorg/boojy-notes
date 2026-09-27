@@ -11,6 +11,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import {
   CopyIcon,
+  DuplicateIcon,
   FormattedViewIcon,
   MoveToIcon,
   NewFolderIcon,
@@ -45,6 +46,8 @@ const ContextMenu = memo(function ContextMenu({
   ctxMenu,
   setCtxMenu,
   duplicateNote,
+  // Copy text: the note as its Markdown (BoojyNotes.copyNoteText).
+  copyNoteText,
   deleteNote,
   deleteFolder,
   duplicateFolder,
@@ -180,12 +183,24 @@ const ContextMenu = memo(function ContextMenu({
     },
     {
       label: "Duplicate",
-      icon: <CopyIcon />,
+      icon: <DuplicateIcon />,
       action: () => {
         duplicateNote(id);
         setCtxMenu(null);
       },
     },
+    ...(copyNoteText
+      ? [
+          {
+            label: "Copy text",
+            icon: <CopyIcon />,
+            action: () => {
+              setCtxMenu(null);
+              copyNoteText(id);
+            },
+          },
+        ]
+      : []),
     moveItem({ kind: "notes", ids: [id] }),
     {
       label: "Delete",
@@ -332,7 +347,7 @@ const ContextMenu = memo(function ContextMenu({
               },
               {
                 label: "Duplicate folder",
-                icon: <CopyIcon />,
+                icon: <DuplicateIcon />,
                 action: () => {
                   duplicateFolder(ctxMenu.id);
                   setCtxMenu(null);
