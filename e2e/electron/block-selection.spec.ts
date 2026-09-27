@@ -174,10 +174,11 @@ test("a click on the grip opens its menu: what is selected, then Turn into, Dupl
   await clickGrip(h.page, 0);
   await expect(menu(h.page)).toBeVisible();
   await expect(menu(h.page)).toContainText("Text");
+  const mod = process.platform === "darwin" ? "⌘" : "Ctrl+";
   expect(await menu(h.page).getByRole("menuitem").allInnerTexts()).toEqual([
     "Turn into",
-    "Duplicate\n⌘D",
-    "Copy\n⌘C",
+    `Duplicate\n${mod}D`,
+    `Copy\n${mod}C`,
     "Delete\n⌫",
   ]);
   // Escape closes the menu and keeps the selection; again gives the caret back.
