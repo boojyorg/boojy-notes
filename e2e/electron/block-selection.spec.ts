@@ -265,3 +265,39 @@ test("a grip click leaves the grip pressed", async () => {
   await clickGrip(h.page, 1);
   await expect(h.page.locator('[data-testid="block-drag-handle"][data-pressed]')).toHaveCount(1);
 });
+
+test("every block's gutter, between the grip and its content, selects it; a to-do's box still ticks", async () => {
+  const g = await launchApp({
+    "Kinds.md": "# Title\n\nA paragraph.\n\n- [ ] A task\n\n```js\nlet a = 1;\n```\n\nEnd.\n",
+  });
+  try {
+    await g.openNote("Kinds");
+    const row = (type: string) =>
+      g.page.locator(`[data-editor] > [data-block-type="${type}"]`).first();
+    const tint = () => washed(g.page);
+    const clickLeftOf = async (type: string, x: (b: { x: number }) => number) => {
+      const b = (await row(type).boundingBox())!;
+      await g.page.mouse.move(b.x + 40, b.y + 8);
+      await g.page.mouse.click(x(b), b.y + Math.min(12, b.height / 2));
+    };
+    // Paragraph and heading: the gap left of the first letter.
+    await clickLeftOf("p", (b) => b.x - 4);
+    expect(await tint()).toEqual(["A paragraph."]);
+    await clickLeftOf("h1", (b) => b.x - 4);
+    expect(await tint()).toEqual(["Title"]);
+    // A to-do: left of its box selects; the box itself ticks.
+    await clickLeftOf("checkbox", (b) => b.x - 2);
+    expect(await tint()).toEqual(["A task"]);
+    await g.page.locator(".checkbox-hit").first().click();
+    await expect(g.page.locator(".checkbox-hit").first()).toHaveAttribute("aria-checked", "true");
+    // A code block: the gap left of it.
+    await clickLeftOf("code", (b) => b.x - 4);
+    // Selected: Backspace removes the whole block.
+    await g.page.keyboard.press("Backspace");
+    await expect(g.page.locator('[data-editor] > [data-block-type="code"]')).toHaveCount(0);
+    // No menu in any of these: that is the grip's.
+    await expect(g.page.getByRole("menu", { name: "Block options" })).toHaveCount(0);
+  } finally {
+    await g.close();
+  }
+});

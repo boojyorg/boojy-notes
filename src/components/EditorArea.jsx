@@ -22,7 +22,8 @@ import OffloadedNoteView from "./OffloadedNoteView";
 import PastVersionView from "./PastVersionView";
 import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
-import BlockDragHandle from "./BlockDragHandle";
+import BlockDragHandle, { HANDLE_GAP } from "./BlockDragHandle";
+import { gutterBlockAt } from "../utils/gutterSelect";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
@@ -619,24 +620,29 @@ const EditorArea = memo(
       [activeNote, noteDataRef, blockRefs, editorRef, setBlockSelection],
     );
 
-    // A press on a list item's dot or number, or anywhere left of its text,
-    // selects the item with the items nested under it (Notion's gesture): no
-    // menu, the grip left plain. A to-do's box is not here: it ticks.
-    const selectFromMarker = useCallback(
+    // A press in a block's gutter strip, between the grip and where its
+    // content starts (utils/gutterSelect: a list's dot or number, the space
+    // left of a paragraph's first letter or a to-do's box), selects the block
+    // with any items nested under it, as Notion's does: no menu, the grip left
+    // plain. In capture, before the editor places a caret; the grip's own
+    // press is the grip's.
+    const selectFromGutter = useCallback(
       (e) => {
-        if (e.button !== 0 || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return false;
-        const root = e.target.closest?.("[data-editor] > [data-block-id]");
-        const type = root?.getAttribute("data-block-type");
-        if (type !== "bullet" && type !== "numbered") return false;
-        const id = root.getAttribute("data-block-id");
-        const text = blockRefs.current[id];
-        if (!text || text.contains(e.target)) return false;
-        if (e.clientX >= text.getBoundingClientRect().left) return false;
+        if (e.button !== 0 || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.target.closest?.(".block-drag-handle") || !editorRef.current) return;
+        const id = gutterBlockAt(
+          editorRef.current,
+          blockRefs.current,
+          e.clientX,
+          e.clientY,
+          HANDLE_GAP,
+        );
+        if (!id) return;
         e.preventDefault();
+        e.stopPropagation();
         handleGripClick(id, false);
-        return true;
       },
-      [blockRefs, handleGripClick],
+      [editorRef, blockRefs, handleGripClick],
     );
 
     // The wash on a selected text block: the band's tint over the whole row,
@@ -1039,6 +1045,7 @@ const EditorArea = memo(
             key={activeNote}
             ref={columnRef}
             className="panel-motion"
+            onMouseDownCapture={isMobile ? undefined : selectFromGutter}
             style={{
               padding: isMobile
                 ? "12px 20px 80px 20px"
@@ -1147,7 +1154,6 @@ const EditorArea = memo(
                     onMouseLeave={handleEditorMouseLeave}
                     onContextMenu={handleEditorContextMenu}
                     onMouseDown={(e) => {
-                      if (selectFromMarker(e)) return;
                       handleEditorMouseDown(e);
                       // Prevent caret placement inside links on click (for instant open feel)
                       if (!e.shiftKey && e.button === 0) {

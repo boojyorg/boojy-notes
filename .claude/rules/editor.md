@@ -273,8 +273,8 @@ same language writes nothing. The language menu portals to `body` and takes its 
 ## Whole-block selection
 
 - **Any block can be selected whole** (`utils/blockRun.ts`: anchor and head, the run between):
-  the grip's click, a list marker's (the grip stays plain), Escape in the text, a press on a
-  divider, image or table, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
+  the grip's click, a press in a block's gutter strip (`gutterSelect`; grip left plain), Escape
+  in the text, a divider, image or table's press, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
   (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
 - On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
   (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
