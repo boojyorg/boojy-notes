@@ -109,7 +109,7 @@ const MOBILE_LABEL_GAP = 26;
  * Then the gutters ramp down, bottoming out at 560px of editor width; below
  * that the column only gets narrower. The centring is a computed margin, not
  * `auto`, so it eases with the sidebar's slide. The gutter floor is the drag grip's: 20px plus
- * its 4px gap live in the left padding, and the right side matches it. The
+ * its 8px gap live in the left padding, and the right side matches it. The
  * sidebar stays in the layout at every width and yields before the note does
  * (`EDITOR_FLOOR_W`), so at the 545px window minimum the editor has 316px
  * beside the narrowest sidebar and 545px alone: prose keeps reading either
@@ -121,7 +121,7 @@ const MOBILE_LABEL_GAP = 26;
  * menu, the floating toolbar, the link popovers) and quietly re-anchor them.
  */
 /** Side gutters: COL_PAD_MIN at COL_PAD_FROM of editor width, MAX at _TO. */
-const COL_PAD_MIN = 24;
+const COL_PAD_MIN = 28;
 const COL_PAD_MAX = 56;
 const COL_PAD_FROM = 560;
 const COL_PAD_TO = 800;

@@ -36,8 +36,12 @@ import { Tooltip, useTooltip } from "./Tooltip";
  */
 export const HANDLE_W = 20;
 export const HANDLE_H = 24;
-/** Gap between the grip's right edge and the block's left edge. */
-export const HANDLE_GAP = 4;
+/**
+ * Gap between the grip's right edge and the block's left edge: clear of the
+ * selection band, which reaches 4px past the text, so the pressed grip and a
+ * selected block never touch.
+ */
+export const HANDLE_GAP = 8;
 /**
  * A table's own row grips sit across its left edge, 7px out; beside a table
  * the block's grip stands this much further off so the two never touch.
