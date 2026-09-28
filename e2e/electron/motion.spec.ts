@@ -131,6 +131,36 @@ test("Settings leaves its scrim and its pane as copies, and is gone at once", as
   }
 });
 
+test("first-run setup arrives as a dialog and leaves its scrim and itself as copies", async () => {
+  const h = await launchApp({}, { firstRun: true, motion: true });
+  try {
+    const setup = h.page.getByRole("dialog", { name: "Welcome to Boojy Notes" });
+    await setup.waitFor();
+    await expect(setup).toHaveClass(/motion-pop/);
+    await h.page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { __ghosts: string[] }).__ghosts = seen;
+      new MutationObserver((records) => {
+        for (const record of records)
+          for (const node of record.addedNodes) {
+            const el = node as HTMLElement;
+            if (el.classList?.contains("motion-ghost")) seen.push(el.className);
+          }
+      }).observe(document.body, { childList: true });
+    });
+    await h.page.keyboard.press("Escape");
+    await expect(setup).toHaveCount(0);
+    await expect
+      .poll(() =>
+        h.page.evaluate(() => (window as unknown as { __ghosts: string[] }).__ghosts.length),
+      )
+      .toBe(2);
+    await expect(h.page.locator(".motion-ghost")).toHaveCount(0);
+  } finally {
+    await h.close();
+  }
+});
+
 test("reduced motion leaves no copy at all", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
+import { useExitGhost } from "../../hooks/useExitGhost";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { fontWeight } from "../../tokens/typography";
 import { ThemePills } from "./AppearanceTab";
@@ -36,7 +37,11 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
   const { theme, setThemeMode } = useTheme();
   const { TEXT } = theme;
   const ref = useRef(null);
+  const scrimRef = useRef(null);
   useFocusTrap(ref, true, "container");
+  // Arrives and leaves as Settings does: scrim and dialog each leave a copy.
+  useExitGhost(scrimRef);
+  useExitGhost(ref);
 
   // A fresh install starts on System; an existing user never sees this.
   useEffect(() => {
@@ -56,12 +61,15 @@ export default function SetupDialog({ notesDir, folderExists, onChooseFolder, on
   return (
     <>
       <div
+        ref={scrimRef}
+        className="motion-fade"
         data-testid="setup-scrim"
         onClick={() => onDone("dismiss")}
         style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
       />
       <div
         ref={ref}
+        className="motion-pop motion-from-center"
         role="dialog"
         aria-modal="true"
         aria-label="Welcome to Boojy Notes"
