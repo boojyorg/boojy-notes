@@ -1,6 +1,6 @@
 import { type RefObject, useLayoutEffect, useRef } from "react";
 import { cssZoom } from "../utils/domHelpers";
-import { MOTION_EXIT_MS, prefersReducedMotion } from "../tokens/motion";
+import { currentExitMs, prefersReducedMotion } from "../tokens/motion";
 
 /**
  * Lets a surface leave with an animation without staying mounted.
@@ -52,7 +52,7 @@ export function useExitGhost(ref: RefObject<HTMLElement | null>, open = true): v
       queueMicrotask(() => {
         if (el.isConnected) return;
         document.body.appendChild(ghost);
-        window.setTimeout(() => ghost.remove(), MOTION_EXIT_MS + 60);
+        window.setTimeout(() => ghost.remove(), currentExitMs() + 60);
       });
     };
   }, [open]);

@@ -4,6 +4,7 @@ import {
   MOTION_EXIT_MS,
   MOTION_FAST_MS,
   MOTION_VARS,
+  currentExitMs,
   PANEL_MS,
   prefersReducedMotion,
 } from "../../src/tokens/motion";
@@ -19,6 +20,16 @@ describe("motion tokens", () => {
     expect(MOTION_VARS["--motion-enter"]).toBe(`${MOTION_ENTER_MS}ms`);
     expect(MOTION_VARS["--motion-exit"]).toBe(`${MOTION_EXIT_MS}ms`);
     expect(MOTION_VARS["--motion-fast"]).toBe(`${MOTION_FAST_MS}ms`);
+  });
+
+  it("reads the exit duration the page has, falling back to the token", () => {
+    expect(currentExitMs()).toBe(MOTION_EXIT_MS);
+    document.documentElement.style.setProperty("--motion-exit", "450ms");
+    try {
+      expect(currentExitMs()).toBe(450);
+    } finally {
+      document.documentElement.style.removeProperty("--motion-exit");
+    }
   });
 
   it("reads reduced motion from the system", () => {

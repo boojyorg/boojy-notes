@@ -39,8 +39,8 @@ export default function GlobalStyles() {
            scale and translate are their own properties, so they never fight a
            surface's own transform, and a keyframe with only a start lands on
            whatever the surface rests at. */
-        @keyframes motion-pop-in { from { opacity: 0; scale: 0.96; } }
-        @keyframes motion-rise-in { from { opacity: 0; translate: 0 6px; } }
+        @keyframes motion-pop-in { from { opacity: 0; scale: var(--pop-from); } }
+        @keyframes motion-rise-in { from { opacity: 0; translate: 0 var(--rise); } }
         @keyframes motion-fade-in { from { opacity: 0; } }
         @keyframes motion-glyph-in { from { opacity: 0; scale: 0.6; } }
         @keyframes motion-pop-out { to { opacity: 0; scale: 0.98; } }

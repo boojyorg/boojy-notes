@@ -64,6 +64,11 @@ export const EASE_EXIT = "cubic-bezier(0.4, 0, 1, 1)";
 /** How far a control dips under a press (a button, a tick). */
 export const PRESS_SCALE = 0.97;
 
+/** Where a popover starts growing from, and how far a toast or the toolbar
+ *  starts below where it rests. */
+export const POP_SCALE_FROM = 0.96;
+export const RISE_PX = 6;
+
 export const MOTION_VARS = {
   "--motion-fast": `${MOTION_FAST_MS}ms`,
   "--motion-enter": `${MOTION_ENTER_MS}ms`,
@@ -71,6 +76,21 @@ export const MOTION_VARS = {
   "--ease-enter": EASE_ENTER,
   "--ease-exit": EASE_EXIT,
   "--press-scale": String(PRESS_SCALE),
+  "--pop-from": String(POP_SCALE_FROM),
+  "--rise": `${RISE_PX}px`,
+};
+
+/**
+ * The exit duration as the page has it now, in ms: what a leaving copy's
+ * removal timer waits for, so `?tweak` (which moves the variable, and can
+ * slow it to be watched) and the timer never disagree.
+ */
+export const currentExitMs = () => {
+  if (typeof document === "undefined") return MOTION_EXIT_MS;
+  const ms = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--motion-exit"),
+  );
+  return Number.isFinite(ms) && ms > 0 ? ms : MOTION_EXIT_MS;
 };
 
 /**
