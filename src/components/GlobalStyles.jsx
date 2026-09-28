@@ -77,6 +77,8 @@ export default function GlobalStyles() {
            all travel or pulse, so none plays; a colour transition stays. */
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
+          .checkbox-tick, .press svg, .sidebar-action-row svg, .sidebar-section-action svg,
+          .settings-button svg { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -90,7 +92,7 @@ export default function GlobalStyles() {
           opacity: 0.55;
           color: ${theme.TEXT.muted};
           animation: blockHandleIn 120ms ease;
-          transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+          transition: opacity var(--motion-fast) ease, color var(--motion-fast) ease, background var(--motion-fast) ease;
         }
         @keyframes blockHandleIn { from { opacity: 0; } to { opacity: 0.55; } }
         .block-drag-handle:hover,
@@ -167,7 +169,7 @@ export default function GlobalStyles() {
           width: 0;
           overflow: hidden;
           color: ${theme.TEXT.muted};
-          transition: opacity 120ms, color 120ms;
+          transition: opacity var(--motion-fast), color var(--motion-fast);
         }
         .sidebar-note:hover .sidebar-note-more,
         .sidebar-note:focus-visible .sidebar-note-more {
@@ -192,7 +194,7 @@ export default function GlobalStyles() {
           gap: 4px;
           flex-shrink: 0;
           color: ${theme.TEXT.muted};
-          transition: opacity 120ms;
+          transition: opacity var(--motion-fast);
         }
         .sidebar-folder:hover .sidebar-folder-actions,
         .sidebar-folder:focus-visible .sidebar-folder-actions {
@@ -208,7 +210,7 @@ export default function GlobalStyles() {
           justify-content: center;
           border-radius: 6px;
           cursor: pointer;
-          transition: color 120ms;
+          transition: color var(--motion-fast);
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
         /* A row renaming stands down (2026-09-16): no pill under the field,
@@ -249,7 +251,7 @@ export default function GlobalStyles() {
           background: transparent;
           color: ${theme.TEXT.secondary};
           opacity: 0;
-          transition: background 120ms, color 120ms, opacity 120ms;
+          transition: background var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast);
         }
         .sidebar-section-header:hover .sidebar-section-action,
         .sidebar-section-header:has(:focus-visible) .sidebar-section-action,
@@ -261,7 +263,7 @@ export default function GlobalStyles() {
         .sidebar-vault-label {
           background: transparent;
           color: ${theme.TEXT.muted};
-          transition: background 120ms, color 120ms;
+          transition: background var(--motion-fast), color var(--motion-fast);
         }
         .sidebar-vault-label:hover,
         .sidebar-vault-label:focus-visible,
@@ -312,7 +314,46 @@ export default function GlobalStyles() {
            transforms. On .checkbox-box itself the scale pulled the element's
            own edges 1.2px in from under the pointer, so a press near an edge
            animated and then released onto the row instead (2026-09-19). */
+        .checkbox-box {
+          transition: background var(--motion-fast) var(--ease-enter),
+            border-color var(--motion-fast) var(--ease-enter),
+            transform var(--motion-fast) var(--ease-enter);
+        }
         .checkbox-hit:active .checkbox-box { transform: scale(0.85); }
+        /* The tick is a stroke that draws itself: it waits for the box to
+           fill, then runs in over the arrival clock; unticking pulls it back
+           quicker, with no wait. */
+        .checkbox-tick {
+          stroke-dasharray: 1;
+          stroke-dashoffset: 1;
+          opacity: 0;
+          transition: stroke-dashoffset var(--motion-fast) var(--ease-exit),
+            opacity var(--motion-fast) var(--ease-exit);
+        }
+        .checkbox-tick[data-checked="true"] {
+          stroke-dashoffset: 0;
+          opacity: 1;
+          transition: stroke-dashoffset var(--motion-enter) var(--ease-enter)
+              calc(var(--motion-fast) * 0.5),
+            opacity 0s calc(var(--motion-fast) * 0.5);
+        }
+        /* A press is answered on the contents, never the box: scaling the
+           button itself pulls its edges in from under the pointer, as above,
+           and a press near an edge would release onto its neighbour. So the
+           glyph dips, and the whole button is a shade deeper (instant: a press
+           is answered before it is finished). .press is the opt-in for a
+           control that has none of its own. */
+        .press:active:not(:disabled):not([aria-disabled="true"]),
+        .settings-button:active:not([aria-disabled="true"]),
+        .theme-pill:active,
+        .sidebar-action-row:active,
+        .sidebar-section-action:active { filter: brightness(0.93); }
+        .press svg, .settings-button svg, .sidebar-action-row svg, .sidebar-section-action svg {
+          transition: scale var(--motion-fast) var(--ease-enter);
+        }
+        .press:active:not(:disabled):not([aria-disabled="true"]) svg,
+        .sidebar-action-row:active svg,
+        .sidebar-section-action:active svg { scale: var(--press-icon-scale); }
         [data-block-id] code {
           background: ${theme.inlineCode.bg};
           border: 1px solid ${theme.inlineCode.border};
@@ -403,7 +444,7 @@ ${tagPillCss(theme)}
           border-radius: 8px;
           margin: ${rhythm.blockGap}px 0;
           padding: 14px 16px;
-          transition: border-color 0.15s;
+          transition: border-color var(--motion-fast);
         }
         .code-block:focus-within {
           border-color: ${theme.codeBlockBorderFocus};
@@ -530,7 +571,7 @@ ${tagPillCss(theme)}
           right: 8px;
           z-index: 2;
           opacity: 0;
-          transition: opacity 0.15s;
+          transition: opacity var(--motion-fast);
           pointer-events: auto;
         }
         .code-block:hover .code-copy-wrapper {
@@ -547,7 +588,7 @@ ${tagPillCss(theme)}
           background: ${theme.codeCopy.bg};
           color: ${theme.codeCopy.color};
           cursor: pointer;
-          transition: background 0.15s, color 0.15s;
+          transition: background var(--motion-fast), color var(--motion-fast);
           padding: 0;
         }
         .code-copy-btn:hover {
@@ -572,7 +613,7 @@ ${tagPillCss(theme)}
           font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
           user-select: none;
           cursor: pointer;
-          transition: color 0.15s;
+          transition: color var(--motion-fast);
         }
         .code-lang:hover, .code-lang:focus-visible, .code-lang-open {
           color: ${theme.codeLang.hoverColor};
@@ -583,7 +624,7 @@ ${tagPillCss(theme)}
         .code-lang-chevron {
           display: flex;
           opacity: 0;
-          transition: opacity 0.15s;
+          transition: opacity var(--motion-fast);
         }
         .code-lang:hover .code-lang-chevron,
         .code-lang:focus-visible .code-lang-chevron,
@@ -714,7 +755,7 @@ ${tagPillCss(theme)}
            on the box itself (reveal is CSS, never a JS hover state). */
         .table-add-bar {
           opacity: 0;
-          transition: opacity 120ms;
+          transition: opacity var(--motion-fast);
           color: ${theme.TEXT.muted};
         }
         .table-add-bar:hover {
@@ -742,7 +783,7 @@ ${tagPillCss(theme)}
           cursor: pointer;
           font-size: 12px;
           color: ${theme.TEXT.muted};
-          transition: color 0.15s;
+          transition: color var(--motion-fast);
         }
         .frontmatter-header:hover { color: ${theme.TEXT.secondary}; }
         .frontmatter-body {

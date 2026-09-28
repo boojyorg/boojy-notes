@@ -214,6 +214,7 @@ export default function Toast({
       {action && (
         <button
           type="button"
+          className="press"
           onClick={() => {
             action.run();
             onDismiss();
@@ -237,6 +238,7 @@ export default function Toast({
       {persists && (
         <button
           type="button"
+          className="press"
           aria-label="Dismiss"
           onClick={onDismiss}
           onMouseEnter={() => setHovered(true)}
@@ -255,7 +257,7 @@ export default function Toast({
             background: hovered ? theme.BG.surface : "transparent",
             color: hovered ? theme.TEXT.primary : theme.TEXT.muted,
             cursor: "pointer",
-            transition: "background 0.12s, color 0.12s",
+            transition: "background var(--motion-fast), color var(--motion-fast)",
           }}
         >
           <CloseIcon size={14} />

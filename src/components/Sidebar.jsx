@@ -340,7 +340,7 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         // Stated, not `normal`: the note's first line is set on this baseline.
         lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
-        transition: "background 0.12s, color 0.12s",
+        transition: "background var(--motion-fast), color var(--motion-fast)",
       }}
       onMouseEnter={(e) => {
         hBg(e.currentTarget, BG.hover);
@@ -393,7 +393,8 @@ function MobileTreeAction({ label, onClick, paddingLeft, borderLeft, TEXT, BG, a
         fontFamily: "inherit",
         fontWeight: 500,
         opacity: 0.55,
-        transition: "background 0.12s, color 0.12s, opacity 0.12s",
+        transition:
+          "background var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast)",
         textAlign: "left",
       }}
       onMouseEnter={(e) => {
@@ -827,7 +828,7 @@ const Sidebar = memo(function Sidebar({
           // Desktop active note relies on the pill alone — no bold (judged live
           // 2026-08-23). Mobile keeps its weight cue.
           fontWeight: isMobile && act ? 600 : 400,
-          transition: "background 0.12s",
+          transition: "background var(--motion-fast)",
           textAlign: "left",
         }}
         onMouseEnter={(e) => {
@@ -1017,7 +1018,7 @@ const Sidebar = memo(function Sidebar({
             // distinguishes the row kind; headers carry the hierarchy.
             fontWeight: 400,
             fontFamily: "inherit",
-            transition: "background 0.12s, color 0.12s",
+            transition: "background var(--motion-fast), color var(--motion-fast)",
             textAlign: "left",
           }}
           onMouseEnter={(e) => {
@@ -1218,7 +1219,7 @@ const Sidebar = memo(function Sidebar({
           fontSize: 14,
           fontFamily: "inherit",
           textAlign: "left",
-          transition: "background 0.12s",
+          transition: "background var(--motion-fast)",
         }}
         onMouseEnter={(e) => hBg(e.currentTarget, BG.hover)}
         onMouseLeave={(e) => {
@@ -1272,7 +1273,7 @@ const Sidebar = memo(function Sidebar({
             fontSize: 14,
             fontFamily: "inherit",
             textAlign: "left",
-            transition: "background 0.12s, color 0.12s",
+            transition: "background var(--motion-fast), color var(--motion-fast)",
           }}
           onMouseEnter={(e) => {
             hBg(e.currentTarget, BG.hover);
@@ -1366,7 +1367,7 @@ const Sidebar = memo(function Sidebar({
         padding: "0 2px",
         lineHeight: 1,
         flexShrink: 0,
-        transition: "color 0.12s",
+        transition: "color var(--motion-fast)",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.color = TEXT.primary;
@@ -1684,7 +1685,7 @@ const Sidebar = memo(function Sidebar({
                       gap: 1,
                       textAlign: "left",
                       fontFamily: "inherit",
-                      transition: "background 0.12s",
+                      transition: "background var(--motion-fast)",
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) hBg(e.currentTarget, BG.hover);
@@ -1899,7 +1900,7 @@ const Sidebar = memo(function Sidebar({
               fontSize: 14,
               fontFamily: "inherit",
               textAlign: "left",
-              transition: "background 0.12s, color 0.12s",
+              transition: "background var(--motion-fast), color var(--motion-fast)",
             }}
             onMouseEnter={(e) => {
               hBg(e.currentTarget, BG.hover);

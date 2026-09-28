@@ -201,7 +201,7 @@ export default function ImageMenu({
                 fontSize: 12.5,
                 fontFamily: "inherit",
                 textAlign: "left",
-                transition: "background 0.12s",
+                transition: "background var(--motion-fast)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,

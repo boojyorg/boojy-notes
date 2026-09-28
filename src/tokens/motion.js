@@ -62,8 +62,9 @@ export const EASE_ENTER = PANEL_EASE;
 /** Leaving accelerates away. */
 export const EASE_EXIT = "cubic-bezier(0.4, 0, 1, 1)";
 
-/** How far a control dips under a press (a button, a tick). */
-export const PRESS_SCALE = 0.97;
+/** How far a pressed control's glyph dips. Never the control itself: scaling a
+ *  button pulls its edges in from under the pointer and loses an edge press. */
+export const PRESS_ICON_SCALE = 0.88;
 
 /** Where a popover starts growing from, and how far a toast or the toolbar
  *  starts below where it rests. */
@@ -76,7 +77,7 @@ export const MOTION_VARS = {
   "--motion-exit": `${MOTION_EXIT_MS}ms`,
   "--ease-enter": EASE_ENTER,
   "--ease-exit": EASE_EXIT,
-  "--press-scale": String(PRESS_SCALE),
+  "--press-icon-scale": String(PRESS_ICON_SCALE),
   "--pop-from": String(POP_SCALE_FROM),
   "--rise": `${RISE_PX}px`,
 };

@@ -158,6 +158,7 @@ export function ChromeButton({
   return (
     <button
       type="button"
+      className="press"
       {...rest}
       ref={ref}
       onClick={disabled ? undefined : onClick}
@@ -194,7 +195,8 @@ export function ChromeButton({
         // Disabled reads as inactive ink, never as a second colour: the glyph
         // is the same one, just further back.
         opacity: disabled ? 0.4 : 1,
-        transition: "background 0.12s, color 0.12s, opacity 0.12s",
+        transition:
+          "background var(--motion-fast), color var(--motion-fast), opacity var(--motion-fast)",
         // Chrome buttons can sit inside window drag regions (sidebar header,
         // collapsed strip) — keep them clickable there. Harmless on web.
         WebkitAppRegion: "no-drag",

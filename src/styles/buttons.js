@@ -18,5 +18,5 @@ export const buttonBase = {
   alignItems: "center",
   justifyContent: "center",
   lineHeight: 1,
-  transition: "background 0.15s, opacity 0.15s",
+  transition: "background var(--motion-fast), opacity var(--motion-fast)",
 };

@@ -523,7 +523,7 @@ export default function PathTreeMenu({
     fontWeight: 400,
     fontFamily: "inherit",
     textAlign: "left",
-    transition: "background 0.12s, color 0.12s",
+    transition: "background var(--motion-fast), color var(--motion-fast)",
   };
   const labelStyle: CSSProperties = {
     flex: "1 1 auto",

@@ -237,7 +237,7 @@ export const settingsStyles = (theme) => `
   .settings-location-reveal:not([aria-disabled="true"]):hover { background: ${theme.BG.hover} !important; }
   .settings-location-reveal:not([aria-disabled="true"]):hover .settings-location-path { color: ${theme.TEXT.primary} !important; }
   .settings-location-reveal:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
-  .settings-location-action { opacity: 0; transition: opacity 120ms; }
+  .settings-location-action { opacity: 0; transition: opacity var(--motion-fast); }
   .settings-location:hover .settings-location-action,
   .settings-location:focus-within .settings-location-action { opacity: 1; }
 `;

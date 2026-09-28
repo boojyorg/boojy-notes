@@ -196,7 +196,7 @@ export default function VersionHistoryList({
           position: "relative",
           cursor: "pointer",
           background: state.off ? BG.divider : ACCENT.primary,
-          transition: "background 0.15s",
+          transition: "background var(--motion-fast)",
         }}
       >
         <span

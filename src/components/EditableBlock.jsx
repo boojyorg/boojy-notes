@@ -632,21 +632,14 @@ const EditableBlock = memo(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                transition: "all 0.15s",
               }}
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 10 10"
-                fill="none"
-                style={{
-                  opacity: block.checked ? 1 : 0,
-                  transform: block.checked ? "scale(1)" : "scale(0.5)",
-                  transition: "opacity 0.15s, transform 0.15s",
-                }}
-              >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                {/* Drawn, not faded: the stroke's dash offset runs (GlobalStyles). */}
                 <path
+                  className="checkbox-tick"
+                  data-checked={block.checked ? "true" : "false"}
+                  pathLength="1"
                   d="M2 5L4.2 7.2L8 3"
                   stroke={ACCENT.onAccent}
                   strokeWidth="1.8"
@@ -663,7 +656,7 @@ const EditableBlock = memo(
               textDecoration: block.checked ? "line-through" : "none",
               outline: "none",
               flex: 1,
-              transition: "color 0.15s",
+              transition: "color var(--motion-fast)",
             }}
           />
         </div>

@@ -123,7 +123,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
             border: `1px solid ${autoUpdateEnabled ? ACCENT.primary : BG.hover}`,
             position: "relative",
             cursor: "pointer",
-            transition: "background 0.15s",
+            transition: "background var(--motion-fast)",
             padding: 0,
             flexShrink: 0,
           }}

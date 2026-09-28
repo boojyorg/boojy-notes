@@ -107,7 +107,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                   gap: 10,
                   cursor: "pointer",
                   background: selected ? BG.hover : "transparent",
-                  transition: "background 0.12s",
+                  transition: "background var(--motion-fast)",
                 }}
               >
                 <div

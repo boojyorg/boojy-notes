@@ -117,7 +117,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
             cursor: "pointer",
             color: TEXT.primary,
             background: i === selectedIndex ? BG.hover : "transparent",
-            transition: "background 0.12s",
+            transition: "background var(--motion-fast)",
           }}
         >
           #{t.tag}

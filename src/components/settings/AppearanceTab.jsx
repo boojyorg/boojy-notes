@@ -52,7 +52,7 @@ export function ThemePills() {
               fontWeight: 500,
               fontFamily: "inherit",
               cursor: "pointer",
-              transition: "background 0.12s, color 0.12s",
+              transition: "background var(--motion-fast), color var(--motion-fast)",
             }}
           >
             <Icon />
@@ -71,6 +71,7 @@ function Segment({ divider, disabled, children, style, ...rest }) {
   return (
     <button
       type="button"
+      className="press"
       aria-disabled={disabled || undefined}
       {...rest}
       onClick={disabled ? undefined : rest.onClick}
@@ -94,7 +95,7 @@ function Segment({ divider, disabled, children, style, ...rest }) {
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        transition: "background 0.12s, color 0.12s",
+        transition: "background var(--motion-fast), color var(--motion-fast)",
         ...style,
       }}
     >
@@ -198,7 +199,7 @@ function InterfaceSize() {
               fontWeight: 500,
               fontFamily: "inherit",
               cursor: "pointer",
-              transition: "color 0.12s",
+              transition: "color var(--motion-fast)",
             }}
           >
             Reset
