@@ -42,8 +42,8 @@ export const NEW_ROW_MS = 2400;
  * The small clock, for everything that is not the panel: a popover, a
  * tooltip, a dialog, a toast, a press. Apple-Notes quick with a soft landing,
  * never a spring. Nothing here is over ~200ms; past that a small thing reads
- * as waiting (the panel earned its 280 by being big). First cut was 140/90
- * and 0.96, which Tyr judged too subtle live (2026-09-28).
+ * as waiting (the panel earned its 280 by being big). 140/90 with 0.96 was
+ * too subtle to see and 180/110 with 0.93 too much; Tyr chose between (2026-09-28).
  *
  * Leaving is quicker than arriving: an arrival is watched, a departure is
  * only confirmed, and it is what makes macOS menus feel answered rather than
@@ -54,8 +54,8 @@ export const NEW_ROW_MS = 2400;
  * variable, never these numbers, unless it needs a timer.
  */
 export const MOTION_FAST_MS = 100;
-export const MOTION_ENTER_MS = 180;
-export const MOTION_EXIT_MS = 110;
+export const MOTION_ENTER_MS = 160;
+export const MOTION_EXIT_MS = 100;
 
 /** Arriving decelerates into place; it is the panel's own curve. */
 export const EASE_ENTER = PANEL_EASE;
@@ -67,8 +67,8 @@ export const PRESS_SCALE = 0.97;
 
 /** Where a popover starts growing from, and how far a toast or the toolbar
  *  starts below where it rests. */
-export const POP_SCALE_FROM = 0.93;
-export const RISE_PX = 10;
+export const POP_SCALE_FROM = 0.95;
+export const RISE_PX = 8;
 
 export const MOTION_VARS = {
   "--motion-fast": `${MOTION_FAST_MS}ms`,

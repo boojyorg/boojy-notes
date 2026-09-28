@@ -43,8 +43,8 @@ export default function GlobalStyles() {
         @keyframes motion-rise-in { from { opacity: 0; translate: 0 var(--rise); } }
         @keyframes motion-fade-in { from { opacity: 0; } }
         @keyframes motion-glyph-in { from { opacity: 0; scale: 0.6; } }
-        @keyframes motion-pop-out { to { opacity: 0; scale: 0.96; } }
-        @keyframes motion-rise-out { to { opacity: 0; translate: 0 6px; } }
+        @keyframes motion-pop-out { to { opacity: 0; scale: 0.97; } }
+        @keyframes motion-rise-out { to { opacity: 0; translate: 0 5px; } }
         @keyframes motion-fade-out { to { opacity: 0; } }
         .motion-pop {
           transform-origin: var(--motion-origin, top left);
