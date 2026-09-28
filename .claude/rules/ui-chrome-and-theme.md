@@ -51,9 +51,9 @@ never covers sidebar rows. `toasts.spec.ts`.
 ## Icons: Lucide only
 
 `src/components/Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
-(known exceptions in `FindBar`, `CodeBlock`, the task tick). Two sizes (16 list glyphs, 18
-navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection toolbar alone
-2.5). Don't flatten the tiers. Hit boxes are `CHROME_BTN`.
+(known exceptions in `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
+strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder): don't flatten the
+tiers. Hit boxes are `CHROME_BTN`.
 
 ## Window chrome
 
@@ -112,12 +112,17 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
 
 ## Motion is two clocks
 
-`tokens/motion.js`. The panel's (`PANEL_MS` / `panelTransition()`, class `.panel-motion`) moves the
-sidebar; the small one (`MOTION_*`, CSS variables) moves popovers, dialogs, toasts and presses:
-under 160 ms, leaving quicker than arriving, never a spring. **A surface leaves through
-`usePresence`** (a timer, never `animationend`) and takes no pointer meanwhile. Reduced motion
-plays no keyframe. The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the
-window edge; `transform: none` at rest. No third clock. `sidebar-motion.spec.ts`.
+`tokens/motion.js`: the panel's clock moves the sidebar (`.panel-motion`); the small one
+(`MOTION_*`) moves popovers, dialogs, toasts and presses: leaving quicker than arriving, never a
+spring. No third clock.
+
+- **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
+  timer-removed), never by staying mounted, which would keep its focus trap and keys. Its root
+  is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
+- Reduced motion plays no keyframe and makes no copy; the suites run with it, `motion.spec.ts`
+  without.
+- The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
+  `transform: none` at rest. `sidebar-motion.spec.ts`.
 
 ## The note's path is centred in the chrome row
 
@@ -140,7 +145,7 @@ window edge; `transform: none` at rest. No third clock. `sidebar-motion.spec.ts`
   (`crumbScope`); `…` shows the root. A root note carries a folder glyph so the path always has
   a clickable location. Click only, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no
-  backdrop: the first press on a top-row button read as dead). 280px wide whatever is open.
+  backdrop: a first press on a top-row button read as dead). Fixed width.
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
 - **The same surface is the Move to… picker** (`pick`): folders only, root first, current
@@ -182,8 +187,8 @@ window edge; `transform: none` at rest. No third clock. `sidebar-motion.spec.ts`
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
   `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
   carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
-  row's menu, Escape back to the note (not while a menu or dialog is open); ⌃⌘S lands on the
-  open note's row. Focus returns to the row after a rename, to its neighbour after a delete.
+  row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
+  row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
@@ -210,8 +215,8 @@ window edge; `transform: none` at rest. No third clock. `sidebar-motion.spec.ts`
 - **The touch layout is switched off** (`TOUCH_LAYOUT`); every device gets the desktop layout.
 - The sidebar is always in the layout, never an overlay; don't bring the overlay back.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
-  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems** (same characters
-  at any size), centred under the name; margins go first, then gutters.
+  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
+  name; margins go first, then gutters.
 
 ## Testing notes
 

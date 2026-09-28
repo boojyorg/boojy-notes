@@ -4,6 +4,7 @@ import { useTheme } from "../../hooks/useTheme";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useMenuKeys } from "../../hooks/useMenuKeys";
 import { useMenuPosition } from "../../hooks/useMenuPosition";
+import { useExitGhost } from "../../hooks/useExitGhost";
 import { Z } from "../../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../../constants/layout";
 import { cssZoom } from "../../utils/domHelpers";
@@ -84,6 +85,7 @@ export default function ImageMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
+  useExitGhost(menuRef);
   const pos = useMenuPosition(menuRef, true, anchor, fromBar ? { gapY: 4, align: "end" } : {}) as {
     top: number;
     left: number;
@@ -151,7 +153,7 @@ export default function ImageMenu({
       />
       <div
         ref={menuRef}
-        className="image-context-menu"
+        className="image-context-menu motion-pop"
         role="menu"
         aria-label={label}
         aria-activedescendant={activeIndex >= 0 ? `image-menu-item-${activeIndex}` : undefined}
@@ -173,7 +175,6 @@ export default function ImageMenu({
           padding: MENU_PAD,
           minWidth: 180,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {items.map((item, i) => (

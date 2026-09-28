@@ -30,18 +30,47 @@ export default function GlobalStyles() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes fadeInToolbar {
-          from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
         .sidebar-dragging *, .window-resizing * { transition: none !important; }
-        /* A surface on its way out (usePresence) takes no pointer: a click in
-           its last moments would act on something already closed. */
-        [data-motion="exit"] { pointer-events: none; }
+        /* The small clock (tokens/motion.js). A surface arrives wearing one
+           of these: .motion-pop (a menu or dialog grows in), .motion-rise
+           (a toast or the selection toolbar lifts in), .motion-fade (a scrim
+           or tooltip). When it closes, useExitGhost leaves a copy wearing
+           .motion-ghost that fades away, so the surface itself is gone at once.
+           scale and translate are their own properties, so they never fight a
+           surface's own transform, and a keyframe with only a start lands on
+           whatever the surface rests at. */
+        @keyframes motion-pop-in { from { opacity: 0; scale: 0.96; } }
+        @keyframes motion-rise-in { from { opacity: 0; translate: 0 6px; } }
+        @keyframes motion-fade-in { from { opacity: 0; } }
+        @keyframes motion-glyph-in { from { opacity: 0; scale: 0.6; } }
+        @keyframes motion-pop-out { to { opacity: 0; scale: 0.98; } }
+        @keyframes motion-rise-out { to { opacity: 0; translate: 0 4px; } }
+        @keyframes motion-fade-out { to { opacity: 0; } }
+        .motion-pop {
+          transform-origin: var(--motion-origin, top left);
+          animation: motion-pop-in var(--motion-enter) var(--ease-enter) backwards;
+        }
+        .motion-rise { animation: motion-rise-in var(--motion-enter) var(--ease-enter) backwards; }
+        .motion-fade { animation: motion-fade-in var(--motion-enter) var(--ease-enter) backwards; }
+        /* The toast's one coloured mark lands a beat after its toast: the
+           moment that says done. */
+        .motion-glyph {
+          animation: motion-glyph-in var(--motion-enter) var(--ease-enter)
+            calc(var(--motion-fast) * 0.6) backwards;
+        }
+        .motion-from-end { --motion-origin: top right; }
+        .motion-from-top { --motion-origin: top center; }
+        .motion-from-bottom { --motion-origin: bottom left; }
+        .motion-from-center { --motion-origin: center; }
+        .motion-ghost {
+          animation: motion-pop-out var(--motion-exit) var(--ease-exit) forwards !important;
+          pointer-events: none !important;
+        }
+        .motion-ghost.motion-rise { animation-name: motion-rise-out !important; }
+        .motion-ghost.motion-fade { animation-name: motion-fade-out !important; }
+        /* The copy's insides must not replay their own arrival. */
+        .motion-ghost .motion-pop, .motion-ghost .motion-rise,
+        .motion-ghost .motion-fade, .motion-ghost .motion-glyph { animation: none !important; }
         /* Everything on the panel's clock (tokens/motion.js) carries this
            class; a reduced-motion user gets the two states and no travel.
            Keyframe animations (every popover's arrival, the loading pulse) are

@@ -159,7 +159,7 @@ function ownDisplay(): Promise<string> | undefined {
   return display;
 }
 
-async function launchElectron(userData: string, documents?: string) {
+async function launchElectron(userData: string, documents?: string, motion = false) {
   const displayEnv = await ownDisplay();
   const app = await _electron.launch({
     args: [
@@ -177,6 +177,10 @@ async function launchElectron(userData: string, documents?: string) {
     },
   });
   const page = await app.firstWindow();
+  // Reduced motion, so a closing surface leaves no fading copy behind and a
+  // timed check never races an animation; `motion.spec.ts` turns it back on
+  // explicitly, since the machine's own setting could be either.
+  await page.emulateMedia({ reducedMotion: motion ? "no-preference" : "reduce" });
   const pageErrors: string[] = [];
   page.on("pageerror", (e) => pageErrors.push(`pageerror: ${e.message}`));
   page.on("console", (m) => {
@@ -208,6 +212,7 @@ export async function launchApp(
     createVault = true,
     firstRun = false,
     defaultFolderExists = false,
+    motion = false,
   }: {
     prepare?: (vault: Vault) => void;
     /** Where the vault sits under the temp root; a dot-segment makes a hidden parent. */
@@ -222,6 +227,8 @@ export async function launchApp(
      */
     firstRun?: boolean;
     defaultFolderExists?: boolean;
+    /** Leave the app's own animation on (the suite runs with reduced motion). */
+    motion?: boolean;
   } = {},
 ): Promise<AppHandle> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-e2e-"));
@@ -250,7 +257,7 @@ export async function launchApp(
     handle.page = launched.page;
     handle.pageErrors = launched.pageErrors;
   };
-  attach(await launchElectron(userData, firstRun ? documents : undefined));
+  attach(await launchElectron(userData, firstRun ? documents : undefined, motion));
 
   handle.openNote = async (title) => {
     // Rows are buttons whose accessible name also carries the ··· menu label,
@@ -268,7 +275,7 @@ export async function launchApp(
   };
   handle.restart = async () => {
     await handle.quit();
-    attach(await launchElectron(userData, firstRun ? documents : undefined));
+    attach(await launchElectron(userData, firstRun ? documents : undefined, motion));
     running = true;
   };
   handle.close = async () => {

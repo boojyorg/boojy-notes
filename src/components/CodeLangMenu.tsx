@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -76,6 +77,7 @@ export default function CodeLangMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
+  useExitGhost(menuRef);
 
   // The label sits at the block's right edge, so the menu's right edge meets
   // it (`align: "end"`); positionMenu flips and clamps on overflow.
@@ -117,6 +119,7 @@ export default function CodeLangMenu({
         style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
       />
       <div
+        className="motion-pop motion-from-end"
         ref={menuRef}
         role="menu"
         aria-label="Code language"
@@ -142,7 +145,6 @@ export default function CodeLangMenu({
           padding: MENU_PAD,
           minWidth: 200,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {languages.map((item, index) => {

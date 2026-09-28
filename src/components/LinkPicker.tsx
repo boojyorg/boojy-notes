@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -154,6 +155,7 @@ export default function LinkPicker({
     top: number;
     left: number;
   } | null;
+  useExitGhost(menuRef);
   const zoom = cssZoom(document.documentElement);
 
   // Focus at once, not a frame later: Cmd+K then a letter typed in the
@@ -301,7 +303,7 @@ export default function LinkPicker({
       ref={menuRef}
       role="dialog"
       aria-label={editing ? "Edit link" : "Link"}
-      className="link-picker"
+      className="link-picker motion-pop"
       data-testid="link-picker"
       style={{
         position: "fixed",
@@ -314,7 +316,6 @@ export default function LinkPicker({
         border: `1px solid ${BG.divider}`,
         borderRadius: MENU_RADIUS,
         boxShadow: theme.modalShadow,
-        animation: "fadeIn 0.1s ease",
         fontFamily: "inherit",
       }}
     >

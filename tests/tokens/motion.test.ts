@@ -21,7 +21,19 @@ describe("motion tokens", () => {
     expect(MOTION_VARS["--motion-fast"]).toBe(`${MOTION_FAST_MS}ms`);
   });
 
-  it("reads reduced motion from the system, false when it is not asked for", () => {
-    expect(prefersReducedMotion()).toBe(false);
+  it("reads reduced motion from the system", () => {
+    const real = window.matchMedia;
+    const ask = (on: boolean) => {
+      window.matchMedia = ((query: string) => ({
+        matches: on && query.includes("prefers-reduced-motion"),
+      })) as unknown as typeof window.matchMedia;
+      return prefersReducedMotion();
+    };
+    try {
+      expect(ask(true)).toBe(true);
+      expect(ask(false)).toBe(false);
+    } finally {
+      window.matchMedia = real;
+    }
   });
 });

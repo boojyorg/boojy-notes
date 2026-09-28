@@ -5,6 +5,7 @@ import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { extractAllTags, tagKey, tagRows } from "../utils/tags";
 import { foldText } from "../utils/search";
+import { useExitGhost } from "../hooks/useExitGhost";
 
 /**
  * Tag autocomplete under the `#…` being typed.
@@ -52,6 +53,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
   }, [filter]);
 
   const shown = !!position && filtered.length > 0;
+  useExitGhost(menuRef, shown);
 
   // The rows on screen, the only ones the arrows walk.
   const rows = useMemo(() => filtered.slice(0, 10), [filtered]);
@@ -79,6 +81,7 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
 
   return (
     <div
+      className="motion-pop"
       ref={menuRef}
       role="listbox"
       aria-label="Tag suggestions"
@@ -95,7 +98,6 @@ export default function TagMenu({ position, filter, noteData, onSelect, onDismis
         maxHeight: 200,
         overflowY: "auto",
         minWidth: 180,
-        animation: "fadeIn 0.1s ease",
       }}
     >
       {rows.map((t, i) => (

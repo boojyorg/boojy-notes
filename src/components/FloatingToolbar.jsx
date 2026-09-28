@@ -202,6 +202,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   return (
     <div
       ref={barRef}
+      className="motion-rise"
       role="toolbar"
       aria-label="Text formatting"
       style={{
@@ -217,7 +218,6 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         padding: "4px 4px",
         boxShadow: theme.modalShadow,
         zIndex: Z.TOOLBAR,
-        animation: "fadeInToolbar 0.12s ease-out",
       }}
     >
       {(position.field ? FIELD_FORMATS_ONLY : FORMATS).map((format) => (

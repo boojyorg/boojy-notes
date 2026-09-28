@@ -14,6 +14,9 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
+    // A closing surface leaves a fading copy in <body> (useExitGhost); a timed
+    // check should never race one.
+    reducedMotion: "reduce",
   },
   webServer: {
     command: "ELECTRON_DISABLE=1 pnpm build && pnpm preview --port 4173",

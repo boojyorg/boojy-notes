@@ -3,6 +3,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
@@ -45,6 +46,7 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
+  useExitGhost(menuRef);
 
   // The menu hangs off the button's bottom edge, growing rightward into the
   // editor like the note-row menu; positionMenu flips and clamps on overflow.
@@ -99,6 +101,7 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }} />
       <div
+        className="motion-pop"
         ref={menuRef}
         role="menu"
         aria-label="Sort notes"
@@ -116,7 +119,6 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
           padding: MENU_PAD,
           minWidth: 200,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {items.map((item, index) => {

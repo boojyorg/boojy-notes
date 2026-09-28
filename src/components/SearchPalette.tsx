@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
@@ -102,6 +103,8 @@ export default function SearchPalette({
     };
 
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  useExitGhost(scrimRef);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useFocusTrap(panelRef as RefObject<HTMLElement>, true, "first");
@@ -279,6 +282,8 @@ export default function SearchPalette({
 
   return (
     <div
+      ref={scrimRef}
+      className="motion-fade"
       role="presentation"
       onClick={onClose}
       style={{
@@ -291,11 +296,11 @@ export default function SearchPalette({
         alignItems: "flex-start",
         // Top third: results grow downward and the field stays put.
         paddingTop: atScale(`${TOP_VH}vh`),
-        animation: "fadeIn 0.12s ease",
       }}
     >
       <div
         ref={panelRef}
+        className="motion-pop motion-from-top"
         role="dialog"
         aria-modal="true"
         aria-label="Search"

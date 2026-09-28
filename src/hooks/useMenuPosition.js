@@ -24,7 +24,17 @@ export function useMenuPosition(ref, open, anchor, opts = {}) {
       setPos(null);
       return;
     }
-    const { width, height } = ref.current.getBoundingClientRect();
+    // A menu arrives growing (.motion-pop's `scale`), and a rect measured a
+    // frame into that is 4% short: the flip and clamp would judge a menu
+    // smaller than it rests at, and stay wrong. An `!important` declaration
+    // outranks an animation, so the menu is measured at its resting scale.
+    const el = ref.current;
+    const scale = el.style.getPropertyValue("scale");
+    const priority = el.style.getPropertyPriority("scale");
+    el.style.setProperty("scale", "1", "important");
+    const { width, height } = el.getBoundingClientRect();
+    if (scale) el.style.setProperty("scale", scale, priority);
+    else el.style.removeProperty("scale");
     const next = positionMenu(anchor, { width, height }, { margin, gapY, align });
     setPos((prev) => (prev && prev.left === next.left && prev.top === next.top ? prev : next));
   }, [

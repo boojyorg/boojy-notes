@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 
@@ -22,6 +23,8 @@ import { Z } from "../constants/zIndex";
 export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel, onAlt }) {
   const { theme } = useTheme();
   const dialogRef = useRef(null);
+  const scrimRef = useRef(null);
+  useExitGhost(scrimRef, !!confirm);
   const cancelRef = useRef(null);
   const confirmRef = useRef(null);
   const danger = confirm?.danger;
@@ -54,6 +57,8 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
 
   return (
     <div
+      ref={scrimRef}
+      className="motion-fade"
       role="presentation"
       style={{
         position: "fixed",
@@ -65,12 +70,12 @@ export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCance
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "fadeIn 0.15s ease",
       }}
       onClick={onCancel}
     >
       <div
         ref={dialogRef}
+        className="motion-pop motion-from-center"
         role="alertdialog"
         aria-modal="true"
         aria-label={confirm.title || "Confirm"}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { type ToastKind, toastPersists } from "../hooks/useToast";
 import { CloseIcon, ToastIcon } from "./Icons";
 
@@ -78,6 +79,8 @@ export default function Toast({
   // exactly there (focused without scrolling the note) when the field closes.
   const returnTo = useRef<{ el: HTMLElement | null; range: Range | null } | null>(null);
   const field = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useExitGhost(rootRef);
 
   useEffect(() => {
     if (!editing) return;
@@ -114,6 +117,8 @@ export default function Toast({
       }}
       // A receipt is news; anything waiting to be dismissed is worth
       // interrupting a screen reader for, and nothing else is.
+      ref={rootRef}
+      className="motion-rise"
       role={persists ? "alert" : "status"}
       aria-live={persists ? "assertive" : "polite"}
       data-toast-kind={kind}
@@ -139,11 +144,11 @@ export default function Toast({
         // receipt was a hairline outline on white (judged live 2026-09-19).
         boxShadow: theme.modalShadow,
         cursor: persists || nameable || action ? "default" : "pointer",
-        animation: "fadeIn 0.2s ease",
       }}
     >
       <span
         aria-hidden="true"
+        className="motion-glyph"
         style={{
           display: "flex",
           alignItems: "center",

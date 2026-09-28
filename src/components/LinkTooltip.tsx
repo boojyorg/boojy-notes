@@ -30,6 +30,7 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
   const ink = description.missing ? SEMANTIC.error : TEXT.primary;
   return (
     <div
+      className="motion-fade"
       role="tooltip"
       data-testid="link-tooltip"
       style={{
@@ -53,7 +54,6 @@ export default function LinkTooltip({ description, position }: LinkTooltipProps)
         whiteSpace: "nowrap",
         pointerEvents: "none",
         zIndex: Z.TOOLBAR,
-        animation: "fadeIn 0.1s ease-out",
       }}
     >
       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{description.label}</span>

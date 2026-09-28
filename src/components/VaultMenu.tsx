@@ -11,6 +11,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import type { VaultView } from "../utils/otherFiles";
@@ -147,6 +148,7 @@ export default function VaultMenu({
   // A keyboard-opened menu lets the active row take focus's place; a pointer-
   // opened one parks focus on the container so no row paints a ring.
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
+  useExitGhost(menuRef);
 
   const choose = useCallback((i: number) => rows[i]?.action(), [rows]);
   const menuKeys = useMenuKeys({
@@ -173,6 +175,7 @@ export default function VaultMenu({
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }} />
       <div
+        className="motion-pop"
         ref={menuRef}
         role="menu"
         aria-label="Storage location"
@@ -191,7 +194,6 @@ export default function VaultMenu({
           minWidth: 220,
           maxWidth: 320,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {rows.map((row, index) => {
