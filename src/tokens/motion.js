@@ -37,3 +37,47 @@ export const panelTransition = (...props) =>
  * state the user has to reason about; hovering the row takes it off at once.
  */
 export const NEW_ROW_MS = 2400;
+
+/**
+ * The small clock, for everything that is not the panel: a popover, a
+ * tooltip, a dialog, a toast, a press. Apple-Notes quick with a soft landing,
+ * never a spring. Nothing here is over 160ms; past ~200 a small thing reads
+ * as waiting (the panel earned its 280 by being big).
+ *
+ * Leaving is quicker than arriving: an arrival is watched, a departure is
+ * only confirmed, and it is what makes macOS menus feel answered rather than
+ * animated.
+ *
+ * The values reach CSS as variables on `:root` (`MOTION_VARS`, written by
+ * GlobalStyles) so `?tweak` can move them live; a component reads the
+ * variable, never these numbers, unless it needs a timer.
+ */
+export const MOTION_FAST_MS = 100;
+export const MOTION_ENTER_MS = 140;
+export const MOTION_EXIT_MS = 90;
+
+/** Arriving decelerates into place; it is the panel's own curve. */
+export const EASE_ENTER = PANEL_EASE;
+/** Leaving accelerates away. */
+export const EASE_EXIT = "cubic-bezier(0.4, 0, 1, 1)";
+
+/** How far a control dips under a press (a button, a tick). */
+export const PRESS_SCALE = 0.97;
+
+export const MOTION_VARS = {
+  "--motion-fast": `${MOTION_FAST_MS}ms`,
+  "--motion-enter": `${MOTION_ENTER_MS}ms`,
+  "--motion-exit": `${MOTION_EXIT_MS}ms`,
+  "--ease-enter": EASE_ENTER,
+  "--ease-exit": EASE_EXIT,
+  "--press-scale": String(PRESS_SCALE),
+};
+
+/**
+ * Whether the user has asked the system for less motion. Read where it is
+ * used, not at import: the setting can change while the app runs.
+ */
+export const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;

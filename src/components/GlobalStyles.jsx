@@ -1,6 +1,7 @@
 import { useTheme } from "../hooks/useTheme";
 import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
+import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
 import { bandFill } from "../utils/selectionBand";
 import { settingsStyles } from "./settings/SettingsPrimitives";
@@ -21,6 +22,9 @@ export default function GlobalStyles() {
           /* The focus ring is accent as ink, not the mark: the mark is 2:1 on
              Light's grounds and a ring has to show (3:1). */
           --boojy-focus-ring: ${theme.ACCENT.text};
+          ${Object.entries(MOTION_VARS)
+            .map(([name, value]) => `${name}: ${value};`)
+            .join("\n          ")}
         }
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -35,10 +39,16 @@ export default function GlobalStyles() {
           to { opacity: 1; transform: translateY(0); }
         }
         .sidebar-dragging *, .window-resizing * { transition: none !important; }
+        /* A surface on its way out (usePresence) takes no pointer: a click in
+           its last moments would act on something already closed. */
+        [data-motion="exit"] { pointer-events: none; }
         /* Everything on the panel's clock (tokens/motion.js) carries this
-           class; a reduced-motion user gets the two states and no travel. */
+           class; a reduced-motion user gets the two states and no travel.
+           Keyframe animations (every popover's arrival, the loading pulse) are
+           all travel or pulse, so none plays; a colour transition stays. */
         @media (prefers-reduced-motion: reduce) {
-          .panel-motion, .theme-fade { transition: none !important; animation: none !important; }
+          .panel-motion, .theme-fade { transition: none !important; }
+          *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
         body.block-dragging * { cursor: grabbing !important; user-select: none !important; }

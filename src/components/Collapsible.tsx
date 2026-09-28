@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { prefersReducedMotion } from "../tokens/motion";
 
 /** Duration of the folder expand/collapse slide. */
 export const FOLDER_ANIM_MS = 160;
@@ -22,9 +23,7 @@ export const FOLDER_ANIM_MS = 160;
  * good (seen 2026-09-16 in the real-Electron suite under load).
  */
 export default function Collapsible({ open, children }: { open: boolean; children: ReactNode }) {
-  const reduceMotion =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduceMotion = prefersReducedMotion();
   const [mounted, setMounted] = useState(open);
   const [grown, setGrown] = useState(open);
   const rafRef = useRef(0);
