@@ -101,6 +101,36 @@ test("a closed menu is gone at once and leaves an unreachable copy that removes 
   }
 });
 
+test("Settings leaves its scrim and its pane as copies, and is gone at once", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" }, { motion: true });
+  try {
+    await h.page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { __ghosts: string[] }).__ghosts = seen;
+      new MutationObserver((records) => {
+        for (const record of records)
+          for (const node of record.addedNodes) {
+            const el = node as HTMLElement;
+            if (el.classList?.contains("motion-ghost")) seen.push(el.className);
+          }
+      }).observe(document.body, { childList: true });
+    });
+    await h.page.getByTestId("wordmark-settings-button").click();
+    const settings = h.page.getByRole("dialog", { name: "Settings" });
+    await settings.waitFor();
+    await h.page.keyboard.press("Escape");
+    await expect(settings).toHaveCount(0);
+    await expect
+      .poll(() =>
+        h.page.evaluate(() => (window as unknown as { __ghosts: string[] }).__ghosts.length),
+      )
+      .toBe(2);
+    await expect(h.page.locator(".motion-ghost")).toHaveCount(0);
+  } finally {
+    await h.close();
+  }
+});
+
 test("reduced motion leaves no copy at all", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
