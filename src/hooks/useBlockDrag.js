@@ -46,6 +46,7 @@ export function useBlockDrag({
   setToolbarState,
   blockSelectionRef,
 }) {
+  const fadeTimer = useRef(null);
   const blockDrag = useRef({
     active: false,
     // The note the drag started in. The drop writes to this note, never to
@@ -297,6 +298,10 @@ export function useBlockDrag({
 
   const cleanupBlockDrag = () => {
     const bd = blockDrag.current;
+    // The fade's own timer calls this, and so does unmount: a timer left over
+    // from a drop would tidy up again after the page was gone.
+    clearTimeout(fadeTimer.current);
+    fadeTimer.current = null;
     if (bd.cloneEl?.parentNode) bd.cloneEl.parentNode.removeChild(bd.cloneEl);
     if (bd.markerEl?.parentNode) bd.markerEl.parentNode.removeChild(bd.markerEl);
     document.body.classList.remove("block-dragging");
@@ -342,7 +347,7 @@ export function useBlockDrag({
     bd.moveHandler = null;
     bd.upHandler = null;
     bd.active = false;
-    setTimeout(() => cleanupBlockDrag(), FADE_MS);
+    fadeTimer.current = setTimeout(() => cleanupBlockDrag(), FADE_MS);
   };
 
   const finalizeBlockDrag = () => {

@@ -1,4 +1,13 @@
 import "@testing-library/jest-dom/vitest";
+import { afterEach, beforeEach } from "vitest";
+
+// A closing surface leaves a fading copy in <body> for ~150ms (useExitGhost);
+// one test's must never answer the next test's queries.
+const sweepGhosts = () => {
+  for (const ghost of document.querySelectorAll(".motion-ghost")) ghost.remove();
+};
+beforeEach(sweepGhosts);
+afterEach(sweepGhosts);
 
 // structuredClone polyfill (some test envs lack it)
 if (typeof globalThis.structuredClone === "undefined") {
@@ -18,11 +27,13 @@ if (typeof globalThis.window !== "undefined") {
     flushBeforeCloseDone: () => {},
   };
 
-  // Mock matchMedia for theme detection
+  // Mock matchMedia for theme detection. Reduced motion is on: a closing
+  // surface leaves a fading copy in <body> (useExitGhost) that would otherwise
+  // answer the next test's queries. The ghost's own spec turns it off.
   globalThis.window.matchMedia =
     globalThis.window.matchMedia ||
     ((query) => ({
-      matches: false,
+      matches: query.includes("prefers-reduced-motion"),
       media: query,
       onchange: null,
       addListener: () => {},

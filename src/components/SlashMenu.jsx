@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { filterSlashCommands } from "../constants/data";
@@ -24,6 +25,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef(null);
   useFocusTrap(menuRef, !!slashMenu);
+  useExitGhost(menuRef, !!slashMenu);
 
   // Tier rule lives in filterSlashCommands so this list and the arrow-key list
   // in useKeyboardHandlers can never drift apart.
@@ -53,6 +55,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
         onMouseDown={() => setSlashMenu(null)}
       />
       <div
+        className="motion-pop"
         ref={menuRef}
         // A suggestion list under the caret, which keeps focus: a listbox of
         // options (a menuitem cannot be "selected"), the highlight announced
@@ -70,7 +73,6 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
           padding: MENU_PAD,
           minWidth: MENU_WIDTH,
           boxShadow: theme.modalShadow,
-          animation: "slideUp 0.12s ease",
         }}
       >
         {filtered.length === 0 ? (
@@ -105,7 +107,7 @@ export default function SlashMenu({ slashMenu, setSlashMenu, executeSlashCommand
                   gap: 10,
                   cursor: "pointer",
                   background: selected ? BG.hover : "transparent",
-                  transition: "background 0.12s",
+                  transition: "background var(--motion-fast)",
                 }}
               >
                 <div

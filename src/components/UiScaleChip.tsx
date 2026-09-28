@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useTheme } from "../hooks/useTheme";
 import { Z } from "../constants/zIndex";
 import { shortcutLabel } from "./Tooltip";
@@ -42,6 +43,8 @@ interface UiScaleChipProps {
 export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
   const { theme } = useTheme() as { theme: ChipTheme };
   const { BG, TEXT } = theme;
+  const chipRef = useRef<HTMLDivElement>(null);
+  useExitGhost(chipRef, !!hint);
 
   useEffect(() => {
     if (!hint) return;
@@ -53,6 +56,7 @@ export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
   const atDefault = hint.scale === 100;
   return (
     <div
+      ref={chipRef}
       style={{
         position: "fixed",
         bottom: 24,
@@ -65,6 +69,7 @@ export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
       }}
     >
       <span
+        className="motion-pop motion-from-center"
         role="status"
         aria-live="polite"
         data-testid="ui-scale-chip"
@@ -82,7 +87,6 @@ export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
           fontWeight: 500,
           lineHeight: "18px",
           whiteSpace: "nowrap",
-          animation: "fadeIn 0.1s ease-out",
         }}
       >
         <span>{`Interface size ${hint.scale}%`}</span>

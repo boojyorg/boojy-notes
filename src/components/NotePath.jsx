@@ -262,7 +262,7 @@ export default function NotePath({
     lineHeight: "inherit",
     cursor: "pointer",
     borderRadius: 4,
-    transition: "color 0.12s",
+    transition: "color var(--motion-fast)",
   });
   const lift = (e) => {
     e.currentTarget.style.color = TEXT.primary;

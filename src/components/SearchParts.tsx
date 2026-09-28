@@ -49,7 +49,7 @@ export function TagChips({ title, tags, limit, onPick, TEXT, ACCENT, children }:
               display: "flex",
               alignItems: "center",
               gap: 4,
-              transition: "background 0.12s",
+              transition: "background var(--motion-fast)",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = `${ACCENT.primary}30`;

@@ -120,6 +120,7 @@ export function Tooltip({
   return createPortal(
     <span
       ref={ref}
+      className="motion-fade"
       role="tooltip"
       aria-hidden="true"
       data-testid={testId}
@@ -149,7 +150,6 @@ export function Tooltip({
         whiteSpace: "nowrap",
         pointerEvents: "none",
         zIndex: Z.TOOLBAR,
-        animation: "fadeIn 0.1s ease-out",
       }}
     >
       {lines ? (

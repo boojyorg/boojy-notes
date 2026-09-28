@@ -68,7 +68,7 @@ export default function MissingAttachment({ src, image = false, onFind, onRemove
           border: `1px solid ${BG.divider}`,
           background: hovered && onFind ? BG.surface : BG.elevated,
           cursor: onFind ? "pointer" : "default",
-          transition: "background 0.15s",
+          transition: "background var(--motion-fast)",
           userSelect: "none",
           color: TEXT.muted,
         }}

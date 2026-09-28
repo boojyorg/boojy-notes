@@ -12,6 +12,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { Z } from "../constants/zIndex";
@@ -194,6 +195,7 @@ export default function PathTreeMenu({
   // Focus rests on the tree itself, which names the highlighted row through
   // aria-activedescendant; the scrolling dialog around it is the surface.
   useFocusTrap(treeRef as RefObject<HTMLElement>, true, "container");
+  useExitGhost(menuRef);
   const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length }) as {
     top: number;
     left: number;
@@ -521,7 +523,7 @@ export default function PathTreeMenu({
     fontWeight: 400,
     fontFamily: "inherit",
     textAlign: "left",
-    transition: "background 0.12s, color 0.12s",
+    transition: "background var(--motion-fast), color var(--motion-fast)",
   };
   const labelStyle: CSSProperties = {
     flex: "1 1 auto",
@@ -534,6 +536,7 @@ export default function PathTreeMenu({
   return (
     <>
       <div
+        className="motion-pop"
         ref={menuRef}
         role="dialog"
         aria-label={dialogName}
@@ -550,7 +553,6 @@ export default function PathTreeMenu({
           border: `1px solid ${BG.divider}`,
           borderRadius: MENU_RADIUS,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
           // The chrome row above is the window's drag region; the popup is not.
           ["WebkitAppRegion" as string]: "no-drag",
         }}

@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -105,6 +106,7 @@ export default function EditorContextMenu({
     top: number;
     left: number;
   } | null;
+  useExitGhost(menuRef);
   const zoom = cssZoom(document.documentElement);
 
   const items: Item[] = [];
@@ -214,7 +216,7 @@ export default function EditorContextMenu({
       />
       <div
         ref={menuRef}
-        className="editor-context-menu"
+        className="editor-context-menu motion-pop"
         role="menu"
         aria-label={link ? "Link options" : "Edit"}
         aria-activedescendant={activeIndex >= 0 ? `editor-menu-item-${activeIndex}` : undefined}
@@ -233,7 +235,6 @@ export default function EditorContextMenu({
           padding: MENU_PAD,
           minWidth: 200,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {items.map((item, i) => (
@@ -268,7 +269,7 @@ export default function EditorContextMenu({
                 fontSize: 12.5,
                 fontFamily: "inherit",
                 textAlign: "left",
-                transition: "background 0.12s",
+                transition: "background var(--motion-fast)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,

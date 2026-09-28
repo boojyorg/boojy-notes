@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import type { DeletedNote } from "../hooks/useRecentlyDeleted";
@@ -30,6 +31,7 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
   const { theme } = useTheme() as { theme: Theme };
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLDivElement>(null);
+  useExitGhost(ref);
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
   const [active, setActive] = useState(-1);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -113,6 +115,7 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
   return (
     <div
       ref={ref}
+      className="motion-pop motion-from-bottom"
       role="dialog"
       aria-label="Recently Deleted"
       tabIndex={-1}
@@ -133,7 +136,6 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
         borderRadius: MENU_RADIUS,
         padding: MENU_PAD,
         boxShadow: theme.modalShadow,
-        animation: "fadeIn 0.1s ease",
         visibility: pos ? "visible" : "hidden",
       }}
     >

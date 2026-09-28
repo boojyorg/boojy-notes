@@ -4,6 +4,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import {
   AlignCenterIcon,
   AlignEndIcon,
@@ -68,6 +69,7 @@ export default function TableContextMenu({
   const open = !!anchor && !!context;
 
   useFocusTrap(menuRef, open, "container");
+  useExitGhost(menuRef, open);
   const pos = useMenuPosition(menuRef, open, anchor, { gapY: 4 });
 
   const menuKeys = useMenuKeys({
@@ -181,7 +183,7 @@ export default function TableContextMenu({
       />
       <div
         ref={menuRef}
-        className="table-context-menu"
+        className="table-context-menu motion-pop"
         role="menu"
         aria-label={type === "row" ? "Row options" : "Column options"}
         aria-activedescendant={activeIndex >= 0 ? `table-ctx-item-${activeIndex}` : undefined}
@@ -198,7 +200,6 @@ export default function TableContextMenu({
           padding: MENU_PAD,
           minWidth: type === "row" ? 168 : 216,
           boxShadow: theme.modalShadow,
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {items.map((item, i) => (
@@ -222,7 +223,7 @@ export default function TableContextMenu({
               fontSize: 12.5,
               fontFamily: "inherit",
               textAlign: "left",
-              transition: "background 0.12s",
+              transition: "background var(--motion-fast)",
               display: "flex",
               alignItems: "center",
               gap: 8,

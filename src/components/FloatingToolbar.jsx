@@ -83,6 +83,7 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
   return (
     <button
       ref={ref}
+      className="press"
       aria-pressed={active}
       aria-label={format.label}
       data-testid={`format-${format.id}`}
@@ -118,7 +119,7 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         // The ink is not animated: a pressed glyph that fades into the accent
         // reads as the press taking a moment to land (2026-09-19). The fill is
         // hover's, and hover is what a ramp is for.
-        transition: "background 0.1s",
+        transition: "background var(--motion-fast)",
       }}
     >
       <FormatIcon name={format.id} />
@@ -202,6 +203,7 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
   return (
     <div
       ref={barRef}
+      className="motion-rise"
       role="toolbar"
       aria-label="Text formatting"
       style={{
@@ -217,7 +219,6 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         padding: "4px 4px",
         boxShadow: theme.modalShadow,
         zIndex: Z.TOOLBAR,
-        animation: "fadeInToolbar 0.12s ease-out",
       }}
     >
       {(position.field ? FIELD_FORMATS_ONLY : FORMATS).map((format) => (

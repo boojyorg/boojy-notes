@@ -1162,7 +1162,7 @@ export default function BoojyNotes() {
         // The sidebar and editor already use different surface tones, so a
         // permanent border would repeat the same separation signal.
         background: chromeBg,
-        transition: "background 0.15s",
+        transition: "background var(--motion-fast)",
         ...style,
       }}
       onMouseEnter={() => {

@@ -180,7 +180,7 @@ function CalloutTypePicker({ activeType, onSelect, anchorRect, onClose }) {
                 borderRadius: MENU_ROW_RADIUS,
                 cursor: "pointer",
                 background: isFocused ? BG.hover : "transparent",
-                transition: "background 0.1s",
+                transition: "background var(--motion-fast)",
               }}
             >
               <Icon size={15} color={theme.callouts[key].colour} strokeWidth={1.8} />
@@ -408,7 +408,7 @@ export default memo(function CalloutBlock({
         background: theme.callouts[calloutType].bg,
         borderRadius: 8,
         padding: "14px 18px",
-        transition: "background 0.15s, border-color 0.15s",
+        transition: "background var(--motion-fast), border-color var(--motion-fast)",
       }}
     >
       {/* Header row: icon + title */}
@@ -437,7 +437,7 @@ export default memo(function CalloutBlock({
             cursor: "pointer",
             padding: 0,
             flexShrink: 0,
-            transition: "background 0.15s",
+            transition: "background var(--motion-fast)",
           }}
           className="callout-icon-btn"
         >

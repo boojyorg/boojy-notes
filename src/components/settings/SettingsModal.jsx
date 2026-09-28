@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../../hooks/useTheme";
 import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
+import { useExitGhost } from "../../hooks/useExitGhost";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { spacing } from "../../tokens/spacing";
 import { atScale } from "../../utils/uiScale";
@@ -46,8 +47,13 @@ export default function SettingsModal({
   const { BG, TEXT, ACCENT } = theme;
 
   const modalRef = useRef(null);
+  // Scrim and pane are siblings, so each leaves its own copy (useExitGhost).
+  const scrimRef = useRef(null);
+  const centreRef = useRef(null);
 
   useFocusTrap(modalRef, settingsOpen, "container");
+  useExitGhost(scrimRef, settingsOpen);
+  useExitGhost(centreRef, settingsOpen);
 
   // Settings closes itself on Escape, as every other surface does; the app
   // shell's handler never needs to know it is open. On the document, so it
@@ -208,6 +214,8 @@ export default function SettingsModal({
     <>
       {/* Scrim: the palette's, no blur */}
       <div
+        ref={scrimRef}
+        className="motion-fade"
         onClick={() => setSettingsOpen(false)}
         style={{ position: "fixed", inset: 0, zIndex: Z.SETTINGS, background: SCRIM }}
       />
@@ -219,6 +227,8 @@ export default function SettingsModal({
           no pointer events, so a click beside the pane still reaches the scrim
           and closes Settings. */}
       <div
+        ref={centreRef}
+        className="motion-from-center"
         style={{
           position: "fixed",
           inset: 0,
@@ -231,6 +241,9 @@ export default function SettingsModal({
       >
         <div
           ref={modalRef}
+          // Grows in by `scale`, which is `none` at rest, so it never makes
+          // the pane a containing block for `fixed` children (a transform would).
+          className="motion-pop motion-from-center"
           role="dialog"
           aria-modal="true"
           aria-label="Settings"

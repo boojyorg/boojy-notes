@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useTheme } from "../hooks/useTheme";
@@ -62,6 +63,8 @@ export default function VersionHistoryList({
   const { theme } = useTheme() as { theme: Theme };
   const { BG, TEXT, ACCENT } = theme;
   const listRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useExitGhost(rootRef);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [nowChosen, setNowChosen] = useState(false);
@@ -193,7 +196,7 @@ export default function VersionHistoryList({
           position: "relative",
           cursor: "pointer",
           background: state.off ? BG.divider : ACCENT.primary,
-          transition: "background 0.15s",
+          transition: "background var(--motion-fast)",
         }}
       >
         <span
@@ -287,6 +290,8 @@ export default function VersionHistoryList({
 
   return (
     <div
+      ref={rootRef}
+      className="motion-pop motion-from-end"
       data-version-history
       style={{
         position: "fixed",
@@ -299,7 +304,6 @@ export default function VersionHistoryList({
         borderRadius: MENU_RADIUS,
         padding: MENU_PAD,
         boxShadow: theme.modalShadow,
-        animation: "fadeIn 0.1s ease",
         visibility: pos ? "visible" : "hidden",
       }}
     >

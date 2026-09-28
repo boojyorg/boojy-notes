@@ -34,7 +34,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 A quiet surface (`BG.elevated`, primary text) with **one coloured glyph that carries the
 meaning**; never an accent fill. `done` fades and is click-dismissable; `notice`, `warning`,
-`error` wait for their ×, because a timed save failure is one nobody saw. **Notices about one
+`error` wait for their ×: a timed save failure is one nobody saw. **Notices about one
 condition share a key and the newer replaces the older; a keyed notice ends when it stops being
 true** (`writeRecovered`). The stack is centred at the editor's foot, not the window's, so it
 never covers sidebar rows. `toasts.spec.ts`.
@@ -45,20 +45,20 @@ never covers sidebar rows. `toasts.spec.ts`.
   every `::-webkit-scrollbar-*` rule. They live only in `@supports not
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
-- The editor keeps `scrollbar-gutter: stable` (a pane that narrowed moved the centred path).
+- The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the centred path).
 - `.editor-scroll` stays a class: `CalloutBlock`, `TableContextMenu`, `FloatingToolbar` query it.
 
 ## Icons: Lucide only
 
 `src/components/Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
-(known exceptions in `FindBar`, `CodeBlock`, the task tick). Two sizes (16 list glyphs, 18
-navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection toolbar alone
-2.5). Don't flatten the tiers. Hit boxes are `CHROME_BTN`.
+(known exceptions in `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
+strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder): don't flatten the
+tiers. Hit boxes are `CHROME_BTN`.
 
 ## Window chrome
 
-- The window is created hidden and shown on `ready-to-show` (else an empty canvas while
-  loading). `first-paint.spec.ts` (CI only).
+- The window is created hidden and shown on `ready-to-show` (else an empty canvas).
+  `first-paint.spec.ts` (CI only).
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
@@ -94,30 +94,36 @@ navigation), two strokes (1.5 content, `ICON_STROKE_NAV` 2 chrome; the selection
 ## Settings, setup and UI scale
 
 - Settings is one pane on the palette's surface: Appearance (theme pills, Interface size),
-  Storage locations, Updates. Accent never marks the chosen pill. Switching never asks. The Updates button's label is its state.
+  Storage locations, Updates. Accent never marks the chosen pill. Switching never asks.
 - **Interface size is one segmented control; every press applies at once** — no timer in this
-  row (a debounce still moved and could overwrite newer values). The figure is an editable
+  row (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
   the one rule shared with `Cmd+±`.
 - **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
-  still while the app resizes behind it. Centred by a wrapper, never a transform (a transform
-  becomes the containing block for `fixed` children). A menu opened inside it portals to
-  `body` and takes keys in capture. The scale keys are the one shortcut that works over
-  Settings. `interface-size.spec.ts`.
+  still. Centred by a wrapper, never a transform (it would contain the
+  `fixed` children). A menu opened inside it portals to `body`, keys in capture; the scale keys
+  are the one shortcut that works over Settings. `interface-size.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
 - **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`;
-  judge chrome after Cmd+0. A scale shortcut always answers with `UiScaleChip`, even at the end
-  of the range.
+  judge chrome after Cmd+0. A scale shortcut always answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
   nothing is written until the first keystroke. `first-run.spec.ts`.
 
-## The sidebar toggle is one slide on one clock
+## Motion is two clocks
 
-`tokens/motion.js` `PANEL_MS` / `PANEL_EASE` / `panelTransition()`; everything on it carries
-`.panel-motion` (no travel under reduced motion). The column is its full `sidebarWidth`, never
-`flex: 1`, and slides under the window edge; `transform: none` at rest. Don't add a second
-duration. `sidebar-motion.spec.ts`.
+`tokens/motion.js`: the panel's clock moves the sidebar (`.panel-motion`); the small one
+(`MOTION_*`) moves popovers, dialogs, toasts, ticks and presses; never a spring. No third clock.
+
+- **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
+  timer-removed), never by staying mounted, which would keep its focus trap and keys. Its root
+  is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
+- **A press shades the button and dips an icon-only one's glyph, never scales the button**: it
+  would pull its edge from under the pointer and lose an edge press. `.press` opts a control in.
+- Reduced motion plays no keyframe and makes no copy; the suites run with it, `motion.spec.ts`
+  without.
+- The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;
+  `transform: none` at rest. `sidebar-motion.spec.ts`.
 
 ## The note's path is centred in the chrome row
 
@@ -140,7 +146,7 @@ duration. `sidebar-motion.spec.ts`.
   (`crumbScope`); `…` shows the root. A root note carries a folder glyph so the path always has
   a clickable location. Click only, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no
-  backdrop: the first press on a top-row button read as dead). 280px wide whatever is open.
+  backdrop: a first press on a top-row button read as dead). Fixed width.
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
 - **The same surface is the Move to… picker** (`pick`): folders only, root first, current
@@ -157,8 +163,7 @@ duration. `sidebar-motion.spec.ts`.
   on hover; never more than three glyphs). **Only the tree scrolls**; the rows above it share its
   drop zone (`data-drop-zone`).
 - **The row is named after the storage location's folder** (default `Notes`; code: vault).
-  It and ⌘O open `VaultMenu`, a switcher only; Settings adds, uses, reveals, removes (added
-  rarely). A row: name and place (the Finder control), teal `Active` or hover `Use`, hover ×,
+  It and ⌘O open `VaultMenu`, a switcher only; Settings adds, uses, reveals, removes. A row: name and place (the Finder control), teal `Active` or hover `Use`, hover ×,
   which asks and moves off the open one first. `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
   its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
@@ -183,8 +188,8 @@ duration. `sidebar-motion.spec.ts`.
 - **The tree is one Tab stop** (roving tabindex: last focused row, else the open note).
   `visibleTreeRows` / `treeMove` (`utils/treeNav.ts`) are the order and the arrows; each row
   carries `aria-level`/`setsize`/`posinset`. Enter opens, F2 renames, ⌘⌫ deletes, Shift+F10 the
-  row's menu, Escape back to the note (not while a menu or dialog is open); ⌃⌘S lands on the
-  open note's row. Focus returns to the row after a rename, to its neighbour after a delete.
+  row's menu, Escape back to the note (not under a menu or dialog); ⌃⌘S lands on the open
+  row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
@@ -211,8 +216,8 @@ duration. `sidebar-motion.spec.ts`.
 - **The touch layout is switched off** (`TOUCH_LAYOUT`); every device gets the desktop layout.
 - The sidebar is always in the layout, never an overlay; don't bring the overlay back.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
-  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems** (same characters
-  at any size), centred under the name; margins go first, then gutters.
+  is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
+  name; margins go first, then gutters.
 
 ## Testing notes
 

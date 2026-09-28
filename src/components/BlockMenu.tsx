@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
@@ -102,6 +103,10 @@ export default function BlockMenu({
     left: number;
   } | null;
   const zoom = cssZoom(document.documentElement);
+  // The submenu is its own surface: it can close on its own, and it leaves
+  // with the menu that held it.
+  useExitGhost(menuRef);
+  useExitGhost(subRef, subOpen);
 
   const canTurn = types.some((t) => TURNABLE.has(t));
   const same = types.every((t) => t === types[0]) ? types[0] : null;
@@ -215,7 +220,6 @@ export default function BlockMenu({
     borderRadius: MENU_RADIUS,
     padding: MENU_PAD,
     boxShadow: theme.modalShadow,
-    animation: "fadeIn 0.1s ease",
     outline: "none",
   };
   const rowStyle = (on: boolean, danger?: boolean) => ({
@@ -229,7 +233,7 @@ export default function BlockMenu({
     fontSize: 12.5,
     fontFamily: "inherit",
     textAlign: "left" as const,
-    transition: "background 0.12s",
+    transition: "background var(--motion-fast)",
     display: "flex",
     alignItems: "center",
     gap: 8,
@@ -256,7 +260,7 @@ export default function BlockMenu({
       />
       <div
         ref={menuRef}
-        className="block-menu"
+        className="block-menu motion-pop motion-from-end"
         // Part of the selection: a press in it keeps the blocks selected.
         data-selection-surface
         role="menu"
@@ -314,7 +318,7 @@ export default function BlockMenu({
       {subOpen && (
         <div
           ref={subRef}
-          className="block-menu-kinds"
+          className="block-menu-kinds motion-pop"
           data-selection-surface
           role="menu"
           aria-label="Turn into"

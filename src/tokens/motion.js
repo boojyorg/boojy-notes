@@ -37,3 +37,69 @@ export const panelTransition = (...props) =>
  * state the user has to reason about; hovering the row takes it off at once.
  */
 export const NEW_ROW_MS = 2400;
+
+/**
+ * The small clock, for everything that is not the panel: a popover, a
+ * tooltip, a dialog, a toast, a press. Apple-Notes quick with a soft landing,
+ * never a spring. Nothing here is over ~200ms; past that a small thing reads
+ * as waiting (the panel earned its 280 by being big). 140/90 with 0.96 was
+ * too subtle to see and 180/110 with 0.93 too much; Tyr chose between (2026-09-28).
+ *
+ * Leaving is quicker than arriving: an arrival is watched, a departure is
+ * only confirmed, and it is what makes macOS menus feel answered rather than
+ * animated.
+ *
+ * The values reach CSS as variables on `:root` (`MOTION_VARS`, written by
+ * GlobalStyles) so `?tweak` can move them live; a component reads the
+ * variable, never these numbers, unless it needs a timer.
+ */
+export const MOTION_FAST_MS = 100;
+export const MOTION_ENTER_MS = 160;
+export const MOTION_EXIT_MS = 100;
+
+/** Arriving decelerates into place; it is the panel's own curve. */
+export const EASE_ENTER = PANEL_EASE;
+/** Leaving accelerates away. */
+export const EASE_EXIT = "cubic-bezier(0.4, 0, 1, 1)";
+
+/** How far a pressed control's glyph dips. Never the control itself: scaling a
+ *  button pulls its edges in from under the pointer and loses an edge press. */
+export const PRESS_ICON_SCALE = 0.93;
+
+/** Where a popover starts growing from, and how far a toast or the toolbar
+ *  starts below where it rests. */
+export const POP_SCALE_FROM = 0.95;
+export const RISE_PX = 8;
+
+export const MOTION_VARS = {
+  "--motion-fast": `${MOTION_FAST_MS}ms`,
+  "--motion-enter": `${MOTION_ENTER_MS}ms`,
+  "--motion-exit": `${MOTION_EXIT_MS}ms`,
+  "--ease-enter": EASE_ENTER,
+  "--ease-exit": EASE_EXIT,
+  "--press-icon-scale": String(PRESS_ICON_SCALE),
+  "--pop-from": String(POP_SCALE_FROM),
+  "--rise": `${RISE_PX}px`,
+};
+
+/**
+ * The exit duration as the page has it now, in ms: what a leaving copy's
+ * removal timer waits for, so `?tweak` (which moves the variable, and can
+ * slow it to be watched) and the timer never disagree.
+ */
+export const currentExitMs = () => {
+  if (typeof document === "undefined") return MOTION_EXIT_MS;
+  const ms = Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--motion-exit"),
+  );
+  return Number.isFinite(ms) && ms > 0 ? ms : MOTION_EXIT_MS;
+};
+
+/**
+ * Whether the user has asked the system for less motion. Read where it is
+ * used, not at import: the setting can change while the app runs.
+ */
+export const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;

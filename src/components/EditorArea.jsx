@@ -974,7 +974,7 @@ const EditorArea = memo(
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                transition: "background 0.12s, color 0.12s",
+                transition: "background var(--motion-fast), color var(--motion-fast)",
               }
             : {
                 // In the path band: the name's box is its text, and the hover
@@ -995,7 +995,7 @@ const EditorArea = memo(
                 // min-width is the stylesheet's: 0, or the placeholder's
                 // width while the field is empty (GlobalStyles, [data-title]).
                 flex: "1 1 auto",
-                transition: "background 0.12s, color 0.12s",
+                transition: "background var(--motion-fast), color var(--motion-fast)",
               }
         }
       />

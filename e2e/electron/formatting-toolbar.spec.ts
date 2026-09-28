@@ -165,7 +165,8 @@ test("pressing Italic formats the selection and writes it to disk", async () => 
   await expect(bar).toBeVisible({ timeout: 2_000 });
   // The toolbar acts on mouse-down so the selection survives the press.
   const barEl = await bar.elementHandle();
-  // Let the 120ms fade-in (a 4px lift) settle before taking the position.
+  // Let the toolbar's lift-in settle before taking the position (reduced motion
+  // makes it instant here; the wait costs nothing).
   await sleep(250);
   const before = await bar.boundingBox();
   await bar.getByRole("button", { name: "Italic" }).dispatchEvent("mousedown");

@@ -29,6 +29,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { useMenuPosition } from "../hooks/useMenuPosition";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
@@ -95,6 +96,7 @@ const ContextMenu = memo(function ContextMenu({
   // on its first item (Chromium treats script focus as focus-visible).
   // Keyboard Tab/arrows still move real focus and indicate normally.
   useFocusTrap(menuContainerRef, !!ctxMenu, "container");
+  useExitGhost(menuContainerRef, !!ctxMenu);
 
   // A right-click, or the header's ···, is a point anchor: the menu opens at
   // it where possible and flips/clamps into the viewport otherwise. A row's
@@ -390,6 +392,7 @@ const ContextMenu = memo(function ContextMenu({
         style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
       />
       <div
+        className="motion-pop"
         ref={menuContainerRef}
         role="menu"
         aria-label={isHeader ? (ctxMenu.id ? "Note actions" : "App options") : "Context menu"}
@@ -409,7 +412,6 @@ const ContextMenu = memo(function ContextMenu({
           padding: MENU_PAD,
           minWidth: 160,
           boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          animation: "fadeIn 0.1s ease",
         }}
       >
         {items.map((item, index) => (
@@ -442,7 +444,7 @@ const ContextMenu = memo(function ContextMenu({
                 fontSize: 12.5,
                 fontFamily: "inherit",
                 textAlign: "left",
-                transition: "background 0.12s",
+                transition: "background var(--motion-fast)",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",

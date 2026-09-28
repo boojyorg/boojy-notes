@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
+import { useExitGhost } from "../hooks/useExitGhost";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Z } from "../constants/zIndex";
 import { atScale } from "../utils/uiScale";
@@ -33,6 +34,7 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
   // Focus rests on the view itself, as a menu's does, so a view opened with the
   // pointer shows no ring on its close button; Tab still reaches it.
   useFocusTrap(containerRef as RefObject<HTMLElement>, !!src, "container");
+  useExitGhost(containerRef, !!src);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -56,6 +58,7 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
   return (
     <div
       ref={containerRef}
+      className="motion-fade"
       role="dialog"
       aria-modal="true"
       aria-label={name ? `Image: ${name}` : "Image"}
@@ -70,15 +73,8 @@ export default function ImageLightbox({ src, alt, name, onClose }: ImageLightbox
         flexDirection: "column",
         alignItems: "center",
         zIndex: Z.LIGHTBOX,
-        animation: "lightbox-fade-in 0.15s ease",
       }}
     >
-      <style>{`
-        @keyframes lightbox-fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
       <div
         style={{
           position: "relative",
