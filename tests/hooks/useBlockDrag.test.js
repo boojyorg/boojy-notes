@@ -275,6 +275,24 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     expect(document.body.classList.contains("block-dragging")).toBe(false);
   });
 
+  it("unmounting straight after a drop leaves no fade timer behind to fire into a torn-down page", () => {
+    vi.useFakeTimers();
+    const { deps, blockRefs, noteDataRef } = setup({});
+    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    const { result, unmount } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    act(() => {
+      move(10, 400);
+      up();
+    });
+    // The ghost is fading: its tidy-up is a timer.
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    // Unmount tidied up itself; a timer left over would call the tidy-up again
+    // after the page (or the test's jsdom) was gone: `document is not defined`.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("dropping back in the same place writes nothing and pushes no history", () => {
     vi.useFakeTimers();
     const commitNoteData = vi.fn();
