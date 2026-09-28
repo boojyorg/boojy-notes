@@ -118,8 +118,8 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **A surface leaves by unmounting at once and leaving a copy** (`useExitGhost`: inert,
   timer-removed), never by staying mounted, which would keep its focus trap and keys. Its root
   is `position: fixed`. A menu is measured at its resting `scale` (`useMenuPosition`).
-- **A press dips the glyph and shades the button, never scales it**: a scaled button pulls its
-  edge in from under the pointer and loses an edge press. `.press` opts a control in.
+- **A press shades the button and dips an icon-only one's glyph, never scales the button**: it
+  would pull its edge from under the pointer and lose an edge press. `.press` opts a control in.
 - Reduced motion plays no keyframe and makes no copy; the suites run with it, `motion.spec.ts`
   without.
 - The sidebar is its full `sidebarWidth`, never `flex: 1`, sliding under the window edge;

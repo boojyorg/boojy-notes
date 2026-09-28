@@ -64,7 +64,7 @@ export const EASE_EXIT = "cubic-bezier(0.4, 0, 1, 1)";
 
 /** How far a pressed control's glyph dips. Never the control itself: scaling a
  *  button pulls its edges in from under the pointer and loses an edge press. */
-export const PRESS_ICON_SCALE = 0.88;
+export const PRESS_ICON_SCALE = 0.93;
 
 /** Where a popover starts growing from, and how far a toast or the toolbar
  *  starts below where it rests. */

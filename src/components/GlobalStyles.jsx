@@ -77,8 +77,7 @@ export default function GlobalStyles() {
            all travel or pulse, so none plays; a colour transition stays. */
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
-          .checkbox-tick, .press svg, .sidebar-action-row svg, .sidebar-section-action svg,
-          .settings-button svg { transition: none !important; }
+          .checkbox-tick, .press svg, .sidebar-section-action svg { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -320,15 +319,21 @@ export default function GlobalStyles() {
             transform var(--motion-fast) var(--ease-enter);
         }
         .checkbox-hit:active .checkbox-box { transform: scale(0.85); }
+        /* Unticking is not the draw run backwards: the tick and the fill fade
+           out together, ease-out (a leaving curve starts slow, and on 100ms
+           that read as a lag and then a snap). The stroke is put back only
+           once it has faded, unseen. */
+        .checkbox-hit[aria-checked="false"] .checkbox-box {
+          transition-duration: calc(var(--motion-fast) * 1.2);
+        }
         /* The tick is a stroke that draws itself: it waits for the box to
-           fill, then runs in over the arrival clock; unticking pulls it back
-           quicker, with no wait. */
+           fill, then runs in over the arrival clock. */
         .checkbox-tick {
           stroke-dasharray: 1;
           stroke-dashoffset: 1;
           opacity: 0;
-          transition: stroke-dashoffset var(--motion-fast) var(--ease-exit),
-            opacity var(--motion-fast) var(--ease-exit);
+          transition: opacity calc(var(--motion-fast) * 1.2) var(--ease-enter),
+            stroke-dashoffset 0s calc(var(--motion-fast) * 1.2);
         }
         .checkbox-tick[data-checked="true"] {
           stroke-dashoffset: 0;
@@ -341,18 +346,19 @@ export default function GlobalStyles() {
            button itself pulls its edges in from under the pointer, as above,
            and a press near an edge would release onto its neighbour. So the
            glyph dips, and the whole button is a shade deeper (instant: a press
-           is answered before it is finished). .press is the opt-in for a
-           control that has none of its own. */
+           is answered before it is finished). Only an icon-only control dips:
+           beside a label, an icon shrinking alone reads as two things
+           moving, so a labelled row (New note) only shades. .press is the
+           opt-in for a control that has none of its own. */
         .press:active:not(:disabled):not([aria-disabled="true"]),
         .settings-button:active:not([aria-disabled="true"]),
         .theme-pill:active,
         .sidebar-action-row:active,
         .sidebar-section-action:active { filter: brightness(0.93); }
-        .press svg, .settings-button svg, .sidebar-action-row svg, .sidebar-section-action svg {
+        .press svg, .sidebar-section-action svg {
           transition: scale var(--motion-fast) var(--ease-enter);
         }
         .press:active:not(:disabled):not([aria-disabled="true"]) svg,
-        .sidebar-action-row:active svg,
         .sidebar-section-action:active svg { scale: var(--press-icon-scale); }
         [data-block-id] code {
           background: ${theme.inlineCode.bg};
