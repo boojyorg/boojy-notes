@@ -76,6 +76,17 @@ function pressAndLift(result, blockId, from = { x: 10, y: 110 }) {
 }
 
 const marker = () => document.querySelector(".block-drop-marker");
+
+/** Run `fn` with the system's reduced motion off (the suite's setup has it on). */
+function withMotion(fn) {
+  const real = window.matchMedia;
+  window.matchMedia = (query) => ({ ...real(query), matches: false });
+  try {
+    return fn();
+  } finally {
+    window.matchMedia = real;
+  }
+}
 const markerCentre = () => {
   const m = marker();
   return parseFloat(m.style.top) + m.offsetHeight / 2;
@@ -275,17 +286,67 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     expect(document.body.classList.contains("block-dragging")).toBe(false);
   });
 
-  it("unmounting straight after a drop leaves no fade timer behind to fire into a torn-down page", () => {
+  it("a drop that moves blocks removes the copy at once: the block itself now stands there", () => {
+    const { deps, blockRefs, noteDataRef } = setup({});
+    mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    withMotion(() => {
+      act(() => {
+        move(10, 400);
+        up();
+      });
+    });
+    expect(deps.commitNoteData).toHaveBeenCalledTimes(1);
+    expect(result.current.blockDrag.current.cloneEl).toBe(null);
+    expect(document.body.querySelector('[style*="position: fixed"]')).toBe(null);
+  });
+
+  it("a drag that moves nothing sends its copy home: back over its block, fading, then gone", () => {
+    vi.useFakeTimers();
+    document.body.currentCSSZoom = 2;
+    try {
+      const { deps, blockRefs, noteDataRef } = setup({});
+      mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
+      const { result } = renderHook(() => useBlockDrag(deps));
+      pressAndLift(result, "b1");
+      act(() => {
+        move(10, 400);
+      });
+      const clone = result.current.blockDrag.current.cloneEl;
+      withMotion(() => {
+        act(() => {
+          result.current.cancelBlockDrag();
+        });
+      });
+      expect(deps.commitNoteData).not.toHaveBeenCalled();
+      expect(clone.style.top).toBe("50px"); // b1's top, 100 ÷ 2
+      expect(clone.style.opacity).toBe("0");
+      expect(clone.style.transition).toContain("top");
+      expect(clone.isConnected).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(clone.isConnected).toBe(false);
+      expect(marker()).toBe(null);
+    } finally {
+      delete document.body.currentCSSZoom;
+    }
+  });
+
+  it("unmounting while a copy glides home leaves no timer behind to fire into a torn-down page", () => {
     vi.useFakeTimers();
     const { deps, blockRefs, noteDataRef } = setup({});
     mountBlocks(blockRefs, noteDataRef.current.n1.content.blocks);
     const { result, unmount } = renderHook(() => useBlockDrag(deps));
     pressAndLift(result, "b1");
-    act(() => {
-      move(10, 400);
-      up();
+    withMotion(() => {
+      act(() => {
+        move(10, 400);
+        result.current.cancelBlockDrag();
+      });
     });
-    // The ghost is fading: its tidy-up is a timer.
+    // The copy is gliding: its tidy-up is a timer.
     expect(vi.getTimerCount()).toBeGreaterThan(0);
     unmount();
     // Unmount tidied up itself; a timer left over would call the tidy-up again
@@ -402,6 +463,23 @@ describe("useBlockDrag (gutter handle, commit on drop)", () => {
     expect(bd.active).toBe(true);
     expect(bd.noteId).toBe("n2");
     expect(bd.blockIds).toEqual(["x1"]);
+  });
+
+  it("a new boundary glides the marker there; the same one re-placed by auto-scroll follows at once", () => {
+    const { deps, blockRefs } = setup({
+      blocks: [makeBlock("b1"), makeBlock("b2"), makeBlock("b3")],
+    });
+    mountBlocks(blockRefs, deps.noteDataRef.current.n1.content.blocks);
+    const { result } = renderHook(() => useBlockDrag(deps));
+    pressAndLift(result, "b1");
+    act(() => {
+      move(10, 200); // a new boundary: after b2
+    });
+    expect(marker().style.transition).toBe("");
+    act(() => {
+      move(10, 201); // the same boundary
+    });
+    expect(marker().style.transition).toBe("none");
   });
 
   it("under the UI scale's zoom, the ghost and marker are placed in CSS pixels, not viewport pixels", () => {

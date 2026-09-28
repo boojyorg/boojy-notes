@@ -78,6 +78,7 @@ export default function GlobalStyles() {
         @media (prefers-reduced-motion: reduce) {
           .panel-motion, .theme-fade { transition: none !important; }
           .checkbox-tick, .press svg, .sidebar-section-action svg { transition: none !important; }
+          .block-drop-marker { transition: none !important; }
           *, *::before, *::after { animation: none !important; }
         }
         body.block-dragging { cursor: grabbing !important; user-select: none !important; }
@@ -112,6 +113,7 @@ export default function GlobalStyles() {
           pointer-events: none;
           z-index: 999;
           background: color-mix(in srgb, ${theme.ACCENT.primary} 40%, transparent);
+          transition: top var(--motion-fast) var(--ease-enter);
         }
         * { box-sizing: border-box; }
         /* Firefox only. Chromium 121+ IGNORES every ::-webkit-scrollbar rule on any

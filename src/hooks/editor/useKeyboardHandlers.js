@@ -62,6 +62,7 @@ import {
 import { SLASH_COMMANDS, filterSlashCommands } from "../../constants/data";
 import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/blockTriggers";
 import { reorderFloor } from "../../utils/blockOrder";
+import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
 
 /**
@@ -195,7 +196,10 @@ export function useKeyboardHandlers({
       // step. The top is the reorder floor: frontmatter is the file's head, and
       // the first block under it is the first block there is to move.
       if (target < reorderFloor(blocks) || target >= blocks.length) return;
+      // The two blocks trade places by gliding, as a dropped block settles.
+      const places = measureBlockPlaces(editorRef.current);
       moveBlock(noteId, blockIndex, target);
+      settleBlocks(editorRef.current, places);
       return;
     }
 

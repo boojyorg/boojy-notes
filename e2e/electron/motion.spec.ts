@@ -142,3 +142,102 @@ test("reduced motion leaves no copy at all", async () => {
     await h.close();
   }
 });
+
+/**
+ * A reorder settles: each block that changed place is drawn back where it was
+ * and glides to where it now is. The frame that starts the glide must already
+ * hold the new order (else nothing moves, and the old order is painted once
+ * more), so what is checked is each animation's start, recorded as it is made:
+ * the distance the block travels, and the note's order at that moment.
+ */
+type Settle = { text: string; translate: string; opacity: number; order: string[] };
+
+async function recordSettles(page: import("@playwright/test").Page) {
+  await page.evaluate(() => {
+    const seen: Settle[] = [];
+    (window as unknown as { __settles: Settle[] }).__settles = seen;
+    const real = Element.prototype.animate;
+    Element.prototype.animate = function (frames, options) {
+      const first = (frames as Keyframe[])[0] ?? {};
+      if (this instanceof HTMLElement && this.dataset.blockId && first.translate) {
+        seen.push({
+          text: (this.textContent ?? "").trim(),
+          translate: String(first.translate),
+          opacity: Number(first.opacity),
+          order: [...document.querySelectorAll("[data-editor] > [data-block-id]")]
+            .map((b) => (b.textContent ?? "").trim())
+            .filter(Boolean),
+        });
+      }
+      return real.call(this, frames, options);
+    };
+  });
+}
+
+const settles = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => (window as unknown as { __settles: Settle[] }).__settles);
+
+/** How far a settle starts from its place, in px (negative: from above). */
+const travel = (s: Settle) => Number.parseFloat(s.translate.split(" ")[1]);
+
+test("Cmd+Shift+Down trades two blocks by gliding, from the new order", async () => {
+  const h = await launchApp({ "Alpha.md": "One\n\nTwo\n\nThree\n" }, { motion: true });
+  try {
+    await h.openNote("Alpha");
+    await recordSettles(h.page);
+    await h.page.locator('[data-block-type="p"]', { hasText: "One" }).click();
+    await h.page.keyboard.press("ControlOrMeta+Shift+ArrowDown");
+    await expect.poll(() => settles(h.page).then((s) => s.length)).toBe(2);
+    const [a, b] = await settles(h.page);
+    const byText = Object.fromEntries([a, b].map((s) => [s.text, s]));
+    expect(a.order).toEqual(["Two", "One", "Three"]);
+    // One went down, so it starts above its new place; Two the reverse.
+    expect(travel(byText.One)).toBeLessThan(0);
+    expect(travel(byText.Two)).toBeGreaterThan(0);
+    // Nothing is left on the blocks once they have settled.
+    await expect.poll(() => h.page.evaluate(() => document.getAnimations().length)).toBe(0);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a dropped block settles from where its copy was, as translucent, and the copy is gone", async () => {
+  const h = await launchApp({ "Alpha.md": "One\n\nTwo\n\nThree\n" }, { motion: true });
+  try {
+    await h.openNote("Alpha");
+    await recordSettles(h.page);
+    const page = h.page;
+    const one = page.locator('[data-block-type="p"]', { hasText: "One" });
+    const three = page.locator('[data-block-type="p"]', { hasText: "Three" });
+    const oneBox = await one.boundingBox();
+    const threeBox = await three.boundingBox();
+    if (!oneBox || !threeBox) throw new Error("blocks not visible");
+    const id = await one.getAttribute("data-block-id");
+    await page.mouse.move(oneBox.x + 40, oneBox.y + oneBox.height / 2);
+    const grip = page.locator(`[data-testid="block-drag-handle"][data-target-block="${id}"]`);
+    await grip.waitFor({ timeout: 2_000 });
+    const g = await grip.boundingBox();
+    if (!g) throw new Error("grip not visible");
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2 + 8, { steps: 2 });
+    await page.waitForFunction(() => document.body.classList.contains("block-dragging"));
+    // Past Three's middle, and a little further so the copy is below the slot.
+    await page.mouse.move(g.x + g.width / 2, threeBox.y + threeBox.height + 12, { steps: 6 });
+    await page.mouse.up();
+
+    await expect.poll(() => settles(page).then((s) => s.length)).toBe(3);
+    const all = await settles(page);
+    const dropped = all.find((s) => s.text === "One");
+    expect(dropped?.order).toEqual(["Two", "Three", "One"]);
+    expect(dropped?.opacity).toBeCloseTo(0.35);
+    // The neighbours it passed move up into its old place.
+    for (const s of all.filter((s) => s.text !== "One")) expect(travel(s)).toBeGreaterThan(0);
+    await expect(page.locator("body > div[style*='position: fixed'] [data-block-id]")).toHaveCount(
+      0,
+    );
+    await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+  } finally {
+    await h.close();
+  }
+});

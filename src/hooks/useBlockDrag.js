@@ -1,14 +1,14 @@
 import { useRef, useEffect } from "react";
+import { EASE_ENTER, currentSettleMs, prefersReducedMotion } from "../tokens/motion";
 import { cssZoom, runAutoScroll, suppressNextClick } from "../utils/domHelpers";
 import { reorderFloor } from "../utils/blockOrder";
 import { selectedIds, subtreeEnd } from "../utils/blockRun";
+import { measureBlockPlaces, settleBlocks } from "../utils/blockSettle";
 
 /** Pointer travel from the grip that means "this is a drag, not a click". */
 const DRAG_THRESHOLD = 3;
 /** The copy that follows the pointer: a translucent print of the block, no card. */
 const GHOST_OPACITY = 0.35;
-/** Ghost fade-out after a drop or cancel. */
-const FADE_MS = 120;
 /** Marker offset when the drop position has no neighbour on one side. */
 const EDGE_GAP = 4;
 
@@ -29,6 +29,10 @@ const EDGE_GAP = 4;
  * calmer and more trustworthy. Escape, window blur, or releasing outside the
  * editor's scroll area cancel, and there is nothing to restore because nothing
  * was written.
+ *
+ * The motion is at the two ends: a drop settles the moved blocks into their
+ * new places from where the copy was (utils/blockSettle), and a drag that
+ * moves nothing sends its copy back to the block it came from.
  *
  * `startHandleDrag` is handed to the handle through EditorContext, whose value
  * is frozen at mount (see EditorContext.jsx). So this hook must never read
@@ -63,9 +67,20 @@ export function useBlockDrag({
     zoom: 1,
     startIndex: -1,
     targetIndex: -1,
+    // The boundary the marker last stood at: a new one glides, the same one
+    // follows auto-scroll at once.
+    markerIndex: -1,
     outside: false,
     scrollRAF: null,
   });
+
+  // The block's root, marker and indent included: a list item's ref is its
+  // text span, and a copy of that was the words alone, without its bullet or
+  // the depth that shows which items are nested.
+  const rootOf = (id) => {
+    const ref = blockRefs.current[id];
+    return ref?.closest?.("[data-block-id]") ?? ref;
+  };
 
   /** Move `dragIds` so they sit before original index `targetIndex`. */
   const reorderBlocks = (blks, dragIds, targetIndex) => {
@@ -88,13 +103,6 @@ export function useBlockDrag({
 
     const blockId = blockInfo.blockId;
     const blockIndex = blockInfo.blockIndex;
-    // The block's root, marker and indent included: a list item's ref is its
-    // text span, and a copy of that was the words alone, without its bullet or
-    // the depth that shows which items are nested.
-    const rootOf = (id) => {
-      const ref = blockRefs.current[id];
-      return ref?.closest?.("[data-block-id]") ?? ref;
-    };
     const el = rootOf(blockId);
     if (!el) return;
 
@@ -134,6 +142,7 @@ export function useBlockDrag({
     bd.blockIds = draggedIds;
     bd.startIndex = blockIndex;
     bd.targetIndex = blockIndex;
+    bd.markerIndex = -1;
     bd.outside = false;
     bd.active = true;
 
@@ -250,12 +259,14 @@ export function useBlockDrag({
     const col = (editorRef.current || before || after).getBoundingClientRect();
     const zoom = bd.zoom || 1;
     Object.assign(marker.style, {
+      transition: targetIndex === bd.markerIndex ? "none" : "",
       display: "block",
       left: `${col.left / zoom}px`,
       width: `${col.width / zoom}px`,
       // offsetHeight is already CSS pixels; only the measured y is scaled.
       top: `${y / zoom - marker.offsetHeight / 2}px`,
     });
+    bd.markerIndex = targetIndex;
   };
 
   const updateBlockDropTarget = (pointerY, pointerX) => {
@@ -298,8 +309,8 @@ export function useBlockDrag({
 
   const cleanupBlockDrag = () => {
     const bd = blockDrag.current;
-    // The fade's own timer calls this, and so does unmount: a timer left over
-    // from a drop would tidy up again after the page was gone.
+    // The glide home's own timer calls this, and so does unmount: a timer left
+    // over from a drop would tidy up again after the page was gone.
     clearTimeout(fadeTimer.current);
     fadeTimer.current = null;
     if (bd.cloneEl?.parentNode) bd.cloneEl.parentNode.removeChild(bd.cloneEl);
@@ -317,6 +328,7 @@ export function useBlockDrag({
     bd.markerEl = null;
     bd.startIndex = -1;
     bd.targetIndex = -1;
+    bd.markerIndex = -1;
     bd.outside = false;
     bd._updatePointer = null;
     if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
@@ -325,29 +337,38 @@ export function useBlockDrag({
     bd.upHandler = null;
   };
 
-  /** End the drag: fade the copy where it is, then tidy up. */
-  const fadeOutAndCleanup = () => {
+  /**
+   * A drag that moves nothing (dropped in place, outside the editor, Escape,
+   * blur): the copy glides back to the block it came from and goes. It went
+   * nowhere, and the motion says so; a fade where it stood read as it having
+   * gone somewhere.
+   */
+  const returnHome = () => {
     const bd = blockDrag.current;
     if (bd.scrollRAF) {
       cancelAnimationFrame(bd.scrollRAF);
       bd.scrollRAF = null;
     }
     if (bd.markerEl) bd.markerEl.style.display = "none";
-    if (!bd.cloneEl) {
-      cleanupBlockDrag();
-      return;
-    }
-    Object.assign(bd.cloneEl.style, {
-      transition: `opacity ${FADE_MS}ms ease`,
-      opacity: "0",
-    });
-    // Detach the window listeners now; the DOM tidy-up waits for the fade.
+    // Detach the window listeners now; the DOM tidy-up waits for the glide.
     if (bd.moveHandler) window.removeEventListener("pointermove", bd.moveHandler);
     if (bd.upHandler) window.removeEventListener("pointerup", bd.upHandler);
     bd.moveHandler = null;
     bd.upHandler = null;
     bd.active = false;
-    fadeTimer.current = setTimeout(() => cleanupBlockDrag(), FADE_MS);
+    const home = rootOf(bd.blockIds[0]);
+    if (!bd.cloneEl || !home || prefersReducedMotion()) {
+      cleanupBlockDrag();
+      return;
+    }
+    const ms = currentSettleMs();
+    // Fading on ease-in keeps the copy visible until it is nearly home.
+    Object.assign(bd.cloneEl.style, {
+      transition: `top ${ms}ms ${EASE_ENTER}, opacity ${ms}ms ease-in`,
+      top: `${home.getBoundingClientRect().top / (bd.zoom || 1)}px`,
+      opacity: "0",
+    });
+    fadeTimer.current = setTimeout(() => cleanupBlockDrag(), ms);
   };
 
   const finalizeBlockDrag = () => {
@@ -359,26 +380,36 @@ export function useBlockDrag({
 
     const noteId = bd.noteId;
     const blocks = noteDataRef.current[noteId]?.content?.blocks;
-    if (!bd.outside && blocks) {
-      const next = reorderBlocks([...blocks], bd.blockIds, bd.targetIndex);
-      const changed = next.some((b, i) => b.id !== blocks[i].id);
-      // One history entry per drop that actually changed the order; dropping
-      // a block back where it was writes nothing. The commit applies on top
-      // of any text still inside the commit debounce, so a drop right after
-      // a keystroke keeps both.
-      if (changed) {
-        commitNoteData((prev) => {
-          // The note may have been deleted mid-drag; never conjure it back.
-          if (!prev[noteId]) return prev;
-          const out = { ...prev };
-          const n = { ...out[noteId] };
-          n.content = { ...n.content, blocks: next };
-          out[noteId] = n;
-          return out;
-        });
-      }
+    const next =
+      !bd.outside && blocks ? reorderBlocks([...blocks], bd.blockIds, bd.targetIndex) : null;
+    // Dropping a block back where it was writes nothing.
+    if (!next || next.every((b, i) => b.id === blocks[i].id)) {
+      returnHome();
+      return;
     }
-    fadeOutAndCleanup();
+    // The page as the eye has it at the drop: neighbours where they stand,
+    // the moved blocks where their copy is, as translucent.
+    const editor = editorRef.current;
+    const places = measureBlockPlaces(editor);
+    for (const copy of bd.cloneEl?.children ?? []) {
+      const id = copy.getAttribute("data-block-id");
+      if (id) places.set(id, { top: copy.getBoundingClientRect().top, opacity: GHOST_OPACITY });
+    }
+    // One history entry per drop that changed the order. The commit applies
+    // on top of any text still inside the commit debounce, so a drop right
+    // after a keystroke keeps both.
+    commitNoteData((prev) => {
+      // The note may have been deleted mid-drag; never conjure it back.
+      if (!prev[noteId]) return prev;
+      const out = { ...prev };
+      const n = { ...out[noteId] };
+      n.content = { ...n.content, blocks: next };
+      out[noteId] = n;
+      return out;
+    });
+    // The copy goes at once: the block itself now stands where it was.
+    cleanupBlockDrag();
+    settleBlocks(editor, places);
   };
 
   /** Escape, window blur, or any other abort. Nothing was written, so nothing to restore. */
@@ -389,7 +420,7 @@ export function useBlockDrag({
       if (bd.moveHandler || bd.upHandler) cleanupBlockDrag();
       return;
     }
-    fadeOutAndCleanup();
+    returnHome();
   };
 
   /**

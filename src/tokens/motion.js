@@ -57,6 +57,13 @@ export const MOTION_FAST_MS = 100;
 export const MOTION_ENTER_MS = 160;
 export const MOTION_EXIT_MS = 100;
 
+/**
+ * A block that changed place glides to its new one (a drop, Cmd+Shift+Arrow,
+ * the drag's copy going home). Longer than an arrival because a block travels
+ * further than a menu grows; still under the panel's clock.
+ */
+export const MOTION_SETTLE_MS = 200;
+
 /** Arriving decelerates into place; it is the panel's own curve. */
 export const EASE_ENTER = PANEL_EASE;
 /** Leaving accelerates away. */
@@ -75,6 +82,7 @@ export const MOTION_VARS = {
   "--motion-fast": `${MOTION_FAST_MS}ms`,
   "--motion-enter": `${MOTION_ENTER_MS}ms`,
   "--motion-exit": `${MOTION_EXIT_MS}ms`,
+  "--motion-settle": `${MOTION_SETTLE_MS}ms`,
   "--ease-enter": EASE_ENTER,
   "--ease-exit": EASE_EXIT,
   "--press-icon-scale": String(PRESS_ICON_SCALE),
@@ -83,17 +91,23 @@ export const MOTION_VARS = {
 };
 
 /**
- * The exit duration as the page has it now, in ms: what a leaving copy's
- * removal timer waits for, so `?tweak` (which moves the variable, and can
- * slow it to be watched) and the timer never disagree.
+ * A duration as the page has it now, in ms: what a timer or a scripted
+ * animation waits for, so `?tweak` (which moves the variable, and can slow it
+ * to be watched) and the code never disagree.
+ * @param {string} name the `:root` variable
+ * @param {number} fallback the token, when the page has none
  */
-export const currentExitMs = () => {
-  if (typeof document === "undefined") return MOTION_EXIT_MS;
-  const ms = Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--motion-exit"),
-  );
-  return Number.isFinite(ms) && ms > 0 ? ms : MOTION_EXIT_MS;
+const currentMs = (name, fallback) => {
+  if (typeof document === "undefined") return fallback;
+  const ms = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(ms) && ms > 0 ? ms : fallback;
 };
+
+/** How long a leaving copy lives. */
+export const currentExitMs = () => currentMs("--motion-exit", MOTION_EXIT_MS);
+
+/** How long a block takes to settle into its new place. */
+export const currentSettleMs = () => currentMs("--motion-settle", MOTION_SETTLE_MS);
 
 /**
  * Whether the user has asked the system for less motion. Read where it is
