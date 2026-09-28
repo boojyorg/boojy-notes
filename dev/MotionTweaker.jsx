@@ -12,6 +12,7 @@ import {
   MOTION_ENTER_MS,
   MOTION_EXIT_MS,
   MOTION_FAST_MS,
+  MOTION_SETTLE_MS,
   POP_SCALE_FROM,
   PRESS_ICON_SCALE,
   RISE_PX,
@@ -22,6 +23,7 @@ const DEFAULTS = {
   enter: MOTION_ENTER_MS,
   exit: MOTION_EXIT_MS,
   fast: MOTION_FAST_MS,
+  settle: MOTION_SETTLE_MS,
   popFrom: POP_SCALE_FROM,
   rise: RISE_PX,
   press: PRESS_ICON_SCALE,
@@ -31,6 +33,7 @@ const CONTROLS = [
   { key: "enter", label: "Arrive", min: 40, max: 320, step: 10, unit: "ms" },
   { key: "exit", label: "Leave", min: 30, max: 240, step: 10, unit: "ms" },
   { key: "fast", label: "Hover / press", min: 40, max: 240, step: 10, unit: "ms" },
+  { key: "settle", label: "Block settles", min: 60, max: 400, step: 10, unit: "ms" },
   { key: "popFrom", label: "Grows from", min: 0.8, max: 1, step: 0.01, unit: "" },
   { key: "rise", label: "Toast lifts", min: 0, max: 20, step: 1, unit: "px" },
   { key: "press", label: "Icon dips to", min: 0.8, max: 1, step: 0.01, unit: "" },
@@ -50,6 +53,7 @@ function apply(v) {
   root.setProperty("--motion-enter", `${v.enter * v.slow}ms`);
   root.setProperty("--motion-exit", `${v.exit * v.slow}ms`);
   root.setProperty("--motion-fast", `${v.fast * v.slow}ms`);
+  root.setProperty("--motion-settle", `${v.settle * v.slow}ms`);
   root.setProperty("--pop-from", String(v.popFrom));
   root.setProperty("--rise", `${v.rise}px`);
   root.setProperty("--press-icon-scale", String(v.press));
@@ -102,6 +106,7 @@ export default function MotionTweaker() {
         `export const MOTION_FAST_MS = ${values.fast};`,
         `export const MOTION_ENTER_MS = ${values.enter};`,
         `export const MOTION_EXIT_MS = ${values.exit};`,
+        `export const MOTION_SETTLE_MS = ${values.settle};`,
         `export const POP_SCALE_FROM = ${values.popFrom};`,
         `export const RISE_PX = ${values.rise};`,
         `export const PRESS_ICON_SCALE = ${values.press};`,

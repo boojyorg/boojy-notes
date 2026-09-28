@@ -1,8 +1,7 @@
 # Editor
 
-The custom contentEditable editor: what a change must not break, and the one reason each rule
-is deliberate. `AGENTS.md` holds the four gotchas. Exact sizes and colours live in the code;
-history in git and `CHANGELOG.md`.
+What a change to the contentEditable editor must not break, and why. Gotchas: `AGENTS.md`;
+values: the code; history: git.
 
 ## One owner for note state
 
@@ -158,12 +157,15 @@ app's, made through state.**
   `grip-reveal.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.
+- **The page is still mid-drag.** A reorder (drop, `⌘⇧↑/↓`) glides moved blocks from their old
+  places (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
+  `motion.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
-  CSS `zoom`; rects are already scaled). Not yet: `SortMenu`, table and file menus, links.
+  CSS `zoom`). Not yet: `SortMenu`, table and file menus, links.
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
-  via `wholeRef`, not `elRef` (whose repaint would paint over the wrapper).
+  via `wholeRef`, not `elRef` (its repaint paints over the wrapper).
 
 ## Menus
 
@@ -287,11 +289,9 @@ same language writes nothing. The language menu portals to `body` and takes its 
   (`reachAcross`), removing an empty row between in the same press.
 - **Arrows stop on a divider or image and enter every block with a field**; deletion still
   steps over code (`landingBefore` vs `caretLandingBefore`).
-- Roots register themselves in the ref map, never via `elRef`.
 - **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`, then the
   block scrolled minimally).
-- **Measure a caret's line with `caretRect`** (a collapsed range in an empty node reports
-  zeros). `caret-navigation.spec.ts`.
+- **Measure a caret's line with `caretRect`** (an empty node's range reports zeros). `caret-navigation.spec.ts`.
 
 ## Paste and copy
 
