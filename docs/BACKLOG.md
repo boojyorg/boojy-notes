@@ -1,18 +1,15 @@
 # Boojy Notes — Backlog
 
-Direction, what is left to do and what is known to be broken, checked against master on
-2026-09-17. Shipped work goes in `CHANGELOG.md`, never here. The philosophy: finish Beta,
-daily-drive Boojy Notes, and let observed friction decide what deserves to exist next. Nothing
-is added because it sounds plausible.
+Direction, what is left to do and what is known to be broken. Shipped work goes in
+`CHANGELOG.md`, never here. The philosophy: finish Beta, daily-drive Boojy Notes, and let
+observed friction decide what deserves to exist next. Nothing is added because it sounds
+plausible.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-27, the
-v0.10.0 release pass (dates and the release path only); before that 2026-09-24, the v0.9.1 release pass (Known issues checked live the same day), then the planning pass for the
-phase before cloud the same day (the Direction, Beta and Not doing sections). The 2026-09-12
-pass for the v0.7.0 release closed out the whole-app review of 2026-09-07 (its fixes are in
-`CHANGELOG.md` v0.7.0, PRs #144–#158; the residue is here, marked *review §n* where it came
-from that file's B and C lists).
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-29,
+the v0.11.0 release pass. Items marked *review §n* come from the whole-app review of
+2026-09-07, whose fixes shipped in v0.7.0.
 
 ## Direction
 
@@ -239,11 +236,6 @@ none blocks the release. The shared question comes first because three candidate
   (2026-09-24). Add match-case and whole-word toggles, and draw it in the app's grammar (Lucide
   glyphs, not the three hand-drawn SVGs and the `▶`/`▼` text). Its double count and Replace's
   reach are under Known issues.
-- **Motion, small and fast.** Wanted (Tyr, 2026-09-24): menus and tooltips fade and grow a
-  little from their anchor, dialogs fade in, the checkbox tick draws, a dragged row lifts and a
-  drop settles. Enter under 150 ms, exit faster; tokens in `tokens/motion.js`; nothing moves
-  under reduced motion; the editor column still never carries a transform (opacity alone
-  there). Nothing animates on a key that repeats (filtering, arrowing through a menu).
 - **The vault in your own sync and version control, verified.** It works by design, since the
   notes are a folder; the work is proving it and writing the help page. Run a real vault in
   iCloud Drive (files evicted to placeholders), Dropbox and Google Drive (their conflicted

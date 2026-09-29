@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.11.0 — 2026-09-29
+
+### Features
+
+- **Things move now, a little** — Menus, pickers, dialogs, tooltips and Settings used to snap in and out. Now they fade in, growing slightly from where they open, and leave a touch faster than they arrived, so a menu feels answered rather than animated. Toasts rise into place at the bottom of the note. Ticking a to-do fills the box and then draws the tick; unticking fades it away. A pressed button shades, and a button that is only an icon dips its icon a little. Drop a block you have dragged and it glides into its new place while the blocks it passed slide over, so you can see where it went; a drag that moves nothing sends the block back home. ⌘⇧↑ and ⌘⇧↓ glide the same way, and first-run setup arrives like Settings. All of it is quick, a fifth of a second at most, and nothing about typing changes. With Reduce Motion turned on in your Mac's settings, nothing moves, as before.
+
+### Improvements
+
+- **Tab indents several bullets at once** — Selecting a few list items and pressing Tab used to do nothing, so each had to be indented on its own. Now Tab moves every selected item in a level and Shift+Tab moves them out, whether you selected their words or selected them whole with the grip. The selection stays, so another Tab moves them again, and ⌘Z undoes one press at a time. If the first item has nothing above it to nest under, nothing moves, so the list never gets jumbled.
+- **Tab on a bullet brings its sub-bullets along** — With just the cursor on a bullet that had items under it, Tab moved that bullet alone and left its sub-bullets behind as its neighbours. The bullet now moves with everything under it, as it already did when dragged by its grip.
+
+### Bug Fixes
+
+- **The formatting toolbar works on a note's first line** — Selecting words on the first line puts the toolbar up in the row at the top of the window, the row you drag the window by. Most of the toolbar took a click as a window drag, so only its bottom edge worked. Every part of it clicks now, and the rest of the row still moves the window.
+- **Inline code turns off instead of doubling up** — With a line selected into the start of the next one (Shift+↓, or a drag just past the end), pressing Inline code a second time wrapped the words in another code box instead of removing it: two boxes on screen, and ``` ``Bugs`` ``` in the file. It now turns on and off like Bold and Italic.
+
 ## v0.10.0 — 2026-09-27
 
 ### Features
