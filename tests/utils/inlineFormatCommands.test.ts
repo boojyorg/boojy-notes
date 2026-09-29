@@ -148,6 +148,41 @@ describe("applyDomFormat", () => {
     toggleInlineCode(sel, root);
     expect(root.innerHTML).toBe("hello");
   });
+
+  // A selection restored after a press can start just outside the element,
+  // on the empty text the wrap left before it: the next press read "not
+  // formatted" and wrapped again, `code` inside `code`, written as ``Bugs``
+  // (2026-09-29). What is selected decides, not where the selection starts.
+  it.each([
+    ["CODE", "code"],
+    ["STRONG", "strong"],
+  ])("a selection starting just outside a %s around all of its text unwraps it", (tag, el) => {
+    const root = document.createElement("div");
+    root.append(document.createTextNode(""));
+    const wrap = document.createElement(el);
+    wrap.textContent = "Bugs";
+    root.append(wrap, document.createElement("br"));
+    document.body.appendChild(root);
+    const range = document.createRange();
+    range.setStart(root.firstChild as Text, 0);
+    range.setEnd(wrap.firstChild as Text, 4);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    toggleWrappingTag(sel, tag, root);
+    expect(root.innerHTML).toBe("Bugs<br>");
+  });
+
+  it("inline code pressed three times is on, off, on, never nested", () => {
+    const { root, sel } = surface("Bugs", 0, 4);
+    const seen: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      toggleInlineCode(sel, root);
+      seen.push(root.innerHTML);
+    }
+    expect(seen).toEqual(["<code>Bugs</code>", "Bugs", "<code>Bugs</code>"]);
+  });
 });
 
 describe("inlineFieldFor", () => {

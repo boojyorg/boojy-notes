@@ -253,3 +253,27 @@ test("the toolbar's Link glyph opens the link field, as Cmd+K does", async () =>
   await expect(url).toHaveCount(0);
   expect(h.pageErrors).toEqual([]);
 });
+
+test("inline code over a line selected into the next toggles on, off and on, never nested", async () => {
+  // A heading selected from its start into the next line (Shift+Down, or a
+  // drag a little past it) reaches the next block's first position; each press
+  // of Inline code wrapped another `code`, written as ``Bugs`` (2026-09-29).
+  const h2 = await launchApp({ "Top.md": "# Bugs\n\nOne line of body.\n" });
+  try {
+    await h2.openNote("Top");
+    const heading = h2.page.locator("[data-editor] h1").first();
+    await heading.click();
+    await h2.page.keyboard.press(`${MOD}+ArrowLeft`);
+    await h2.page.keyboard.press("Shift+ArrowDown");
+    const code = h2.page.getByRole("button", { name: "Inline code" });
+    const file = h2.vault.file("Top.md");
+    for (const expected of ["# `Bugs`", "# Bugs", "# `Bugs`"]) {
+      await code.click();
+      await waitForFile(file, (text) => text === `${expected}\n\nOne line of body.\n`);
+    }
+    expect(await heading.locator("code code").count()).toBe(0);
+    expect(h2.pageErrors).toEqual([]);
+  } finally {
+    await h2.close();
+  }
+});
