@@ -182,7 +182,7 @@ export function useKeyboardHandlers({
         focusBeyondNote(e.shiftKey ? -1 : 1);
         return;
       }
-      updateBlockIndent(noteId, blockIndex, e.shiftKey ? -1 : 1);
+      updateBlockIndent(noteId, blockIndex, e.shiftKey ? -1 : 1, true);
       return;
     }
 

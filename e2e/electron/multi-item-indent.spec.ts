@@ -1,5 +1,6 @@
 /**
- * Tab and Shift+Tab over several list items move them all a level, whether
+ * Tab and Shift+Tab over several list items move them all a level, and on one
+ * item with only the caret they move it with the items nested under it, whether
  * they are held by a text selection across them or selected whole. In is all
  * or nothing; out moves each item that can. One undo step per press, and the
  * selection stays for the next press. Keys across block roots, so proven in
@@ -72,4 +73,25 @@ test("when the first item cannot nest, nothing moves and focus stays in the note
   expect(await h.page.evaluate(() => !!document.activeElement?.closest("[data-editor]"))).toBe(
     true,
   );
+});
+
+test("Tab with the caret on a parent moves its nested items with it, and Shift+Tab back", async () => {
+  await h.close();
+  const NESTED = "- Alpha\n- Bravo\n  - Charlie\n  - Delta\n- Echo\n";
+  h = await launchApp({ "Nested.md": NESTED });
+  await h.openNote("Nested");
+  await item(h.page, "Bravo").click();
+  await h.page.keyboard.press("Tab");
+  const moved = "- Alpha\n  - Bravo\n    - Charlie\n    - Delta\n- Echo\n";
+  await waitForFile(h.vault.file("Nested.md"), (text) => text === moved);
+  // The caret stayed in Bravo: typing lands there.
+  await h.page.keyboard.type("!");
+  await waitForFile(
+    h.vault.file("Nested.md"),
+    (text) => text.includes("  - Bra") && text.includes("!"),
+  );
+  expect(await item(h.page, "Bravo").textContent()).toContain("!");
+  await h.page.keyboard.press("Backspace");
+  await h.page.keyboard.press("Shift+Tab");
+  await waitForFile(h.vault.file("Nested.md"), (text) => text === NESTED);
 });

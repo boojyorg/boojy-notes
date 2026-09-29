@@ -305,7 +305,7 @@ describe("useEditorHandlers", () => {
         s.result.current.handleEditorKeyDown(e);
       });
 
-      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, 1);
+      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, 1, true);
     });
 
     it("dedents block on Shift+Tab", () => {
@@ -319,7 +319,7 @@ describe("useEditorHandlers", () => {
         s.result.current.handleEditorKeyDown(e);
       });
 
-      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, -1);
+      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, -1, true);
     });
   });
 

@@ -161,7 +161,7 @@ describe("useKeyboardHandlers", () => {
     Object.defineProperty(event, "preventDefault", { value: vi.fn() });
 
     result.current.handleBlockKeyDown("note-1", 0, event);
-    expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, 1);
+    expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, 1, true);
   });
 
   it("handleBlockKeyDown handles Shift+Tab for outdent on list blocks", () => {
@@ -171,7 +171,7 @@ describe("useKeyboardHandlers", () => {
     Object.defineProperty(event, "preventDefault", { value: vi.fn() });
 
     result.current.handleBlockKeyDown("note-1", 0, event);
-    expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, -1);
+    expect(deps.updateBlockIndent).toHaveBeenCalledWith("note-1", 0, -1, true);
   });
 
   it("handleBlockKeyDown does NOT indent paragraphs (markdown can't express it)", () => {
