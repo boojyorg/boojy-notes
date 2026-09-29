@@ -92,6 +92,17 @@ Problems early access users can hit today. Each is small and comes before the Be
   `app.requestSingleInstanceLock()` in `electron/main.js`, quit the second instance, and focus
   (and restore) the first window from its `second-instance` event. Matters most on Windows,
   where launching from the Start menu twice is common.
+  **Open decision first (Tyr, paused 2026-09-29): what happens to `pnpm dev`.** The lock is
+  per userData folder, and today dev and the installed app share one
+  (`~/Library/Application Support/boojy-notes`: config, settings, note indexes, history). So
+  with one lock, `pnpm dev` quits and focuses the installed app while it is open. Options:
+  (1) dev gets its own userData (`boojy-notes-dev`, set before anything reads `userData`) and
+  runs alongside, pointed once at a test vault (recommended; also ends the shared index and
+  history store); (2) one lock for both, quit the installed app to develop; (3) skip the lock
+  in dev (`VITE_DEV_SERVER_URL`), keeping today's shared state. The Electron suite is
+  unaffected either way: `e2e/electron/main-wrapper.mjs` gives every launch its own userData.
+  Take the lock before the IPC registration and `whenReady` work in `main.js`, so a second
+  instance quits without touching settings or the vault.
 
 ## Beta: release requirements
 
