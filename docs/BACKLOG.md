@@ -5,6 +5,11 @@ Direction, what is left to do and what is known to be broken. Shipped work goes 
 observed friction decide what deserves to exist next. Nothing is added because it sounds
 plausible.
 
+**Stages.** Early access (now, since v0.7.0 on 2026-09-11): signed, published builds anyone
+can download from boojy.org, with rough edges said out loud. Beta (next): the desktop app feels
+complete for daily use; the release requirements below are what it waits for. Early access
+issues bad enough to fix before anything else sit in their own short list below.
+
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
 Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-29,
@@ -78,6 +83,16 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
   candidate is to ask on rename ("Update links in N notes?"), which needs a carve-out in the
   spec's preservation promise and a backlink index.
 
+## Early access: fix now
+
+Problems early access users can hit today. Each is small and comes before the Beta work.
+
+- [ ] **Only one copy of the app runs at a time.** A second launch opens a second instance with
+  its own window, watcher and index, both writing the same files. Add
+  `app.requestSingleInstanceLock()` in `electron/main.js`, quit the second instance, and focus
+  (and restore) the first window from its `second-instance` event. Matters most on Windows,
+  where launching from the Start menu twice is common.
+
 ## Beta: release requirements
 
 Beta starts when the local desktop app feels complete enough for ordinary daily use that
@@ -90,9 +105,8 @@ found on the way gate it as well, without needing a line here.
   for anything that felt off however vague; each entry is reproduced in the real app
   (`BOOJY_TRACE`, the files rule) before it is fixed, and a review pass follows only if the log
   shows a pattern.
-- [ ] **Visual polish and a Windows smoke test.** Before Windows testers: a
-  `requestSingleInstanceLock` in `main.js` (a second launch opens a second instance today, which
-  matters more on Windows than on macOS). Traced only, no Windows machine (review §6, §2.10):
+- [ ] **Visual polish and a Windows smoke test.** Before Windows testers, the single-instance
+  lock (Early access: fix now). Traced only, no Windows machine (review §6, §2.10):
   reserved device names (`CON`, `NUL`, …) as a note or folder name, and the raw extension kept
   by `save-image` and `save-attachment`; both belong to this smoke test. Windows spell-check
   dictionaries download from Google's CDN on first launch (no
@@ -176,25 +190,9 @@ none blocks the release. The shared question comes first because three candidate
   under the caret). Tidy table shipped in the formatted view's cell menu (`CHANGELOG.md`); a
   Tidy for the table under the caret in this view is the candidate if hand-aligning pipes here
   becomes a chore.
-- **Version History**, designed 2026-09-25/26 from an interactive prototype. Steps 1 (the store, Autosaves, `⌘S`)
-  and 2 (the list) are shipping (files rule). Step 2, as built: ··· → Version History (history icon) turns the
-  menu into the list in place; one line per row: a dot (teal save point, grey ring Autosave,
-  teal ring Now), the name, `Save point`, `Autosave` or its reason, and the time right-aligned
-  (`15:48`, `Yesterday 21:40`, `Tue 10:12`, `25 Aug`, `25 Aug 2025`; never numeric dates; the
-  Mac's 24-hour setting). Now shows its last-edited time; nothing is selected on opening. ↑↓
-  show each version read-only in the note; ↵ restores (keeping `Before restore`, toast with
-  Undo); F2, double-click or right-click renames; ⌫ deletes (Undo toast). A hovered row shows
-  ↺ and a bin, icons only. While a past version shows, a teal-tint pill (history icon and
-  short time) sits in the lit `</>` slot: its time hides or shows the list, its × and Esc go
-  back to Now, another note goes back to Now; the path never changes. Typing into the past
-  opens a small popover under the pill: Back to Now or Restore. Clicking outside hides the
-  list and keeps the version. A switch in the list's header turns history off for the note,
-  asking Cancel / Keep Them / Delete Them; off hides the old versions and says they come back.
-  Opening the list switches the Markdown view off until it closes. Step 3, **Recently
-  Deleted** (shipping): a pinned sidebar footer row, a popover of `Folder / Name` rows with hover ↺ and ×
-  (× asks first, red), "Notes here are deleted after 30 days." Red text only for what can't be
-  undone (note Delete in ··· goes neutral). Later: a Settings switch for all notes, history
-  through Boojy Cloud. Neither sync nor history replaces an independent backup.
+- **Version History, later.** The store, save points, the list and Recently Deleted shipped
+  in v0.10.0 (`CHANGELOG.md`; behaviour in the files and chrome rules). Later: a Settings switch for all notes,
+  and history through Boojy Cloud. Neither sync nor history replaces an independent backup.
 - **Searchable `/link`.** Consider an entry point to the existing inline-link controls, not a
   new block type. Discoverability and interaction need live judgement; adding it may be declined.
 - **Notion import.** The first migration priority; whether it ships in Beta is undecided.
@@ -455,9 +453,9 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   `useIsMobile` → `useIsTouch` rename above and the touch ··· menu's separate delete copy.
 - **Updater behaviour is undecided** — today `autoDownload` is on and every launch checks,
   with a failed check swallowed (`autoUpdater.checkForUpdates().catch(() => {})` in
-  `electron/settingsManager.js`). The alternative is check-and-ask with a visible error. Moot
-  for release users until macOS builds are signed (release requirements); the other empty
-  catches are localStorage guards and are fine.
+  `electron/settingsManager.js`). The alternative is check-and-ask with a visible error. Live
+  for release users since macOS builds became signed in v0.7.0, so this is a real choice now;
+  the other empty catches are localStorage guards and are fine.
 - **Editor hook copies, for a quiet window with the Electron suite green**: the "text before and
   after the caret" split helper exists six times and the block-update boilerplate about
   eighteen times across the editor hooks (~150 lines on hot paths). Mechanical, but not during
@@ -504,8 +502,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 - **Copy as Markdown and as formatted text.** Selection behaviour shipped on 2026-09-16: a
   whole-block copy carries the blocks' Markdown as plain text and their structure as block
   HTML, an ordinary selection its visible text and inline formatting (editor rule, "Paste keeps
-  the block you are in"). Still open: a whole-note copy (the file itself), attachments (an
-  image or file copies as its `![[…]]` reference, never the file), and whether a "Copy as"
+  the block you are in"); Copy Note (the whole file) shipped in v0.10.0. Still open: attachments
+  (an image or file copies as its `![[…]]` reference, never the file), and whether a "Copy as"
   control earns a place at all.
 
 ### Editor and organisation
@@ -530,10 +528,6 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   creates nothing rather than making the folder). Explicit
   heading IDs are a separate syntax decision; target naming and behaviour when headings change
   remain open.
-- **Table alignment controls.** Consider restoring a way to set left, centre and right column
-  alignment. Existing file alignments already render; the current absence of controls remains
-  intentional. Placement and interactions are unchosen. A separator is kept as written until
-  its alignments change (editor rule).
 - **Footnotes.** Consider rendering, editing and navigation between references and definitions.
   Supported syntax and interactions remain open; no citation-management system is implied.
 - **Richer nested quotes and list contents.** Consider nested quote depth and Markdown elements

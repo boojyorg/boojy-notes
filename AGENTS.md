@@ -14,7 +14,7 @@ Suite-wide process lives in `~/Documents/Projects/boojy/AGENTS.md`.
 | --- | --- |
 | What it is, how to run it | `README.md` |
 | What may exist: blocks, Markdown support, the preservation promise | `docs/SPEC-markdown-source-of-truth.md` |
-| Direction, Beta requirements and candidates, known issues, after Beta | `docs/BACKLOG.md` |
+| Direction, stages (early access → Beta), fix-now list, Beta requirements and candidates, known issues, after Beta | `docs/BACKLOG.md` |
 | What shipped and what was removed | `CHANGELOG.md` |
 | Chrome, theme, sidebar, search | `.claude/rules/ui-chrome-and-theme.md` |
 | Editor invariants | `.claude/rules/editor.md` |
