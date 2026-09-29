@@ -40,7 +40,9 @@ Rule + one reason. Incidents and measurements are in git; command details in
   Drafts are invisible to the website and the updater. After every tag push: `gh release list`,
   merge the assets into one release, publish it, delete the leftover draft.
 - Publishing a release fires `site-rebuild.yml` (the boojy.org deploy hook; skips if the secret
-  is absent).
+  is absent), which then polls boojy.org/notes/ for up to 10 minutes for the release's macOS
+  download link and fails if it never appears. A red run means the site is still showing the old
+  version: see `boojy-web/docs/WEBSITE-VERSION-UPDATES.md`.
 - Every job carries `timeout-minutes` sized from actuals (a stalled job once ran six hours).
   `release.yml` is sized loose on purpose: Apple's notarisation queue is the variable.
 

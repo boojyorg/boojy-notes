@@ -7,6 +7,11 @@ name: Rebuild boojy.org
 #
 # Triggers on `published` (not tag push): tag push only builds the *draft* release —
 # the version isn't public until the draft is published.
+#
+# The hook only proves a build *started*. The build can still miss the new release (a
+# GitHub API rate limit makes the site fall back to its hardcoded version, as v0.11.0 did),
+# so the second step waits for the release's own download link to appear on the live page
+# and fails the run if it doesn't. A failed run here = boojy.org is showing the old version.
 
 on:
   release:
@@ -18,7 +23,7 @@ permissions: {}
 jobs:
   rebuild-site:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: POST Cloudflare Pages deploy hook
         env:
@@ -30,3 +35,21 @@ jobs:
           fi
           curl -fsS -X POST "$DEPLOY_HOOK_URL"
           echo "boojy.org rebuild triggered."
+
+      - name: Wait for the new version on boojy.org
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # The macOS asset name embeds the version, so its link only appears once the
+          # site has been rebuilt against this release (not the fallback).
+          expected="Boojy-Notes-${TAG#v}-arm64.dmg"
+          for attempt in $(seq 1 20); do
+            sleep 30
+            if curl -fsS "https://boojy.org/notes/?check=$(date +%s)" | grep -q "$expected"; then
+              echo "boojy.org/notes/ links to $expected."
+              exit 0
+            fi
+            echo "Attempt $attempt/20: $expected not on boojy.org/notes/ yet."
+          done
+          echo "::error::boojy.org/notes/ still doesn't link to $expected after 10 minutes. Check the Cloudflare Pages build log for a [github-release] warning, then retry the deployment. See boojy-web/docs/WEBSITE-VERSION-UPDATES.md."
+          exit 1
