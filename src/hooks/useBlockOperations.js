@@ -441,7 +441,10 @@ export function useBlockOperations({
     [commitNoteData, focusBlockId, focusCursorPos],
   );
 
-  const updateBlockIndent = (noteId, blockIndex, delta) => {
+  // `withChildren` (Tab, Shift+Tab): the item moves with the items nested
+  // under it, as the grip's drag and a selection's Tab move them, so a parent
+  // never leaves its children behind as its siblings (`indentRun`).
+  const updateBlockIndent = (noteId, blockIndex, delta, withChildren = false) => {
     let blockId = null;
     let caret = -1;
     commitNoteData((prev) => {
@@ -456,6 +459,16 @@ export function useBlockOperations({
       // offset 0, which sent the next keystroke to the front of the item
       // (review 2026-09-06, H2). -1 when the caret is not in this block.
       caret = getCaretOffset(blockRefs.current[block.id]);
+      if (withChildren) {
+        const moved = indentRun(blocks, blockIndex, blockIndex, delta);
+        if (!moved) {
+          blockId = null;
+          return prev;
+        }
+        n.content = { ...n.content, blocks: moved };
+        next[noteId] = n;
+        return next;
+      }
       const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
       // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
       // file) — after an in-app indent change it no longer matches, and a

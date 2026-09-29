@@ -210,8 +210,8 @@ is app-wide in `LayoutContext`, never saved.
 - **The caret, and a selection's ends, never rest beside a marker** (arrows cross by hand;
   `caretIntoTextRoot`, `selectionIntoTextRoots` guard the rest). Tab keeps the caret on its character.
   `list-caret.spec.ts`.
-- **Tab over several items moves them all** (a text range or a block selection, `indentRun`):
-  in is all or nothing, out each that can; one undo, selection kept. `multi-item-indent.spec.ts`.
+- **Tab moves an item with its nested items; over several, all of them** (caret, text range or
+  block selection, `indentRun`): in is all or nothing, out each that can; one undo, selection kept. `multi-item-indent.spec.ts`.
 - `listLayout` owns numbers and prefixes; authored spellings stay; a text edit never renumbers
   an imported list (`reconcileListEdit` runs at structural commits only).
 
