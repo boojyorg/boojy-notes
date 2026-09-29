@@ -219,6 +219,10 @@ const FloatingToolbar = memo(function FloatingToolbar({ position, activeFormats,
         padding: "4px 4px",
         boxShadow: theme.modalShadow,
         zIndex: Z.TOOLBAR,
+        // Over a note's first lines the strip stands in the chrome row, on
+        // the window's drag strip; it comes after that strip in the DOM, so
+        // opting out takes its buttons back (only its bottom edge clicked).
+        WebkitAppRegion: "no-drag",
       }}
     >
       {(position.field ? FIELD_FORMATS_ONLY : FORMATS).map((format) => (

@@ -67,7 +67,8 @@ tiers. Hit boxes are `CHROME_BTN`.
   column's colour, the divider through it; no title. Fixed chrome stands `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag` (Playwright never sees
-  it). Regions stand down while a popup is open. `chrome-row.spec.ts`.
+  it). Regions stand down while a popup is open; a surface that floats into the row (the
+  selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - One active note; no tabs. Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
 - **The header ··· is the active note's menu**, four groups under rules: Rename, Copy,
