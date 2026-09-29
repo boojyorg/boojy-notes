@@ -45,6 +45,7 @@ const WRAP_TAGS: Record<string, string> = {
   italic: "EM",
   strikethrough: "DEL",
   highlight: "MARK",
+  code: "CODE",
 };
 
 const SHIFT_KEYS: Record<string, InlineFormat> = {
@@ -95,6 +96,37 @@ function textEdges(root: Node): [Text | null, Text | null] {
 }
 
 /**
+ * The `tagName` element the selection is already inside: the one around its
+ * start, else one that holds every character it selects. The second read is
+ * for a selection that starts just outside the element, on the empty text a
+ * wrap leaves before it (where a restored selection lands): read from its
+ * start alone it was "not formatted", and the next press wrapped again.
+ */
+function wrappingTag(range: Range, anchor: Node | null, tagName: string, boundary: Node | null) {
+  const inside = (from: Node | null): Element | null => {
+    for (let node = from; node && node !== boundary; node = node.parentNode) {
+      if (node.nodeName === tagName) return node as Element;
+    }
+    return null;
+  };
+  const around = inside(anchor);
+  if (around) return around;
+  const root = range.commonAncestorContainer;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let only: Element | null = null;
+  for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
+    if (!range.intersectsNode(t)) continue;
+    const from = t === range.startContainer ? range.startOffset : 0;
+    const to = t === range.endContainer ? range.endOffset : t.length;
+    if (to <= from) continue;
+    const el = inside(t);
+    if (!el || (only && el !== only)) return null;
+    only = el;
+  }
+  return only;
+}
+
+/**
  * Wrap the selection in `tagName`, or unwrap the one it is already inside.
  * Bold and italic go through here too, never `execCommand("bold")`, which
  * decides its direction from the *computed* style: inside a heading, or a
@@ -105,15 +137,7 @@ function textEdges(root: Node): [Text | null, Text | null] {
 export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Node | null): void {
   if (!sel.rangeCount || sel.isCollapsed) return;
   const range = sel.getRangeAt(0);
-  let node: Node | null = sel.anchorNode;
-  let existing: Element | null = null;
-  while (node && node !== boundary) {
-    if (node.nodeName === tagName) {
-      existing = node as Element;
-      break;
-    }
-    node = node.parentNode;
-  }
+  const existing = wrappingTag(range, sel.anchorNode, tagName, boundary);
   if (existing) {
     // Unwrap (move children out) rather than flattening to textContent, so any
     // nested formatting (e.g. **bold** inside ~~strike~~) survives toggling off.
@@ -169,40 +193,13 @@ export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Nod
   sel.addRange(r);
 }
 
-/** Wrap the selection in `code`, or unwrap the `code` it is already inside. */
+/**
+ * Inline code is one more wrap: the same toggle as bold, so it reselects on
+ * text and never nests. Its own copy did neither, and a second press over a
+ * selection restored just outside it wrote ``Bugs`` (2026-09-29).
+ */
 export function toggleInlineCode(sel: Selection, boundary: Node | null): void {
-  if (!sel.rangeCount || sel.isCollapsed) return;
-  const range = sel.getRangeAt(0);
-  let node: Node | null = sel.anchorNode;
-  let codeEl: Element | null = null;
-  while (node && node !== boundary) {
-    if (node.nodeName === "CODE") {
-      codeEl = node as Element;
-      break;
-    }
-    node = node.parentNode;
-  }
-  if (codeEl) {
-    const textNode = document.createTextNode(codeEl.textContent || "");
-    codeEl.parentNode?.replaceChild(textNode, codeEl);
-    const r = document.createRange();
-    r.selectNodeContents(textNode);
-    sel.removeAllRanges();
-    sel.addRange(r);
-    return;
-  }
-  const code = document.createElement("code");
-  try {
-    range.surroundContents(code);
-  } catch {
-    const frag = range.extractContents();
-    code.appendChild(frag);
-    range.insertNode(code);
-  }
-  const r = document.createRange();
-  r.selectNodeContents(code);
-  sel.removeAllRanges();
-  sel.addRange(r);
+  toggleWrappingTag(sel, "CODE", boundary);
 }
 
 /**
@@ -217,10 +214,6 @@ export function applyDomFormat(
   boundary: Node | null,
 ): boolean {
   if (!sel.rangeCount || sel.isCollapsed) return false;
-  if (format === "code") {
-    toggleInlineCode(sel, boundary);
-    return true;
-  }
   const tag = WRAP_TAGS[format];
   if (!tag) return false;
   toggleWrappingTag(sel, tag, boundary);

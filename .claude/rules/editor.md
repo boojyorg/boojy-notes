@@ -46,8 +46,9 @@ app's, made through state.**
   `getTargetRanges()`). One root: left to Chromium. More: cancelled and, for delete, text,
   Enter and Shift+Enter, done in state. React's `onBeforeInput` cannot stand in.
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
-- **Bold and italic are structural wraps** (`toggleWrappingTag`), never `execCommand("bold")`,
-  which reads the computed style (un-bolded words inside headings). `heading-bold.spec.ts`.
+- **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never `execCommand("bold")`,
+  which reads the computed style (un-bolded words inside headings). What is selected decides
+  on or off, not where it starts (code nested). `heading-bold.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
   textarea): `handleEditorKeyDown` returns when focus is in a field, because its logic reads a
   document selection that is stale there. The one exception: inline-format shortcuts in a
