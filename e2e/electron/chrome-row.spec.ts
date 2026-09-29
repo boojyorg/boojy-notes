@@ -353,3 +353,37 @@ test("no window-drag rectangle lies under a chrome button, in either sidebar sta
     await h.close();
   }
 });
+
+test("the selection toolbar over the top row opts out of the window drag", async () => {
+  test.skip(process.platform !== "darwin", "drag regions are macOS's");
+  const h = await launchApp({ "Top.md": "# A heading on the first line\n\nBody.\n" });
+  try {
+    await h.openNote("Top");
+    // Select part of the first line: the toolbar stands above it, in the
+    // chrome row, where only its bottom edge took a click (2026-09-29).
+    const heading = h.page.locator("h1").first();
+    const b = (await heading.boundingBox())!;
+    await h.page.mouse.move(b.x + 4, b.y + b.height / 2);
+    await h.page.mouse.down();
+    await h.page.mouse.move(b.x + 150, b.y + b.height / 2, { steps: 5 });
+    await h.page.mouse.up();
+    const bar = h.page.getByRole("toolbar", { name: "Text formatting" });
+    await bar.waitFor();
+    const found = await h.page.evaluate(() => {
+      const bar = document.querySelector('[role="toolbar"][aria-label="Text formatting"]')!;
+      const drag = document.querySelector('[data-testid="note-path-drag"]')!;
+      const q = bar.getBoundingClientRect();
+      const r = drag.getBoundingClientRect();
+      return {
+        overlaps: q.top < r.bottom && q.bottom > r.top && q.left < r.right && q.right > r.left,
+        // A later no-drag subtracts from an earlier drag; an earlier one is overridden.
+        after: !!(drag.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING),
+        region: getComputedStyle(bar).getPropertyValue("app-region"),
+      };
+    });
+    expect(found).toEqual({ overlaps: true, after: true, region: "no-drag" });
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
