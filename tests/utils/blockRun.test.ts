@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../../src/utils/blockRun";
+import {
+  indentRun,
+  selectedIds,
+  selectionRange,
+  stepHead,
+  subtreeEnd,
+} from "../../src/utils/blockRun";
 import type { Block } from "../../src/types/notes";
 
 const p = (id: string): Block => ({ id, type: "p", text: id });
@@ -69,5 +75,47 @@ describe("stepHead", () => {
     expect(stepHead(note, last, 1)).toBe(last);
     const top = { anchor: "a", head: "a" };
     expect(stepHead([fm, p("a")], top, -1)).toBe(top);
+  });
+});
+
+describe("indentRun", () => {
+  const depths = (blocks: Block[] | null) =>
+    blocks?.map((b) => `${b.id}${b.indent || 0}`).join(" ");
+
+  it("moves every list item in the run in by one, children along, as one shape", () => {
+    const list = [li("a"), li("b"), li("c", 1), li("d")];
+    expect(depths(indentRun(list, 1, 3, 1))).toBe("a0 b1 c2 d1");
+  });
+
+  it("moves nothing when the first item has no item above to nest under", () => {
+    const list = [p("x"), li("a"), li("b")];
+    expect(indentRun(list, 1, 2, 1)).toBeNull();
+    expect(indentRun([li("a"), li("b")], 0, 1, 1)).toBeNull();
+  });
+
+  it("moves nothing when a later run in the selection cannot nest", () => {
+    const list = [li("a"), li("b"), p("x"), li("c")];
+    expect(indentRun(list, 1, 3, 1)).toBeNull();
+  });
+
+  it("leaves a paragraph in the run alone, and reads across an empty row", () => {
+    const blank: Block = { id: "x", type: "p", text: "" };
+    const list = [li("a"), li("b"), blank, li("c")];
+    expect(depths(indentRun(list, 1, 3, 1))).toBe("a0 b1 x0 c1");
+  });
+
+  it("outdents every item that can; one at the edge stays, and its children stay under it", () => {
+    const list = [li("a"), li("b", 1), li("c", 2), li("d")];
+    expect(depths(indentRun(list, 0, 0, -1))).toBeUndefined();
+    expect(depths(indentRun(list, 0, 1, -1))).toBe("a0 b0 c1 d0");
+  });
+
+  it("drops a stale source prefix on the items it moves", () => {
+    const list = [li("a"), { ...li("b", 1), indentStr: "\t" } as Block];
+    expect(indentRun(list, 1, 1, -1)?.[1]).not.toHaveProperty("indentStr", "\t");
+  });
+
+  it("returns null when nothing in the run is a list item", () => {
+    expect(indentRun([p("a"), p("b")], 0, 1, 1)).toBeNull();
   });
 });

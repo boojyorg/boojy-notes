@@ -82,3 +82,43 @@ export function stepHead(
     if (r && (r.from !== range.from || r.to !== range.to)) return next;
   }
 }
+
+const isBlank = (block: Block) => block.type === "p" && !(block.text || "").trim();
+
+/**
+ * Tab or Shift+Tab over blocks `from`–`to`: each list item among them, with
+ * the items nested under it, one level in (`delta` 1) or out (-1). Anything
+ * else in the run stays. In is all or nothing: every item that would lead a
+ * nested run needs an item above it at least as deep (an empty row between
+ * is no break, as on disk), else nothing moves and the list keeps its shape.
+ * Out moves each item that can; one already at the edge stays, and so do its
+ * children. The new blocks, or null when nothing would change.
+ */
+export function indentRun(
+  blocks: readonly Block[],
+  from: number,
+  to: number,
+  delta: 1 | -1,
+): Block[] | null {
+  const moving = new Set<number>();
+  for (let i = from; i <= to; i++) {
+    if (!LIST_KINDS.has(blocks[i]?.type) || moving.has(i)) continue;
+    if (delta < 0 && !(blocks[i].indent || 0)) continue;
+    for (let k = i; k <= subtreeEnd(blocks, i); k++) moving.add(k);
+  }
+  if (!moving.size) return null;
+  if (delta > 0) {
+    for (const k of moving) {
+      if ((blocks[k].indent || 0) >= 6) return null;
+      let above = k - 1;
+      while (above >= 0 && isBlank(blocks[above])) above--;
+      if (moving.has(above)) continue;
+      const parent = blocks[above];
+      if (!parent || !LIST_KINDS.has(parent.type)) return null;
+      if ((parent.indent || 0) < (blocks[k].indent || 0)) return null;
+    }
+  }
+  return blocks.map((block, i) =>
+    moving.has(i) ? { ...block, indent: (block.indent || 0) + delta, indentStr: undefined } : block,
+  );
+}
