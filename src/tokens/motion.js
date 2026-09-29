@@ -43,7 +43,9 @@ export const NEW_ROW_MS = 2400;
  * tooltip, a dialog, a toast, a press. Apple-Notes quick with a soft landing,
  * never a spring. Nothing here is over ~200ms; past that a small thing reads
  * as waiting (the panel earned its 280 by being big). 140/90 with 0.96 was
- * too subtle to see and 180/110 with 0.93 too much; Tyr chose between (2026-09-28).
+ * too subtle to see and 180/110 with 0.93 too much; Tyr chose 160/100 between
+ * (2026-09-28), then found it a tad slow in daily use and took the timings
+ * ~6% quicker, keeping the 0.95 grow that makes the motion visible (2026-09-29).
  *
  * Leaving is quicker than arriving: an arrival is watched, a departure is
  * only confirmed, and it is what makes macOS menus feel answered rather than
@@ -54,15 +56,15 @@ export const NEW_ROW_MS = 2400;
  * variable, never these numbers, unless it needs a timer.
  */
 export const MOTION_FAST_MS = 100;
-export const MOTION_ENTER_MS = 160;
-export const MOTION_EXIT_MS = 100;
+export const MOTION_ENTER_MS = 150;
+export const MOTION_EXIT_MS = 95;
 
 /**
  * A block that changed place glides to its new one (a drop, Cmd+Shift+Arrow,
  * the drag's copy going home). Longer than an arrival because a block travels
  * further than a menu grows; still under the panel's clock.
  */
-export const MOTION_SETTLE_MS = 200;
+export const MOTION_SETTLE_MS = 190;
 
 /** Arriving decelerates into place; it is the panel's own curve. */
 export const EASE_ENTER = PANEL_EASE;
