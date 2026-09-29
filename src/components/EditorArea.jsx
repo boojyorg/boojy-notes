@@ -53,6 +53,7 @@ import { isAligned } from "../utils/tableAlign";
 import { panelTransition } from "../tokens/motion";
 import { atScale } from "../utils/uiScale";
 import { selectedIds, selectionRange, stepHead, subtreeEnd } from "../utils/blockRun";
+import { LIST_TYPES } from "../utils/crossBlockEdit";
 import BlockMenu from "./BlockMenu";
 import { BAND_REACH, bandFill } from "../utils/selectionBand";
 import { wholeBlocksCopy } from "../utils/clipboardCopy";
@@ -218,6 +219,7 @@ const EditorArea = memo(
       applyFormat,
       deleteBlockRange,
       duplicateBlockRange,
+      indentBlockRange,
       setBlockKind,
     } = useEditorContext();
     const { theme } = useTheme();
@@ -521,8 +523,10 @@ const EditorArea = memo(
     // moves nothing; the arrows put the caret in the nearest text block on
     // that side, and Shift+arrows grow or shrink the run; Backspace and Delete
     // remove it, Cmd+C copies it whole and Cmd+X both; Enter opens a paragraph
-    // under it; a printable character deselects and types where the caret
-    // already is. True when consumed.
+    // under it; Tab and Shift+Tab move its list items a level, the selection
+    // staying (a run with none leaves Tab to the editor); a printable
+    // character deselects and types where the caret already is. True when
+    // consumed.
     const handleSelectedBlockKey = useCallback(
       (e) => {
         const blocks = noteDataRef.current[activeNote]?.content?.blocks || [];
@@ -564,6 +568,13 @@ const EditorArea = memo(
           deleteWholeBlock(activeNote, range.from, range.to);
           return true;
         }
+        if (e.key === "Tab" && !mod && !e.altKey) {
+          const run = blocks.slice(range.from, range.to + 1);
+          if (!run.some((b) => LIST_TYPES.has(b.type))) return false;
+          e.preventDefault();
+          indentBlockRange(activeNote, range.from, range.to, e.shiftKey ? -1 : 1);
+          return true;
+        }
         if (e.key === "F10" && e.shiftKey) {
           e.preventDefault();
           openBlockMenuAt(blocks[range.from].id);
@@ -588,6 +599,7 @@ const EditorArea = memo(
         deleteWholeBlock,
         copySelectedBlocks,
         insertBlockAfter,
+        indentBlockRange,
         openBlockMenuAt,
       ],
     );

@@ -3,6 +3,7 @@ import { genBlockId } from "../utils/storage";
 import { getCaretOffset } from "../utils/domHelpers";
 import { withCell } from "../utils/tableShape";
 import { reorderFloor } from "../utils/blockOrder";
+import { indentRun } from "../utils/blockRun";
 import { insertedImageWidth } from "../utils/imageSize";
 import { getAPI } from "../services/apiProvider";
 
@@ -470,6 +471,19 @@ export function useBlockOperations({
     }
   };
 
+  // Tab or Shift+Tab over several blocks (a text range across them, or a
+  // whole-block selection): the list items among them move a level as one
+  // (utils/blockRun `indentRun`), in one history entry. The selection is left
+  // as it is, so a second Tab moves the same items again.
+  const indentBlockRange = (noteId, from, to, delta) => {
+    commitNoteData((prev) => {
+      const n = prev[noteId];
+      const blocks = n && indentRun(n.content.blocks, from, to, delta);
+      if (!blocks) return prev;
+      return { ...prev, [noteId]: { ...n, content: { ...n.content, blocks } } };
+    });
+  };
+
   // Format → Body Text, Heading, a list or Quote: each text block the
   // selection touches becomes `type` and keeps its text, as the Backspace
   // demotion keeps it (only the id and the text survive; a heading's source
@@ -524,6 +538,7 @@ export function useBlockOperations({
     updateTableCell,
     updateTableRows,
     updateBlockIndent,
+    indentBlockRange,
     moveBlock,
   };
 }

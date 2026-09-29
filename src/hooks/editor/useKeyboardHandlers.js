@@ -119,6 +119,7 @@ export function useKeyboardHandlers({
   applyFormat,
   scopeOf,
   updateBlockIndent,
+  indentBlockRange,
   moveBlock,
   selectBlock,
   selectBlockRun,
@@ -653,12 +654,19 @@ export function useKeyboardHandlers({
     // itself (a table cell, a callout field): that block, not the editor.
     // Across roots, or with one end outside every root: nothing here. An
     // edit key becomes a beforeinput that useCrossBlockEdit owns, and a
-    // navigation key collapses the selection natively; Tab is swallowed so
-    // focus does not leave the editor.
+    // navigation key collapses the selection natively. Tab never leaves the
+    // editor from here: across roots it moves the list items the range
+    // touches a level, the range staying for the next press.
     const scope = scopeOf(range);
     if (scope.kind === "block" && !isEditableBlock(getBlockAt(scope.start.blockIndex))) return;
     if (scope.kind === "cross" || (scope.kind === "outside" && !range.collapsed)) {
-      if (e.key === "Tab") e.preventDefault();
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (scope.kind === "cross" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          const delta = e.shiftKey ? -1 : 1;
+          indentBlockRange(currentNote, scope.start.blockIndex, scope.end.blockIndex, delta);
+        }
+      }
       return;
     }
 

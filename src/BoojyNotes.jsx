@@ -507,6 +507,7 @@ export default function BoojyNotes() {
     updateTableCell,
     updateTableRows,
     updateBlockIndent,
+    indentBlockRange,
     moveBlock,
     setBlockKind,
   } = useBlockOperations({
@@ -640,6 +641,7 @@ export default function BoojyNotes() {
     applyFormat,
     mouseIsDown,
     updateBlockIndent,
+    indentBlockRange,
     moveBlock,
     selectBlock: setSelectedBlockId,
     selectBlockRun,
@@ -1399,6 +1401,7 @@ export default function BoojyNotes() {
               deleteBlock,
               deleteBlockRange,
               duplicateBlockRange,
+              indentBlockRange,
               setBlockKind,
               registerBlockRef,
               insertBlockAfter,
