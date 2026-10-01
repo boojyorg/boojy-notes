@@ -2,6 +2,7 @@
 
 import type { Block, Note, NoteData } from "../types/notes";
 import { stripMarkdownFormatting } from "./inlineFormatting";
+import { naturalCompare } from "./sidebarTree";
 
 /**
  * What one block contributes to a note's searchable text: prose, a callout's
@@ -254,7 +255,13 @@ export interface SearchOptions {
   limit?: number;
   /** Only these notes are searched; with an empty query they are all listed, newest first. */
   noteIds?: Set<string> | null;
+  /** Only notes in this folder or below it; with an empty query, listed newest first. */
+  folder?: string | null;
 }
+
+/** Whether a note in `noteFolder` is inside `folder`, subfolders included. */
+export const inFolder = (noteFolder: string | null, folder: string) =>
+  noteFolder === folder || !!noteFolder?.startsWith(`${folder}/`);
 
 /**
  * The query's terms, folded: words split on spaces, and a quoted phrase as
@@ -287,14 +294,19 @@ export function searchNotes(
   index: SearchIndex,
   options: SearchOptions | number = {},
 ): { results: SearchResult[]; totalCount: number } {
-  const { limit = 50, noteIds = null } = typeof options === "number" ? { limit: options } : options;
+  const {
+    limit = 50,
+    noteIds = null,
+    folder = null,
+  } = typeof options === "number" ? { limit: options } : options;
   const words = queryTerms(query);
-  const entries = noteIds
+  let entries = noteIds
     ? [...noteIds].map((id) => index.get(id)).filter((e): e is IndexEntry => !!e)
     : [...index.values()];
+  if (folder) entries = entries.filter((e) => inFolder(e.folder, folder));
 
   if (words.length === 0) {
-    if (!noteIds) return { results: [], totalCount: 0 };
+    if (!noteIds && !folder) return { results: [], totalCount: 0 };
     const listed = entries
       .sort((a, b) => b.lastModified - a.lastModified)
       .map((e) => plainResult(e, 0));
@@ -390,4 +402,78 @@ export function findMatchBlock(
       return blockOffsets[i + 1].blockId;
   }
   return blockOffsets[0]?.blockId || null;
+}
+
+export interface FolderHit {
+  /** The folder's vault-relative path. */
+  path: string;
+  /** Its own name, the last segment, which is what is matched. */
+  name: string;
+  /** The folder it sits in, or null at the root. */
+  parent: string | null;
+  score: number;
+  nameRanges: Range[];
+}
+
+/** At most this many folders in a result list, so notes are never pushed off it. */
+export const FOLDER_HITS = 2;
+
+/**
+ * Folders whose own name holds every term of the query, scored as a note's
+ * title is: `univ` finds University, never Archive inside it. Best first,
+ * then the shallower, then by name.
+ */
+export function searchFolders(query: string, folders: string[], limit = FOLDER_HITS): FolderHit[] {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return [];
+  const hits: FolderHit[] = [];
+  for (const path of folders) {
+    const slash = path.lastIndexOf("/");
+    const name = path.slice(slash + 1);
+    const fold = foldText(name);
+    let score = 0;
+    const nameRanges: Range[] = [];
+    for (const t of terms) {
+      const f = findWord(fold.text, t);
+      if (!f) {
+        score = 0;
+        break;
+      }
+      score += f.start ? TITLE_START : TITLE_ANY;
+      nameRanges.push(mapRange(fold, [f.idx, f.idx + t.length]));
+    }
+    if (score === 0) continue;
+    nameRanges.sort((a, b) => a[0] - b[0]);
+    hits.push({
+      path,
+      name,
+      parent: slash === -1 ? null : path.slice(0, slash),
+      score,
+      nameRanges,
+    });
+  }
+  const depth = (p: string) => p.split("/").length;
+  hits.sort(
+    (a, b) => b.score - a.score || depth(a.path) - depth(b.path) || naturalCompare(a.path, b.path),
+  );
+  return hits.slice(0, limit);
+}
+
+export type ResultRow =
+  | { kind: "note"; result: SearchResult }
+  | { kind: "folder"; folder: FolderHit };
+
+/**
+ * The one order of a result list with folders in it. Folders go first,
+ * except under a note whose title matches at least as well: that note stays
+ * first, so Enter still opens `Boojy` when a folder is also called Boojy.
+ */
+export function orderResults(notes: SearchResult[], folders: FolderHit[]): ResultRow[] {
+  const noteRows = notes.map((result) => ({ kind: "note", result }) as const);
+  const folderRows = folders.map((folder) => ({ kind: "folder", folder }) as const);
+  const top = notes[0];
+  if (top && top.matchIn === "title" && folders.length && top.score >= folders[0].score) {
+    return [noteRows[0], ...folderRows, ...noteRows.slice(1)];
+  }
+  return [...folderRows, ...noteRows];
 }

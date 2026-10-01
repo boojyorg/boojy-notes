@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+### Features
+
+- **Search finds folders** — Type part of a folder's name in Search (⌘P) and the folder shows up as a row, with its folder icon. Press Enter on it and it becomes a grey chip in the search box: everything you type then searches only that folder and the folders inside it, and with nothing typed you see its notes, newest first. Each note's place is shown from inside the folder, so the folder's own name isn't repeated on every row. A folder chip and a tag chip can be on together. Backspace in the empty box turns the chip back into the folder's name. When a note's name matches as well as a folder's does, the note stays first, so Enter still opens it.
+- **Make a note from Search** — When nothing matches what you typed, Search offers one row, Create "…", and Enter on it makes a note with that name and opens it. With a folder chip on, the note goes into that folder.
+
 ### Improvements
+
+- **Nested tags and exact phrases in Search** — Choosing `#uni` in Search now also finds notes tagged `#uni/lectures` or `#uni/exams`, as Obsidian does, and `#uni` is offered even when no note uses it on its own. Put words in double quotes, like `"exam notes"`, to find only notes where they appear together and in that order; a line break between them still counts.
 
 - **Resize a picture by its corners** — Click a picture and a thin teal outline appears round it, with a white dot on each corner. Drag any dot to make the picture bigger or smaller; it always keeps its shape, and lands on its own size when you drag close to it. Double-click a dot to put it back to its own size. The white pill that used to appear on the picture's right edge whenever you pointed at it is gone, so pointing at a picture now shows only the small bar at its top right. When a picture is part of several selected blocks it is tinted like the others, with no dots, since one drag can't resize them all.
 

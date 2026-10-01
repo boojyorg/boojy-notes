@@ -5,6 +5,8 @@ import {
   buildSearchIndex,
   findMatchBlock,
   foldText,
+  orderResults,
+  searchFolders,
   searchNotes,
 } from "../../src/utils/search";
 import type { Block, NoteData } from "../../src/types/notes";
@@ -241,5 +243,65 @@ describe("searchNotes: quoted phrases", () => {
     expect(ids('june "exam notes"')).toEqual(["together"]);
     expect(ids('"" june')).toEqual(["together"]);
     expect(ids('""')).toEqual([]);
+  });
+});
+
+describe("folders in Search", () => {
+  const folders = [
+    "University",
+    "University/Sem 1 26-27",
+    "University/Archive",
+    "Projects",
+    "Projects/Boojy",
+    "Personal/Universe",
+  ];
+
+  it("matches a folder's own name, never its path: univ finds University, not Archive", () => {
+    const hits = searchFolders("univ", folders, 10);
+    expect(hits.map((h) => h.path)).toEqual(["University", "Personal/Universe"]);
+    expect(hits[0]).toMatchObject({ name: "University", parent: null, nameRanges: [[0, 4]] });
+    expect(hits[1].parent).toBe("Personal");
+  });
+
+  it("needs every term in the name, takes a phrase, and offers at most two", () => {
+    expect(searchFolders("sem 26", folders).map((h) => h.path)).toEqual(["University/Sem 1 26-27"]);
+    expect(searchFolders('"sem 1"', folders).map((h) => h.path)).toEqual([
+      "University/Sem 1 26-27",
+    ]);
+    expect(searchFolders("sem zzz", folders)).toEqual([]);
+    expect(searchFolders("", folders)).toEqual([]);
+    expect(searchFolders("u", folders)).toHaveLength(2);
+  });
+
+  const noteData: NoteData = {
+    boojy: note("Boojy", [p("b1", "suite")], { folder: "Projects/Boojy", lastModified: 3 }),
+    demo: note("Boojy Notes demo", [p("b2", "x")], { folder: "Projects/Boojy", lastModified: 2 }),
+    plan: note("Plan", [p("b3", "the university timetable")], { folder: null, lastModified: 1 }),
+    weekly: note("Weekly Progress", [p("b4", "x")], {
+      folder: "University/Sem 1 26-27",
+      lastModified: 5,
+    }),
+    master: note("Master", [p("b5", "progress")], { folder: "University", lastModified: 4 }),
+    other: note("Progress elsewhere", [p("b6", "x")], {
+      folder: "University old",
+      lastModified: 6,
+    }),
+  };
+  const index = buildSearchIndex(noteData);
+  const order = (q: string) =>
+    orderResults(searchNotes(q, index).results, searchFolders(q, folders)).map((r) =>
+      r.kind === "note" ? r.result.noteId : `folder:${r.folder.path}`,
+    );
+
+  it("puts a folder first, unless a note's title matches at least as well", () => {
+    expect(order("univ")).toEqual(["folder:University", "folder:Personal/Universe", "plan"]);
+    expect(order("boojy")).toEqual(["boojy", "folder:Projects/Boojy", "demo"]);
+  });
+
+  it("a folder filter takes the folder and everything under it, never a namesake", () => {
+    const ids = (q: string) =>
+      searchNotes(q, index, { folder: "University" }).results.map((r) => r.noteId);
+    expect(ids("progress").sort()).toEqual(["master", "weekly"]);
+    expect(ids("")).toEqual(["weekly", "master"]);
   });
 });
