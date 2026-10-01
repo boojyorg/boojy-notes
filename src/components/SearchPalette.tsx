@@ -194,7 +194,7 @@ export default function SearchPalette({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resultRows reads the filters and folders listed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resultRows reads the filters, folders, files and callbacks listed.
   const rows = useMemo<Row[]>(() => {
     if (mode === "recent") {
       return recentRows(recentIds, noteData, currentNoteId, Math.min(shown, RECENT_SHOWN)).map(
@@ -225,6 +225,9 @@ export default function SearchPalette({
     folderFilter,
     tagFilter,
     folderList,
+    otherFiles,
+    onOpenFile,
+    onCreateNote,
   ]);
 
   // The highlight: a position in the rows drawn, reset to the first whenever

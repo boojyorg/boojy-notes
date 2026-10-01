@@ -72,6 +72,7 @@ const state: { noteData: NoteData; sidebar: Record<string, unknown> } = {
   sidebar: {},
 };
 
+const RECENTS = ["n1", "n3", "n4"];
 function setup(over: Record<string, unknown> = {}, props: Record<string, unknown> = {}) {
   state.noteData = noteData;
   state.sidebar = {
@@ -90,7 +91,7 @@ function setup(over: Record<string, unknown> = {}, props: Record<string, unknown
     <SearchPalette
       onOpenResult={onOpenResult}
       onClose={onClose}
-      recentIds={["n1", "n3", "n4"]}
+      recentIds={RECENTS}
       currentNoteId="n1"
       {...props}
     />,
@@ -490,5 +491,32 @@ describe("SearchPalette", () => {
     });
     fireEvent.keyDown(getByLabelText("Search notes"), { key: "Enter" });
     expect(onOpenResult).toHaveBeenCalledWith("n2", "b7", ["boojy", "side bar"]);
+  });
+
+  it("follows the file list when files change outside the app, the query unchanged", () => {
+    const onOpenFile = vi.fn();
+    // A stable folder list, as the app passes: a fresh default would recompute
+    // the rows on every render and hide the stale memo.
+    const sidebar = {
+      search: "pdf",
+      searchResults: { results: [], totalCount: 0, query: "pdf" },
+      folderList: [],
+    };
+    const t = setup(sidebar, {
+      otherFiles: [{ path: "Report.pdf", attachment: false }],
+      onOpenFile,
+    });
+    expect(rows(t.container).map((r) => r.textContent)).toEqual(["Report.pdf"]);
+    t.rerender(
+      <SearchPalette
+        onOpenResult={t.onOpenResult}
+        onClose={t.onClose}
+        recentIds={RECENTS}
+        currentNoteId="n1"
+        otherFiles={[{ path: "Updated.pdf", attachment: false }]}
+        onOpenFile={onOpenFile}
+      />,
+    );
+    expect(rows(t.container).map((r) => r.textContent)).toEqual(["Updated.pdf"]);
   });
 });
