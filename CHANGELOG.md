@@ -5,16 +5,18 @@
 ### Features
 
 - **Search finds folders** — Type part of a folder's name in Search (⌘P) and the folder shows up as a row, with its folder icon. Press Enter on it and it becomes a grey chip in the search box: everything you type then searches only that folder and the folders inside it, and with nothing typed you see its notes, newest first. Each note's place is shown from inside the folder, so the folder's own name isn't repeated on every row. A folder chip and a tag chip can be on together. Backspace in the empty box turns the chip back into the folder's name. When a note's name matches as well as a folder's does, the note stays first, so Enter still opens it.
+- **Search finds your other files** — PDFs, pictures, spreadsheets and any other file kept beside your notes now show up in Search by name, with the same icon the sidebar gives them; typing `pdf` lists your PDFs. Enter opens the file in its own app, as clicking it in the sidebar does. Pictures you pasted into notes, which live in the attachments folder, are left out so they don't crowd every search.
 - **Make a note from Search** — When nothing matches what you typed, Search offers one row, Create "…", and Enter on it makes a note with that name and opens it. With a folder chip on, the note goes into that folder.
 
 ### Improvements
 
+- **The words you searched for light up** — Opening a note from a match in its text now tints just the matched words, in teal, for a moment before fading, instead of tinting the whole paragraph. Your note's text is never changed. With Reduce Motion on, the tint simply goes after a moment.
 - **Nested tags and exact phrases in Search** — Choosing `#uni` in Search now also finds notes tagged `#uni/lectures` or `#uni/exams`, as Obsidian does, and `#uni` is offered even when no note uses it on its own. Put words in double quotes, like `"exam notes"`, to find only notes where they appear together and in that order; a line break between them still counts.
-
 - **Resize a picture by its corners** — Click a picture and a thin teal outline appears round it, with a white dot on each corner. Drag any dot to make the picture bigger or smaller; it always keeps its shape, and lands on its own size when you drag close to it. Double-click a dot to put it back to its own size. The white pill that used to appear on the picture's right edge whenever you pointed at it is gone, so pointing at a picture now shows only the small bar at its top right. When a picture is part of several selected blocks it is tinted like the others, with no dots, since one drag can't resize them all.
 
 ### Bug Fixes
 
+- **"Type / for commands…" leaves once you write below it** — With the first line of a note left empty and your writing on the lines below, the grey hint kept showing on that empty first line. It now shows only while the whole note is one empty line.
 - **Opening the app twice brings back the window you have** — Launching Boojy Notes while it was already running (clicking it twice in the Start menu, say) started a second copy with its own window, and both saved to the same notes. Now the second launch closes at once and the window you already had comes to the front, restored if it was minimised. On a Mac where you had closed the window but left the app running, a new one opens.
 
 ## v0.11.0 — 2026-09-29

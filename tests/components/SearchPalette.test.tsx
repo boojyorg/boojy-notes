@@ -162,7 +162,7 @@ describe("SearchPalette", () => {
     });
     fireEvent.keyDown(getByLabelText("Search notes"), { key: "Enter" });
     expect(flushSearch).toHaveBeenCalledTimes(1);
-    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7");
+    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7", expect.any(Array));
   });
 
   it("Enter with nothing pending opens the highlighted row, with its matched block", () => {
@@ -175,7 +175,7 @@ describe("SearchPalette", () => {
     const field = getByLabelText("Search notes");
     fireEvent.keyDown(field, { key: "ArrowDown" });
     fireEvent.keyDown(field, { key: "Enter" });
-    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7");
+    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7", expect.any(Array));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -210,6 +210,7 @@ describe("SearchPalette", () => {
       expect(t.onOpenResult).toHaveBeenCalledWith(
         raw.results[idx].noteId,
         raw.results[idx].matchBlockId,
+        ["plan"],
       );
       cleanup();
     }
@@ -251,7 +252,7 @@ describe("SearchPalette", () => {
       searchResults: { results: [titleHit, bodyHit], totalCount: 2 },
     });
     fireEvent.click(getByText("Week 3 lecture"));
-    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7");
+    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7", expect.any(Array));
   });
 
   it("closes on Escape in one press and on a click outside the panel", () => {
@@ -451,5 +452,43 @@ describe("SearchPalette", () => {
     const t = setup({ search: "exam", tagFilter: "work", setTagFilter });
     fireEvent.click(t.getByLabelText("Remove #work filter"));
     expect(setTagFilter).toHaveBeenCalledWith(null, "exam");
+  });
+
+  const files = [
+    { path: "Uni/Report.pdf", attachment: false },
+    { path: "attachments/report shot.png", attachment: true },
+  ];
+
+  it("a file is a row by its name, extension muted; Enter opens it in its own app", () => {
+    const onOpenFile = vi.fn();
+    const t = setup(
+      { search: "report", searchResults: { results: [], totalCount: 0, query: "report" } },
+      { otherFiles: files, onOpenFile },
+    );
+    expect(rows(t.container).map((r) => r.textContent)).toEqual(["Report.pdfUni"]);
+    expect(t.getByText("1 result")).toBeInTheDocument();
+    fireEvent.keyDown(t.getByLabelText("Search notes"), { key: "Enter" });
+    expect(onOpenFile).toHaveBeenCalledWith("Uni/Report.pdf");
+    expect(t.onClose).toHaveBeenCalled();
+    cleanup();
+    // A tag chip leaves no files: a file carries no tags.
+    const tagged = setup(
+      {
+        search: "report",
+        tagFilter: "work",
+        searchResults: { results: [], totalCount: 0, query: "report" },
+      },
+      { otherFiles: files, onOpenFile },
+    );
+    expect(rows(tagged.container)).toHaveLength(0);
+  });
+
+  it("opening a note hands over the words searched, to tint in it", () => {
+    const { getByLabelText, onOpenResult } = setup({
+      search: 'boojy "side bar"',
+      searchResults: { results: [bodyHit], totalCount: 1, query: 'boojy "side bar"' },
+    });
+    fireEvent.keyDown(getByLabelText("Search notes"), { key: "Enter" });
+    expect(onOpenResult).toHaveBeenCalledWith("n2", "b7", ["boojy", "side bar"]);
   });
 });

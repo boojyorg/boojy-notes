@@ -271,3 +271,63 @@ test("a folder is a result: its chip searches inside it, and Create makes the no
     await h.close();
   }
 });
+
+test("a file is found by name and opened in its own app; a note opens with its matched words tinted", async () => {
+  const filler = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of padding.`).join("\n\n");
+  const h = await launchApp({
+    "University/Report.pdf": "%PDF-1.4\n",
+    "attachments/report shot.png": "png",
+    "Plan.md": `${filler}\n\nThe interim **progress** report is due Friday.\n`,
+  });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const field = page.getByRole("textbox", { name: "Search notes" });
+    const rows = dialog.locator("[data-search-index]");
+
+    // The main process's opener is watched instead of opening Preview.
+    await h.app.evaluate(({ shell }) => {
+      const g = globalThis as unknown as { opened: string[] };
+      g.opened = [];
+      shell.openPath = async (p: string) => {
+        g.opened.push(p);
+        return "";
+      };
+    });
+
+    // `pdf` finds the file by its extension; the attachment store's never shows.
+    await page.keyboard.press(`${MOD}+p`);
+    await field.type("pdf");
+    await expect(rows).toHaveText([/^Report\.pdfUniversity$/]);
+    await field.fill("report");
+    await expect(dialog).not.toContainText("report shot");
+    await field.fill("pdf");
+    await expect(rows).toHaveCount(1);
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect
+      .poll(() => h.app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened))
+      .toEqual([expect.stringMatching(/University[\\/]Report\.pdf$/)]);
+
+    // A body hit opens the note with the matched words tinted, the text untouched.
+    await page.keyboard.press(`${MOD}+p`);
+    await field.type('"progress report"');
+    await expect(rows).toHaveCount(1);
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const hl = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get(
+            "search-hit",
+          );
+          return hl ? [...hl].map((r) => r.toString()) : null;
+        }),
+      )
+      .toEqual(["progress report"]);
+    await expect(page.locator("[data-block-id] mark")).toHaveCount(0);
+    expect(h.vault.read("Plan.md")).toContain("The interim **progress** report is due Friday.");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

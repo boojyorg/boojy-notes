@@ -1503,6 +1503,8 @@ export default function BoojyNotes() {
         <SearchPalette
           onOpenResult={handleSearchResultOpen}
           onCreateNote={createNote}
+          otherFiles={otherFiles}
+          onOpenFile={openOtherFile}
           onClose={closeSearch}
           recentIds={recentIds}
           currentNoteId={activeNote}

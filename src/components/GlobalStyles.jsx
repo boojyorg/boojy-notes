@@ -3,7 +3,8 @@ import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
-import { bandFill } from "../utils/selectionBand";
+import { bandFill, withAlpha } from "../utils/selectionBand";
+import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
@@ -428,6 +429,16 @@ ${tagPillCss(theme)}
         [data-editor] ::selection {
           background: ${bandFill(theme.ACCENT.primary, theme.name)};
         }
+        /* The words a search matched, as the note opens from Search: a
+           highlight painted over the text, never written into it, faded by
+           stepping through the names (utils/searchHighlight). */
+        ${SEARCH_HIT_STEPS.map(
+          (name, i) =>
+            `::highlight(${name}) { background-color: ${withAlpha(
+              theme.ACCENT.primary,
+              SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
+            )}; }`,
+        ).join("\n        ")}
         /* The words the link picker will link, while it holds focus: the
            selection's colour, standing in for it, unwrapped before the block
            is read back (useLinkPicker). Never the saved ==highlight==. */
