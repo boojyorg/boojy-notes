@@ -111,14 +111,13 @@ export const NIGHT = {
   dragShadow: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)",
   /** A control floating over content (the image's hover bar): lifted just enough to part from a busy picture. */
   floatShadow: "0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.35)",
-  /** The image's resize pill and full-size view. The same in both themes: the
-   *  pill sits on the picture, never on the sheet, so a white fill and a dark
-   *  edge show on a white picture and a dark one alike; the full-size view is
-   *  a dark room whatever the theme (Obsidian's). */
+  /** The image's corner dots and full-size view. The same in both themes: a
+   *  dot sits on the picture's corner, so a white fill (ringed in the mark)
+   *  and a shadow show on a white picture and a dark one alike; the full-size
+   *  view is a dark room whatever the theme (Obsidian's). */
   imageHandle: {
     fill: "#FFFFFF",
-    edge: "rgba(20,17,15,0.4)",
-    shadow: "0 1px 3px rgba(20,17,15,0.2)",
+    shadow: "0 1px 3px rgba(20,17,15,0.25)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
   syntax: {
@@ -228,14 +227,13 @@ export const DAY = {
   dragShadow: "0 8px 24px rgba(20,17,15,0.12), 0 2px 6px rgba(20,17,15,0.08)",
   /** A control floating over content (the image's hover bar): lifted just enough to part from a busy picture. */
   floatShadow: "0 1px 2px rgba(20,17,15,0.06), 0 4px 12px rgba(20,17,15,0.08)",
-  /** The image's resize pill and full-size view. The same in both themes: the
-   *  pill sits on the picture, never on the sheet, so a white fill and a dark
-   *  edge show on a white picture and a dark one alike; the full-size view is
-   *  a dark room whatever the theme (Obsidian's). */
+  /** The image's corner dots and full-size view. The same in both themes: a
+   *  dot sits on the picture's corner, so a white fill (ringed in the mark)
+   *  and a shadow show on a white picture and a dark one alike; the full-size
+   *  view is a dark room whatever the theme (Obsidian's). */
   imageHandle: {
     fill: "#FFFFFF",
-    edge: "rgba(20,17,15,0.4)",
-    shadow: "0 1px 3px rgba(20,17,15,0.2)",
+    shadow: "0 1px 3px rgba(20,17,15,0.25)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
   syntax: {

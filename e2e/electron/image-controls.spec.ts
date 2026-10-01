@@ -1,9 +1,10 @@
 /**
  * The image block's controls (2026-09-23, from a prototype judged against
  * Obsidian's and Notion's): a click selects, a double-click opens the
- * full-size view under the file's name, and the pill on the right edge
- * resizes, writing the width into the file and taking it off again at the
- * picture's own size.
+ * full-size view under the file's name. Selected alone, a picture resizes by
+ * the dots on its corners (2026-10-01; before, a pill on the right edge),
+ * writing the width into the file and taking it off again at the picture's
+ * own size.
  *
  * Before, a single click both selected the picture and opened the full-size
  * view, so a picture could not be selected to delete it. Needs the real app:
@@ -43,32 +44,21 @@ const drawnWidth = (page: Page) =>
     .locator('[data-block-type="image"] img')
     .evaluate((el: HTMLImageElement) => Math.round(el.getBoundingClientRect().width));
 
-/**
- * Hover the picture until its pill shows, and return the pill's box. Re-hovered
- * because the Linux runner sends a stray mouseout ~500 ms after a hover when
- * the other worker launches, and the pill follows the pointer (the tooltip
- * specs do the same).
- */
-async function hoverForPill(page: Page) {
+type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+/** Select the picture and return the centre of one of its corner dots. */
+async function dot(page: Page, corner: Corner) {
   const img = await picture(page);
-  const pill = page.getByTestId("image-resize-handle").locator("span");
-  let box: { x: number; y: number; width: number; height: number } | null = null;
-  await expect(async () => {
-    await page.mouse.move(5, 5);
-    await img.hover();
-    await expect(pill).toBeVisible({ timeout: 500 });
-    box = await pill.boundingBox();
-    expect(box).not.toBeNull();
-  }).toPass({ timeout: 10_000 });
-  if (!box) throw new Error("no pill");
-  return box as { x: number; y: number; width: number; height: number };
+  const handle = page.locator(`[data-testid="image-resize-handle"][data-corner="${corner}"]`);
+  if (!(await handle.isVisible())) await img.click();
+  const box = await handle.locator("span").boundingBox();
+  if (!box) throw new Error(`no ${corner} dot`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-/** Drag the resize pill `dx` pixels; the picture is `width` wide before the release. */
-async function dragPill(page: Page, dx: number, width: number) {
-  const box = await hoverForPill(page);
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
+/** Drag a corner dot `dx` pixels; the picture is `width` wide before the release. */
+async function dragDot(page: Page, corner: Corner, dx: number, width: number) {
+  const { x, y } = await dot(page, corner);
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + dx, y, { steps: 6 });
@@ -87,9 +77,9 @@ test("a press selects without opening the full-size view; a double-click opens i
     if (!b) throw new Error("no picture");
     await h.page.mouse.move(b.x + 30, b.y + b.height / 2);
     await h.page.mouse.down();
-    await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
+    await expect(h.page.getByTestId("image-selection-outline")).toBeVisible();
     await h.page.mouse.up();
-    await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
+    await expect(h.page.getByTestId("image-selection-outline")).toBeVisible();
     // Before: the same click opened the full-size view.
     await expect(h.page.getByRole("dialog")).toHaveCount(0);
 
@@ -105,20 +95,21 @@ test("a press selects without opening the full-size view; a double-click opens i
   }
 });
 
-test("the pill writes a width into the file, and dragging back to the picture's own size takes it off", async () => {
+test("a corner dot writes a width into the file, and dragging back to the picture's own size takes it off", async () => {
   const h = await seed("Pic.png", 400, 100);
   try {
     await h.openNote("Pics");
     const file = h.vault.file("Pics.md");
 
-    await dragPill(h.page, -150, 250);
+    await dragDot(h.page, "bottom-right", -150, 250);
     await waitForFile(file, (t) => t.includes("![[Pic.png|250]]"), {
       label: "the width to be written",
     });
 
-    // 396 is within the snap of the picture's 400: it lands on 400, and the
-    // width comes off the file rather than being written as |400.
-    await dragPill(h.page, 146, 400);
+    // A left dot counts its travel in reverse: dragged outward, to the left,
+    // the picture grows. 396 is within the snap of the picture's 400: it lands
+    // on 400, and the width comes off the file rather than being written as |400.
+    await dragDot(h.page, "top-left", -146, 400);
     await waitForFile(file, (t) => t.includes("![[Pic.png]]"), {
       label: "the width to be taken off",
     });
@@ -134,39 +125,39 @@ test("a press anywhere off the picture deselects it: beside it in its row, the t
   try {
     await h.openNote("Pics");
     const img = await picture(h.page);
-    const wash = h.page.getByTestId("image-selection-wash");
+    const outline = h.page.getByTestId("image-selection-outline");
     const box = await img.boundingBox();
     if (!box) throw new Error("no picture");
 
     // Beside the picture, in its own row. Before: the whole row counted as
     // the picture, so it stayed selected with its controls up.
     await img.click();
-    await expect(wash).toBeVisible();
+    await expect(outline).toBeVisible();
     await h.page.mouse.click(box.x + box.width + 60, box.y + box.height / 2);
-    await expect(wash).toHaveCount(0);
+    await expect(outline).toHaveCount(0);
     await expect(h.page.getByTestId("image-hover-bar")).toHaveCount(0);
 
     // In the text, as before.
     await img.click();
-    await expect(wash).toBeVisible();
+    await expect(outline).toBeVisible();
     await h.page.locator('[data-block-type="p"]', { hasText: "Two" }).click();
-    await expect(wash).toHaveCount(0);
+    await expect(outline).toHaveCount(0);
 
     // Outside the editor: the sidebar's location name. Before: nothing there deselected.
     await img.click();
-    await expect(wash).toBeVisible();
+    await expect(outline).toBeVisible();
     await h.page.getByTestId("vault-label").click();
-    await expect(wash).toHaveCount(0);
+    await expect(outline).toHaveCount(0);
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByRole("menu", { name: "Storage location" })).toHaveCount(0);
 
-    // A press on the picture's own controls keeps it (the pill, pressed and
+    // A press on the picture's own controls keeps it (a dot, pressed and
     // released without moving), and Backspace then deletes it.
     await img.click();
-    await expect(wash).toBeVisible();
-    const pillBox = await hoverForPill(h.page);
-    await h.page.mouse.click(pillBox.x + pillBox.width / 2, pillBox.y + pillBox.height / 2);
-    await expect(wash).toBeVisible();
+    await expect(outline).toBeVisible();
+    const corner = await dot(h.page, "bottom-right");
+    await h.page.mouse.click(corner.x, corner.y);
+    await expect(outline).toBeVisible();
     await h.page.keyboard.press("Backspace");
     await waitForFile(h.vault.file("Pics.md"), (t) => !t.includes("Pic.png"), {
       label: "the selected picture to be deleted",
@@ -177,39 +168,30 @@ test("a press anywhere off the picture deselects it: beside it in its row, the t
   }
 });
 
-test("the pill stays under the pointer while a drag changes the picture's height", async () => {
-  // A portrait picture: its height follows its width, and its top holds still,
-  // so a pill kept centred slid up the edge, away from the pointer, as it shrank.
+test("a right-hand dot stays under the pointer through a drag; in a run of blocks the picture has no dots", async () => {
+  // A portrait picture: its height follows its width, and its top-left holds
+  // still, so the bottom-right corner moves both ways as the pointer does.
   const h = await seed("Tall.png", 300, 400);
   try {
     await h.openNote("Pics");
-    const img = await picture(h.page);
-    const pill = h.page.getByTestId("image-resize-handle").locator("span");
-    const box = await hoverForPill(h.page);
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    const pillMiddle = async () => {
-      const b = await pill.boundingBox();
-      if (!b) throw new Error("no pill");
-      return b.y + b.height / 2;
-    };
-
-    await h.page.mouse.move(x, y);
+    const start = await dot(h.page, "bottom-right");
+    await h.page.mouse.move(start.x, start.y);
     await h.page.mouse.down();
-    await h.page.mouse.move(x - 60, y, { steps: 6 });
+    await h.page.mouse.move(start.x - 60, start.y - 80, { steps: 6 });
     await expect.poll(() => drawnWidth(h.page)).toBe(240);
-    // Centred, it would now sit 40px above the pointer (the picture is 320 tall, not 400).
-    expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
-
-    // Released on the picture, it stays put rather than jumping to the new middle.
+    const during = await dot(h.page, "bottom-right");
+    expect(Math.abs(during.x - (start.x - 60))).toBeLessThan(1.5);
+    expect(Math.abs(during.y - (start.y - 80))).toBeLessThan(1.5);
     await h.page.mouse.up();
-    expect(Math.abs((await pillMiddle()) - y)).toBeLessThan(1.5);
 
-    // Once the pointer leaves and comes back, it is centred on the new height.
-    await hoverForPill(h.page);
-    const imgBox = await img.boundingBox();
-    if (!imgBox) throw new Error("no picture");
-    expect(Math.abs((await pillMiddle()) - (imgBox.y + imgBox.height / 2))).toBeLessThan(1.5);
+    // Shift-click the paragraph below: the run holds both blocks, and the
+    // picture wears the wash like the paragraph, with no dots to drag.
+    await h.page
+      .locator('[data-block-type="p"]', { hasText: "Two" })
+      .click({ modifiers: ["Shift"] });
+    await expect(h.page.getByTestId("image-selection-wash")).toBeVisible();
+    await expect(h.page.getByTestId("image-resize-handle")).toHaveCount(0);
+    await expect(h.page.getByTestId("image-selection-outline")).toHaveCount(0);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

@@ -11,7 +11,8 @@ vi.mock("../../../src/hooks/useTheme", () => ({
       SEMANTIC: { error: "#e5484d" },
       modalShadow: "none",
       floatShadow: "none",
-      imageHandle: { fill: "#FFFFFF", edge: "#999", shadow: "none" },
+      imageHandle: { fill: "#FFFFFF", shadow: "none" },
+      ACCENT: { primary: "#8FC1C6" },
     },
   }),
 }));
@@ -104,15 +105,27 @@ describe("ImageBlock controls", () => {
     expect(onLightbox).toHaveBeenCalledTimes(1);
   });
 
-  it("shows nothing but the picture at rest, and no outline on hover", () => {
+  it("shows nothing but the picture at rest, and only the bar on hover", () => {
     const { box } = loaded();
     expect(screen.queryByTestId("image-hover-bar")).toBeNull();
     expect(screen.queryByTestId("image-resize-handle")).toBeNull();
     fireEvent.mouseEnter(box);
     expect(screen.getByTestId("image-hover-bar")).toBeTruthy();
-    expect(screen.getByTestId("image-resize-handle")).toBeTruthy();
+    // Before 2026-10-01: a resize pill on the right edge came up on hover too.
+    expect(screen.queryByTestId("image-resize-handle")).toBeNull();
+    expect(screen.queryByTestId("image-selection-outline")).toBeNull();
     // Before: a teal ring on hover and a solid one when selected.
     expect(box.style.border).toBe("2px solid transparent");
+  });
+
+  it("selected alone, it shows a teal outline and a dot on each corner instead of the wash", () => {
+    loaded({ isSelected: true, selectedAlone: true });
+    expect(screen.queryByTestId("image-selection-wash")).toBeNull();
+    expect(screen.getByTestId("image-selection-outline").style.border).toBe(
+      "2px solid rgb(143, 193, 198)",
+    );
+    const corners = screen.getAllByTestId("image-resize-handle").map((d) => d.dataset.corner);
+    expect(corners).toEqual(["top-left", "top-right", "bottom-left", "bottom-right"]);
   });
 
   it("selected, it carries the teal wash and nothing else: the controls follow the pointer", () => {
@@ -129,18 +142,11 @@ describe("ImageBlock controls", () => {
     expect(screen.queryByTestId("image-hover-bar")).toBeNull();
   });
 
-  it("the pill looks the same at rest and under the pointer", () => {
-    const { box } = loaded();
-    fireEvent.mouseEnter(box);
-    const handle = screen.getByTestId("image-resize-handle");
-    const pill = handle.firstElementChild;
-    const rest = pill.getAttribute("style");
-    fireEvent.mouseEnter(handle);
-    fireEvent.mouseOver(handle);
-    expect(screen.getByTestId("image-resize-handle").firstElementChild.getAttribute("style")).toBe(
-      rest,
-    );
-    expect(pill.style.width).toBe("6px");
+  it("in a run of selected blocks, it wears the wash and has no dots: one drag cannot size several", () => {
+    loaded({ isSelected: true, selectedAlone: false });
+    expect(screen.getByTestId("image-selection-wash")).toBeTruthy();
+    expect(screen.queryByTestId("image-selection-outline")).toBeNull();
+    expect(screen.queryByTestId("image-resize-handle")).toBeNull();
   });
 
   it("marks the picture's frame, not its row, as what a press may land on and keep the selection", () => {
@@ -217,25 +223,22 @@ describe("ImageBlock controls", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("a press on the pill does not select the picture", () => {
-    const { box, onSelect } = loaded();
-    fireEvent.mouseEnter(box);
-    fireEvent.mouseDown(screen.getByTestId("image-resize-handle"));
+  it("a press on a dot does not select the picture again", () => {
+    const { onSelect } = loaded({ isSelected: true, selectedAlone: true });
+    fireEvent.mouseDown(screen.getAllByTestId("image-resize-handle")[3]);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("a double-click on the pill takes a width off, and does nothing on an unsized picture", () => {
-    const sized = loaded({ displayWidth: 300 });
-    fireEvent.mouseEnter(sized.box);
-    fireEvent.doubleClick(screen.getByTestId("image-resize-handle"));
+  it("a double-click on a dot takes a width off, and does nothing on an unsized picture", () => {
+    const sized = loaded({ displayWidth: 300, isSelected: true, selectedAlone: true });
+    fireEvent.doubleClick(screen.getAllByTestId("image-resize-handle")[0]);
     expect(sized.onUpdateWidth).toHaveBeenCalledWith(null);
-    // The pill's double-click is its own, never the picture's full-size view.
+    // The dot's double-click is its own, never the picture's full-size view.
     expect(sized.onLightbox).not.toHaveBeenCalled();
     cleanup();
 
-    const own = loaded();
-    fireEvent.mouseEnter(own.box);
-    fireEvent.doubleClick(screen.getByTestId("image-resize-handle"));
+    const own = loaded({ isSelected: true, selectedAlone: true });
+    fireEvent.doubleClick(screen.getAllByTestId("image-resize-handle")[0]);
     expect(own.onUpdateWidth).not.toHaveBeenCalled();
   });
 });

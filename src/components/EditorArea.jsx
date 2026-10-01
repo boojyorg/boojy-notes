@@ -1252,6 +1252,9 @@ const EditorArea = memo(
                               isBlockSelected={
                                 !!selectedRun && i >= selectedRun.from && i <= selectedRun.to
                               }
+                              isOnlyBlockSelected={
+                                !!selectedRun && i === selectedRun.from && i === selectedRun.to
+                              }
                               onBlockSelect={handleBlockSelect}
                               onImageLightbox={handleImageLightbox}
                               onImageCopyImage={handleImageCopyImage}
