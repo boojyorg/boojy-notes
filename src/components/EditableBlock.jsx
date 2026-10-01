@@ -129,6 +129,7 @@ const EditableBlock = memo(
     noteTitleSet,
     onBlockNav,
     isBlockSelected,
+    isOnlyBlockSelected,
     onBlockSelect,
     onImageLightbox,
     onImageCopyImage,
@@ -245,6 +246,7 @@ const EditableBlock = memo(
             alt={block.alt}
             displayWidth={imageDisplayWidth(block)}
             isSelected={isBlockSelected}
+            selectedAlone={isOnlyBlockSelected}
             accentColor={accentColor}
             onSelect={() => onBlockSelect(block.id)}
             onLightbox={() => onImageLightbox(block.src, block.alt)}
@@ -684,6 +686,7 @@ const EditableBlock = memo(
       prev.accentColor === next.accentColor &&
       prev.numberedIndex === next.numberedIndex &&
       prev.isBlockSelected === next.isBlockSelected &&
+      prev.isOnlyBlockSelected === next.isOnlyBlockSelected &&
       (prev.block.text === "") === (next.block.text === "") &&
       (prev.block.text === next.block.text ||
         (prev.block.type !== "code" && prev.block.type !== "callout")) &&

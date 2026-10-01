@@ -256,8 +256,9 @@ same language writes nothing. The language menu portals to `body` and takes its 
 
 - **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
   never enlarged (`imageDisplayWidth`). An image added in the app gets a width only when it is a
-  Retina PNG (`pHYs`). An existing image is never rewritten by being shown.
-- Nothing at rest; hover shows a bar and a resize pill. Double-click opens full size.
+  Retina PNG (`pHYs`). Showing an image never rewrites it.
+- Hover shows a bar; **selected alone, corner dots resize it** (a run: the wash). Double-click:
+  full size.
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
   name. `image-controls.spec.ts`, `missing-attachments.spec.ts`.
 

@@ -14,6 +14,8 @@ interface ImageBlockProps {
   /** The width drawn, in CSS pixels, or null for the picture's own size. */
   displayWidth: number | null;
   isSelected: boolean;
+  /** Selected and the only block selected: it shows its outline and corner dots. */
+  selectedAlone?: boolean;
   onSelect: () => void;
   onLightbox: () => void;
   onDelete: () => void;
@@ -28,11 +30,26 @@ interface ImageBlockProps {
 type Theme = Record<string, Record<string, string>> & {
   name?: string;
   floatShadow: string;
-  imageHandle: { fill: string; edge: string; shadow: string };
+  imageHandle: { fill: string; shadow: string };
 };
 
-/** The resize pill's length on a picture tall enough for it (Notion's proportion). */
-const PILL_LENGTH = 48;
+/** A corner dot's drawn size, and the box round it a press may land in. */
+const DOT = 12;
+const DOT_HIT = 28;
+/** The selection's outline, drawn just outside the picture. */
+const OUTLINE = 2;
+/**
+ * The four corner dots. A left dot counts the pointer's travel in reverse, so
+ * dragging it outward grows the picture, which grows to the right: the
+ * picture sits at the column's left, so the dot slides from under the pointer
+ * (Google Docs does the same).
+ */
+const CORNERS = [
+  { name: "top-left", top: true, left: true, cursor: "nwse-resize" },
+  { name: "top-right", top: true, left: false, cursor: "nesw-resize" },
+  { name: "bottom-left", top: false, left: true, cursor: "nesw-resize" },
+  { name: "bottom-right", top: false, left: false, cursor: "nwse-resize" },
+] as const;
 /** How close to the picture's own size a drag lands on it exactly. */
 const SNAP_PX = 8;
 
@@ -103,23 +120,23 @@ function BarButton({
 /**
  * An image block (2026-09-23, from a prototype Tyr judged against Obsidian's
  * and Notion's). Nothing at rest but the picture. **Hover** shows a bar at the
- * top right (full size, and ··· for the menu) and a white pill on the right
- * edge that resizes it; no outline, because a frame round every hovered
- * picture was the teal border this replaced. The controls follow the pointer
- * alone. **A click selects** (the teal wash, the whole-block selection's tint,
- * `imageWashFill`, and nothing else) on the press, and no longer opens the full-size view,
- * so a picture can be selected to delete it; a press anywhere off the picture
- * deselects it (`EditorArea`). A double-click or the bar's button opens it. **Right-click and ··· open one
- * menu.** Alignment, crop and caption are left out by decision: Markdown can
- * hold none of them, and Obsidian would draw the note differently.
+ * top right (full size, and ··· for the menu); no outline, because a frame
+ * round every hovered picture was the teal border this replaced. **A click
+ * selects** on the press, and no longer opens the full-size view, so a
+ * picture can be selected to delete it; a press anywhere off the picture
+ * deselects it (`EditorArea`). A double-click or the bar's button opens it.
+ * **Right-click and ··· open one menu.** Alignment, crop and caption are left
+ * out by decision: Markdown can hold none of them, and Obsidian would draw the
+ * note differently.
  *
- * The pill is the only resize control, on the right because the picture sits
- * on the left of the column. It straddles the edge, so it never meets the bar
- * on a short picture, and it is as long as `PILL_LENGTH` or the picture allows.
- * It looks the same at rest, under the pointer and in a drag, and a drag holds
- * it at the height it was pressed at rather than the picture's middle.
- * A drag snaps to the picture's own size (capped at the column) and writes no
- * width there; a double-click on the pill does the same. No width label, by
+ * **Selected alone, it resizes by its corners** (2026-10-01, Google Docs'
+ * handles, judged in a prototype): a teal outline just outside the picture and
+ * a dot on each corner. In a run of selected blocks it wears the wash
+ * (`imageWashFill`) like the rest, with no dots: one drag cannot size several.
+ * Corners only, never edges: the file holds a width alone (`|px`), so the
+ * height always follows and an edge would move the side it doesn't name. A
+ * drag snaps to the picture's own size (capped at the column) and writes no
+ * width there; a double-click on a dot does the same. No width label, by
  * decision (2026-09-23): the picture changing size is the feedback.
  */
 function ImageBlock({
@@ -127,6 +144,7 @@ function ImageBlock({
   alt,
   displayWidth,
   isSelected,
+  selectedAlone = false,
   onSelect,
   onLightbox,
   onDelete,
@@ -136,7 +154,7 @@ function ImageBlock({
   accentColor,
 }: ImageBlockProps) {
   const { theme } = useTheme() as { theme: Theme };
-  const { BG, TEXT } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const [hovered, setHovered] = useState(false);
   const [errored, setErrored] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -151,9 +169,6 @@ function ImageBlock({
   }
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
-  // Where the pill was pressed, in CSS px from the picture's top: held through
-  // the drag and until the pointer leaves, then the pill centres again.
-  const [grabY, setGrabY] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -182,8 +197,8 @@ function ImageBlock({
   // A resize is the picture's width in CSS pixels, what the file's `|px`
   // means: it starts from the width drawn, stops at the column less the frame,
   // and the pointer's travel is divided by the UI scale, which Chromium has
-  // already multiplied into it.
-  const handleResizeStart = (e: React.MouseEvent) => {
+  // already multiplied into it. `sign` is -1 for a left dot.
+  const handleResizeStart = (e: React.MouseEvent, sign: 1 | -1) => {
     e.preventDefault();
     e.stopPropagation();
     const box = containerRef.current;
@@ -196,14 +211,9 @@ function ImageBlock({
     const startX = e.clientX;
     const startWidth = img.offsetWidth;
     let moved: number | null = null;
-    // The pill stays at the height it was pressed at: the picture's top holds
-    // still while its height follows the width, so a pill kept centred slid up
-    // or down from under the pointer (2026-09-23).
-    const pill = (e.currentTarget as HTMLElement).firstElementChild?.getBoundingClientRect();
-    if (pill) setGrabY((pill.top + pill.height / 2 - img.getBoundingClientRect().top) / zoom);
 
     const onMove = (me: MouseEvent) => {
-      const travel = (me.clientX - startX) / zoom;
+      const travel = (sign * (me.clientX - startX)) / zoom;
       let px = Math.round(Math.max(columnWidth * 0.1, Math.min(columnWidth, startWidth + travel)));
       if (Math.abs(px - own) <= SNAP_PX) px = own;
       moved = px;
@@ -214,9 +224,6 @@ function ImageBlock({
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       setDragging(false);
-      // Released off the picture, nothing holds the pill; on it, the pill
-      // stays put until the pointer leaves, so it never jumps under it.
-      if (!box.matches(":hover")) setGrabY(null);
       if (moved == null) return;
       img.style.width = "";
       onUpdateWidth(moved === own ? null : moved);
@@ -236,9 +243,9 @@ function ImageBlock({
     );
   }
 
-  // The controls follow the pointer (and a menu or drag it started), never the
-  // selection: a selected picture shows its wash and nothing else, so the bar
-  // and pill are never up with the pointer somewhere else (2026-09-23).
+  // The bar follows the pointer (and a menu it opened), never the selection,
+  // so it is never up with the pointer somewhere else (2026-09-23); the
+  // corner dots follow the selection alone.
   const pointerOn = (hovered || !!menu || dragging) && !loading;
   const handle = theme.imageHandle;
 
@@ -248,13 +255,10 @@ function ImageBlock({
         ref={containerRef}
         data-selection-surface
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => {
-          setHovered(false);
-          if (!dragging) setGrabY(null);
-        }}
+        onMouseLeave={() => setHovered(false)}
         // Selected on the press, not the release (2026-09-23): the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.
-        // The pill and the bar stop their own press, so neither selects.
+        // The dots and the bar stop their own press, so neither reselects.
         onMouseDown={(e) => {
           if (e.button === 0) onSelect();
         }}
@@ -311,7 +315,7 @@ function ImageBlock({
             ...(loading ? { position: "absolute", opacity: 0, pointerEvents: "none" } : {}),
           }}
         />
-        {(isSelected || !!menu) && !loading && (
+        {(isSelected || !!menu) && !selectedAlone && !loading && (
           <div
             data-testid="image-selection-wash"
             style={{
@@ -358,56 +362,65 @@ function ImageBlock({
             </BarButton>
           </div>
         )}
-        {pointerOn && (
-          <button
-            type="button"
-            aria-label="Resize image"
-            data-testid="image-resize-handle"
-            onMouseDown={handleResizeStart}
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              if (displayWidth != null) onUpdateWidth(null);
-            }}
+        {selectedAlone && !loading && (
+          <div
+            data-testid="image-selection-outline"
             style={{
               position: "absolute",
-              top: 8,
-              bottom: 8,
-              // Centred on the picture's right edge, which is the padding box's.
-              right: -12,
-              width: 24,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              cursor: "ew-resize",
+              // Over the frame's transparent border, so the outline sits just
+              // outside the picture and covers none of it.
+              inset: -OUTLINE,
+              border: `${OUTLINE}px solid ${ACCENT.primary}`,
+              borderRadius: 6 + OUTLINE,
+              pointerEvents: "none",
             }}
-          >
-            <span
-              style={{
-                display: "block",
-                position: "absolute",
-                left: 9,
-                // Centred at rest; held where it was pressed during a drag,
-                // kept inside the picture as the picture's height changes.
-                // CSS does the clamping, so no frame is measured mid-drag.
-                top:
-                  grabY == null
-                    ? `calc(50% - min(${PILL_LENGTH / 2}px, 50%))`
-                    : `clamp(0px, calc(${grabY - 8}px - min(${PILL_LENGTH / 2}px, 50%)), calc(100% - min(${PILL_LENGTH}px, 100%)))`,
-                // One look at rest, under the pointer and in a drag: the
-                // resize cursor and the picture's own change are the feedback.
-                width: 6,
-                height: `min(${PILL_LENGTH}px, 100%)`,
-                minHeight: 16,
-                boxSizing: "border-box",
-                borderRadius: 4,
-                background: handle.fill,
-                border: `1px solid ${handle.edge}`,
-                boxShadow: handle.shadow,
-              }}
-            />
-          </button>
+          />
         )}
+        {selectedAlone &&
+          !loading &&
+          CORNERS.map((corner) => (
+            <button
+              key={corner.name}
+              type="button"
+              aria-label="Resize image"
+              data-testid="image-resize-handle"
+              data-corner={corner.name}
+              onMouseDown={(e) => handleResizeStart(e, corner.left ? -1 : 1)}
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (displayWidth != null) onUpdateWidth(null);
+              }}
+              style={{
+                position: "absolute",
+                // Centred on the picture's corner, which is the padding box's.
+                top: corner.top ? -DOT_HIT / 2 : `calc(100% - ${DOT_HIT / 2}px)`,
+                left: corner.left ? -DOT_HIT / 2 : `calc(100% - ${DOT_HIT / 2}px)`,
+                width: DOT_HIT,
+                height: DOT_HIT,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: corner.cursor,
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  width: DOT,
+                  height: DOT,
+                  boxSizing: "border-box",
+                  borderRadius: "50%",
+                  background: handle.fill,
+                  border: `${OUTLINE}px solid ${ACCENT.primary}`,
+                  boxShadow: handle.shadow,
+                }}
+              />
+            </button>
+          ))}
       </div>
       {menu && (
         <ImageMenu
