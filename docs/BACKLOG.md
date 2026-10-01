@@ -90,18 +90,7 @@ Product calls for Tyr; each trades conventional Markdown meaning against byte pr
 
 Problems early access users can hit today. Each is small and comes before the Beta work.
 
-- [ ] **Only one copy of the app runs at a time.** A second launch opens a second instance with
-  its own window, watcher and index, both writing the same files. Add
-  `app.requestSingleInstanceLock()` in `electron/main.js`, quit the second instance, and focus
-  (and restore) the first window from its `second-instance` event. Matters most on Windows,
-  where launching from the Start menu twice is common.
-  **`pnpm dev` skips the lock** (Tyr, 2026-09-30: keep it simple): taken only when
-  `VITE_DEV_SERVER_URL` is unset, so dev runs beside the installed app and keeps today's shared
-  userData. A separate dev userData was the alternative, left unless the shared state bites
-  (both apps see each other's saves as outside edits). The Electron suite is unaffected:
-  `e2e/electron/main-wrapper.mjs` gives every launch its own userData. Take the lock before the
-  IPC registration and `whenReady` work in `main.js`, so a second instance quits without
-  touching settings or the vault.
+Nothing open.
 
 ## Beta: release requirements
 
@@ -115,8 +104,7 @@ found on the way gate it as well, without needing a line here.
   for anything that felt off however vague; each entry is reproduced in the real app
   (`BOOJY_TRACE`, the files rule) before it is fixed, and a review pass follows only if the log
   shows a pattern.
-- [ ] **Visual polish and a Windows smoke test.** Before Windows testers, the single-instance
-  lock (Early access: fix now). Traced only, no Windows machine (review §6, §2.10):
+- [ ] **Visual polish and a Windows smoke test.** Traced only, no Windows machine (review §6, §2.10):
   reserved device names (`CON`, `NUL`, …) as a note or folder name, and the raw extension kept
   by `save-image` and `save-attachment`; both belong to this smoke test. Windows spell-check
   dictionaries download from Google's CDN on first launch (no

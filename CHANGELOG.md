@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- **Opening the app twice brings back the window you have** — Launching Boojy Notes while it was already running (clicking it twice in the Start menu, say) started a second copy with its own window, and both saved to the same notes. Now the second launch closes at once and the window you already had comes to the front, restored if it was minimised. On a Mac where you had closed the window but left the app running, a new one opens.
+
 ## v0.11.0 — 2026-09-29
 
 ### Features

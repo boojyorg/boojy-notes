@@ -236,6 +236,27 @@ function createWindow() {
   }
 }
 
+// ─── One copy at a time ───
+
+// Two copies would each run a watcher and an index over the same files, both
+// writing. A second launch tells the first (`second-instance`) and exits here,
+// before any IPC, settings or vault work. `pnpm dev` skips the lock so it runs
+// beside the installed app; the two share userData, so each sees the other's
+// saves as outside edits.
+if (!process.env.VITE_DEV_SERVER_URL && !app.requestSingleInstanceLock()) app.exit(0);
+
+app.on("second-instance", () => {
+  const win = getMainWindow();
+  // macOS keeps running with no window after Cmd+W; a launch brings one back.
+  if (!win) {
+    if (app.isReady()) createWindow();
+    return;
+  }
+  if (win.isMinimized()) win.restore();
+  // A window still waiting for its first frame (or hidden for tests) is left to reveal itself.
+  if (win.isVisible()) win.focus();
+});
+
 // ─── Register all IPC modules ───
 
 function restartWatcher() {
