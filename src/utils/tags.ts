@@ -96,6 +96,33 @@ export function extractAllTags(noteData: NoteData | null | undefined): Map<strin
   return tags;
 }
 
+/**
+ * The tags as Search reads them, nested as Obsidian reads them: a note
+ * tagged `#uni/lectures` also carries `#uni`, which is listed even when no
+ * note writes it alone. A parent ends before a `/` and never on an empty
+ * level. Spelt as written, else as the first child seen writes it. Returns a new map; the
+ * written tags (the `#…` completion's list) are untouched.
+ */
+export function nestTags(tags: Map<string, TagEntry>): Map<string, TagEntry> {
+  const nested = new Map<string, TagEntry>();
+  const add = (key: string, tag: string, noteIds: Set<string>) => {
+    let entry = nested.get(key);
+    if (!entry) {
+      entry = { tag, noteIds: new Set() };
+      nested.set(key, entry);
+    }
+    for (const id of noteIds) entry.noteIds.add(id);
+  };
+  // The written tags first, so a tag written alone keeps its own spelling.
+  for (const [key, { tag, noteIds }] of tags) add(key, tag, noteIds);
+  for (const { tag, noteIds } of tags.values()) {
+    for (let i = tag.indexOf("/"); i !== -1; i = tag.indexOf("/", i + 1)) {
+      if (tag[i - 1] !== "/") add(tagKey(tag.slice(0, i)), tag.slice(0, i), noteIds);
+    }
+  }
+  return nested;
+}
+
 /** The tag list as the rows show it: most used first, then alphabetical. */
 export function tagRows(tags: Map<string, TagEntry>): Array<{ tag: string; count: number }> {
   return [...tags.values()]

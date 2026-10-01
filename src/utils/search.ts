@@ -2,6 +2,7 @@
 
 import type { Block, Note, NoteData } from "../types/notes";
 import { stripMarkdownFormatting } from "./inlineFormatting";
+import { naturalCompare } from "./sidebarTree";
 
 /**
  * What one block contributes to a note's searchable text: prose, a callout's
@@ -53,6 +54,8 @@ export function buildPlainText(blocks: Block[] | null | undefined): {
  * Text folded for matching: lower-cased, accents removed, with a map from
  * each folded index back to the index in the original, so a hit found in the
  * folded text is highlighted in the text as written. `cafe` finds `café`.
+ * Every run of whitespace folds to one space, so a quoted phrase finds its
+ * words across a soft break or a double space, however the query spaces them.
  */
 export interface Folded {
   text: string;
@@ -64,11 +67,22 @@ export function foldText(s: string): Folded {
   const units: string[] = [];
   const map: number[] = [];
   let i = 0;
+  let space = false;
   for (const ch of s) {
-    const folded = ch
-      .normalize("NFD")
-      .replace(/\p{M}+/gu, "")
-      .toLowerCase();
+    const isSpace = /\s/u.test(ch);
+    // The rest of a run maps to nothing: a range ending at the run still
+    // maps to its first character, and one spanning it covers all of it.
+    if (isSpace && space) {
+      i += ch.length;
+      continue;
+    }
+    space = isSpace;
+    const folded = isSpace
+      ? " "
+      : ch
+          .normalize("NFD")
+          .replace(/\p{M}+/gu, "")
+          .toLowerCase();
     for (let k = 0; k < folded.length; k++) {
       units.push(folded[k]);
       map.push(i);
@@ -250,11 +264,36 @@ export interface SearchOptions {
   limit?: number;
   /** Only these notes are searched; with an empty query they are all listed, newest first. */
   noteIds?: Set<string> | null;
+  /** Only notes in this folder or below it; with an empty query, listed newest first. */
+  folder?: string | null;
+}
+
+/** Whether a note in `noteFolder` is inside `folder`, subfolders included. */
+export const inFolder = (noteFolder: string | null, folder: string) =>
+  noteFolder === folder || !!noteFolder?.startsWith(`${folder}/`);
+
+/**
+ * The query's terms, folded: words split on spaces, and a quoted phrase as
+ * one term with its spaces in it (`"exam notes"`, as Obsidian writes it). An
+ * unclosed quote runs to the end, so the results hold while the phrase is
+ * still being typed. Empty quotes are nothing.
+ */
+export function queryTerms(query: string): string[] {
+  const terms: string[] = [];
+  const parts = (query || "").split('"');
+  parts.forEach((part, i) => {
+    const folded = foldText(part).text;
+    if (i % 2 === 1) {
+      const phrase = folded.trim().replace(/ +/g, " ");
+      if (phrase) terms.push(phrase);
+    } else terms.push(...folded.split(" ").filter(Boolean));
+  });
+  return terms;
 }
 
 /**
- * Main search function. The query is words; every word must be somewhere in
- * the title or body, in any order, matched case- and accent-insensitively. A
+ * Main search function. The query is terms (`queryTerms`); every term must be
+ * somewhere in the title or body, in any order, matched case- and accent-insensitively. A
  * word at the start of a title word ranks highest, then anywhere in the
  * title, then the title's initials, then at the start of a body word, then
  * anywhere in the body; ties break by last modified. No fuzzy matching.
@@ -264,19 +303,19 @@ export function searchNotes(
   index: SearchIndex,
   options: SearchOptions | number = {},
 ): { results: SearchResult[]; totalCount: number } {
-  const { limit = 50, noteIds = null } = typeof options === "number" ? { limit: options } : options;
-  const words = (query || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => foldText(w).text)
-    .filter(Boolean);
-  const entries = noteIds
+  const {
+    limit = 50,
+    noteIds = null,
+    folder = null,
+  } = typeof options === "number" ? { limit: options } : options;
+  const words = queryTerms(query);
+  let entries = noteIds
     ? [...noteIds].map((id) => index.get(id)).filter((e): e is IndexEntry => !!e)
     : [...index.values()];
+  if (folder) entries = entries.filter((e) => inFolder(e.folder, folder));
 
   if (words.length === 0) {
-    if (!noteIds) return { results: [], totalCount: 0 };
+    if (!noteIds && !folder) return { results: [], totalCount: 0 };
     const listed = entries
       .sort((a, b) => b.lastModified - a.lastModified)
       .map((e) => plainResult(e, 0));
@@ -372,4 +411,78 @@ export function findMatchBlock(
       return blockOffsets[i + 1].blockId;
   }
   return blockOffsets[0]?.blockId || null;
+}
+
+export interface FolderHit {
+  /** The folder's vault-relative path. */
+  path: string;
+  /** Its own name, the last segment, which is what is matched. */
+  name: string;
+  /** The folder it sits in, or null at the root. */
+  parent: string | null;
+  score: number;
+  nameRanges: Range[];
+}
+
+/** At most this many folders in a result list, so notes are never pushed off it. */
+export const FOLDER_HITS = 2;
+
+/**
+ * Folders whose own name holds every term of the query, scored as a note's
+ * title is: `univ` finds University, never Archive inside it. Best first,
+ * then the shallower, then by name.
+ */
+export function searchFolders(query: string, folders: string[], limit = FOLDER_HITS): FolderHit[] {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return [];
+  const hits: FolderHit[] = [];
+  for (const path of folders) {
+    const slash = path.lastIndexOf("/");
+    const name = path.slice(slash + 1);
+    const fold = foldText(name);
+    let score = 0;
+    const nameRanges: Range[] = [];
+    for (const t of terms) {
+      const f = findWord(fold.text, t);
+      if (!f) {
+        score = 0;
+        break;
+      }
+      score += f.start ? TITLE_START : TITLE_ANY;
+      nameRanges.push(mapRange(fold, [f.idx, f.idx + t.length]));
+    }
+    if (score === 0) continue;
+    nameRanges.sort((a, b) => a[0] - b[0]);
+    hits.push({
+      path,
+      name,
+      parent: slash === -1 ? null : path.slice(0, slash),
+      score,
+      nameRanges,
+    });
+  }
+  const depth = (p: string) => p.split("/").length;
+  hits.sort(
+    (a, b) => b.score - a.score || depth(a.path) - depth(b.path) || naturalCompare(a.path, b.path),
+  );
+  return hits.slice(0, limit);
+}
+
+export type ResultRow =
+  | { kind: "note"; result: SearchResult }
+  | { kind: "folder"; folder: FolderHit };
+
+/**
+ * The one order of a result list with folders in it. Folders go first,
+ * except under a note whose title matches at least as well: that note stays
+ * first, so Enter still opens `Boojy` when a folder is also called Boojy.
+ */
+export function orderResults(notes: SearchResult[], folders: FolderHit[]): ResultRow[] {
+  const noteRows = notes.map((result) => ({ kind: "note", result }) as const);
+  const folderRows = folders.map((folder) => ({ kind: "folder", folder }) as const);
+  const top = notes[0];
+  if (top && top.matchIn === "title" && folders.length && top.score >= folders[0].score) {
+    return [noteRows[0], ...folderRows, ...noteRows.slice(1)];
+  }
+  return [...folderRows, ...noteRows];
 }

@@ -326,4 +326,130 @@ describe("SearchPalette", () => {
     const b = setup({ tagFilter: "nobody" });
     expect(b.getByText(/No notes tagged #nobody/)).toBeInTheDocument();
   });
+
+  const folders = ["Uni", "Uni/COMP336", "Home", "Projects/Boojy"];
+
+  it("a folder whose name matches is a row, under a note named at least as well", () => {
+    const { container } = setup({
+      search: "boojy",
+      searchResults: { results: [titleHit, bodyHit], totalCount: 2, query: "boojy" },
+      folderList: folders,
+    });
+    expect(rows(container).map((r) => r.textContent)).toEqual([
+      "Boojy Notes Ideas",
+      "BoojyProjects",
+      expect.stringContaining("Week 3 lecture"),
+    ]);
+    cleanup();
+    const uni = setup({
+      search: "uni",
+      searchResults: { results: [bodyHit], totalCount: 1, query: "uni" },
+      folderList: folders,
+    });
+    expect(rows(uni.container)[0].textContent).toBe("Uni");
+  });
+
+  it("Enter on a folder makes it the chip and empties the field; a fresh query is read whole", () => {
+    const setFolderFilter = vi.fn();
+    const setSearch = vi.fn();
+    const flushSearch = vi.fn(() => ({ results: [bodyHit], query: "uni", flushed: true }));
+    const t = setup({
+      search: "uni",
+      searchResults: { results: [], totalCount: 0, query: "un" },
+      folderList: folders,
+      flushSearch,
+      setFolderFilter,
+      setSearch,
+    });
+    fireEvent.keyDown(t.getByLabelText("Search notes"), { key: "Enter" });
+    expect(setFolderFilter).toHaveBeenCalledWith("Uni", "");
+    expect(setSearch).toHaveBeenCalledWith("");
+    expect(t.onOpenResult).not.toHaveBeenCalled();
+  });
+
+  it("under a folder chip: no folder rows, paths read from inside it, the placeholder counts", () => {
+    const { getByTestId, getByLabelText, container, queryByText } = setup({
+      folderFilter: "Uni",
+      folderList: folders,
+      searchResults: { results: [bodyHit], totalCount: 1, query: "" },
+    });
+    expect(getByTestId("search-folder-chip").textContent).toBe("Uni");
+    expect(getByLabelText("Search notes")).toHaveAttribute("placeholder", "Search 1 note");
+    expect(rows(container)).toHaveLength(1);
+    expect(queryByText("Uni / COMP336")).not.toBeInTheDocument();
+    expect(rows(container)[0].textContent).toContain("COMP336");
+  });
+
+  it("Backspace on an empty field takes the last chip back to text: the tag, then the folder", () => {
+    const setFolderFilter = vi.fn();
+    const setTagFilter = vi.fn();
+    const setSearch = vi.fn();
+    const both = setup({
+      folderFilter: "Uni/COMP336",
+      tagFilter: "work",
+      setFolderFilter,
+      setTagFilter,
+      setSearch,
+    });
+    fireEvent.keyDown(both.getByLabelText("Search notes"), { key: "Backspace" });
+    expect(setTagFilter).toHaveBeenCalledWith(null, "#work");
+    expect(setFolderFilter).not.toHaveBeenCalled();
+    cleanup();
+    const one = setup({ folderFilter: "Uni/COMP336", setFolderFilter, setSearch });
+    fireEvent.keyDown(one.getByLabelText("Search notes"), { key: "Backspace" });
+    expect(setFolderFilter).toHaveBeenCalledWith(null, "COMP336");
+    expect(setSearch).toHaveBeenCalledWith("COMP336");
+    fireEvent.click(one.getByLabelText("Remove COMP336 folder filter"));
+    expect(setFolderFilter).toHaveBeenCalledWith(null, "");
+  });
+
+  it("names the folder and the tag when nothing in them matches", () => {
+    const t = setup({ folderFilter: "Uni", tagFilter: "work", search: "zzz" });
+    expect(t.getByText(/No notes in Uni tagged #work match “zzz”/)).toBeInTheDocument();
+  });
+
+  it("when nothing matches, one row creates the note, in the chip's folder", () => {
+    const onCreateNote = vi.fn();
+    const t = setup({ search: "exam notes", folderFilter: "Uni" }, { onCreateNote });
+    expect(rows(t.container).map((r) => r.textContent)).toEqual(["Create “exam notes”Uni"]);
+    fireEvent.keyDown(t.getByLabelText("Search notes"), { key: "Enter" });
+    expect(onCreateNote).toHaveBeenCalledWith("Uni", "exam notes");
+    expect(t.onClose).toHaveBeenCalled();
+    cleanup();
+    // Not under a tag chip: the new note would not carry the tag.
+    const tagged = setup({ search: "exam", tagFilter: "work" }, { onCreateNote });
+    expect(rows(tagged.container)).toHaveLength(0);
+    expect(tagged.getByText(/No notes tagged #work match “exam”/)).toBeInTheDocument();
+  });
+
+  it("offers Create, or says nothing matches, only once the results answer the text typed", () => {
+    const onCreateNote = vi.fn();
+    // Results for an earlier keystroke (or none yet) are not an answer to "Tes".
+    for (const applied of ["", "Te"]) {
+      const t = setup(
+        { search: "Tes", searchResults: { results: [], totalCount: 0, query: applied } },
+        { onCreateNote },
+      );
+      expect(rows(t.container)).toHaveLength(0);
+      expect(t.queryByText(/No notes match/)).not.toBeInTheDocument();
+      cleanup();
+    }
+    const settled = setup(
+      { search: "Tes", searchResults: { results: [], totalCount: 0, query: "Tes" } },
+      { onCreateNote },
+    );
+    expect(rows(settled.container).map((r) => r.textContent)).toEqual(["Create “Tes”"]);
+  });
+
+  it("the × on a chip keeps searching the text in the field", () => {
+    const setFolderFilter = vi.fn();
+    const setTagFilter = vi.fn();
+    const f = setup({ search: "exam", folderFilter: "Uni", setFolderFilter });
+    fireEvent.click(f.getByLabelText("Remove Uni folder filter"));
+    expect(setFolderFilter).toHaveBeenCalledWith(null, "exam");
+    cleanup();
+    const t = setup({ search: "exam", tagFilter: "work", setTagFilter });
+    fireEvent.click(t.getByLabelText("Remove #work filter"));
+    expect(setTagFilter).toHaveBeenCalledWith(null, "exam");
+  });
 });

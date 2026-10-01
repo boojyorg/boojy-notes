@@ -99,6 +99,29 @@ describe("useSearch", () => {
     expect(result.current.searchMode).toBe(false);
   });
 
+  it("the folder filter takes the folder and its subfolders, combines with the tag, and clears", () => {
+    const inF = (title: string, text: string, folder: string | null, t: number) =>
+      ({ ...(note(title, text, t) as object), folder }) as never;
+    const { result } = setup({
+      u: inF("Weekly", "progress #work", "University/Sem 1", 5),
+      v: inF("Master", "progress", "University", 4),
+      w: inF("Elsewhere", "progress #work", "Personal", 6),
+    });
+    act(() => result.current.setFolderFilter("University", ""));
+    expect(result.current.folderFilter).toBe("University");
+    expect(ids(result)).toEqual(["u", "v"]);
+    act(() => result.current.setTagFilter("work", ""));
+    expect(ids(result)).toEqual(["u"]);
+    act(() => result.current.setTagFilter(null));
+    act(() => result.current.search("progress"));
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    expect(result.current.searchResults.query).toBe("progress");
+    expect([...ids(result)].sort()).toEqual(["u", "v"]);
+    act(() => result.current.clearSearch());
+    expect(result.current.folderFilter).toBeNull();
+    expect(result.current.searchMode).toBe(false);
+  });
+
   it("the filter is exact: #work never lists a note that only says #workshop", () => {
     const { result } = setup({ ...data, d: note("Delta", "a #workshop", 9) });
     act(() => result.current.setTagFilter("work", ""));

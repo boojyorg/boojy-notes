@@ -14,7 +14,7 @@
  * - A body hit opens the note at the matched passage.
  */
 import { expect, test } from "@playwright/test";
-import { MOD, editorTitle, launchApp, sidebarNoteTitles } from "./harness";
+import { MOD, editorTitle, launchApp, sidebarNoteTitles, waitForFile } from "./harness";
 
 const filler = Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of padding.`).join("\n\n");
 
@@ -53,7 +53,7 @@ test("recents, an unchanged sidebar, Enter after typing, and the tag chip", asyn
       .locator('[data-folder-path="Work"]')
       .getAttribute("aria-expanded");
     await field.type("zzz");
-    await expect(dialog.getByText(/No notes match “zzz”/)).toBeVisible();
+    await expect(rows).toHaveText([/^Create “zzz”$/]);
     expect(await sidebarNoteTitles(page)).toEqual(before);
     expect(await page.locator('[data-folder-path="Work"]').getAttribute("aria-expanded")).toBe(
       openBefore,
@@ -169,6 +169,103 @@ test("recents are recorded from every route that opens a note and survive a rest
     await h.page.keyboard.press(`${MOD}+p`);
     await expect(dialog().getByText("Recent")).toBeVisible();
     await expect(rows()).toHaveText([/^Gamma$/, /^Beta$/, /^Alpha$/]);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a parent tag finds its nested tags, and a quoted phrase finds its words together", async () => {
+  const h = await launchApp({
+    "Lectures.md": "week one #uni/lectures\n",
+    "Exams.md": "dates #uni/exams\n",
+    "Unity.md": "a game engine #unity\n",
+    "Revision.md": "my exam notes for June\n",
+    "Plans.md": "write notes for the exam\n",
+  });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const field = page.getByRole("textbox", { name: "Search notes" });
+    const rows = dialog.locator("[data-search-index]");
+
+    // `#uni` is listed though no note writes it alone, counting both children.
+    await page.keyboard.press(`${MOD}+p`);
+    await expect(field).toBeFocused();
+    await field.type("#uni");
+    await expect(rows).toHaveCount(4);
+    await expect(rows.first()).toHaveText(/^#uni2$/);
+    await page.keyboard.press("Enter");
+    await expect(field).toHaveAttribute("placeholder", "Search 2 notes");
+    await expect(rows).toHaveCount(2);
+    await expect(rows).toContainText([/Lectures|Exams/, /Lectures|Exams/]);
+    await expect(dialog).not.toContainText("Unity");
+    await page.keyboard.press("Escape");
+
+    // Words find both notes; the phrase only the one with them together.
+    await page.keyboard.press(`${MOD}+p`);
+    await field.type("exam notes");
+    await expect(rows).toHaveCount(2);
+    await field.fill("");
+    await field.type('"exam notes"');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("Revision");
+    await expect(rows.first()).toContainText("my exam notes for June");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a folder is a result: its chip searches inside it, and Create makes the note there", async () => {
+  const h = await launchApp({
+    "University/Sem 1/Weekly Progress.md": "progress this week\n",
+    "University/Master.md": "weekly progress check-ins\n",
+    "Personal/Progress elsewhere.md": "progress\n",
+    "Projects/Boojy/Boojy.md": "the suite\n",
+  });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const field = page.getByRole("textbox", { name: "Search notes" });
+    const rows = dialog.locator("[data-search-index]");
+    const chip = dialog.getByTestId("search-folder-chip");
+
+    // `univ` finds the folder first; Enter makes it the chip.
+    await page.keyboard.press(`${MOD}+p`);
+    await field.type("univ");
+    await expect(rows.first()).toHaveText("University");
+    await page.keyboard.press("Enter");
+    await expect(chip).toHaveText("University");
+    await expect(field).toHaveValue("");
+    await expect(field).toHaveAttribute("placeholder", "Search 2 notes");
+
+    // Typing searches inside it and its subfolders, paths read from inside.
+    await field.type("progress");
+    await expect(rows).toHaveCount(2);
+    await expect(dialog).not.toContainText("Progress elsewhere");
+    await expect(rows.first()).toContainText("Sem 1");
+
+    // A note named like a folder stays first.
+    await field.fill("");
+    await page.keyboard.press("Backspace");
+    await expect(chip).toBeHidden();
+    await expect(field).toHaveValue("University");
+    await field.fill("boojy");
+    await expect(rows).toHaveText([/^BoojyProjects \/ Boojy$/, /^BoojyProjects$/]);
+
+    // Nothing matches under the chip: Create makes the note inside the folder.
+    await field.fill("univ");
+    await expect(rows.first()).toHaveText("University");
+    await page.keyboard.press("Enter");
+    await field.type("exam plan");
+    await expect(rows).toHaveText([/^Create “exam plan”University$/]);
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect.poll(() => editorTitle(page)).toBe("exam plan");
+    await waitForFile(h.vault.file("University/exam plan.md"), () => true, {
+      label: "the created note",
+    });
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

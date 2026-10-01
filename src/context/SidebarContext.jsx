@@ -101,6 +101,8 @@ export function SidebarProvider({ children }) {
     getActiveResult,
     tagFilter,
     setTagFilter,
+    folderFilter,
+    setFolderFilter,
     tags,
   } = useSearch(noteData);
 
@@ -211,6 +213,8 @@ export function SidebarProvider({ children }) {
       getActiveResult,
       tagFilter,
       setTagFilter,
+      folderFilter,
+      setFolderFilter,
       tags,
       filteredTree,
       fNotes,
@@ -246,6 +250,8 @@ export function SidebarProvider({ children }) {
       getActiveResult,
       tagFilter,
       setTagFilter,
+      folderFilter,
+      setFolderFilter,
       tags,
       filteredTree,
       fNotes,

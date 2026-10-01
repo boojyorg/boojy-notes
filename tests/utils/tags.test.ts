@@ -3,6 +3,7 @@ import {
   TAG_CHAR_RE,
   TAG_TAIL_RE,
   extractAllTags,
+  nestTags,
   tagKey,
   tagRows,
   tagsInText,
@@ -86,5 +87,43 @@ describe("the grammar's helpers", () => {
   it("TAG_CHAR_RE says which typed characters continue a tag", () => {
     for (const c of ["a", "é", "9", "_", "/", "-"]) expect(TAG_CHAR_RE.test(c)).toBe(true);
     for (const c of [" ", ".", ",", ")", "\n"]) expect(TAG_CHAR_RE.test(c)).toBe(false);
+  });
+});
+
+describe("nestTags: a tag counts towards its parents", () => {
+  const n = (id: string, text: string) =>
+    ({
+      title: id,
+      folder: null,
+      content: { title: id, blocks: [{ id, type: "p", text }] },
+    }) as never;
+  const data: NoteData = {
+    lec: n("lec", "#Uni/Lectures/week1"),
+    exam: n("exam", "#uni/exams"),
+    top: n("top", "#unity"),
+  };
+  const nested = nestTags(extractAllTags(data));
+
+  it("adds every parent, spelt as the child writes it, holding its children's notes", () => {
+    expect(nested.get("uni")).toEqual({ tag: "Uni", noteIds: new Set(["lec", "exam"]) });
+    expect(nested.get("uni/lectures")!.noteIds).toEqual(new Set(["lec"]));
+    expect(nested.get("uni/lectures/week1")!.noteIds).toEqual(new Set(["lec"]));
+  });
+
+  it("never takes a tag that merely starts with the same letters", () => {
+    expect(nested.get("unity")!.noteIds).toEqual(new Set(["top"]));
+    expect(nested.get("uni")!.noteIds.has("top")).toBe(false);
+  });
+
+  it("leaves the written tags' own entries untouched", () => {
+    const flat = extractAllTags(data);
+    nestTags(flat);
+    expect(flat.has("uni")).toBe(false);
+    expect(flat.get("uni/exams")!.noteIds).toEqual(new Set(["exam"]));
+  });
+
+  it("makes no parent from an empty level: a doubled or trailing slash", () => {
+    const odd = nestTags(extractAllTags({ x: n("x", "#a//b/") }));
+    expect([...odd.keys()].sort()).toEqual(["a", "a//b", "a//b/"]);
   });
 });

@@ -129,6 +129,7 @@ export default function BoojyNotes() {
     search,
     setSearch,
     setTagFilter,
+    setFolderFilter,
     sidebarScrollRef,
     expanded,
     setExpanded,
@@ -658,7 +659,9 @@ export default function BoojyNotes() {
     setSearchOpen(false);
     setSearch("");
     setTagFilter(null);
-  }, [setSearch, setTagFilter]);
+    setFolderFilter(null);
+  }, [setSearch, setTagFilter, setFolderFilter]);
+
   // The notes opened most recently, for the palette's empty state: recorded
   // per vault as the active note changes, read when the palette opens. A
   // separate list, never a timestamp on the note (the sort's rule).
@@ -1499,6 +1502,7 @@ export default function BoojyNotes() {
       {searchOpen && !isMobile && (
         <SearchPalette
           onOpenResult={handleSearchResultOpen}
+          onCreateNote={createNote}
           onClose={closeSearch}
           recentIds={recentIds}
           currentNoteId={activeNote}

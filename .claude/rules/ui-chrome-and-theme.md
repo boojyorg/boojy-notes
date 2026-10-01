@@ -7,37 +7,35 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Light is the first-run default for existing users; a fresh
-  install starts on System.
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Existing users start on Light, a fresh install on
+  System.
 - Neutral palettes; teal is the identity, never gold. `?tweak` (dev only) overrides live; a
   judged value goes into `themes.js`.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
-  sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected (hover previews
-  selection), `BG.divider` borders. Text is `primary` / `secondary` / `muted`.
+  sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected, `BG.divider`
+  borders. Text is `primary` / `secondary` / `muted`.
 - **The accent is two tokens.** `ACCENT.primary` is the mark (fills, bars, markers);
   `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
-  a location's Active), a note's selection: text and blocks, one teal (`bandFill`),
-  raised by opacity, below the ==highlight==.
+  a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==).
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
-  `SEMANTIC.onError`). `themeContrast.test.js`; axe checks the components, contrast on, both
-  themes: `e2e/accessibility.spec.ts`.
+  `SEMANTIC.onError`). `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,
+  both themes).
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
   tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
 
 ## Toasts
 
 A quiet surface (`BG.elevated`, primary text) with **one coloured glyph that carries the
-meaning**; never an accent fill. `done` fades and is click-dismissable; `notice`, `warning`,
-`error` wait for their ×: a timed save failure is one nobody saw. **Notices about one
-condition share a key and the newer replaces the older; a keyed notice ends when it stops being
-true** (`writeRecovered`). The stack is centred at the editor's foot, not the window's, so it
-never covers sidebar rows. `toasts.spec.ts`.
+meaning**; never an accent fill. `done` fades (a click dismisses); `notice`, `warning`, `error`
+wait for their × (a timed save failure is one nobody saw). **Notices about one condition share
+a key, the newer replacing the older, and end when it stops being true** (`writeRecovered`).
+The stack is centred at the editor's foot, clear of the sidebar. `toasts.spec.ts`.
 
 ## Scrollbars
 
@@ -195,22 +193,23 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
   reference when already sorted.
-- **Drag means location, not order**: dragging moves the file or directory. A mouse drag starts
-  past `DRAG_THRESHOLD` with no hold; touch keeps the hold. Dropping on the editor doesn't open
-  the note.
+- **Drag means location, not order**: dragging moves the file or directory. A drag starts past
+  `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
 
 ## Search is a palette, not a panel
 
-- `SearchPalette.tsx` (Cmd+P, the Search button, a tag click): search only, every open starts
-  fresh, Escape closes in one press.
-- Empty: **Recent** (`utils/recentNotes.ts`, localStorage per vault, never a timestamp on the
-  note). `#` lists tags; choosing one makes a filter chip (set membership, never substring).
-- Rows are one line; an excerpt only when the title doesn't explain the match.
-- **Matching** (`utils/search.ts`): every word must match title or body, folded for case and
-  accents; ranked, **no fuzzy matching anywhere**. Enter acts on the query as typed
-  (`flushSearch`).
-- **One order: the array `searchNotes` returns**; never a separate display order. The desktop
-  sidebar never reads the query. `search-palette.spec.ts`.
+- `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape
+  closes at once. Rows are one line; an excerpt only when the title doesn't explain the match.
+- Empty: **Recent** (`utils/recentNotes.ts`, localStorage per vault, never on the note). `#`
+  lists tags, nested (`nestTags`); one is a teal chip (set membership, not substring).
+- **A folder is a result** (`searchFolders`: own name, at most two); Enter makes a grey chip
+  (subfolders in, paths from inside). Chips combine; Backspace returns the last as text. No
+  filter buttons, dates or sort. Nothing matched: a Create row (not under a tag chip).
+- **Matching** (`utils/search.ts`): every word or `"phrase"` (`queryTerms`) in title or body,
+  folded for case, accents, whitespace; **no fuzzy matching**. Enter acts on the query as
+  typed (`flushSearch`).
+- **One order: `orderResults`** (a note titled as well as a folder stays first); never a
+  separate display order. The sidebar never reads the query. `search-palette.spec.ts`.
 
 ## Narrow desktop is still desktop
 

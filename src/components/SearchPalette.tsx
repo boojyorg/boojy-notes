@@ -6,14 +6,20 @@ import { useLayout } from "../context/LayoutContext";
 import { useNoteData } from "../context/NoteDataContext";
 import { useSidebar } from "../context/SidebarContext";
 import { Z } from "../constants/zIndex";
-import { tagRows, tagKey, type TagEntry } from "../utils/tags";
-import { foldText, type SearchResult } from "../utils/search";
+import { tagRows, type TagEntry } from "../utils/tags";
+import {
+  foldText,
+  orderResults,
+  searchFolders,
+  type FolderHit,
+  type SearchResult,
+} from "../utils/search";
 import { RECENT_SHOWN, recentRows } from "../utils/recentNotes";
 import { cssZoom } from "../utils/domHelpers";
 import { atScale } from "../utils/uiScale";
 import { tagPillStyle } from "../styles/tagPill";
 import type { NoteData } from "../types/notes";
-import { CloseIcon, SearchIcon } from "./Icons";
+import { CloseIcon, FolderIcon, PlusIcon, SearchIcon } from "./Icons";
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 
 /**
@@ -28,10 +34,15 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
  *     used first, filtered by what follows; Enter, Tab or a click makes it
  *     the filter chip in the field and lists the notes carrying that exact
  *     tag, the field emptied for further typing.
- *   - **Results**: one list as `searchNotes` returns it. A title hit is one
- *     line with the matched words in the accent; a note matched only in its
- *     body carries one muted excerpt under its title. Every row has its
- *     folder muted on the right.
+ *   - **Results**: one list in the order `orderResults` gives it. A title hit
+ *     is one line with the matched words in the accent; a note matched only
+ *     in its body carries one muted excerpt under its title. Every row has
+ *     its folder muted on the right, from inside the folder chip if one is
+ *     on. A folder whose own name matches is a row too (at most two); Enter
+ *     makes it the grey folder chip, which narrows the search to it and its
+ *     subfolders as the tag chip does. When nothing matches, one row offers
+ *     to create the note, in the chip's folder (not under a tag chip: the
+ *     note would not carry the tag).
  *
  * Enter runs a pending query first (`flushSearch`), so Enter straight after
  * typing acts on the query as typed. Escape closes in one press; closing
@@ -41,6 +52,8 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 
 interface SearchPaletteProps {
   onOpenResult: (noteId: string, matchBlockId: string | null) => void;
+  /** Makes and opens a note with this name, in this folder. */
+  onCreateNote?: (folder: string | null, title: string) => void;
   onClose: () => void;
   /** The recently opened note ids, newest first, as the store holds them. */
   recentIds?: string[];
@@ -50,7 +63,9 @@ interface SearchPaletteProps {
 type Row =
   | { kind: "recent"; noteId: string; title: string; folder: string | null }
   | { kind: "tag"; tag: string; count: number }
-  | { kind: "result"; result: SearchResult };
+  | { kind: "result"; result: SearchResult }
+  | { kind: "folder"; folder: FolderHit }
+  | { kind: "create"; title: string };
 
 const PALETTE_WIDTH = 560;
 const FIELD_H = 48;
@@ -76,6 +91,7 @@ function rowsThatFit(): number {
 
 export default function SearchPalette({
   onOpenResult,
+  onCreateNote,
   onClose,
   recentIds = [],
   currentNoteId = null,
@@ -91,16 +107,29 @@ export default function SearchPalette({
   const { BG, TEXT } = theme;
   const { accentText } = useLayout() as { accentText: string };
   const { noteData } = useNoteData() as { noteData: NoteData };
-  const { search, setSearch, searchResults, flushSearch, tagFilter, setTagFilter, tags } =
-    useSidebar() as {
-      search: string;
-      setSearch: (q: string) => void;
-      searchResults: { results: SearchResult[]; totalCount: number };
-      flushSearch: () => { results: SearchResult[]; flushed: boolean };
-      tagFilter: string | null;
-      setTagFilter: (tag: string | null, query?: string) => void;
-      tags: Map<string, TagEntry>;
-    };
+  const {
+    search,
+    setSearch,
+    searchResults,
+    flushSearch,
+    tagFilter,
+    setTagFilter,
+    folderFilter = null,
+    setFolderFilter,
+    folderList = [],
+    tags,
+  } = useSidebar() as {
+    search: string;
+    setSearch: (q: string) => void;
+    searchResults: { results: SearchResult[]; totalCount: number; query?: string };
+    flushSearch: () => { results: SearchResult[]; query?: string; flushed: boolean };
+    tagFilter: string | null;
+    setTagFilter: (tag: string | null, query?: string) => void;
+    folderFilter?: string | null;
+    setFolderFilter?: (folder: string | null, query?: string) => void;
+    folderList?: string[];
+    tags: Map<string, TagEntry>;
+  };
 
   const panelRef = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
@@ -110,13 +139,34 @@ export default function SearchPalette({
   useFocusTrap(panelRef as RefObject<HTMLElement>, true, "first");
 
   const query = search.trim();
-  const mode: "recent" | "tags" | "results" = tagFilter
-    ? "results"
-    : query === ""
-      ? "recent"
-      : query.startsWith("#")
+  const filtered = !!(tagFilter || folderFilter);
+  // `#` lists tags until a tag chip is on; under one it is searched as text.
+  const mode: "recent" | "tags" | "results" =
+    query === ""
+      ? filtered
+        ? "results"
+        : "recent"
+      : query.startsWith("#") && !tagFilter
         ? "tags"
         : "results";
+
+  /**
+   * The result rows for `results`, which answer `applied`: notes and
+   * matching folders in one order, or the Create row when nothing matches.
+   * Enter reads this too, so it acts on the list drawn. "Nothing matches" is
+   * said only of results that answer the text typed: until the debounced
+   * query lands, the empty list is an earlier keystroke's and offered
+   * `Create "Tes"` for a moment before `Test` arrived.
+   */
+  const resultRows = (results: SearchResult[], applied: string, typed: string): Row[] => {
+    const folders = folderFilter ? [] : searchFolders(applied, folderList);
+    const ordered: Row[] = orderResults(results, folders).map((r) =>
+      r.kind === "note" ? { kind: "result", result: r.result } : r,
+    );
+    if (ordered.length === 0 && typed && applied === typed && !tagFilter && onCreateNote)
+      return [{ kind: "create", title: typed }];
+    return ordered;
+  };
 
   // The list is compact: a fixed field, then at most `shown` single-line rows
   // (a body hit's excerpt makes its row taller and counts for more) before the
@@ -128,6 +178,7 @@ export default function SearchPalette({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resultRows reads the filters and folders listed.
   const rows = useMemo<Row[]>(() => {
     if (mode === "recent") {
       return recentRows(recentIds, noteData, currentNoteId, Math.min(shown, RECENT_SHOWN)).map(
@@ -145,8 +196,20 @@ export default function SearchPalette({
         .filter((t) => !filter || foldText(t.tag).text.includes(filter))
         .map((t) => ({ kind: "tag", tag: t.tag, count: t.count }));
     }
-    return searchResults.results.map((result) => ({ kind: "result", result }));
-  }, [mode, recentIds, noteData, currentNoteId, shown, query, tags, searchResults.results]);
+    return resultRows(searchResults.results, searchResults.query ?? query, query);
+  }, [
+    mode,
+    recentIds,
+    noteData,
+    currentNoteId,
+    shown,
+    query,
+    tags,
+    searchResults,
+    folderFilter,
+    tagFilter,
+    folderList,
+  ]);
 
   // The highlight: a position in the rows drawn, reset to the first whenever
   // the list's *content* changes (a keystroke, a chip, results landing). Not
@@ -154,9 +217,17 @@ export default function SearchPalette({
   // the note store, and a save or watcher event landing between ArrowDown
   // and Enter put the highlight back on the first row (CI, 2026-09-20).
   const [active, setActive] = useState(0);
-  const rowsKey = rows
-    .map((r) => (r.kind === "tag" ? `#${r.tag}` : r.kind === "recent" ? r.noteId : r.result.noteId))
-    .join("\n");
+  const rowKey = (r: Row) =>
+    r.kind === "tag"
+      ? `#${r.tag}`
+      : r.kind === "recent"
+        ? r.noteId
+        : r.kind === "folder"
+          ? `/${r.folder.path}`
+          : r.kind === "create"
+            ? `+${r.title}`
+            : r.result.noteId;
+  const rowsKey = rows.map(rowKey).join("\n");
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key changing is the reset.
   useLayoutEffect(() => setActive(0), [rowsKey]);
   useEffect(() => {
@@ -164,8 +235,6 @@ export default function SearchPalette({
     if (el && typeof (el as HTMLElement).scrollIntoView === "function")
       (el as HTMLElement).scrollIntoView({ block: "nearest" });
   }, [active]);
-
-  const taggedCount = tagFilter ? (tags.get(tagKey(tagFilter))?.noteIds.size ?? 0) : 0;
 
   const openResult = (r: SearchResult) => {
     onOpenResult(r.noteId, r.matchBlockId);
@@ -176,10 +245,23 @@ export default function SearchPalette({
     setSearch("");
     inputRef.current?.focus();
   };
+  // The × keeps searching what is in the field; Backspace (the field empty)
+  // puts the chip back there as text.
   const removeChip = (backToText: boolean) => {
     const tag = tagFilter;
-    setTagFilter(null, backToText && tag ? `#${tag}` : "");
+    setTagFilter(null, backToText && tag ? `#${tag}` : query);
     if (backToText && tag) setSearch(`#${tag}`);
+    inputRef.current?.focus();
+  };
+  const folderName = folderFilter ? folderFilter.slice(folderFilter.lastIndexOf("/") + 1) : "";
+  const chooseFolder = (path: string) => {
+    setFolderFilter?.(path, "");
+    setSearch("");
+    inputRef.current?.focus();
+  };
+  const removeFolderChip = (backToText: boolean) => {
+    setFolderFilter?.(null, backToText ? folderName : query);
+    if (backToText) setSearch(folderName);
     inputRef.current?.focus();
   };
   const act = (row: Row | undefined) => {
@@ -188,25 +270,33 @@ export default function SearchPalette({
       onOpenResult(row.noteId, null);
       onClose();
     } else if (row.kind === "tag") chooseTag(row.tag);
-    else openResult(row.result);
+    else if (row.kind === "folder") chooseFolder(row.folder.path);
+    else if (row.kind === "create") {
+      onCreateNote?.(folderFilter, row.title);
+      onClose();
+    } else openResult(row.result);
   };
   const onEnter = () => {
     if (mode !== "results") return act(rows[active]);
     // Enter straight after a keystroke acts on the query as typed.
-    const { results, flushed } = flushSearch();
-    const r = results[flushed ? 0 : active];
-    if (r) openResult(r);
+    const { results, query: applied, flushed } = flushSearch();
+    if (!flushed) return act(rows[active]);
+    act(resultRows(results, applied ?? query, query)[0]);
   };
 
-  const placeholder = tagFilter
-    ? `Search ${taggedCount} ${taggedCount === 1 ? "note" : "notes"}`
+  // With a chip and an empty field, the results are everything in scope.
+  const scopeCount = searchResults.totalCount;
+  const placeholder = filtered
+    ? `Search ${scopeCount} ${scopeCount === 1 ? "note" : "notes"}`
     : "Search notes";
+  const notesShown = rows.filter((r) => r.kind === "result").length;
   const count =
-    mode === "results" && query
-      ? searchResults.totalCount <= rows.length
+    mode === "results" && query && notesShown > 0
+      ? searchResults.totalCount <= notesShown
         ? `${searchResults.totalCount} result${searchResults.totalCount === 1 ? "" : "s"}`
-        : `${rows.length} of ${searchResults.totalCount}`
+        : `${notesShown} of ${searchResults.totalCount}`
       : "";
+  const scope = `${folderFilter ? ` in ${folderName}` : ""}${tagFilter ? ` tagged #${tagFilter}` : ""}`;
   const emptyText =
     rows.length > 0
       ? null
@@ -216,12 +306,10 @@ export default function SearchPalette({
           ? query === "#"
             ? "No tags yet"
             : `No tags match “${query}”`
-          : mode === "results" && (query || tagFilter)
-            ? tagFilter && query
-              ? `No notes tagged #${tagFilter} match “${query}”`
-              : tagFilter
-                ? `No notes tagged #${tagFilter}`
-                : `No notes match “${query}”`
+          : mode === "results" && (query || filtered) && (searchResults.query ?? query) === query
+            ? query
+              ? `No notes${scope} match “${query}”`
+              : `No notes${scope}`
             : null;
 
   const rowStyle = (isActive: boolean) =>
@@ -258,8 +346,14 @@ export default function SearchPalette({
     fontSize: 12,
     color: TEXT.muted,
   } as const;
-  const folderPath = (folder: string | null) =>
-    folder ? <span style={folderStyle}>{folder.split("/").join(" / ")}</span> : null;
+  // Under a folder chip, a path is read from inside that folder.
+  const folderPath = (folder: string | null) => {
+    let shown = folder;
+    if (folder && folderFilter && mode === "results")
+      shown = folder === folderFilter ? null : folder.slice(folderFilter.length + 1);
+    return shown ? <span style={folderStyle}>{shown.split("/").join(" / ")}</span> : null;
+  };
+  const glyph = { display: "inline-flex", color: TEXT.secondary, flexShrink: 0 } as const;
 
   const rowProps = (i: number) => ({
     type: "button" as const,
@@ -329,6 +423,57 @@ export default function SearchPalette({
           }}
         >
           <SearchIcon size={16} />
+          {folderFilter && (
+            <span
+              data-testid="search-folder-chip"
+              style={{
+                fontSize: 13,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                flexShrink: 0,
+                maxWidth: "40%",
+                padding: "2px 2px 2px 6px",
+                borderRadius: 6,
+                background: BG.hover,
+                color: TEXT.primary,
+              }}
+            >
+              <span style={glyph}>
+                <FolderIcon size={13} />
+              </span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {folderName}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${folderName} folder filter`}
+                onClick={() => removeFolderChip(false)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 16,
+                  height: 16,
+                  border: "none",
+                  borderRadius: 4,
+                  background: "none",
+                  color: TEXT.muted,
+                  cursor: "pointer",
+                  padding: 0,
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = TEXT.primary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = TEXT.muted;
+                }}
+              >
+                <CloseIcon size={12} />
+              </button>
+            </span>
+          )}
           {tagFilter && (
             <span
               data-testid="search-tag-chip"
@@ -394,9 +539,11 @@ export default function SearchPalette({
               } else if (e.key === "Tab" && mode === "tags" && rows[active]) {
                 e.preventDefault();
                 act(rows[active]);
-              } else if (e.key === "Backspace" && tagFilter && search === "") {
+              } else if (e.key === "Backspace" && filtered && search === "") {
+                // The last chip goes first: the tag, then the folder.
                 e.preventDefault();
-                removeChip(true);
+                if (tagFilter) removeChip(true);
+                else removeFolderChip(true);
               } else if (e.key === "Escape") {
                 e.preventDefault();
                 onClose();
@@ -470,6 +617,48 @@ export default function SearchPalette({
                         <span style={{ flexShrink: 0, fontSize: 12, color: TEXT.muted }}>
                           {row.count}
                         </span>
+                      </span>
+                    </button>
+                  );
+                if (row.kind === "folder")
+                  return (
+                    <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span
+                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                          <span style={glyph}>
+                            <FolderIcon size={14} />
+                          </span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {renderHighlightedTitle(
+                              row.folder.name,
+                              row.folder.nameRanges,
+                              accentText,
+                            )}
+                          </span>
+                        </span>
+                        {folderPath(row.folder.parent)}
+                      </span>
+                    </button>
+                  );
+                if (row.kind === "create")
+                  return (
+                    <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span
+                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                          <span style={glyph}>
+                            <PlusIcon size={14} />
+                          </span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                            Create “{row.title}”
+                          </span>
+                        </span>
+                        {folderFilter && (
+                          <span style={folderStyle}>{folderFilter.split("/").join(" / ")}</span>
+                        )}
                       </span>
                     </button>
                   );

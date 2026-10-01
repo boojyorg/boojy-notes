@@ -5,6 +5,8 @@ import {
   buildSearchIndex,
   findMatchBlock,
   foldText,
+  orderResults,
+  searchFolders,
   searchNotes,
 } from "../../src/utils/search";
 import type { Block, NoteData } from "../../src/types/notes";
@@ -200,5 +202,118 @@ describe("searchNotes", () => {
     const { results, totalCount } = searchNotes("learn", index, { limit: 1 });
     expect(results).toHaveLength(1);
     expect(totalCount).toBe(2);
+  });
+});
+
+describe("searchNotes: quoted phrases", () => {
+  const noteData: NoteData = {
+    together: note("Revision", [p("b1", "My exam notes for June")], { lastModified: 3 }),
+    apart: note("Plans", [p("b2", "Write notes for the exam")], { lastModified: 2 }),
+    broken: note("Week", [p("b3", "the exam\nnotes are due")], { lastModified: 1 }),
+    titled: note("Exam Notes", [p("b4", "Nothing here")], { lastModified: 0 }),
+  };
+  const index = buildSearchIndex(noteData);
+  const ids = (q: string) => searchNotes(q, index).results.map((r) => r.noteId);
+
+  it("finds the words together and in order, never apart", () => {
+    expect(ids("exam notes")).toContain("apart");
+    expect(ids('"exam notes"')).not.toContain("apart");
+    expect(ids('"exam notes"')).toContain("together");
+  });
+
+  it("reads a soft break as a space", () => {
+    expect(ids('"exam notes"')).toContain("broken");
+  });
+
+  it("reads any run of spaces as one, in the note and in the phrase alike", () => {
+    const spaced = buildSearchIndex({
+      s: note("Spaced", [p("b9", "my exam  \n notes here")]),
+    } as NoteData);
+    for (const q of ['"exam notes"', '"exam  notes"']) {
+      const { results } = searchNotes(q, spaced);
+      expect(results.map((r) => r.noteId)).toEqual(["s"]);
+      const sn = results[0].snippet!;
+      expect(sn.text.slice(...sn.ranges[0])).toBe("exam  \n notes");
+    }
+  });
+
+  it("ranks a phrase in the title above one in the body, and marks it whole", () => {
+    const { results } = searchNotes('"exam notes"', index);
+    expect(results[0].noteId).toBe("titled");
+    expect(results[0].titleRanges).toEqual([[0, 10]]);
+    const body = results.find((r) => r.noteId === "together")!;
+    const s = body.snippet!;
+    expect(s.ranges).toHaveLength(1);
+    expect(s.text.slice(...s.ranges[0])).toBe("exam notes");
+  });
+
+  it("takes an unclosed quote as a phrase to the end, so results hold while typing", () => {
+    expect(ids('"exam no')).toEqual(ids('"exam notes"'));
+  });
+
+  it("mixes a phrase with words, and ignores empty quotes", () => {
+    expect(ids('june "exam notes"')).toEqual(["together"]);
+    expect(ids('"" june')).toEqual(["together"]);
+    expect(ids('""')).toEqual([]);
+  });
+});
+
+describe("folders in Search", () => {
+  const folders = [
+    "University",
+    "University/Sem 1 26-27",
+    "University/Archive",
+    "Projects",
+    "Projects/Boojy",
+    "Personal/Universe",
+  ];
+
+  it("matches a folder's own name, never its path: univ finds University, not Archive", () => {
+    const hits = searchFolders("univ", folders, 10);
+    expect(hits.map((h) => h.path)).toEqual(["University", "Personal/Universe"]);
+    expect(hits[0]).toMatchObject({ name: "University", parent: null, nameRanges: [[0, 4]] });
+    expect(hits[1].parent).toBe("Personal");
+  });
+
+  it("needs every term in the name, takes a phrase, and offers at most two", () => {
+    expect(searchFolders("sem 26", folders).map((h) => h.path)).toEqual(["University/Sem 1 26-27"]);
+    expect(searchFolders('"sem 1"', folders).map((h) => h.path)).toEqual([
+      "University/Sem 1 26-27",
+    ]);
+    expect(searchFolders("sem zzz", folders)).toEqual([]);
+    expect(searchFolders("", folders)).toEqual([]);
+    expect(searchFolders("u", folders)).toHaveLength(2);
+  });
+
+  const noteData: NoteData = {
+    boojy: note("Boojy", [p("b1", "suite")], { folder: "Projects/Boojy", lastModified: 3 }),
+    demo: note("Boojy Notes demo", [p("b2", "x")], { folder: "Projects/Boojy", lastModified: 2 }),
+    plan: note("Plan", [p("b3", "the university timetable")], { folder: null, lastModified: 1 }),
+    weekly: note("Weekly Progress", [p("b4", "x")], {
+      folder: "University/Sem 1 26-27",
+      lastModified: 5,
+    }),
+    master: note("Master", [p("b5", "progress")], { folder: "University", lastModified: 4 }),
+    other: note("Progress elsewhere", [p("b6", "x")], {
+      folder: "University old",
+      lastModified: 6,
+    }),
+  };
+  const index = buildSearchIndex(noteData);
+  const order = (q: string) =>
+    orderResults(searchNotes(q, index).results, searchFolders(q, folders)).map((r) =>
+      r.kind === "note" ? r.result.noteId : `folder:${r.folder.path}`,
+    );
+
+  it("puts a folder first, unless a note's title matches at least as well", () => {
+    expect(order("univ")).toEqual(["folder:University", "folder:Personal/Universe", "plan"]);
+    expect(order("boojy")).toEqual(["boojy", "folder:Projects/Boojy", "demo"]);
+  });
+
+  it("a folder filter takes the folder and everything under it, never a namesake", () => {
+    const ids = (q: string) =>
+      searchNotes(q, index, { folder: "University" }).results.map((r) => r.noteId);
+    expect(ids("progress").sort()).toEqual(["master", "weekly"]);
+    expect(ids("")).toEqual(["weekly", "master"]);
   });
 });
