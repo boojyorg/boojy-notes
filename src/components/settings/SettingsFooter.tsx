@@ -1,8 +1,7 @@
 import { version as appVersion } from "../../../package.json";
 import { useTheme } from "../../hooks/useTheme";
 
-/** Quiet version line shared by desktop and mobile Settings: the full version
- *  and the product page. */
+/** Settings' quiet version line: the full version and the product page. */
 export default function SettingsFooter() {
   const { theme } = useTheme() as { theme: { TEXT: { muted: string } } };
   const { TEXT } = theme;

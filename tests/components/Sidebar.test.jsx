@@ -84,9 +84,6 @@ vi.mock("../../src/context/SidebarContext", () => ({
   useSidebar: () => ({
     search: _sidebarOverrides.search ?? "",
     setSearch: _sidebarOverrides.setSearch ?? vi.fn(),
-    searchFocused: _sidebarOverrides.searchFocused ?? false,
-    setSearchFocused: _sidebarOverrides.setSearchFocused ?? vi.fn(),
-    searchInputRef: _sidebarOverrides.searchInputRef ?? { current: null },
     sidebarScrollRef: _sidebarOverrides.sidebarScrollRef ?? { current: null },
     expanded: _sidebarOverrides.expanded ?? {},
     setExpanded: _sidebarOverrides.setExpanded ?? vi.fn(),
@@ -101,10 +98,7 @@ vi.mock("../../src/context/SidebarContext", () => ({
     setRenamingNote: _sidebarOverrides.setRenamingNote ?? vi.fn(),
     searchMode: _sidebarOverrides.searchMode ?? false,
     searchResults: _sidebarOverrides.searchResults ?? emptySearchResults,
-    activeResultIndex: _sidebarOverrides.activeResultIndex ?? 0,
-    navigateResults: vi.fn(),
     clearSearch: vi.fn(),
-    getActiveResult: () => null,
     customFolders: [],
     setCustomFolders: vi.fn(),
     folderList: [],
@@ -147,11 +141,9 @@ function renderSidebar(overrides = {}) {
     createFolder: overrides.createFolder ?? vi.fn(),
     createNote: overrides.createNote ?? vi.fn(),
     handleSidebarPointerDown: noop,
-    handleSearchResultOpen: overrides.handleSearchResultOpen ?? vi.fn(),
     selectedNotes: new Set(),
     handleNoteClick: null,
     clearSelection: noop,
-    isMobile: overrides.isMobile ?? false,
     onOpenSearch: overrides.onOpenSearch,
     notesDir: overrides.notesDir ?? "/v/University",
     vaults: overrides.vaults ?? [],
@@ -203,7 +195,7 @@ describe("Sidebar", () => {
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
     cleanup();
     // Still no field, whatever the search state.
-    const r = renderSidebar({ searchFocused: true, search: "abc" });
+    const r = renderSidebar({ search: "abc" });
     expect(r.container.querySelector("input")).toBeNull();
   });
 
@@ -416,44 +408,10 @@ describe("Sidebar", () => {
     }
   });
 
-  it("draws search results in list order, folder beside the title, the active one marked", () => {
-    // Two rows in the order the list holds them (a folder hit first): no
-    // folder grouping reorders them, and the highlight is by position.
-    const row = (noteId, title, folder) => ({
-      noteId,
-      title,
-      folder,
-      matchIn: "title",
-      titleRanges: [[0, 6]],
-      snippet: null,
-    });
-    const searchResults = {
-      results: [row("n2", "Result Plan", "Uni/COMP336"), row("n1", "Result Note", null)],
-      totalCount: 2,
-    };
-    const { container, getByText } = renderSidebar({
-      isMobile: true,
-      searchMode: true,
-      search: "Result",
-      searchResults,
-      activeResultIndex: 1,
-    });
-    expect(getByText("2 results")).toBeInTheDocument();
-    const rows = container.querySelectorAll("[data-search-index]");
-    expect([...rows].map((r) => r.getAttribute("data-search-index"))).toEqual(["0", "1"]);
-    expect(rows[0].textContent).toContain("Result Plan");
-    expect(rows[0].textContent).toContain("Uni / COMP336");
-    expect(rows[1].textContent).toContain("Result Note");
-    expect(rows[1].getAttribute("aria-current")).toBe("true");
-    expect(rows[0].getAttribute("aria-current")).toBeNull();
-  });
-
   it("renders no Trash/Recently Deleted section", () => {
     const { queryByText } = renderSidebar();
     expect(queryByText("Trash")).not.toBeInTheDocument();
     expect(queryByText("Recently Deleted")).not.toBeInTheDocument();
-    const mobile = renderSidebar({ isMobile: true });
-    expect(mobile.queryByText("Recently Deleted")).not.toBeInTheDocument();
   });
 
   it("opens Settings directly from the wordmark without an app menu", () => {
@@ -754,140 +712,9 @@ describe("Sidebar", () => {
     // starts exactly under the folder's name.
     expect(TREE_INDENT).toBe(TEXT_COL - SPINE);
   });
-
-  it("renders empty search message when searchMode is active but results are empty", () => {
-    const { getByText } = renderSidebar({
-      isMobile: true,
-      searchMode: true,
-      search: "xyz",
-      searchResults: { results: [], totalCount: 0 },
-    });
-    expect(getByText(/No results for/)).toBeInTheDocument();
-    expect(getByText(/Try searching with #tags/)).toBeInTheDocument();
-  });
 });
 
-// ── Mobile branch ─────────────────────────────────────────────────────────────
-// Pins the mobile layout's exact current geometry so the shared-component
-// consolidation cannot drift it: one tree, no headers, inline action rows.
-
-describe("Sidebar (mobile)", () => {
-  const folderTree = [{ name: "Work", _path: "Work", notes: ["n1"], children: [] }];
-  const noteData = buildNoteData([
-    { id: "n1", title: "Filed" },
-    { id: "n2", title: "Loose" },
-  ]);
-
-  it("renders the search field and no desktop header", () => {
-    const { getByLabelText, queryByTestId } = renderSidebar({ isMobile: true });
-    expect(getByLabelText("Search notes")).toBeInTheDocument();
-    expect(queryByTestId("wordmark-settings-button")).not.toBeInTheDocument();
-  });
-
-  it("keeps one tree with inline New Folder / New Note rows and no section headers", () => {
-    const createFolder = vi.fn();
-    const createNote = vi.fn();
-    const { getAllByRole, getByText, queryByText } = renderSidebar({
-      isMobile: true,
-      filteredTree: folderTree,
-      fNotes: ["n2"],
-      noteData,
-      createFolder,
-      createNote,
-    });
-    expect(getAllByRole("tree")).toHaveLength(1);
-    expect(queryByText("Folders")).not.toBeInTheDocument();
-    expect(queryByText("Notes")).not.toBeInTheDocument();
-
-    const newFolder = getByText("New Folder").closest("button");
-    const newNote = getByText("New Note").closest("button");
-    expect(newFolder).toHaveAttribute("role", "treeitem");
-    expect(newNote).toHaveAttribute("role", "treeitem");
-
-    fireEvent.click(newFolder);
-    expect(createFolder).toHaveBeenCalledTimes(1);
-    fireEvent.click(newNote);
-    expect(createNote).toHaveBeenCalledWith(null);
-  });
-
-  it("keeps the mobile row geometry (17px type, 8px gap, its own insets)", () => {
-    const { getByText } = renderSidebar({ isMobile: true, fNotes: ["n2"], noteData });
-    const newFolder = getByText("New Folder").closest("button");
-    const newNote = getByText("New Note").closest("button");
-    expect(newFolder).toHaveStyle({ fontSize: "17px", gap: "8px", padding: "12px 16px 12px 10px" });
-    expect(newNote).toHaveStyle({ fontSize: "17px", gap: "8px", padding: "12px 16px 12px 26px" });
-    expect(newNote.style.borderLeft).toBe("3px solid transparent");
-    // Both carry the accent "+" glyph in a 17px column.
-    const plus = newFolder.querySelector("span");
-    expect(plus.textContent).toBe("+");
-    expect(plus).toHaveStyle({ width: "17px", color: "#A4CACE" });
-  });
-
-  it("hides the inline rows while a search is typed", () => {
-    const { queryByText } = renderSidebar({
-      isMobile: true,
-      search: "abc",
-      fNotes: ["n2"],
-      noteData,
-    });
-    expect(queryByText("New Folder")).not.toBeInTheDocument();
-    expect(queryByText("New Note")).not.toBeInTheDocument();
-  });
-});
-
-// ── Tag chips ─────────────────────────────────────────────────────────────────
-
-describe("Sidebar tag chips", () => {
-  const taggedData = {
-    n1: { title: "A", content: { blocks: [{ type: "p", text: "#work and #home" }] } },
-    n2: { title: "B", content: { blocks: [{ type: "p", text: "#work again" }] } },
-  };
-  const oneResult = {
-    results: [{ noteId: "n1", title: "A", matchIn: "title", snippet: null }],
-    totalCount: 1,
-  };
-
-  it("lists tags by count above search results, then a Notes heading", () => {
-    const setSearch = vi.fn();
-    const { getByText, getAllByRole } = renderSidebar({
-      isMobile: true,
-      searchMode: true,
-      search: "#",
-      searchResults: oneResult,
-      noteData: taggedData,
-      setSearch,
-    });
-    expect(getByText("Tags")).toBeInTheDocument();
-    expect(getByText("Notes")).toBeInTheDocument();
-    const chips = getAllByRole("button").filter((b) => b.textContent.startsWith("#"));
-    expect(chips.map((c) => c.textContent)).toEqual(["#work2", "#home1"]);
-    fireEvent.click(chips[1]);
-    expect(setSearch).toHaveBeenCalledWith("#home");
-  });
-
-  it("shows All Tags for a bare # with no results, and filters by the typed prefix", () => {
-    const { getByText, queryByText } = renderSidebar({
-      isMobile: true,
-      searchMode: true,
-      search: "#",
-      searchResults: emptySearchResults,
-      noteData: taggedData,
-    });
-    expect(getByText("All Tags")).toBeInTheDocument();
-    expect(queryByText(/No results for/)).not.toBeInTheDocument();
-    cleanup();
-    const filtered = renderSidebar({
-      isMobile: true,
-      searchMode: true,
-      search: "#ho",
-      searchResults: emptySearchResults,
-      noteData: taggedData,
-    });
-    expect(filtered.getByText("Tags")).toBeInTheDocument();
-    expect(filtered.getByText("#home")).toBeInTheDocument();
-    expect(filtered.queryByText("#work")).not.toBeInTheDocument();
-  });
-
+describe("Sidebar vault menu and files", () => {
   // ── The vault menu and files that are not notes ───────────────────────────
   // The list's name is the vault folder's; it opens the vault menu, which
   // switches vault, says what the tree shows besides notes, and finds another.

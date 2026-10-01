@@ -14,6 +14,10 @@
 - **Nested tags and exact phrases in Search** — Choosing `#uni` in Search now also finds notes tagged `#uni/lectures` or `#uni/exams`, as Obsidian does, and `#uni` is offered even when no note uses it on its own. Put words in double quotes, like `"exam notes"`, to find only notes where they appear together and in that order; a line break between them still counts.
 - **Resize a picture by its corners** — Click a picture and a thin teal outline appears round it, with a white dot on each corner. Drag any dot to make the picture bigger or smaller; it always keeps its shape, and lands on its own size when you drag close to it. Double-click a dot to put it back to its own size. The white pill that used to appear on the picture's right edge whenever you pointed at it is gone, so pointing at a picture now shows only the small bar at its top right. When a picture is part of several selected blocks it is tinted like the others, with no dots, since one drag can't resize them all.
 
+### Removed
+
+- **The touch layout** — A separate phone-and-tablet layout (its own top bar, formatting toolbar, floating New button, bottom-sheet menu and a search field in the sidebar) had been switched off since 24 September, so every device already got the desktop layout. Its code is now gone, about 1,900 lines nobody was running. Nothing changes on screen. A phone layout will be designed fresh when the web build gets one.
+
 ### Bug Fixes
 
 - **"Type / for commands…" leaves once you write below it** — With the first line of a note left empty and your writing on the lines below, the grey hint kept showing on that empty first line. It now shows only while the whole note is one empty line.

@@ -63,8 +63,7 @@ export function useNoteCrud({
       delete next[noteId];
       return next;
     });
-    // Deleting the open note falls back to null — the draft-note flow (desktop)
-    // or the sidebar (mobile) takes over.
+    // Deleting the open note falls back to null; the draft-note flow takes over.
     if (activeNote === noteId) setActiveNote(null);
   };
 
