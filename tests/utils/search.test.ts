@@ -202,3 +202,44 @@ describe("searchNotes", () => {
     expect(totalCount).toBe(2);
   });
 });
+
+describe("searchNotes: quoted phrases", () => {
+  const noteData: NoteData = {
+    together: note("Revision", [p("b1", "My exam notes for June")], { lastModified: 3 }),
+    apart: note("Plans", [p("b2", "Write notes for the exam")], { lastModified: 2 }),
+    broken: note("Week", [p("b3", "the exam\nnotes are due")], { lastModified: 1 }),
+    titled: note("Exam Notes", [p("b4", "Nothing here")], { lastModified: 0 }),
+  };
+  const index = buildSearchIndex(noteData);
+  const ids = (q: string) => searchNotes(q, index).results.map((r) => r.noteId);
+
+  it("finds the words together and in order, never apart", () => {
+    expect(ids("exam notes")).toContain("apart");
+    expect(ids('"exam notes"')).not.toContain("apart");
+    expect(ids('"exam notes"')).toContain("together");
+  });
+
+  it("reads a soft break as a space", () => {
+    expect(ids('"exam notes"')).toContain("broken");
+  });
+
+  it("ranks a phrase in the title above one in the body, and marks it whole", () => {
+    const { results } = searchNotes('"exam notes"', index);
+    expect(results[0].noteId).toBe("titled");
+    expect(results[0].titleRanges).toEqual([[0, 10]]);
+    const body = results.find((r) => r.noteId === "together")!;
+    const s = body.snippet!;
+    expect(s.ranges).toHaveLength(1);
+    expect(s.text.slice(...s.ranges[0])).toBe("exam notes");
+  });
+
+  it("takes an unclosed quote as a phrase to the end, so results hold while typing", () => {
+    expect(ids('"exam no')).toEqual(ids('"exam notes"'));
+  });
+
+  it("mixes a phrase with words, and ignores empty quotes", () => {
+    expect(ids('june "exam notes"')).toEqual(["together"]);
+    expect(ids('"" june')).toEqual(["together"]);
+    expect(ids('""')).toEqual([]);
+  });
+});

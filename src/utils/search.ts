@@ -53,6 +53,8 @@ export function buildPlainText(blocks: Block[] | null | undefined): {
  * Text folded for matching: lower-cased, accents removed, with a map from
  * each folded index back to the index in the original, so a hit found in the
  * folded text is highlighted in the text as written. `cafe` finds `café`.
+ * Every whitespace character folds to a space, so a quoted phrase finds its
+ * words across a soft break.
  */
 export interface Folded {
   text: string;
@@ -65,10 +67,12 @@ export function foldText(s: string): Folded {
   const map: number[] = [];
   let i = 0;
   for (const ch of s) {
-    const folded = ch
-      .normalize("NFD")
-      .replace(/\p{M}+/gu, "")
-      .toLowerCase();
+    const folded = /\s/u.test(ch)
+      ? " "
+      : ch
+          .normalize("NFD")
+          .replace(/\p{M}+/gu, "")
+          .toLowerCase();
     for (let k = 0; k < folded.length; k++) {
       units.push(folded[k]);
       map.push(i);
@@ -253,8 +257,27 @@ export interface SearchOptions {
 }
 
 /**
- * Main search function. The query is words; every word must be somewhere in
- * the title or body, in any order, matched case- and accent-insensitively. A
+ * The query's terms, folded: words split on spaces, and a quoted phrase as
+ * one term with its spaces in it (`"exam notes"`, as Obsidian writes it). An
+ * unclosed quote runs to the end, so the results hold while the phrase is
+ * still being typed. Empty quotes are nothing.
+ */
+export function queryTerms(query: string): string[] {
+  const terms: string[] = [];
+  const parts = (query || "").split('"');
+  parts.forEach((part, i) => {
+    const folded = foldText(part).text;
+    if (i % 2 === 1) {
+      const phrase = folded.trim().replace(/ +/g, " ");
+      if (phrase) terms.push(phrase);
+    } else terms.push(...folded.split(" ").filter(Boolean));
+  });
+  return terms;
+}
+
+/**
+ * Main search function. The query is terms (`queryTerms`); every term must be
+ * somewhere in the title or body, in any order, matched case- and accent-insensitively. A
  * word at the start of a title word ranks highest, then anywhere in the
  * title, then the title's initials, then at the start of a body word, then
  * anywhere in the body; ties break by last modified. No fuzzy matching.
@@ -265,12 +288,7 @@ export function searchNotes(
   options: SearchOptions | number = {},
 ): { results: SearchResult[]; totalCount: number } {
   const { limit = 50, noteIds = null } = typeof options === "number" ? { limit: options } : options;
-  const words = (query || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => foldText(w).text)
-    .filter(Boolean);
+  const words = queryTerms(query);
   const entries = noteIds
     ? [...noteIds].map((id) => index.get(id)).filter((e): e is IndexEntry => !!e)
     : [...index.values()];

@@ -8,7 +8,7 @@ import {
   type SearchIndex,
   type SearchResult,
 } from "../utils/search";
-import { extractAllTags, tagKey, type TagEntry } from "../utils/tags";
+import { extractAllTags, nestTags, tagKey, type TagEntry } from "../utils/tags";
 
 export const SEARCH_DEBOUNCE_MS = 150;
 
@@ -45,7 +45,8 @@ export function useSearch(noteData: NoteData) {
   // result with an index the palette highlighted while Enter read this one).
   const [activeResultIndex, setActiveResultIndex] = useState(0);
 
-  const tags = useMemo(() => extractAllTags(noteData), [noteData]);
+  // Nested: choosing `#uni` also finds `#uni/lectures`.
+  const tags = useMemo(() => nestTags(extractAllTags(noteData)), [noteData]);
   const tagsRef = useRef<Map<string, TagEntry>>(tags);
   tagsRef.current = tags;
 

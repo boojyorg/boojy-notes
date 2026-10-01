@@ -174,3 +174,45 @@ test("recents are recorded from every route that opens a note and survive a rest
     await h.close();
   }
 });
+
+test("a parent tag finds its nested tags, and a quoted phrase finds its words together", async () => {
+  const h = await launchApp({
+    "Lectures.md": "week one #uni/lectures\n",
+    "Exams.md": "dates #uni/exams\n",
+    "Unity.md": "a game engine #unity\n",
+    "Revision.md": "my exam notes for June\n",
+    "Plans.md": "write notes for the exam\n",
+  });
+  try {
+    const page = h.page;
+    const dialog = page.getByRole("dialog", { name: "Search" });
+    const field = page.getByRole("textbox", { name: "Search notes" });
+    const rows = dialog.locator("[data-search-index]");
+
+    // `#uni` is listed though no note writes it alone, counting both children.
+    await page.keyboard.press(`${MOD}+p`);
+    await expect(field).toBeFocused();
+    await field.type("#uni");
+    await expect(rows).toHaveCount(4);
+    await expect(rows.first()).toHaveText(/^#uni2$/);
+    await page.keyboard.press("Enter");
+    await expect(field).toHaveAttribute("placeholder", "Search 2 notes");
+    await expect(rows).toHaveCount(2);
+    await expect(rows).toContainText([/Lectures|Exams/, /Lectures|Exams/]);
+    await expect(dialog).not.toContainText("Unity");
+    await page.keyboard.press("Escape");
+
+    // Words find both notes; the phrase only the one with them together.
+    await page.keyboard.press(`${MOD}+p`);
+    await field.type("exam notes");
+    await expect(rows).toHaveCount(2);
+    await field.fill("");
+    await field.type('"exam notes"');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("Revision");
+    await expect(rows.first()).toContainText("my exam notes for June");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

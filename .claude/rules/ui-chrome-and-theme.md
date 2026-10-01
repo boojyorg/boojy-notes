@@ -7,8 +7,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Light is the first-run default for existing users; a fresh
-  install starts on System.
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Existing users start on Light, a fresh install on
+  System.
 - Neutral palettes; teal is the identity, never gold. `?tweak` (dev only) overrides live; a
   judged value goes into `themes.js`.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
@@ -195,20 +195,20 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
   (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
   reference when already sorted.
-- **Drag means location, not order**: dragging moves the file or directory. A mouse drag starts
-  past `DRAG_THRESHOLD` with no hold; touch keeps the hold. Dropping on the editor doesn't open
-  the note.
+- **Drag means location, not order**: dragging moves the file or directory. A drag starts past
+  `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
 
 ## Search is a palette, not a panel
 
-- `SearchPalette.tsx` (Cmd+P, the Search button, a tag click): search only, every open starts
-  fresh, Escape closes in one press.
-- Empty: **Recent** (`utils/recentNotes.ts`, localStorage per vault, never a timestamp on the
-  note). `#` lists tags; choosing one makes a filter chip (set membership, never substring).
+- `SearchPalette.tsx` (Cmd+P, Search button, tag click): every open starts fresh; Escape
+  closes at once.
+- Empty: **Recent** (`utils/recentNotes.ts`, localStorage per vault, never on the note). `#` lists tags, nested
+  as Obsidian (`nestTags`: `#uni` holds `#uni/x`, listed unwritten); one makes a filter chip
+  (set membership, not substring).
 - Rows are one line; an excerpt only when the title doesn't explain the match.
-- **Matching** (`utils/search.ts`): every word must match title or body, folded for case and
-  accents; ranked, **no fuzzy matching anywhere**. Enter acts on the query as typed
-  (`flushSearch`).
+- **Matching** (`utils/search.ts`): every word or `"phrase"` (`queryTerms`; unclosed runs to
+  the end) in title or body, folded for case, accents, whitespace; **no fuzzy matching**.
+  Enter acts on the query as typed (`flushSearch`).
 - **One order: the array `searchNotes` returns**; never a separate display order. The desktop
   sidebar never reads the query. `search-palette.spec.ts`.
 
