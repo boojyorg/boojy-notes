@@ -54,8 +54,8 @@ export function buildPlainText(blocks: Block[] | null | undefined): {
  * Text folded for matching: lower-cased, accents removed, with a map from
  * each folded index back to the index in the original, so a hit found in the
  * folded text is highlighted in the text as written. `cafe` finds `café`.
- * Every whitespace character folds to a space, so a quoted phrase finds its
- * words across a soft break.
+ * Every run of whitespace folds to one space, so a quoted phrase finds its
+ * words across a soft break or a double space, however the query spaces them.
  */
 export interface Folded {
   text: string;
@@ -67,8 +67,17 @@ export function foldText(s: string): Folded {
   const units: string[] = [];
   const map: number[] = [];
   let i = 0;
+  let space = false;
   for (const ch of s) {
-    const folded = /\s/u.test(ch)
+    const isSpace = /\s/u.test(ch);
+    // The rest of a run maps to nothing: a range ending at the run still
+    // maps to its first character, and one spanning it covers all of it.
+    if (isSpace && space) {
+      i += ch.length;
+      continue;
+    }
+    space = isSpace;
+    const folded = isSpace
       ? " "
       : ch
           .normalize("NFD")

@@ -440,4 +440,16 @@ describe("SearchPalette", () => {
     );
     expect(rows(settled.container).map((r) => r.textContent)).toEqual(["Create “Tes”"]);
   });
+
+  it("the × on a chip keeps searching the text in the field", () => {
+    const setFolderFilter = vi.fn();
+    const setTagFilter = vi.fn();
+    const f = setup({ search: "exam", folderFilter: "Uni", setFolderFilter });
+    fireEvent.click(f.getByLabelText("Remove Uni folder filter"));
+    expect(setFolderFilter).toHaveBeenCalledWith(null, "exam");
+    cleanup();
+    const t = setup({ search: "exam", tagFilter: "work", setTagFilter });
+    fireEvent.click(t.getByLabelText("Remove #work filter"));
+    expect(setTagFilter).toHaveBeenCalledWith(null, "exam");
+  });
 });

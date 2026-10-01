@@ -245,9 +245,11 @@ export default function SearchPalette({
     setSearch("");
     inputRef.current?.focus();
   };
+  // The × keeps searching what is in the field; Backspace (the field empty)
+  // puts the chip back there as text.
   const removeChip = (backToText: boolean) => {
     const tag = tagFilter;
-    setTagFilter(null, backToText && tag ? `#${tag}` : "");
+    setTagFilter(null, backToText && tag ? `#${tag}` : query);
     if (backToText && tag) setSearch(`#${tag}`);
     inputRef.current?.focus();
   };
@@ -258,7 +260,7 @@ export default function SearchPalette({
     inputRef.current?.focus();
   };
   const removeFolderChip = (backToText: boolean) => {
-    setFolderFilter?.(null, backToText ? folderName : "");
+    setFolderFilter?.(null, backToText ? folderName : query);
     if (backToText) setSearch(folderName);
     inputRef.current?.focus();
   };

@@ -225,6 +225,18 @@ describe("searchNotes: quoted phrases", () => {
     expect(ids('"exam notes"')).toContain("broken");
   });
 
+  it("reads any run of spaces as one, in the note and in the phrase alike", () => {
+    const spaced = buildSearchIndex({
+      s: note("Spaced", [p("b9", "my exam  \n notes here")]),
+    } as NoteData);
+    for (const q of ['"exam notes"', '"exam  notes"']) {
+      const { results } = searchNotes(q, spaced);
+      expect(results.map((r) => r.noteId)).toEqual(["s"]);
+      const sn = results[0].snippet!;
+      expect(sn.text.slice(...sn.ranges[0])).toBe("exam  \n notes");
+    }
+  });
+
   it("ranks a phrase in the title above one in the body, and marks it whole", () => {
     const { results } = searchNotes('"exam notes"', index);
     expect(results[0].noteId).toBe("titled");
