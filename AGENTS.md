@@ -56,7 +56,7 @@ src/
 ├── services/           # getAPI(): the Electron or web API
 ├── utils/              # markdown.js (the converters), storage, search, platform, …
 ├── constants/          # themes.js (the only colour authority), layout.js, slash commands, z-index
-├── tokens/  styles/    # spacing, radius, type, shadows; shared style fragments
+├── tokens/  styles/    # motion, radius, rhythm, spacing, type; shared style fragments
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
 electron/               # main process: IPC, file I/O, watcher, OS trash, folders, menu
 tests/  e2e/            # unit tests + preservation corpus; Playwright (e2e/electron/ = real app)

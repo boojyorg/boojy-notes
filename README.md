@@ -64,7 +64,7 @@ Several things were built and then removed to keep the product small: cloud sync
 
 ## Contributing
 
-Boojy Notes is a personal project and isn't accepting code contributions or pull requests right now. Feedback and bug reports are welcome by email at [tyr@boojy.org](mailto:tyr@boojy.org). See [CONTRIBUTING.md](CONTRIBUTING.md).
+Boojy Notes isn't accepting code contributions right now; see [CONTRIBUTING.md](CONTRIBUTING.md) for feedback and bug reports.
 
 ## License
 

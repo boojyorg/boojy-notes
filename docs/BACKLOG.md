@@ -229,8 +229,8 @@ none blocks the release. The shared question comes first because three candidate
   work is a clean print layout (no chrome, the note's own type, page breaks that never split a
   table row or a picture). Word export is later (Future).
 - **Other files in the tree, the rest.** They show, open in their own app, and can be shown in
-  Finder or deleted (2026-09-25). Still to come: Rename and Move to… on the row, a drag into a
-  note that writes a link to it, and Search finding them by name. Every file operation must be
+  Finder or deleted (2026-09-25). Still to come: Rename and Move to… on the row, and a drag
+  into a note that writes a link to it. Every file operation must be
   right for a non-note file too; an attachment stays open-only, because a rename rewrites no
   links. A Finder change reaches the tree on window focus; watching them is a later step if
   that proves slow to notice. Built-in viewers are later still (Future).
@@ -241,9 +241,8 @@ none blocks the release. The shared question comes first because three candidate
   location and the moment an empty note becomes a file are undecided for every entry point. Not
   accepted: deriving the title from the first line.
 - **Search, a few additions.** Wanted soon (2026-09-30). Filters by tag, folder and date (how
-  dates read is to be mocked up in a couple of directions), quoted phrases as Obsidian writes
-  them, nested tags as Obsidian reads them (`#uni` finds `#uni/lectures`; the grammar already
-  takes the slash), other files by name (above), and a timing check on a vault of 2,000 notes.
+  dates read is to be mocked up in a couple of directions), and a timing check on a vault of
+  2,000 notes.
   Still no fuzzy matching, and **no command palette** (Tyr dislikes them: the menu bar and
   shortcuts are the keyboard path).
 - **For friends at Beta.** A keyboard shortcuts sheet (a screen reached from Help or Settings),
@@ -573,7 +572,7 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   selection, attachments, filesystem access and background sync need real-device evaluation.
   The web build working well on a phone comes before any app (Direction). Drawer versus
   two-screen navigation was explored on 2026-04-06 and left undecided; the two-screen touch
-  layout is switched off and then removed (Technical debt). The earlier Capacitor spec, mobile
+  layout has since been removed. The earlier Capacitor spec, mobile
   spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
   reference, not plan. **Tyr's phone is Android**, and a good phone app would double his use
   (2026-09-30): a reason cloud and the phone web build may come sooner. The web app is wanted
