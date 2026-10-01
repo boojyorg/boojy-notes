@@ -6,6 +6,7 @@ import {
   findMatchBlock,
   foldText,
   orderResults,
+  searchFiles,
   searchFolders,
   searchNotes,
 } from "../../src/utils/search";
@@ -315,5 +316,49 @@ describe("folders in Search", () => {
       searchNotes(q, index, { folder: "University" }).results.map((r) => r.noteId);
     expect(ids("progress").sort()).toEqual(["master", "weekly"]);
     expect(ids("")).toEqual(["weekly", "master"]);
+  });
+});
+
+describe("other files in Search", () => {
+  const files = [
+    { path: "University/COMP390/Report.pdf", attachment: false },
+    { path: "Budget 2026.xlsx", attachment: false },
+    { path: "attachments/Pasted image 2026.png", attachment: true },
+    { path: "Personal/report card.png", attachment: false },
+  ];
+
+  it("matches a file by its name, extension included, never one in the attachment store", () => {
+    // A tie goes by name: `report card` before `Report.pdf`.
+    expect(searchFiles("report", files).map((f) => f.path)).toEqual([
+      "Personal/report card.png",
+      "University/COMP390/Report.pdf",
+    ]);
+    expect(searchFiles("pdf", files).map((f) => f.name)).toEqual(["Report.pdf"]);
+    expect(searchFiles("pasted", files)).toEqual([]);
+    expect(searchFiles("budget", files)[0]).toMatchObject({ folder: null, nameRanges: [[0, 6]] });
+    expect(searchFiles("", files)).toEqual([]);
+  });
+
+  it("under a folder chip, only that folder's files and its subfolders'", () => {
+    expect(searchFiles("report", files, "University").map((f) => f.name)).toEqual(["Report.pdf"]);
+    expect(searchFiles("report", files, "Univ")).toEqual([]);
+  });
+
+  it("ranks a file among the notes by score, a note first on a tie, a folder under it", () => {
+    const index = buildSearchIndex({
+      r: note("Report notes", [p("b1", "x")], { lastModified: 2 }),
+      b: note("Plan", [p("b2", "the report is due")], { lastModified: 1 }),
+    } as NoteData);
+    const order = (q: string, folders: string[] = []) =>
+      orderResults(
+        searchNotes(q, index).results,
+        searchFolders(q, folders),
+        searchFiles(q, files),
+      ).map((r) =>
+        r.kind === "note" ? r.result.noteId : r.kind === "file" ? r.file.name : `/${r.folder.path}`,
+      );
+    expect(order("report")).toEqual(["r", "report card.png", "Report.pdf", "b"]);
+    expect(order("report pdf")).toEqual(["Report.pdf"]);
+    expect(order("report pdf", ["Reports pdf"])).toEqual(["Report.pdf", "/Reports pdf"]);
   });
 });

@@ -10,8 +10,12 @@ import { tagRows, type TagEntry } from "../utils/tags";
 import {
   foldText,
   orderResults,
+  queryTerms,
+  searchFiles,
   searchFolders,
+  type FileHit,
   type FolderHit,
+  type Range,
   type SearchResult,
 } from "../utils/search";
 import { RECENT_SHOWN, recentRows } from "../utils/recentNotes";
@@ -19,7 +23,8 @@ import { cssZoom } from "../utils/domHelpers";
 import { atScale } from "../utils/uiScale";
 import { tagPillStyle } from "../styles/tagPill";
 import type { NoteData } from "../types/notes";
-import { CloseIcon, FolderIcon, PlusIcon, SearchIcon } from "./Icons";
+import { otherFileKind, splitExtension, type OtherFile } from "../utils/otherFiles";
+import { CloseIcon, FolderIcon, OtherFileIcon, PlusIcon, SearchIcon } from "./Icons";
 import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
 
 /**
@@ -40,7 +45,9 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
  *     its folder muted on the right, from inside the folder chip if one is
  *     on. A folder whose own name matches is a row too (at most two); Enter
  *     makes it the grey folder chip, which narrows the search to it and its
- *     subfolders as the tag chip does. When nothing matches, one row offers
+ *     subfolders as the tag chip does. A file that is not a note (beside
+ *     the notes, never the attachment store) is a row by its name, ranked
+ *     among the notes; Enter opens it in its own app. When nothing matches, one row offers
  *     to create the note, in the chip's folder (not under a tag chip: the
  *     note would not carry the tag).
  *
@@ -51,7 +58,11 @@ import { renderHighlightedTitle, renderSnippet } from "./SearchParts";
  */
 
 interface SearchPaletteProps {
-  onOpenResult: (noteId: string, matchBlockId: string | null) => void;
+  /** Opens a note; `terms` are the words to tint in its matched block. */
+  onOpenResult: (noteId: string, matchBlockId: string | null, terms?: string[]) => void;
+  /** The vault's files that are not notes, and how one is opened in its own app. */
+  otherFiles?: OtherFile[];
+  onOpenFile?: (path: string) => void;
   /** Makes and opens a note with this name, in this folder. */
   onCreateNote?: (folder: string | null, title: string) => void;
   onClose: () => void;
@@ -65,6 +76,7 @@ type Row =
   | { kind: "tag"; tag: string; count: number }
   | { kind: "result"; result: SearchResult }
   | { kind: "folder"; folder: FolderHit }
+  | { kind: "file"; file: FileHit }
   | { kind: "create"; title: string };
 
 const PALETTE_WIDTH = 560;
@@ -92,6 +104,8 @@ function rowsThatFit(): number {
 export default function SearchPalette({
   onOpenResult,
   onCreateNote,
+  otherFiles = [],
+  onOpenFile,
   onClose,
   recentIds = [],
   currentNoteId = null,
@@ -160,7 +174,9 @@ export default function SearchPalette({
    */
   const resultRows = (results: SearchResult[], applied: string, typed: string): Row[] => {
     const folders = folderFilter ? [] : searchFolders(applied, folderList);
-    const ordered: Row[] = orderResults(results, folders).map((r) =>
+    // A file carries no tags, so a tag chip leaves none.
+    const files = tagFilter || !onOpenFile ? [] : searchFiles(applied, otherFiles, folderFilter);
+    const ordered: Row[] = orderResults(results, folders, files).map((r) =>
       r.kind === "note" ? { kind: "result", result: r.result } : r,
     );
     if (ordered.length === 0 && typed && applied === typed && !tagFilter && onCreateNote)
@@ -178,7 +194,7 @@ export default function SearchPalette({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resultRows reads the filters and folders listed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resultRows reads the filters, folders, files and callbacks listed.
   const rows = useMemo<Row[]>(() => {
     if (mode === "recent") {
       return recentRows(recentIds, noteData, currentNoteId, Math.min(shown, RECENT_SHOWN)).map(
@@ -209,6 +225,9 @@ export default function SearchPalette({
     folderFilter,
     tagFilter,
     folderList,
+    otherFiles,
+    onOpenFile,
+    onCreateNote,
   ]);
 
   // The highlight: a position in the rows drawn, reset to the first whenever
@@ -224,9 +243,11 @@ export default function SearchPalette({
         ? r.noteId
         : r.kind === "folder"
           ? `/${r.folder.path}`
-          : r.kind === "create"
-            ? `+${r.title}`
-            : r.result.noteId;
+          : r.kind === "file"
+            ? `~${r.file.path}`
+            : r.kind === "create"
+              ? `+${r.title}`
+              : r.result.noteId;
   const rowsKey = rows.map(rowKey).join("\n");
   // biome-ignore lint/correctness/useExhaustiveDependencies: the key changing is the reset.
   useLayoutEffect(() => setActive(0), [rowsKey]);
@@ -237,7 +258,7 @@ export default function SearchPalette({
   }, [active]);
 
   const openResult = (r: SearchResult) => {
-    onOpenResult(r.noteId, r.matchBlockId);
+    onOpenResult(r.noteId, r.matchBlockId, queryTerms(query));
     onClose();
   };
   const chooseTag = (tag: string) => {
@@ -271,7 +292,10 @@ export default function SearchPalette({
       onClose();
     } else if (row.kind === "tag") chooseTag(row.tag);
     else if (row.kind === "folder") chooseFolder(row.folder.path);
-    else if (row.kind === "create") {
+    else if (row.kind === "file") {
+      onOpenFile?.(row.file.path);
+      onClose();
+    } else if (row.kind === "create") {
       onCreateNote?.(folderFilter, row.title);
       onClose();
     } else openResult(row.result);
@@ -289,12 +313,14 @@ export default function SearchPalette({
   const placeholder = filtered
     ? `Search ${scopeCount} ${scopeCount === 1 ? "note" : "notes"}`
     : "Search notes";
-  const notesShown = rows.filter((r) => r.kind === "result").length;
+  const filesShown = rows.filter((r) => r.kind === "file").length;
+  const hitsShown = rows.filter((r) => r.kind === "result").length + filesShown;
+  const hitsTotal = searchResults.totalCount + filesShown;
   const count =
-    mode === "results" && query && notesShown > 0
-      ? searchResults.totalCount <= notesShown
-        ? `${searchResults.totalCount} result${searchResults.totalCount === 1 ? "" : "s"}`
-        : `${notesShown} of ${searchResults.totalCount}`
+    mode === "results" && query && hitsShown > 0
+      ? hitsTotal <= hitsShown
+        ? `${hitsTotal} result${hitsTotal === 1 ? "" : "s"}`
+        : `${hitsShown} of ${hitsTotal}`
       : "";
   const scope = `${folderFilter ? ` in ${folderName}` : ""}${tagFilter ? ` tagged #${tagFilter}` : ""}`;
   const emptyText =
@@ -642,6 +668,39 @@ export default function SearchPalette({
                       </span>
                     </button>
                   );
+                if (row.kind === "file") {
+                  // The extension muted, as the sidebar draws it; a match in
+                  // it (`pdf`) still lights.
+                  const { stem, ext } = splitExtension(row.file.name);
+                  const clip = (from: number, to: number) =>
+                    row.file.nameRanges
+                      .filter(([a, b]) => b > from && a < to)
+                      .map(([a, b]) => [Math.max(a, from) - from, Math.min(b, to) - from] as Range);
+                  return (
+                    <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span
+                          style={{ ...titleStyle, display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                          <span style={glyph}>
+                            <OtherFileIcon kind={otherFileKind(row.file.name)} size={14} />
+                          </span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {renderHighlightedTitle(stem, clip(0, stem.length), accentText)}
+                            <span style={{ color: TEXT.muted }}>
+                              {renderHighlightedTitle(
+                                ext,
+                                clip(stem.length, row.file.name.length),
+                                accentText,
+                              )}
+                            </span>
+                          </span>
+                        </span>
+                        {folderPath(row.file.folder)}
+                      </span>
+                    </button>
+                  );
+                }
                 if (row.kind === "create")
                   return (
                     <button key={rowKey(row)} {...rowProps(i)} onClick={() => act(row)}>

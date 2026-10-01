@@ -50,3 +50,23 @@ test("the placeholder goes on the first keystroke and comes back when the text i
     await h.close();
   }
 });
+
+test("the placeholder shows only while the note is one empty line: a line below ends it", async () => {
+  const h = await launchApp({ "Blank.md": "" });
+  try {
+    await h.openNote("Blank");
+    await h.page.locator("[data-block-id]").first().click();
+    await h.page.keyboard.press("Enter");
+    await h.page.keyboard.type("on line two");
+    expect(await placeholder(h.page)).toBe("none");
+    // Back to one empty line, the placeholder returns.
+    await h.page.keyboard.press(`${process.platform === "darwin" ? "Meta" : "Control"}+a`);
+    await h.page.keyboard.press("Backspace");
+    await h.page.keyboard.press("Backspace");
+    await expect.poll(() => h.page.locator("[data-block-id]").count()).toBe(1);
+    await expect.poll(() => placeholder(h.page)).toBe('"Type / for commands..."');
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

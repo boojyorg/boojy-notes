@@ -3,7 +3,8 @@ import { tagPillCss } from "../styles/tagPill";
 import { LABEL_PAD_X, SCROLLBAR_W } from "../constants/layout";
 import { MOTION_VARS } from "../tokens/motion";
 import { useRhythm } from "../tokens/rhythm";
-import { bandFill } from "../utils/selectionBand";
+import { bandFill, withAlpha } from "../utils/selectionBand";
+import { SEARCH_HIT_ALPHA, SEARCH_HIT_STEPS } from "../utils/searchHighlight";
 import { settingsStyles } from "./settings/SettingsPrimitives";
 
 export default function GlobalStyles() {
@@ -428,6 +429,16 @@ ${tagPillCss(theme)}
         [data-editor] ::selection {
           background: ${bandFill(theme.ACCENT.primary, theme.name)};
         }
+        /* The words a search matched, as the note opens from Search: a
+           highlight painted over the text, never written into it, faded by
+           stepping through the names (utils/searchHighlight). */
+        ${SEARCH_HIT_STEPS.map(
+          (name, i) =>
+            `::highlight(${name}) { background-color: ${withAlpha(
+              theme.ACCENT.primary,
+              SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
+            )}; }`,
+        ).join("\n        ")}
         /* The words the link picker will link, while it holds focus: the
            selection's colour, standing in for it, unwrapped before the block
            is read back (useLinkPicker). Never the saved ==highlight==. */
@@ -822,11 +833,13 @@ ${tagPillCss(theme)}
         .empty-block {
           position: relative;
         }
-        /* Placeholder shows only while the first block holds no text:
-           \`data-empty\`, kept by EditableBlock from the live DOM, so it hides
-           on the keystroke (never the debounced block.text, which lingered).
+        /* Placeholder shows only while the note is one empty line: the
+           first block holds no text (\`data-empty\`, kept by EditableBlock
+           from the live DOM, so it hides on the keystroke, never the
+           debounced block.text, which lingered) and no block follows it, so
+           an empty first line above a written one carries no hint.
            Not \`:has(> br:only-child)\`: a soft break is one <br> too. */
-        .empty-block[data-empty]::before {
+        .empty-block[data-empty]:not(:has(~ [data-block-id]))::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
           opacity: 0.4;

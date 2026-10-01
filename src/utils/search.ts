@@ -427,6 +427,25 @@ export interface FolderHit {
 /** At most this many folders in a result list, so notes are never pushed off it. */
 export const FOLDER_HITS = 2;
 
+/** Every term in `name` (folded), scored as a note's title is; null if one is missing. */
+function nameMatch(name: string, terms: string[]): { score: number; ranges: Range[] } | null {
+  const fold = foldText(name);
+  let score = 0;
+  const ranges: Range[] = [];
+  for (const t of terms) {
+    const f = findWord(fold.text, t);
+    if (!f) return null;
+    score += f.start ? TITLE_START : TITLE_ANY;
+    ranges.push(mapRange(fold, [f.idx, f.idx + t.length]));
+  }
+  return { score, ranges: ranges.sort((a, b) => a[0] - b[0]) };
+}
+
+const parentOf = (path: string) => {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? null : path.slice(0, slash);
+};
+
 /**
  * Folders whose own name holds every term of the query, scored as a note's
  * title is: `univ` finds University, never Archive inside it. Best first,
@@ -437,29 +456,9 @@ export function searchFolders(query: string, folders: string[], limit = FOLDER_H
   if (terms.length === 0) return [];
   const hits: FolderHit[] = [];
   for (const path of folders) {
-    const slash = path.lastIndexOf("/");
-    const name = path.slice(slash + 1);
-    const fold = foldText(name);
-    let score = 0;
-    const nameRanges: Range[] = [];
-    for (const t of terms) {
-      const f = findWord(fold.text, t);
-      if (!f) {
-        score = 0;
-        break;
-      }
-      score += f.start ? TITLE_START : TITLE_ANY;
-      nameRanges.push(mapRange(fold, [f.idx, f.idx + t.length]));
-    }
-    if (score === 0) continue;
-    nameRanges.sort((a, b) => a[0] - b[0]);
-    hits.push({
-      path,
-      name,
-      parent: slash === -1 ? null : path.slice(0, slash),
-      score,
-      nameRanges,
-    });
+    const name = path.slice(path.lastIndexOf("/") + 1);
+    const m = nameMatch(name, terms);
+    if (m) hits.push({ path, name, parent: parentOf(path), score: m.score, nameRanges: m.ranges });
   }
   const depth = (p: string) => p.split("/").length;
   hits.sort(
@@ -468,21 +467,80 @@ export function searchFolders(query: string, folders: string[], limit = FOLDER_H
   return hits.slice(0, limit);
 }
 
-export type ResultRow =
-  | { kind: "note"; result: SearchResult }
-  | { kind: "folder"; folder: FolderHit };
+export interface FileHit {
+  /** The file's vault-relative path. */
+  path: string;
+  /** Its name with the extension, which is what is matched (`pdf` finds every PDF). */
+  name: string;
+  /** The folder it sits in, or null at the root. */
+  folder: string | null;
+  score: number;
+  nameRanges: Range[];
+}
+
+/** At most this many files in a result list. */
+export const FILE_HITS = 20;
 
 /**
- * The one order of a result list with folders in it. Folders go first,
- * except under a note whose title matches at least as well: that note stays
+ * Files that are not notes whose name holds every term, beside the notes
+ * only: the attachment store (pasted pictures) would bury every search. Under
+ * a folder chip, that folder's and its subfolders' only.
+ */
+export function searchFiles(
+  query: string,
+  files: ReadonlyArray<{ path: string; attachment: boolean }>,
+  folder: string | null = null,
+  limit = FILE_HITS,
+): FileHit[] {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return [];
+  const hits: FileHit[] = [];
+  for (const f of files) {
+    if (f.attachment) continue;
+    const parent = parentOf(f.path);
+    if (folder && !inFolder(parent, folder)) continue;
+    const name = f.path.slice(f.path.lastIndexOf("/") + 1);
+    const m = nameMatch(name, terms);
+    if (m) hits.push({ path: f.path, name, folder: parent, score: m.score, nameRanges: m.ranges });
+  }
+  hits.sort((a, b) => b.score - a.score || naturalCompare(a.name, b.name));
+  return hits.slice(0, limit);
+}
+
+export type ResultRow =
+  | { kind: "note"; result: SearchResult }
+  | { kind: "folder"; folder: FolderHit }
+  | { kind: "file"; file: FileHit };
+
+/**
+ * The one order of a result list with folders and files in it. A file ranks
+ * among the notes by its score (a note first on a tie). Folders go first,
+ * except under a note titled, or a file named, at least as well: it stays
  * first, so Enter still opens `Boojy` when a folder is also called Boojy.
  */
-export function orderResults(notes: SearchResult[], folders: FolderHit[]): ResultRow[] {
-  const noteRows = notes.map((result) => ({ kind: "note", result }) as const);
-  const folderRows = folders.map((folder) => ({ kind: "folder", folder }) as const);
-  const top = notes[0];
-  if (top && top.matchIn === "title" && folders.length && top.score >= folders[0].score) {
-    return [noteRows[0], ...folderRows, ...noteRows.slice(1)];
+export function orderResults(
+  notes: SearchResult[],
+  folders: FolderHit[],
+  files: FileHit[] = [],
+): ResultRow[] {
+  const named: ResultRow[] = [];
+  let n = 0;
+  let f = 0;
+  while (n < notes.length || f < files.length) {
+    if (f < files.length && (n >= notes.length || files[f].score > notes[n].score))
+      named.push({ kind: "file", file: files[f++] });
+    else named.push({ kind: "note", result: notes[n++] });
   }
-  return [...folderRows, ...noteRows];
+  const folderRows = folders.map((folder) => ({ kind: "folder", folder }) as const);
+  const top = named[0];
+  const topScore =
+    top?.kind === "file"
+      ? top.file.score
+      : top?.kind === "note" && top.result.matchIn === "title"
+        ? top.result.score
+        : -1;
+  if (folders.length && topScore >= folders[0].score) {
+    return [named[0], ...folderRows, ...named.slice(1)];
+  }
+  return [...folderRows, ...named];
 }

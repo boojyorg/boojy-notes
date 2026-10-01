@@ -19,7 +19,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
-  a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==).
+  a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==), a
+  search hit's words, briefly.
 - **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
   uses these, never its own numbers. Separators are `MenuRule`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
@@ -198,18 +199,19 @@ tiers. Hit boxes are `CHROME_BTN`.
 
 ## Search is a palette, not a panel
 
-- `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape
-  closes at once. Rows are one line; an excerpt only when the title doesn't explain the match.
-- Empty: **Recent** (`utils/recentNotes.ts`, localStorage per vault, never on the note). `#`
-  lists tags, nested (`nestTags`); one is a teal chip (set membership, not substring).
-- **A folder is a result** (`searchFolders`: own name, at most two); Enter makes a grey chip
-  (subfolders in, paths from inside). Chips combine; Backspace returns the last as text. No
-  filter buttons, dates or sort. Nothing matched: a Create row (not under a tag chip).
-- **Matching** (`utils/search.ts`): every word or `"phrase"` (`queryTerms`) in title or body,
-  folded for case, accents, whitespace; **no fuzzy matching**. Enter acts on the query as
-  typed (`flushSearch`).
-- **One order: `orderResults`** (a note titled as well as a folder stays first); never a
-  separate display order. The sidebar never reads the query. `search-palette.spec.ts`.
+- `SearchPalette.tsx` (Cmd+P, Search button, tag click): opens fresh; Escape closes at once.
+  One-line rows; an excerpt only when the title doesn't explain the hit. Empty: **Recent**
+  (`utils/recentNotes.ts`, per vault, never on the note).
+- **A result is a note, a folder (own name, two at most) or a file (never the attachment
+  store)**, in one order: `orderResults` (a note or file named as well as a folder stays
+  first). `#` lists tags, nested (`nestTags`). A tag (exact set) or folder (subfolders in) is a
+  chip; chips combine; Backspace returns the last as text. No filter buttons, dates or sort.
+  Nothing matched: a Create row (none under a tag chip).
+- **Matching** (`utils/search.ts`): every word or `"phrase"` in title or body, folded for case,
+  accents, whitespace; **no fuzzy matching**. Enter acts on the query as typed
+  (`flushSearch`). The sidebar never reads the query.
+- Opening a hit tints its words (`utils/searchHighlight.ts`: a CSS highlight, never the DOM).
+  `search-palette.spec.ts`.
 
 ## Narrow desktop is still desktop
 
