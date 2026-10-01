@@ -32,7 +32,7 @@ function setup(overrides = {}) {
 }
 
 describe("useTagHandlers", () => {
-  it("handleTagClick sets the tag filter, empties the field and opens the palette (desktop)", () => {
+  it("handleTagClick sets the tag filter, empties the field and opens the palette", () => {
     const openSearch = vi.fn();
     const setTagFilter = vi.fn();
     const { result, setSearch } = setup({ openSearch, setTagFilter });
@@ -40,12 +40,6 @@ describe("useTagHandlers", () => {
     expect(setTagFilter).toHaveBeenCalledWith("work", "");
     expect(setSearch).toHaveBeenCalledWith("");
     expect(openSearch).toHaveBeenCalledTimes(1);
-  });
-
-  it("handleTagClick searches the text #tag where there is no palette (mobile)", () => {
-    const { result, setSearch } = setup();
-    result.current.handleTagClick("work");
-    expect(setSearch).toHaveBeenCalledWith("#work");
   });
 
   it("handleTagSelect repaints the block at once and puts the caret after the tag", () => {

@@ -74,7 +74,6 @@ import SettingsModal from "../../../src/components/settings/SettingsModal.jsx";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const defaultProps = {
-  isMobile: false,
   isDesktop: true,
   vaults: [],
   switchVault: vi.fn(),
@@ -166,20 +165,6 @@ describe("SettingsModal", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog.querySelectorAll('[role="separator"]').length).toBe(2);
     expect(dialog.querySelector("svg.lucide-settings")).not.toBeNull();
-  });
-
-  it("renders back arrow instead of close button on mobile", () => {
-    renderModal({ isMobile: true });
-    const backBtn = screen.getByLabelText("Back");
-    expect(backBtn).toBeInTheDocument();
-    fireEvent.click(backBtn);
-    expect(settingsState.setSettingsOpen).toHaveBeenCalledWith(false);
-  });
-
-  it("uses the same quiet footer on the mobile layout", () => {
-    renderModal({ isMobile: true });
-    expect(screen.getByTestId("settings-footer")).toBeInTheDocument();
-    expect(screen.queryByText("About Boojy Notes")).not.toBeInTheDocument();
   });
 
   // The pane keeps the size and place it opened with while the app resizes

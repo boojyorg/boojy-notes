@@ -44,10 +44,6 @@ export function useSearch(noteData: NoteData) {
   const [folderFilter, setFolderFilterState] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState(false);
   const [searchResults, setSearchResultsState] = useState<SearchResults>(EMPTY);
-  // Position in `results`, the one order every face draws and Enter reads
-  // (review 2026-09-07 §4.3: a second, folder-grouped order once stamped each
-  // result with an index the palette highlighted while Enter read this one).
-  const [activeResultIndex, setActiveResultIndex] = useState(0);
 
   // Nested: choosing `#uni` also finds `#uni/lectures`.
   const tags = useMemo(() => nestTags(extractAllTags(noteData)), [noteData]);
@@ -98,7 +94,6 @@ export function useSearch(noteData: NoteData) {
       lastQueryRef.current = query;
       setSearchMode(true);
       setSearchResults(run(query));
-      setActiveResultIndex(0);
     },
     [run, setSearchResults],
   );
@@ -114,7 +109,6 @@ export function useSearch(noteData: NoteData) {
         } else {
           setSearchMode(false);
           setSearchResults(EMPTY);
-          setActiveResultIndex(0);
         }
         return;
       }
@@ -158,7 +152,6 @@ export function useSearch(noteData: NoteData) {
         } else {
           setSearchMode(false);
           setSearchResults(EMPTY);
-          setActiveResultIndex(0);
         }
       },
     [apply, setSearchResults],
@@ -178,31 +171,14 @@ export function useSearch(noteData: NoteData) {
     setFolderFilterState(null);
     setSearchMode(false);
     setSearchResults(EMPTY);
-    setActiveResultIndex(0);
   }, [setSearchResults]);
-
-  const navigateResults = useCallback((direction: "up" | "down") => {
-    setActiveResultIndex((prev) => {
-      const max = resultsRef.current.results.length - 1;
-      if (max < 0) return 0;
-      if (direction === "down") return Math.min(prev + 1, max);
-      return Math.max(prev - 1, 0);
-    });
-  }, []);
-
-  const getActiveResult = useCallback((): SearchResult | null => {
-    return searchResults.results[activeResultIndex] || null;
-  }, [searchResults.results, activeResultIndex]);
 
   return {
     searchMode,
     searchResults,
-    activeResultIndex,
     search,
     flushSearch,
     clearSearch,
-    navigateResults,
-    getActiveResult,
     tagFilter,
     setTagFilter,
     folderFilter,

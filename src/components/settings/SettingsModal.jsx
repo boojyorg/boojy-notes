@@ -4,7 +4,6 @@ import { Z } from "../../constants/zIndex";
 import { useSettings } from "../../context/SettingsContext";
 import { useExitGhost } from "../../hooks/useExitGhost";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { spacing } from "../../tokens/spacing";
 import { atScale } from "../../utils/uiScale";
 import { fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
@@ -12,14 +11,13 @@ import UpdatesTab from "./UpdatesTab";
 import StorageTab from "./StorageTab";
 import SettingsFooter from "./SettingsFooter";
 import { SCRIM, SectionTitle, SettingsRule, dialogSurface } from "./SettingsPrimitives";
-import { ChevronLeftIcon, CloseIcon, SettingsIcon } from "../Icons";
+import { CloseIcon, SettingsIcon } from "../Icons";
 import { ChromeButton } from "../EditorChrome";
 
 /** Settings' width: room for a long notes-folder path beside its button. */
 export const SETTINGS_WIDTH = 540;
 
 export default function SettingsModal({
-  isMobile,
   isDesktop,
   vaults,
   switchVault,
@@ -44,7 +42,7 @@ export default function SettingsModal({
   }, [settingsOpen]);
 
   const { theme } = useTheme();
-  const { BG, TEXT, ACCENT } = theme;
+  const { TEXT } = theme;
 
   const modalRef = useRef(null);
   // Scrim and pane are siblings, so each leaves its own copy (useExitGhost).
@@ -72,141 +70,7 @@ export default function SettingsModal({
 
   if (!settingsOpen) return null;
 
-  // Mobile card wrapper for grouped settings rows
-  const MobileCard = ({ children }) => (
-    <div
-      style={{
-        background: BG.surface || theme.overlay(0.04),
-        borderRadius: 12,
-        overflow: "hidden",
-        marginBottom: spacing.sm,
-        padding: `${spacing.sm}px ${spacing.md}px`,
-      }}
-    >
-      {children}
-    </div>
-  );
-
-  // Mobile section header — uppercase, small, accent
-  const MobileSectionHeader = ({ title }) => (
-    <div
-      style={{
-        fontSize: 11,
-        fontWeight: fontWeight.semibold,
-        color: ACCENT.text,
-        textTransform: "uppercase",
-        letterSpacing: 1.2,
-        padding: `${spacing.xl}px 0 ${spacing.sm}px`,
-      }}
-    >
-      {title}
-    </div>
-  );
-
-  // ── Mobile layout ─────────────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-        tabIndex={-1}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: Z.SETTINGS_INNER,
-          background: BG.darkest,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          outline: "none",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            minHeight: 48,
-            background: BG.darkest,
-            display: "flex",
-            alignItems: "center",
-            gap: spacing.sm,
-            padding: "env(safe-area-inset-top, 0px) 4px 0 4px",
-            borderBottom: `1px solid ${theme.overlay(0.06)}`,
-            flexShrink: 0,
-          }}
-        >
-          <button
-            onClick={() => setSettingsOpen(false)}
-            style={{
-              background: "none",
-              border: "none",
-              padding: 12,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              color: TEXT.secondary,
-            }}
-            aria-label="Back"
-          >
-            <ChevronLeftIcon size={20} />
-          </button>
-          <span style={{ fontSize: 16, fontWeight: fontWeight.semibold, color: TEXT.primary }}>
-            Settings
-          </span>
-        </div>
-
-        {/* Scrollable content */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: `0 ${spacing.lg}px`,
-            WebkitOverflowScrolling: "touch",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          }}
-        >
-          <MobileSectionHeader title="Appearance" />
-          <MobileCard>
-            <AppearanceTab SectionHeader={() => null} />
-          </MobileCard>
-
-          {isDesktop && (
-            <>
-              <MobileSectionHeader title="Storage locations" />
-              <MobileCard>
-                <StorageTab
-                  isDesktop={isDesktop}
-                  SectionHeader={() => null}
-                  vaults={vaults}
-                  switchVault={switchVault}
-                  addVault={addVault}
-                  forgetVault={forgetVault}
-                  revealVault={revealVault}
-                />
-              </MobileCard>
-            </>
-          )}
-
-          {isDesktop && (
-            <>
-              <MobileSectionHeader title="Updates" />
-              <MobileCard>
-                <UpdatesTab isDesktop={isDesktop} SectionHeader={() => null} />
-              </MobileCard>
-            </>
-          )}
-
-          <div style={{ padding: `0 0 ${spacing.xl}px` }}>
-            <SettingsFooter />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Desktop layout ────────────────────────────────────────────────
-  // One pane on the search palette's surface (2026-09-17): Appearance, the
+  // One pane on the search palette's surface: Appearance, the
   // notes folder and Updates, parted by rules, then the quiet version line.
   // No navigation and no branding block; the cog beside the title is the one
   // glyph, the same one the ··· menu gives Settings.

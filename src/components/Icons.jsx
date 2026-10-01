@@ -6,7 +6,6 @@
  *   size 18    navigation tier (judged live 2026-08-19, "icon system C"):
  *              New note / Search action glyphs (explicit at call sites) and
  *              standalone controls — panel toggle, note actions ··· (ICON_CONTROL)
- *   size 20    mobile top-bar controls (explicit at call sites)
  *   stroke 1.5 editor/content icons — Lucide's default 2 reads busy at 16px
  *              among prose in a writing app
  *   stroke 2   navigation chrome (ICON_STROKE_NAV) — judged live 2026-08-19
@@ -27,7 +26,6 @@ import {
   Check as LuCheck,
   ChevronDown as LuChevronDown,
   ChevronRight as LuChevronRight,
-  ChevronLeft as LuChevronLeft,
   CircleAlert as LuCircleAlert,
   Clock as LuClock,
   Cloud as LuCloud,
@@ -82,7 +80,6 @@ import {
   Pencil as LuPencil,
   Plus as LuPlus,
   Presentation as LuPresentation,
-  Redo2 as LuRedo2,
   Repeat2 as LuRepeat2,
   RotateCcw as LuRotateCcw,
   Search as LuSearch,
@@ -96,7 +93,6 @@ import {
   Trash as LuTrash,
   TriangleAlert as LuTriangleAlert,
   Type as LuType,
-  Undo2 as LuUndo2,
   X as LuX,
   TextAlignCenter as LuTextAlignCenter,
   TextAlignEnd as LuTextAlignEnd,
@@ -113,7 +109,6 @@ const base = { strokeWidth: ICON_STROKE };
 const navBase = { strokeWidth: ICON_STROKE_NAV };
 
 // ── Disclosure ────────────────────────────────────────────────────────────
-export const ChevronLeftIcon = ({ size = ICON_INLINE }) => <LuChevronLeft {...base} size={size} />;
 export const ChevronDownIcon = ({ size = ICON_INLINE }) => <LuChevronDown {...base} size={size} />;
 export const ChevronRightIcon = ({ size = ICON_INLINE }) => (
   <LuChevronRight {...base} size={size} />
@@ -124,15 +119,6 @@ export const FolderIcon = ({ open = false, color = "currentColor", size: sz = IC
   const Cmp = open ? LuFolderOpen : LuFolder;
   return <Cmp {...base} {...navBase} size={sz} color={color} />;
 };
-export const FileIcon = ({ active, color, size: sz }) => (
-  <LuFileText
-    {...base}
-    size={sz || ICON_INLINE}
-    color={color || "currentColor"}
-    // Preserves the previous active/inactive weighting without a second colour.
-    opacity={color ? 1 : active ? 0.9 : 0.65}
-  />
-);
 
 /** A file that is not a note: the kind its extension names (`utils/otherFiles.ts`). */
 const OTHER_FILE_GLYPHS = {
@@ -195,8 +181,6 @@ export const SortIcon = ({ size = ICON_INLINE }) => (
 /** History, in the editor header. Lucide's curved pair, navigation tier: they
  *  stand as controls beside the note's name, not as glyphs inside prose. A
  *  straight arrow would read as navigation (Back), which undo is not. */
-export const UndoIcon = ({ size = ICON_CONTROL }) => <LuUndo2 {...base} {...navBase} size={size} />;
-export const RedoIcon = ({ size = ICON_CONTROL }) => <LuRedo2 {...base} {...navBase} size={size} />;
 /** Menu tick — the chosen sort mode's mark; nav stroke like every menu glyph. */
 export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} {...navBase} size={size} />;
 /** The sort menu's item glyphs: a clock for Most recent, A→Z for Alphabetical. */

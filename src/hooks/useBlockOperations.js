@@ -250,7 +250,7 @@ export function useBlockOperations({
     try {
       // Accept either a File/Blob (paste, drag-drop) or an already-read
       // { fileName, dataBase64 } object (the pickImageFile result used by the
-      // mobile toolbar / pickers). Both platforms' pickImageFile return the latter.
+      // image picker). Both platforms' pickImageFile return the latter.
       let dataBase64;
       let srcName;
       if (file && typeof file.dataBase64 === "string") {
@@ -541,7 +541,6 @@ export function useBlockOperations({
     deleteBlockRange,
     duplicateBlockRange,
     updateBlockProperty,
-    saveAndInsertImage,
     saveAndInsertFiles,
     flipCheck,
     registerBlockRef,

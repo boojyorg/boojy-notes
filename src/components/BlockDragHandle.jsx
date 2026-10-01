@@ -30,9 +30,8 @@ import { Tooltip, useTooltip } from "./Tooltip";
  * style (`cssZoom`). Before this the grip drifted down the note by the scale
  * factor at any setting but 100% (2026-09-10).
  *
- * Desktop-only by design (hover is the discoverability model); the mobile
- * layout does not mount it. Keyboard reorder (Cmd/Ctrl+Shift+↑/↓) is the
- * non-pointer path.
+ * Hover is the discoverability model; keyboard reorder (Cmd/Ctrl+Shift+↑/↓)
+ * is the non-pointer path.
  */
 export const HANDLE_W = 20;
 export const HANDLE_H = 24;

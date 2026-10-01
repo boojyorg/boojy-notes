@@ -46,7 +46,6 @@ describe("useSearch", () => {
     act(() => vi.advanceTimersByTime(1));
     expect(result.current.searchMode).toBe(true);
     expect(ids(result)).toEqual(["b", "a"]);
-    expect(result.current.activeResultIndex).toBe(0);
   });
 
   it("flushSearch runs a pending query at once, so Enter acts on the query as typed", () => {
@@ -150,17 +149,5 @@ describe("useSearch", () => {
     const { b: _gone, ...rest } = data;
     rerender(rest);
     expect(ids(result)).toEqual(["a"]);
-  });
-
-  it("navigateResults walks the list and clamps at both ends", () => {
-    const { result } = setup(data);
-    act(() => result.current.search("hello"));
-    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
-    act(() => result.current.navigateResults("up"));
-    expect(result.current.activeResultIndex).toBe(0);
-    act(() => result.current.navigateResults("down"));
-    act(() => result.current.navigateResults("down"));
-    expect(result.current.activeResultIndex).toBe(1);
-    expect(result.current.getActiveResult()?.noteId).toBe("a");
   });
 });

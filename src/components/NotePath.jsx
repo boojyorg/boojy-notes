@@ -92,7 +92,7 @@ const BIAS_SHRINK = 1000;
 export const PATH_FONT = { fontSize: 14, fontWeight: 400, lineHeight: "20px" };
 /** The name alone is medium (2026-09-17, Tyr: it makes the note's name the
  *  obvious thing in the row): the row stands in for a title bar, whose title
- *  is the heavier item, and the mobile label already sits at 500. Folders
+ *  is the heavier item. Folders
  *  stay regular in secondary ink. 500 is a real cut in any Inter and in the
  *  system font; 450 would be a guess about the reader's font. The twin's
  *  name spans carry it so the fit is measured with the heavier glyphs. */

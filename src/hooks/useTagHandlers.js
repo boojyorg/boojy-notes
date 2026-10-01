@@ -25,19 +25,13 @@ export function useTagHandlers({
   focusCursorPos,
   setTagMenu,
 }) {
-  // Tag click handler. Desktop: the palette opens with the tag as its
-  // filter chip, the notes carrying that exact tag listed and the field
-  // empty for further typing. Mobile has no palette or chip, so its sidebar
-  // field searches the text `#tagname`.
+  // Tag click: the palette opens with the tag as its filter chip, the notes
+  // carrying that exact tag listed and the field empty for further typing.
   const handleTagClick = useCallback(
     (tagName) => {
-      if (openSearch && setTagFilter) {
-        setTagFilter(tagName, "");
-        setSearch("");
-        openSearch();
-      } else {
-        setSearch(`#${tagName}`);
-      }
+      setTagFilter(tagName, "");
+      setSearch("");
+      openSearch();
     },
     [setSearch, setTagFilter, openSearch],
   );

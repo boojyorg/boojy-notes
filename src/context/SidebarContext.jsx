@@ -30,8 +30,6 @@ export function SidebarProvider({ children }) {
 
   // ── State ─────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const searchInputRef = useRef(null);
   const sidebarScrollRef = useRef(null);
 
   const [expanded, setExpanded] = useState(() => {
@@ -93,12 +91,9 @@ export function SidebarProvider({ children }) {
   const {
     searchMode,
     searchResults,
-    activeResultIndex,
     search: runSearch,
     flushSearch,
     clearSearch,
-    navigateResults,
-    getActiveResult,
     tagFilter,
     setTagFilter,
     folderFilter,
@@ -106,7 +101,7 @@ export function SidebarProvider({ children }) {
     tags,
   } = useSearch(noteData);
 
-  // Wire search input to fuzzy search
+  // The palette's query, run debounced.
   useEffect(() => {
     runSearch(search);
   }, [search, runSearch]);
@@ -188,9 +183,6 @@ export function SidebarProvider({ children }) {
     () => ({
       search,
       setSearch,
-      searchFocused,
-      setSearchFocused,
-      searchInputRef,
       sidebarScrollRef,
       expanded,
       setExpanded,
@@ -206,11 +198,8 @@ export function SidebarProvider({ children }) {
       markNewRows,
       searchMode,
       searchResults,
-      activeResultIndex,
       flushSearch,
       clearSearch,
-      navigateResults,
-      getActiveResult,
       tagFilter,
       setTagFilter,
       folderFilter,
@@ -232,7 +221,6 @@ export function SidebarProvider({ children }) {
     [
       editedAt,
       search,
-      searchFocused,
       expanded,
       customFolders,
       renamingFolder,
@@ -243,11 +231,8 @@ export function SidebarProvider({ children }) {
       markNewRows,
       searchMode,
       searchResults,
-      activeResultIndex,
       flushSearch,
       clearSearch,
-      navigateResults,
-      getActiveResult,
       tagFilter,
       setTagFilter,
       folderFilter,

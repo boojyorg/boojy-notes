@@ -21,7 +21,7 @@ export const NIGHT = {
   // more. Grounds are neutral; the ink is one step warm (DAY's tilt read cream here).
   BG: {
     darkest: "#1C1C1C", // app ground
-    dark: "#212121", // chrome: sidebar ground (chromeBg), mobile toolbar
+    dark: "#212121", // chrome: sidebar ground (chromeBg)
     standard: "#212121", // sidebar
     editor: "#181818", // writing sheet
     elevated: "#272727", // raised: menus, popovers, modals
@@ -141,7 +141,7 @@ export const DAY = {
   // `elevated` and `editor` share #FFFFFF in light; they stay split for dark.
   BG: {
     darkest: "#FCFCFC", // app ground
-    dark: "#F9F9F9", // chrome: top bar, mobile toolbar
+    dark: "#F9F9F9", // chrome: sidebar ground (chromeBg)
     standard: "#F9F9F9", // sidebar
     editor: "#FFFFFF", // writing sheet
     elevated: "#FFFFFF", // raised: menus, popovers, modals

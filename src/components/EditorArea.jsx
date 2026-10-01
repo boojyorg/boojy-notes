@@ -96,10 +96,6 @@ const columnTop = (rhythm) =>
   baselineInRow(ACTION_ROW_H, ROW_LABEL_SIZE, ROW_LABEL_LINE_HEIGHT) -
   baselineFromTop(rhythm.bodySize, rhythm.lineHeight) +
   FIRST_LINE_BELOW_ROW;
-const MOBILE_LABEL_FONT_SIZE = 13.5;
-const MOBILE_LABEL_LINE_HEIGHT = 1.4;
-/** Air between the mobile label and the first Markdown block. */
-const MOBILE_LABEL_GAP = 26;
 
 /*
  * The writing column is fluid, because the window is.
@@ -139,7 +135,6 @@ function nearestTextIndex(blocks, from, step) {
 
 const EditorArea = memo(
   function EditorArea({
-    isMobile,
     // Read by the memo comparator below, not by the body.
     textOnlyEditForEditor: _textOnlyEditForEditor,
     // The current value of the sync generation, passed as a plain prop so the
@@ -747,7 +742,7 @@ const EditorArea = memo(
     const handleEditorContextMenu = useCallback(
       (e) => {
         // A block with a menu of its own (an image) has already answered.
-        if (e.defaultPrevented || isMobile) return;
+        if (e.defaultPrevented) return;
         e.preventDefault();
         const x = e.clientX;
         const y = e.clientY;
@@ -812,7 +807,7 @@ const EditorArea = memo(
         }
         setLinkCtxMenu(menu);
       },
-      [noteDataRef, isMobile, editorRef],
+      [noteDataRef, editorRef],
     );
 
     // Cut, Copy and Paste run where ⌘X, ⌘C and ⌘V would: focus and the
@@ -850,7 +845,7 @@ const EditorArea = memo(
     };
 
     // Width the editor actually has: the viewport less whatever the sidebar and
-    // its handle are occupying. Mobile keeps its own fixed geometry.
+    // its handle are occupying.
     // In CSS pixels: `vw` ignores the UI scale (`atScale`), and the scroller
     // keeps a stable scrollbar gutter the column is centred beside.
     const editorW = `(${atScale("100vw")} - ${
@@ -859,17 +854,10 @@ const EditorArea = memo(
     const colPad = ramp(editorW, [COL_PAD_FROM, COL_PAD_MIN], [COL_PAD_TO, COL_PAD_MAX]);
     const colMax = `calc(${rhythm.measure * rhythm.bodySize}px + 2 * ${colPad})`;
     const colMargin = `max(0px, calc((${editorW} - ${colMax}) / 2))`;
-    // The name's field, one element wherever it is rendered: in the chrome
-    // row's path band on the desktop, at the head of the column on a touch
-    // device. Its handlers are the title's own and do not change with the
-    // place; only its rest colours do (primary ink in the band, muted in the
-    // column).
-    const restColor = isMobile ? TEXT.muted : TEXT.primary;
     // Memoised so the band's measuring effect keys on the folder, not on a
     // fresh array every render.
     const folder = note?.folder;
     const parents = useMemo(() => parentFolders(folder), [folder]);
-    const hoverColor = isMobile ? TEXT.secondary : TEXT.primary;
     const titleField = note ? (
       <div
         ref={titleRef}
@@ -947,7 +935,6 @@ const EditorArea = memo(
             e.currentTarget.setAttribute("data-placeholder-floor", "");
           // Truncation is a display concern — editing reveals the whole name.
           e.currentTarget.style.background = BG.surface;
-          e.currentTarget.style.color = TEXT.primary;
           e.currentTarget.style.textOverflow = "clip";
           e.currentTarget.style.overflowX = "auto";
         }}
@@ -956,60 +943,38 @@ const EditorArea = memo(
           // A blank name takes the filename the write answered with, now.
           onTitleBlur?.();
           e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = restColor;
           e.currentTarget.style.textOverflow = "ellipsis";
           e.currentTarget.style.overflowX = "hidden";
         }}
         onMouseEnter={(e) => {
           if (document.activeElement === e.currentTarget) return;
           e.currentTarget.style.background = BG.surface;
-          e.currentTarget.style.color = hoverColor;
         }}
         onMouseLeave={(e) => {
           if (document.activeElement === e.currentTarget) return;
           e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = restColor;
         }}
-        style={
-          isMobile
-            ? {
-                fontSize: MOBILE_LABEL_FONT_SIZE,
-                fontWeight: 500,
-                color: restColor,
-                lineHeight: MOBILE_LABEL_LINE_HEIGHT,
-                margin: `0 0 ${MOBILE_LABEL_GAP}px ${-LABEL_PAD_X}px`,
-                padding: `0 ${LABEL_PAD_X}px`,
-                borderRadius: 4,
-                outline: "none",
-                position: "relative",
-                cursor: "text",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                transition: "background var(--motion-fast), color var(--motion-fast)",
-              }
-            : {
-                // In the path band: the name's box is its text, and the hover
-                // pill's padding is pulled back out with a negative margin so the
-                // path centres on the letters, not on the pill.
-                ...PATH_FONT,
-                fontWeight: NAME_WEIGHT,
-                color: restColor,
-                margin: `0 ${-LABEL_PAD_X}px`,
-                padding: `0 ${LABEL_PAD_X}px`,
-                borderRadius: 4,
-                outline: "none",
-                position: "relative",
-                cursor: "text",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                // min-width is the stylesheet's: 0, or the placeholder's
-                // width while the field is empty (GlobalStyles, [data-title]).
-                flex: "1 1 auto",
-                transition: "background var(--motion-fast), color var(--motion-fast)",
-              }
-        }
+        style={{
+          // In the path band: the name's box is its text, and the hover
+          // pill's padding is pulled back out with a negative margin so the
+          // path centres on the letters, not on the pill.
+          ...PATH_FONT,
+          fontWeight: NAME_WEIGHT,
+          color: TEXT.primary,
+          margin: `0 ${-LABEL_PAD_X}px`,
+          padding: `0 ${LABEL_PAD_X}px`,
+          borderRadius: 4,
+          outline: "none",
+          position: "relative",
+          cursor: "text",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          // min-width is the stylesheet's: 0, or the placeholder's
+          // width while the field is empty (GlobalStyles, [data-title]).
+          flex: "1 1 auto",
+          transition: "background var(--motion-fast), color var(--motion-fast)",
+        }}
       />
     ) : null;
 
@@ -1038,7 +1003,7 @@ const EditorArea = memo(
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {note && !isMobile && (
+        {note && (
           <NotePath
             parents={parents}
             name={note.title}
@@ -1057,13 +1022,11 @@ const EditorArea = memo(
             key={activeNote}
             ref={columnRef}
             className="panel-motion"
-            onMouseDownCapture={isMobile ? undefined : selectFromGutter}
+            onMouseDownCapture={selectFromGutter}
             style={{
-              padding: isMobile
-                ? "12px 20px 80px 20px"
-                : `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
-              maxWidth: isMobile ? "100%" : colMax,
-              marginLeft: isMobile ? 0 : colMargin,
+              padding: `${columnTop(rhythm)}px ${colPad} 80px ${colPad}`,
+              maxWidth: colMax,
+              marginLeft: colMargin,
               marginRight: "auto",
               width: "100%",
               // The fade is opacity alone. No transform, ever: a transformed
@@ -1086,8 +1049,6 @@ const EditorArea = memo(
               // blocks and the grip and under everything that floats.
             }}
           >
-            {isMobile && titleField}
-
             {offloaded ? (
               <OffloadedNoteView
                 provider={offloaded.provider}
@@ -1269,18 +1230,16 @@ const EditorArea = memo(
                       });
                     })()}
                   </div>
-                  {!isMobile && (
-                    <BlockDragHandle
-                      columnRef={columnRef}
-                      editorRef={editorRef}
-                      startHandleDrag={startHandleDrag}
-                      onGripClick={handleGripClick}
-                      pinnedBlockId={
-                        selectedRun && blockSelection.grip ? blockSelection.anchor : null
-                      }
-                      pinKey={note.content.blocks}
-                    />
-                  )}
+                  <BlockDragHandle
+                    columnRef={columnRef}
+                    editorRef={editorRef}
+                    startHandleDrag={startHandleDrag}
+                    onGripClick={handleGripClick}
+                    pinnedBlockId={
+                      selectedRun && blockSelection.grip ? blockSelection.anchor : null
+                    }
+                    pinKey={note.content.blocks}
+                  />
                   {blockMenu && selectedRun && (
                     <BlockMenu
                       anchor={blockMenu}
@@ -1421,24 +1380,22 @@ const EditorArea = memo(
             )}
           </div>
         ) : (
-          !isMobile && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: Z.BASE + 1,
-                pointerEvents: "none",
-              }}
-            >
-              <div style={{ textAlign: "center", color: `${TEXT.muted}80`, fontSize: 14 }}>
-                <div>Select a note from the sidebar</div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>or press ⌘N to create one</div>
-              </div>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: Z.BASE + 1,
+              pointerEvents: "none",
+            }}
+          >
+            <div style={{ textAlign: "center", color: `${TEXT.muted}80`, fontSize: 14 }}>
+              <div>Select a note from the sidebar</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>or press ⌘N to create one</div>
             </div>
-          )
+          </div>
         )}
       </div>
     );

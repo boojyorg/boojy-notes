@@ -15,7 +15,7 @@ import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
 import { useBlockOperations } from "./hooks/useBlockOperations";
-import { EMPTY_FORMATS, useInlineFormatting } from "./hooks/useInlineFormatting";
+import { useInlineFormatting } from "./hooks/useInlineFormatting";
 import { useBlockDrag } from "./hooks/useBlockDrag";
 import { useSidebarDrag } from "./hooks/useSidebarDrag";
 import { useMultiSelect } from "./hooks/useMultiSelect";
@@ -30,15 +30,10 @@ import { ancestorFolders, parentFolder, sharedFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
 import LinkPicker from "./components/LinkPicker";
 import TagMenu from "./components/TagMenu";
-import TopBarMobile from "./components/mobile/TopBarMobile";
 import Sidebar from "./components/Sidebar";
 import { EditorProvider } from "./context/EditorContext";
 import EditorArea from "./components/EditorArea";
 import ImageLightbox from "./components/ImageLightbox";
-import FloatingActionButton from "./components/mobile/FloatingActionButton";
-import MobileToolbar from "./components/mobile/MobileToolbar";
-import EditorMoreMenu from "./components/mobile/EditorMoreMenu";
-import { useKeyboard } from "./hooks/useKeyboard";
 import GlobalStyles from "./components/GlobalStyles";
 import Toast from "./components/Toast";
 import EditorChrome from "./components/EditorChrome";
@@ -72,20 +67,10 @@ import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
-import { useIsMobile } from "./hooks/useIsMobile";
-
-// The touch layout is switched off (2026-09-24): about 1,700 untested lines in
-// components/mobile that the desktop pays for, kept until the web build on a
-// phone is designed and either reuses them or they are deleted. `true` brings
-// it back on a touch device.
-const TOUCH_LAYOUT = false;
 
 export default function BoojyNotes() {
   const { theme } = useTheme();
   const { toasts, showToast, dismissToast, holdToast, updateToast } = useToast();
-  const touchDevice = useIsMobile();
-  const isMobile = TOUCH_LAYOUT && touchDevice;
-  const mobileKeyboard = useKeyboard();
 
   // ── Contexts ───────────────────────────────────────────────────────
   const { noteData } = useNoteData();
@@ -141,7 +126,6 @@ export default function BoojyNotes() {
     markNewRows,
     filteredTree,
     fNotes,
-    folderList,
     markEdited,
     editedAt,
   } = useSidebar();
@@ -176,7 +160,6 @@ export default function BoojyNotes() {
 
   const [, forceRender] = useState(0);
   const [toolbarState, setToolbarState] = useState(null);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   // ── Refs ────────────────────────────────────────────────────────────
   const blockRefs = useRef({});
@@ -498,7 +481,6 @@ export default function BoojyNotes() {
     deleteBlockRange,
     duplicateBlockRange,
     updateBlockProperty,
-    saveAndInsertImage,
     saveAndInsertFiles,
     flipCheck,
     registerBlockRef,
@@ -652,9 +634,7 @@ export default function BoojyNotes() {
   // The desktop search palette (Cmd+P). Closing clears the shared search
   // state so the sidebar tree, filtered behind the scrim, comes back whole.
   const [searchOpen, setSearchOpen] = useState(false);
-  const openSearch = useCallback(() => {
-    if (!isMobile) setSearchOpen(true);
-  }, [isMobile]);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setSearch("");
@@ -797,9 +777,8 @@ export default function BoojyNotes() {
   useEffect(() => {
     if (fsLoading) return;
     if (activeNote) return;
-    if (isMobile) return; // On mobile, null activeNote = show sidebar
     createDraftNote();
-  }, [activeNote, fsLoading, isMobile]);
+  }, [activeNote, fsLoading]);
 
   // A draft ends at the keystroke that first gives it text (useHistory's
   // commitTextChange), never here on state: read 300 ms late, the discard
@@ -820,8 +799,7 @@ export default function BoojyNotes() {
     () => offloadedNote && { ...offloadedNote, provider: cloudProvider(notesDir) },
     [offloadedNote, notesDir],
   );
-  const noteTitle = note?.title;
-  const { wordCount, charCount } = useNoteStats(note?.content?.blocks);
+  const { wordCount } = useNoteStats(note?.content?.blocks);
 
   // Wikilink wiring (title set, click/select)
   const openLinkFixerRef = useRef(null);
@@ -1214,7 +1192,7 @@ export default function BoojyNotes() {
       </a>
 
       {/* Windows and Linux: the menu and the window buttons, over the app's own row. */}
-      {!isMobile && hasWindowStrip && (
+      {hasWindowStrip && (
         <WindowStrip
           sidebarVisible={sidebarVisible}
           sidebarWidth={sidebarWidth}
@@ -1237,56 +1215,33 @@ export default function BoojyNotes() {
       {/* Minimal chrome: two pinned controls instead of a top strip (desktop/web).
           The old desktop TitleBar (28px faux title strip) is gone — the window
           uses hiddenInset traffic lights over the sidebar header instead. */}
-      {!isMobile && (
-        <EditorChrome
-          activeNote={activeNote}
-          // Its own menu type: the active note's actions plus Settings, never
-          // the sidebar's multi-selection, and open with no note at all.
-          onNoteActions={({ x, y }) => {
-            // The ··· again closes Version History, which stands in its menu's place.
-            if (versionHistory.state.listOpen) versionHistory.close();
-            else setCtxMenu({ x, y, type: "header", id: activeNote });
-          }}
-          past={
-            pastShown
-              ? {
-                  time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
-                  moment: versionMoment(pastShown.at, versionHistory.hour12),
-                  listOpen: versionHistory.state.listOpen,
-                  onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
-                  onBack: versionHistory.close,
-                  ask: versionHistory.state.ask,
-                  onRestore: () => versionHistory.restore(pastShown.id),
-                  onDismissAsk: () => versionHistory.setAsk(false),
-                }
-              : null
-          }
-          onNewNote={() => createNote(null)}
-          onOpenSearch={openSearch}
-          onToggleSourceView={toggleSourceView}
-        />
-      )}
-      {isMobile && (
-        <TopBarMobile
-          activeNote={activeNote}
-          setActiveNote={setActiveNote}
-          noteTitle={noteTitle}
-          createNote={createNote}
-          onMorePress={() => setMoreMenuOpen(true)}
-          onTitlePress={() => {
-            const el = titleRef.current;
-            if (!el) return;
-            el.scrollIntoView({ block: "center", behavior: "smooth" });
-            el.focus();
-            const sel = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          }}
-        />
-      )}
+      <EditorChrome
+        activeNote={activeNote}
+        // Its own menu type: the active note's actions plus Settings, never
+        // the sidebar's multi-selection, and open with no note at all.
+        onNoteActions={({ x, y }) => {
+          // The ··· again closes Version History, which stands in its menu's place.
+          if (versionHistory.state.listOpen) versionHistory.close();
+          else setCtxMenu({ x, y, type: "header", id: activeNote });
+        }}
+        past={
+          pastShown
+            ? {
+                time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
+                moment: versionMoment(pastShown.at, versionHistory.hour12),
+                listOpen: versionHistory.state.listOpen,
+                onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
+                onBack: versionHistory.close,
+                ask: versionHistory.state.ask,
+                onRestore: () => versionHistory.restore(pastShown.id),
+                onDismissAsk: () => versionHistory.setAsk(false),
+              }
+            : null
+        }
+        onNewNote={() => createNote(null)}
+        onOpenSearch={openSearch}
+        onToggleSourceView={toggleSourceView}
+      />
 
       {/* === MAIN AREA === */}
       <div
@@ -1295,32 +1250,20 @@ export default function BoojyNotes() {
       >
         {/* Sidebar wrapper */}
         <div
-          className={isMobile ? undefined : "panel-motion"}
-          style={
-            isMobile
-              ? {
-                  width: activeNote ? 0 : "100%",
-                  minWidth: activeNote ? 0 : "100%",
-                  background: chromeBg,
-                  display: "flex",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                  position: "relative",
-                }
-              : {
-                  // In the layout at every width: the editor beside it gets
-                  // narrower, never covered. Kept mounted while hidden so drag
-                  // queries and scroll position survive.
-                  width: sidebarVisible ? sidebarWidth : 0,
-                  minWidth: sidebarVisible ? sidebarWidth : 0,
-                  background: chromeBg,
-                  display: "flex",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                  position: "relative",
-                  transition: panelTransition("width", "min-width"),
-                }
-          }
+          className="panel-motion"
+          style={{
+            // In the layout at every width: the editor beside it gets
+            // narrower, never covered. Kept mounted while hidden so drag
+            // queries and scroll position survive.
+            width: sidebarVisible ? sidebarWidth : 0,
+            minWidth: sidebarVisible ? sidebarWidth : 0,
+            background: chromeBg,
+            display: "flex",
+            flexShrink: 0,
+            overflow: "hidden",
+            position: "relative",
+            transition: panelTransition("width", "min-width"),
+          }}
         >
           <Sidebar
             activeNote={activeNote}
@@ -1334,11 +1277,9 @@ export default function BoojyNotes() {
             createFolder={createFolder}
             createNote={createNote}
             handleSidebarPointerDown={handleSidebarPointerDown}
-            handleSearchResultOpen={handleSearchResultOpen}
             selectedNotes={selectedNotes}
             handleNoteClick={handleNoteClick}
             clearSelection={clearSelection}
-            isMobile={isMobile}
             onOpenSearch={openSearch}
             deleteNote={confirmDeleteNote}
             deleteFolder={confirmDeleteFolder}
@@ -1361,18 +1302,12 @@ export default function BoojyNotes() {
                 : undefined
             }
           />
-          {isMobile && !activeNote && (
-            <FloatingActionButton
-              onNewNote={() => createNote(null)}
-              onNewFolder={() => createFolder()}
-            />
-          )}
         </div>
         {/* Sidebar drag handle — desktop only, and only while the sidebar is
             showing. Hidden when collapsed (its 4px fill + 1px border left a
             hairline strip down the left edge instead of the sidebar fully
             disappearing). */}
-        {!isMobile && sidebarVisible && sidebarHandle(1, { width: 4, flexShrink: 0 })}
+        {sidebarVisible && sidebarHandle(1, { width: 4, flexShrink: 0 })}
         {/* Editor area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <EditorProvider
@@ -1424,7 +1359,6 @@ export default function BoojyNotes() {
               openFindRef={openFindRef}
               switchViewRef={switchViewRef}
               blockActionsRef={blockActionsRef}
-              isMobile={isMobile}
               onEditorClick={clearSelection}
               textOnlyEditForEditor={textOnlyEditForEditor}
               syncGen={syncGeneration.current}
@@ -1433,7 +1367,7 @@ export default function BoojyNotes() {
               editorFadeIn={editorFadeIn}
               onWikilinkClick={handleWikilinkClick}
               onTagClick={handleTagClick}
-              toolbarState={isMobile ? null : toolbarState}
+              toolbarState={toolbarState}
               noteTitleSet={noteTitleSet}
               onEditLink={linkPicker.openForLink}
               onRemoveLink={removeLink}
@@ -1449,57 +1383,12 @@ export default function BoojyNotes() {
               offloaded={offloaded}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
             />
-            {isMobile && (
-              <MobileToolbar
-                isVisible={mobileKeyboard.isKeyboardVisible}
-                activeNote={activeNote}
-                note={note}
-                activeFormats={toolbarState ? detectActiveFormats() : EMPTY_FORMATS}
-                onDismiss={() => {
-                  document.activeElement?.blur();
-                }}
-                onImageInsert={() => {
-                  const api = getAPI();
-                  if (api?.pickImageFile) {
-                    api.pickImageFile().then((file) => {
-                      if (!file) return;
-                      const blocks = noteDataRef.current[activeNote]?.content?.blocks;
-                      const afterIndex = blocks ? blocks.length - 1 : 0;
-                      saveAndInsertImage(activeNote, afterIndex, file);
-                    });
-                  }
-                }}
-              />
-            )}
           </EditorProvider>
         </div>
       </div>
 
-      {/* === Mobile More Menu === */}
-      {isMobile && (
-        <EditorMoreMenu
-          open={moreMenuOpen}
-          onClose={() => setMoreMenuOpen(false)}
-          activeNote={activeNote}
-          noteTitle={noteTitle}
-          noteData={noteData}
-          wordCount={wordCount}
-          charCount={charCount}
-          onDuplicate={duplicateNote}
-          onDelete={(id) => {
-            // EditorMoreMenu shows its own delete confirmation, so call the raw
-            // delete here (avoids a second ConfirmDialog on web).
-            deleteNote(id);
-            setActiveNote(null);
-          }}
-          onMoveToFolder={(id, folder) => bulkMoveNotes([id], folder)}
-          folderList={folderList}
-          showToast={showToast}
-        />
-      )}
-
       {/* === Overlays === */}
-      {searchOpen && !isMobile && (
+      {searchOpen && (
         <SearchPalette
           onOpenResult={handleSearchResultOpen}
           onCreateNote={createNote}
@@ -1627,7 +1516,6 @@ export default function BoojyNotes() {
 
       <React.Suspense fallback={null}>
         <SettingsModal
-          isMobile={isMobile}
           isDesktop={isDesktop}
           vaults={vaults}
           switchVault={switchVault}
@@ -1635,7 +1523,7 @@ export default function BoojyNotes() {
           forgetVault={removeVault}
           revealVault={revealVaultAt}
         />
-        {firstRun && !isMobile && (
+        {firstRun && (
           <SetupDialog
             notesDir={notesDir}
             folderExists={setupFolderExists}
@@ -1661,12 +1549,12 @@ export default function BoojyNotes() {
         // open: two readouts of one number, one of them floating over the app.
         hint={settingsOpen ? null : scaleHint}
         onHide={hideScaleHint}
-        left={24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth)}
+        left={24 + (sidebarVisible ? sidebarWidth : 0)}
       />
 
       {toasts.length > 0 && (
         <div
-          className={isMobile ? undefined : "panel-motion"}
+          className="panel-motion"
           style={{
             position: "fixed",
             bottom: 24,
@@ -1676,9 +1564,9 @@ export default function BoojyNotes() {
             // is the worst thing to cover. It travels with the panel on the
             // panel's own clock. The band spans the pane; only the toasts
             // take the pointer, and none is wider than the pane.
-            left: 24 + (isMobile || !sidebarVisible ? 0 : sidebarWidth),
+            left: 24 + (sidebarVisible ? sidebarWidth : 0),
             right: 24,
-            transition: isMobile ? undefined : panelTransition("left"),
+            transition: panelTransition("left"),
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
