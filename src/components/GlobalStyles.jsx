@@ -822,11 +822,13 @@ ${tagPillCss(theme)}
         .empty-block {
           position: relative;
         }
-        /* Placeholder shows only while the first block holds no text:
-           \`data-empty\`, kept by EditableBlock from the live DOM, so it hides
-           on the keystroke (never the debounced block.text, which lingered).
+        /* Placeholder shows only while the note is one empty line: the
+           first block holds no text (\`data-empty\`, kept by EditableBlock
+           from the live DOM, so it hides on the keystroke, never the
+           debounced block.text, which lingered) and no block follows it, so
+           an empty first line above a written one carries no hint.
            Not \`:has(> br:only-child)\`: a soft break is one <br> too. */
-        .empty-block[data-empty]::before {
+        .empty-block[data-empty]:not(:has(~ [data-block-id]))::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
           opacity: 0.4;
