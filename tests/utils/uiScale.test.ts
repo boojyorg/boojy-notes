@@ -9,7 +9,6 @@ import {
   SCALE_MAX,
   SCALE_MIN,
   clampScale,
-  isPresetScale,
   parseScale,
   stepScale,
 } from "../../src/utils/uiScale";
@@ -19,8 +18,6 @@ describe("uiScale", () => {
     expect(SCALE_MIN).toBe(50);
     expect(SCALE_MAX).toBe(200);
     expect(SCALE_DEFAULT).toBe(100);
-    expect(isPresetScale(120)).toBe(true);
-    expect(isPresetScale(93)).toBe(false);
   });
 
   it("holds a value inside the range, as a whole percentage", () => {

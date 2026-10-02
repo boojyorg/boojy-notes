@@ -40,11 +40,9 @@ describe("useSearch", () => {
   it("debounces a typed query and answers with one ordered list", () => {
     const { result } = setup(data);
     act(() => result.current.search("hello"));
-    expect(result.current.searchMode).toBe(false);
     act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1));
     expect(ids(result)).toEqual([]);
     act(() => vi.advanceTimersByTime(1));
-    expect(result.current.searchMode).toBe(true);
     expect(ids(result)).toEqual(["b", "a"]);
   });
 
@@ -72,19 +70,17 @@ describe("useSearch", () => {
     act(() => result.current.search("hello"));
     act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
     act(() => result.current.search(""));
-    expect(result.current.searchMode).toBe(false);
     expect(ids(result)).toEqual([]);
     act(() => result.current.setTagFilter("work", ""));
     expect(result.current.tagFilter).toBe("work");
     act(() => result.current.clearSearch());
     expect(result.current.tagFilter).toBeNull();
-    expect(result.current.searchMode).toBe(false);
+    expect(ids(result)).toEqual([]);
   });
 
   it("the tag filter lists the tagged notes at once, newest first, and text searches within them", () => {
     const { result } = setup(data);
     act(() => result.current.setTagFilter("work", ""));
-    expect(result.current.searchMode).toBe(true);
     expect(ids(result)).toEqual(["c", "a"]);
     act(() => result.current.search("hello"));
     act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
@@ -95,7 +91,6 @@ describe("useSearch", () => {
     // Removing the filter with no text clears the list.
     act(() => result.current.setTagFilter(null));
     expect(ids(result)).toEqual([]);
-    expect(result.current.searchMode).toBe(false);
   });
 
   it("the folder filter takes the folder and its subfolders, combines with the tag, and clears", () => {
@@ -118,7 +113,7 @@ describe("useSearch", () => {
     expect([...ids(result)].sort()).toEqual(["u", "v"]);
     act(() => result.current.clearSearch());
     expect(result.current.folderFilter).toBeNull();
-    expect(result.current.searchMode).toBe(false);
+    expect(ids(result)).toEqual([]);
   });
 
   it("the filter is exact: #work never lists a note that only says #workshop", () => {

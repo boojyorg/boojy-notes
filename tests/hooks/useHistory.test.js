@@ -191,21 +191,6 @@ describe("useHistory", () => {
       expect(result.current.textOnlyEdit.current).toBe(false);
       expect(result.current.textOnlyEditForSidebar.current).toBe(false);
     });
-
-    it("does not push history when isUndoRedo is true", async () => {
-      const { result } = setup();
-
-      // Simulate undo/redo context: set isUndoRedo
-      result.current.isUndoRedo.current = true;
-
-      act(() => {
-        result.current.commitNoteData(edit);
-      });
-      await act(() => flushMicrotasks());
-
-      expect(result.current.canUndo).toBe(false);
-      result.current.isUndoRedo.current = false;
-    });
   });
 
   // ─── commitTextChange ─────────────────────────────────────────────
@@ -484,17 +469,6 @@ describe("useHistory", () => {
       });
 
       expect(result.current.noteDataRef.current[NOTE_ID].content.blocks[0].text).toBe("updated");
-    });
-
-    it("does not push history when isUndoRedo is true", async () => {
-      const { result } = setup();
-
-      result.current.isUndoRedo.current = true;
-      act(() => result.current.commitTextChange((prev) => prev));
-      await act(() => flushMicrotasks());
-
-      expect(result.current.canUndo).toBe(false);
-      result.current.isUndoRedo.current = false;
     });
   });
 
@@ -830,30 +804,6 @@ describe("useHistory", () => {
       await act(() => flushMicrotasks());
 
       expect(result.current.canUndo).toBe(false);
-    });
-  });
-
-  // ─── isUndoRedo ref ───────────────────────────────────────────────
-
-  describe("isUndoRedo", () => {
-    it("is exposed as a ref with initial value false", () => {
-      const { result } = setup();
-      expect(result.current.isUndoRedo.current).toBe(false);
-    });
-
-    it("is set during undo/redo but reset afterwards", async () => {
-      const { result } = setup();
-
-      act(() => result.current.commitNoteData(edit));
-      await act(() => flushMicrotasks());
-
-      // After undo completes, isUndoRedo should be false
-      act(() => result.current.undo());
-      expect(result.current.isUndoRedo.current).toBe(false);
-
-      // After redo completes, isUndoRedo should be false
-      act(() => result.current.redo());
-      expect(result.current.isUndoRedo.current).toBe(false);
     });
   });
 });

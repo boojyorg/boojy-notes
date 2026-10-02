@@ -926,8 +926,6 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   }, [setCustomFolders, afterNextFlush, applyExternal]);
 
   return {
-    isElectron,
-    isNative,
     notesDir,
     loading,
     changeNotesDir,

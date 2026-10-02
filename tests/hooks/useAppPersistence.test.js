@@ -7,7 +7,6 @@ vi.mock("../../src/utils/platform", () => ({
 }));
 vi.mock("../../src/utils/storage", () => ({
   STORAGE_KEY: "boojy-notes-v1",
-  saveToIDB: vi.fn(() => Promise.resolve()),
 }));
 
 import { useAppPersistence } from "../../src/hooks/useAppPersistence";

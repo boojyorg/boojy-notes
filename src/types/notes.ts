@@ -101,7 +101,6 @@ interface SpacerBlock extends BlockBase {
 
 interface FrontmatterBlock extends BlockBase {
   type: "frontmatter";
-  meta?: Record<string, string>;
 }
 
 export type Block =

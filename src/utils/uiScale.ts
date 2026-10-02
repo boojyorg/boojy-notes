@@ -20,9 +20,6 @@ export const SCALE_DEFAULT = 100;
 /** A whole percentage inside the range. */
 export const clampScale = (n: number) => Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(n)));
 
-/** Whether the menu has a row for this scale. */
-export const isPresetScale = (n: number) => SCALE_OPTIONS.includes(n);
-
 /**
  * One step in `direction`: the nearest preset on that side, so a custom 93%
  * goes up to 100 and down to 90. At the end of the range the scale it is

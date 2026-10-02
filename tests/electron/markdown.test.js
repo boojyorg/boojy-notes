@@ -3,7 +3,6 @@ import {
   blocksToMarkdown,
   markdownToBlocks,
   parseTableRow,
-  parseFrontmatterYaml,
   parseFrontmatter,
 } from "../../src/utils/markdown.js";
 
@@ -177,7 +176,6 @@ describe("markdownToBlocks", () => {
     const blocks = markdownToBlocks("---\ntitle: Test\nauthor: Me\n---\nContent");
     expect(blocks[0].type).toBe("frontmatter");
     expect(blocks[0].text).toBe("title: Test\nauthor: Me");
-    expect(blocks[0].meta).toEqual({ title: "Test", author: "Me" });
     expect(blocks[1]).toMatchObject({ type: "p", text: "Content" });
   });
 
@@ -343,48 +341,20 @@ describe("parseTableRow", () => {
   });
 });
 
-// --- parseFrontmatterYaml ---
-
-describe("parseFrontmatterYaml", () => {
-  it("parses key-value pairs", () => {
-    expect(parseFrontmatterYaml("title: Hello\nauthor: Me")).toEqual({
-      title: "Hello",
-      author: "Me",
-    });
-  });
-
-  it("strips surrounding quotes", () => {
-    expect(parseFrontmatterYaml('title: "Quoted"')).toEqual({ title: "Quoted" });
-    expect(parseFrontmatterYaml("title: 'Single'")).toEqual({ title: "Single" });
-  });
-
-  it("skips lines without colon-space", () => {
-    expect(parseFrontmatterYaml("no-colon\ntitle: Yes")).toEqual({ title: "Yes" });
-  });
-
-  it("returns empty object for empty string", () => {
-    expect(parseFrontmatterYaml("")).toEqual({});
-  });
-});
-
 // --- parseFrontmatter ---
 
 describe("parseFrontmatter", () => {
   it("parses full frontmatter + body", () => {
     const result = parseFrontmatter("---\ntitle: My Note\nid: abc123\n---\nBody text");
-    expect(result).toMatchObject({
-      id: "abc123",
-      title: "My Note",
-      body: "Body text",
-    });
+    expect(result).toEqual({ id: "abc123", body: "Body text" });
   });
 
   it("returns null for non-frontmatter content", () => {
     expect(parseFrontmatter("Just regular text")).toBeNull();
   });
 
-  it("defaults title to Untitled", () => {
-    const result = parseFrontmatter("---\nid: x\n---\nbody");
-    expect(result.title).toBe("Untitled");
+  it("reads a quoted id, and none when there is no id line", () => {
+    expect(parseFrontmatter('---\nid: "x"\n---\nbody').id).toBe("x");
+    expect(parseFrontmatter("---\ntitle: T\n---\nbody").id).toBeNull();
   });
 });

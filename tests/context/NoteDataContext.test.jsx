@@ -35,7 +35,6 @@ const storageStub = { value: null };
 vi.mock("../../src/utils/storage", () => ({
   STORAGE_KEY: "boojy-notes-v1",
   loadFromStorage: () => storageStub.value,
-  loadFromIDB: () => Promise.resolve(null),
 }));
 
 async function importFresh() {

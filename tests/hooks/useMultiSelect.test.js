@@ -6,10 +6,18 @@ import { useMultiSelect } from "../../src/hooks/useMultiSelect";
 afterEach(cleanup);
 
 // Four root notes in sidebar order; no folders.
-const setup = () => {
+const setup = (
+  notes = { a: { title: "A" }, b: { title: "B" }, c: { title: "C" }, d: { title: "D" } },
+) => {
   const openNote = vi.fn();
   const hook = renderHook(() =>
-    useMultiSelect({ filteredTree: [], fNotes: ["a", "b", "c", "d"], expanded: {}, openNote }),
+    useMultiSelect({
+      folderTree: [],
+      sortedRootNotes: ["a", "b", "c", "d"],
+      expanded: {},
+      noteDataRef: { current: notes },
+      openNote,
+    }),
   );
   const click = (id, mods = {}) =>
     act(() =>
@@ -57,5 +65,17 @@ describe("Shift-click ranges", () => {
     expect(selected()).toEqual([]);
     click("c", { shiftKey: true });
     expect(selected()).toEqual(["c", "d"]);
+  });
+
+  it("over the rows the sidebar shows: a draft has no row and is never selected", () => {
+    const { click, selected } = setup({
+      a: { title: "A" },
+      b: { title: "", _draft: true },
+      c: { title: "C" },
+      d: { title: "D" },
+    });
+    click("a");
+    click("c", { shiftKey: true });
+    expect(selected()).toEqual(["a", "c"]);
   });
 });

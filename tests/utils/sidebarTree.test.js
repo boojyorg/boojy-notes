@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTree, collectPaths, filterTree } from "../../src/utils/sidebarTree.js";
+import { buildTree, collectPaths } from "../../src/utils/sidebarTree.js";
 
 // --- buildTree ---
 
@@ -69,56 +69,5 @@ describe("collectPaths", () => {
 
   it("returns empty for empty input", () => {
     expect(collectPaths([])).toEqual([]);
-  });
-});
-
-// --- filterTree ---
-
-describe("filterTree", () => {
-  const noteData = {
-    n1: { title: "JavaScript Guide" },
-    n2: { title: "Python Tutorial" },
-    n3: { title: "Meeting Notes" },
-  };
-
-  it("returns all nodes when search is empty", () => {
-    const nodes = [{ name: "Work", notes: ["n1"], children: [] }];
-    expect(filterTree(nodes, "", noteData)).toEqual(nodes);
-  });
-
-  it("filters by folder name", () => {
-    const nodes = [
-      { name: "Work", notes: [], children: [] },
-      { name: "Personal", notes: [], children: [] },
-    ];
-    const result = filterTree(nodes, "work", noteData);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Work");
-  });
-
-  it("filters by note title", () => {
-    const nodes = [{ name: "Dev", notes: ["n1", "n2"], children: [] }];
-    const result = filterTree(nodes, "python", noteData);
-    expect(result).toHaveLength(1);
-    expect(result[0].notes).toEqual(["n2"]);
-  });
-
-  it("keeps folder if descendant matches", () => {
-    const nodes = [
-      {
-        name: "Parent",
-        notes: [],
-        children: [{ name: "Child", notes: ["n1"], children: [] }],
-      },
-    ];
-    const result = filterTree(nodes, "javascript", noteData);
-    expect(result).toHaveLength(1);
-    expect(result[0].children).toHaveLength(1);
-  });
-
-  it("removes folders with no matches", () => {
-    const nodes = [{ name: "Empty", notes: ["n3"], children: [] }];
-    const result = filterTree(nodes, "xyz", noteData);
-    expect(result).toHaveLength(0);
   });
 });

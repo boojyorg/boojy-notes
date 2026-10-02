@@ -13,7 +13,6 @@ import {
   formatInlineField,
   inlineFieldFor,
   inlineFormatForKey,
-  toggleInlineCode,
   toggleWrappingTag,
 } from "../../src/utils/inlineFormatCommands";
 
@@ -145,7 +144,7 @@ describe("applyDomFormat", () => {
     sel.removeAllRanges();
     sel.addRange(range);
 
-    toggleInlineCode(sel, root);
+    toggleWrappingTag(sel, "CODE", root);
     expect(root.innerHTML).toBe("hello");
   });
 
@@ -178,7 +177,7 @@ describe("applyDomFormat", () => {
     const { root, sel } = surface("Bugs", 0, 4);
     const seen: string[] = [];
     for (let i = 0; i < 3; i++) {
-      toggleInlineCode(sel, root);
+      toggleWrappingTag(sel, "CODE", root);
       seen.push(root.innerHTML);
     }
     expect(seen).toEqual(["<code>Bugs</code>", "Bugs", "<code>Bugs</code>"]);

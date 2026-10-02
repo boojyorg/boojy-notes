@@ -87,16 +87,13 @@ vi.mock("../../src/context/SidebarContext", () => ({
     sidebarScrollRef: _sidebarOverrides.sidebarScrollRef ?? { current: null },
     expanded: _sidebarOverrides.expanded ?? {},
     setExpanded: _sidebarOverrides.setExpanded ?? vi.fn(),
-    filteredTree: _sidebarOverrides.filteredTree ?? [],
-    fNotes: _sidebarOverrides.fNotes ?? [],
-    folderTree: _sidebarOverrides.folderTree ?? _sidebarOverrides.filteredTree ?? [],
-    sortedRootNotes: _sidebarOverrides.sortedRootNotes ?? _sidebarOverrides.fNotes ?? [],
+    folderTree: _sidebarOverrides.folderTree ?? [],
+    sortedRootNotes: _sidebarOverrides.sortedRootNotes ?? [],
     tags: _sidebarOverrides.tags ?? extractAllTags(_sidebarOverrides.noteData ?? {}),
     renamingFolder: _sidebarOverrides.renamingFolder ?? null,
     setRenamingFolder: _sidebarOverrides.setRenamingFolder ?? vi.fn(),
     renamingNote: _sidebarOverrides.renamingNote ?? null,
     setRenamingNote: _sidebarOverrides.setRenamingNote ?? vi.fn(),
-    searchMode: _sidebarOverrides.searchMode ?? false,
     searchResults: _sidebarOverrides.searchResults ?? emptySearchResults,
     clearSearch: vi.fn(),
     customFolders: [],
@@ -199,12 +196,12 @@ describe("Sidebar", () => {
     expect(r.container.querySelector("input")).toBeNull();
   });
 
-  it("renders folder names from filteredTree", () => {
-    const filteredTree = [
+  it("renders folder names from folderTree", () => {
+    const folderTree = [
       { name: "My Folder", _path: "My Folder", children: [], notes: [] },
       { name: "Another Folder", _path: "Another Folder", children: [], notes: [] },
     ];
-    const { getByText } = renderSidebar({ filteredTree });
+    const { getByText } = renderSidebar({ folderTree });
     expect(getByText("My Folder")).toBeInTheDocument();
     expect(getByText("Another Folder")).toBeInTheDocument();
   });
@@ -214,7 +211,7 @@ describe("Sidebar", () => {
       { id: "n1", title: "First Note" },
       { id: "n2", title: "Second Note" },
     ]);
-    const filteredTree = [
+    const folderTree = [
       {
         name: "My Folder",
         _path: "My Folder",
@@ -223,7 +220,7 @@ describe("Sidebar", () => {
       },
     ];
     const expanded = { "My Folder": true };
-    const { getByText } = renderSidebar({ filteredTree, noteData, expanded });
+    const { getByText } = renderSidebar({ folderTree, noteData, expanded });
     expect(getByText("First Note")).toBeInTheDocument();
     expect(getByText("Second Note")).toBeInTheDocument();
   });
@@ -233,11 +230,11 @@ describe("Sidebar", () => {
       { id: "n1", title: "" },
       { id: "n2", title: "Untitled" },
     ]);
-    const filteredTree = [
+    const folderTree = [
       { name: "My Folder", _path: "My Folder", children: [], notes: ["n1", "n2"] },
     ];
     const { getAllByText } = renderSidebar({
-      filteredTree,
+      folderTree,
       noteData,
       expanded: { "My Folder": true },
     });
@@ -250,7 +247,7 @@ describe("Sidebar", () => {
 
   it("hides note titles when folder is collapsed", () => {
     const noteData = buildNoteData([{ id: "n1", title: "Hidden Note" }]);
-    const filteredTree = [
+    const folderTree = [
       {
         name: "My Folder",
         _path: "My Folder",
@@ -259,14 +256,14 @@ describe("Sidebar", () => {
       },
     ];
     const expanded = { "My Folder": false };
-    const { queryByText } = renderSidebar({ filteredTree, noteData, expanded });
+    const { queryByText } = renderSidebar({ folderTree, noteData, expanded });
     expect(queryByText("Hidden Note")).not.toBeInTheDocument();
   });
 
   it("calls openNote when a note is clicked", () => {
     const openNote = vi.fn();
     const noteData = buildNoteData([{ id: "n1", title: "Clickable Note" }]);
-    const filteredTree = [
+    const folderTree = [
       {
         name: "My Folder",
         _path: "My Folder",
@@ -275,17 +272,15 @@ describe("Sidebar", () => {
       },
     ];
     const expanded = { "My Folder": true };
-    const { getByText } = renderSidebar({ filteredTree, noteData, expanded, openNote });
+    const { getByText } = renderSidebar({ folderTree, noteData, expanded, openNote });
     fireEvent.click(getByText("Clickable Note"));
     expect(openNote).toHaveBeenCalledWith("n1");
   });
 
   it("calls toggle when a folder is clicked", () => {
     const toggle = vi.fn();
-    const filteredTree = [
-      { name: "Toggle Folder", _path: "Toggle Folder", children: [], notes: [] },
-    ];
-    const { getByText } = renderSidebar({ filteredTree, toggle });
+    const folderTree = [{ name: "Toggle Folder", _path: "Toggle Folder", children: [], notes: [] }];
+    const { getByText } = renderSidebar({ folderTree, toggle });
     fireEvent.click(getByText("Toggle Folder"));
     expect(toggle).toHaveBeenCalledWith("Toggle Folder");
   });
@@ -296,8 +291,8 @@ describe("Sidebar", () => {
   it("double-click on a folder only toggles it, twice, and renames nothing", () => {
     const toggle = vi.fn();
     const setRenamingFolder = vi.fn();
-    const filteredTree = [{ name: "Dbl Folder", _path: "Dbl Folder", children: [], notes: [] }];
-    const { getByText } = renderSidebar({ filteredTree, toggle, setRenamingFolder });
+    const folderTree = [{ name: "Dbl Folder", _path: "Dbl Folder", children: [], notes: [] }];
+    const { getByText } = renderSidebar({ folderTree, toggle, setRenamingFolder });
     const row = getByText("Dbl Folder");
     fireEvent.click(row, { detail: 1 });
     fireEvent.click(row, { detail: 2 });
@@ -309,9 +304,9 @@ describe("Sidebar", () => {
   it("double-click on a note starts the inline rename", () => {
     const setRenamingNote = vi.fn();
     const noteData = buildNoteData([{ id: "n1", title: "Dbl Note" }]);
-    const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+    const folderTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
     const expanded = { F: true };
-    const { getByText } = renderSidebar({ filteredTree, noteData, expanded, setRenamingNote });
+    const { getByText } = renderSidebar({ folderTree, noteData, expanded, setRenamingNote });
     fireEvent.dblClick(getByText("Dbl Note"));
     expect(setRenamingNote).toHaveBeenCalledWith("n1");
   });
@@ -320,10 +315,10 @@ describe("Sidebar", () => {
     const renameNote = vi.fn();
     const setRenamingNote = vi.fn();
     const noteData = buildNoteData([{ id: "n1", title: "Old Name" }]);
-    const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+    const folderTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
     const expanded = { F: true };
     const { getByLabelText, queryByText } = renderSidebar({
-      filteredTree,
+      folderTree,
       noteData,
       expanded,
       renameNote,
@@ -354,9 +349,9 @@ describe("Sidebar", () => {
 
     it("is invisible under a note's name and the row stands down", () => {
       const noteData = buildNoteData([{ id: "n1", title: "Old Name" }]);
-      const filteredTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+      const folderTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
       const { getByLabelText } = renderSidebar({
-        filteredTree,
+        folderTree,
         noteData,
         expanded: { F: true },
         renamingNote: "n1",
@@ -371,9 +366,9 @@ describe("Sidebar", () => {
 
     it("is invisible under a folder's name, selects it, and the row stands down", () => {
       const noteData = buildNoteData([{ id: "n1", title: "Child" }]);
-      const filteredTree = [{ name: "Work", _path: "Work", children: [], notes: ["n1"] }];
+      const folderTree = [{ name: "Work", _path: "Work", children: [], notes: ["n1"] }];
       const { getByLabelText } = renderSidebar({
-        filteredTree,
+        folderTree,
         noteData,
         expanded: { Work: true },
         renamingFolder: "Work",
@@ -389,12 +384,12 @@ describe("Sidebar", () => {
 
   it("renders folder rows without a disclosure chevron but keeps aria-expanded", () => {
     const noteData = buildNoteData([{ id: "n1", title: "Child Note" }]);
-    const filteredTree = [
+    const folderTree = [
       { name: "Open Folder", _path: "Open Folder", children: [], notes: ["n1"] },
       { name: "Shut Folder", _path: "Shut Folder", children: [], notes: ["n1"] },
     ];
     const { getByText } = renderSidebar({
-      filteredTree,
+      folderTree,
       noteData,
       expanded: { "Open Folder": true },
     });
@@ -469,8 +464,8 @@ describe("Sidebar", () => {
 
   it("keeps the header, and renders no empty tree, when the vault has no rows", () => {
     const { getByText, getByLabelText, queryByRole } = renderSidebar({
-      filteredTree: [],
-      fNotes: [],
+      folderTree: [],
+      sortedRootNotes: [],
     });
     expect(getByText("Notes")).toBeInTheDocument();
     expect(getByLabelText("New folder")).toBeInTheDocument();
@@ -479,7 +474,7 @@ describe("Sidebar", () => {
   });
 
   it("keeps the header while a search narrows the tree to nothing", () => {
-    const { getByText } = renderSidebar({ search: "zzz", filteredTree: [], fNotes: [] });
+    const { getByText } = renderSidebar({ search: "zzz", folderTree: [], sortedRootNotes: [] });
     expect(getByText("Notes")).toBeInTheDocument();
   });
 
@@ -488,11 +483,11 @@ describe("Sidebar", () => {
       { id: "r1", title: "Loose Note" },
       { id: "n1", title: "Nested Note" },
     ]);
-    const filteredTree = [{ name: "Zed Folder", _path: "Zed Folder", children: [], notes: ["n1"] }];
+    const folderTree = [{ name: "Zed Folder", _path: "Zed Folder", children: [], notes: ["n1"] }];
     const { getAllByRole, getByRole } = renderSidebar({
       noteData,
-      filteredTree,
-      fNotes: ["r1"],
+      folderTree,
+      sortedRootNotes: ["r1"],
       expanded: { "Zed Folder": true },
     });
     expect(getAllByRole("tree")).toHaveLength(1);
@@ -506,7 +501,7 @@ describe("Sidebar", () => {
   });
 
   it("marks the Notes row as the root drop target", () => {
-    const { getByText } = renderSidebar({ fNotes: [] });
+    const { getByText } = renderSidebar({ sortedRootNotes: [] });
     expect(getByText("Notes").closest("[data-drop-root]")).not.toBeNull();
   });
 
@@ -613,7 +608,7 @@ describe("Sidebar", () => {
     const createNote = vi.fn();
     const setCtxMenu = vi.fn();
     const toggle = vi.fn();
-    const filteredTree = [
+    const folderTree = [
       {
         name: "Work",
         _path: "Work",
@@ -622,7 +617,7 @@ describe("Sidebar", () => {
       },
     ];
     const { getAllByLabelText, getByLabelText } = renderSidebar({
-      filteredTree,
+      folderTree,
       expanded: { Work: true },
       createNote,
       setCtxMenu,
@@ -658,8 +653,8 @@ describe("Sidebar", () => {
   });
 
   it("holds a folder row's actions open while its menu is up", () => {
-    const filteredTree = [{ name: "Work", _path: "Work", notes: [], children: [] }];
-    const { getByLabelText } = renderSidebar({ filteredTree, ctxMenuFolderId: "Work" });
+    const folderTree = [{ name: "Work", _path: "Work", notes: [], children: [] }];
+    const { getByLabelText } = renderSidebar({ folderTree, ctxMenuFolderId: "Work" });
     const slot = getByLabelText("Folder actions").closest(".sidebar-folder-actions");
     expect(slot.style.opacity).toBe("1");
     expect(slot.style.width).toBe("44px");
@@ -670,11 +665,11 @@ describe("Sidebar", () => {
       { id: "r1", title: "Loose Note" },
       { id: "n1", title: "Nested Note" },
     ]);
-    const filteredTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const folderTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
     const { getByText } = renderSidebar({
       noteData,
-      fNotes: ["r1"],
-      filteredTree,
+      sortedRootNotes: ["r1"],
+      folderTree,
       expanded: { "My Folder": true },
     });
     for (const title of ["Loose Note", "Nested Note"]) {
@@ -690,11 +685,11 @@ describe("Sidebar", () => {
       { id: "r1", title: "Loose Note" },
       { id: "n1", title: "Nested Note" },
     ]);
-    const filteredTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
+    const folderTree = [{ name: "My Folder", _path: "My Folder", children: [], notes: ["n1"] }];
     const { getByText } = renderSidebar({
       noteData,
-      fNotes: ["r1"],
-      filteredTree,
+      sortedRootNotes: ["r1"],
+      folderTree,
       expanded: { "My Folder": true },
     });
     const root = getByText("Loose Note").closest("[data-note-id]");

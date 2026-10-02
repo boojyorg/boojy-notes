@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
-import { flattenVisibleNotes } from "../utils/sidebarTree";
+import { treeNoteLabel, visibleTreeRows } from "../utils/treeNav";
 
-export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
+export function useMultiSelect({ folderTree, sortedRootNotes, expanded, noteDataRef, openNote }) {
   const [selectedNotes, setSelectedNotes] = useState(new Set());
   const lastClickedNote = useRef(null);
 
@@ -28,8 +28,12 @@ export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
         });
         lastClickedNote.current = noteId;
       } else if (isShift && lastClickedNote.current) {
-        // Select range from anchor to target
-        const visible = flattenVisibleNotes(filteredTree, expanded, fNotes);
+        // Select range from anchor to target, over the rows the sidebar shows.
+        const visible = visibleTreeRows(folderTree, sortedRootNotes, expanded, (id) =>
+          treeNoteLabel(noteDataRef.current[id]),
+        )
+          .filter((row) => row.kind === "note")
+          .map((row) => row.id);
         const anchorIdx = visible.indexOf(lastClickedNote.current);
         const targetIdx = visible.indexOf(noteId);
         if (anchorIdx !== -1 && targetIdx !== -1) {
@@ -47,7 +51,7 @@ export function useMultiSelect({ filteredTree, fNotes, expanded, openNote }) {
         openNote(noteId);
       }
     },
-    [filteredTree, fNotes, expanded, openNote, clearSelection],
+    [folderTree, sortedRootNotes, expanded, noteDataRef, openNote, clearSelection],
   );
 
   return {

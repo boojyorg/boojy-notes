@@ -73,7 +73,6 @@ export function LayoutProvider({ children }) {
   const value = useMemo(
     () => ({
       collapsed,
-      setCollapsed,
       sidebarWidth,
       setSidebarWidth,
       sidebarVisible,

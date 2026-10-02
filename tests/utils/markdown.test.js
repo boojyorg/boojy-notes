@@ -184,7 +184,6 @@ const LOSSLESS_CASES = [
       {
         type: "frontmatter",
         text: "title: My Note\nwords: 5",
-        meta: { title: "My Note", words: "5" },
       },
     ],
   ],
@@ -284,7 +283,6 @@ describe("markdown round-trip — full document", () => {
     {
       type: "frontmatter",
       text: "title: Trip Notes\nwords: 42",
-      meta: { title: "Trip Notes", words: "42" },
     },
     { type: "h1", text: "Trip Notes" },
     { type: "p", text: "An overview of the journey." },

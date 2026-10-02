@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { STORAGE_KEY, saveToIDB } from "../utils/storage";
+import { STORAGE_KEY } from "../utils/storage";
 import { isNative } from "../utils/platform";
 
 /**
@@ -28,11 +28,8 @@ export function useAppPersistence({ activeNote, expanded, noteData, customFolder
           STORAGE_KEY,
           JSON.stringify({ noteData, activeNote, expanded, customFolders }),
         );
-      } catch (e) {
-        console.warn("Failed to save to localStorage, trying IndexedDB:", e);
-        saveToIDB({ noteData, activeNote, expanded, customFolders }).catch(() => {
-          showToast("Failed to save — storage may be full", "warning");
-        });
+      } catch {
+        showToast("Failed to save — storage may be full", "warning");
       }
     }, 2000);
     return () => clearTimeout(timer);

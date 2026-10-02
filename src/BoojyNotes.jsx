@@ -124,8 +124,8 @@ export default function BoojyNotes() {
     setRenamingNote,
     markNewFolder,
     markNewRows,
-    filteredTree,
-    fNotes,
+    folderTree,
+    sortedRootNotes,
     markEdited,
     editedAt,
   } = useSidebar();
@@ -223,7 +223,6 @@ export default function BoojyNotes() {
 
   // ── External hooks ──────────────────────────────────────────────────
   const {
-    isElectron: isDesktop,
     notesDir,
     loading: fsLoading,
     changeNotesDir,
@@ -882,9 +881,10 @@ export default function BoojyNotes() {
 
   // ── Multi-select ────────────────────────────────────────────────────
   const { selectedNotes, handleNoteClick, clearSelection } = useMultiSelect({
-    filteredTree,
-    fNotes,
+    folderTree,
+    sortedRootNotes,
     expanded,
+    noteDataRef,
     openNote,
   });
 
@@ -1052,13 +1052,13 @@ export default function BoojyNotes() {
   // shown first and the menu asked for once it has slid in.
   const [vaultMenuRequest, setVaultMenuRequest] = useState(0);
   const openVaultMenu = useCallback(() => {
-    if (!isDesktop) return;
+    if (!isElectron) return;
     if (sidebarVisible) setVaultMenuRequest((n) => n + 1);
     else {
       revealSidebar();
       setTimeout(() => setVaultMenuRequest((n) => n + 1), PANEL_MS);
     }
-  }, [isDesktop, sidebarVisible, revealSidebar]);
+  }, [sidebarVisible, revealSidebar]);
   useAppKeyboard({
     activeNote,
     noteData,
@@ -1516,7 +1516,7 @@ export default function BoojyNotes() {
 
       <React.Suspense fallback={null}>
         <SettingsModal
-          isDesktop={isDesktop}
+          isDesktop={isElectron}
           vaults={vaults}
           switchVault={switchVault}
           addVault={addVault}
