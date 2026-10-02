@@ -130,8 +130,7 @@ app's, made through state.**
 
 ## The selection toolbar waits for the selection to finish
 
-- Shows on mouse-up, or after `TOOLBAR_REST_MS` of no change for a keyboard selection; hides
-  immediately on collapse.
+- Shows on mouse-up or after `TOOLBAR_REST_MS` at rest; hides at once on collapse.
 - **It shows only where it can act**: any text block; in a block with its own fields, only
   inside one `data-inline-field` field, with Link dropped.
 - Measured once when shown (re-measuring slid it under the pointer). Active = the glyph in the
@@ -144,9 +143,8 @@ app's, made through state.**
 - `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only);
   in a table cell (its own host and text) Delete table last. Media and code keep their own.
 - **Items run the keys' own path** (the captured range, then `execCommand` or `paste` IPC).
-- **Mac text-menu behaviour** (`utils/contextSelection.ts`): outside the selection selects the
-  word, inside keeps it, on no word places the caret. **The menu never takes focus**: it listens
-  in document capture, so the selection stays the ordinary blue. `text-context-menu.spec.ts`.
+- **Mac text-menu behaviour** (`utils/contextSelection.ts`). **The menu never takes focus**: it
+  listens in document capture, so the selection stays the ordinary blue. `text-context-menu.spec.ts`.
 
 ## Block drag: the gutter handle, never the text
 
@@ -170,9 +168,8 @@ app's, made through state.**
 
 ## Menus
 
-- **The slash menu is tiered**: `advanced: true` keeps Text, H4–H6, Callout, File, Embed off
-  the opening screen; the rule lives in `filterSlashCommands()` for both menu and keys. Rows show
-  their typed shortcut as a hint. Rows take selection on real mouse movement.
+- **The slash menu is tiered**: `advanced: true` rows stay off the opening screen, by one rule
+  for menu and keys (`filterSlashCommands()`). Rows take selection on real mouse movement.
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
   disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
@@ -206,7 +203,6 @@ is app-wide in `LayoutContext`, never saved.
 
 ## Lists
 
-- Bullets alternate dot / ring by depth, as boxes.
 - **The caret, and a selection's ends, never rest beside a marker** (arrows cross by hand;
   `caretIntoTextRoot`, `selectionIntoTextRoots` guard the rest). Tab keeps the caret on its character.
   `list-caret.spec.ts`.
@@ -257,8 +253,7 @@ same language writes nothing. The language menu portals to `body` and takes its 
 - **A width is CSS pixels** (Obsidian's `|350`), capped at the column; none means natural size,
   never enlarged (`imageDisplayWidth`). An image added in the app gets a width only when it is a
   Retina PNG (`pHYs`). Showing an image never rewrites it.
-- Hover shows a bar; **selected alone, corner dots resize it** (a run: the wash). Double-click:
-  full size.
+- **Selected alone, corner dots resize it** (a run: the wash).
 - **A missing attachment is a `Not found` card**; Find it… copies the file in under the linked
   name. `image-controls.spec.ts`, `missing-attachments.spec.ts`.
 
@@ -273,8 +268,7 @@ same language writes nothing. The language menu portals to `body` and takes its 
   scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
   `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
   stays select-to-edge).
-- Content-sized to a per-cell floor, then scrolling. Grip menus hang under the grip; inserts
-  take the caret. `table-block.spec.ts`.
+- Content-sized, then scrolling; inserts take the caret. `table-block.spec.ts`.
 
 ## Whole-block selection
 
@@ -282,10 +276,9 @@ same language writes nothing. The language menu portals to `body` and takes its 
   the grip's click, a press in a block's gutter strip (`gutterSelect`; grip left plain), Escape
   in the text, a divider, image or table's press, Escape from a cell; Shift-click on a grip or block extends. **A list item brings its nested items**
   (`subtreeEnd`), selected or dragged. Text blocks wear the band; the caret rests, hidden.
-- On a selection: Backspace/Delete remove it in one commit; ⌘C/⌘X copy it whole
-  (`wholeBlocksCopy`, raised by hand: no range covers it); ⌘D duplicates (with a caret, its
-  line); Enter opens a paragraph below; Shift+↑/↓ resize it; arrows and Escape give the caret
-  back; a letter deselects and types. A press off `data-selection-surface` deselects.
+- On a selection, Backspace/Delete remove it in one commit and ⌘C/⌘X copy it whole
+  (`wholeBlocksCopy`, raised by hand: no range covers it); a letter deselects and types. A press
+  off `data-selection-surface` deselects.
 - **The grip's click also opens `BlockMenu`** beside it (right-click, Shift+F10); the grip
   stays up, pressed. Turn into (`setBlockKind`), Copy, Duplicate, Delete; shown keys work.
   `block-selection.spec.ts`.

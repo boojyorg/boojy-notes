@@ -60,7 +60,7 @@ src/
 └── types/              # notes.ts (Block/Note/NoteData), global.d.ts (window.electronAPI)
 electron/               # main process: IPC, file I/O, watcher, OS trash, folders, menu
 tests/  e2e/            # unit tests + preservation corpus; Playwright (e2e/electron/ = real app)
-dev/                    # dev-only tooling (?tweak); never bundled
+dev/                    # dev-only tooling (?tweak, wordmarks.sh); never bundled
 ```
 
 ## Invariants
