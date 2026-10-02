@@ -600,12 +600,12 @@ describe("ownedField", () => {
 });
 
 describe("isSelectableBlock / isEditableBlock", () => {
-  it("a divider, an image and a table are addressed as a whole; code, callout and file are not", () => {
+  it("a divider, an image and a table are addressed as a whole; code, callout, file and embed are not", () => {
     for (const type of ["spacer", "image", "table"]) {
       expect(isSelectableBlock({ type })).toBe(true);
       expect(isEditableBlock({ type })).toBe(false);
     }
-    for (const type of ["code", "callout", "file", "frontmatter"]) {
+    for (const type of ["code", "callout", "file", "embed", "frontmatter"]) {
       expect(isSelectableBlock({ type })).toBe(false);
       expect(isEditableBlock({ type })).toBe(false);
     }

@@ -5,6 +5,7 @@ import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { getCaretOffset, placeCaret, caretLength } from "../utils/domHelpers";
 import { trace } from "../utils/trace";
 import { latestBlock } from "../hooks/useOwnedField";
+import { useEmptyMark } from "../hooks/useEmptyMark";
 import { baselineFromTop } from "../utils/typeBaseline";
 import { imageDisplayWidth, imageNoWidthFields, imageWidthFields } from "../utils/imageSize";
 import { isElectron } from "../utils/platform";
@@ -194,24 +195,9 @@ const EditableBlock = memo(
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
     }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke
 
-    // The first paragraph's placeholder shows only while it holds no text,
-    // read from the live DOM so it hides on the keystroke, not the commit.
-    // CSS alone cannot say it: an empty paragraph is one <br>, and so is a
-    // paragraph with one soft break, since selectors see elements, not text
+    // The first paragraph's placeholder shows only while it holds no text
     // (the placeholder drew under `line one ⇧↵ line two`, 2026-09-26).
-    const firstParagraph = blockIndex === 0 && block.type === "p";
-    useLayoutEffect(() => {
-      const el = elRef.current;
-      if (!el || !firstParagraph) return;
-      const mark = () => el.toggleAttribute("data-empty", el.textContent === "");
-      mark();
-      const observer = new MutationObserver(mark);
-      observer.observe(el, { childList: true, characterData: true, subtree: true });
-      return () => {
-        observer.disconnect();
-        el.removeAttribute("data-empty");
-      };
-    }, [firstParagraph]);
+    useEmptyMark(elRef, blockIndex === 0 && block.type === "p");
 
     useLayoutEffect(() => {
       const el = elRef.current || wholeRef.current;

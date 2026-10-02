@@ -691,6 +691,7 @@ export function isEditableBlock(b) {
     b.type !== "spacer" &&
     b.type !== "image" &&
     b.type !== "file" &&
+    b.type !== "embed" &&
     b.type !== "code" &&
     b.type !== "table" &&
     b.type !== "callout" &&
