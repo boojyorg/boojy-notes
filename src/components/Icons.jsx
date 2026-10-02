@@ -35,6 +35,7 @@ import {
   Columns3 as LuColumns3,
   Copy as LuCopy,
   Clipboard as LuClipboard,
+  BookPlus as LuBookPlus,
   ExternalLink as LuExternalLink,
   File as LuFile,
   FileArchive as LuFileArchive,
@@ -219,6 +220,8 @@ export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (
 /** The editor's right-click menu: Cut, Paste, Open link, Remove link. */
 export const CutIcon = navIcon(LuScissors);
 export const PasteIcon = navIcon(LuClipboardPaste);
+/** Add to dictionary: a book taking a word. */
+export const AddToDictionaryIcon = navIcon(LuBookPlus);
 export const OpenLinkIcon = navIcon(LuExternalLink);
 export const OpenNoteIcon = navIcon(LuFileText);
 export const UnlinkIcon = navIcon(LuUnlink);
