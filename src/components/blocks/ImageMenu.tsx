@@ -9,7 +9,7 @@ import { Z } from "../../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../../constants/layout";
 import { cssZoom } from "../../utils/domHelpers";
 import { isMac } from "../../utils/platform";
-import { CopyIcon, ExpandIcon, FolderIcon, ResetSizeIcon, TrashIcon } from "../Icons";
+import { CopyIcon, ExpandIcon, FolderIcon, RestoreIcon, TrashIcon } from "../Icons";
 
 export interface MenuAnchor {
   top: number;
@@ -78,18 +78,13 @@ export default function ImageMenu({
   onDelete,
   onClose,
 }: ImageMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
   useExitGhost(menuRef);
-  const pos = useMenuPosition(menuRef, true, anchor, fromBar ? { gapY: 4, align: "end" } : {}) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, anchor, fromBar ? { gapY: 4, align: "end" } : {});
   const zoom = cssZoom(document.documentElement);
 
   const act = useCallback(
@@ -114,7 +109,7 @@ export default function ImageMenu({
     });
   }
   if (!entries && onOriginalSize) {
-    items.push({ label: "Original size", icon: <ResetSizeIcon />, action: act(onOriginalSize) });
+    items.push({ label: "Original size", icon: <RestoreIcon />, action: act(onOriginalSize) });
   }
   if (!entries)
     items.push({

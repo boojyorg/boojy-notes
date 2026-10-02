@@ -5,13 +5,7 @@ import { Z } from "../constants/zIndex";
 import type { DeletedNote } from "../hooks/useRecentlyDeleted";
 import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
-import { CloseIcon, RecentlyDeletedIcon, RestoreIcon } from "./Icons";
-
-type Theme = {
-  BG: Record<string, string>;
-  TEXT: Record<string, string>;
-  modalShadow: string;
-};
+import { CloseIcon, TrashIcon, RestoreIcon } from "./Icons";
 
 interface Props {
   items: DeletedNote[];
@@ -28,7 +22,7 @@ interface Props {
  * do the same. Escape or a press outside closes it.
  */
 export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: Props) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLDivElement>(null);
   useExitGhost(ref);
@@ -141,7 +135,7 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px" }}>
         <span style={{ color: TEXT.secondary, display: "flex" }}>
-          <RecentlyDeletedIcon />
+          <TrashIcon />
         </span>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: TEXT.primary }}>
           Recently Deleted

@@ -23,7 +23,7 @@ interface LinkTooltipProps {
  * that names no note, or two, says so in the error ink.
  */
 export default function LinkTooltip({ description, position }: LinkTooltipProps) {
-  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
+  const { theme } = useTheme();
   const { BG, TEXT, SEMANTIC } = theme;
 
   if (!description || !position) return null;

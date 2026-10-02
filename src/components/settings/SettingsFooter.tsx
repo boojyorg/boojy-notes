@@ -3,7 +3,7 @@ import { useTheme } from "../../hooks/useTheme";
 
 /** Settings' quiet version line: the full version and the product page. */
 export default function SettingsFooter() {
-  const { theme } = useTheme() as { theme: { TEXT: { muted: string } } };
+  const { theme } = useTheme();
   const { TEXT } = theme;
   return (
     <div style={{ textAlign: "center", padding: "28px 0 4px", fontSize: 12, color: TEXT.muted }}>

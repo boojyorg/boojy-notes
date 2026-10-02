@@ -1,4 +1,5 @@
 import { withAlpha } from "../utils/selectionBand";
+import type { Theme } from "../hooks/useTheme";
 
 /**
  * The tag pill: `#tag` in the editor and the filter chip in Search are one
@@ -14,12 +15,6 @@ export const TAG_PILL_FONT = "0.92em";
 /** Ground alpha by theme name (`day` / `night`), rest and hover. */
 export const TAG_PILL_ALPHA = { day: 0.14, night: 0.22 } as const;
 export const TAG_PILL_HOVER_ALPHA = { day: 0.24, night: 0.32 } as const;
-
-interface Theme {
-  name?: string;
-  BG: Record<string, string>;
-  ACCENT: Record<string, string>;
-}
 
 const key = (theme: Theme) => (theme.name === "night" ? "night" : "day");
 

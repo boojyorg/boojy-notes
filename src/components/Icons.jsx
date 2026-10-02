@@ -108,16 +108,23 @@ const base = { strokeWidth: ICON_STROKE };
 /** Sidebar navigation icons run one step heavier than content icons. */
 const navBase = { strokeWidth: ICON_STROKE_NAV };
 
+/** A Lucide glyph at the navigation stroke, `size` defaulting to the list tier. */
+const navIcon =
+  (Glyph, defaultSize = ICON_INLINE) =>
+  ({ size = defaultSize }) => <Glyph {...navBase} size={size} />;
+/** The same at the content stroke. */
+const contentIcon =
+  (Glyph) =>
+  ({ size = ICON_INLINE }) => <Glyph {...base} size={size} />;
+
 // ── Disclosure ────────────────────────────────────────────────────────────
-export const ChevronDownIcon = ({ size = ICON_INLINE }) => <LuChevronDown {...base} size={size} />;
-export const ChevronRightIcon = ({ size = ICON_INLINE }) => (
-  <LuChevronRight {...base} size={size} />
-);
+export const ChevronDownIcon = contentIcon(LuChevronDown);
+export const ChevronRightIcon = contentIcon(LuChevronRight);
 
 // ── Tree items ────────────────────────────────────────────────────────────
 export const FolderIcon = ({ open = false, color = "currentColor", size: sz = ICON_INLINE }) => {
   const Cmp = open ? LuFolderOpen : LuFolder;
-  return <Cmp {...base} {...navBase} size={sz} color={color} />;
+  return <Cmp {...navBase} size={sz} color={color} />;
 };
 
 /** A file that is not a note: the kind its extension names (`utils/otherFiles.ts`). */
@@ -132,62 +139,39 @@ const OTHER_FILE_GLYPHS = {
 };
 export const OtherFileIcon = ({ kind = "file", size = ICON_INLINE }) => {
   const Cmp = OTHER_FILE_GLYPHS[kind] ?? LuFile;
-  return <Cmp {...base} {...navBase} size={size} />;
+  return <Cmp {...navBase} size={size} />;
 };
 /** The attachment store's row: what notes embed, not one of the user's folders. */
-export const AttachmentsIcon = ({ size = ICON_INLINE }) => (
-  <LuPaperclip {...base} {...navBase} size={size} />
-);
-/** Recently Deleted: the sidebar's footer row and its menu. */
-export const RecentlyDeletedIcon = ({ size = ICON_INLINE }) => (
-  <LuTrash {...base} {...navBase} size={size} />
-);
+export const AttachmentsIcon = navIcon(LuPaperclip);
 
 // ── Vaults ────────────────────────────────────────────────────────────────
 /** A vault in the vault menu: a folder, a cloud when it syncs, crossed when missing. */
 export const VaultIcon = ({ cloud = false, missing = false, size = ICON_INLINE }) => {
   const Cmp = missing ? LuFolderX : cloud ? LuCloud : LuFolder;
-  return <Cmp {...base} {...navBase} size={size} />;
+  return <Cmp {...navBase} size={size} />;
 };
 /** An attachment a note links to that is not in the vault: a picture or a file. */
 export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => {
   const Cmp = image ? LuImageOff : LuFileX;
-  return <Cmp {...base} {...navBase} size={size} />;
+  return <Cmp {...navBase} size={size} />;
 };
 /** A note whose text a sync service keeps online until it is opened. */
-export const OffloadedIcon = ({ size = ICON_INLINE }) => (
-  <LuCloudDownload {...base} {...navBase} size={size} />
-);
+export const OffloadedIcon = navIcon(LuCloudDownload);
 /** Show in Finder, for a vault or a file. */
-export const RevealIcon = ({ size = ICON_INLINE }) => (
-  <LuFolderSearch {...base} {...navBase} size={size} />
-);
+export const RevealIcon = navIcon(LuFolderSearch);
 
 // ── Actions ───────────────────────────────────────────────────────────────
-export const SearchIcon = ({ size = ICON_INLINE }) => (
-  <LuSearch {...base} {...navBase} size={size} />
-);
-export const NewNoteIcon = ({ size = ICON_INLINE }) => (
-  <LuSquarePen {...base} {...navBase} size={size} />
-);
-export const NewFolderIcon = ({ size = ICON_INLINE }) => (
-  <LuFolderPlus {...base} {...navBase} size={size} />
-);
+export const SearchIcon = navIcon(LuSearch);
+export const NewNoteIcon = navIcon(LuSquarePen);
+export const NewFolderIcon = navIcon(LuFolderPlus);
 /** The Notes row's Sort control (2026-09-16): one glyph whatever the mode, since
  *  the row is hidden at rest and the menu is what says which mode is on. */
-export const SortIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowUpDown {...base} {...navBase} size={size} />
-);
-/** History, in the editor header. Lucide's curved pair, navigation tier: they
- *  stand as controls beside the note's name, not as glyphs inside prose. A
- *  straight arrow would read as navigation (Back), which undo is not. */
+export const SortIcon = navIcon(LuArrowUpDown);
 /** Menu tick — the chosen sort mode's mark; nav stroke like every menu glyph. */
-export const CheckIcon = ({ size = ICON_INLINE }) => <LuCheck {...base} {...navBase} size={size} />;
+export const CheckIcon = navIcon(LuCheck);
 /** The sort menu's item glyphs: a clock for Most recent, A→Z for Alphabetical. */
-export const ClockIcon = ({ size = ICON_INLINE }) => <LuClock {...base} {...navBase} size={size} />;
-export const SortAlphaIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowDownAZ {...base} {...navBase} size={size} />
-);
+export const ClockIcon = navIcon(LuClock);
+export const SortAlphaIcon = navIcon(LuArrowDownAZ);
 /** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
  *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;
  *  filling them gives crisp ~2.3px discs (judged live 2026-09-03). */
@@ -203,119 +187,67 @@ export const PlusIcon = ({ size = ICON_INLINE, nav = false }) => (
   <LuPlus {...(nav ? navBase : base)} size={size} />
 );
 /** Its pair, for a stepper (Settings → Interface size). */
-export const MinusIcon = ({ size = ICON_INLINE }) => <LuMinus {...base} size={size} />;
+export const MinusIcon = contentIcon(LuMinus);
 /** The table cell menu's insert glyphs: the direction is the meaning (nav stroke, as
  *  every context-menu glyph). */
-export const ArrowUpToLineIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowUpToLine {...base} {...navBase} size={size} />
-);
-export const ArrowDownToLineIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowDownToLine {...base} {...navBase} size={size} />
-);
-export const ArrowLeftToLineIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowLeftToLine {...base} {...navBase} size={size} />
-);
-export const ArrowRightToLineIcon = ({ size = ICON_INLINE }) => (
-  <LuArrowRightToLine {...base} {...navBase} size={size} />
-);
+export const ArrowUpToLineIcon = navIcon(LuArrowUpToLine);
+export const ArrowDownToLineIcon = navIcon(LuArrowDownToLine);
+export const ArrowLeftToLineIcon = navIcon(LuArrowLeftToLine);
+export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);
 /** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
- *  12.5px menu labels (judged live 2026-08-23). */
-export const TrashIcon = () => <LuTrash {...base} {...navBase} size={ICON_INLINE} />;
-/** Restore a version (Version History's rows, Recently Deleted). */
-export const RestoreIcon = ({ size = ICON_INLINE }) => (
-  <LuRotateCcw {...base} {...navBase} size={size} />
-);
+ *  12.5px menu labels (judged live 2026-08-23). Also Recently Deleted's row. */
+export const TrashIcon = navIcon(LuTrash);
+/** Restore a version (Version History, Recently Deleted), and an image's Original size. */
+export const RestoreIcon = navIcon(LuRotateCcw);
 /** Version History: the ··· item, the list's header and the past-version pill. */
-export const HistoryIcon = ({ size = ICON_INLINE }) => (
-  <LuHistory {...base} {...navBase} size={size} />
-);
-export const PencilIcon = ({ size = ICON_INLINE }) => (
-  <LuPencil {...base} {...navBase} size={size} />
-);
-export const CopyIcon = ({ size = ICON_INLINE }) => <LuCopy {...base} {...navBase} size={size} />;
+export const HistoryIcon = navIcon(LuHistory);
+export const PencilIcon = navIcon(LuPencil);
+export const CopyIcon = navIcon(LuCopy);
 /** Copy to the clipboard (a note's or blocks' Copy); Duplicate keeps the two sheets. */
-export const ClipboardIcon = ({ size = ICON_INLINE }) => (
-  <LuClipboard {...base} {...navBase} size={size} />
-);
-export const TurnIntoIcon = ({ size = ICON_INLINE }) => (
-  <LuRepeat2 {...base} {...navBase} size={size} />
-);
+export const ClipboardIcon = navIcon(LuClipboard);
+export const TurnIntoIcon = navIcon(LuRepeat2);
 /** Tidy table: lines a table's columns up. */
-export const TidyTableIcon = ({ size = ICON_INLINE }) => (
-  <LuColumns3 {...base} {...navBase} size={size} />
-);
+export const TidyTableIcon = navIcon(LuColumns3);
 /** A table column's alignment: the three text-align glyphs. */
-export const AlignStartIcon = ({ size = ICON_INLINE }) => (
-  <LuTextAlignStart {...base} {...navBase} size={size} />
-);
-export const AlignCenterIcon = ({ size = ICON_INLINE }) => (
-  <LuTextAlignCenter {...base} {...navBase} size={size} />
-);
-export const AlignEndIcon = ({ size = ICON_INLINE }) => (
-  <LuTextAlignEnd {...base} {...navBase} size={size} />
-);
+export const AlignStartIcon = navIcon(LuTextAlignStart);
+export const AlignCenterIcon = navIcon(LuTextAlignCenter);
+export const AlignEndIcon = navIcon(LuTextAlignEnd);
 /** An image's full-size view: the hover bar's glyph (content stroke) and the
  *  menu's (`nav`, like every context-menu glyph). */
 export const ExpandIcon = ({ size = ICON_INLINE, nav = false }) => (
   <LuMaximize2 {...(nav ? navBase : base)} size={size} />
 );
-/** Original size: the width set by hand taken back off the picture. */
-export const ResetSizeIcon = ({ size = ICON_INLINE }) => (
-  <LuRotateCcw {...base} {...navBase} size={size} />
-);
 /** The editor's right-click menu: Cut, Paste, Open link, Remove link. */
-export const CutIcon = ({ size = ICON_INLINE }) => (
-  <LuScissors {...base} {...navBase} size={size} />
-);
-export const PasteIcon = ({ size = ICON_INLINE }) => (
-  <LuClipboardPaste {...base} {...navBase} size={size} />
-);
-export const OpenLinkIcon = ({ size = ICON_INLINE }) => (
-  <LuExternalLink {...base} {...navBase} size={size} />
-);
-export const OpenNoteIcon = ({ size = ICON_INLINE }) => (
-  <LuFileText {...base} {...navBase} size={size} />
-);
-export const UnlinkIcon = ({ size = ICON_INLINE }) => (
-  <LuUnlink {...base} {...navBase} size={size} />
-);
+export const CutIcon = navIcon(LuScissors);
+export const PasteIcon = navIcon(LuClipboardPaste);
+export const OpenLinkIcon = navIcon(LuExternalLink);
+export const OpenNoteIcon = navIcon(LuFileText);
+export const UnlinkIcon = navIcon(LuUnlink);
 /** The link picker's address row. */
-export const LinkIcon = ({ size = ICON_INLINE }) => <LuLink {...base} {...navBase} size={size} />;
+export const LinkIcon = navIcon(LuLink);
 /** Move to…: a folder with an arrow going in, beside the menu's Pencil and Copy. */
-export const MoveToIcon = ({ size = ICON_INLINE }) => (
-  <LuFolderInput {...base} {...navBase} size={size} />
-);
+export const MoveToIcon = navIcon(LuFolderInput);
 // ── Settings and setup ────────────────────────────────────────────────────
 /** The three appearance pills: content stroke at 16px, beside 14px labels. */
-export const SunIcon = ({ size = ICON_INLINE }) => <LuSun {...base} size={size} />;
-export const MoonIcon = ({ size = ICON_INLINE }) => <LuMoon {...base} size={size} />;
-export const MonitorIcon = ({ size = ICON_INLINE }) => <LuMonitor {...base} size={size} />;
+export const SunIcon = contentIcon(LuSun);
+export const MoonIcon = contentIcon(LuMoon);
+export const MonitorIcon = contentIcon(LuMonitor);
 /** Before `Change folder…` and `Choose folder…`: another step follows the button. */
-export const FolderOpenIcon = ({ size = ICON_INLINE }) => <LuFolderOpen {...base} size={size} />;
+export const FolderOpenIcon = contentIcon(LuFolderOpen);
 /** A dialog's close, in a chrome button: navigation stroke like the other controls. */
-export const CloseIcon = ({ size = ICON_CONTROL }) => <LuX {...base} {...navBase} size={size} />;
-export const SettingsIcon = ({ size = ICON_INLINE }) => (
-  <LuSettings {...base} {...navBase} size={size} />
-);
+export const CloseIcon = navIcon(LuX, ICON_CONTROL);
+export const SettingsIcon = navIcon(LuSettings);
 
-// ── Standalone controls (20px) ────────────────────────────────────────────
-export const SidebarToggleIcon = ({ size = ICON_CONTROL }) => (
-  <LuPanelLeft {...base} {...navBase} size={size} />
-);
-export const MoreHorizontalIcon = ({ size = ICON_CONTROL }) => (
-  <LuMoreHorizontal {...base} {...navBase} size={size} />
-);
+// ── Standalone controls (ICON_CONTROL) ────────────────────────────────────
+export const SidebarToggleIcon = navIcon(LuPanelLeft, ICON_CONTROL);
+export const MoreHorizontalIcon = navIcon(LuMoreHorizontal, ICON_CONTROL);
 
 // ── The Markdown view ─────────────────────────────────────────────────────
 /** Show Markdown, and the lit corner control while the Markdown view is on.
  *  `</>` rather than `< >`, which is inline code's glyph in the toolbar. */
-export const SourceViewIcon = ({ size = ICON_CONTROL }) => (
-  <LuCodeXml {...base} {...navBase} size={size} />
-);
+export const SourceViewIcon = navIcon(LuCodeXml, ICON_CONTROL);
 /** Show Formatted: the glyph names what the item gives you back. */
-export const FormattedViewIcon = ({ size = ICON_INLINE }) => (
-  <LuType {...base} {...navBase} size={size} />
-);
+export const FormattedViewIcon = navIcon(LuType);
 
 // ── Slash menu ────────────────────────────────────────────────────────────
 // One glyph per block type, keyed by the `icon` name in SLASH_COMMANDS. These

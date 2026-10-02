@@ -16,13 +16,6 @@ interface UpdateStatus {
   message?: string;
 }
 
-interface UpdatesTheme {
-  TEXT: { primary: string; secondary: string; muted: string };
-  ACCENT: { primary: string; text: string; onAccent: string; onAccentText: string };
-  SEMANTIC: { error: string };
-  BG: { hover: string };
-}
-
 /**
  * Settings → Updates: the automatic-updates switch, then one status line and
  * one button (2026-09-17). The button says what it is doing (`Checking…`,
@@ -36,7 +29,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
     setAutoUpdateEnabled: (enabled: boolean) => void;
     updateStatus: UpdateStatus | null;
   };
-  const { theme } = useTheme() as { theme: UpdatesTheme };
+  const { theme } = useTheme();
   const { TEXT, ACCENT, SEMANTIC, BG } = theme;
 
   const handleToggleAutoUpdate = useCallback(

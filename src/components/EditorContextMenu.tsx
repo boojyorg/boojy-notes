@@ -96,16 +96,11 @@ export default function EditorContextMenu({
   onDeleteTable,
   onClose,
 }: EditorContextMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: MENU_GAP }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, anchor, { gapY: MENU_GAP });
   useExitGhost(menuRef);
   const zoom = cssZoom(document.documentElement);
 

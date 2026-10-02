@@ -76,9 +76,7 @@ export default function BlockMenu({
   onDelete,
   onClose,
 }: BlockMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
@@ -98,10 +96,7 @@ export default function BlockMenu({
     left: anchor.right + MENU_GAP,
     right: anchor.left - MENU_GAP,
   };
-  const pos = useMenuPosition(menuRef, true, side, { align: "end" }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, side, { align: "end" });
   const zoom = cssZoom(document.documentElement);
   // The submenu is its own surface: it can close on its own, and it leaves
   // with the menu that held it.

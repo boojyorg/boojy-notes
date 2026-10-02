@@ -2,21 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useExitGhost } from "../hooks/useExitGhost";
 import { type ToastKind, toastPersists } from "../hooks/useToast";
 import { CloseIcon, ToastIcon } from "./Icons";
-
-interface ToastTheme {
-  BG: { elevated: string; divider: string; surface: string };
-  TEXT: { primary: string; muted: string };
-  ACCENT: { text: string };
-  SEMANTIC: { error: string; warning: string };
-  modalShadow: string;
-}
+import type { Theme } from "../hooks/useTheme";
 
 interface ToastProps {
   message: string;
   kind?: ToastKind;
   icon?: string;
   onDismiss: () => void;
-  theme: ToastTheme;
+  theme: Theme;
   /** Its words name something the user can name (a save point): click them to type one. */
   nameable?: boolean;
   editing?: boolean;
@@ -43,7 +36,7 @@ const KIND_GLYPH: Record<ToastKind, string> = {
  * against the rule that accent is never a desktop surface — with white text on
  * it at about 2:1; 2026-09-19).
  */
-function markColour(kind: ToastKind, theme: ToastTheme): string {
+function markColour(kind: ToastKind, theme: Theme): string {
   if (kind === "error") return theme.SEMANTIC.error;
   if (kind === "warning") return theme.SEMANTIC.warning;
   if (kind === "notice") return theme.ACCENT.text;

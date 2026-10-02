@@ -74,19 +74,14 @@ export default function VaultMenu({
   onClose,
   fromKeyboard = false,
 }: VaultMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const menuAnchor = useMemo(
     () => ({ top: anchor.top, bottom: anchor.bottom, left: anchor.left, right: anchor.right }),
     [anchor],
   );
-  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4 }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4 });
 
   const rows = useMemo<Row[]>(
     () => [

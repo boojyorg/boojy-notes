@@ -134,9 +134,7 @@ export default function PathTreeMenu({
   onRowPointerDown,
   pick,
 }: PathTreeMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const { folderTree, sortedRootNotes } = useSidebar() as {
     folderTree: SidebarNode[];
@@ -196,10 +194,7 @@ export default function PathTreeMenu({
   // aria-activedescendant; the scrolling dialog around it is the surface.
   useFocusTrap(treeRef as RefObject<HTMLElement>, true, "container");
   useExitGhost(menuRef);
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length });
   // The anchor and the menu's own size are measured under the UI scale (CSS
   // zoom on <html>), and a `top`/`left` written inside it is scaled again on
   // paint, so the placement is divided by the zoom before it becomes a style

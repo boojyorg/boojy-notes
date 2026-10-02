@@ -3,8 +3,6 @@ import { useTheme } from "../../hooks/useTheme";
 import { MissingAttachmentIcon, MoreHorizontalIcon, RevealIcon, TrashIcon } from "../Icons";
 import ImageMenu, { type MenuAnchor } from "./ImageMenu";
 
-type Theme = { BG: Record<string, string>; TEXT: Record<string, string> };
-
 interface Props {
   /** What the note links to (`photo.png`, `Reading/report.pdf`), shown as its last segment. */
   src: string;
@@ -31,7 +29,7 @@ const rectOf = (el: Element): MenuAnchor => {
  * Delete does elsewhere, and is undoable, so it is not in the danger ink.
  */
 export default function MissingAttachment({ src, image = false, onFind, onRemove }: Props) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [hovered, setHovered] = useState(false);

@@ -35,9 +35,7 @@ interface SortMenuProps {
 }
 
 export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: SortMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -50,10 +48,7 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
     () => ({ top: anchor.top, bottom: anchor.bottom, left: anchor.left, right: anchor.right }),
     [anchor],
   );
-  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4 }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4 });
 
   const items = useMemo(
     () => [

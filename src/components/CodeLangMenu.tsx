@@ -70,9 +70,7 @@ export default function CodeLangMenu({
   onSelect,
   onClose,
 }: CodeLangMenuProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -85,10 +83,7 @@ export default function CodeLangMenu({
     () => ({ top: anchor.top, bottom: anchor.bottom, left: anchor.left, right: anchor.right }),
     [anchor],
   );
-  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4, align: "end" }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4, align: "end" });
   // The UI scale is CSS zoom on <html>: every measured rect arrives multiplied
   // by it and a top/left on this fixed element is multiplied again, so the
   // placement is divided by the zoom before it becomes a style (ContextMenu,

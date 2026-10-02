@@ -27,12 +27,6 @@ interface ImageBlockProps {
   accentColor: string;
 }
 
-type Theme = Record<string, Record<string, string>> & {
-  name?: string;
-  floatShadow: string;
-  imageHandle: { fill: string; shadow: string };
-};
-
 /** A corner dot's drawn size, and the box round it a press may land in. */
 const DOT = 12;
 const DOT_HIT = 28;
@@ -65,7 +59,7 @@ function BarButton({
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
 }) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const [hot, setHot] = useState(false);
   const tip = useTooltip();
@@ -153,7 +147,7 @@ function ImageBlock({
   onUpdateWidth,
   accentColor,
 }: ImageBlockProps) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const [hovered, setHovered] = useState(false);
   const [errored, setErrored] = useState(false);

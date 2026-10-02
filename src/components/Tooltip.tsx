@@ -101,7 +101,7 @@ export function Tooltip({
   placement = "above",
   testId,
 }: TooltipProps) {
-  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
