@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useLayoutEffect, memo } from 
 import { createPortal } from "react-dom";
 import { useTheme } from "../hooks/useTheme";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
+import { useEmptyMark } from "../hooks/useEmptyMark";
 import { useMenuKeys } from "../hooks/useMenuKeys";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
@@ -266,6 +267,10 @@ export default memo(function CalloutBlock({
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
     },
   });
+
+  // A cleared field keeps a <br>, so the placeholders read the live text.
+  useEmptyMark(titleRef);
+  useEmptyMark(bodyRef);
 
   const handleTitleInput = useCallback(() => {
     onUpdateTitle(noteId, blockIndex, titleRef.current?.textContent || "");

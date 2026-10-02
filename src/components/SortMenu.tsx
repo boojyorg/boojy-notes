@@ -34,10 +34,6 @@ interface SortMenuProps {
   onClose: () => void;
 }
 
-const hBg = (el: HTMLElement, c: string) => {
-  el.style.background = c;
-};
-
 export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: SortMenuProps) {
   const { theme } = useTheme() as {
     theme: Record<string, Record<string, string>> & { modalShadow: string };
@@ -131,11 +127,8 @@ export default function SortMenu({ anchor, sortMode, setSortMode, onClose }: Sor
               role="menuitemradio"
               aria-checked={checked}
               onClick={() => choose(item.mode)}
-              onMouseEnter={(e) => {
-                setActiveIndex(index);
-                hBg(e.currentTarget, BG.hover);
-              }}
-              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex((i) => (i === index ? -1 : i))}
               style={{
                 width: "100%",
                 background: index === activeIndex ? BG.hover : "none",

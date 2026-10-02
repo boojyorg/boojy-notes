@@ -96,8 +96,8 @@ One person must be able to hold the app in their head.
 Each has caused a real bug.
 
 1. **State lags the DOM.** `block.text` updates on a debounce; anything answering the current
-   keystroke reads the DOM. An empty block holds a `<br>`, so use `:has(> br:only-child)`,
-   never `:empty`.
+   keystroke reads the DOM. An empty field holds a `<br>`, and so does one line with a soft
+   break, so an "is it empty" test reads the text (`useEmptyMark`), never `:empty` alone.
 2. **A text block is painted from the keystroke ref, only on a signal** (mount, `syncGen`, title
    set), never from the render. A programmatic text edit edits the DOM and reads it back. When a
    DOM-sync fix "should work" but doesn't, log in the effect and observe; don't theorise.

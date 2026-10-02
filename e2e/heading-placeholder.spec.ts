@@ -45,3 +45,38 @@ test("an empty heading names its level until the first character, and again afte
   await page.keyboard.press("Enter");
   expect(await placeholderOf(page, '[data-editor] p[data-block-type="p"]')).toBe("");
 });
+
+// An emptied field holds a `<br>`, and so does one with a soft break, so the
+// placeholder reads the live text (`data-empty`), never the elements.
+test("an empty callout title or body shows its placeholder, and again once cleared", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForSelector("[data-editor]", { timeout: 10000 });
+  await page.locator("[data-editor] [data-block-id]").first().click();
+  await page.keyboard.type("/callout");
+  await page.keyboard.press("Enter");
+  const body = "[data-editor] .callout-body";
+  const title = "[data-editor] .callout-title";
+  await expect(page.locator(body)).toHaveCount(1);
+  expect(await placeholderOf(page, body)).toBe("Type callout content...");
+
+  await page.locator(body).click();
+  await page.keyboard.type("Hi");
+  expect(await page.locator(body).textContent()).toBe("Hi");
+  expect(await placeholderOf(page, body)).toBe("");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Backspace");
+  // `Hi<br>`: one <br>, but text, so no placeholder over it.
+  expect(await placeholderOf(page, body)).toBe("");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Backspace");
+  expect(await page.locator(body).textContent()).toBe("");
+  expect(await placeholderOf(page, body)).toBe("Type callout content...");
+
+  await page.locator(title).click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("Backspace");
+  expect(await page.locator(title).textContent()).toBe("");
+  expect(await placeholderOf(page, title)).toBe("Note");
+});

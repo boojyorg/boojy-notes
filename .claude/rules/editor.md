@@ -291,8 +291,8 @@ same language writes nothing. The language menu portals to `body` and takes its 
   `block-selection.spec.ts`.
 - Backspace from below / Delete from above selects a divider, image or table first
   (`reachAcross`), removing an empty row between in the same press.
-- **Arrows stop on a divider or image and enter every block with a field**; deletion still
-  steps over code (`landingBefore` vs `caretLandingBefore`).
+- **Arrows stop on a divider or image and enter every block with a field**; deletion steps
+  over code and embeds (`landingBefore` vs `caretLandingBefore`).
 - **Taking the caret back never scrolls the note** (`placeCaret`: `preventScroll`, then the
   block scrolled minimally).
 - **Measure a caret's line with `caretRect`** (an empty node's range reports zeros). `caret-navigation.spec.ts`.

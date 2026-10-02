@@ -703,12 +703,12 @@ ${tagPillCss(theme)}
         .callout-icon-btn:hover {
           background: ${theme.calloutIconHover} !important;
         }
-        .callout-title:empty::before {
+        .callout-title[data-empty]::before {
           content: attr(data-placeholder);
           opacity: 0.35;
           pointer-events: none;
         }
-        .callout-body:empty::before {
+        .callout-body[data-empty]::before {
           content: attr(data-placeholder);
           color: ${theme.TEXT.muted};
           opacity: 0.5;

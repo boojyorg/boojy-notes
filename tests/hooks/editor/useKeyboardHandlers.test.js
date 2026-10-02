@@ -10,11 +10,7 @@ vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
   focusTitleEnd: (await importOriginal()).focusTitleEnd,
   findNearestBlock: vi.fn(),
   focusBeyondNote: vi.fn(),
-  // As the real ones: a block with a field of its own is not editable text.
-  isEditableBlock: (block) =>
-    !["image", "spacer", "embed", "file", "code", "table", "callout", "frontmatter"].includes(
-      block.type,
-    ),
+  isEditableBlock: (await importOriginal()).isEditableBlock,
   isSelectableBlock: (block) => block.type === "spacer" || block.type === "image",
   hasOwnField: (block) => ["code", "callout", "table"].includes(block?.type),
   focusOwnedField: vi.fn(() => true),
@@ -548,6 +544,24 @@ describe("useKeyboardHandlers", () => {
       result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
       expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
       expect(focusOwnedField).not.toHaveBeenCalled();
+    });
+
+    it("Backspace steps over an embed rather than merging into it", () => {
+      deps.noteDataRef.current["note-1"] = {
+        content: {
+          blocks: [
+            { id: "b1", type: "p", text: "Hello" },
+            { id: "e1", type: "embed", target: "Other", heading: null },
+            { id: "b2", type: "p", text: "World" },
+          ],
+        },
+      };
+      deps.blockRefs.current.e1 = document.createElement("div");
+      caretIn(deps.blockRefs.current.b2, "World", 0);
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      result.current.handleBlockKeyDown("note-1", 2, key("Backspace"));
+      expect(deps.updateBlockText).toHaveBeenCalledWith("note-1", 0, "HelloWorld");
+      expect(deps.updateBlockText).not.toHaveBeenCalledWith("note-1", 1, expect.anything());
     });
 
     it("an image is stopped on too; a file block between is still stepped over", () => {
