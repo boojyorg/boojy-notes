@@ -118,6 +118,9 @@ export function registerSpellingIPC() {
   ipcMain.handle("remove-dictionary-word", (event, word: string) =>
     event.sender.session.removeWordFromSpellCheckerDictionary(word),
   );
+  ipcMain.handle("is-learned-word", async (event, word: string) =>
+    (await event.sender.session.listWordsInSpellCheckerDictionary()).includes(word),
+  );
   ipcMain.handle("open-keyboard-settings", () => {
     if (isMac) void shell.openExternal(KEYBOARD_SETTINGS_URL);
   });

@@ -34,12 +34,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // spelled right, else its first three guesses. A Mac's comes from the
   // main process, in the paragraph's language; elsewhere the window's own
   // checker answers, in the chosen languages.
-  checkSpelling: (word, paragraph) =>
-    process.platform === "darwin"
-      ? ipcRenderer.invoke("check-spelling", word, paragraph)
-      : Promise.resolve(
-          webFrame.isWordMisspelled(word) ? webFrame.getWordSuggestions(word).slice(0, 3) : null,
-        ),
+  checkSpelling: async (word, paragraph) => {
+    if (process.platform === "darwin") return ipcRenderer.invoke("check-spelling", word, paragraph);
+    if (!webFrame.isWordMisspelled(word)) return null;
+    // A word just added reaches this checker late (Linux): the dictionary decides.
+    if (await ipcRenderer.invoke("is-learned-word", word)) return null;
+    return webFrame.getWordSuggestions(word).slice(0, 3);
+  },
   getSpelling: () => ipcRenderer.invoke("get-spelling"),
   setSpelling: (change) => ipcRenderer.invoke("set-spelling", change),
   addDictionaryWord: (word) => ipcRenderer.invoke("add-dictionary-word", word),
