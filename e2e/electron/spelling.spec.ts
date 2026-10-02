@@ -89,19 +89,29 @@ test("a word spelled right, a link or a tag gets Cut, Copy and Paste alone", asy
   await closeMenu(h.page);
 });
 
-test("Add to dictionary teaches the word; the toast's Undo takes it back", async () => {
-  await rightClick(h.page, MADE_UP);
-  await h.page.getByRole("menuitem", { name: "Add to dictionary" }).click();
-  const toast = h.page.getByText(`Added "${MADE_UP}" to dictionary`);
-  await expect(toast).toBeVisible();
+/** A fresh right-click's rows: Linux hands a learned word to the page's checker a moment later. */
+const offered = async () => {
   await rightClick(h.page, MADE_UP);
   await expect(h.page.locator(".editor-context-menu")).toBeVisible();
-  expect(await rows(h.page)).not.toContain("Add to dictionary");
+  const labels = await rows(h.page);
   await closeMenu(h.page);
-  await h.page.getByRole("button", { name: "Undo" }).click();
+  return labels.includes("Add to dictionary");
+};
+const addMadeUp = async () => {
   await rightClick(h.page, MADE_UP);
-  await expect.poll(() => rows(h.page)).toContain("Add to dictionary");
-  await closeMenu(h.page);
+  await h.page.getByRole("menuitem", { name: "Add to dictionary" }).click();
+  await expect(h.page.getByText(`Added "${MADE_UP}" to dictionary`)).toBeVisible();
+};
+
+test("Add to dictionary teaches the word", async () => {
+  await addMadeUp();
+  await expect.poll(offered).toBe(false);
+});
+
+test("the toast's Undo takes the word back out", async () => {
+  await addMadeUp();
+  await h.page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(offered).toBe(true);
 });
 
 test("switched off in Settings, the menu offers no spellings", async () => {
