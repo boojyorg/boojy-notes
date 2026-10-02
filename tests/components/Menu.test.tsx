@@ -76,6 +76,64 @@ describe("Menu", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("without taking focus, it reads every key in capture, before the editor sees it", () => {
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.focus();
+    const editorKey = vi.fn();
+    field.addEventListener("keydown", editorKey);
+    const one = vi.fn();
+    render(
+      <Menu
+        label="Quiet"
+        idPrefix="q"
+        anchor={anchor}
+        onClose={vi.fn()}
+        takesFocus={false}
+        items={[{ label: "One", action: one }]}
+      />,
+    );
+    const menu = screen.getByRole("menu", { name: "Quiet" });
+    expect(menu).not.toHaveAttribute("tabindex");
+    fireEvent.keyDown(field, { key: "ArrowDown" });
+    fireEvent.keyDown(field, { key: "x" });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(one).toHaveBeenCalled();
+    expect(editorKey).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field);
+    field.remove();
+  });
+
+  it("opens a submenu on hover or →, on its checked row by keyboard; ← comes back", () => {
+    const pick = vi.fn();
+    const { menu } = setup([
+      {
+        label: "Kind",
+        submenu: [
+          { label: "A", role: "menuitemradio", action: vi.fn() },
+          { label: "B", role: "menuitemradio", checked: true, action: pick },
+        ],
+      },
+      { label: "Other", action: vi.fn() },
+    ]);
+    const sub = () => screen.queryByRole("menu", { name: "Kind" });
+    const [kind, other] = screen.getAllByRole("menuitem");
+    expect(kind).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.mouseMove(kind);
+    expect(sub()).not.toBeNull();
+    fireEvent.mouseMove(other);
+    expect(sub()).toBeNull();
+    // The pointer left Other lit; one up is Kind.
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    fireEvent.keyDown(menu, { key: "ArrowRight" });
+    expect(sub()).toHaveAttribute("aria-activedescendant", "t-sub-1");
+    fireEvent.keyDown(menu, { key: "ArrowLeft" });
+    expect(sub()).toBeNull();
+    fireEvent.keyDown(menu, { key: "Enter" });
+    fireEvent.keyDown(menu, { key: "Enter" });
+    expect(pick).toHaveBeenCalled();
+  });
+
   it("divides its placement by the UI scale", () => {
     Object.defineProperty(document.documentElement, "currentCSSZoom", {
       value: 2,

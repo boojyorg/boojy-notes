@@ -1,12 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useTheme } from "../hooks/useTheme";
-import { useMenuPosition } from "../hooks/useMenuPosition";
-import { useExitGhost } from "../hooks/useExitGhost";
-import { useMenuKeys } from "../hooks/useMenuKeys";
-import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-import { cssZoom } from "../utils/domHelpers";
+import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import {
   CopyIcon,
@@ -33,7 +25,7 @@ interface EditorContextMenuProps {
    * left-aligned with them, as a native text menu does; flipped above when
    * there is no room.
    */
-  anchor: { top: number; bottom: number; left: number; right: number };
+  anchor: MenuAnchor;
   link: ContextLinkKind | null;
   onOpenLink: () => void;
   onCopyLink: () => void;
@@ -53,16 +45,6 @@ interface EditorContextMenuProps {
   onClose: () => void;
 }
 
-interface Item {
-  label: string;
-  icon: ReactNode;
-  action: () => void;
-  shortcut?: string;
-  disabled?: boolean;
-  rule?: boolean;
-  danger?: boolean;
-}
-
 /**
  * The editor's right-click menu (Electron supplies none): a link's own actions
  * when the pointer is on a link, then Cut, Copy and Paste with their
@@ -73,10 +55,9 @@ interface Item {
  * the table's rows and columns are arranged from its grips (TableHandles),
  * and this is the one pointer path to removing the whole table.
  *
- * The image menu's grammar: portalled to `body`, presses stopped on its own
- * element so they never reach the editor, placement divided by the UI scale.
- * Unlike the image menu it never takes focus (below). A disabled row is muted, is skipped by the arrows
- * and does nothing on a click.
+ * It never takes focus (`Menu`'s `takesFocus={false}`): the editor keeps it,
+ * so the selection stays the ordinary blue a drag gives. A disabled row is
+ * muted, is skipped by the arrows and does nothing on a click.
  */
 export default function EditorContextMenu({
   anchor,
@@ -94,15 +75,7 @@ export default function EditorContextMenu({
   onDeleteTable,
   onClose,
 }: EditorContextMenuProps) {
-  const { theme } = useTheme();
-  const { BG, TEXT } = theme;
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: MENU_GAP });
-  useExitGhost(menuRef);
-  const zoom = cssZoom(document.documentElement);
-
-  const items: Item[] = [];
+  const items: MenuItem[] = [];
   if (link === "external") {
     items.push(
       { label: "Open link", icon: <OpenLinkIcon />, action: onOpenLink },
@@ -129,7 +102,7 @@ export default function EditorContextMenu({
       label: "Cut",
       icon: <CutIcon />,
       action: onCut,
-      shortcut: shortcutLabel({ key: "X" }),
+      hint: shortcutLabel({ key: "X" }),
       disabled: !canCutCopy,
       rule: items.length > 0,
     },
@@ -137,14 +110,14 @@ export default function EditorContextMenu({
       label: "Copy",
       icon: <CopyIcon />,
       action: onCopy,
-      shortcut: shortcutLabel({ key: "C" }),
+      hint: shortcutLabel({ key: "C" }),
       disabled: !canCutCopy,
     },
     {
       label: "Paste",
       icon: <PasteIcon />,
       action: onPaste,
-      shortcut: shortcutLabel({ key: "V" }),
+      hint: shortcutLabel({ key: "V" }),
       disabled: !canPaste,
     },
   );
@@ -161,125 +134,17 @@ export default function EditorContextMenu({
     });
   }
 
-  const handleKeyDown = useMenuKeys({
-    rows: () => items,
-    active: activeIndex,
-    setActive: setActiveIndex,
-    choose: (i) => items[i].action(),
-    close: onClose,
-  });
-  // The menu never takes focus: the editor keeps it, so the selection stays
-  // the ordinary blue a drag gives (with focus in the menu it went inactive,
-  // and a painted highlight over it drew the words twice). Every key goes to
-  // the menu while it is open, from a document capture listener that runs
-  // before the editor and the shell see the key.
-  const keyRef = useRef(handleKeyDown);
-  keyRef.current = handleKeyDown;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      keyRef.current(e);
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, []);
-
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-
-  return createPortal(
-    <div
-      style={{ display: "contents" }}
-      onMouseDown={stop}
-      onMouseUp={stop}
-      onClick={stop}
-      onDoubleClick={stop}
-    >
-      <div
-        onMouseDown={(e) => {
-          // Closing keeps the editor's focus and selection, as a native menu does.
-          e.preventDefault();
-          onClose();
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
-      />
-      <div
-        ref={menuRef}
-        className="editor-context-menu motion-pop"
-        role="menu"
-        aria-label={link ? "Link options" : "Edit"}
-        aria-activedescendant={activeIndex >= 0 ? `editor-menu-item-${activeIndex}` : undefined}
-        // A press in the menu must not take focus from the editor.
-        onMouseDown={(e) => e.preventDefault()}
-        onContextMenu={(e) => e.preventDefault()}
-        style={{
-          outline: "none",
-          position: "fixed",
-          top: (pos?.top ?? anchor.bottom) / zoom,
-          left: (pos?.left ?? anchor.left) / zoom,
-          zIndex: Z.CONTEXT_MENU,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
-          minWidth: 200,
-          boxShadow: theme.modalShadow,
-        }}
-      >
-        {items.map((item, i) => (
-          <div key={item.label}>
-            {item.rule && <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />}
-            <button
-              id={`editor-menu-item-${i}`}
-              role="menuitem"
-              type="button"
-              aria-disabled={item.disabled || undefined}
-              // A press here must not move the editor's selection or focus
-              // before the item acts on it.
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => !item.disabled && item.action()}
-              onMouseMove={() => {
-                if (!item.disabled && activeIndex !== i) setActiveIndex(i);
-              }}
-              onMouseLeave={() => setActiveIndex((a) => (a === i ? -1 : a))}
-              style={{
-                width: "100%",
-                background: i === activeIndex ? BG.hover : "none",
-                border: "none",
-                borderRadius: MENU_ROW_RADIUS,
-                padding: "7px 10px",
-                cursor: item.disabled ? "default" : "pointer",
-                color: item.disabled
-                  ? TEXT.muted
-                  : item.danger
-                    ? theme.SEMANTIC.error
-                    : TEXT.primary,
-                opacity: item.disabled ? 0.6 : 1,
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                textAlign: "left",
-                transition: "background var(--motion-fast)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {item.icon}
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {item.shortcut && (
-                <span style={{ color: TEXT.muted, fontSize: 12, marginLeft: 16 }}>
-                  {item.shortcut}
-                </span>
-              )}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>,
-    document.body,
+  return (
+    <Menu
+      items={items}
+      label={link ? "Link options" : "Edit"}
+      idPrefix="editor-menu-item"
+      anchor={anchor}
+      gapY={MENU_GAP}
+      onClose={onClose}
+      minWidth={200}
+      className="editor-context-menu"
+      takesFocus={false}
+    />
   );
 }
