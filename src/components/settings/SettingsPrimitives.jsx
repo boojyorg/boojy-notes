@@ -41,6 +41,70 @@ export function SettingsRule() {
   );
 }
 
+/** An on/off switch: the mark when on, a neutral track when off. */
+export function Switch({ checked, label, onChange }) {
+  const { theme } = useTheme();
+  const { ACCENT, BG, TEXT } = theme;
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 40,
+        height: 22,
+        boxSizing: "border-box",
+        borderRadius: 11,
+        background: checked ? ACCENT.primary : BG.hover,
+        border: `1px solid ${checked ? ACCENT.primary : BG.hover}`,
+        position: "relative",
+        cursor: "pointer",
+        transition: "background var(--motion-fast)",
+        padding: 0,
+        flexShrink: 0,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          // The knob is a shape, so it keeps the white of the tick on the
+          // mark; off, a secondary-ink dot on the neutral track.
+          background: checked ? ACCENT.onAccent : TEXT.secondary,
+          boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+          position: "absolute",
+          top: 1,
+          left: checked ? 19 : 1,
+          transition: "left 0.15s",
+        }}
+      />
+    </button>
+  );
+}
+
+/** A settings row: its label on the left, its control on the right. */
+export function SettingRow({ label, children }) {
+  const { theme } = useTheme();
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        minHeight: 30,
+      }}
+    >
+      <div style={{ fontSize: 14, color: theme.TEXT.primary }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
 /**
  * A 30px bordered button. `kind`: "normal" (enabled, primary ink on the
  * theme's button surface), "disabled" (`aria-disabled`, muted, no surface, so

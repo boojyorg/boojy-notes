@@ -7,6 +7,7 @@ import {
   OpenNoteIcon,
   PasteIcon,
   PencilIcon,
+  PlusIcon,
   TidyTableIcon,
   TrashIcon,
   UnlinkIcon,
@@ -14,6 +15,9 @@ import {
 
 /** Air between the painted selection and the menu (more reads detached, none touching). */
 const MENU_GAP = 2;
+
+/** A row's empty glyph column, so a suggestion lines up with the labels below it. */
+const NO_GLYPH = <span style={{ width: 16 }} />;
 
 /** What was right-clicked, when it was a link. */
 export type ContextLinkKind = "external" | "wikilink" | "wikilink-broken";
@@ -27,6 +31,10 @@ interface EditorContextMenuProps {
    */
   anchor: MenuAnchor;
   link: ContextLinkKind | null;
+  /** Given for one misspelled word: the checker's guesses, at most three (maybe none). */
+  suggestions?: string[] | null;
+  onReplaceWord: (word: string) => void;
+  onAddWord: () => void;
   onOpenLink: () => void;
   onCopyLink: () => void;
   onEditLink: () => void;
@@ -46,9 +54,9 @@ interface EditorContextMenuProps {
 }
 
 /**
- * The editor's right-click menu (Electron supplies none): a link's own actions
- * when the pointer is on a link, then Cut, Copy and Paste with their
- * shortcuts, as Notion's and every native text menu has.
+ * The editor's right-click menu (Electron supplies none): a misspelled word's
+ * guesses and Add to dictionary, or a link's own actions, then Cut, Copy and
+ * Paste with their shortcuts, as every native text menu has.
  *
  * In a table cell it is the same menu, with Tidy table (only while its
  * columns are not lined up) and Delete table last under a rule:
@@ -62,6 +70,9 @@ interface EditorContextMenuProps {
 export default function EditorContextMenu({
   anchor,
   link,
+  suggestions,
+  onReplaceWord,
+  onAddWord,
   onOpenLink,
   onCopyLink,
   onEditLink,
@@ -76,6 +87,14 @@ export default function EditorContextMenu({
   onClose,
 }: EditorContextMenuProps) {
   const items: MenuItem[] = [];
+  if (suggestions) {
+    for (const word of suggestions) {
+      items.push({ label: word, icon: NO_GLYPH, action: () => onReplaceWord(word) });
+    }
+    if (!suggestions.length)
+      items.push({ label: "No suggestions", icon: NO_GLYPH, disabled: true });
+    items.push({ label: "Add to dictionary", icon: <PlusIcon />, action: onAddWord });
+  }
   if (link === "external") {
     items.push(
       { label: "Open link", icon: <OpenLinkIcon />, action: onOpenLink },

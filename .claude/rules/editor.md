@@ -140,11 +140,16 @@ app's, made through state.**
 
 ## Right-click is Cut, Copy and Paste
 
-- `EditorContextMenu`: link actions first when on a link, then Cut, Copy, Paste (desktop only);
-  in a table cell (its own host and text) Delete table last. Media and code keep their own.
-- **Items run the keys' own path** (the captured range, then `execCommand` or `paste` IPC).
-- **Mac text-menu behaviour** (`utils/contextSelection.ts`). **The menu never takes focus**: it
-  listens in document capture, so the selection stays the ordinary blue. `text-context-menu.spec.ts`.
+- `EditorContextMenu`: a misspelled word's guesses (three at most) and Add to dictionary, or a
+  link's actions; then Cut, Copy, Paste; in a table cell Delete table last. Media and code
+  keep their own.
+- **Items run the keys' own path** (the captured range, then `execCommand`, a guess as
+  `insertText`, or `paste` IPC).
+- **Spelling is the system's** (`electron/spelling.ts`), for one word of prose
+  (`spellableWord`); a Mac is asked in the paragraph's language (Chromium asks in its first).
+  `spelling.spec.ts`.
+- **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
+  stays blue. `text-context-menu.spec.ts`.
 
 ## Block drag: the gutter handle, never the text
 
@@ -160,7 +165,7 @@ app's, made through state.**
   places (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
   `motion.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
-  CSS `zoom`). Not yet: the file and code-block menus, the callout picker, links.
+  CSS `zoom`). Not yet: the callout picker, links.
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register
@@ -185,7 +190,7 @@ app's, made through state.**
 ## Headings
 
 H1–H6 are native elements styled by `headingStyle`. **Every editor spacing value lives in
-`DEFAULT_RHYTHM`** (`useRhythm`; `pnpm dev:tweak` drags it live). New headings are ATX;
+`DEFAULT_RHYTHM`**. New headings are ATX;
 imported spelling lives in `headingSource`. An empty heading shows `Heading N` from CSS.
 `heading-placeholder.spec.ts`.
 

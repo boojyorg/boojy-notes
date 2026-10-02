@@ -8,6 +8,7 @@ import { atScale } from "../../utils/uiScale";
 import { fontWeight } from "../../tokens/typography";
 import AppearanceTab from "./AppearanceTab";
 import UpdatesTab from "./UpdatesTab";
+import SpellingSection from "./SpellingSection";
 import StorageTab from "./StorageTab";
 import SettingsFooter from "./SettingsFooter";
 import { SCRIM, SectionTitle, SettingsRule, dialogSurface } from "./SettingsPrimitives";
@@ -183,6 +184,8 @@ export default function SettingsModal({
                 forgetVault={forgetVault}
                 revealVault={revealVault}
               />
+              <SettingsRule />
+              <SpellingSection SectionHeader={SectionTitle} />
               <SettingsRule />
               <UpdatesTab isDesktop={isDesktop} SectionHeader={SectionTitle} />
             </>

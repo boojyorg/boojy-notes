@@ -27,7 +27,7 @@ import { gutterBlockAt } from "../utils/gutterSelect";
 import FloatingToolbar from "./FloatingToolbar";
 import LinkTooltip from "./LinkTooltip";
 import EditorContextMenu from "./EditorContextMenu";
-import { menuAnchorFor, pointInRange, wordRangeAt } from "../utils/contextSelection";
+import { menuAnchorFor, pointInRange, spellableWord, wordRangeAt } from "../utils/contextSelection";
 import {
   getBlockFromNode,
   placeCaret,
@@ -168,6 +168,8 @@ const EditorArea = memo(
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
+    // The app's toasts: Add to dictionary's, with its Undo.
+    showToast,
     // A note whose text a sync service keeps online: shown downloading, never empty.
     offloaded,
   }) {
@@ -731,6 +733,8 @@ const EditorArea = memo(
     // on is taken now, before it takes focus: the selection's range and the
     // field that held focus (a code block's textarea keeps its own selection).
     const [linkCtxMenu, setLinkCtxMenu] = useState(null);
+    // The latest right-click's spelling question: an older answer is dropped.
+    const spellAsk = useRef(0);
 
     const handleEditorContextMenu = useCallback(
       (e) => {
@@ -798,7 +802,18 @@ const EditorArea = memo(
           menu.title = status.kind === "note" ? status.title : target;
           menu.element = wikilink;
         }
-        setLinkCtxMenu(menu);
+        // One word of prose: the menu opens with its spellings once the
+        // checker answers (a Mac's, a few hundredths of a second).
+        const asked = ++spellAsk.current;
+        const word = field || linkEl ? null : spellableWord(range);
+        const check = getAPI()?.checkSpelling;
+        if (!word || !check) return setLinkCtxMenu(menu);
+        check(word.text, word.paragraph)
+          .catch(() => null)
+          .then((suggestions) => {
+            if (asked !== spellAsk.current) return;
+            setLinkCtxMenu(suggestions ? { ...menu, word: word.text, suggestions } : menu);
+          });
       },
       [noteDataRef, editorRef],
     );
@@ -1310,6 +1325,25 @@ const EditorArea = memo(
               <EditorContextMenu
                 anchor={linkCtxMenu.anchor}
                 link={linkCtxMenu.linkType}
+                suggestions={linkCtxMenu.suggestions}
+                // Typed over the word, as the keys would: one undoable edit.
+                onReplaceWord={(w) =>
+                  runOnSelection(() => document.execCommand("insertText", false, w))
+                }
+                onAddWord={() => {
+                  const { word } = linkCtxMenu;
+                  dismissCtxMenu();
+                  getAPI()
+                    ?.addDictionaryWord?.(word)
+                    .then(() =>
+                      showToast?.(`Added "${word}" to dictionary`, "done", {
+                        action: {
+                          label: "Undo",
+                          run: () => getAPI()?.removeDictionaryWord?.(word),
+                        },
+                      }),
+                    );
+                }}
                 onOpenLink={() => {
                   if (linkCtxMenu.linkType === "external") {
                     const api = getAPI();

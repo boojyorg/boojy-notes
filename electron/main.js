@@ -1,14 +1,4 @@
-import {
-  app,
-  BrowserWindow,
-  Menu,
-  protocol,
-  net,
-  nativeTheme,
-  ipcMain,
-  dialog,
-  shell,
-} from "electron";
+import { app, BrowserWindow, protocol, net, nativeTheme, ipcMain, dialog, shell } from "electron";
 import path from "node:path";
 import { WINDOW_MIN_W, WINDOW_STRIP_H } from "../src/constants/layout.js";
 import fs from "node:fs";
@@ -36,6 +26,7 @@ import {
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
 import { buildAppMenu } from "./appMenu.js";
+import { applySpelling, registerSpellingIPC } from "./spelling.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -186,34 +177,10 @@ function createWindow() {
     if (stripHash(url) !== stripHash(contents.getURL())) event.preventDefault();
   });
 
-  // Spell check follows the stored setting; the context menu offers its
-  // suggestions. Both belong to the window, so a window made again after
-  // Cmd+W (the Dock click's `activate`) gets them too.
-  const settings = loadSettings();
-  const spellLangs = settings.spellCheckLanguages || ["en-US"];
-  mainWindow.webContents.session.setSpellCheckerLanguages(
-    settings.spellCheckEnabled !== false ? spellLangs : [],
-  );
-  mainWindow.webContents.on("context-menu", (event, params) => {
-    // Prevent native context menu — custom menus are handled in the renderer
-    event.preventDefault();
-    if (params.misspelledWord) {
-      const win = mainWindow;
-      const menu = Menu.buildFromTemplate([
-        ...params.dictionarySuggestions.map((s) => ({
-          label: s,
-          click: () => win?.webContents.replaceMisspelling(s),
-        })),
-        { type: "separator" },
-        {
-          label: "Add to Dictionary",
-          click: () =>
-            win?.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
-        },
-      ]);
-      menu.popup();
-    }
-  });
+  // Spell check follows the stored setting (electron/spelling.ts); it
+  // belongs to the window, so a window made again after Cmd+W (the Dock
+  // click's `activate`) gets it too.
+  applySpelling(mainWindow.webContents.session);
 
   // Boojy Notes scales its own UI (Cmd+Plus/Minus/0 → `boojy-ui-scale`); the
   // native controls never scale with Chromium's page zoom, so any page zoom
@@ -279,6 +246,7 @@ ipcMain.handle("paste", (event) => {
 registerOSTrashIPC(getNotesDir, { suppressUnlink: claimUnlink, releaseUnlink: releaseUnlinkClaim });
 registerFolderIPC(getNotesDir, { suppressTree: claimTree });
 registerSettingsIPC(getMainWindow, restartWatcher);
+registerSpellingIPC();
 setupAutoUpdater(getMainWindow);
 
 // ─── App lifecycle ───

@@ -83,6 +83,8 @@ interface MenuProps {
   onClose: () => void;
   minWidth?: number;
   maxWidth?: number;
+  /** A long list scrolls, the lit row kept in view. */
+  maxHeight?: number;
   className?: string;
   testId?: string;
   /** A keyboard-opened menu starts on a row, as its first key would put it. */
@@ -141,6 +143,7 @@ export default function Menu({
   onClose,
   minWidth,
   maxWidth,
+  maxHeight,
   className,
   testId,
   initialActive = -1,
@@ -228,6 +231,12 @@ export default function Menu({
     document.addEventListener("keydown", onKey, !takesFocus);
     return () => document.removeEventListener("keydown", onKey, !takesFocus);
   }, [takesFocus]);
+
+  useEffect(() => {
+    if (maxHeight && active >= 0) {
+      document.getElementById(`${idPrefix}-${active}`)?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [active, idPrefix, maxHeight]);
 
   // The submenu's first row level with the row that opened it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-placed when the menu itself moves
@@ -385,6 +394,8 @@ export default function Menu({
           left: (pos?.left ?? anchor.left) / zoom,
           minWidth,
           maxWidth,
+          maxHeight,
+          overflowY: maxHeight ? "auto" : undefined,
         }}
       >
         {header}

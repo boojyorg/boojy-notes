@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
   getNotesDir: () => ipcRenderer.invoke("get-notes-dir"),
@@ -30,6 +30,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   copyTextToClipboard: (payload) => ipcRenderer.invoke("copy-text-to-clipboard", payload),
   // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
   paste: () => ipcRenderer.invoke("paste"),
+  // Spelling (electron/spelling.ts). A word's check answers null when it is
+  // spelled right, else its first three guesses. A Mac's comes from the
+  // main process, in the paragraph's language; elsewhere the window's own
+  // checker answers, in the chosen languages.
+  checkSpelling: async (word, paragraph) => {
+    if (process.platform === "darwin") return ipcRenderer.invoke("check-spelling", word, paragraph);
+    if (!webFrame.isWordMisspelled(word)) return null;
+    // A word just added reaches this checker late (Linux): the dictionary decides.
+    if (await ipcRenderer.invoke("is-learned-word", word)) return null;
+    return webFrame.getWordSuggestions(word).slice(0, 3);
+  },
+  getSpelling: () => ipcRenderer.invoke("get-spelling"),
+  setSpelling: (change) => ipcRenderer.invoke("set-spelling", change),
+  addDictionaryWord: (word) => ipcRenderer.invoke("add-dictionary-word", word),
+  removeDictionaryWord: (word) => ipcRenderer.invoke("remove-dictionary-word", word),
+  openKeyboardSettings: () => ipcRenderer.invoke("open-keyboard-settings"),
   // The application menu (electron/appMenu.ts): its items arrive as command
   // ids, and the window tells it what can act so it greys what cannot.
   onMenuCommand: (callback) => {

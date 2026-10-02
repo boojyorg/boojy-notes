@@ -94,6 +94,8 @@ tiers. Hit boxes are `CHROME_BTN`.
 
 - Settings is one pane on the palette's surface. Accent never marks the chosen pill.
   Switching never asks.
+- **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
+  dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
 - **Interface size is one segmented control; every press applies at once** — no timer in this
   row (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
@@ -216,8 +218,3 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
   name; margins go first, then gutters.
-
-## Testing notes
-
-`Sidebar.test.jsx` asserts CSS hook classes, not computed styles (jsdom). Theme mocks carry
-`ACCENT.onAccent`.
