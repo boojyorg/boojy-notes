@@ -9,13 +9,6 @@ import { cssZoom } from "../utils/domHelpers";
 import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
 
-type Theme = {
-  BG: Record<string, string>;
-  TEXT: Record<string, string>;
-  ACCENT: Record<string, string>;
-  modalShadow: string;
-};
-
 interface Props {
   state: VersionHistoryState;
   hour12: boolean | undefined;
@@ -60,7 +53,7 @@ export default function VersionHistoryList({
   close,
   onTypeIntoPast,
 }: Props) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT } = theme;
   const listRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);

@@ -110,14 +110,7 @@ export default function SearchPalette({
   recentIds = [],
   currentNoteId = null,
 }: SearchPaletteProps) {
-  const { theme } = useTheme() as {
-    theme: {
-      BG: Record<string, string>;
-      TEXT: Record<string, string>;
-      ACCENT: Record<string, string>;
-      modalShadow: string;
-    };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const { accentText } = useLayout() as { accentText: string };
   const { noteData } = useNoteData() as { noteData: NoteData };

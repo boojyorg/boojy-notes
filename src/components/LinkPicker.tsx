@@ -102,9 +102,7 @@ export default function LinkPicker({
   onRemove,
   onClose,
 }: LinkPickerProps) {
-  const { theme } = useTheme() as {
-    theme: Record<string, Record<string, string>> & { modalShadow: string };
-  };
+  const { theme } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
   const editing = mode === "edit";
 
@@ -151,10 +149,7 @@ export default function LinkPicker({
 
   // Placement: under the anchor, flipped or clamped into the viewport, then
   // divided by the UI scale before it becomes a style.
-  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length }) as {
-    top: number;
-    left: number;
-  } | null;
+  const pos = useMenuPosition(menuRef, true, anchor, { gapY: 4, reflowKey: rows.length });
   useExitGhost(menuRef);
   const zoom = cssZoom(document.documentElement);
 

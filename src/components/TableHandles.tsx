@@ -141,16 +141,7 @@ export default function TableHandles({
   onOpenMenu: (target: HandleTarget, anchor: MenuAnchor) => void;
   onMove: (kind: HandleKind, from: number, to: number) => void;
 }) {
-  const { theme } = useTheme() as {
-    theme: {
-      BG: Record<string, string>;
-      TEXT: Record<string, string>;
-      ACCENT: Record<string, string>;
-      button: { border: string };
-      dragShadow: string;
-      floatShadow: string;
-    };
-  };
+  const { theme } = useTheme();
   const [hover, setHover] = useState<{ row: number | null; col: number | null }>({
     row: null,
     col: null,

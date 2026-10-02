@@ -2,8 +2,6 @@ import { useTheme } from "../hooks/useTheme";
 import { OffloadedIcon } from "./Icons";
 import { SmallButton } from "./settings/SettingsPrimitives";
 
-type Theme = { TEXT: Record<string, string> };
-
 interface Props {
   /** `iCloud`, `Dropbox`…, or null when the location is not in a known service. */
   provider: string | null;
@@ -17,7 +15,7 @@ interface Props {
  * text is here. A failed download says so and offers another try.
  */
 export default function OffloadedNoteView({ provider, failed, retry }: Props) {
-  const { theme } = useTheme() as { theme: Theme };
+  const { theme } = useTheme();
   const from = provider ? ` from ${provider}` : "";
   return (
     <div

@@ -37,9 +37,7 @@ export default function SpacerBlock({
   onSelect,
   registerRef,
 }: SpacerBlockProps) {
-  const { theme } = useTheme() as {
-    theme: { name?: string; BG: Record<string, string> };
-  };
+  const { theme } = useTheme();
   const { BG } = theme;
   const rootRef = useRef<HTMLDivElement>(null);
 

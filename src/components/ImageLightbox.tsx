@@ -25,9 +25,7 @@ const HEADER = 56;
  * it too, as they always have, so a key meant for the note never lands behind it.
  */
 export default function ImageLightbox({ src, alt, name, onClose }: ImageLightboxProps) {
-  const { theme } = useTheme() as {
-    theme: { lightbox: { scrim: string; ink: string; hover: string } };
-  };
+  const { theme } = useTheme();
   const { scrim, ink, hover } = theme.lightbox;
   const containerRef = useRef<HTMLDivElement>(null);
   const [closeHot, setCloseHot] = useState(false);

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { type RefObject, useLayoutEffect, useState } from "react";
 import { positionMenu } from "../utils/menuPosition";
 
 /**
@@ -7,17 +7,32 @@ import { positionMenu } from "../utils/menuPosition";
  * the layout effect corrects the position before paint, so there is no
  * visible jump.
  *
- * @param {{ current: HTMLElement | null }} ref The menu element.
- * @param {boolean} open Whether the menu is showing.
- * @param {{ top: number, bottom: number, left: number, right: number } | null} anchor
- * @param {{ margin?: number, gapY?: number, align?: "start" | "end", reflowKey?: unknown }} [opts]
- *   `align` — which edge meets the anchor's (`positionMenu`).
- *   `reflowKey` — pass anything that changes the menu's size (item count,
- *   an open submenu) so the position is recomputed.
+ * `opts.align` — which edge meets the anchor's (`positionMenu`).
+ * `opts.reflowKey` — pass anything that changes the menu's size (item count,
+ * an open submenu) so the position is recomputed.
  */
-export function useMenuPosition(ref, open, anchor, opts = {}) {
+interface Anchor {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+interface MenuPositionOpts {
+  margin?: number;
+  gapY?: number;
+  align?: "start" | "end";
+  reflowKey?: unknown;
+}
+
+export function useMenuPosition(
+  ref: RefObject<HTMLElement | null>,
+  open: boolean,
+  anchor: Anchor | null | undefined,
+  opts: MenuPositionOpts = {},
+): { left: number; top: number } | null {
   const { margin, gapY, align, reflowKey } = opts;
-  const [pos, setPos] = useState(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
     if (!open || !anchor || !ref.current) {

@@ -24,7 +24,7 @@ import { focusNote } from "../utils/domHelpers";
 import { useSettings } from "../context/SettingsContext";
 import {
   AttachmentsIcon,
-  RecentlyDeletedIcon,
+  TrashIcon,
   FolderIcon,
   OffloadedIcon,
   OtherFileIcon,
@@ -1485,7 +1485,7 @@ const Sidebar = memo(function Sidebar({
               e.currentTarget.style.color = TEXT.secondary;
             }}
           >
-            <RecentlyDeletedIcon />
+            <TrashIcon />
             {/* No count: no other row in the sidebar carries one, and a number
                 reads as something to clear, which a safety net is not. */}
             <span style={{ flex: 1 }}>Recently Deleted</span>

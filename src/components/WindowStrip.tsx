@@ -32,7 +32,7 @@ export default function WindowStrip({
   sidebarWidth,
   resizeHandle,
 }: WindowStripProps) {
-  const { theme } = useTheme() as { theme: Record<string, Record<string, string>> };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const api = getAPI() as Window["electronAPI"] | null;
   const [labels, setLabels] = useState<string[]>([]);

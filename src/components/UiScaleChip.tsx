@@ -13,12 +13,6 @@ export interface ScaleHint {
   scale: number;
 }
 
-interface ChipTheme {
-  BG: { elevated: string; divider: string; surface: string };
-  TEXT: { primary: string; secondary: string };
-  modalShadow: string;
-}
-
 interface UiScaleChipProps {
   hint: ScaleHint | null;
   onHide: () => void;
@@ -41,7 +35,7 @@ interface UiScaleChipProps {
  * the window, for the reason the toast stack is.
  */
 export default function UiScaleChip({ hint, onHide, left }: UiScaleChipProps) {
-  const { theme } = useTheme() as { theme: ChipTheme };
+  const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const chipRef = useRef<HTMLDivElement>(null);
   useExitGhost(chipRef, !!hint);
