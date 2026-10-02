@@ -42,7 +42,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon } from "./Icon
 import Collapsible from "./Collapsible";
 
 /**
- * The path's folder popup (2026-09-16): the sidebar's tree drawn small under
+ * The path's folder popup: the sidebar's tree drawn small under
  * the crumb you clicked, scoped to that folder's parent, for browsing the
  * notes near the open one with the sidebar hidden. Clicking a folder crumb in
  * `University / Archive / Todd's Note` shows University's contents with Archive
@@ -67,7 +67,7 @@ import Collapsible from "./Collapsible";
  * non-modal `dialog`, so the shell's shortcuts stay quiet while it is open
  * (`focusOwner`). Nothing here renames or deletes.
  *
- * Two things move from here (2026-09-20). A press held on a row and dragged
+ * Two things move from here. A press held on a row and dragged
  * lifts it, the sidebar's own drag (`useSidebarDrag`, handed in as
  * `onRowPointerDown`): the note or folder goes into whichever folder row it
  * is dropped on, or onto the head row. The head row is the popup's scope,
@@ -178,7 +178,7 @@ export default function PathTreeMenu({
     return at >= 0 ? at : 0;
   });
   const active = rows[Math.min(activeIndex, rows.length - 1)] ?? null;
-  // Three states on one pill (2026-09-16): the open note keeps the sidebar's
+  // Three states on one pill: the open note keeps the sidebar's
   // own active row, the grey pill in primary ink, for as long as the popup is
   // open; the pointer's row takes the same pill, as every hover does; and once
   // a key has moved the highlight it also carries the accent ring, what
@@ -309,8 +309,8 @@ export default function PathTreeMenu({
 
   // A press outside closes the popup and is not swallowed: it goes on to do
   // what it would have done, a macOS transient popover's manner rather than
-  // a menu's backdrop (Undo with the popup open used to only close it, and
-  // read as a dead button, 2026-09-16). Capture phase, so the popup is gone
+  // a menu's backdrop (which makes a first press read as a dead button).
+  // Capture phase, so the popup is gone
   // before the press's own target acts. The opening crumb is left to itself:
   // its click toggles the popup closed rather than closing and reopening.
   useEffect(() => {

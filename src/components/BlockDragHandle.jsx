@@ -27,8 +27,7 @@ import { Tooltip, useTooltip } from "./Tooltip";
  * appearance never shifts a line of prose. Every rect is in viewport pixels,
  * which under the app's UI scale (`zoom` on `<html>`) are CSS pixels times the
  * scale; the difference is divided by that scale once, where it becomes a
- * style (`cssZoom`). Before this the grip drifted down the note by the scale
- * factor at any setting but 100% (2026-09-10).
+ * style (`cssZoom`), or the grip would drift by the scale factor.
  *
  * Hover is the discoverability model; keyboard reorder (Cmd/Ctrl+Shift+↑/↓)
  * is the non-pointer path.
@@ -57,9 +56,7 @@ export const TABLE_GRIP_CLEARANCE = 14;
  *
  * A block that draws its own rows is asked first, because the text walk below
  * skips whitespace and a row of its own may hold none: a code block's first
- * line is a row even when it is blank, and a fence opening on one put the grip
- * on the first line with characters in it — two rows down and 40px low
- * (2026-09-19). A divider's rule is the same question: the one row it has.
+ * line is a row even when it is blank. A divider's rule is the same question: the one row it has.
  */
 const OWN_FIRST_ROW = ".code-line, hr";
 
@@ -207,9 +204,8 @@ export default function BlockDragHandle({
     };
     // A key unmounts the grip, and an element unmounted while hovered never
     // fires mouseleave: with the pointer resting on the grip, one keystroke
-    // (Cmd+Z was the natural one) left `hoveringHandle` true for the life of
-    // the mount and every mousemove was ignored from then on — the grip was
-    // gone until the next note switch (2026-09-20). Hidden means not hovered.
+    // would leave `hoveringHandle` true and every later mousemove ignored.
+    // Hidden means not hovered.
     const onKey = (e) => {
       // A modifier alone is the hand getting ready to Shift-click the grip.
       if (MODIFIER_KEYS.has(e.key)) return;

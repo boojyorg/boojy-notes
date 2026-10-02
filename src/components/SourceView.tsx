@@ -33,7 +33,7 @@ interface SourceViewProps {
 }
 
 /**
- * The note as its file (2026-09-24, from the canvas Tyr judged): the Markdown
+ * The note as its file: the Markdown
  * as written, in monospace, editable. Opened from the ··· menu, View in the
  * menu bar or ⌘/, closed the same ways or by the lit `</>` in the chrome row.
  *

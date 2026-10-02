@@ -18,13 +18,10 @@ function replaceRange(range, replacement) {
  * Highlight API). Replace edits those same text nodes, in place, and the block
  * is then read back from what is on screen, exactly as a keystroke is: the
  * live DOM is what the user is looking at, and reading it back keeps state and
- * screen the same note. Before this, Replace rewrote the block's Markdown in
- * state alone, which the editor never repaints for a text-only change, so the
- * file changed, the paragraph did not, and the next keystroke in it read the
- * old text back over the replacement (review 2026-09-07, §3.3). Editing the
- * visible text also means the nth visible match is the one replaced (the
- * Markdown-index arithmetic it replaces counted a match inside a link's URL),
- * and the replacement is text, never a pattern. Only a text block is edited
+ * screen the same note (the editor never repaints a text-only change made in
+ * state). Editing the visible text also means the nth visible match is the
+ * one replaced, never one inside a link's URL, and the replacement is text,
+ * never a pattern. Only a text block is edited
  * (a table cell, a callout and a code block own their fields); a match in one
  * of those is found and highlighted but left alone by Replace.
  */

@@ -20,7 +20,7 @@ import {
   UnlinkIcon,
 } from "./Icons";
 
-/** Air between the painted selection and the menu (judged 2026-09-23: 4 read as detached, 0 as touching). */
+/** Air between the painted selection and the menu (more reads detached, none touching). */
 const MENU_GAP = 2;
 
 /** What was right-clicked, when it was a link. */
@@ -64,11 +64,9 @@ interface Item {
 }
 
 /**
- * The editor's right-click menu (2026-09-23): a link's own actions when the
- * pointer is on a link, then Cut, Copy and Paste with their shortcuts, as
- * Notion's and every native text menu has. Before this a right-click on text
- * did nothing at all (Electron supplies no menu) and a link's menu was a
- * hand-drawn list with no glyphs or keys.
+ * The editor's right-click menu (Electron supplies none): a link's own actions
+ * when the pointer is on a link, then Cut, Copy and Paste with their
+ * shortcuts, as Notion's and every native text menu has.
  *
  * In a table cell it is the same menu, with Tidy table (only while its
  * columns are not lined up) and Delete table last under a rule:

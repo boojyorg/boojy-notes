@@ -18,7 +18,7 @@ interface ImageLightboxProps {
 const HEADER = 56;
 
 /**
- * An image at full size (2026-09-23, Obsidian's view): a dark room whatever
+ * An image at full size (Obsidian's view): a dark room whatever
  * the theme, the file's name centred at the top, a close button at the right,
  * the picture fitted inside the window and never enlarged. Escape, the close
  * button or a click anywhere but the picture closes it. The arrow keys close

@@ -237,8 +237,7 @@ export default memo(function CalloutBlock({
   // its text (useOwnedField). The title is plain text: a newline cannot
   // live in the marker line, so Enter and Shift+Enter move to the body.
   // The body is inline Markdown, read back with the editor's own reader;
-  // read as innerText it lost every `**bold**`, `[[link]]` and backtick on
-  // the first click in and out (review 2026-09-07, §3.2).
+  // innerText would lose every `**bold**`, `[[link]]` and backtick.
   const title = block.title || "";
   const text = block.text || "";
 

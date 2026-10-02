@@ -10,8 +10,7 @@ import { SORT_ALPHA, SORT_RECENT } from "../utils/noteSort";
 import { CheckIcon, ClockIcon, SortAlphaIcon } from "./Icons";
 
 /**
- * The Notes row's Sort menu (2026-09-16, formerly the ··· "List options" menu,
- * which also carried New folder and Reveal in Finder): two radio items, each
+ * The Notes row's Sort menu: two radio items, each
  * with its glyph at the menu tier, the chosen one marked with a check on the
  * right. Folders are always first and alphabetical; the choice orders notes
  * alone, at the root and inside every folder. Same keyboard grammar as
@@ -19,8 +18,8 @@ import { CheckIcon, ClockIcon, SortAlphaIcon } from "./Icons";
  * pointer-opened menu parks initial focus on the container so no item paints
  * a focus ring.
  *
- * Deliberately absent: "Collapse all folders" (removed 2026-09-05: folders
- * toggle on click and stay as left across launches). The vault's own items
+ * Deliberately absent: "Collapse all folders" (folders toggle on click and
+ * stay as left across launches). The vault's own items
  * (switching, Open folder…, Show in Finder, what the tree shows besides
  * notes) are the vault menu's, under the vault's name (`VaultMenu`): Sort
  * orders the list, it never filters it.

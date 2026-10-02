@@ -12,7 +12,7 @@ import TableHandles from "./TableHandles";
 import { PlusIcon } from "./Icons";
 import { Z } from "../constants/zIndex";
 
-/** The add-row and add-column boxes' thickness (28 and 14 judged live on 2026-09-10; 18 sits between). */
+/** The add-row and add-column boxes' thickness. */
 export const ADD_BAR = 18;
 /** The Plus inside them: 16px on the navigation stroke, a step heavier than the 1px grid. */
 const ADD_PLUS = 16;
@@ -312,8 +312,7 @@ export default memo(function TableBlock({
       } else if (e.key === "Enter" && !e.shiftKey) {
         // A row is one line: Enter moves down a row (a new one after the
         // last), never into a second line of the cell. Shift+Enter is the
-        // browser's line break, which the file holds as `<br>` (review
-        // 2026-09-07, §3.1).
+        // browser's line break, which the file holds as `<br>`.
         e.preventDefault();
         if (rowIdx < lastRow) {
           focusCell(rowIdx + 1, colIdx);
@@ -341,10 +340,10 @@ export default memo(function TableBlock({
         }
       } else if (!plainArrow(e)) {
         // A modified arrow is the browser's: Shift extends the selection,
-        // Cmd/Ctrl and Alt jump by line and word inside the cell (END_OF_LINE
-        // in a cell used to hop to the next cell before this guard).
+        // Cmd/Ctrl and Alt jump by line and word inside the cell, never to
+        // the next cell.
       } else if (e.key === "ArrowUp" && caretOnLine(e.currentTarget, "top")) {
-        // The arrows walk the grid, and leave it at its edges (2026-09-10).
+        // The arrows walk the grid, and leave it at its edges.
         // Inside a cell they are the browser's own; only a caret on the
         // cell's first or last line, or at its first or last character, moves
         // between cells.

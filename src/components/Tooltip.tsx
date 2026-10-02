@@ -7,10 +7,8 @@ import { isMac } from "../utils/platform";
 
 /**
  * The app's one tooltip: a chip naming a control, with its shortcut in a small
- * grey pill where one exists. The selection toolbar drew it first (2026-09-10);
- * the chrome row's buttons, the wordmark and the Notes row's pair took it on
- * 2026-09-17 in place of the browser's own `title` tooltip, which arrives a
- * second late, unstyled and without the shortcut. A control that shows the chip
+ * grey pill where one exists, in place of the browser's own `title` tooltip,
+ * which arrives a second late, unstyled and without the shortcut. A control that shows the chip
  * carries no `title`.
  */
 
@@ -23,9 +21,8 @@ export const TOOLTIP_REST_MS = 400;
  */
 export const TOOLTIP_WARM_MS = 300;
 /**
- * Air between the control and the chip (4: at 6 the chip floated as its own
- * object; at 4 it reads as attached to the button it names, judged 2026-09-17),
- * and between the chip and the window's edge.
+ * Air between the control and the chip (any more and the chip floats as its
+ * own object rather than attached to the button it names), and between the chip and the window's edge.
  */
 const GAP = 4;
 const EDGE = 8;
@@ -138,7 +135,7 @@ export function Tooltip({
         background: BG.elevated,
         // A hairline and no shadow: a shadow says "a surface you can act on",
         // which the menus are and a label is not. The border draws the edge on
-        // both grounds (judged 2026-09-17).
+        // both grounds.
         border: `1px solid ${BG.divider}`,
         color: TEXT.primary,
         // A control's label, read at a glance: 13px/500 in the primary ink.
@@ -199,9 +196,7 @@ export interface TooltipHandlers {
  * once, since the user is on the control on purpose. Focus that a press gave,
  * and focus a closing menu or dialog hands back to the button that opened it,
  * is not keyboard focus and shows nothing: the browser's own `:focus-visible`
- * is the judge (false when the last interaction was a pointer), which is what
- * kept the chip up after Settings or the Sort menu closed with the pointer
- * elsewhere (2026-09-17). A press, Enter, Space or Escape hides it, and it
+ * is the judge (false when the last interaction was a pointer). A press, Enter, Space or Escape hides it, and it
  * stays hidden until the pointer leaves and returns or the control is focused
  * again, so a toggle never flashes its old name after it has acted.
  */

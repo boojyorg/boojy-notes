@@ -18,7 +18,7 @@ interface UpdateStatus {
 
 /**
  * Settings → Updates: the automatic-updates switch, then one status line and
- * one button (2026-09-17). The button says what it is doing (`Checking…`,
+ * one button. The button says what it is doing (`Checking…`,
  * `Downloading…`, disabled), the line says what was found; only the ready
  * state changes the button's look, because it is the one that needs a
  * decision. An error keeps its feedback in the error ink with `Try again`.

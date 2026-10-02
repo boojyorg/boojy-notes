@@ -25,14 +25,14 @@ import { tagPillGround } from "../styles/tagPill";
  * Search. When the sidebar IS showing those three live in it (see
  * Sidebar.jsx), so exactly one of each exists at any moment and it always
  * means the same thing. The trio fades in at the corner as the panel finishes
- * leaving (tokens/motion.js). Undo and Redo sat beside it until 2026-09-24;
- * they are the menu bar's Edit → Undo and Redo now (electron/appMenu.ts).
+ * leaving (tokens/motion.js). Undo and Redo are the menu bar's
+ * (electron/appMenu.ts).
  *
  * Right, the note's ··· menu — the active note's actions, and Settings under a
  * separator. It is rendered with no active note too, carrying Settings alone:
  * app settings must never need a note to reach. While the Markdown view is on,
  * a lit `</>` stands left of it: the mode's one mark on screen, and its way
- * back (2026-09-24). It is not there at rest; the ··· menu, View and ⌘/ open
+ * back. It is not there at rest; the ··· menu, View and ⌘/ open
  * the view.
  *
  * Between the two, centred on the pane, the note's path and name (NotePath,
@@ -92,10 +92,8 @@ export const chromeControlsLeft = (collapsed, fullScreen = false) =>
 /**
  * Where the path's band begins, measured from the editor's left edge: past
  * the whole visible control group, not just the toggle, plus its air. Counted
- * from CHROME_INSET alone, the reserve left the collapsed toggle sitting on
- * the first letters of the note's name at every window width on macOS
- * (2026-09-07); counted from the toggle alone it would now put four more
- * buttons there. Keep this beside the group it measures — the two must move
+ * from CHROME_INSET or the toggle alone, controls would sit on the note's
+ * name. Keep this beside the group it measures — the two must move
  * together.
  */
 export const chromePathInset = (collapsed, fullScreen = false) =>
@@ -104,9 +102,7 @@ export const chromePathInset = (collapsed, fullScreen = false) =>
 /**
  * Where the path's band ends, measured from the editor's right edge: the ···,
  * the room the Markdown view's `</>` takes beside it, and the air. Reserved
- * whether the view is on or not, so switching never moves the path: a band
- * that widened and narrowed with the mode re-centred the name and, for a
- * frame, dropped its folders (2026-09-24).
+ * whether the view is on or not, so switching never moves the path.
  */
 export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
 
@@ -143,7 +139,7 @@ export function ChromeButton({
   active,
   // A mode that is on (the Markdown view): the glyph in the accent ink on the
   // tag pill's teal wash, a step stronger under the pointer. Never the grey
-  // of hover, which it was first and read as a hovered button (2026-09-24).
+  // of hover, which reads as a hovered button.
   lit,
   children,
   style,
@@ -245,9 +241,8 @@ export default function EditorChrome({
   const collapsed = !sidebarVisible;
 
   // The left controls belong to the editor, so they start at its left edge,
-  // which collapsed is the viewport's. Undo and Redo left this row on
-  // 2026-09-24 for the menu bar's Edit menu, so an expanded sidebar leaves
-  // the editor's side of the row empty.
+  // which collapsed is the viewport's. An expanded sidebar leaves the
+  // editor's side of the row empty.
   const trioLeft = chromeControlsLeft(true, fullScreen);
 
   return (

@@ -227,7 +227,7 @@ export default function SearchPalette({
   // the list's *content* changes (a keystroke, a chip, results landing). Not
   // on the array's identity: the index re-runs the query on every change to
   // the note store, and a save or watcher event landing between ArrowDown
-  // and Enter put the highlight back on the first row (CI, 2026-09-20).
+  // and Enter would put the highlight back on the first row.
   const [active, setActive] = useState(0);
   const rowKey = (r: Row) =>
     r.kind === "tag"

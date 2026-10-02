@@ -106,17 +106,15 @@ function Segment({ divider, disabled, children, style, ...rest }) {
 
 /**
  * Settings → Appearance → Interface size: how big the app draws everything,
- * the `Cmd+±` scale given a control (2026-09-19). It was keyboard-only, so
- * nothing in the app said the feature existed, nothing said what scale you
- * were on, and nothing said `Cmd+0` was the way back.
+ * the `Cmd+±` scale given a control, so the app says the feature exists,
+ * what scale you are on, and the way back.
  *
  * **One segmented control** — `−`, the figure and `+` in a single pill — and
  * **every press applies at once**. It is the pane that holds still, not the
  * scale: Settings keeps the size it opened with (`SettingsModal`), so the app
  * behind it resizes under each press while the button stays under the pointer.
- * A debounce was tried first and judged twice: the controls still moved once
- * per run, and the timer brought a pending value that could land on top of a
- * newer one. There is no timer here.
+ * There is no timer here: a debounce's pending value could land on top of a
+ * newer one.
  *
  * **The figure is a control**: clicking it types a whole percentage in the same
  * range, applied on Enter or on leaving the field and never while it is typed

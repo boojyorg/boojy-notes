@@ -8,8 +8,7 @@ import { locationPath, splitLocation } from "../../utils/storageLocations";
 import { SHOW_IN_FOLDER_LABEL, SmallButton } from "./SettingsPrimitives";
 
 /**
- * Settings → Storage locations (2026-09-25, Tyr's direction over several
- * rounds of mockups): a small table, one row per location. The folder's name
+ * Settings → Storage locations: a small table, one row per location. The folder's name
  * leads, then where it lives, muted, 8px on, as one phrase with no glyph
  * (the path says iCloud Drive, "Not found" says gone). The phrase is the
  * Show in Finder control and takes the hover grey, its path lifting to full

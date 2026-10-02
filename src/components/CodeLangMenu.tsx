@@ -12,8 +12,7 @@ import { CheckIcon } from "./Icons";
 
 /**
  * A code block's language menu, opened from the label at its bottom-right
- * corner (2026-09-19, replacing a bespoke dropdown of bare buttons with a
- * typed `✓`, no roles and no keyboard).
+ * corner.
  *
  * It is the Sort menu's grammar and nothing else: `menuitemradio` rows in the
  * menu surface, the chosen one marked with a Lucide check in the mark colour,
@@ -31,14 +30,13 @@ import { CheckIcon } from "./Icons";
  * It portals to `body`, as the table's cell menu and the callout picker do.
  * Rendered where it is opened, it lives inside the editor's contentEditable,
  * and the editor's caret rescue only stands aside for focus that has left the
- * editor (`useMouseHandlers`): the menu took focus and the rescue pulled it
- * straight back a frame later, so the first letter typed went nowhere.
+ * editor (`useMouseHandlers`), so it would pull the menu's focus straight
+ * back.
  *
  * **Its keys are its own element's, not the document's**, the one place it
  * departs from SortMenu. A portal moves the DOM but not the React tree, so a
- * key pressed in this menu still bubbles to the editor's `onKeyDown` — which
- * claimed Enter for a new block before any document listener ran, leaving the
- * menu's own to find the event already consumed. Handling it on the menu and
+ * key pressed in this menu still bubbles to the editor's `onKeyDown`, which
+ * would claim Enter for a new block before any document listener ran. Handling it on the menu and
  * stopping it there is what keeps the editor out of it.
  */
 

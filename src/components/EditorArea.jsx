@@ -67,11 +67,8 @@ import { wholeBlocksCopy } from "../utils/clipboardCopy";
  * file-then-document rather than as two titles. The filename and the H1 stay
  * independent: editing the heading never renames the file.
  *
- * On the desktop it sits in the chrome row, centred on the pane behind its
- * folder path (NotePath, 2026-09-15), and the column below it starts where it
- * always did: the body did not move when the name left it. On a touch device
- * there is no chrome row, so the name keeps its place at the head of the
- * column, small and muted.
+ * It sits in the chrome row, centred on the pane behind its folder path
+ * (NotePath).
  */
 /**
  * The column's own top padding on the desktop, under the chrome row.
@@ -88,8 +85,8 @@ import { wholeBlocksCopy } from "../utils/clipboardCopy";
  * (`EditableBlock`). So the line you read first never moves — not between
  * notes, and not when `# ` turns the first paragraph into a heading.
  *
- * Tops agreeing and centres agreeing were the two answers before this, on the
- * same day; a baseline is the line the eye actually reads two words as sharing.
+ * Not tops, not centres: a baseline is the line the eye reads two words as
+ * sharing.
  */
 const columnTop = (rhythm) =>
   COLUMN_HEAD_GAP +
@@ -277,10 +274,8 @@ const EditorArea = memo(
     // listener follows it.
     const hasNote = !!note;
     // A note opens at its top. The scroller is not keyed by the note (only
-    // the column inside it is), so the previous note's scroll carried over:
-    // the path band is sticky inside the scroller and stayed put while the
-    // new note's first line sat high under it, off the New note baseline
-    // (2026-09-20). A layout effect, so a search jump's own scroll (150 ms
+    // the column inside it is), so the previous note's scroll would carry
+    // over. A layout effect, so a search jump's own scroll (150 ms
     // later) still wins.
     useLayoutEffect(() => {
       if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
@@ -696,10 +691,8 @@ const EditorArea = memo(
     }, []);
 
     // A press anywhere but a selectable block's own surface deselects: beside
-    // a picture in its row, the margins, the sidebar and the chrome alike
-    // (2026-09-23). Before, only a click in the text column did, and the
-    // picture's whole row counted as the picture, so a picture stayed selected
-    // (its controls up) with the pointer well to its right. A surface is the
+    // a picture in its row, the margins, the sidebar and the chrome alike. A
+    // surface is the
     // thing drawn (`data-selection-surface`: the picture's frame, the divider's
     // row) plus the image menu, which is portalled out of it. Capture phase, so
     // it runs before the press that selects another block.
@@ -798,7 +791,7 @@ const EditorArea = memo(
         } else if (wikilink) {
           const target = wikilink.getAttribute("data-target") || "";
           // A link that names one note gets Open note; one that names none,
-          // or two, gets Fix link, which is the picker (2026-09-20).
+          // or two, gets Fix link, which is the picker.
           const status = wikilinkStatus(target, noteDataRef.current);
           menu.linkType = status.kind === "note" ? "wikilink" : "wikilink-broken";
           menu.url = target;
@@ -882,7 +875,7 @@ const EditorArea = memo(
         onKeyDown={(e) => {
           // Enter, or ArrowDown (the name is one line, so down always leaves
           // it): into the note's first block. ArrowUp from the first block
-          // comes back here (2026-09-24).
+          // comes back here.
           if (e.key === "Enter" || (e.key === "ArrowDown" && !e.shiftKey)) {
             e.preventDefault();
             // The Markdown view has no blocks: the caret goes to the top of its text.
@@ -918,8 +911,7 @@ const EditorArea = memo(
         onPaste={(e) => {
           e.preventDefault();
           // The name is one line: a paste gives it the clipboard's first line
-          // with text on it, never the rest. A pasted document became the
-          // whole name, a wall of text in the top row (2026-09-24).
+          // with text on it, never the rest.
           const text = e.clipboardData.getData("text/plain");
           const line = text.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
           if (line) document.execCommand("insertText", false, line.trim());
@@ -930,7 +922,7 @@ const EditorArea = memo(
           // name cleared and retyped) until the caret leaves, so a short name
           // typed over it never snaps the pill narrow and re-centres the path
           // per letter. A rename that never empties follows its text, as a
-          // rename field should (judged 2026-09-17). GlobalStyles reads it.
+          // rename field should. GlobalStyles reads it.
           if (titleFieldText(e.currentTarget) === "")
             e.currentTarget.setAttribute("data-placeholder-floor", "");
           // Truncation is a display concern — editing reveals the whole name.
@@ -1032,10 +1024,8 @@ const EditorArea = memo(
               // The fade is opacity alone. No transform, ever: a transformed
               // element is the containing block for every `position: fixed`
               // descendant, and the link, code, image and file menus and the
-              // table's create badge open fixed at the pointer's clientX/Y. The
-              // 4px lift this used to carry offset them by the column's own
-              // left edge and scroll, for the fade's 200ms and, because it
-              // ended at translateY(0), for ever after (review 2026-09-07 §3.9).
+              // table's create badge open fixed at the pointer's clientX/Y,
+              // and a transform would offset them by the column's own edge.
               opacity: editorFadeIn ? 1 : 0,
               // Padding and margin ease too, so hiding the sidebar reads as the
               // column breathing out rather than the page re-laying-out under
@@ -1043,9 +1033,8 @@ const EditorArea = memo(
               // divider stays 1:1.
               transition: `${panelTransition("max-width", "padding", "margin-left")}, opacity 0.2s ease`,
               position: "relative",
-              // No z-index: as a stacking context the column kept its own
-              // toolbar, find bar and popovers under the path band above it
-              // (2026-09-15). Without one the band (Z.PATH_ROW) sits over the
+              // No z-index: as a stacking context the column would keep its own
+              // toolbar, find bar and popovers under the path band. Without one the band (Z.PATH_ROW) sits over the
               // blocks and the grip and under everything that floats.
             }}
           >
@@ -1101,8 +1090,7 @@ const EditorArea = memo(
                     aria-label="Note editor"
                     onKeyDown={(e) => {
                       // Cmd+F toggles the find bar, opened as it was last left, Replace
-                      // showing or not (2026-09-24: one key for both, the Replace
-                      // toggle in the bar; Cmd+H is Hide on a Mac).
+                      // showing or not (one key for both; Cmd+H is Hide on a Mac).
                       const mod = e.ctrlKey || e.metaKey;
                       if (mod && e.code === "KeyF" && !e.shiftKey && !e.altKey) {
                         e.preventDefault();
@@ -1158,8 +1146,8 @@ const EditorArea = memo(
                       const tag = e.target.closest(".inline-tag");
                       if (tag) {
                         // The pill's text, not `data-tag`: the attribute is written
-                        // at paint, and a tag that grew by typing kept its first
-                        // letter's (2026-09-20, `#ha` searched `#h`).
+                        // at paint, and a tag that grew by typing keeps its first
+                        // letter's.
                         const tagName = tag.textContent.replace(/\u200B/g, "").replace(/^#/, "");
                         if (tagName && onTagClick) onTagClick(tagName);
                         return;
@@ -1175,8 +1163,8 @@ const EditorArea = memo(
                     data-editor
                     // While a whole block is selected the caret stays where it was
                     // (a printable key deselects and types there) but is not drawn:
-                    // a blinking caret beside a selected picture read as the key
-                    // having done nothing (2026-09-23).
+                    // a blinking caret beside a selected picture reads as the key
+                    // having done nothing.
                     style={{
                       outline: "none",
                       caretColor: selectedBlockId ? "transparent" : undefined,
@@ -1413,8 +1401,8 @@ const EditorArea = memo(
     // The selection toolbar is an interaction, not a keystroke, and it must
     // paint now: applying a format re-reads the block (which sets the
     // text-only flag below) and *then* asks the toolbar to re-read its pressed
-    // state. Skipped here, the pressed glyph waited for the 300ms text commit
-    // to publish, so Bold lit a beat after the press (2026-09-19). The flag is
+    // state. Skipped here, the pressed glyph would wait for the 300ms text
+    // commit, so Bold would light a beat after the press. The flag is
     // left for the render that commit brings.
     if (prev.toolbarState !== next.toolbarState) return false;
 

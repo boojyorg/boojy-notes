@@ -19,7 +19,7 @@ import { SCROLLBAR_W } from "../constants/layout";
 import { FolderIcon } from "./Icons";
 
 /*
- * The note's path, centred in the editor's chrome row (2026-09-15).
+ * The note's path, centred in the editor's chrome row.
  *
  * `University / Archive / Todd's Note`: the parent folders and then the name,
  * which is the same editable file label it was when it sat in the column, at
@@ -27,8 +27,8 @@ import { FolderIcon } from "./Icons";
  * theme's primary ink, with the folders one step quieter and the slashes muted. A root note shows its
  * name alone; there is no `Notes /` in front of it, and no control of its own.
  *
- * Each folder crumb, and the `…` that stands for hidden ones, is a button
- * (2026-09-16): it opens PathTreeMenu under itself, the sidebar's tree drawn
+ * Each folder crumb, and the `…` that stands for hidden ones, is a button: it
+ * opens PathTreeMenu under itself, the sidebar's tree drawn
  * small and scoped to that folder's parent, with the path down to the open
  * note expanded (`crumbScope`). The `…` opens the root the same way. The name
  * is not part of that: a single click on it still renames the file. Browsing
@@ -40,8 +40,8 @@ import { FolderIcon } from "./Icons";
  * its name (`note-path-root`, muted at rest as the Notes row's glyphs are)
  * and opens the root's contents with nothing expanded. Visible at rest, not
  * hover-revealed: with the sidebar hidden it is the one way to browse from
- * the row, and a control you must hover to find is not one (the Notes row's
- * own lesson, 2026-09-12). Still no `Notes /` label.
+ * the row, and a control you must hover to find is not one. Still no
+ * `Notes /` label.
  *
  * Where it sits is CSS, and only what it shows is JavaScript:
  *
@@ -53,12 +53,11 @@ import { FolderIcon } from "./Icons";
  *
  *   On macOS the row is what the window is dragged by, and the draggable part
  *   is a strip that lies strictly between the two control groups (the row's
- *   padding edges), never the row itself (2026-09-16). Chromium collects
- *   `app-region` rectangles in DOM order and applies them in that order, a
- *   later `drag` unioning back over an earlier `no-drag`; the chrome buttons
- *   are rendered before the editor, so a drag rectangle spanning the whole
- *   row put a window-move view over every one of them: the cursor never
- *   changed and the first press moved the window instead. A drag rectangle
+ *   padding edges), never the row itself. Chromium collects `app-region`
+ *   rectangles in DOM order and applies them in that order, a later `drag`
+ *   unioning back over an earlier `no-drag`; the chrome buttons are rendered
+ *   before the editor, so a drag rectangle spanning the whole row would put a
+ *   window-move view over every one of them. A drag rectangle
  *   that overlaps no control cannot be overridden into one. The path itself
  *   sits inside the strip and opts out, as it must: it comes after the strip.
  *
@@ -90,15 +89,14 @@ const BIAS_SHRINK = 1000;
 
 /** The path's font: interface size, regular weight, no letter spacing. */
 export const PATH_FONT = { fontSize: 14, fontWeight: 400, lineHeight: "20px" };
-/** The name alone is medium (2026-09-17, Tyr: it makes the note's name the
- *  obvious thing in the row): the row stands in for a title bar, whose title
- *  is the heavier item. Folders
- *  stay regular in secondary ink. 500 is a real cut in any Inter and in the
+/** The name alone is medium, the obvious thing in the row: the row stands in
+ *  for a title bar, whose title is the heavier item. Folders stay regular in
+ *  secondary ink. 500 is a real cut in any Inter and in the
  *  system font; 450 would be a guess about the reader's font. The twin's
  *  name spans carry it so the fit is measured with the heavier glyphs. */
 export const NAME_WEIGHT = 500;
-/** The root glyph is a chrome button like the row's others (judged live 2026-09-16:
- *  an 18px glyph in the 32px box, same hover), so its 7px of box either side of
+/** The root glyph is a chrome button like the row's others (an 18px glyph in
+ *  the 32px box, same hover), so its 7px of box either side of
  *  the glyph is most of its air before the name; the gap adds a touch more. */
 const ROOT_GLYPH_GAP = 2;
 const ROOT_GLYPH_W = CHROME_BTN + ROOT_GLYPH_GAP;
@@ -219,8 +217,8 @@ export default function NotePath({
   // While the popup is open the window's drag regions stand down (GlobalStyles:
   // `html.popup-open [data-drag-region]`), because a press on a drag region
   // goes to the window-move layer and never reaches the page, so a click on
-  // the empty top row could not close the popup (found live 2026-09-16). The
-  // first press closes; the next drags.
+  // the empty top row could not close the popup. The first press closes; the
+  // next drags.
   useEffect(() => {
     document.documentElement.classList.toggle("popup-open", menu !== null);
     return () => document.documentElement.classList.remove("popup-open");
