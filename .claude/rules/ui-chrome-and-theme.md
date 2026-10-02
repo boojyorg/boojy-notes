@@ -21,8 +21,9 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
   a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==), a
   search hit's words, briefly.
-- **Every menu's rows are pills** on `MENU_RADIUS` / `MENU_PAD` / `MENU_ROW_RADIUS`; a new menu
-  uses these, never its own numbers. Separators are `MenuRule`.
+- **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
+  element, rows as pills, the highlight state alone. A surface it cannot be uses `menuSurface`
+  and `MenuRule`, never its own numbers. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
   `SEMANTIC.onError`). `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,

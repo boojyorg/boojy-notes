@@ -1,13 +1,4 @@
-import {
-  Fragment,
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  memo,
-} from "react";
+import { useRef, useMemo, memo } from "react";
 import { useTheme } from "../hooks/useTheme";
 import {
   ClipboardIcon,
@@ -26,18 +17,7 @@ import {
 } from "./Icons";
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useMenuKeys } from "../hooks/useMenuKeys";
-import { useMenuPosition } from "../hooks/useMenuPosition";
-import { useExitGhost } from "../hooks/useExitGhost";
-import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-import { cssZoom } from "../utils/domHelpers";
-
-/** The rule between groups, the sidebar menu's own: 1px, inset 6px. */
-const MenuRule = ({ color }) => (
-  <div role="separator" style={{ height: 1, background: color, margin: "4px 6px" }} />
-);
+import Menu, { MenuRule } from "./Menu";
 
 /** `412 words`: the number a note is measured by; nobody writes a note to a
  *  character limit. */
@@ -74,28 +54,12 @@ const ContextMenu = memo(function ContextMenu({
   onToggleSourceView,
 }) {
   const { theme } = useTheme();
-  const { BG, TEXT, SEMANTIC } = theme;
+  const { TEXT } = theme;
   const { setSettingsOpen } = useSettings();
 
-  // The highlighted row, by index: the pointer's row, or the arrows'. -1 is
-  // none. The one owner of a row's hover surface (`background` below); no
-  // direct style write, so nothing can disagree with it.
-  const [activeIndex, setActiveIndex] = useState(-1);
-  // This component stays mounted between opens (it renders null when there is
-  // no menu), so its state would otherwise carry over into the next menu,
-  // a row lit before the pointer arrives. Every open starts
-  // with nothing highlighted; a layout effect, so the reset lands before the
-  // menu's first paint.
-  useLayoutEffect(() => {
-    setActiveIndex(-1);
-  }, [ctxMenu]);
-  const itemsRef = useRef([]);
-  const menuContainerRef = useRef(null);
-  // "container" so a pointer-opened menu doesn't paint a :focus-visible ring
-  // on its first item (Chromium treats script focus as focus-visible).
-  // Keyboard Tab/arrows still move real focus and indicate normally.
-  useFocusTrap(menuContainerRef, !!ctxMenu, "container");
-  useExitGhost(menuContainerRef, !!ctxMenu);
+  // Each open is a fresh menu, so nothing lit in the last one carries over.
+  const opens = useRef(0);
+  const openKey = useMemo(() => (ctxMenu ? ++opens.current : opens.current), [ctxMenu]);
 
   // A right-click, or the header's ···, is a point anchor: the menu opens at
   // it where possible and flips/clamps into the viewport otherwise. A row's
@@ -114,40 +78,6 @@ const ContextMenu = memo(function ContextMenu({
         : null,
     [ctxMenu],
   );
-  const pos = useMenuPosition(menuContainerRef, !!ctxMenu, anchor);
-  // The UI scale is CSS zoom on <html>: the pointer's clientX/Y and every
-  // measured rect arrive already multiplied by it, and a `top`/`left` written
-  // on this fixed element is multiplied again on paint, so the placement is
-  // divided by the zoom before it becomes a style (the folder popup, the grip
-  // and the drop marker do the same).
-  const zoom = cssZoom(document.documentElement);
-
-  // Keyboard navigation — hooks must be above early return. The rows are
-  // built below, after the early return, so the keys read them at the press.
-  const menuKeys = useMenuKeys({
-    rows: () => itemsRef.current,
-    active: activeIndex,
-    setActive: setActiveIndex,
-    choose: (i) => itemsRef.current[i]?.action(),
-    close: () => setCtxMenu(null),
-  });
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (itemsRef.current.length && menuKeys(e)) e.preventDefault();
-    },
-    [menuKeys],
-  );
-
-  // On the document, not the window: the app shell's shortcut handler is a
-  // window listener registered at startup, so a window listener added when
-  // the menu opens would run after it and its preventDefault would come too
-  // late (Escape here also closed the overlay sidebar beneath the menu).
-  useEffect(() => {
-    if (!ctxMenu) return;
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [ctxMenu, handleKeyDown]);
-
   if (!ctxMenu) return null;
 
   // The editor header's ··· is the active note's, never the sidebar's
@@ -191,7 +121,7 @@ const ContextMenu = memo(function ContextMenu({
           {
             label: "Copy",
             icon: <ClipboardIcon />,
-            shortcut: keys ? shortcutLabel({ key: "C", shift: true }) : undefined,
+            hint: keys ? shortcutLabel({ key: "C", shift: true }) : undefined,
             action: () => {
               setCtxMenu(null);
               copyNoteText(id);
@@ -202,7 +132,7 @@ const ContextMenu = memo(function ContextMenu({
     {
       label: "Duplicate",
       icon: <CopyIcon />,
-      shortcut: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
+      hint: keys ? shortcutLabel({ key: "D", shift: true }) : undefined,
       action: () => {
         duplicateNote(id);
         setCtxMenu(null);
@@ -214,7 +144,7 @@ const ContextMenu = memo(function ContextMenu({
   const deleteItem = (id) => ({
     label: "Delete",
     icon: <TrashIcon />,
-    separator: true,
+    rule: true,
     action: () => {
       deleteNote(id);
       setCtxMenu(null);
@@ -228,8 +158,8 @@ const ContextMenu = memo(function ContextMenu({
     ? {
         label: "Version History",
         icon: <HistoryIcon />,
-        shortcut: "⌥⌘S",
-        separator: true,
+        hint: "⌥⌘S",
+        rule: true,
         action: () => {
           setCtxMenu(null);
           onVersionHistory();
@@ -239,7 +169,7 @@ const ContextMenu = memo(function ContextMenu({
 
   const settingsItem = {
     label: "Settings",
-    shortcut: shortcutLabel({ key: "," }),
+    hint: shortcutLabel({ key: "," }),
     // The cog is what sets it apart from the note's own items; a rule above
     // it as well would cut a six-row menu into three compartments.
     icon: <SettingsIcon />,
@@ -255,8 +185,8 @@ const ContextMenu = memo(function ContextMenu({
   const viewItem = {
     label: sourceView ? "Show Formatted" : "Show Markdown",
     icon: sourceView ? <FormattedViewIcon /> : <SourceViewIcon size={16} />,
-    shortcut: shortcutLabel({ key: "/" }),
-    separator: true,
+    hint: shortcutLabel({ key: "/" }),
+    rule: true,
     action: () => {
       setCtxMenu(null);
       onToggleSourceView?.();
@@ -286,7 +216,7 @@ const ContextMenu = memo(function ContextMenu({
     {
       label: "Delete",
       icon: <TrashIcon />,
-      separator: true,
+      rule: true,
       action: () => {
         setCtxMenu(null);
         trashFile?.(path);
@@ -299,8 +229,8 @@ const ContextMenu = memo(function ContextMenu({
     ? ctxMenu.id
       ? [
           ...noteItems(ctxMenu.id, true),
-          ...(versionItem ? [versionItem, { ...viewItem, separator: false }] : [viewItem]),
-          { ...settingsItem, separator: true },
+          ...(versionItem ? [versionItem, { ...viewItem, rule: false }] : [viewItem]),
+          { ...settingsItem, rule: true },
           deleteItem(ctxMenu.id),
         ]
       : [settingsItem]
@@ -375,85 +305,21 @@ const ContextMenu = memo(function ContextMenu({
               },
             ];
 
-  itemsRef.current = items;
-
   return (
-    <>
-      <div
-        onClick={() => setCtxMenu(null)}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
-      />
-      <div
-        className="motion-pop"
-        ref={menuContainerRef}
-        role="menu"
-        aria-label={isHeader ? (ctxMenu.id ? "Note actions" : "App options") : "Context menu"}
-        aria-activedescendant={activeIndex >= 0 ? `ctx-item-${activeIndex}` : undefined}
-        tabIndex={-1}
-        style={{
-          outline: "none",
-          position: "fixed",
-          top: (pos?.top ?? ctxMenu.y) / zoom,
-          left: (pos?.left ?? ctxMenu.x) / zoom,
-          zIndex: Z.CONTEXT_MENU,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          // All-round padding insets the item pills from the menu edge so
-          // their rounded hover reads as a pill, not an edge-to-edge bar.
-          padding: MENU_PAD,
-          minWidth: 160,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-        }}
-      >
-        {items.map((item, index) => (
-          <Fragment key={item.label}>
-            {/* A separator is its own rule between the pills, inset like the
-                sidebar menu's, never an edge of the button below it (it would
-                run the row's full width and sit inside the hover pill). */}
-            {item.separator && index > 0 && <MenuRule color={BG.divider} />}
-            <button
-              id={`ctx-item-${index}`}
-              role="menuitem"
-              onClick={item.action}
-              onMouseEnter={() => setActiveIndex(index)}
-              // Leaving clears the index too, or any re-render would light the
-              // row again.
-              onMouseLeave={() => setActiveIndex((i) => (i === index ? -1 : i))}
-              style={{
-                width: "100%",
-                background: index === activeIndex ? BG.hover : "none",
-                // Every edge set, or Chromium's own 2px outset button border
-                // shows on the one left out.
-                border: 0,
-                borderRadius: MENU_ROW_RADIUS,
-                // 10px + the menu's 4px inset keeps the text 14px off the edge.
-                padding: "7px 10px",
-                cursor: "pointer",
-                color: item.danger ? SEMANTIC.error : TEXT.primary,
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                textAlign: "left",
-                transition: "background var(--motion-fast)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              {/* Icons inherit the item colour, so Delete's glyph goes red with it. */}
-              <span style={{ display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
-                {item.icon}
-                {item.label}
-              </span>
-              {item.shortcut && (
-                <span style={{ color: TEXT.muted, marginLeft: 24 }}>{item.shortcut}</span>
-              )}
-            </button>
-          </Fragment>
-        ))}
-        {isHeader && ctxMenu.id && wordCount != null && (
+    <Menu
+      key={openKey}
+      label={isHeader ? (ctxMenu.id ? "Note actions" : "App options") : "Context menu"}
+      idPrefix="ctx-item"
+      anchor={anchor}
+      minWidth={160}
+      onClose={() => setCtxMenu(null)}
+      items={items}
+      footer={
+        isHeader &&
+        ctxMenu.id &&
+        wordCount != null && (
           <>
-            <MenuRule color={BG.divider} />
+            <MenuRule />
             {/* The note's length, at the foot of its own menu (Notion's place
                 for it): one muted line, not an item, shown only with a note
                 open. The one desktop surface that costs no pixels at rest. */}
@@ -470,9 +336,9 @@ const ContextMenu = memo(function ContextMenu({
               {noteStatsLabel(wordCount)}
             </div>
           </>
-        )}
-      </div>
-    </>
+        )
+      }
+    />
   );
 });
 
