@@ -2,7 +2,7 @@ import { useCallback, type ComponentType } from "react";
 import { version as appVersion } from "../../../package.json";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../context/SettingsContext";
-import { SmallButton } from "./SettingsPrimitives";
+import { SettingRow, SmallButton, Switch } from "./SettingsPrimitives";
 
 interface UpdatesTabProps {
   isDesktop: boolean;
@@ -30,7 +30,7 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
     updateStatus: UpdateStatus | null;
   };
   const { theme } = useTheme();
-  const { TEXT, ACCENT, SEMANTIC, BG } = theme;
+  const { TEXT, SEMANTIC } = theme;
 
   const handleToggleAutoUpdate = useCallback(
     (enabled: boolean) => {
@@ -92,53 +92,13 @@ export default function UpdatesTab({ isDesktop, SectionHeader }: UpdatesTabProps
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <SectionHeader title="Updates" />
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: 30,
-        }}
-      >
-        <div style={{ fontSize: 14, color: TEXT.primary }}>Automatic updates</div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoUpdateEnabled}
-          aria-label="Automatic updates"
-          onClick={() => handleToggleAutoUpdate(!autoUpdateEnabled)}
-          style={{
-            width: 40,
-            height: 22,
-            boxSizing: "border-box",
-            borderRadius: 11,
-            background: autoUpdateEnabled ? ACCENT.primary : BG.hover,
-            border: `1px solid ${autoUpdateEnabled ? ACCENT.primary : BG.hover}`,
-            position: "relative",
-            cursor: "pointer",
-            transition: "background var(--motion-fast)",
-            padding: 0,
-            flexShrink: 0,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: "50%",
-              // The knob is a shape, so it keeps the white of the tick on the
-              // mark; off, a secondary-ink dot on the neutral track.
-              background: autoUpdateEnabled ? ACCENT.onAccent : TEXT.secondary,
-              boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-              position: "absolute",
-              top: 1,
-              left: autoUpdateEnabled ? 19 : 1,
-              transition: "left 0.15s",
-            }}
-          />
-        </button>
-      </div>
+      <SettingRow label="Automatic updates">
+        <Switch
+          checked={autoUpdateEnabled}
+          label="Automatic updates"
+          onChange={handleToggleAutoUpdate}
+        />
+      </SettingRow>
 
       <div
         data-testid="update-status"

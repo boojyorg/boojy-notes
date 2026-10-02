@@ -1381,6 +1381,7 @@ export default function BoojyNotes() {
               pastVersion={versionHistory.state.past}
               offloaded={offloaded}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
+              showToast={showToast}
             />
           </EditorProvider>
         </div>

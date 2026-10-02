@@ -133,17 +133,6 @@ none blocks the release. The shared question comes first because three candidate
   moves and through external renames, and whether losing it on an external rename is
   tolerable. Two fixed requirements: losing it must never damage a note, and existing
   `.boojy-meta.json` files stay untouched and unread. Decide once.
-- **Spell check in Settings: on/off and British or US English.** Wanted (Tyr, 2026-09-23). The
-  main process already reads `spellCheckEnabled` and `spellCheckLanguages` from `settings.json`
-  at window creation, but nothing writes them, so today it is always on. Two platform facts,
-  probed in Electron 42 the same day: **on macOS the language cannot be chosen by the app**
-  (`setSpellCheckerLanguages(["en-GB"])` is ignored and the checker stays on the system's
-  language, `es` on Tyr's Mac; it follows System Settings → Keyboard → Text Input), and the
-  current "off" path (an empty language list) is therefore also a no-op there;
-  `session.setSpellCheckerEnabled(false)` is the switch that works everywhere, live, without a
-  restart. So: the switch on every platform; the UK/US choice on Windows only, with macOS
-  saying where its language comes from rather than showing a control that does nothing. Also
-  still open from the Windows smoke test: dictionaries download from Google's CDN.
 - **Tables that work better.** Wanted (Tyr, 2026-09-24): 101 of the 213 notes in his vault hold
   one. Grips, alignment, Duplicate and Clear contents shipped (`CHANGELOG.md`). Left, in the
   order daily use asks for them: a paste from a spreadsheet (tab-separated text) into a

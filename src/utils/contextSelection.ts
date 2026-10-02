@@ -140,3 +140,20 @@ export function menuAnchorFor(range: Range | null, x: number, y: number): Box {
   }
   return { top: y, bottom: y, left: x, right: x };
 }
+
+/**
+ * The selection when it is one word of prose, the only thing the right-click
+ * menu offers spellings for: never a tag, inline code or a link's words (their
+ * spelling is a name, not English), never a longer run. With its paragraph's
+ * text, which is how a Mac tells the word's language.
+ */
+export function spellableWord(range: Range | null): { text: string; paragraph: string } | null {
+  if (!range || range.collapsed) return null;
+  const text = range.toString();
+  if (!/^[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*$/u.test(text)) return null;
+  const node = range.commonAncestorContainer;
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  if (!el || el.closest("code, .inline-tag, a, .wikilink")) return null;
+  const block = el.closest("[data-inline-field], [data-block-id]");
+  return { text, paragraph: block?.textContent ?? text };
+}

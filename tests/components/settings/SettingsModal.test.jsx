@@ -163,7 +163,7 @@ describe("SettingsModal", () => {
   it("carries the Settings cog beside its title and no section rule in the accent", () => {
     renderModal();
     const dialog = screen.getByRole("dialog");
-    expect(dialog.querySelectorAll('[role="separator"]').length).toBe(2);
+    expect(dialog.querySelectorAll('[role="separator"]').length).toBe(3);
     expect(dialog.querySelector("svg.lucide-settings")).not.toBeNull();
   });
 

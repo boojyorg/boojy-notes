@@ -14,6 +14,15 @@ interface DesktopSettings {
   [key: string]: unknown;
 }
 
+/** The Spelling section's state (electron/spelling.ts). */
+export interface SpellingState {
+  enabled: boolean;
+  /** The languages checked; on a Mac, empty (the system chooses). */
+  languages: string[];
+  available: string[];
+  setBySystem: boolean;
+}
+
 /** One version in a note's history (electron/history.ts), without its text. */
 export interface HistoryVersion {
   id: string;
@@ -101,6 +110,13 @@ declare global {
       /** A note's Markdown as plain text, with HTML for apps that take formatting. */
       copyTextToClipboard: (payload: { text: string; html?: string }) => Promise<boolean>;
       paste: () => Promise<void>;
+      /** Null when the word is spelled right, else up to three guesses. */
+      checkSpelling: (word: string, paragraph: string) => Promise<string[] | null>;
+      getSpelling: () => Promise<SpellingState>;
+      setSpelling: (change: { enabled?: boolean; languages?: string[] }) => Promise<SpellingState>;
+      addDictionaryWord: (word: string) => Promise<boolean>;
+      removeDictionaryWord: (word: string) => Promise<boolean>;
+      openKeyboardSettings: () => Promise<void>;
       onMenuCommand: (callback: (id: string) => void) => () => void;
       setMenuState: (state: {
         hasNote: boolean;
