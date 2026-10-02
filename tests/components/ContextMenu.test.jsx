@@ -106,7 +106,7 @@ describe("ContextMenu", () => {
   it("the folder menu is exactly six glyphed items in order, with no rule (2026-09-20)", () => {
     const props = baseProps();
     props.ctxMenu = { type: "folder", id: "f1", x: 100, y: 100 };
-    const { getAllByRole, container } = render(<ContextMenu {...props} />);
+    const { getAllByRole, getByRole } = render(<ContextMenu {...props} />);
     const items = getAllByRole("menuitem");
     expect(items.map((el) => el.textContent)).toEqual([
       "New note",
@@ -118,7 +118,7 @@ describe("ContextMenu", () => {
     ]);
     // Every row carries a Lucide glyph, as the note menu's rows do.
     for (const el of items) expect(el.querySelector("svg.lucide")).not.toBeNull();
-    expect(container.querySelector("[role='separator'], hr")).toBeNull();
+    expect(getByRole("menu").querySelector("[role='separator'], hr")).toBeNull();
   });
 
   it("takes a row's rect anchor over the point, so a flipped menu sits above the row", () => {
@@ -202,10 +202,9 @@ describe("ContextMenu", () => {
   it("closes menu when clicking the backdrop overlay", () => {
     const props = baseProps();
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
-    const { container } = render(<ContextMenu {...props} />);
-    // The first child div is the backdrop overlay (position: fixed, inset: 0)
-    const backdrop = container.firstChild;
-    fireEvent.click(backdrop);
+    const { getByRole } = render(<ContextMenu {...props} />);
+    // The backdrop overlay (position: fixed, inset: 0) sits just before the menu.
+    fireEvent.mouseDown(getByRole("menu").previousSibling);
     expect(props.setCtxMenu).toHaveBeenCalledWith(null);
   });
 });
@@ -233,7 +232,9 @@ describe("the header menu", () => {
     expect(getByRole("menu")).toHaveAttribute("aria-label", "Note actions");
     // Version A (2026-09-27): the note's own actions, then how it is seen,
     // then Settings, then Delete alone at the foot, each group under a rule.
-    const rows = getAllByRole("menuitem").map((b) => b.querySelector("span")?.textContent);
+    const rows = getAllByRole("menuitem").map(
+      (b) => b.querySelector("span:not([aria-hidden])")?.textContent,
+    );
     expect(rows.slice(0, 3)).toEqual(["Rename", "Copy", "Duplicate"]);
     expect(rows.at(-1)).toBe("Delete");
     expect(rows.at(-2)).toBe("Settings");
@@ -335,7 +336,7 @@ describe("the highlight belongs to one open", () => {
     const props = baseProps();
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
     const { getByRole, getByText, rerender } = render(<ContextMenu {...props} />);
-    fireEvent.mouseEnter(getByText("Rename").closest("button"));
+    fireEvent.mouseMove(getByText("Rename").closest("button"));
     expect(getByRole("menu")).toHaveAttribute("aria-activedescendant", "ctx-item-0");
 
     rerender(<ContextMenu {...props} ctxMenu={null} />);
@@ -352,7 +353,7 @@ describe("the highlight belongs to one open", () => {
     props.ctxMenu = { type: "note", id: "n1", x: 100, y: 100 };
     const { getByRole, getByText } = render(<ContextMenu {...props} />);
     const rename = getByText("Rename").closest("button");
-    fireEvent.mouseEnter(rename);
+    fireEvent.mouseMove(rename);
     expect(rename.style.background).toBe(hoverBg);
     fireEvent.mouseLeave(rename);
     expect(getByRole("menu")).not.toHaveAttribute("aria-activedescendant");

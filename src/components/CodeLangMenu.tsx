@@ -1,22 +1,11 @@
-import { type RefObject, useCallback, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useMenuPosition } from "../hooks/useMenuPosition";
-import { useExitGhost } from "../hooks/useExitGhost";
-import { useMenuKeys } from "../hooks/useMenuKeys";
-import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
-import { cssZoom } from "../utils/domHelpers";
-import { CheckIcon } from "./Icons";
+import Menu, { type MenuAnchor } from "./Menu";
 
 /**
  * A code block's language menu, opened from the label at its bottom-right
  * corner.
  *
- * It is the Sort menu's grammar and nothing else: `menuitemradio` rows in the
- * menu surface, the chosen one marked with a Lucide check in the mark colour,
- * arrows and Enter and Escape on the document. Two things are its own. The
+ * It is the Sort menu's grammar: `menuitemradio` rows in the shared menu, the
+ * chosen one ticked. Two things are its own. The
  * labels are flush, with no glyph column: Lucide ships no language marks, and
  * a second icon set of brand logos beside a line set is what makes a UI read
  * as assembled (`Icons.jsx`). And **a letter jumps to a language**, because
@@ -26,18 +15,6 @@ import { CheckIcon } from "./Icons";
  * The list is Plain, then alphabetical: one editorial exception, because Plain
  * is the absence of a language, and a mechanical rule for every language added
  * after it.
- *
- * It portals to `body`, as the table's cell menu and the callout picker do.
- * Rendered where it is opened, it lives inside the editor's contentEditable,
- * and the editor's caret rescue only stands aside for focus that has left the
- * editor (`useMouseHandlers`), so it would pull the menu's focus straight
- * back.
- *
- * **Its keys are its own element's, not the document's**, the one place it
- * departs from SortMenu. A portal moves the DOM but not the React tree, so a
- * key pressed in this menu still bubbles to the editor's `onKeyDown`, which
- * would claim Enter for a new block before any document listener ran. Handling it on the menu and
- * stopping it there is what keeps the editor out of it.
  */
 
 export interface CodeLangItem {
@@ -47,7 +24,7 @@ export interface CodeLangItem {
 
 interface CodeLangMenuProps {
   /** Anchor rect of the language label (viewport coordinates). */
-  anchor: { top: number; bottom: number; left: number; right: number };
+  anchor: MenuAnchor;
   languages: CodeLangItem[];
   /** The block's current language value. */
   lang: string;
@@ -57,10 +34,6 @@ interface CodeLangMenuProps {
 
 export { typeAheadIndex } from "../utils/menuKeys";
 
-const hBg = (el: HTMLElement, c: string) => {
-  el.style.background = c;
-};
-
 export default function CodeLangMenu({
   anchor,
   languages,
@@ -68,130 +41,27 @@ export default function CodeLangMenu({
   onSelect,
   onClose,
 }: CodeLangMenuProps) {
-  const { theme } = useTheme();
-  const { BG, TEXT, ACCENT } = theme;
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
-  useExitGhost(menuRef);
-
-  // The label sits at the block's right edge, so the menu's right edge meets
-  // it (`align: "end"`); positionMenu flips and clamps on overflow.
-  const menuAnchor = useMemo(
-    () => ({ top: anchor.top, bottom: anchor.bottom, left: anchor.left, right: anchor.right }),
-    [anchor],
-  );
-  const pos = useMenuPosition(menuRef, true, menuAnchor, { gapY: 4, align: "end" });
-  // The UI scale is CSS zoom on <html>: every measured rect arrives multiplied
-  // by it and a top/left on this fixed element is multiplied again, so the
-  // placement is divided by the zoom before it becomes a style (ContextMenu,
-  // PathTreeMenu and the grip do the same).
-  const zoom = cssZoom(document.documentElement);
-
-  const choose = useCallback(
-    (value: string) => {
-      onSelect(value);
-      onClose();
-    },
-    [onSelect, onClose],
-  );
-
-  /** Whether the menu takes this key; the caller stops the ones it does. */
-  const handleKeyDown = useMenuKeys({
-    rows: () => languages,
-    active: activeIndex,
-    setActive: setActiveIndex,
-    choose: (i) => choose(languages[i].value),
-    close: onClose,
-  });
-
-  return createPortal(
-    <>
-      <div
-        onMouseDown={onClose}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
-      />
-      <div
-        className="motion-pop motion-from-end"
-        ref={menuRef}
-        role="menu"
-        aria-label="Code language"
-        aria-activedescendant={activeIndex >= 0 ? `code-lang-item-${activeIndex}` : undefined}
-        tabIndex={-1}
-        data-testid="code-lang-menu"
-        onKeyDown={(e) => {
-          if (!handleKeyDown(e)) return;
-          e.preventDefault();
-          // Stops the React tree, which a portal does not leave: without this
-          // the editor under it would act on the same key.
-          e.stopPropagation();
-        }}
-        style={{
-          outline: "none",
-          position: "fixed",
-          top: (pos?.top ?? anchor.bottom + 4) / zoom,
-          left: (pos?.left ?? anchor.left) / zoom,
-          zIndex: Z.CONTEXT_MENU,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
-          minWidth: 200,
-          boxShadow: theme.modalShadow,
-        }}
-      >
-        {languages.map((item, index) => {
-          const checked = item.value === lang;
-          return (
-            <button
-              key={item.value || "plain"}
-              type="button"
-              id={`code-lang-item-${index}`}
-              role="menuitemradio"
-              aria-checked={checked}
-              // The press must not move focus out of the menu before the
-              // choice lands, as the label's own press does not.
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => choose(item.value)}
-              onMouseEnter={(e) => {
-                setActiveIndex(index);
-                hBg(e.currentTarget, BG.hover);
-              }}
-              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-              style={{
-                width: "100%",
-                background: index === activeIndex ? BG.hover : "none",
-                border: "none",
-                borderRadius: MENU_ROW_RADIUS,
-                padding: "7px 10px",
-                cursor: "pointer",
-                color: TEXT.primary,
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                textAlign: "left",
-                transition: "background var(--motion-fast)",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {/* The chosen language's mark: a check in the mark colour, the
-                  accent's role as a marker rather than a surface. */}
-              {checked && (
-                <span
-                  aria-hidden="true"
-                  data-testid="code-lang-check"
-                  style={{ display: "flex", flexShrink: 0, color: ACCENT.primary }}
-                >
-                  <CheckIcon />
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </>,
-    document.body,
+  // The label sits at the block's right edge, so the menu's right edge meets it.
+  return (
+    <Menu
+      label="Code language"
+      idPrefix="code-lang-item"
+      testId="code-lang-menu"
+      checkTestId="code-lang-check"
+      anchor={anchor}
+      gapY={4}
+      align="end"
+      minWidth={200}
+      onClose={onClose}
+      items={languages.map((item) => ({
+        label: item.label,
+        role: "menuitemradio",
+        checked: item.value === lang,
+        action: () => {
+          onSelect(item.value);
+          onClose();
+        },
+      }))}
+    />
   );
 }

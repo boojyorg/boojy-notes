@@ -160,7 +160,7 @@ app's, made through state.**
   places (`settleBlocks`, after the commit); a drag that moves nothing sends its copy home.
   `motion.spec.ts`.
 - **Measured geometry is divided by `cssZoom(el)` before it becomes a style** (the UI scale is
-  CSS `zoom`). Not yet: `SortMenu`, table and file menus, links.
+  CSS `zoom`). Not yet: the file and code-block menus, the callout picker, links.
 - **Frontmatter is never moved** (`reorderFloor`, `moveBlock` refuses index 0).
   `frontmatter-order.spec.ts`.
 - **Every root the grip can show beside is in `blockRefs`**; media, code and callout register

@@ -1,22 +1,9 @@
-import { type ReactNode, type RefObject, useCallback, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useTheme } from "../../hooks/useTheme";
-import { useFocusTrap } from "../../hooks/useFocusTrap";
-import { useMenuKeys } from "../../hooks/useMenuKeys";
-import { useMenuPosition } from "../../hooks/useMenuPosition";
-import { useExitGhost } from "../../hooks/useExitGhost";
-import { Z } from "../../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../../constants/layout";
-import { cssZoom } from "../../utils/domHelpers";
+import { useCallback } from "react";
 import { isMac } from "../../utils/platform";
 import { CopyIcon, ExpandIcon, FolderIcon, RestoreIcon, TrashIcon } from "../Icons";
+import Menu, { type MenuAnchor, type MenuItem } from "../Menu";
 
-export interface MenuAnchor {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
-}
+export type { MenuAnchor };
 
 interface ImageMenuProps {
   /** Viewport rect: the pointer (a point) for a right-click, the ··· button for the bar. */
@@ -24,7 +11,7 @@ interface ImageMenuProps {
   /** The bar's ··· sits at the picture's right edge, so the menu's right edge meets it. */
   fromBar: boolean;
   /** Other rows in place of the image's own (a missing attachment's), with their label. */
-  entries?: Item[];
+  entries?: MenuItem[];
   label?: string;
   onView?: () => void;
   onCopy?: () => void;
@@ -36,34 +23,12 @@ interface ImageMenuProps {
   onClose: () => void;
 }
 
-export interface Item {
-  label: string;
-  icon: ReactNode;
-  action: () => void;
-  danger?: boolean;
-  rule?: boolean;
-}
-
 const noop = () => {};
 
-const hBg = (el: HTMLElement, c: string) => {
-  el.style.background = c;
-};
-
 /**
- * An image's menu, from a right-click on the picture or the hover bar's ···,
- * in the table cell menu's grammar: the
- * elevated ground with the divider border, 12.5px sentence-case labels, a
- * Lucide glyph per item at the navigation stroke, Delete last under a rule and
- * in the error ink, arrows, Enter and Escape.
- *
- * It portals to `body`, and takes its keys on its own element and stops them
- * there, for CodeLangMenu's reason: a portal leaves the DOM but not the React
- * tree, so a key pressed here would otherwise reach the editor's `onKeyDown`.
- * **Its presses stop the same way**: a press in the menu is not a press in
- * the editor, and bubbled there it would set the editor's mouse-down flag and
- * run its caret rescue after the menu closed.
- * Placement is divided by the UI scale, as every measured placement is.
+ * An image's menu, from a right-click on the picture or the hover bar's ···:
+ * the shared menu (`Menu`), sentence-case labels with a Lucide glyph each,
+ * Delete last under a rule and in the error ink.
  */
 export default function ImageMenu({
   anchor,
@@ -77,15 +42,6 @@ export default function ImageMenu({
   onDelete,
   onClose,
 }: ImageMenuProps) {
-  const { theme } = useTheme();
-  const { BG, TEXT, SEMANTIC } = theme;
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  useFocusTrap(menuRef as RefObject<HTMLElement>, true, "container");
-  useExitGhost(menuRef);
-  const pos = useMenuPosition(menuRef, true, anchor, fromBar ? { gapY: 4, align: "end" } : {});
-  const zoom = cssZoom(document.documentElement);
-
   const act = useCallback(
     (fn: () => void) => () => {
       onClose();
@@ -94,7 +50,7 @@ export default function ImageMenu({
     [onClose],
   );
 
-  const items: Item[] = entries
+  const items: MenuItem[] = entries
     ? entries.map((e) => ({ ...e, action: act(e.action) }))
     : [
         { label: "View full size", icon: <ExpandIcon nav />, action: act(onView ?? noop) },
@@ -119,95 +75,17 @@ export default function ImageMenu({
       rule: true,
     });
 
-  const handleKeyDown = useMenuKeys({
-    rows: () => items,
-    active: activeIndex,
-    setActive: setActiveIndex,
-    choose: (i) => items[i].action(),
-    close: onClose,
-  });
-
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-
-  return createPortal(
-    <div
-      style={{ display: "contents" }}
-      onMouseDown={stop}
-      onMouseUp={stop}
-      onClick={stop}
-      onDoubleClick={stop}
-    >
-      <div
-        onMouseDown={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
-      />
-      <div
-        ref={menuRef}
-        className="image-context-menu motion-pop"
-        role="menu"
-        aria-label={label}
-        aria-activedescendant={activeIndex >= 0 ? `image-menu-item-${activeIndex}` : undefined}
-        tabIndex={-1}
-        onKeyDown={(e) => {
-          if (!handleKeyDown(e)) return;
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        style={{
-          outline: "none",
-          position: "fixed",
-          top: (pos?.top ?? anchor.bottom) / zoom,
-          left: (pos?.left ?? anchor.left) / zoom,
-          zIndex: Z.CONTEXT_MENU,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
-          minWidth: 180,
-          boxShadow: theme.modalShadow,
-        }}
-      >
-        {items.map((item, i) => (
-          <div key={item.label}>
-            {item.rule && <div style={{ height: 1, background: BG.divider, margin: "4px 8px" }} />}
-            <button
-              id={`image-menu-item-${i}`}
-              role="menuitem"
-              type="button"
-              onClick={item.action}
-              onMouseEnter={(e) => {
-                setActiveIndex(i);
-                hBg(e.currentTarget, BG.hover);
-              }}
-              onMouseLeave={(e) => hBg(e.currentTarget, "transparent")}
-              style={{
-                width: "100%",
-                background: i === activeIndex ? BG.hover : "none",
-                border: "none",
-                borderRadius: MENU_ROW_RADIUS,
-                padding: "7px 10px",
-                cursor: "pointer",
-                color: item.danger ? SEMANTIC.error : TEXT.primary,
-                fontSize: 12.5,
-                fontFamily: "inherit",
-                textAlign: "left",
-                transition: "background var(--motion-fast)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>,
-    document.body,
+  return (
+    <Menu
+      label={label}
+      idPrefix="image-menu-item"
+      className="image-context-menu"
+      anchor={anchor}
+      gapY={fromBar ? 4 : undefined}
+      align={fromBar ? "end" : undefined}
+      minWidth={180}
+      onClose={onClose}
+      items={items}
+    />
   );
 }

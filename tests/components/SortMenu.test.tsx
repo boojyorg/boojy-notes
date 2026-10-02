@@ -35,7 +35,7 @@ function setup() {
 describe("SortMenu", () => {
   it("leaving a row clears it, so Enter then chooses nothing", () => {
     const { props, rows } = setup();
-    fireEvent.mouseEnter(rows[1]);
+    fireEvent.mouseMove(rows[1]);
     expect(rows[1].style.background).not.toBe("none");
     fireEvent.mouseLeave(rows[1]);
     expect(rows[1].style.background).toBe("none");
@@ -45,7 +45,7 @@ describe("SortMenu", () => {
 
   it("chooses the hovered row with Enter", () => {
     const { props, rows } = setup();
-    fireEvent.mouseEnter(rows[1]);
+    fireEvent.mouseMove(rows[1]);
     fireEvent.keyDown(document, { key: "Enter" });
     expect(props.setSortMode).toHaveBeenCalledWith("alpha");
     expect(props.onClose).toHaveBeenCalled();

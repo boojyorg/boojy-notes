@@ -1,10 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useTheme } from "../hooks/useTheme";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useMenuKeys } from "../hooks/useMenuKeys";
-import { useMenuPosition } from "../hooks/useMenuPosition";
-import { useExitGhost } from "../hooks/useExitGhost";
 import {
   AlignCenterIcon,
   AlignEndIcon,
@@ -16,9 +9,8 @@ import {
   CopyIcon,
   TrashIcon,
 } from "./Icons";
-import { Z } from "../constants/zIndex";
-import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { isMac } from "../utils/platform";
+import Menu from "./Menu";
 
 /**
  * A column's three alignments, with the keys that set them from a cell
@@ -41,10 +33,7 @@ const shortcut = (key) => (isMac ? `⇧⌘${key}` : `Ctrl+Shift+${key}`);
  * the row under it the header, as Markdown reads it. Right-click in a cell is
  * the editor's text menu (EditorContextMenu), which carries Delete table.
  *
- * The note-row menu's grammar: `role="menu"` with arrow keys, Enter and
- * Escape on a document listener, a focus trap that parks focus on the
- * container so a pointer-opened menu shows no ring, a Lucide glyph per item,
- * deletes in red.
+ * The shared menu (`Menu`), a Lucide glyph per item, deletes in red.
  */
 export default function TableContextMenu({
   anchor,
@@ -61,40 +50,7 @@ export default function TableContextMenu({
   onDeleteColumn,
   onDismiss,
 }) {
-  const { theme } = useTheme();
-  const { BG, TEXT, SEMANTIC } = theme;
-  const menuRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const itemsRef = useRef([]);
   const open = !!anchor && !!context;
-
-  useFocusTrap(menuRef, open, "container");
-  useExitGhost(menuRef, open);
-  const pos = useMenuPosition(menuRef, open, anchor, { gapY: 4 });
-
-  const menuKeys = useMenuKeys({
-    rows: () => itemsRef.current,
-    active: activeIndex,
-    setActive: setActiveIndex,
-    choose: (i) => itemsRef.current[i]?.action(),
-    close: onDismiss,
-  });
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (itemsRef.current.length && menuKeys(e)) e.preventDefault();
-    },
-    [menuKeys],
-  );
-
-  // On the document, not the window: the app shell's shortcut handler is a
-  // window listener registered at startup, and one added now would run after
-  // it (see ContextMenu).
-  useEffect(() => {
-    if (!open) return;
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, handleKeyDown]);
-
   if (!open) return null;
 
   const { type, rowIndex, colIndex } = context;
@@ -158,7 +114,7 @@ export default function TableContextMenu({
             label: a.label,
             icon: <a.Icon />,
             action: act(() => onAlign(colIndex, a.value)),
-            radio: true,
+            role: "menuitemradio",
             checked: a.value === alignment,
             hint: shortcut(a.key),
           })),
@@ -173,70 +129,20 @@ export default function TableContextMenu({
               ]
             : []),
         ];
-  itemsRef.current = items;
 
-  return createPortal(
-    <>
-      <div
-        onClick={onDismiss}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
-      />
-      <div
-        ref={menuRef}
-        className="table-context-menu motion-pop"
-        role="menu"
-        aria-label={type === "row" ? "Row options" : "Column options"}
-        aria-activedescendant={activeIndex >= 0 ? `table-ctx-item-${activeIndex}` : undefined}
-        tabIndex={-1}
-        style={{
-          outline: "none",
-          position: "fixed",
-          top: pos?.top ?? anchor.bottom + 4,
-          left: pos?.left ?? anchor.left,
-          zIndex: Z.CONTEXT_MENU,
-          background: BG.elevated,
-          border: `1px solid ${BG.divider}`,
-          borderRadius: MENU_RADIUS,
-          padding: MENU_PAD,
-          minWidth: type === "row" ? 168 : 216,
-          boxShadow: theme.modalShadow,
-        }}
-      >
-        {items.map((item, i) => (
-          <button
-            key={item.label}
-            id={`table-ctx-item-${i}`}
-            role={item.radio ? "menuitemradio" : "menuitem"}
-            aria-checked={item.radio ? item.checked : undefined}
-            type="button"
-            onClick={item.action}
-            onMouseEnter={() => setActiveIndex(i)}
-            onMouseLeave={() => setActiveIndex((a) => (a === i ? -1 : a))}
-            style={{
-              width: "100%",
-              background: i === activeIndex ? BG.hover : "none",
-              border: "none",
-              borderRadius: MENU_ROW_RADIUS,
-              padding: "7px 10px",
-              cursor: "pointer",
-              color: item.danger ? SEMANTIC.error : TEXT.primary,
-              fontSize: 12.5,
-              fontFamily: "inherit",
-              textAlign: "left",
-              transition: "background var(--motion-fast)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {/* The glyph inherits the item colour, so a delete's goes red with its label. */}
-            {item.icon}
-            <span style={{ flex: 1 }}>{item.label}</span>
-            {item.hint && <span style={{ color: TEXT.muted, fontSize: 12 }}>{item.hint}</span>}
-          </button>
-        ))}
-      </div>
-    </>,
-    document.body,
+  // The column already shows its alignment, so the radios carry no tick
+  // (the menu bar's Format → Align does).
+  return (
+    <Menu
+      label={type === "row" ? "Row options" : "Column options"}
+      idPrefix="table-ctx-item"
+      className="table-context-menu"
+      anchor={anchor}
+      gapY={4}
+      minWidth={type === "row" ? 168 : 216}
+      ticks={false}
+      onClose={onDismiss}
+      items={items}
+    />
   );
 }
