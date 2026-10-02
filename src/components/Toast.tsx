@@ -31,10 +31,8 @@ const KIND_GLYPH: Record<ToastKind, string> = {
 
 /**
  * What colour the mark is. The message itself is always the ordinary ink: the
- * meaning lives in one 16px glyph, not in a coloured slab (the info toast used
- * to be a 360px fill of the accent — the largest accent surface in the app,
- * against the rule that accent is never a desktop surface — with white text on
- * it at about 2:1; 2026-09-19).
+ * meaning lives in one 16px glyph, never a coloured slab (accent is never a
+ * desktop surface).
  */
 function markColour(kind: ToastKind, theme: Theme): string {
   if (kind === "error") return theme.SEMANTIC.error;
@@ -134,7 +132,7 @@ export default function Toast({
         // The menus' own shadow, not the tooltip chip's none: a chip labels the
         // control it points at, while this floats free over the sheet — and in
         // Light the elevated ground *is* the sheet's white, so without it the
-        // receipt was a hairline outline on white (judged live 2026-09-19).
+        // receipt would be a hairline outline on white.
         boxShadow: theme.modalShadow,
         cursor: persists || nameable || action ? "default" : "pointer",
       }}

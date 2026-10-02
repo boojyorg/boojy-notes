@@ -13,11 +13,11 @@ import { Z } from "../constants/zIndex";
  * `confirmIcon` is a glyph drawn before the confirm label (Change notes folder
  * carries the open folder its next step shows).
  *
- * Enter activates the focused button, natively (review 2026-09-07, §4.1): a
- * destructive dialog opens with Cancel focused, so Enter cancels until the
- * user Tabs to the other button; a plain one opens on Confirm. Before this a
- * window listener confirmed on any Enter, whatever held focus, so the
- * "safer" default was no protection at all. The dialog takes only Escape.
+ * Enter activates the focused button, natively: a destructive dialog opens
+ * with Cancel focused, so Enter cancels until the user Tabs to the other
+ * button; a plain one opens on Confirm. A window listener confirming on any
+ * Enter would make the safer default no protection. The dialog takes only
+ * Escape.
  * Focus is placed once per dialog and Tab stays inside it.
  */
 export default function ConfirmDialog({ confirm, accentColor, onConfirm, onCancel, onAlt }) {

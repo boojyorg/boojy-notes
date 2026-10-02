@@ -132,8 +132,7 @@ export default function GlobalStyles() {
            the grab target, not the ink. Use background-color (not the background
            shorthand) in the state rules — the shorthand resets background-clip and
            the thumb would jump to full width on hover. The 2.5px border is what
-           standardises the visible weight at 7px with the sidebar bar (judged
-           live 2026-08-23); fractional borders are exact on retina, and may
+           standardises the visible weight at 7px with the sidebar bar; fractional borders are exact on retina, and may
            round a device pixel unevenly on 1× displays. */
         ::-webkit-scrollbar-thumb {
           background-color: ${theme.scrollbar.thumb};
@@ -143,7 +142,7 @@ export default function GlobalStyles() {
         }
         ::-webkit-scrollbar-thumb:hover { background-color: ${theme.scrollbar.thumbHover}; }
         ::-webkit-scrollbar-thumb:active { background-color: ${theme.scrollbar.thumbActive}; }
-        /* Sidebar-only scrollbar geometry (judged live 2026-08-23). Same 7px
+        /* Sidebar-only scrollbar geometry. Same 7px
            visible pill as the global bar, but hugging the divider: 4px border
            on the content side, 1px on the edge side, so the ink's outer edge
            sits 1px off the divider instead of centred. Same colours as the
@@ -152,14 +151,13 @@ export default function GlobalStyles() {
           border-left-width: 4px;
           border-right-width: 1px;
         }
-        /* Note-row ··· reveal (judged live 2026-08-23; slot collapses at rest
-           since 2026-08-23 v2). Hidden at rest and on a merely-selected row;
+        /* Note-row ··· reveal. Hidden at rest and on a merely-selected row;
            row hover or keyboard focus shows muted dots; hovering the control
            itself lifts them to primary ink. The slot takes NO width at rest so
            a long title truncates against the full row, and re-truncates only
            20px + the row gap shorter while the dots are revealed. Width snaps
-           (judged live: a sliding re-truncation reads worse than an instant
-           one) — only the ink transitions. An open menu holds the slot via
+           (a sliding re-truncation reads worse than an instant one) — only
+           the ink transitions. An open menu holds the slot via
            inline styles in Sidebar.jsx. */
         /* Rest ground for the drag's drop targets when their inline background is
            absent. A folder row is a <button>: with no inline background it falls to
@@ -182,7 +180,7 @@ export default function GlobalStyles() {
           opacity: 1;
           color: ${theme.TEXT.primary};
         }
-        /* A folder row's trailing New note and ··· (2026-09-16): the note
+        /* A folder row's trailing New note and ···: the note
            row's slot grammar, two glyph boxes wide. Zero-width at rest,
            revealed on row hover or focus; muted, each glyph primary on its
            own hover. Sidebar.jsx holds the slot open inline while the row's
@@ -215,7 +213,7 @@ export default function GlobalStyles() {
           transition: color var(--motion-fast);
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
-        /* A row renaming stands down (2026-09-16): no pill under the field,
+        /* A row renaming stands down: no pill under the field,
            however it is hovered, active or selected (the hover pill is an
            inline write, hence !important), and no trailing actions, whose
            only effect would be to blur the field. The selected name is the
@@ -236,14 +234,7 @@ export default function GlobalStyles() {
           width: 0 !important;
           pointer-events: none;
         }
-        /* The Notes row's three controls (Search, New folder, ···) are
-           visible at rest and lift on hover or focus. 0.55 is the quiet ink —
-           the faintest composite that clears ~3:1 on the DAY ground (0.4 does
-           not). They hid at rest until 2026-09-12; Search is the only route to
-           the palette while the sidebar is showing, and a control you must
-           hover to find is not one. An open menu holds its control at full ink
-           via inline opacity (SectionAction \`active\`). */
-        /* The Notes row's New folder and Sort (2026-09-16): hidden at rest,
+        /* The Notes row's New folder and Sort: hidden at rest,
            revealed muted while the pointer is on the row or a focus is in it
            (the folder rows' own grammar), each full ink on its own hover.
            .menu-open on the row holds the pair while the Sort menu is up,
@@ -282,13 +273,13 @@ export default function GlobalStyles() {
         }
         /* A window drag region takes the press before the page sees it, so
            while the path's folder popup is open every drag region stands down
-           and a press on the empty top row closes the popup instead (2026-09-16).
+           and a press on the empty top row closes the popup instead.
            !important, because the regions are set inline. */
         html.popup-open [data-drag-region] { -webkit-app-region: no-drag !important; }
         input::placeholder { color: ${theme.TEXT.muted}; }
         /* The app font on the body too, so a surface portalled to it (the
            table's cell menu) inherits Inter rather than the browser's serif
-           (2026-09-10). The app root sets the same stack. */
+           The app root sets the same stack. */
         body {
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
@@ -313,9 +304,9 @@ export default function GlobalStyles() {
           outline: 2px solid var(--boojy-focus-ring); outline-offset: -2px;
         }
         /* The press squeezes the drawn box; the hit area around it never
-           transforms. On .checkbox-box itself the scale pulled the element's
-           own edges 1.2px in from under the pointer, so a press near an edge
-           animated and then released onto the row instead (2026-09-19). */
+           transforms. On .checkbox-box itself the scale would pull the
+           element's edges in from under the pointer, and a press near an edge
+           would release onto the row. */
         .checkbox-box {
           transition: background var(--motion-fast) var(--ease-enter),
             border-color var(--motion-fast) var(--ease-enter),
@@ -393,16 +384,14 @@ export default function GlobalStyles() {
         [data-block-id] a:hover .external-link-icon {
           opacity: 0.8;
         }
-        /* The strike is drawn in the text's own colour (2026-09-16, Tyr's ask);
-           it was the accent, which made struck words the one inline format
-           with a colour of its own. */
+        /* The strike is drawn in the text's own colour, never the accent:
+           struck words are no inline format with a colour of its own. */
         [data-block-id] del {
           text-decoration: line-through;
           text-decoration-thickness: 1.5px;
           color: inherit;
         }
-        /* Bold inside a heading is one step heavier than the heading
-           (2026-09-16). Left to the browser, "bolder" on a 600 or 700 heading
+        /* Bold inside a heading is one step heavier than the heading. Left to the browser, "bolder" on a 600 or 700 heading
            jumps to 900, which is a different face rather than an emphasis. */
         [data-block-type="h1"] strong, [data-block-type="h6"] strong { font-weight: 800; }
         [data-block-type="h2"] strong, [data-block-type="h3"] strong,
@@ -719,7 +708,7 @@ ${tagPillCss(theme)}
            model; Markdown holds no column width), with a minimum cell width
            so an empty table reads as a small grid, capped at the column by the
            scroller it sits in. No focus ring on a cell: the caret is the
-           signal, as in a paragraph (2026-09-10). */
+           signal, as in a paragraph. */
         .table-outer {
           position: relative;
           outline: none;
@@ -729,9 +718,7 @@ ${tagPillCss(theme)}
            their content and wraps text, down to a 72px floor per cell (about
            six characters); only past that does the scroller take over. The
            240px minimum is the table's, not the cells', so an empty 2×2 still
-           reads as a small grid while eight empty columns fit the column. A
-           120px per-cell minimum made six columns scroll at once
-           (2026-09-10). */
+           reads as a small grid while eight empty columns fit the column. */
         .table-block {
           width: auto;
           min-width: 240px;
@@ -741,8 +728,7 @@ ${tagPillCss(theme)}
         }
         /* One grid, one thickness: the cells' collapsed 1px borders are the
            whole grid, outer edge included (no border on the scroller, which
-           doubled the edge), and no rounded corners (2026-09-10, judged
-           against Obsidian's). */
+           would double the edge), and no rounded corners, as Obsidian's. */
         .table-block th, .table-block td {
           border: 1px solid ${theme.BG.divider};
           padding: 8px 12px;
@@ -851,7 +837,7 @@ ${tagPillCss(theme)}
            rules as the paragraph's placeholder: while the element holds
            nothing, or only the caret's <br>. Every heading, focused or not:
            the editor is one contentEditable, so a block is never :focus, and
-           an empty heading is otherwise an invisible row (2026-09-20). */
+           an empty heading is otherwise an invisible row. */
         [data-block-type^="h"][data-placeholder]:empty::before,
         [data-block-type^="h"][data-placeholder]:has(> br:only-child)::before {
           content: attr(data-placeholder);
@@ -878,7 +864,7 @@ ${tagPillCss(theme)}
            focus and on input, cleared on blur): a short name typed over the
            placeholder keeps its width instead of snapping to a one-letter
            pill and re-centring the path on every keystroke; a rename that
-           never empties follows its text (judged 2026-09-17). The field fits
+           never empties follows its text. The field fits
            the name and re-centres once, when the caret leaves. border-box,
            so the pill's padding is inside the minimum. */
         [data-title]:empty,

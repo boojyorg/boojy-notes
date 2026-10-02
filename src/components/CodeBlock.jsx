@@ -16,8 +16,7 @@ import "prismjs/components/prism-markup";
 /**
  * The languages offered, Plain then alphabetical: one editorial exception,
  * because Plain is the absence of a language, and a mechanical rule for every
- * language added after it (2026-09-19; before, the order was roughly by how
- * often each is used, which had to be re-judged on each addition). Each is a
+ * language added after it. Each is a
  * Prism grammar imported above; adding a row means adding its grammar.
  */
 const LANGUAGES = [
@@ -105,10 +104,8 @@ export default memo(function CodeBlock({
   const langLabelRef = useRef(null);
 
   // The fence's text exactly as the file holds it, blank first and last
-  // lines included. Stripping them here made Enter at the end of the block
-  // a no-op (the newline was written to state and stripped back by the next
-  // render) and lost a fence's own blank lines at the first keystroke
-  // (review 2026-09-07, §1.3).
+  // lines included. Stripping them would make Enter at the end of the block
+  // a no-op and lose a fence's own blank lines at the first keystroke.
   const code = block.text || "";
   const lang = block.lang || "";
 
@@ -180,8 +177,8 @@ export default memo(function CodeBlock({
       // (useAppKeyboard, on the window); held here they were the textarea's
       // own, one character at a time and blind to state.
       const mod = e.metaKey || e.ctrlKey;
-      // Lower-cased: with Shift held the key is "Z", and the guard missed
-      // it, so redo was stopped here and never reached the shell (2026-09-20).
+      // Lower-cased: with Shift held the key is "Z", and redo must still
+      // reach the shell.
       const k = e.key.toLowerCase();
       if (mod && (k === "z" || k === "y")) return;
       e.stopPropagation(); // Prevent parent editor from intercepting
@@ -485,9 +482,8 @@ export default memo(function CodeBlock({
 /* ---- Context menu, position: fixed inside the column (not a portal) ---- */
 /**
  * The code block's own menu: Copy code, Change language, Delete block. The
- * language list used to live here a second time, in a hover submenu with its
- * own viewport clamping (2026-09-19): one list, in `CodeLangMenu`, which this
- * row now opens under the block's label.
+ * language list is `CodeLangMenu`'s alone, which this row opens under the
+ * block's label.
  */
 function CodeCtxMenu({ position, onCopy, onChangeLang, onDelete }) {
   const menuRef = useRef(null);

@@ -6,15 +6,14 @@ import { FIELD_FORMATS } from "../utils/inlineFormatCommands";
 import { FormatIcon } from "./Icons";
 import { TOOLTIP_REST_MS, Tooltip, coolTooltips, shortcutLabel, tooltipsWarm } from "./Tooltip";
 
-/** Button box. The 32px control tier read chunky hovering over a line of text (judged 2026-09-10). */
+/** Button box. The 32px control tier reads chunky hovering over a line of text. */
 const BTN = 28;
 /**
  * Room the chip needs above the toolbar (its height plus the 6px gap). The chip
  * goes below only when that room would fall above the top of the scroll
  * container, which is the first visible line of a scrolled note: measured,
- * because a rule on the toolbar's own position fired for the first lines of
- * every note (the title sits above them, so there was room) and put the chip
- * over the selected text (2026-09-10).
+ * because a rule on the toolbar's own position would put the chip over the
+ * selected text on a note's first lines.
  */
 const CHIP_ROOM = 36;
 /** The room the strip keeps from the scroller's edges when it has to step inwards. */
@@ -51,8 +50,8 @@ export function chipWouldClip(bar) {
  * enough that the whole strip stays inside the editor scroller.
  *
  * The scroller is `overflow-x: hidden`, so a strip centred on a selection at
- * the start of a line was not merely off-centre: the half hanging past the
- * column was scissored off (2026-09-19). Every other popover clamps through
+ * the start of a line would not merely be off-centre: the half hanging past
+ * the column would be scissored off. Every other popover clamps through
  * `positionMenu` against the viewport; this one is absolute inside the
  * scrolling column, so it clamps against the scroller's box and returns a
  * centre in the offset parent's coordinates. Measured distances are divided
@@ -113,11 +112,11 @@ function ToolbarBtn({ format, active, onClick, onRest, onLeave, tip, tipBelow })
         justifyContent: "center",
         // Active is the glyph in the accent and nothing else, Notion's grammar:
         // the fill is for hover alone, so a pressed button still lifts on hover
-        // and the accent stays ink, never a surface (judged 2026-09-10).
+        // and the accent stays ink, never a surface.
         background: hovered ? theme.overlay(0.08) : "transparent",
         color: active ? ACCENT.text : TEXT.primary,
         // The ink is not animated: a pressed glyph that fades into the accent
-        // reads as the press taking a moment to land (2026-09-19). The fill is
+        // reads as the press taking a moment to land. The fill is
         // hover's, and hover is what a ramp is for.
         transition: "background var(--motion-fast)",
       }}

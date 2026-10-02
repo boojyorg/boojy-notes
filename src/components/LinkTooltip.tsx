@@ -16,7 +16,7 @@ interface LinkTooltipProps {
 }
 
 /**
- * The destination chip (2026-09-20): the tooltip chip's grammar (13px/500 in
+ * The destination chip: the tooltip chip's grammar (13px/500 in
  * the primary ink, the elevated ground, a hairline, radius 8, no shadow),
  * 4px under the link, after the same rest a control's chip takes. A web link
  * says its URL; a note link its name with the folder muted beside it; a link

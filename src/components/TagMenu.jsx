@@ -11,21 +11,18 @@ import { useExitGhost } from "../hooks/useExitGhost";
  * Tag autocomplete under the `#…` being typed.
  *
  * The menu pops up under a word, unasked, so it owns a key only while it is
- * offering something (review 2026-09-07, §1.2). It never takes focus; the
+ * offering something. It never takes focus; the
  * block keeps it. It listens only while it has rows, so an empty match (a new
  * tag) leaves every key to the editor. Enter accepts the highlighted tag only
  * when that is a completion: the user has moved the highlight, or the
  * highlighted tag differs from what is typed. A tag typed in full is
  * complete already, and Enter after it is the editor's Enter. Space is never
  * touched: it ends the tag in the text, and the input handler closes the menu
- * because the caret is no longer inside a `#…` token. Before this the menu
- * prevented the space (`#alpha` + ` beta` became `#alphabeta`) and took Enter
- * even with nothing on screen.
+ * because the caret is no longer inside a `#…` token.
  *
  * It offers only tags that *start with* what is typed, and never the typed
- * tag itself (2026-09-20: the tag being made is already in the index the
- * moment its first letter commits, so `#ha` offered `#ha`, and a substring
- * match offered `#hashtag` for `#a`). So typing a new name shows nothing once
+ * tag itself (it is in the index the moment its first letter commits). So
+ * typing a new name shows nothing once
  * the letters diverge from every existing tag. Rows are the app's menu
  * grammar; the note count is not shown.
  */

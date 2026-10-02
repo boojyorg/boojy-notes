@@ -6,7 +6,7 @@ export const FOLDER_ANIM_MS = 160;
 
 /**
  * Animated disclosure for a folder's children, shared by the sidebar's tree
- * and the path's folder popup (2026-09-16) so the two open and close alike.
+ * and the path's folder popup so the two open and close alike.
  *
  * The grid 0fr→1fr trick animates to auto height with no measuring. Children
  * MUST unmount once the collapse finishes (not merely clip): useSidebarDrag
@@ -19,8 +19,7 @@ export const FOLDER_ANIM_MS = 160;
  * The unmount is promised, not merely expected: `transitionend` is the prompt
  * path, and a timer a beat past the slide's length is the fallback, because
  * the event is lost when no transition runs (a window that is not painting,
- * a transition cut short) and the clipped rows then stayed in the DOM for
- * good (seen 2026-09-16 in the real-Electron suite under load).
+ * a transition cut short) and the clipped rows would stay for good.
  */
 export default function Collapsible({ open, children }: { open: boolean; children: ReactNode }) {
   const reduceMotion = prefersReducedMotion();

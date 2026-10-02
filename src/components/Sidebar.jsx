@@ -87,11 +87,10 @@ const HEADER_NUDGE = 4;
 
 // ── Desktop alignment system: one spine, one text column ────────────────────
 // The row grammar (SPINE, TEXT_COL, the row height and pill radius) lives in
-// constants/layout.js since 2026-09-16, shared with the path's folder popup so
+// constants/layout.js, shared with the path's folder popup so
 // the popup is this tree drawn small. Rows are inset from both sidebar edges
 // so hover pills breathe; tree pills keep the 4px left inset but run only
-// ROW_INSET_RIGHT short of the scrollbar gutter on the right (judged live
-// 2026-08-23). Pairs with the .sidebar-scroll thumb override in GlobalStyles.jsx.
+// ROW_INSET_RIGHT short of the scrollbar gutter on the right. Pairs with the .sidebar-scroll thumb override in GlobalStyles.jsx.
 const ROW_INSET_RIGHT = 2;
 /** Gap between a folder glyph and its name = TEXT_COL − SPINE − SPINE_ICON. */
 const ICON_GAP = TEXT_COL - SPINE - SPINE_ICON;
@@ -104,7 +103,7 @@ const TREE_SPINE = SPINE + SIDEBAR_TREE_INSET;
 // Picito-style rows: full-width hit areas (minus ROW_INSET), 12px radius,
 // neutral BG.hover for hover AND selected, no boxes at rest. Tree rows are
 // 28px with a 2px rhythm gap; the vault header is the same height.
-// ···-menu placement, tunable here (judged live 2026-08-23). The menu drops
+// ···-menu placement, tunable here. The menu drops
 // just below the note row and grows rightward into the editor, its left edge
 // slightly left of the ··· button.
 /** Gap between the row's bottom edge and the menu. */
@@ -112,13 +111,11 @@ const NOTE_MENU_GAP = 4;
 /** How far left of the ··· button's left edge the menu's left edge sits. */
 const NOTE_MENU_SHIFT = 8;
 /**
- * The anchor a row's ··· hands its menu (2026-09-16): the row's own rectangle
- * with the menu's gap either side, left edge shifted left of the dots. Below
- * the row when it fits; when it does not, useMenuPosition flips it to sit
- * ABOVE the row. With a point anchor under the row the flipped menu ended at
- * the row's bottom edge, over the row, and the pointer still resting on the
- * dots sat inside its last item, Delete, which took the hover highlight the
- * moment the menu opened (seen live on a folder low in the window).
+ * The anchor a row's ··· hands its menu: the row's own rectangle with the
+ * menu's gap either side, left edge shifted left of the dots. Below the row
+ * when it fits; when it does not, useMenuPosition flips it to sit ABOVE the
+ * row. A point anchor would flip the menu over the row, under the resting
+ * pointer, lighting its last item, Delete.
  */
 /** Keys the tree claims even where they move nothing (an arrow at the end
  *  would otherwise scroll the sidebar). */
@@ -131,17 +128,13 @@ const rowMenuAnchor = (btn, row) => ({
   right: btn.right,
 });
 /** The folder row's two trailing glyph boxes (New note, ···), 20px each with
- *  4px between them (judged live 2026-09-16: adjacent, the pen's ink sat on
- *  the dots), the note row's single ··· slot twice over. */
+ *  4px between them (adjacent, the pen's ink sits on the dots), the note row's single ··· slot twice over. */
 const FOLDER_ACTIONS_W = 44;
 
 /**
- * The inline rename field is invisible (2026-09-16, judged against ChatGPT's
- * rows): no border, fill or padding, the row's own font at the row's own
- * place, so nothing on screen moves when it appears and the selected name is
- * the whole signal. Before this it was a bordered accent box with 5px of
- * padding that shifted the name right, and the folder's was drawn at
- * 12.5px/500 under a 14px/400 label, so the name shrank. The row itself
+ * The inline rename field is invisible: no border, fill or padding, the row's
+ * own font at the row's own place, so nothing on screen moves when it appears
+ * and the selected name is the whole signal. The row itself
  * stands down while it renames (`.is-renaming` in GlobalStyles: no pill,
  * actions hidden). The height is the row's so the input's centred text sits
  * on the label's baseline.
@@ -187,12 +180,10 @@ const SECTION_BTN = 32;
 const SECTION_CONTENT_GAP = 2;
 // Header controls (New folder, Sort) are hidden at rest and revealed, muted,
 // while the pointer is on the Notes row or a keyboard focus is in it, lifting
-// to full ink on their own hover; the pair is held while the Sort menu is open
-// (2026-09-16, Tyr's ask). This is the row's third flip: hover-revealed on
-// 2026-08-23, visible at rest on 2026-09-12 ("a control you must hover to find
-// is not one"), and hidden again now because the folder rows under it reveal
-// their own pair on hover since the same day, so a row that kept its glyphs
-// was the odd one out. All rest/emphasis states are CSS
+// to full ink on their own hover; the pair is held while the Sort menu is open.
+// Hidden at rest because the folder rows under it reveal their own pair on
+// hover, and a row that kept its glyphs would be the odd one out. All
+// rest/emphasis states are CSS
 // (.sidebar-section-action in GlobalStyles); Sidebar.jsx only adds the
 // held-open class while the menu is up.
 
@@ -200,8 +191,7 @@ const SECTION_CONTENT_GAP = 2;
  * The one section lid: the list's name left, its controls right.
  * `role="presentation"` keeps it out of the tree below — the text still
  * reads, it just isn't announced as a row. The name is the vault folder's
- * (`VaultLabel`, 2026-09-25, Tyr's call reversing the plain word `Notes` of
- * 2026-09-12): quiet muted ink, a label for the list rather than a second
+ * (`VaultLabel`): quiet muted ink, a label for the list rather than a second
  * wordmark, and the default vault still reads `Notes`. Without a vault list
  * (the web build) it is the plain word.
  */
@@ -256,16 +246,14 @@ function SectionHeader({ label, TEXT, children, dropRoot, menuOpen }) {
 }
 
 /**
- * A trailing header control (New folder, Sort; Search until 2026-09-16, now
- * on the window's row, and the ··· until the same day). One component so all
+ * A trailing header control (New folder, Sort). One component so all
  * wear the same geometry and the same reveal/hover ink. Never more than
  * three: muted glyphs in threes read as a set, four read as a toolbar.
  * `active` is the control whose menu is open: full ink on its hover surface
  * until the menu closes.
  */
 function SectionAction({ onClick, label, shortcut, ariaLabel, active, children, ...rest }) {
-  // The row's controls name themselves with the chrome's chip (2026-09-17),
-  // after the same rest, so brushing across the row on the way to a folder
+  // The row's controls name themselves with the chrome's chip, after the same rest, so brushing across the row on the way to a folder
   // shows nothing.
   const tip = useTooltip();
   const ref = useRef(null);
@@ -663,7 +651,7 @@ const Sidebar = memo(function Sidebar({
     // multi-select all use neutral BG.hover, and the active note is
     // distinguished by ink (weight + TEXT.primary), never by accent. A note's
     // title starts where a folder at the same depth puts its glyph (SPINE +
-    // depth × TREE_INDENT, the folder row's own padding; 2026-09-16), so notes
+    // depth × TREE_INDENT, the folder row's own padding), so notes
     // and folders at one depth share a left edge and a folder's name is further
     // right only by its glyph. The folder popup keeps its notes on TEXT_COL
     // (PathTreeMenu), a deliberate difference.
@@ -866,9 +854,9 @@ const Sidebar = memo(function Sidebar({
           ]
             .filter(Boolean)
             .join(" ")}
-          // A click toggles, every click; no double-click rename (2026-09-16,
-          // Tyr's call): the first click of the pair toggled the folder under
-          // the field, which read as a glitch. A folder is renamed from its
+          // A click toggles, every click; no double-click rename, by decision:
+          // the first click of the pair would toggle the folder under the
+          // field, which reads as a glitch. A folder is renamed from its
           // ··· menu, as ChatGPT's projects are. Notes keep double-click, since
           // a click on a note only opens it.
           onClick={() => toggle(folderPath)}
@@ -921,8 +909,7 @@ const Sidebar = memo(function Sidebar({
               aria-label="Rename folder"
               data-testid="rename-field"
               // Finder-style, as a note's: the whole name selected, ready to
-              // overwrite (until 2026-09-16 the caret sat at the end and
-              // typing appended). With no border the selection is the only
+              // overwrite. With no border the selection is the only
               // sign the field is there, so this is not polish.
               onFocus={(e) => e.currentTarget.select()}
               onClick={(e) => e.stopPropagation()}
@@ -970,7 +957,7 @@ const Sidebar = memo(function Sidebar({
               {folder.name}
             </span>
           )}
-          {/* Trailing New note and ··· (2026-09-16, ChatGPT's project rows):
+          {/* Trailing New note and ··· (ChatGPT's project rows):
               what a folder does, write here and organise here. Zero-width
               at rest so a long name truncates against the full row, revealed
               on row hover or focus exactly as a note row's dots are
@@ -1029,7 +1016,7 @@ const Sidebar = memo(function Sidebar({
         </button>
         {hasChildren && (
           <Collapsible open={isOpen}>
-            {/* An indent guide (2026-09-05), a hairline dropping from the
+            {/* An indent guide, a hairline dropping from the
                 folder glyph's centre through its children; the line ending is
                 what says "this folder ends here" in a mixed tree. */}
             <div style={{ position: "relative" }}>
@@ -1209,11 +1196,9 @@ const Sidebar = memo(function Sidebar({
       style={{
         // The column is its full width whatever the wrapper is showing
         // of it, and slides out under the window's edge as the wrapper
-        // closes over it (2026-09-14). Before this it was `flex: 1` in
-        // a wrapper whose width tweened to 0, so every frame of the
-        // toggle re-laid it out: the New note pill shrank from 234px to
-        // 16, rows re-truncated, and the Notes row's glyphs piled up.
-        // Nothing inside reflows now; the contents fade instead, out
+        // closes over it, never `flex: 1` in a tweening wrapper, which
+        // would re-lay it out every frame. Nothing inside reflows; the
+        // contents fade instead, out
         // as the slide begins and in as it ends. `transform: none` at
         // rest, never an identity translate, so nothing fixed inside
         // the column gains a containing block. Once the slide has
@@ -1221,7 +1206,7 @@ const Sidebar = memo(function Sidebar({
         // of the hide and at the start of the show), so its rows are
         // out of the tab order and off the accessibility tree while
         // the DOM and scroll position stay; `inert` on the whole
-        // column was tried and broke a double-click mid-slide.
+        // column would break a double-click mid-slide.
         width: sidebarWidth,
         flexShrink: 0,
         display: "flex",
@@ -1307,8 +1292,7 @@ const Sidebar = memo(function Sidebar({
             />
           )}
         </button>
-        {/* Search and the toggle, one group at the chrome row's own gap
-            (2026-09-16; Search sat on the Notes row from 2026-09-12). The
+        {/* Search and the toggle, one group at the chrome row's own gap. The
             same two neighbours the collapsed header shows, so Search keeps
             its place beside the toggle in both sidebar states. */}
         <div style={{ display: "flex", alignItems: "center", gap: BTN_GAP, flexShrink: 0 }}>
@@ -1334,9 +1318,7 @@ const Sidebar = memo(function Sidebar({
         <>
           {/* New note and the list's controls, above the list's scroller:
           they never scroll, so the scrollbar spans the list alone, from
-          under the vault row down to Recently Deleted (2026-09-27; they
-          were a sticky block inside one scroller, whose track ran from
-          the window's top). */}
+          under the vault row down to Recently Deleted. */}
           <div inert={hiddenControls} style={{ background: chromeBg, flexShrink: 0 }}>
             <div style={{ height: COLUMN_HEAD_GAP }} />
             <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />

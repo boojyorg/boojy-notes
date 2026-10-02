@@ -51,9 +51,8 @@ const hBg = (el: HTMLElement, c: string) => {
 };
 
 /**
- * An image's menu, from a right-click on the picture or the hover bar's ···
- * (2026-09-23, replacing a hand-drawn list in Title Case with no glyphs, no
- * keyboard and its own heavier shadow). The table cell menu's grammar: the
+ * An image's menu, from a right-click on the picture or the hover bar's ···,
+ * in the table cell menu's grammar: the
  * elevated ground with the divider border, 12.5px sentence-case labels, a
  * Lucide glyph per item at the navigation stroke, Delete last under a rule and
  * in the error ink, arrows, Enter and Escape.
@@ -62,8 +61,8 @@ const hBg = (el: HTMLElement, c: string) => {
  * there, for CodeLangMenu's reason: a portal leaves the DOM but not the React
  * tree, so a key pressed here would otherwise reach the editor's `onKeyDown`.
  * **Its presses stop the same way**: a press in the menu is not a press in
- * the editor, and bubbled there it set the editor's mouse-down flag and ran
- * its caret rescue a frame after the menu had closed.
+ * the editor, and bubbled there it would set the editor's mouse-down flag and
+ * run its caret rescue after the menu closed.
  * Placement is divided by the UI scale, as every measured placement is.
  */
 export default function ImageMenu({

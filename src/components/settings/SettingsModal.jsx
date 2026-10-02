@@ -30,8 +30,7 @@ export default function SettingsModal({
   // The scale the pane opened at. While it is open the app resizes under every
   // press of Interface size, but the pane itself keeps the size and place it
   // opened with: a panel that grows as you press the button inside it moves
-  // that button out from under the pointer (judged live twice, Tyr,
-  // 2026-09-19). It is not excluded from the scale — the next time it opens it
+  // that button out from under the pointer. It is not excluded from the scale — the next time it opens it
   // is drawn at whatever the scale is then. Captured in a layout effect, so the
   // first paint of an open pane is already at its own scale.
   const [openedAt, setOpenedAt] = useState(uiScale);
@@ -117,16 +116,14 @@ export default function SettingsModal({
           style={{
             pointerEvents: "auto",
             // Its own scale, held at the one it opened with: `zoom` nests
-            // multiplicatively, so this cancels the difference exactly (measured
-            // 2026-09-19: 540×200 at the same place at 50%, 100% and 200%). The
+            // multiplicatively, so this cancels the difference exactly. The
             // local `--ui-scale` keeps the viewport-unit maths below resolving
             // against the pane's own scale rather than the app's (`atScale`).
             zoom: openedAt === uiScale ? undefined : openedAt / uiScale,
             "--ui-scale": openedAt / 100,
             width: SETTINGS_WIDTH,
             // Divided by the scale: `vw`/`vh` ignore the zoom the UI scale is
-            // made of, so at 200% this pane was twice the window and its header
-            // sat above the top edge (2026-09-19).
+            // made of, so at 200% this pane would be twice the window.
             maxWidth: atScale("100vw - 32px"),
             maxHeight: atScale("100vh - 48px"),
             boxSizing: "border-box",

@@ -20,7 +20,7 @@ import { AttachmentsIcon, CheckIcon, OtherFileIcon, SettingsIcon, VaultIcon } fr
 /**
  * The storage-location menu, under the sidebar's location name (or ⌘O):
  * which location is open, and what the tree shows besides notes. A switcher
- * only (2026-09-25, Tyr): adding, removing and revealing a location are
+ * only: adding, removing and revealing a location are
  * Settings' (Manage storage locations…), because a location is added rarely
  * and switched often. Each row has its glyph and the Sort menu's grammar: a
  * chosen row carries the check on the right in the mark colour, a missing

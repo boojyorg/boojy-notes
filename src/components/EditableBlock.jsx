@@ -25,17 +25,13 @@ const CHECKBOX_SIZE = 16;
  * The checkbox is two elements: the square you see, and the hit area around it
  * that takes the click.
  *
- * A press within about a pixel of the square's edge used to animate and change
- * nothing: `:active` scales the square to 0.85, Chromium hit-tests against the
- * transformed box, and a held press pulled every edge 1.2px in from under the
- * pointer — so the release landed on the row, and the click fired there rather
- * than on the box (2026-09-19). What fixes it is an element that covers the
- * square's footprint and never transforms; the press animation belongs to the
- * square inside it.
+ * `:active` scales the square to 0.85 and Chromium hit-tests against the
+ * transformed box, so a press near its edge would release on the row instead.
+ * The hit area covers the square's footprint and never transforms; the press
+ * animation belongs to the square inside it.
  *
- * The hit area is that footprint and no more. A padded one was tried the same
- * day and rejected live: the target is the box you can see, and 4px of slop
- * around it ticked tasks the pointer was not on.
+ * The hit area is that footprint and no more: the target is the box you can
+ * see, and slop around it would tick tasks the pointer was not on.
  */
 /** Air between the drawn box and the task's text. */
 const CHECKBOX_TEXT_GAP = 9;
@@ -77,9 +73,8 @@ function firstBlockLift(type, r) {
 
 /**
  * Bullet markers alternate by depth: a filled dot at the top level, a hollow
- * ring one level in, filled again at the third, and so on (2026-09-16, judged
- * on a mockup against filled-then-hollow-throughout: the filled third level
- * keeps sibling groups apart without Notion's square). Drawn as boxes rather
+ * ring one level in, filled again at the third, and so on (the filled third
+ * level keeps sibling groups apart without Notion's square). Drawn as boxes rather
  * than the ● and ○ glyphs, so the pair shares one geometry in every font and
  * on every platform and scales cleanly under the UI zoom; the ring is 1px
  * wider because a ring reads optically smaller than a dot of its diameter.
@@ -147,10 +142,9 @@ const EditableBlock = memo(
     // The root of a block that has no text of its own, or that keeps its text
     // in a field of its own: an image, a file, a code block, a callout, an
     // embed. The gutter grip and the drop geometry find blocks in the ref map,
-    // and a wrapper that never registered was a grip that showed and a press
-    // that did nothing (images 2026-09-16, code, callout and embed
-    // 2026-09-19 — a code block could not be moved at all, since the keyboard
-    // reorder needs a caret the block's own field never gives the editor).
+    // and a wrapper that never registered would be a grip that showed and a
+    // press that did nothing (and a code block could not be moved at all,
+    // since the keyboard reorder needs a caret its field never gives).
     // Kept apart from `elRef` on purpose: that ref's repaint effect paints the
     // block's text, and these carry none. Registration is for the grip; whole-
     // block selection for these three is still deferred (`isSelectableBlock`).
@@ -164,11 +158,8 @@ const EditableBlock = memo(
     // React state by the text-commit debounce, and a render can carry a text
     // one keystroke behind the DOM: the render the next keystroke publishes
     // the previous one with, and a transition render that finishes after a
-    // keystroke. Painted from the render, that lag went over the DOM and the
-    // keystroke was lost: the character typed after a `[x](url)` whose
-    // styling pass bumped the generation (review 2026-09-07, §1.1), and the
-    // characters typed after a title edit in dev, where StrictMode's double
-    // invocation recomputed the title set mid-burst (§1.15). Replacing
+    // keystroke. Painted from the render, that lag would go over the DOM and
+    // lose the keystroke. Replacing
     // innerHTML collapses a caret inside the block to its start, so the
     // offset is remembered first and the caret put back, clamped to the text.
     useLayoutEffect(() => {
@@ -195,8 +186,8 @@ const EditableBlock = memo(
       if (caret >= 0) placeCaret(el, Math.min(caret, caretLength(el)));
     }, [syncGen, noteTitleSet]); // deliberately not exhaustive: the signals, never a keystroke
 
-    // The first paragraph's placeholder shows only while it holds no text
-    // (the placeholder drew under `line one ⇧↵ line two`, 2026-09-26).
+    // The first paragraph's placeholder shows only while it holds no text,
+    // never under `line one ⇧↵ line two`.
     useEmptyMark(elRef, blockIndex === 0 && block.type === "p");
 
     useLayoutEffect(() => {
@@ -468,7 +459,7 @@ const EditableBlock = memo(
             // A heading that opens a note reaches up to the note's first
             // baseline rather than pushing it down, and its top margin — the
             // air between it and a block above, of which it has none — goes
-            // with it. Every other heading keeps its rhythm. 2026-09-19.
+            // with it. Every other heading keeps its rhythm.
             ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
             color: TEXT.primary,
             outline: "none",

@@ -112,26 +112,24 @@ function BarButton({
 }
 
 /**
- * An image block (2026-09-23, from a prototype Tyr judged against Obsidian's
- * and Notion's). Nothing at rest but the picture. **Hover** shows a bar at the
- * top right (full size, and ··· for the menu); no outline, because a frame
- * round every hovered picture was the teal border this replaced. **A click
- * selects** on the press, and no longer opens the full-size view, so a
- * picture can be selected to delete it; a press anywhere off the picture
+ * An image block, judged against Obsidian's and Notion's. Nothing at rest but
+ * the picture. **Hover** shows a bar at the top right (full size, and ··· for
+ * the menu); no outline round a hovered picture. **A click selects** on the
+ * press, never opening the full-size view, so a picture can be selected to
+ * delete it; a press anywhere off the picture
  * deselects it (`EditorArea`). A double-click or the bar's button opens it.
  * **Right-click and ··· open one menu.** Alignment, crop and caption are left
  * out by decision: Markdown can hold none of them, and Obsidian would draw the
  * note differently.
  *
- * **Selected alone, it resizes by its corners** (2026-10-01, Google Docs'
- * handles, judged in a prototype): a teal outline just outside the picture and
+ * **Selected alone, it resizes by its corners** (Google Docs' handles): a teal outline just outside the picture and
  * a dot on each corner. In a run of selected blocks it wears the wash
  * (`imageWashFill`) like the rest, with no dots: one drag cannot size several.
  * Corners only, never edges: the file holds a width alone (`|px`), so the
  * height always follows and an edge would move the side it doesn't name. A
  * drag snaps to the picture's own size (capped at the column) and writes no
  * width there; a double-click on a dot does the same. No width label, by
- * decision (2026-09-23): the picture changing size is the feedback.
+ * decision: the picture changing size is the feedback.
  */
 function ImageBlock({
   src,
@@ -178,8 +176,7 @@ function ImageBlock({
 
   // Opening the menu does not select the picture: it wears the wash only
   // while its menu is open, so the menu says which picture it is for, and is
-  // left as it was once an item has acted (Notion's; 2026-09-23, after Original
-  // size left the picture selected).
+  // left as it was once an item has acted (Notion's).
   const openMenu = (anchor: MenuAnchor, fromBar: boolean) => setMenu({ anchor, fromBar });
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -238,7 +235,7 @@ function ImageBlock({
   }
 
   // The bar follows the pointer (and a menu it opened), never the selection,
-  // so it is never up with the pointer somewhere else (2026-09-23); the
+  // so it is never up with the pointer somewhere else; the
   // corner dots follow the selection alone.
   const pointerOn = (hovered || !!menu || dragging) && !loading;
   const handle = theme.imageHandle;
@@ -250,7 +247,7 @@ function ImageBlock({
         data-selection-surface
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        // Selected on the press, not the release (2026-09-23): the Mac's own
+        // Selected on the press, not the release: the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.
         // The dots and the bar stop their own press, so neither reselects.
         onMouseDown={(e) => {

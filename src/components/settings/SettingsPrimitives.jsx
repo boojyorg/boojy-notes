@@ -6,7 +6,7 @@ import { isElectronMac } from "../../utils/platform";
 import { displayPath } from "../../utils/storageLocations";
 
 /**
- * The parts Settings and first-run setup are built from (2026-09-17), so the
+ * The parts Settings and first-run setup are built from, so the
  * two read as one surface: the palette's ground with a hairline and a 12px
  * radius, section titles in the `Notes` row's grammar, bordered buttons in
  * the confirm dialog's, and the folder path as a control of its own.

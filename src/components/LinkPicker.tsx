@@ -18,10 +18,9 @@ import { readAddress, shownAddress } from "../utils/linkDestination";
 import { LinkIcon, PlusIcon } from "./Icons";
 
 /**
- * The link picker (2026-09-20): one popover for a web address and a note
- * alike, opened by Cmd+K, the toolbar's Link glyph, a typed `[[`, a
- * right-click's Edit link, and a click on a link that names no note or two.
- * Judged on a prototype before it was built.
+ * The link picker: one popover for a web address and a note alike, opened by
+ * Cmd+K, the toolbar's Link glyph, a typed `[[`, a right-click's Edit link,
+ * and a click on a link that names no note or two.
  *
  * Creating is one field, `Paste a link or search notes…`. What is typed
  * decides what it is: an address (with or without its scheme,
@@ -214,9 +213,8 @@ export default function LinkPicker({
   // toolbar's Link glyph opens the picker on its own mousedown, and that press
   // must not close it at once: it is told apart by its time, since it began
   // before the picker existed. The listener is armed at once and never
-  // re-armed (the latest decision is read from a ref). Arming a frame late,
-  // and again a frame late on every keystroke, missed a press that came
-  // inside the gap (the CI flake in formatting-toolbar.spec, 2026-09-24).
+  // re-armed (the latest decision is read from a ref): armed a frame late, it
+  // would miss a press inside the gap.
   const onOutside = useRef<() => void>(() => {});
   onOutside.current = () => {
     if (editing && changed) commit("outside");
@@ -396,7 +394,7 @@ export default function LinkPicker({
               },
               // The press keeps the field's focus; the click chooses, so no
               // click is left over for whatever lies under the popover once
-              // it has gone (it put the caret there, 2026-09-20).
+              // it has gone (it would put the caret there).
               onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
               onClick: () => {
                 setSelected(i);

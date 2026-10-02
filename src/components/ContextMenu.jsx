@@ -39,8 +39,8 @@ const MenuRule = ({ color }) => (
   <div role="separator" style={{ height: 1, background: color, margin: "4px 6px" }} />
 );
 
-/** `412 words`: the number a note is measured by. Characters were shown too
- *  and dropped (2026-09-16): nobody writes a note to a character limit. */
+/** `412 words`: the number a note is measured by; nobody writes a note to a
+ *  character limit. */
 export const noteStatsLabel = (words) => `${words} word${words === 1 ? "" : "s"}`;
 
 const ContextMenu = memo(function ContextMenu({
@@ -82,9 +82,8 @@ const ContextMenu = memo(function ContextMenu({
   // direct style write, so nothing can disagree with it.
   const [activeIndex, setActiveIndex] = useState(-1);
   // This component stays mounted between opens (it renders null when there is
-  // no menu), so its state would otherwise carry over: hover Rename, close,
-  // and the next row's, folder's or header's menu opened with Rename already
-  // lit before the pointer arrived (seen live 2026-09-16). Every open starts
+  // no menu), so its state would otherwise carry over into the next menu,
+  // a row lit before the pointer arrives. Every open starts
   // with nothing highlighted; a layout effect, so the reset lands before the
   // menu's first paint.
   useLayoutEffect(() => {
@@ -101,7 +100,7 @@ const ContextMenu = memo(function ContextMenu({
   // A right-click, or the header's ···, is a point anchor: the menu opens at
   // it where possible and flips/clamps into the viewport otherwise. A row's
   // ··· hands a rectangle (`anchor`, the row with the gap either side), so a
-  // flipped menu sits above the row rather than over it (2026-09-16). The Move
+  // flipped menu sits above the row rather than over it. The Move
   // to… picker opens at the same anchor once this menu has closed.
   const anchor = useMemo(
     () =>
@@ -119,9 +118,8 @@ const ContextMenu = memo(function ContextMenu({
   // The UI scale is CSS zoom on <html>: the pointer's clientX/Y and every
   // measured rect arrive already multiplied by it, and a `top`/`left` written
   // on this fixed element is multiplied again on paint, so the placement is
-  // divided by the zoom before it becomes a style (2026-09-16; the folder
-  // popup, the grip and the drop marker do the same). Before this the menu
-  // opened 50px under and 60px right of the ··· at 125%.
+  // divided by the zoom before it becomes a style (the folder popup, the grip
+  // and the drop marker do the same).
   const zoom = cssZoom(document.documentElement);
 
   // Keyboard navigation — hooks must be above early return. The rows are
@@ -159,7 +157,7 @@ const ContextMenu = memo(function ContextMenu({
   const isHeader = ctxMenu.type === "header";
   const isBulk = ctxMenu.type === "note" && selectedCount > 1;
 
-  // Move to… opens the picker where this menu stood (2026-09-20): the one
+  // Move to… opens the picker where this menu stood: the one
   // route to a destination without dragging, and with the sidebar hidden the
   // only one. It sits after Duplicate in every menu, between what the thing
   // is and what removes it.
@@ -172,9 +170,8 @@ const ContextMenu = memo(function ContextMenu({
     },
   });
 
-  // A note's menu (2026-09-27, version A; Copy before Duplicate, as in the
-  // grip's menu): what acts on the note, then how
-  // it is seen, then Settings, then Delete alone at the foot, each group under
+  // A note's menu (Copy before Duplicate, as in the grip's menu): what acts
+  // on the note, then how it is seen, then Settings, then Delete alone at the foot, each group under
   // a rule. The labels are short because the menu is the note's. The keys are
   // shown only in the header's menu, the open note's, which is what they act
   // on; a sidebar row's menu may be another note's.
@@ -244,8 +241,7 @@ const ContextMenu = memo(function ContextMenu({
     label: "Settings",
     shortcut: shortcutLabel({ key: "," }),
     // The cog is what sets it apart from the note's own items; a rule above
-    // it as well cut a six-row menu into three compartments (judged live
-    // 2026-09-16).
+    // it as well would cut a six-row menu into three compartments.
     icon: <SettingsIcon />,
     action: () => {
       setCtxMenu(null);
@@ -254,7 +250,7 @@ const ContextMenu = memo(function ContextMenu({
   };
 
   // The view item says what it will do, as View's Hide/Show Sidebar does: a
-  // view is switched, where a format is checked (2026-09-24). Under a rule of
+  // view is switched, where a format is checked. Under a rule of
   // its own, since it acts on how the note is shown, not on the note.
   const viewItem = {
     label: sourceView ? "Show Formatted" : "Show Markdown",
@@ -330,15 +326,11 @@ const ContextMenu = memo(function ContextMenu({
         : ctxMenu.type === "file"
           ? fileItems(ctxMenu.id)
           : [
-              // Five items, each with its glyph, and no rule (2026-09-16, Tyr's
-              // call): the menu opens from the folder's own row, so "here" and
-              // "inside" said what the anchoring already says; Duplicate and
-              // Delete keep their noun, because each takes the whole tree, notes
-              // and other files alike, unlike the note menu's pair. The glyphs
-              // are the ones the same actions already wear: the row's and pill's
-              // pen, the Notes row's FolderPlus, the note menu's Pencil, Copy and
-              // Trash. Reveal in Finder left the folder menu that day; it is
-              // Settings → Storage's now. Duplicate folder arrived 2026-09-17.
+              // Five items, each with its glyph, and no rule: the menu opens
+              // from the folder's own row, so the anchoring already says
+              // "here". Duplicate and Delete keep their noun, because each
+              // takes the whole tree, notes and other files alike. The glyphs
+              // are the ones the same actions already wear elsewhere.
               {
                 label: "New note",
                 icon: <NewNoteIcon />,
@@ -417,24 +409,22 @@ const ContextMenu = memo(function ContextMenu({
         {items.map((item, index) => (
           <Fragment key={item.label}>
             {/* A separator is its own rule between the pills, inset like the
-                sidebar menu's, never an edge of the button below it: drawn
-                as the button's top border it ran the row's full width in the
-                menu's own border ink and sat inside the hover pill, whose
-                padding then had to fake the gap (2026-09-16). */}
+                sidebar menu's, never an edge of the button below it (it would
+                run the row's full width and sit inside the hover pill). */}
             {item.separator && index > 0 && <MenuRule color={BG.divider} />}
             <button
               id={`ctx-item-${index}`}
               role="menuitem"
               onClick={item.action}
               onMouseEnter={() => setActiveIndex(index)}
-              // Leaving clears the index too: it used to clear only the
-              // inline background, and any re-render lit the row again.
+              // Leaving clears the index too, or any re-render would light the
+              // row again.
               onMouseLeave={() => setActiveIndex((i) => (i === index ? -1 : i))}
               style={{
                 width: "100%",
                 background: index === activeIndex ? BG.hover : "none",
                 // Every edge set, or Chromium's own 2px outset button border
-                // shows on the one left out (seen 2026-09-14).
+                // shows on the one left out.
                 border: 0,
                 borderRadius: MENU_ROW_RADIUS,
                 // 10px + the menu's 4px inset keeps the text 14px off the edge.

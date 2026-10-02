@@ -20,7 +20,7 @@ import { ChromeButton } from "../EditorChrome";
 export const SETUP_WIDTH = 480;
 
 /**
- * First-run setup (2026-09-17): one compact dialog over the empty app, in
+ * First-run setup: one compact dialog over the empty app, in
  * Settings' grammar. The notes folder, the appearance and Create note. Every
  * way out ends it the same way: the choice on screen is saved and it never
  * shows again (`onDone`, with "create" for the button and "dismiss" for ×,

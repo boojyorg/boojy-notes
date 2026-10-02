@@ -1,16 +1,15 @@
 /**
  * UI icons — Lucide, wrapped so call sites keep their existing names and props.
  *
- * House rules (Phase 1 UI pass):
+ * House rules:
  *   size 16    inline list glyphs: folder rows, search results, menu items
- *   size 18    navigation tier (judged live 2026-08-19, "icon system C"):
- *              New note / Search action glyphs (explicit at call sites) and
- *              standalone controls — panel toggle, note actions ··· (ICON_CONTROL)
+ *   size 18    navigation tier: New note / Search action glyphs (explicit at
+ *              call sites) and standalone controls — panel toggle, note
+ *              actions ··· (ICON_CONTROL)
  *   stroke 1.5 editor/content icons — Lucide's default 2 reads busy at 16px
  *              among prose in a writing app
- *   stroke 2   navigation chrome (ICON_STROKE_NAV) — judged live 2026-08-19
- *              against 1.5/1.75: the heavier stroke balances the nav icons
- *              against their 14px labels
+ *   stroke 2   navigation chrome (ICON_STROKE_NAV): the heavier stroke
+ *              balances the nav icons against their 14px labels
  *
  * Everything here inherits `currentColor`, so colour comes from the themed text
  * colour of the parent. Brand marks (the Notes wordmark) are image assets, not icons.
@@ -164,7 +163,7 @@ export const RevealIcon = navIcon(LuFolderSearch);
 export const SearchIcon = navIcon(LuSearch);
 export const NewNoteIcon = navIcon(LuSquarePen);
 export const NewFolderIcon = navIcon(LuFolderPlus);
-/** The Notes row's Sort control (2026-09-16): one glyph whatever the mode, since
+/** The Notes row's Sort control: one glyph whatever the mode, since
  *  the row is hidden at rest and the menu is what says which mode is on. */
 export const SortIcon = navIcon(LuArrowUpDown);
 /** Menu tick — the chosen sort mode's mark; nav stroke like every menu glyph. */
@@ -174,7 +173,7 @@ export const ClockIcon = navIcon(LuClock);
 export const SortAlphaIcon = navIcon(LuArrowDownAZ);
 /** Block drag handle — content tier: 16px, stroke 1.5, dots FILLED. Lucide draws
  *  the six dots as r=1 stroked rings, which at 16px read as soft grey smudges;
- *  filling them gives crisp ~2.3px discs (judged live 2026-09-03). */
+ *  filling them gives crisp ~2.3px discs. */
 export const GripVerticalIcon = ({ size = ICON_INLINE }) => (
   <LuGripVertical {...base} size={size} fill="currentColor" />
 );
@@ -194,8 +193,8 @@ export const ArrowUpToLineIcon = navIcon(LuArrowUpToLine);
 export const ArrowDownToLineIcon = navIcon(LuArrowDownToLine);
 export const ArrowLeftToLineIcon = navIcon(LuArrowLeftToLine);
 export const ArrowRightToLineIcon = navIcon(LuArrowRightToLine);
-/** Context-menu action glyphs — nav stroke: 1.5 read too light beside the
- *  12.5px menu labels (judged live 2026-08-23). Also Recently Deleted's row. */
+/** Context-menu action glyphs — nav stroke: 1.5 reads too light beside the
+ *  12.5px menu labels. Also Recently Deleted's row. */
 export const TrashIcon = navIcon(LuTrash);
 /** Restore a version (Version History, Recently Deleted), and an image's Original size. */
 export const RestoreIcon = navIcon(LuRotateCcw);
@@ -277,8 +276,8 @@ const SLASH_GLYPHS = {
 
 /**
  * Navigation stroke, not content: the row's glyph is the block's identity beside a
- * 13px/500 label and a mono hint, and at 1.5 it read thin against both (judged
- * live 2026-09-07). Same tier as the sidebar's chrome, same 16px as its rows.
+ * 13px/500 label and a mono hint, and at 1.5 it reads thin against both. Same
+ * tier as the sidebar's chrome, same 16px as its rows.
  */
 export const SlashCommandIcon = ({ name, size = ICON_INLINE }) => {
   const Glyph = SLASH_GLYPHS[name];
@@ -286,9 +285,8 @@ export const SlashCommandIcon = ({ name, size = ICON_INLINE }) => {
 };
 
 // ── Formatting toolbar ────────────────────────────────────────────────────
-// One glyph per inline format, keyed by the format name `applyFormat` takes.
-// These replaced styled text glyphs (a bold "B", an italic "I", "</>" in mono)
-// that read as a different family from every other control (2026-09-10).
+// One glyph per inline format, keyed by the format name `applyFormat` takes,
+// never styled text glyphs (a bold "B"), which read as a different family.
 const FORMAT_GLYPHS = {
   bold: LuBold,
   italic: LuItalic,
@@ -300,8 +298,8 @@ const FORMAT_GLYPHS = {
 
 /**
  * Heavier than the navigation stroke: these glyphs stand alone in a pill with
- * no label beside them, and at 2 the B and I read faint against the accent
- * (judged 2026-09-10 against Notion's toolbar). The one stroke tier above nav,
+ * no label beside them, and at 2 the B and I read faint against the accent.
+ * The one stroke tier above nav,
  * for this toolbar only.
  */
 const ICON_STROKE_TOOLBAR = 2.5;
