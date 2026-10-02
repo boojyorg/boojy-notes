@@ -10,8 +10,8 @@ import { createContext, useContext, useMemo } from "react";
  * because every function passed in reads its inputs through refs
  * (`noteDataRef`, `activeNoteRef`, `blockRefs`, `focusBlockId`, …) or through
  * setters, never through a captured value. A handler that closes over
- * `activeNote` (or any render-bound value) will act on a stale note forever —
- * useBlockDrag did exactly that until 2026-09. If you add a handler here,
+ * `activeNote` (or any render-bound value) will act on a stale note forever.
+ * If you add a handler here,
  * make it ref-based, or route the changing value as an EditorArea prop.
  */
 const EditorContext = createContext(null);

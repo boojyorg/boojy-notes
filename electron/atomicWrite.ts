@@ -19,8 +19,8 @@ import path from "node:path";
  *
  * The file's permission bits are the user's, not the app's: a `chmod 600`
  * private note, or a vault shared read-only with a group, must come out of a
- * save as it went in. The rename would otherwise land a fresh file over it
- * (0600 became 0644 on the first save until 2026-09-09), so the temp file
+ * save as it went in. The rename would otherwise land a fresh 0644 file over
+ * it, so the temp file
  * takes the bits of `modeFrom`, the file this write replaces (`filePath`
  * itself unless the caller is renaming a note away from its old file). A
  * write with nothing to replace makes a file the way any new file is made,

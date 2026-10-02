@@ -49,11 +49,8 @@ export function useTagHandlers({
       if (match) {
         const newText = oldText.slice(0, match.index + match[1].length) + `#${tag} `;
         // A structural commit, as the wikilink completion is: it publishes the
-        // new text to React state at once. The debounced text commit left state
-        // at `#rev` while the menu's own close re-rendered the editor, and the
-        // syncGen repaint then painted that stale text back over the block, so
-        // the disk said `#review` and the screen said `#rev` (review
-        // 2026-09-06, H3). One undo entry for the completion, as for a link.
+        // new text to React state at once; a debounced commit would leave state
+        // at `#rev` for the menu's close to repaint over `#review`. One undo entry for the completion, as for a link.
         commitNoteData((prev) => {
           const next = { ...prev };
           const n = { ...next[noteId] };
@@ -68,13 +65,12 @@ export function useTagHandlers({
         // the caret back at its offset, which is inside the collapsed space.
         // The space that ends the tag is the block's last character, and
         // under `white-space: normal` a trailing space collapses: a caret
-        // placed in it has no width and Chromium moved the next character
+        // placed in it has no width and Chromium moves the next character
         // into the tag span (`#reviewd`). So the caret is parked on an anchor
         // after the space, the marked zero-width scaffolding placeCaret uses
         // after a link: text typed there lands after the space, outside the tag, and
-        // the walkers drop the anchor. Probed in the real app (2026-09-07): a
-        // non-breaking space instead, after or inside the span, reached the
-        // file as U+00A0. Nothing is queued for the focus effect when the
+        // the walkers drop the anchor. A non-breaking space instead would reach
+        // the file as U+00A0. Nothing is queued for the focus effect when the
         // block was painted here; a repaint and re-placement from state would
         // put the caret back in the collapsed space. The queued focus and the
         // syncGen bump are the fallback when it was not.

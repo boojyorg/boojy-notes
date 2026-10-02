@@ -6,9 +6,8 @@ import { LINK_DEST } from "./linkDestination";
  * `(`, then a letter, then letters, digits, marks, `_`, `/` or `-`. The
  * renderer (`inlineMarkdownToHtml`), the `#…` completion under the caret,
  * the tag rows in Search and the tag filter all read this, so a `#` the
- * editor never draws as a tag can never be offered as one: before 2026-09-20
- * the harvest had no left boundary and listed `#b` from `a#b` and `#top` from
- * a URL fragment. Unicode letters are tags too (`#café`).
+ * editor never draws as a tag can never be offered as one (`#b` from `a#b`,
+ * `#top` from a URL fragment). Unicode letters are tags too (`#café`).
  */
 export const TAG_BODY = "\\p{L}[\\p{L}\\p{M}\\p{N}_/-]*";
 export const TAG_RE = new RegExp(`(^|[\\s(])#(${TAG_BODY})`, "gu");

@@ -31,18 +31,15 @@ interface HeldAnswer {
  * Nothing is adopted when the user has renamed the note since the write went
  * out (the newer title is in flight, and its own write will resolve again).
  *
- * The field is the user's while the caret is in it (2026-09-17). A write
- * goes out under a name that is still being typed, and its answer can name a
- * note the user has not finished naming: `Tyr` on the way to `Tyres` collides
- * with `Tyr.md` and came back as `Tyr-2`, painted under the caret before
- * Enter. So while the field is focused every differing answer is held, not
+ * The field is the user's while the caret is in it. A write goes out under a
+ * name that is still being typed, and its answer can name a note the user has
+ * not finished naming: `Ty` on the way to `Tyres` collides with `Ty.md` and
+ * comes back as `Ty-2`. So while the field is focused every differing answer is held, not
  * adopted, and `settleTitle`, called when the field loses focus, adopts the
  * last one if the name is still what was written: the name settles on Enter
  * or a click away, on the beat the pill does. A blank name becomes `Untitled`
  * the same way, and a sanitised character (`/` to `_`) or trimmed whitespace
- * shows once the caret has left rather than being painted in place; the
- * offset-preserving paint that did that (review 2026-09-07, §2.7) is gone
- * with the reason for it. A write landing after the caret has left is
+ * shows once the caret has left rather than being painted in place. A write landing after the caret has left is
  * adopted at once.
  */
 export function useResolvedTitle({

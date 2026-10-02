@@ -6,9 +6,7 @@ const LIFT_MS = 120;
 const SETTLE_MS = 200;
 /**
  * A pointer drag starts once the press has travelled this far, as in Finder,
- * Notion and Obsidian (2026-09-24). Before, a mouse press had to be held still
- * for HOLD_MS and any movement first cancelled it, so a quick grab-and-move did
- * nothing and a slow click was swallowed. A click's jitter stays under it.
+ * Notion and Obsidian; no hold. A click's jitter stays under it.
  */
 const DRAG_THRESHOLD = 5;
 /** Touch keeps the hold: a finger that moves without holding first is scrolling. */
@@ -20,7 +18,7 @@ const HOLD_MS = 400;
  * sidebar, onto the Notes row or the empty space under the tree for the
  * root). The sidebar's scroller is the default; a row inside an element
  * carrying `data-drag-scroller` drags within that element instead (the
- * path's folder popup, 2026-09-20), which is then what auto-scrolls and where
+ * path's folder popup), which is then what auto-scrolls and where
  * the targets are looked for. `data-drag-scroller="folders"` says folder rows
  * are the only targets there, plus the one row carrying `data-drop-scope`
  * (the popup's head row: the folder whose contents are shown, `""` for the
@@ -43,8 +41,7 @@ export function useSidebarDrag({
 }) {
   // Read through a ref at paint time, never from the render that made the
   // handler: a drag paints from inside listeners registered at pointer-down,
-  // and a theme switched after mount left the drop target on Light's #ECECEC
-  // over the dark sidebar (seen 2026-09-14).
+  // and the theme may have switched since mount.
   const { theme: renderTheme } = useTheme();
   const themeRef = useRef(renderTheme);
   themeRef.current = renderTheme;
@@ -193,9 +190,8 @@ export function useSidebarDrag({
   // A row/header fills to BG.hover (the same tone selection uses) with a 1px
   // muted ring so the target reads as chosen rather than merely hovered.
   // One target is painted at a time, and what it held before is put back when
-  // the pointer leaves it: clearing the inline background to "" instead left a
-  // folder row (a <button>) on the UA's buttonface, #EFEFEF, so after the first
-  // drag every folder lit up white in Dark (Tyr, 2026-09-14).
+  // the pointer leaves it: clearing the inline background to "" would leave a
+  // folder row (a <button>) on the UA's light buttonface in Dark.
   const paintDropTarget = (el) => {
     const sd = sidebarDrag.current;
     if (sd.painted?.el === el) return;
@@ -232,8 +228,7 @@ export function useSidebarDrag({
     ) {
       clearDropHighlights();
       // Outside the sidebar there is no target. Dropping here cancels: drag
-      // changes where a note lives, it never navigates (dropping over the
-      // editor used to open the note — removed 2026-09-03).
+      // changes where a note lives, it never navigates.
       sd.dropTarget = null;
       return;
     }

@@ -59,7 +59,7 @@ const MOD_KEYS: Record<string, InlineFormat> = {
   i: "italic",
   // Cmd+E is the inline-code shortcut shown (Notion's), because the backtick
   // is a dead accent key on Spanish and most European layouts and reports
-  // "Dead" with Cmd held, so Cmd+` never matched there (2026-09-20). The
+  // "Dead" with Cmd held, so Cmd+` never matches there. The
   // backtick stays as an unshown alternative where the layout gives it.
   e: "code",
   "`": "code",
@@ -178,8 +178,8 @@ export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Nod
   // Reselect on text boundaries, as Chromium's own commands do. An
   // element-boundary range, (em, 0)–(em, 1), is canonicalised against
   // the empty text node the split leaves beside the element and
-  // collapses to the block's start (probed live 2026-09-16), so the
-  // toolbar read no format and a second press wrapped nothing.
+  // collapses to the block's start, so the toolbar would read no format
+  // and a second press wrap nothing.
   el.parentNode?.normalize();
   const [first, last] = textEdges(el);
   const r = document.createRange();

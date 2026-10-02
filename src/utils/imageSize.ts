@@ -5,8 +5,7 @@
  * A width in the file (`![[shot.png|524]]`, `![alt|524](url)`) is CSS pixels,
  * as Obsidian reads it, capped at the column. With none, the picture is drawn
  * at its own size, capped at the column and never enlarged, as Obsidian and
- * Notion draw it. Until 2026-09-23 every image without a width filled the
- * column, so a small picture was stretched and blurred.
+ * Notion draw it; a small picture is never stretched and blurred.
  *
  * A Retina screenshot holds twice the pixels it showed on screen, so drawn at
  * its own size it is twice the size it was captured at. The PNG says so in

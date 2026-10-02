@@ -35,10 +35,9 @@ export const TOOLBAR_REST_MS = 300;
  *      moved, and scrolls the block into view if it landed near the bottom. A block
  *      with no text root (a code block, callout or table) has its own first field
  *      focused instead (`ownedField`), so the block the slash menu made owns the
- *      next keystroke (review 2026-09-07, §1.5).
+ *      next keystroke.
  *
- * Extracted from BoojyNotes. The layout effect intentionally has no dependency
- * array (runs every render) — preserved verbatim.
+ * The layout effect intentionally has no dependency array (runs every render).
  */
 export function useEditorFocusUX({
   activeNote,
@@ -53,8 +52,7 @@ export function useEditorFocusUX({
 }) {
   // Selection change → floating toolbar, once the selection is finished. A
   // pointer selection shows on mouse-up: measured on every change, the toolbar
-  // repositioned under each movement of the drag and slid about under the
-  // pointer (2026-09-10). A keyboard selection (Shift+Arrow, Cmd+A) has no
+  // would slide about under the pointer. A keyboard selection (Shift+Arrow, Cmd+A) has no
   // "up", so it shows after TOOLBAR_REST_MS with no further change. Hiding is
   // immediate either way: a collapsed selection, or one outside the editor,
   // clears it at once so it never lingers over typing.
@@ -83,7 +81,7 @@ export function useEditorFocusUX({
       // selection are in that one field, because a format cannot be applied
       // to a range that leaves it. A callout's title, a code block's body and
       // a selection across two cells therefore show nothing, rather than six
-      // glyphs that would do nothing (2026-09-19).
+      // glyphs that would do nothing.
       const field = inlineFieldFor(range.startContainer, editorRef.current);
       if (field !== inlineFieldFor(range.endContainer, editorRef.current)) return null;
       if (!field && el.getAttribute("contenteditable") === "false") return null;
@@ -105,8 +103,8 @@ export function useEditorFocusUX({
     // Whether the toolbar is on screen. Once shown it holds its position until
     // it hides: it is a control strip the pointer is heading for, not a label
     // of the selection. Re-measured on every change, a pressed Bold (wider
-    // glyphs) or Highlight shifted the selection's centre and the strip slid a
-    // few pixels under the pointer (2026-09-10); a selection extended by
+    // glyphs) would shift the selection's centre and slide the strip under
+    // the pointer; a selection extended by
     // keyboard stays under the strip placed over where it began.
     let shown = false;
     const cancel = () => {
@@ -209,7 +207,7 @@ export function useEditorFocusUX({
       // takes focus in its first field; a text block takes the caret at the
       // offset. The field is asked first because a table's root is in the
       // ref map too, for the gutter grip, and a caret placed on that root
-      // landed nowhere (2026-09-10).
+      // lands nowhere.
       const focusTarget = () => {
         const field = ownedField(editorRef.current, targetId);
         if (field) {

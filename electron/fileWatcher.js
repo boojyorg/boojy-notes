@@ -17,9 +17,8 @@ let watcher = null;
 //   write, past any window a timer could hold). The claim ends at the first
 //   event that shows the file has left the app's hands: a change to other
 //   bytes, or the file going away. From then on those same bytes are a real
-//   change again (a revert in git or Obsidian, a Put Back from the Trash).
-//   Until 2026-09-08 the claim was never dropped, so such a change was taken
-//   for an echo and the next save wrote over it.
+//   change again (a revert in git or Obsidian, a Put Back from the Trash),
+//   never an echo for the next save to write over.
 // - `ownUnlinks`: paths the app is removing itself (a Trash move, the old
 //   path of a rename), each consumed by the one unlink it produces. Not a
 //   timer: shell.trashItem() latency is OS-mediated and unbounded. The

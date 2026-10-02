@@ -19,9 +19,7 @@ export function useMouseHandlers({
   // caret in the nearest block when the selection landed outside any. By
   // then the click may have opened something that took focus (a tag click
   // opens the search palette), and placing a caret would pull focus straight
-  // back into the editor: the palette's field looked focused for one frame,
-  // then Escape and the arrows went to the editor (review 2026-09-06, H4).
-  // Focus that has moved to another control is never taken back.
+  // back into the editor. Focus that has moved to another control is never taken back.
   const focusLeftEditor = () => {
     const active = document.activeElement;
     const editor = editorRef?.current;
@@ -33,15 +31,12 @@ export function useMouseHandlers({
   // *next* block, and when that block is a list row it lands on the row's
   // non-editable, user-select:none marker (the number, the checkbox), which
   // Chromium's user-select adjustment answers by collapsing the whole
-  // selection: the third click of a numbered item or a task selected nothing,
-  // and a bullet's only when a number or a task followed it (2026-09-20).
-  // Selecting the text root's own contents gives one answer for every block
+  // selection. Selecting the text root's own contents gives one answer for every block
   // and stops the selection at the row's end instead of the next block's start.
   //
   // A field of its own (a table cell, a callout's title or body) is its own
   // text: the triple-click selects its contents, never the block around it,
-  // whose frame is not editable and cannot hold a selection (the whole table
-  // was selected, drawn as nothing). A native field keeps its own.
+  // whose frame is not editable and cannot hold a selection. A native field keeps its own.
   const selectClickedBlock = (e) => {
     if (e?.detail !== 3 || !e.target?.closest) return false;
     if (e.target.closest("textarea, input")) return false;

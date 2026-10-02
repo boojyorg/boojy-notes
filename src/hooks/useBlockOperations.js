@@ -374,9 +374,8 @@ export function useBlockOperations({
   // A structural change to a table (a row or column added, removed or
   // moved, an alignment, a CSV paste) is a function of the rows as the ref
   // holds them, so a cell edit still pending in the ref is inside the rows
-  // it reshapes; computed from the rendered rows instead, the operation
-  // wrote the rows as they were before the keystrokes and the typed text
-  // was gone (review 2026-09-07, §3.4). `reshape(rows, alignments)` returns
+  // it reshapes; computed from the rendered rows instead, the typed text
+  // would be lost. `reshape(rows, alignments)` returns
   // `{ rows, alignments?, tidy? }`; alignments left out are kept, and `tidy`
   // lets go of the lines the table was written with, so it is written lined
   // up (Tidy table).
@@ -456,8 +455,7 @@ export function useBlockOperations({
       // Re-indenting changes the block's box, not its text, so the caret stays
       // on the same character. Read it from the DOM here, before the state
       // changes (the updater runs synchronously): the focus effect defaults to
-      // offset 0, which sent the next keystroke to the front of the item
-      // (review 2026-09-06, H2). -1 when the caret is not in this block.
+      // offset 0, the front of the item. -1 when the caret is not in this block.
       caret = getCaretOffset(blockRefs.current[block.id]);
       if (withChildren) {
         const moved = indentRun(blocks, blockIndex, blockIndex, delta);

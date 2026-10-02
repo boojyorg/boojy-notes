@@ -9,10 +9,8 @@ import {
 } from "electron";
 
 /**
- * The application menu: every command the app has, with its shortcut
- * (2026-09-24; its layout judged from ASCII mockups the same day: Apple's
- * structure, a List submenu and Find submenu, the typed Markdown shown under a
- * block's name, icons only where Apple's own apps carry one).
+ * The application menu: every command the app has, with its shortcut, in
+ * Apple's structure (icons only where Apple's own apps carry one).
  *
  * The menu does nothing itself. An item sends its id to the window
  * (`menu-command`), and the renderer runs the same function the key runs
@@ -273,7 +271,7 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { type: "separator" },
         // The note as its file, and back: says what it will do, as the
         // sidebar item does, because a view is switched where a format is
-        // checked (2026-09-24).
+        // checked.
         note(
           "toggleSourceView",
           state.sourceView ? "Show Formatted" : "Show Markdown",
@@ -288,7 +286,7 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         { type: "separator" },
         // Reload is a developer's key: it drops the renderer, and with it up
         // to ~800 ms of typing still inside the text-commit and write
-        // debounces (the quit flush never runs). Dev builds only (2026-09-24).
+        // debounces (the quit flush never runs). Dev builds only.
         ...(isDev
           ? ([
               { role: "reload" },

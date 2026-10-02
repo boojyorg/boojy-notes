@@ -3,9 +3,8 @@ import { htmlToInlineMarkdown, sanitizeInlineHtml } from "./inlineFormatting";
 /**
  * A multi-line rich paste as Markdown: the clipboard's `text/html` read into
  * the blocks and inline formatting the note can hold, for `markdownToBlocks`
- * to parse like any other paste. Until 2026-09-24 a paste of several lines
- * read `text/plain` only, so a browser's bold, italics and links were lost
- * (a single line already kept them).
+ * to parse like any other paste, so a browser's bold, italics and links
+ * survive a paste of several lines as they do a single line.
  *
  * Returns `null` when the HTML carries no formatting of its own, and the
  * caller pastes the plain text as before. That is not only a shortcut: an

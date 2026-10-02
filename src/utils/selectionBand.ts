@@ -25,8 +25,8 @@ export function bandFill(accent: string, themeName: string | undefined): string 
 
 /**
  * An image's selection wash: the band's tint laid over the picture itself, a
- * step stronger because a picture is busier than an empty row (judged on the
- * prototype, 2026-09-23: the band's 10% vanished into a white picture).
+ * step stronger because a picture is busier than an empty row (the band's
+ * own tint vanishes into a white picture).
  */
 export const IMAGE_WASH_ALPHA = { day: 0.2, night: 0.26 } as const;
 

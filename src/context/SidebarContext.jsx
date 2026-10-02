@@ -57,7 +57,7 @@ export function SidebarProvider({ children }) {
   const [newFolder, setNewFolder] = useState(null);
   /**
    * The note rows that just landed somewhere by Move to… or a drag made in
-   * the path's popup (2026-09-20): the same pill for the same beat, because a
+   * the path's popup: the same pill for the same beat, because a
    * moved note lands in the sort's order among its new neighbours exactly as
    * a copied folder does. One mark at a time; a new one takes it.
    */

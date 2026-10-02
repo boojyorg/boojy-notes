@@ -4,10 +4,9 @@ import { isElectron } from "../utils/platform";
 /**
  * Flushes pending edits to disk before the window closes and on window blur.
  *
- * Typed text sits in two debounces (300ms text-commit + 500ms disk-write), and
- * the main process used to quit without waiting — Cmd+Q within ~1s of typing
- * lost those keystrokes. The main process now holds the window close until the
- * renderer reports the flush done (capped at 2s there, so a hung renderer can't
+ * Typed text sits in two debounces (300ms text-commit + 500ms disk-write), so
+ * the main process holds the window close until the renderer reports the
+ * flush done (capped at 2s there, so a hung renderer can't
  * trap the user in the app).
  *
  * Reads from useHistory's noteDataRef, which is updated synchronously on every

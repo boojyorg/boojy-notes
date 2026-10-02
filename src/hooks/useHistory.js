@@ -204,8 +204,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     cancelPendingText();
     // A structural edit ends the typing group, as an undo does: the
     // keystrokes after Enter, a paste or a checkbox are a new entry, not part
-    // of the one this commit pushed. Left open, "abc", Enter, "def" typed
-    // without a pause was one Cmd+Z (2026-09-20).
+    // of the one this commit pushed.
     if (recordHistory) {
       if (historyTimer.current) {
         clearTimeout(historyTimer.current);
@@ -246,9 +245,8 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // that first gives it a title or a character of body, and it ends in the
   // ref, so that everything reading the ref inside the commit window sees a
   // note: the switch that discards a draft, the quit flush that skips one,
-  // the rebuild after an outside delete. Decided from React state instead,
-  // 300 ms later, the draft was discarded or skipped with its text
-  // (review 2026-09-07, §2.6). A draft is always the active note.
+  // the rebuild after an outside delete. Decided from React state, 300 ms
+  // later, the draft would be discarded or skipped with its text. A draft is always the active note.
   // Text is text wherever it is typed: a paragraph, a code block, a callout's
   // title or body, a table cell.
   const hasText = (n) =>

@@ -1,6 +1,6 @@
 /**
  * The path's folder popup: which part of the tree a crumb opens, what starts
- * expanded, and the rows on screen in order (2026-09-16).
+ * expanded, and the rows on screen in order.
  *
  * The rule: clicking a folder crumb shows that folder's *parent's* contents,
  * the clicked folder expanded, and every folder under it on the way to the
@@ -105,7 +105,7 @@ export function parentRowIndex(
 // ── The Move to… picker ──────────────────────────────────────────────────
 
 /**
- * A row of the Move to… picker (2026-09-20): the same popup drawn as a
+ * A row of the Move to… picker: the same popup drawn as a
  * destination chooser. Folders only, the root as the first row (`path` null,
  * named `Notes`, always open, since the root is a folder), and a folder that
  * cannot take the thing being moved — the folder itself, or anything inside

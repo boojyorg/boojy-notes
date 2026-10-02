@@ -308,9 +308,7 @@ export function placeCaret(el, pos = 0) {
   while (ancestor && ancestor.contentEditable !== "true") ancestor = ancestor.parentElement;
   // The editor root is one contentEditable spanning the whole note, so taking
   // focus back from a block's own field (a code textarea, a table cell)
-  // scrolled the note to the root's top: the caret landed right and the page
-  // jumped (2026-09-19, measured leaving a code block and a table cell alike).
-  // Take the focus without the scroll, then bring the block the caret is in
+  // would scroll the note to the root's top. Take the focus without the scroll, then bring the block the caret is in
   // into view by the least the scroller must move.
   const takesFocus = !!ancestor && document.activeElement !== ancestor;
   if (ancestor) ancestor.focus({ preventScroll: true });
@@ -329,7 +327,7 @@ export function placeCaret(el, pos = 0) {
  * editor's one contentEditable, so Chromium will rest a caret in the row
  * itself, beside the marker (ArrowLeft from the item's start, a click by the
  * dot), and a character typed there is a text node of the row: drawn beside
- * the dot, never read by the walkers, gone from the file (2026-09-24). A
+ * the dot, never read by the walkers, gone from the file. A
  * caret in a text block's row but outside its root is moved into the root, to
  * its start when it sat before it and its end when after. Returns whether it
  * moved.
@@ -352,10 +350,7 @@ export function caretIntoTextRoot(editorEl, blocks, blockRefs) {
 /**
  * A selection's ends into their blocks' text: an end that lies in a list row
  * but outside its text (beside the marker, or past the text's end) moves to
- * that edge of the text. A drag that ran from past a bullet's end back over
- * its dot ended beside the dot; Backspace then emptied the text on screen,
- * but the edit had no text root to be read from, so the file kept the words,
- * and the next Backspace merged them into the line above (2026-09-27).
+ * that edge of the text, so an edit from it has a text root to be read from.
  * True when the selection moved. Direction is kept.
  */
 export function selectionIntoTextRoots(editorEl, blocks, blockRefs) {
@@ -384,8 +379,7 @@ export function selectionIntoTextRoots(editorEl, blocks, blockRefs) {
  * The rect of a collapsed caret. Chromium reports all zeros for one sitting in
  * an empty text node — an empty paragraph, or one of the editor's own caret
  * anchors — and the arrow keys ask "is the caret on this block's first or last
- * line?" against it, so a zero rect answered *no* for ever and ArrowDown out of
- * an empty paragraph never ran its branch at all (2026-09-19). Falls back to
+ * line?" against it, so a zero rect would answer *no* for ever. Falls back to
  * the node the caret sits in, then to the block, which has exactly one line
  * when it is empty.
  */
@@ -565,8 +559,7 @@ function selectAnchor(place, link) {
  * `<html>` (SettingsContext), and Chromium 128+ and Firefox 126+ report
  * geometry already multiplied by it, so a distance measured between two rects
  * is divided by this before it becomes a style, or the style is scaled a
- * second time on paint (the block grip drifted down the note by the scale
- * factor at any setting but 100%, 2026-09-10). 1 where the browser has no
+ * second time on paint. 1 where the browser has no
  * zoom, jsdom included.
  */
 /**
@@ -706,9 +699,8 @@ export function isEditableBlock(b) {
  * rather than stepping over it. Dividers and images (a click selects them,
  * the arrows stop on them) and tables (Escape from a cell selects; the arrows
  * walk through the cells instead of stopping, see `ownedField`). Code,
- * callout and file blocks own their focus or carry their own controls and are
- * still skipped; the same rule reaches them once the table has been judged
- * live (2026-09-10).
+ * callout, file and embed blocks own their focus or carry their own controls
+ * and are skipped.
  */
 export function isSelectableBlock(b) {
   return b.type === "spacer" || b.type === "image" || b.type === "table";
@@ -751,7 +743,7 @@ const TABBABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex], [contenteditable="true"]';
 
 /**
- * Tab out of the note (Tab in a paragraph, 2026-09-25): the next control
+ * Tab out of the note (Tab in a paragraph): the next control
  * after the editor in the page's Tab order, or the one before it with
  * Shift. Nothing inside the note is a stop on the way out (a code block or a
  * cell would take the key and trap it again); past either end it wraps. The

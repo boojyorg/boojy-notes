@@ -398,7 +398,7 @@ export default function BoojyNotes() {
   // an inline input (same grammar as folder rename). Only when the sidebar is
   // hidden — e.g. Rename from the editor's ··· with the panel collapsed — does
   // it fall back to focusing the editor title, caret at the end (no select-all
-  // wash; judged live 2026-08-23).
+  // wash).
   const startNoteRename = useCallback(
     (id) => {
       if (sidebarVisible) {
@@ -676,9 +676,9 @@ export default function BoojyNotes() {
     const el = titleRef.current;
     if (el && title !== undefined) {
       // A repaint under the caret (an undo while renaming, a paste elsewhere
-      // bumping syncGen) threw it to the start of the name; the offset is
-      // remembered and put back, clamped, as a block's repaint does
-      // (2026-09-20). A field already holding the text is left alone.
+      // bumping syncGen) would throw it to the start of the name; the offset
+      // is remembered and put back, clamped, as a block's repaint does. A
+      // field already holding the text is left alone.
       const focused = document.activeElement === el;
       if (focused && (el.textContent ?? "") === title && title !== "") return;
       const caret = focused ? getCaretOffset(el) : -1;
@@ -734,9 +734,8 @@ export default function BoojyNotes() {
     // Unconditional: each cancel handles the inactive case itself, and a
     // press on the grip (or a held sidebar row) that never became a drag
     // still holds window listeners. Guarded on `.active`, a press followed
-    // by Cmd-Tab left them, and the next pointer movement started a phantom
-    // drag with no button down that hid the grip app-wide and dropped a block
-    // on the next click (2026-09-20).
+    // by Cmd-Tab would leave them, and the next pointer movement would start
+    // a phantom drag with no button down.
     const onBlur = () => {
       cancelBlockDrag();
       cancelSidebarDrag();
@@ -978,7 +977,7 @@ export default function BoojyNotes() {
 
   // ── Moving, from wherever it was asked ──────────────────────────────
   // Move to… (every menu), a drag in the sidebar and a drag in the path's
-  // popup end here (2026-09-20). Where the thing landed is shown, not
+  // popup end here. Where the thing landed is shown, not
   // announced: the destination and the folders above it open in the sidebar
   // and the moved rows wear the row pill for a beat (`markNewRows`), if the
   // sidebar is showing; a hidden sidebar keeps the state and is never

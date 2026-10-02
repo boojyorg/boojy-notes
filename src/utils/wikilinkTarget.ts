@@ -55,7 +55,7 @@ export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): str
   return `No note named "${name}"${where}. Links to a heading, block or folder path don't create notes.`;
 }
 
-// ── The unified link picker (2026-09-20) ────────────────────────────────
+// ── The unified link picker ─────────────────────────────────────────────
 
 /** Every note a target could name: one for a clean link, several for a namesake, none for a missing one. */
 export function wikilinkCandidates(target: string, noteData: NoteData): string[] {

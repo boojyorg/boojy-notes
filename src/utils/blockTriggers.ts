@@ -3,12 +3,11 @@
 /**
  * What a typed marker opens, and what its argument says.
  *
- * **Every marker waits for a space** (2026-09-19): `# `, `- `, `> `, `[] `,
+ * **Every marker waits for a space**: `# `, `- `, `> `, `[] `,
  * ` ``` `, `--- `, `||| `. One rule with no exceptions, and the reason it
  * matters rather than just reads well: three of these carry an argument, and a
- * marker that fires on its last character can never be given one. ` ```js `
- * put the language in the body, `||||` could not ask for a third column, and
- * neither could be typed literally. **Enter does what the space does**, for the
+ * marker that fires on its last character can never be given one, nor be
+ * typed literally. **Enter does what the space does**, for the
  * same markers — otherwise Enter on a bare `---` leaves a paragraph that every
  * Markdown reader turns back into a divider on the next open, which is the
  * worst of both.

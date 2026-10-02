@@ -24,8 +24,7 @@ const EMPTY: SearchResults = { results: [], totalCount: 0, query: "" };
 /**
  * The one search: a text query, an optional tag and folder filter, one ordered result
  * list. The index is rebuilt per note whenever the note object changes, so a
- * text edit is searchable once it commits (before 2026-09-20 only a title or
- * block-count change refreshed the entry, and results went stale mid-typing).
+ * text edit is searchable once it commits.
  *
  * A typed query is debounced; `flushSearch` runs a pending one at once so
  * Enter straight after typing acts on the query as typed, never on the

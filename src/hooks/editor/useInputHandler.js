@@ -27,10 +27,9 @@ const MD_PATTERNS = [
   { regex: new RegExp(`^\\[${S}\\]${S}$`), type: "checkbox" },
   { regex: new RegExp(`^1\\.${S}$`), type: "numbered" },
   { regex: new RegExp(`^>${S}$`), type: "blockquote" },
-  // Every marker waits for its space, these two included (2026-09-19): a
-  // marker that fires on its last character can never be given an argument,
-  // which is what kept ```js from opening a JavaScript block and `||||` from
-  // asking for a third column, and what made all three untypable as text.
+  // Every marker waits for its space, these two included: a marker that fires
+  // on its last character can never be given an argument (```js, `||||`), and
+  // could never be typed as text.
   { regex: TYPED_DIVIDER_RE, type: "spacer" },
   { regex: TYPED_FENCE_RE, type: "code" },
 ];
@@ -38,9 +37,8 @@ const MD_PATTERNS = [
 /**
  * A line kind's marker typed at the start of a paragraph that already has
  * text: `- ` before `Full stack or frontend?` makes that line the bullet, as
- * it does on an empty line (2026-09-26). Before, the dash stayed text and was
- * written `\- ` to keep it so: a bullet without a dot on screen, a backslash
- * nobody typed in the file. Only the kinds a line can be; a fence, a divider
+ * it does on an empty line, rather than staying text written as `\- `. Only
+ * the kinds a line can be; a fence, a divider
  * or a table makes a block of its own and still wants an empty line. Cmd+Z
  * straight after brings the literal marker back, for the rare line that
  * starts with one.
@@ -113,9 +111,8 @@ export function useInputHandler({
     // A block that keeps its own field owns its edits: a callout's body and a
     // code block's textarea commit through the block, at the text grain. This
     // path would read the whole wrapper — for a callout, its title and body as
-    // one run — and commit that as the block's text. Until 2026-09-19 the ref
-    // lookup below said so by accident, because these roots registered
-    // nothing; they register now, for the gutter grip, so the rule is stated.
+    // one run — and commit that as the block's text. These roots are in the
+    // ref map (for the gutter grip), so the rule is stated here.
     if (hasOwnField(block)) return;
     const el = blockRefs.current[block?.id];
     if (!el) return;
@@ -283,8 +280,8 @@ export function useInputHandler({
     // Tag autocomplete detection: open # with at least one letter typed
     const tagMatch = text.match(TAG_OPEN_RE);
     if (tagMatch) {
-      // The pill appears on the first letter (2026-09-20): a text-only commit
-      // never repaints, so `#p` stayed plain until something else did. The
+      // The pill appears on the first letter: a text-only commit never
+      // repaints, so `#p` would stay plain until something else did. The
       // block is painted by hand from its own text and the caret put back at
       // its offset, which lands inside the new span, so the letters that
       // follow grow the tag and a space leaves it (`caretOutOfTagEnd`). Only

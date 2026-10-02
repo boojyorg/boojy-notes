@@ -270,9 +270,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // debounce, the retry, blur, quit) writes it as the copy instead; a flush
   // that lands while the copy is being written waits for that write rather
   // than starting a second one (`copyInFlight`). The entry clears only when a
-  // copy write succeeds. Before this the entry was made on failure alone and
-  // a blur or quit inside the copy's ~10 ms write re-marked the note from the
-  // quit/blur net and wrote the local version over the outside edit.
+  // copy write succeeds, so a blur or quit inside the copy's write can never
+  // put the local version over the outside edit.
   const conflicted = useRef(new Map());
   const copyInFlight = useRef(new Map());
 
@@ -388,10 +387,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // under it (`write-note` compares the bytes with the ones last seen). With
   // nothing pending here the disk version is taken at once. With edits
   // pending, on screen or not, both are kept: the outside bytes under the
-  // note's name, the local version as a conflict copy. Until 2026-09-15 the
-  // conflict rule ran for the open note alone, so a note typed in and switched
-  // away from inside the save window took the disk version and its pending
-  // keystrokes were discarded with no copy. Resolves once the copy is written
+  // note's name, the local version as a conflict copy, for every note, not
+  // only the open one. Resolves once the copy is written
   // (or was not needed), so a flush can wait on it.
   const takeOutsideVersion = useCallback(
     (external) => {
@@ -637,9 +634,8 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     // their dirty mark and go out at the new path with the ordinary flush; a
     // note with nothing pending is not rewritten for a rename the app did
     // not make (`externalIds`: the scan leaves it clean), so no mtime moves
-    // and nothing is stamped as edited here. Before this the rename was a
-    // delete, the rebuild kept the note because edits were pending, and the
-    // flush recreated the old file, or the old folder, beside the new one.
+    // and nothing is stamped as edited here. Read as a delete instead, the
+    // flush would recreate the old file beside the new one.
     const unsubMove = window.electronAPI.onFileMoved
       ? window.electronAPI.onFileMoved((note) => {
           if (!note?.id) return;

@@ -20,7 +20,7 @@ export const Z = {
   BLOCK_HANDLE: 6,
   /** The chrome row's path band, sticky at the top of the editor scroller:
    *  above the blocks and the grip the note scrolls under it with, below the
-   *  find bar and the fixed chrome buttons (2026-09-15). */
+   *  find bar and the fixed chrome buttons. */
   PATH_ROW: 8,
   FIND_BAR: 50,
   TOOLBAR: 100,

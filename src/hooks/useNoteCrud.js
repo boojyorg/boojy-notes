@@ -23,16 +23,14 @@ export function useNoteCrud({
   // duplicated note still rises to the top, because it becomes dirty the moment
   // it exists and useFileSystem stamps it as edited on the way to disk.
   const open = (id) => setActiveNote(id);
-  // A new note starts unnamed (2026-09-17): the field is empty under the
-  // caret with `Untitled` as its faint placeholder, the grammar the body's
-  // "Type / for commands..." already teaches, and the draft note's own
-  // model. It used to be a real `Untitled` selected whole so typing replaced
-  // it, and the selection wash read as a warning rather than an invitation
-  // (the same wash was dropped from Rename on 2026-08-23). The file is
+  // A new note starts unnamed: the field is empty under the caret with
+  // `Untitled` as its faint placeholder, the grammar the body's "Type / for
+  // commands..." already teaches (a selected `Untitled` reads as a warning
+  // rather than an invitation). The file is
   // `Untitled.md` either way: the write turns a blank name into that and the
   // renderer adopts it once the caret has left the field (useResolvedTitle).
   // `open: false` makes the note and leaves the reader where they are (the
-  // link picker's Create note row, 2026-09-20). Answers the new note's id.
+  // link picker's Create note row). Answers the new note's id.
   const createNote = (folder = null, title = null, { open: openIt = true } = {}) => {
     const id = genNoteId();
     const firstBlockId = genBlockId();

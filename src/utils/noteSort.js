@@ -4,8 +4,7 @@
  * How note lists are ordered in the sidebar.
  *
  * There is exactly one ordering source: this preference. Drag changes a note's
- * *location*, sort decides *display order* — the manual `noteOrder`/`folderOrder`
- * metadata that used to compete with it is gone.
+ * *location*, sort decides *display order*; there is no manual order.
  *
  * "Most recent" means **most recently modified**, never merely opened. The
  * durable truth is the file's mtime, which is what orders a vault at launch and

@@ -55,9 +55,8 @@ export function moveCell(row: string[], from: number, to: number): string[] {
  * row: a row shorter than `at` is padded up to it first, so the new cell
  * lands in the column the user asked for in every row, wide rows and short
  * rows alike. Nothing here runs on a passive open or save; those keep every
- * row's width exactly. The header cell is empty too (2026-09-10): the `Col N`
- * label it used to carry reached the file as text the user never typed, and
- * Obsidian and Notion add an empty column.
+ * row's width exactly. The header cell is empty too, as in Obsidian and
+ * Notion: a label would reach the file as text the user never typed.
  */
 export function withColumnInserted(rows: string[][], at: number): string[][] {
   return rows.map((row) => {

@@ -4,7 +4,7 @@ import { linkTargetFor, wikilinkStatus } from "../utils/wikilinkTarget";
 import { caretLength, caretOffsetAt, linkText, placeCaret } from "../utils/domHelpers";
 
 /**
- * The link picker's owner (2026-09-20): when it opens, what it is about, and
+ * The link picker's owner: when it opens, what it is about, and
  * what its answer becomes in the note. One picker, four ways in:
  *
  *   - Cmd+K or the toolbar's Link: `openFromSelection`, through the format

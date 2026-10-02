@@ -1,19 +1,16 @@
 // @ts-check
 
 /**
- * The panel's one clock (2026-09-14). Everything that moves when the sidebar
+ * The panel's one clock. Everything that moves when the sidebar
  * is shown or hidden — the sidebar's slide, the wrapper's width, the editor
  * column's breath, the chrome row's history pair, the note label's step —
- * runs on this duration and this curve, so they arrive together. Before this
- * `0.2s ease` was written in five places and the chrome row did not move at
- * all: it snapped while the panel eased.
+ * runs on this duration and this curve, so they arrive together.
  *
  * Ease-out, not the symmetric `ease`: the panel decelerates into place, which
  * reads as settling rather than gliding.
  *
  * 280, not the 200 most kits default to: a 240px panel is a bigger object
- * than a menu, and at 200 Tyr judged it "a bit too fast" live (2026-09-14).
- * macOS sidebars sit near 250 and Notion's near 300; past 300 it reads as
+ * than a menu, and 200 reads too fast. macOS sidebars sit near 250 and Notion's near 300; past 300 it reads as
  * waiting.
  */
 export const PANEL_MS = 280;
@@ -42,10 +39,8 @@ export const NEW_ROW_MS = 2400;
  * The small clock, for everything that is not the panel: a popover, a
  * tooltip, a dialog, a toast, a press. Apple-Notes quick with a soft landing,
  * never a spring. Nothing here is over ~200ms; past that a small thing reads
- * as waiting (the panel earned its 280 by being big). 140/90 with 0.96 was
- * too subtle to see and 180/110 with 0.93 too much; Tyr chose 160/100 between
- * (2026-09-28), then found it a tad slow in daily use and took the timings
- * ~6% quicker, keeping the 0.95 grow that makes the motion visible (2026-09-29).
+ * as waiting (the panel earned its 280 by being big). The 0.95 grow is what
+ * makes the motion visible; less is too subtle to see, more too much.
  *
  * Leaving is quicker than arriving: an arrival is watched, a departure is
  * only confirmed, and it is what makes macOS menus feel answered rather than

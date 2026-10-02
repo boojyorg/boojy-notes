@@ -9,22 +9,17 @@ import { focusSidebar } from "../utils/domHelpers";
  *
  * The window listener is registered once. Everything it reads — state AND the
  * action callbacks — goes through `latest`, a ref refreshed on every render,
- * so a stale closure can never act on an old note or an old layout. This used
- * to capture the callbacks directly (re-registering only when Settings
- * toggled), and `cancelBlockDrag` used to write to whichever note was active
- * when it was captured (see useBlockDrag).
+ * so a stale closure can never act on an old note or an old layout.
  *
- * The closest active surface owns the key (review 2026-09-07, §1.13, §4.6).
+ * The closest active surface owns the key.
  * This handler is the last to see a keystroke, a bubble-phase listener on the
  * window, and it acts only on a key nobody above it has claimed:
  *
  * - a surface that takes a key prevents its default, and a prevented key is
- *   not the shell's (Escape in a menu, a rename field or the palette used to
- *   also reach the shell and act beneath it);
+ *   not the shell's, so Escape in a menu never also acts beneath it;
  * - a modal dialog or a menu that holds focus owns every key beneath it, so
- *   no shortcut runs over Settings, a confirm dialog or a context menu
- *   (Cmd+N over Settings made a note behind it, Cmd+K opened the palette on
- *   top of it); each of them closes itself on Escape;
+ *   no shortcut runs over Settings, a confirm dialog or a context menu; each
+ *   of them closes itself on Escape;
  * - a native text field outside the editor (the palette's field, a rename
  *   field, the find bar) owns its editing keys: Cmd+Z there is the field's
  *   undo, not the note's. The title field and a code block's textarea are
@@ -140,7 +135,7 @@ export function useAppKeyboard({
       if (e.defaultPrevented) return;
       const owner = focusOwner();
       // The scale keys are the one shortcut Settings does not stand in front
-      // of (2026-09-19, Tyr): the app resizes behind the open pane, so the keys
+      // of: the app resizes behind the open pane, so the keys
       // that resize it belong there too, and the row's figure follows. Every
       // other shortcut still stands down over every modal, and these stand down
       // over any other modal — including a confirm dialog opened *from*
@@ -164,8 +159,7 @@ export function useAppKeyboard({
         else L.redo();
         return;
       }
-      // Cmd+Shift+N is New folder (Apple Notes' and Finder's key), at the
-      // root; before 2026-09-17 the shell ignored Shift and made a note.
+      // Cmd+Shift+N is New folder (Apple Notes' and Finder's key), at the root.
       if (mod && key === "n" && e.shiftKey) {
         e.preventDefault();
         L.createFolder?.(null);
@@ -176,7 +170,7 @@ export function useAppKeyboard({
         newNote(L, titleRef);
         return;
       }
-      // Cmd+S is a save point (2026-09-26): notes save as they are typed, so
+      // Cmd+S is a save point: notes save as they are typed, so
       // the platform's Save key keeps the note as it is now in its history.
       // Ctrl+Cmd+S, Go to Sidebar, is claimed above.
       // Option+Cmd+S opens the note's Version History (Option makes `ß`, so the
@@ -211,7 +205,7 @@ export function useAppKeyboard({
         return;
       }
       // Search is a palette over the window, so it needs no sidebar. Cmd+P
-      // opens it; Cmd+K is the editor's link shortcut (2026-09-09), because
+      // opens it; Cmd+K is the editor's link shortcut, because
       // Boojy Notes has Search, not a command palette.
       if (mod && key === "p") {
         e.preventDefault();
@@ -220,7 +214,7 @@ export function useAppKeyboard({
       }
       // Cmd+, is Settings, the platform's own key; Cmd+\ toggles the sidebar
       // (Notion's key; Apple's Option+Cmd+S is three keys, and Cmd+B is Bold
-      // here). Both chosen 2026-09-17. The backslash is matched by the
+      // here). The backslash is matched by the
       // physical key too, for layouts where the character sits elsewhere.
       if (mod && e.key === ",") {
         e.preventDefault();
@@ -232,8 +226,8 @@ export function useAppKeyboard({
         L.toggleSidebar?.();
         return;
       }
-      // Ctrl+Cmd+S moves the keyboard into the sidebar's tree (2026-09-25:
-      // Apple's sidebar key; Shift+Cmd+E, VS Code's, is a table column's
+      // Ctrl+Cmd+S moves the keyboard into the sidebar's tree (Apple's
+      // sidebar key; Shift+Cmd+E, VS Code's, is a table column's
       // Align Centre here). Ctrl+Alt+S off the Mac. Escape in the tree comes
       // back to the note.
       if (e.ctrlKey && (e.metaKey || e.altKey) && !e.shiftKey && key === "s") {
@@ -247,8 +241,7 @@ export function useAppKeyboard({
         if (alignColumn(L, ALIGN_KEYS[key])) e.preventDefault();
         return;
       }
-      // Cmd+/ shows the note as its Markdown, and back (2026-09-24: Typora's
-      // key; Obsidian's Cmd+E is inline code here). The slash is matched by
+      // Cmd+/ shows the note as its Markdown, and back (Typora's key; Obsidian's Cmd+E is inline code here). The slash is matched by
       // the physical key too, for layouts where the character needs Shift.
       if (mod && !e.altKey && (e.key === "/" || e.code === "Slash")) {
         if (!L.activeNote) return;
@@ -529,7 +522,7 @@ const SCALE_KEYS = new Set(["=", "+", "-", "0"]);
  * The scale a key asks for. A press at either end of the range answers with
  * the scale it is already on: the chip it raises is the whole feedback the
  * scale has, and saying nothing reads as a missed keystroke rather than a
- * limit (2026-09-19). Setting the scale already held is a no-op for state.
+ * limit. Setting the scale already held is a no-op for state.
  * From a custom scale the keys move to the nearest preset on the side they
  * point, so 93% goes up to 100 and down to 90.
  */
@@ -542,8 +535,7 @@ function scaleFor(key, current) {
  * Whether the Settings pane is the modal on screen — the one place a scale key
  * may act over a modal. The test is which modal is *there*, not where focus
  * happens to be: the pane's focus trap places focus a frame after it opens,
- * and a key pressed inside that frame is still Settings' (measured
- * 2026-09-19). A confirm dialog opened from Settings is a second modal above
+ * and a key pressed inside that frame is still Settings'. A confirm dialog opened from Settings is a second modal above
  * it, and a menu inside Settings holds the keys itself; the scale keys stand
  * down for both.
  */
