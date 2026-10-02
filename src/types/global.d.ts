@@ -112,6 +112,8 @@ declare global {
       paste: () => Promise<void>;
       /** Null when the word is spelled right, else up to three guesses. */
       checkSpelling: (word: string, paragraph: string) => Promise<string[] | null>;
+      /** Each paragraph's misspelled words, for the underline. */
+      checkParagraphs: (texts: string[]) => Promise<string[][]>;
       getSpelling: () => Promise<SpellingState>;
       setSpelling: (change: { enabled?: boolean; languages?: string[] }) => Promise<SpellingState>;
       addDictionaryWord: (word: string) => Promise<boolean>;

@@ -12,6 +12,7 @@ import {
 } from "../constants/layout";
 import { Z } from "../constants/zIndex";
 import { useLayout } from "../context/LayoutContext";
+import { useSettings } from "../context/SettingsContext";
 import { useEditorContext } from "../context/EditorContext";
 import { getAPI } from "../services/apiProvider";
 import { SIDEBAR_HANDLE_W } from "./EditorChrome";
@@ -43,6 +44,7 @@ import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges"
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
 import { listLayout } from "../utils/listStructure";
 import { useLinkHoverTooltip } from "../hooks/editor/useLinkHoverTooltip";
+import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
 import FindBar from "./FindBar";
 import SourceView from "./SourceView";
 import { blocksToMarkdown } from "../utils/markdown";
@@ -290,6 +292,25 @@ const EditorArea = memo(
       return () => el.removeEventListener("beforeinput", handleEditorBeforeInput);
       // `sourceView`: the editor element is a new one on the way back from the Markdown view.
     }, [activeNote, hasNote, editorRef, handleEditorBeforeInput, sourceView]);
+
+    // The spelling underline is the app's (useSpellingMarks), so Chromium's
+    // own is off in the editor wherever the app can check.
+    const { spelling } = useSettings();
+    const ownSpelling = !!getAPI()?.checkParagraphs;
+    const spellingMarks = useSpellingMarks(
+      editorRef,
+      !!spelling?.enabled,
+      `${activeNote}:${hasNote}:${sourceView}`,
+    );
+    const spellingLanguages = spelling?.languages.join(",");
+    const { recheck: recheckSpelling } = spellingMarks;
+    // The languages changed: every answer is stale.
+    const languagesSeen = useRef(spellingLanguages);
+    useEffect(() => {
+      if (languagesSeen.current === spellingLanguages) return;
+      languagesSeen.current = spellingLanguages;
+      recheckSpelling();
+    }, [spellingLanguages, recheckSpelling]);
 
     // ── The Markdown view's switch ──
     // Both ways, the caret crosses in the block it was in (on the same
@@ -804,18 +825,19 @@ const EditorArea = memo(
         }
         // One word of prose: the menu opens with its spellings once the
         // checker answers (a Mac's, a few hundredths of a second).
+        // Only an underlined word: the menu and the line never disagree.
         const asked = ++spellAsk.current;
         const word = field || linkEl ? null : spellableWord(range);
         const check = getAPI()?.checkSpelling;
-        if (!word || !check) return setLinkCtxMenu(menu);
+        if (!word || !check || !spellingMarks.markedAt(range)) return setLinkCtxMenu(menu);
         check(word.text, word.paragraph)
           .catch(() => null)
           .then((suggestions) => {
             if (asked !== spellAsk.current) return;
-            setLinkCtxMenu(suggestions ? { ...menu, word: word.text, suggestions } : menu);
+            setLinkCtxMenu({ ...menu, word: word.text, suggestions: suggestions ?? [] });
           });
       },
-      [noteDataRef, editorRef],
+      [noteDataRef, editorRef, spellingMarks],
     );
 
     // Cut, Copy and Paste run where ⌘X, ⌘C and ⌘V would: focus and the
@@ -1101,6 +1123,7 @@ const EditorArea = memo(
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
+                    spellCheck={!ownSpelling}
                     role="region"
                     aria-label="Note editor"
                     onKeyDown={(e) => {
@@ -1335,14 +1358,15 @@ const EditorArea = memo(
                   dismissCtxMenu();
                   getAPI()
                     ?.addDictionaryWord?.(word)
-                    .then(() =>
+                    .then(() => {
+                      recheckSpelling();
                       showToast?.(`Added "${word}" to dictionary`, "done", {
                         action: {
                           label: "Undo",
-                          run: () => getAPI()?.removeDictionaryWord?.(word),
+                          run: () => getAPI()?.removeDictionaryWord?.(word).then(recheckSpelling),
                         },
-                      }),
-                    );
+                      });
+                    });
                 }}
                 onOpenLink={() => {
                   if (linkCtxMenu.linkType === "external") {

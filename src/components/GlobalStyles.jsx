@@ -428,6 +428,13 @@ ${tagPillCss(theme)}
               SEARCH_HIT_ALPHA[theme.name === "night" ? "night" : "day"][i],
             )}; }`,
         ).join("\n        ")}
+        /* A misspelled word (hooks/editor/useSpellingMarks): the app's own
+           underline, in the error ink, painted over the text. */
+        ::highlight(spelling) {
+          text-decoration: underline dotted ${theme.SEMANTIC.error} 2px;
+          text-underline-offset: 3px;
+          text-decoration-skip-ink: none;
+        }
         /* The words the link picker will link, while it holds focus: the
            selection's colour, standing in for it, unwrapped before the block
            is read back (useLinkPicker). Never the saved ==highlight==. */

@@ -145,9 +145,9 @@ app's, made through state.**
   keep their own.
 - **Items run the keys' own path** (the captured range, then `execCommand`, a guess as
   `insertText`, or `paste` IPC).
-- **Spelling is the system's** (`electron/spelling.ts`), for one word of prose
-  (`spellableWord`); a Mac is asked in the paragraph's language (Chromium asks in its first).
-  `spelling.spec.ts`.
+- **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
+  late, focus-only): whole note on open, an edit after a pause; not code, tags,
+  links. Guesses only on a marked word; a Mac by paragraph language. `spelling.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 
@@ -250,7 +250,7 @@ never holds a byte sequence the syntax cannot.**
 Every `.code-line` takes at least `1lh` (or the layers drift). `fenceSource` keeps authored
 fences, including an absent closer; the editor never normalises code. **The info string is kept
 as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
-same language writes nothing. The language menu portals to `body` and takes its own keys.
+same language writes nothing.
 `code-language.spec.ts`.
 
 ## Images

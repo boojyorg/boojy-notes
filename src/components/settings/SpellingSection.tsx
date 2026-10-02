@@ -1,6 +1,7 @@
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useRef, useState } from "react";
 import type { SpellingState } from "../../types/global";
 import { useTheme } from "../../hooks/useTheme";
+import { useSettings } from "../../context/SettingsContext";
 import { ChevronDownIcon } from "../Icons";
 import Menu, { type MenuAnchor } from "../Menu";
 import { SettingRow, SmallButton, Switch } from "./SettingsPrimitives";
@@ -32,21 +33,14 @@ export default function SpellingSection({
   SectionHeader: ComponentType<{ title: string }>;
 }) {
   const { theme } = useTheme();
-  const [state, setState] = useState<SpellingState | null>(null);
+  const { spelling: state, changeSpelling: change } = useSettings() as {
+    spelling: SpellingState | null;
+    changeSpelling: (next: { enabled?: boolean; languages?: string[] }) => Promise<void>;
+  };
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    let live = true;
-    window.electronAPI?.getSpelling?.().then((s) => live && setState(s));
-    return () => {
-      live = false;
-    };
-  }, []);
   if (!state) return null;
 
-  const change = (next: { enabled?: boolean; languages?: string[] }) =>
-    window.electronAPI?.setSpelling(next).then(setState);
   const chosen = state.languages;
   // The ticked first, then the rest by name.
   const byName = (a: string, b: string) => languageName(a).localeCompare(languageName(b));
