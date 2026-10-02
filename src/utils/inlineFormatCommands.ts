@@ -194,15 +194,6 @@ export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Nod
 }
 
 /**
- * Inline code is one more wrap: the same toggle as bold, so it reselects on
- * text and never nests. Its own copy did neither, and a second press over a
- * selection restored just outside it wrote ``Bugs`` (2026-09-29).
- */
-export function toggleInlineCode(sel: Selection, boundary: Node | null): void {
-  toggleWrappingTag(sel, "CODE", boundary);
-}
-
-/**
  * Apply `format` to the selection inside `boundary`, and say whether the DOM
  * changed. A collapsed caret formats nothing here: the pending style
  * `execCommand` sets for the next keystroke has no structural equivalent, and

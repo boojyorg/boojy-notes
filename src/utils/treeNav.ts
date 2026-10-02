@@ -39,6 +39,10 @@ export interface TreeFiles {
   attachmentLabel?: (path: string) => string;
 }
 
+/** A note's row label, or `null` when it has no row: missing, or a draft. */
+export const treeNoteLabel = (note: { title?: string; _draft?: boolean } | undefined) =>
+  !note || note._draft ? null : note.title || "Untitled";
+
 /**
  * The visible rows, depth first: a folder's subfolders, then its notes, then
  * its other files, then the next sibling; a closed folder's contents are not

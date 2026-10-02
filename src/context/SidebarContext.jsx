@@ -11,13 +11,7 @@ import { useNoteData, useNoteDataActions } from "./NoteDataContext";
 import { useSearch } from "../hooks/useSearch";
 import { loadFromStorage } from "../utils/storage";
 import { isNative } from "../utils/platform";
-import {
-  buildTree,
-  collectPaths,
-  filterTree,
-  pathsToTree,
-  naturalCompare,
-} from "../utils/sidebarTree";
+import { buildTree, collectPaths, pathsToTree, naturalCompare } from "../utils/sidebarTree";
 import { compareNotes, sortNoteIds, SORT_RECENT } from "../utils/noteSort";
 import { useNoteSort } from "../hooks/useNoteSort";
 import { NEW_ROW_MS } from "../tokens/motion";
@@ -89,7 +83,6 @@ export function SidebarProvider({ children }) {
 
   // ── Search ────────────────────────────────────────────────────────────
   const {
-    searchMode,
     searchResults,
     search: runSearch,
     flushSearch,
@@ -155,27 +148,6 @@ export function SidebarProvider({ children }) {
     return { folderTree: tree, sortedRootNotes: sortNotes(derivedRootNotes) };
   }, [allFolders, folderNoteMap, derivedRootNotes, sortMode, sortSignal, noteDataRef]);
 
-  const prevFilteredResult = useRef(null);
-  const { filteredTree, fNotes } = useMemo(() => {
-    // Short-circuit when only text changed — folderTree/sortedRootNotes refs are stable
-    if (
-      prevFilteredResult.current &&
-      prevFilteredResult.current.folderTree === folderTree &&
-      prevFilteredResult.current.search === search &&
-      prevFilteredResult.current.sortedRootNotes === sortedRootNotes
-    ) {
-      return prevFilteredResult.current.value;
-    }
-    const lc = (s) => s.toLowerCase();
-    const filtered = filterTree(folderTree, search ? lc(search) : "", noteData);
-    const notes = search
-      ? sortedRootNotes.filter((n) => noteData[n] && lc(noteData[n].title).includes(lc(search)))
-      : sortedRootNotes;
-    const result = { filteredTree: filtered, fNotes: notes };
-    prevFilteredResult.current = { folderTree, search, sortedRootNotes, value: result };
-    return result;
-  }, [folderTree, search, noteData, sortedRootNotes]);
-
   const folderList = useMemo(() => [...knownPaths].sort(), [knownPaths]);
 
   // ── Context value ─────────────────────────────────────────────────────
@@ -196,7 +168,6 @@ export function SidebarProvider({ children }) {
       newNotes,
       markNewFolder,
       markNewRows,
-      searchMode,
       searchResults,
       flushSearch,
       clearSearch,
@@ -205,10 +176,6 @@ export function SidebarProvider({ children }) {
       folderFilter,
       setFolderFilter,
       tags,
-      filteredTree,
-      fNotes,
-      // The unfiltered tree and root list, for the path's folder popup: it
-      // shows what is there, never what a search left.
       folderTree,
       sortedRootNotes,
       folderList,
@@ -229,7 +196,6 @@ export function SidebarProvider({ children }) {
       newNotes,
       markNewFolder,
       markNewRows,
-      searchMode,
       searchResults,
       flushSearch,
       clearSearch,
@@ -238,8 +204,6 @@ export function SidebarProvider({ children }) {
       folderFilter,
       setFolderFilter,
       tags,
-      filteredTree,
-      fNotes,
       folderTree,
       sortedRootNotes,
       folderList,

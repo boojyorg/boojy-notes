@@ -1,6 +1,6 @@
-import { createContext, useState, useEffect, useRef, useContext, useMemo } from "react";
+import { createContext, useState, useRef, useContext, useMemo } from "react";
 import { useHistory } from "../hooks/useHistory";
-import { loadFromStorage, loadFromIDB } from "../utils/storage";
+import { loadFromStorage } from "../utils/storage";
 import { isNative } from "../utils/platform";
 
 const NoteDataContext = createContext(null);
@@ -44,25 +44,6 @@ export function NoteDataProvider({ children }) {
     textOnlyEditForEditor,
     unflushedNotes,
   } = useHistory(noteData, setNoteData, syncGeneration, activeNoteRef);
-
-  // Fallback: if localStorage was empty, try IndexedDB (async)
-  useEffect(() => {
-    if (isNative) return;
-    if (Object.keys(noteData).length > 0) return; // already loaded
-    loadFromIDB().then((saved) => {
-      if (saved?.noteData && typeof saved.noteData === "object") {
-        const validated = {};
-        for (const [id, note] of Object.entries(saved.noteData)) {
-          if (note && Array.isArray(note.content?.blocks)) {
-            validated[id] = note;
-          }
-        }
-        if (Object.keys(validated).length > 0) {
-          replaceNoteData(validated);
-        }
-      }
-    });
-  }, []);
 
   const dataValue = useMemo(() => ({ noteData }), [noteData]);
 

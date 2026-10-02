@@ -3,17 +3,21 @@ import {
   linkTargetFor,
   noteLinkKeys,
   parseWikilinkTarget,
-  resolveWikilink,
   unresolvedWikilinkMessage,
   wikilinkCandidates,
   wikilinkKey,
-  wikilinkMayCreate,
   wikilinkStatus,
 } from "../../src/utils/wikilinkTarget";
 import type { NoteData } from "../../src/types/notes";
 
 const note = (title: string, folder: string | null = null) =>
   ({ id: title, title, folder, content: { title, blocks: [] } }) as NoteData[string];
+
+// The one note a target names, or null: what a click opens.
+const resolveWikilink = (target: string, data: NoteData) => {
+  const ids = wikilinkCandidates(target, data);
+  return ids.length === 1 ? ids[0] : null;
+};
 
 const vault: NoteData = {
   beta: note("Beta"),
@@ -93,18 +97,6 @@ describe("noteLinkKeys and wikilinkKey", () => {
     expect(wikilinkKey(parseWikilinkTarget("Deep#Plan"))).toBe("deep");
     expect(wikilinkKey(parseWikilinkTarget("Work/Sub/Deep.md"))).toBe("work/sub/deep");
     expect(wikilinkKey(parseWikilinkTarget("#Plan"))).toBeNull();
-  });
-});
-
-describe("wikilinkMayCreate", () => {
-  it("allows only a plain name", () => {
-    expect(wikilinkMayCreate(parseWikilinkTarget("Delta"))).toBe(true);
-    expect(wikilinkMayCreate(parseWikilinkTarget("Delta.md"))).toBe(true);
-    expect(wikilinkMayCreate(parseWikilinkTarget("Delta#Intro"))).toBe(false);
-    expect(wikilinkMayCreate(parseWikilinkTarget("Delta#^id"))).toBe(false);
-    expect(wikilinkMayCreate(parseWikilinkTarget("Work/Delta"))).toBe(false);
-    expect(wikilinkMayCreate(parseWikilinkTarget("#Intro"))).toBe(false);
-    expect(wikilinkMayCreate(parseWikilinkTarget(""))).toBe(false);
   });
 });
 

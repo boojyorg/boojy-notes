@@ -48,29 +48,6 @@ export function wikilinkKey({ name, folder }: WikilinkTarget): string | null {
   return folder ? `${folder.toLowerCase()}/${key}` : key;
 }
 
-/**
- * The id of the note a target names, or null. Titles match case-insensitively
- * as they always have. A folder in the target is explicit: only the note at
- * that path answers, never a namesake elsewhere, so a stale path opens nothing
- * (and says so) rather than silently opening the wrong note. **A name two
- * notes share resolves to neither** (2026-09-20, Tyr's decision): it used to
- * open whichever loaded first; the click now asks (`wikilinkStatus`).
- */
-export function resolveWikilink(target: string, noteData: NoteData): string | null {
-  const ids = wikilinkCandidates(target, noteData);
-  return ids.length === 1 ? ids[0] : null;
-}
-
-/**
- * Whether a click on an unresolved target may create the note it names: only
- * a plain name. A heading, block or folder path says more than a new empty
- * note at the root could honour, and the filename rules would turn the whole
- * target into `Beta#Intro.md` or `Work_Gamma.md`.
- */
-export function wikilinkMayCreate({ name, folder, subpath }: WikilinkTarget): boolean {
-  return name !== "" && folder === null && subpath === null;
-}
-
 /** What the toast says when an unresolved target is one the app will not create. */
 export function unresolvedWikilinkMessage({ name, folder }: WikilinkTarget): string {
   if (!name) return "Links to a heading in this note can't be followed yet.";

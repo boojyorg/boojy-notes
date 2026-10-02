@@ -81,7 +81,6 @@ describe("useKeyboardHandlers", () => {
       insertBlockAfter: vi.fn(),
       deleteBlock: vi.fn(),
       reReadBlockFromDom: vi.fn(),
-      toggleInlineCode: vi.fn(),
       applyFormat: vi.fn(),
       onOpenLinkEditor: vi.fn(),
       updateBlockIndent: vi.fn(),

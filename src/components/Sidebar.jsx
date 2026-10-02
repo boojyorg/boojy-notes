@@ -7,6 +7,7 @@ import {
   ATTACHMENTS_KEY,
   ATTACHMENTS_PATH,
   visibleTreeRows,
+  treeNoteLabel,
   treeMove,
   noteKey,
   folderKey,
@@ -524,21 +525,12 @@ const Sidebar = memo(function Sidebar({
   const pendingFocus = useRef(null);
   const treeRows = useMemo(
     () =>
-      visibleTreeRows(
-        folderTree,
-        sortedRootNotes,
-        expanded,
-        (id) => {
-          const n = noteData[id];
-          return !n || n._draft ? null : n.title || "Untitled";
-        },
-        {
-          inFolder: (path) => fileGroups.byFolder.get(path) ?? [],
-          attachments: fileGroups.attachments,
-          fileLabel: baseName,
-          attachmentLabel,
-        },
-      ),
+      visibleTreeRows(folderTree, sortedRootNotes, expanded, (id) => treeNoteLabel(noteData[id]), {
+        inFolder: (path) => fileGroups.byFolder.get(path) ?? [],
+        attachments: fileGroups.attachments,
+        fileLabel: baseName,
+        attachmentLabel,
+      }),
     [folderTree, sortedRootNotes, expanded, noteData, fileGroups],
   );
   const rowByKey = useMemo(() => new Map(treeRows.map((r) => [r.key, r])), [treeRows]);

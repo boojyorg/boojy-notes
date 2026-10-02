@@ -113,7 +113,6 @@ function setup(blocks, noteId = "note-1") {
   const deleteBlock = vi.fn();
   const saveAndInsertFiles = vi.fn();
   const reReadBlockFromDom = vi.fn();
-  const toggleInlineCode = vi.fn();
   const applyFormat = vi.fn();
   const setSlashMenu = vi.fn((v) => {
     if (typeof v === "function") {
@@ -162,7 +161,6 @@ function setup(blocks, noteId = "note-1") {
     deleteBlock,
     saveAndInsertFiles,
     reReadBlockFromDom,
-    toggleInlineCode,
     applyFormat,
     mouseIsDown,
     setToolbarState,
@@ -214,7 +212,6 @@ function setup(blocks, noteId = "note-1") {
     updateBlockIndent,
     reReadBlockFromDom,
     applyFormat,
-    toggleInlineCode,
     onOpenLinkEditor,
     saveAndInsertFiles,
     placeCursorInBlock,

@@ -11,7 +11,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   // The note the open typing group belongs to. A group is one note's burst:
   // typing in another note, or leaving and coming back, starts a fresh one.
   const historyGroupNote = useRef(null);
-  const isUndoRedo = useRef(false);
   const textFlushTimer = useRef(null);
   const hasPendingFlush = useRef(false);
   const textOnlyEdit = useRef(false);
@@ -201,7 +200,7 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
   };
 
   const applyCommit = (updater, recordHistory) => {
-    if (recordHistory && !isUndoRedo.current) pushHistory();
+    if (recordHistory) pushHistory();
     cancelPendingText();
     // A structural edit ends the typing group, as an undo does: the
     // keystrokes after Enter, a paste or a checkbox are a new entry, not part
@@ -277,23 +276,21 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       setNoteData(noteDataRef.current);
     }
 
-    if (!isUndoRedo.current) {
-      // A group belongs to one note. Typing in another note inside the 500ms
-      // window opens that note's own group at once; without the check the
-      // second note's first burst joined the first note's entry and left the
-      // second with nothing to undo.
-      const groupNote = activeNoteRef.current;
-      if (!historyTimer.current || historyGroupNote.current !== groupNote) {
-        pushHistory();
-      } else {
-        clearTimeout(historyTimer.current);
-      }
-      historyGroupNote.current = groupNote;
-      historyTimer.current = setTimeout(() => {
-        historyTimer.current = null;
-        historyGroupNote.current = null;
-      }, 500);
+    // A group belongs to one note. Typing in another note inside the 500ms
+    // window opens that note's own group at once; without the check the
+    // second note's first burst joined the first note's entry and left the
+    // second with nothing to undo.
+    const groupNote = activeNoteRef.current;
+    if (!historyTimer.current || historyGroupNote.current !== groupNote) {
+      pushHistory();
+    } else {
+      clearTimeout(historyTimer.current);
     }
+    historyGroupNote.current = groupNote;
+    historyTimer.current = setTimeout(() => {
+      historyTimer.current = null;
+      historyGroupNote.current = null;
+    }, 500);
 
     // Apply to ref immediately (for reads by other handlers)
     noteDataRef.current = updater(noteDataRef.current);
@@ -349,7 +346,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       historyTimer.current = null;
     }
     historyGroupNote.current = null;
-    isUndoRedo.current = true;
     syncGeneration.current++;
     trace("restoreSnapshot (undo/redo)", noteId);
     const live = noteDataRef.current[noteId];
@@ -360,7 +356,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
       [noteId]: { ...restored, folder: live.folder ?? null },
     };
     setNoteData(noteDataRef.current);
-    isUndoRedo.current = false;
   };
 
   // The newest entry for one note, lifted out of the shared stack. Scanning
@@ -404,7 +399,6 @@ export function useHistory(noteData, setNoteData, syncGeneration, activeNoteRef)
     remapNoteFolders,
     replaceNoteData,
     commitTextChange,
-    isUndoRedo,
     noteDataRef,
     hasPendingFlush,
     textOnlyEdit,

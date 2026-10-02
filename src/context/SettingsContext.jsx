@@ -52,7 +52,6 @@ export function SettingsProvider({ children }) {
       autoUpdateEnabled,
       setAutoUpdateEnabled,
       updateStatus,
-      setUpdateStatus,
     }),
     [settingsOpen, uiScale, autoUpdateEnabled, updateStatus],
   );

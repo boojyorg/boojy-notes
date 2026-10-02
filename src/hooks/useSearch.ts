@@ -42,7 +42,6 @@ export function useSearch(noteData: NoteData) {
 
   const [tagFilter, setTagFilterState] = useState<string | null>(null);
   const [folderFilter, setFolderFilterState] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState(false);
   const [searchResults, setSearchResultsState] = useState<SearchResults>(EMPTY);
 
   // Nested: choosing `#uni` also finds `#uni/lectures`.
@@ -92,7 +91,6 @@ export function useSearch(noteData: NoteData) {
   const apply = useCallback(
     (query: string) => {
       lastQueryRef.current = query;
-      setSearchMode(true);
       setSearchResults(run(query));
     },
     [run, setSearchResults],
@@ -107,7 +105,6 @@ export function useSearch(noteData: NoteData) {
         if (tagFilterRef.current || folderFilterRef.current) {
           apply("");
         } else {
-          setSearchMode(false);
           setSearchResults(EMPTY);
         }
         return;
@@ -150,7 +147,6 @@ export function useSearch(noteData: NoteData) {
         if (tagFilterRef.current || folderFilterRef.current || lastQueryRef.current) {
           apply(lastQueryRef.current);
         } else {
-          setSearchMode(false);
           setSearchResults(EMPTY);
         }
       },
@@ -169,12 +165,10 @@ export function useSearch(noteData: NoteData) {
     setTagFilterState(null);
     folderFilterRef.current = null;
     setFolderFilterState(null);
-    setSearchMode(false);
     setSearchResults(EMPTY);
   }, [setSearchResults]);
 
   return {
-    searchMode,
     searchResults,
     search,
     flushSearch,

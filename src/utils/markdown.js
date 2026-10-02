@@ -547,7 +547,6 @@ export function markdownToBlocks(md) {
         id: `md-${++_parseBlockId}`,
         type: "frontmatter",
         text: fmLines.join("\n"),
-        meta: parseFrontmatterYaml(fmLines.join("\n")),
       });
       continue;
     }
@@ -884,39 +883,20 @@ export function parseTableRow(line) {
   return cells.map((cell) => cell.trim().replace(/\\\|/g, "|").replace(/<br>/g, "\n"));
 }
 
-export function parseFrontmatterYaml(yamlStr) {
-  const meta = {};
-  for (const line of yamlStr.split("\n")) {
-    const idx = line.indexOf(": ");
-    if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    let val = line.slice(idx + 2).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-      val = val.slice(1, -1);
-    meta[key] = val;
-  }
-  return meta;
-}
-
+/**
+ * A legacy Boojy file's `id:` and the text after its frontmatter, for the
+ * migration in noteFileManager; any other frontmatter stays a block.
+ */
 export function parseFrontmatter(content) {
   const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return null;
-
-  const meta = {};
+  let id = "";
   for (const line of match[1].split("\n")) {
     const idx = line.indexOf(": ");
-    if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    let val = line.slice(idx + 2).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-      val = val.slice(1, -1);
-    meta[key] = val;
+    if (idx === -1 || line.slice(0, idx).trim() !== "id") continue;
+    id = line.slice(idx + 2).trim();
+    if ((id.startsWith('"') && id.endsWith('"')) || (id.startsWith("'") && id.endsWith("'")))
+      id = id.slice(1, -1);
   }
-
-  return {
-    id: meta.id || null,
-    title: meta.title || "Untitled",
-    folder: meta.folder || null,
-    body: match[2],
-  };
+  return { id: id || null, body: match[2] };
 }
