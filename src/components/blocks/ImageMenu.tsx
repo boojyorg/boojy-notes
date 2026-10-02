@@ -51,7 +51,7 @@ export default function ImageMenu({
   );
 
   const items: MenuItem[] = entries
-    ? entries.map((e) => ({ ...e, action: act(e.action) }))
+    ? entries.map((e) => ({ ...e, action: act(e.action ?? noop) }))
     : [
         { label: "View full size", icon: <ExpandIcon nav />, action: act(onView ?? noop) },
         { label: "Copy image", icon: <CopyIcon />, action: act(onCopy ?? noop) },

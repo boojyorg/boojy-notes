@@ -22,7 +22,8 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==), a
   search hit's words, briefly.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
-  element, rows as pills, the highlight state alone. A surface it cannot be uses `menuSurface`
+  element (over a selection, never focused: keys in capture), rows as pills, the highlight state
+  alone. A surface it cannot be uses `menuSurface`
   and `MenuRule`, never its own numbers. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
