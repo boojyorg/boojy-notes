@@ -88,9 +88,7 @@ test("link, code block and image context menus open at the pointer in a scrolled
       h.page.locator(".code-ctx-menu"),
     );
     expect(code, "code block menu offset from the pointer").toEqual({ dx: 0, dy: 0 });
-    // The textarea keeps Escape for itself (it leaves the block), so the code
-    // menu closes on a press elsewhere, as it does for the user.
-    await editor.locator("p", { hasText: "Before paragraph 30." }).click();
+    await h.page.keyboard.press("Escape");
     await expect(h.page.locator(".code-ctx-menu")).toHaveCount(0);
 
     const image = await menuOffset(

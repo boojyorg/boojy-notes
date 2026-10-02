@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../../hooks/useTheme";
-import { Z } from "../../constants/zIndex";
 import { getAPI } from "../../services/apiProvider";
+import { isMac } from "../../utils/platform";
+import { CopyIcon, FolderIcon, OpenLinkIcon, TrashIcon } from "../Icons";
+import Menu from "../Menu";
 import MissingAttachment, { findable } from "./MissingAttachment";
 
 function formatFileSize(bytes) {
@@ -56,22 +58,6 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
     }
   }, [src, fileSize]);
 
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const dismiss = (e) => {
-      if (!e.target.closest(".file-context-menu")) setCtxMenu(null);
-    };
-    const dismissKey = (e) => {
-      if (e.key === "Escape") setCtxMenu(null);
-    };
-    document.addEventListener("mousedown", dismiss);
-    document.addEventListener("keydown", dismissKey);
-    return () => {
-      document.removeEventListener("mousedown", dismiss);
-      document.removeEventListener("keydown", dismissKey);
-    };
-  }, [ctxMenu]);
-
   const handleClick = () => {
     if (onOpen) onOpen();
   };
@@ -79,7 +65,12 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
   const handleContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setCtxMenu({ top: e.clientY, left: e.clientX });
+    setCtxMenu({ top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX });
+  };
+  // Each row closes the menu, then acts.
+  const act = (fn) => () => {
+    setCtxMenu(null);
+    fn?.();
   };
 
   if (missing)
@@ -151,74 +142,34 @@ function FileBlock({ src, filename, size, onDelete, onOpen, onShowInFolder, acce
         </div>
       </div>
       {ctxMenu && (
-        <div
+        <Menu
+          label="File options"
+          idPrefix="file-menu-item"
           className="file-context-menu"
-          style={{
-            position: "fixed",
-            top: ctxMenu.top,
-            left: ctxMenu.left,
-            background: BG.elevated,
-            border: `1px solid ${BG.divider}`,
-            borderRadius: 8,
-            padding: 4,
-            minWidth: 180,
-            zIndex: Z.CONTEXT_MENU,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          {[
+          anchor={ctxMenu}
+          minWidth={180}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            { label: "Open file", icon: <OpenLinkIcon />, action: act(onOpen) },
             {
-              label: "Open File",
-              action: () => {
-                setCtxMenu(null);
-                onOpen();
-              },
+              label: isMac ? "Show in Finder" : "Show in folder",
+              icon: <FolderIcon />,
+              action: act(onShowInFolder),
             },
             {
-              label: "Show in Folder",
-              action: () => {
-                setCtxMenu(null);
-                onShowInFolder();
-              },
-            },
-            {
-              label: "Copy File Path",
-              action: () => {
-                setCtxMenu(null);
-                navigator.clipboard.writeText(src || "");
-              },
+              label: "Copy file path",
+              icon: <CopyIcon />,
+              action: act(() => navigator.clipboard.writeText(src || "")),
             },
             {
               label: "Delete",
-              action: () => {
-                setCtxMenu(null);
-                onDelete();
-              },
+              icon: <TrashIcon />,
+              action: act(onDelete),
+              danger: true,
+              rule: true,
             },
-          ].map((item) => (
-            <div
-              key={item.label}
-              onClick={item.action}
-              style={{
-                padding: "6px 12px",
-                fontSize: 12,
-                color: TEXT.primary,
-                cursor: "pointer",
-                borderRadius: 4,
-                transition: "background var(--motion-fast)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = BG.surface;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {item.label}
-            </div>
-          ))}
-        </div>
+          ]}
+        />
       )}
     </>
   );

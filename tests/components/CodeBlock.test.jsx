@@ -38,6 +38,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
       TEXT: { primary: "#14110F", secondary: "#47403A", muted: "#7A736C" },
       BG: { elevated: "#FFFFFF", divider: "#E9E9E9", hover: "#ECECEC", surface: "#F4F4F5" },
       ACCENT: { primary: "#8FC1C6", text: "#2A737D", onAccent: "#FFFFFF" },
+      SEMANTIC: { error: "#B3261E" },
       modalShadow: "none",
     },
     isDark: false,
@@ -126,13 +127,13 @@ describe("CodeBlock", () => {
   it("opens the same menu from the context menu's Change language", () => {
     const { container } = render(<CodeBlock {...defaultProps} />);
     fireEvent.contextMenu(container.querySelector(".code-block"));
-    const item = Array.from(container.querySelectorAll(".code-ctx-item")).find(
+    const item = Array.from(document.body.querySelectorAll(".code-ctx-menu [role=menuitem]")).find(
       (b) => b.textContent === "Change language",
     );
     expect(item).toBeTruthy();
     fireEvent.click(item);
     expect(document.body.querySelector("[data-testid='code-lang-menu']")).toBeInTheDocument();
-    expect(container.querySelector(".code-ctx-menu")).toBeNull();
+    expect(document.body.querySelector(".code-ctx-menu")).toBeNull();
   });
 
   it("shows copy button on hover", () => {

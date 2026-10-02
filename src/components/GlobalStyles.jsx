@@ -639,41 +639,6 @@ ${tagPillCss(theme)}
         .code-lang-open .code-lang-chevron {
           opacity: 1;
         }
-        /* Code block context menu */
-        .code-ctx-menu {
-          position: fixed;
-          z-index: 9999;
-          min-width: 170px;
-          background: ${theme.BG.elevated};
-          border: 1px solid ${theme.BG.divider};
-          border-radius: 8px;
-          padding: 4px 0;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        .code-ctx-item {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          padding: 7px 14px;
-          font-size: 12.5px;
-          color: ${theme.TEXT.primary};
-          background: none;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          position: relative;
-          gap: 4px;
-        }
-        .code-ctx-item:hover {
-          background: rgba(255,255,255,0.06);
-        }
-        .code-ctx-danger { color: ${theme.SEMANTIC.error}; }
-        .code-ctx-danger:hover { background: ${theme.SEMANTIC.error}18; }
-        .code-ctx-sep {
-          height: 1px;
-          background: ${theme.BG.divider};
-          margin: 4px 0;
-        }
         /* Prism.js token colors */
         .token.comment, .token.prolog, .token.doctype, .token.cdata { color: ${theme.syntax.comment}; font-style: italic; }
         .token.punctuation { color: ${theme.syntax.punctuation}; }
