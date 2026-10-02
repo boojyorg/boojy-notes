@@ -1,9 +1,10 @@
 /**
- * Spelling in the right-click menu: a misspelled word's guesses and Add to
- * dictionary above Cut, Copy and Paste. A guess is typed over the word (one
- * undoable edit, saved as typing is); Add to dictionary teaches the system,
- * and its toast's Undo takes the word back out. On a Mac the guesses come in
- * the word's paragraph's language.
+ * Spelling: the app's own underline (drawn as the note opens, focused or not;
+ * never in code, a tag or a link) and the right-click menu on an underlined
+ * word: its guesses and Add to dictionary above Cut, Copy and Paste. A guess
+ * is typed over the word (one undoable edit, saved as typing is); Add to
+ * dictionary teaches the system, and its toast's Undo takes the word back
+ * out. On a Mac both come in the word's paragraph's language.
  *
  * Add to dictionary writes to the system's own word list on a Mac, so the
  * word added is made up and is always removed again, pass or fail.
@@ -35,6 +36,15 @@ async function rightClick(page: Page, word: string) {
   await page.mouse.click(at.x, at.y, { button: "right" });
 }
 
+/** The words the underline is drawn under, as the browser holds them. */
+const underlined = (page: Page) =>
+  page.evaluate(() => {
+    const h = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get(
+      "spelling",
+    );
+    return h ? [...h].map((r) => r.toString()).sort() : [];
+  });
+
 const rows = (page: Page) => page.locator(".editor-context-menu [role=menuitem]").allInnerTexts();
 const closeMenu = async (page: Page) => {
   await page.keyboard.press("Escape");
@@ -55,16 +65,45 @@ const checkerReady = (page: Page) =>
 let h: AppHandle;
 test.beforeEach(async () => {
   h = await launchApp({
-    "Alpha.md": `I recieve the parcel.\n\nThe ${MADE_UP} is here.\n\nVoy a recivir el paquete mañana.\n`,
+    "Alpha.md": `I recieve the parcel.\n\nThe ${MADE_UP} is here.\n\nVoy a recivir el paquete mañana.\n\nSee \`codee\` and #tagg here.\n`,
   });
   await h.openNote("Alpha");
   await checkerReady(h.page);
+  await expect.poll(() => underlined(h.page)).toContain("recieve");
 });
 test.afterEach(async () => {
   await h.app.evaluate(({ session }, w) => {
     session.defaultSession.removeWordFromSpellCheckerDictionary(w);
   }, MADE_UP);
   await h.close();
+});
+
+test("a note's misspelled words are underlined as it opens, before any click; never code or a tag", async () => {
+  expect(await h.page.evaluate(() => !!document.activeElement?.closest("[data-editor]"))).toBe(
+    false,
+  );
+  const words = await underlined(h.page);
+  expect(words).toEqual(expect.arrayContaining(["recieve", MADE_UP]));
+  expect(words).not.toContain("codee");
+  expect(words).not.toContain("tagg");
+});
+
+test("a typed word is underlined once the caret leaves it, and an undo keeps the lines", async () => {
+  await h.page.locator("[data-editor] [data-block-id]").first().click();
+  await h.page.keyboard.press("End");
+  await h.page.keyboard.type(" wordd", { delay: 20 });
+  await h.page.waitForTimeout(600);
+  expect(await underlined(h.page)).not.toContain("wordd");
+  await h.page.keyboard.type(" ");
+  await expect.poll(() => underlined(h.page)).toContain("wordd");
+  // An undo repaints the paragraph: its lines are drawn again at once, never
+  // left on the old nodes (an empty range) waiting for the next answer.
+  const before = await h.page.locator("[data-editor]").innerText();
+  await h.page.keyboard.press(`${MOD}+z`);
+  await expect.poll(() => h.page.locator("[data-editor]").innerText()).not.toBe(before);
+  const after = await underlined(h.page);
+  expect(after).toEqual(expect.arrayContaining(["recieve", "wordd"]));
+  expect(after).not.toContain("");
 });
 
 test("a misspelled word's guesses sit above Cut, Copy and Paste; a guess is one undoable edit", async () => {
@@ -103,19 +142,24 @@ const addMadeUp = async () => {
   await expect(h.page.getByText(`Added "${MADE_UP}" to dictionary`)).toBeVisible();
 };
 
-test("Add to dictionary teaches the word", async () => {
+test("Add to dictionary teaches the word: its line goes", async () => {
   await addMadeUp();
+  await expect.poll(() => underlined(h.page)).not.toContain(MADE_UP);
   await expect.poll(offered).toBe(false);
 });
 
 test("the toast's Undo takes the word back out", async () => {
   await addMadeUp();
   await h.page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(() => underlined(h.page)).toContain(MADE_UP);
   await expect.poll(offered).toBe(true);
 });
 
-test("switched off in Settings, the menu offers no spellings", async () => {
-  await h.page.evaluate(() => window.electronAPI!.setSpelling({ enabled: false }));
+test("switched off in Settings, every line goes and the menu offers no spellings", async () => {
+  await h.page.keyboard.press(`${MOD}+Comma`);
+  await h.page.getByRole("switch", { name: "Check spelling" }).click();
+  await h.page.keyboard.press("Escape");
+  await expect.poll(() => underlined(h.page)).toEqual([]);
   await rightClick(h.page, "recieve");
   await expect(h.page.locator(".editor-context-menu")).toBeVisible();
   expect((await rows(h.page))[0]).toMatch(/^Cut/);

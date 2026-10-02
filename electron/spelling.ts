@@ -10,8 +10,9 @@ import { loadSettings, saveSettings } from "./settingsManager.js";
  *   the app stores no languages there. Chromium asks it about one word at a
  *   time, with no sentence to tell the language by, and the system answers in
  *   its first language: an English word on a Spanish Mac got Spanish guesses
- *   or none. So the right-click menu asks the system directly, in the
- *   language of the word's paragraph (`MAC_CHECK`).
+ *   or none. So the app asks the system directly, for the underline and the
+ *   right-click menu alike, in each paragraph's language (`MAC_PARAGRAPHS`,
+ *   `MAC_WORD`).
  * - **Elsewhere the app chooses**: any number of languages, checked together.
  * - Both apply at once to the open window, with no restart.
  */
@@ -21,48 +22,73 @@ const MAX_SUGGESTIONS = 3;
 const KEYBOARD_SETTINGS_URL = "x-apple.systempreferences:com.apple.Keyboard-Settings.extension";
 
 /**
- * Run by `osascript -l JavaScript`: answers `null` for a word the system
- * spells, else its first guesses. The language is the paragraph's, in the
- * spelling the system's language list gives it (the list's `en-GB`, never a
- * plain `en`, which is US English); with none told, the system's own.
+ * Run by `osascript -l JavaScript`, before either script below: a text's
+ * language is the paragraph's, in the spelling the system's language list
+ * gives it (the list's `en-GB`, never a plain `en`, which is US English);
+ * with none told, the system's own. A range's fields arrive as strings ("0").
  */
-const MAC_CHECK = `
+const MAC_PRELUDE = `
 ObjC.import("AppKit");
-function run(argv) {
-  const word = argv[0], paragraph = argv[1], preferred = JSON.parse(argv[2]);
-  const checker = $.NSSpellChecker.sharedSpellChecker;
-  const available = ObjC.deepUnwrap(checker.availableLanguages);
-  const told = ObjC.unwrap($.NSLinguisticTagger.dominantLanguageForString(paragraph)) || "";
+const checker = $.NSSpellChecker.sharedSpellChecker;
+const available = ObjC.deepUnwrap(checker.availableLanguages);
+function langFor(text, preferred) {
+  const told = ObjC.unwrap($.NSLinguisticTagger.dominantLanguageForString(text)) || "";
   const candidates = told
     ? preferred.map((l) => l.replace("-", "_")).filter((l) => l.startsWith(told + "_")).concat(told)
     : [];
-  const lang = candidates.find((l) => available.includes(l)) || ObjC.unwrap(checker.language);
-  const miss = checker.checkSpellingOfStringStartingAtLanguageWrapInSpellDocumentWithTagWordCount(
-    word, 0, $(lang), false, 0, null);
-  // A range's fields arrive as strings ("0").
-  if (Number(miss.length) === 0) return "null";
+  return $(candidates.find((l) => available.includes(l)) || ObjC.unwrap(checker.language));
+}
+function missAt(text, at, lang) {
+  const r = checker.checkSpellingOfStringStartingAtLanguageWrapInSpellDocumentWithTagWordCount(
+    text, at, lang, false, 0, null);
+  return Number(r.length) ? [Number(r.location), Number(r.length)] : null;
+}`;
+
+/** One word in its paragraph: `null` when spelled right, else its first guesses. */
+const MAC_WORD = `${MAC_PRELUDE}
+function run(argv) {
+  const word = argv[0], lang = langFor(argv[1], JSON.parse(argv[2]));
+  if (!missAt(word, 0, lang)) return "null";
   const guesses = ObjC.deepUnwrap(checker.guessesForWordRangeInStringLanguageInSpellDocumentWithTag(
-    $.NSMakeRange(0, word.length), word, $(lang), 0)) || [];
+    $.NSMakeRange(0, word.length), word, lang, 0)) || [];
   return JSON.stringify(guesses.slice(0, ${MAX_SUGGESTIONS}));
 }`;
 
-function macCheck(word: string, paragraph: string): Promise<string[] | null> {
-  const preferred = JSON.stringify(app.getPreferredSystemLanguages());
+/** Paragraphs (a JSON array on stdin): each one's misspelled words. */
+const MAC_PARAGRAPHS = `${MAC_PRELUDE}
+function run(argv) {
+  const input = $.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile;
+  const texts = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(input, $.NSUTF8StringEncoding)));
+  const preferred = JSON.parse(argv[0]);
+  return JSON.stringify(texts.map((text) => {
+    const lang = langFor(text, preferred), words = [];
+    for (let at = 0, miss; (miss = missAt(text, at, lang)); at = miss[0] + miss[1]) {
+      words.push(text.substr(miss[0], miss[1]));
+    }
+    return words;
+  }));
+}`;
+
+/** Runs a script, answering its parsed output, or `fallback` on any failure. */
+function osa<T>(script: string, args: string[], fallback: T, stdin?: string): Promise<T> {
   return new Promise((resolve) => {
-    execFile(
+    const child = execFile(
       "osascript",
-      ["-l", "JavaScript", "-e", MAC_CHECK, word, paragraph, preferred],
-      { timeout: 2000 },
+      ["-l", "JavaScript", "-e", script, ...args],
+      { timeout: 5000, maxBuffer: 16 * 1024 * 1024 },
       (err, stdout) => {
         try {
-          resolve(err ? null : JSON.parse(stdout));
+          resolve(err ? fallback : JSON.parse(stdout));
         } catch {
-          resolve(null);
+          resolve(fallback);
         }
       },
     );
+    child.stdin?.end(stdin ?? "");
   });
 }
+
+const preferred = () => JSON.stringify(app.getPreferredSystemLanguages());
 
 const spellingOn = () => loadSettings().spellCheckEnabled !== false;
 
@@ -97,7 +123,18 @@ export function registerSpellingIPC() {
   // A Mac's answer, in the paragraph's language; elsewhere the preload asks
   // the window's own checker, which already holds the chosen languages.
   ipcMain.handle("check-spelling", (_event, word: string, paragraph: string) =>
-    isMac && spellingOn() ? macCheck(word, paragraph) : null,
+    isMac && spellingOn() ? osa(MAC_WORD, [word, paragraph, preferred()], null) : null,
+  );
+  // The whole note at once, for the underline: one script for every paragraph.
+  ipcMain.handle("check-paragraphs", (_event, texts: string[]) =>
+    isMac && spellingOn()
+      ? osa(
+          MAC_PARAGRAPHS,
+          [preferred()],
+          texts.map(() => []),
+          JSON.stringify(texts),
+        )
+      : texts.map(() => []),
   );
   ipcMain.handle("get-spelling", (event) => spellingState(event.sender.session));
   ipcMain.handle("set-spelling", (event, change: { enabled?: boolean; languages?: string[] }) => {
@@ -118,8 +155,8 @@ export function registerSpellingIPC() {
   ipcMain.handle("remove-dictionary-word", (event, word: string) =>
     event.sender.session.removeWordFromSpellCheckerDictionary(word),
   );
-  ipcMain.handle("is-learned-word", async (event, word: string) =>
-    (await event.sender.session.listWordsInSpellCheckerDictionary()).includes(word),
+  ipcMain.handle("learned-words", (event) =>
+    event.sender.session.listWordsInSpellCheckerDictionary(),
   );
   ipcMain.handle("open-keyboard-settings", () => {
     if (isMac) void shell.openExternal(KEYBOARD_SETTINGS_URL);

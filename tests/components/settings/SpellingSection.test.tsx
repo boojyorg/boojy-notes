@@ -15,6 +15,14 @@ vi.mock("../../../src/hooks/useTheme", () => ({
   }),
 }));
 
+const settings = vi.hoisted(() => ({
+  spelling: null as unknown,
+  changeSpelling: (() => {}) as (change: unknown) => void,
+}));
+vi.mock("../../../src/context/SettingsContext", () => ({
+  useSettings: () => settings,
+}));
+
 import SpellingSection, { languageName } from "../../../src/components/settings/SpellingSection";
 import type { SpellingState } from "../../../src/types/global";
 
@@ -24,11 +32,12 @@ const Title = ({ title }: { title: string }) => <div>{title}</div>;
 
 async function mount(state: SpellingState) {
   const api = {
-    getSpelling: vi.fn().mockResolvedValue(state),
-    setSpelling: vi.fn(async (change: Partial<SpellingState>) => ({ ...state, ...change })),
+    setSpelling: vi.fn(),
     openKeyboardSettings: vi.fn(),
   };
-  Object.assign(window.electronAPI, api);
+  Object.assign(window.electronAPI, { openKeyboardSettings: api.openKeyboardSettings });
+  settings.spelling = state;
+  settings.changeSpelling = api.setSpelling;
   await act(async () => {
     render(<SpellingSection SectionHeader={Title} />);
   });
@@ -52,10 +61,6 @@ describe("SpellingSection", () => {
       fireEvent.click(screen.getByRole("switch", { name: "Check spelling" }));
     });
     expect(api.setSpelling).toHaveBeenCalledWith({ enabled: false });
-    expect(screen.getByRole("switch", { name: "Check spelling" })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
   });
 
   it("ticks languages in a menu, the ticked first; the last one cannot be unticked", async () => {

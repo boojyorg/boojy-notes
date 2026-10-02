@@ -30,16 +30,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
   copyTextToClipboard: (payload) => ipcRenderer.invoke("copy-text-to-clipboard", payload),
   // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
   paste: () => ipcRenderer.invoke("paste"),
-  // Spelling (electron/spelling.ts). A word's check answers null when it is
-  // spelled right, else its first three guesses. A Mac's comes from the
-  // main process, in the paragraph's language; elsewhere the window's own
-  // checker answers, in the chosen languages.
+  // Spelling (electron/spelling.ts). A Mac is asked through the main process,
+  // in each paragraph's language; elsewhere the window's own checker answers,
+  // in the chosen languages, less the words added to the dictionary (Linux
+  // hands an added word to this checker late).
+  // A word's check: null when spelled right, else its first three guesses.
   checkSpelling: async (word, paragraph) => {
     if (process.platform === "darwin") return ipcRenderer.invoke("check-spelling", word, paragraph);
     if (!webFrame.isWordMisspelled(word)) return null;
-    // A word just added reaches this checker late (Linux): the dictionary decides.
-    if (await ipcRenderer.invoke("is-learned-word", word)) return null;
+    if ((await ipcRenderer.invoke("learned-words")).includes(word)) return null;
     return webFrame.getWordSuggestions(word).slice(0, 3);
+  },
+  // Each paragraph's misspelled words, for the underline.
+  checkParagraphs: async (texts) => {
+    if (process.platform === "darwin") return ipcRenderer.invoke("check-paragraphs", texts);
+    const learned = new Set(await ipcRenderer.invoke("learned-words"));
+    const words = new Intl.Segmenter(undefined, { granularity: "word" });
+    return texts.map((text) => {
+      const seen = new Set();
+      for (const seg of words.segment(text)) {
+        if (seg.isWordLike && !learned.has(seg.segment)) seen.add(seg.segment);
+      }
+      return [...seen].filter((w) => webFrame.isWordMisspelled(w));
+    });
   },
   getSpelling: () => ipcRenderer.invoke("get-spelling"),
   setSpelling: (change) => ipcRenderer.invoke("set-spelling", change),

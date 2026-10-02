@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, useMemo } from "react";
+import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
 import { isElectron } from "../utils/platform";
 
 const SettingsContext = createContext(null);
@@ -24,8 +24,17 @@ export function SettingsProvider({ children }) {
     localStorage.setItem("boojy-ui-scale", String(uiScale));
   }, [uiScale]);
 
-  // Spell check has no settings UI: the Electron main process applies the
-  // stored preference at startup (electron/main.js) and defaults it on.
+  // Spelling (Settings → Spelling, electron/spelling.ts): null until the main
+  // process answers, and on the web, which has no checker. The editor's
+  // underline and the Settings section both read it here.
+  const [spelling, setSpelling] = useState(null);
+  useEffect(() => {
+    window.electronAPI?.getSpelling?.().then(setSpelling);
+  }, []);
+  const changeSpelling = useCallback(
+    (change) => window.electronAPI?.setSpelling?.(change).then(setSpelling),
+    [],
+  );
 
   // Auto-update state (desktop only)
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
@@ -48,8 +57,10 @@ export function SettingsProvider({ children }) {
       autoUpdateEnabled,
       setAutoUpdateEnabled,
       updateStatus,
+      spelling,
+      changeSpelling,
     }),
-    [settingsOpen, uiScale, autoUpdateEnabled, updateStatus],
+    [settingsOpen, uiScale, autoUpdateEnabled, updateStatus, spelling, changeSpelling],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

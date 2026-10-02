@@ -1,13 +1,13 @@
 import Menu, { type MenuAnchor, type MenuItem } from "./Menu";
 import { shortcutLabel } from "./Tooltip";
 import {
+  AddToDictionaryIcon,
   CopyIcon,
   CutIcon,
   OpenLinkIcon,
   OpenNoteIcon,
   PasteIcon,
   PencilIcon,
-  PlusIcon,
   TidyTableIcon,
   TrashIcon,
   UnlinkIcon,
@@ -87,13 +87,19 @@ export default function EditorContextMenu({
   onClose,
 }: EditorContextMenuProps) {
   const items: MenuItem[] = [];
+  // Three groups, as a Mac's text menu: replace the word, teach it, edit.
   if (suggestions) {
     for (const word of suggestions) {
-      items.push({ label: word, icon: NO_GLYPH, action: () => onReplaceWord(word) });
+      items.push({ label: word, icon: NO_GLYPH, choice: true, action: () => onReplaceWord(word) });
     }
     if (!suggestions.length)
       items.push({ label: "No suggestions", icon: NO_GLYPH, disabled: true });
-    items.push({ label: "Add to dictionary", icon: <PlusIcon />, action: onAddWord });
+    items.push({
+      label: "Add to dictionary",
+      icon: <AddToDictionaryIcon />,
+      rule: true,
+      action: onAddWord,
+    });
   }
   if (link === "external") {
     items.push(

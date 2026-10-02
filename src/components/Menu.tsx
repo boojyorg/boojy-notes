@@ -36,6 +36,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** A rule above this item: the start of a group. */
   rule?: boolean;
+  /** A word to choose, not a command (a spelling guess): set in medium weight. */
+  choice?: boolean;
   role?: "menuitem" | "menuitemradio" | "menuitemcheckbox";
   /** A radio's or checkbox's state; shown as the tick unless the menu says not. */
   checked?: boolean;
@@ -299,6 +301,7 @@ export default function Menu({
               // The glyph takes the row's ink, so Delete's goes red with it.
               color: item.disabled ? TEXT.muted : item.danger ? SEMANTIC.error : TEXT.primary,
               fontSize: 12.5,
+              fontWeight: item.choice ? 500 : undefined,
               fontFamily: "inherit",
               textAlign: "left",
               transition: "background var(--motion-fast)",
