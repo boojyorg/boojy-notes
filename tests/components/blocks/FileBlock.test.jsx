@@ -12,6 +12,7 @@ vi.mock("../../../src/hooks/useTheme", () => ({
         hover: "#555",
       },
       ACCENT: { primary: "#2593A0", text: "#5FBFCA", onAccent: "#FFFFFF" },
+      SEMANTIC: { error: "#F2B8B5" },
     },
     isDark: true,
   }),
@@ -79,18 +80,20 @@ describe("FileBlock", () => {
     const { container } = render(<FileBlock {...defaultProps} />);
     const clickable = container.firstChild;
     fireEvent.contextMenu(clickable);
-    const ctxMenu = container.querySelector(".file-context-menu");
+    const ctxMenu = document.body.querySelector(".file-context-menu");
     expect(ctxMenu).toBeInTheDocument();
   });
 
   it("context menu has expected options", () => {
     const { container } = render(<FileBlock {...defaultProps} />);
     fireEvent.contextMenu(container.firstChild);
-    const ctxMenu = container.querySelector(".file-context-menu");
-    expect(ctxMenu.textContent).toContain("Open File");
-    expect(ctxMenu.textContent).toContain("Show in Folder");
-    expect(ctxMenu.textContent).toContain("Copy File Path");
-    expect(ctxMenu.textContent).toContain("Delete");
+    const rows = [...document.body.querySelectorAll(".file-context-menu [role=menuitem]")];
+    expect(rows.map((r) => r.textContent)).toEqual([
+      "Open file",
+      expect.stringMatching(/^Show in (Finder|folder)$/),
+      "Copy file path",
+      "Delete",
+    ]);
   });
 
   it("handles file without extension", () => {

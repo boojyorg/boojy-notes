@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
+import { useState, useRef, useLayoutEffect, useCallback, memo } from "react";
 import Prism from "prismjs";
 import { latestBlock, useOwnedField } from "../hooks/useOwnedField";
 import CodeLangMenu from "./CodeLangMenu";
 import { canonicalLang, sameLang } from "../utils/codeLanguage";
-import { ChevronDownIcon } from "./Icons";
+import Menu from "./Menu";
+import { ChevronDownIcon, CopyIcon, SlashCommandIcon, TrashIcon } from "./Icons";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-python";
@@ -309,25 +310,9 @@ export default memo(function CodeBlock({
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    setCtxMenu({ top: e.clientY, left: e.clientX });
+    setCtxMenu({ top: e.clientY, bottom: e.clientY, left: e.clientX, right: e.clientX });
   }, []);
-
-  // Close context menu
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
-
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const handler = (e) => {
-      if (e.key === "Escape") closeCtxMenu();
-    };
-    const clickHandler = () => closeCtxMenu();
-    window.addEventListener("keydown", handler);
-    window.addEventListener("mousedown", clickHandler);
-    return () => {
-      window.removeEventListener("keydown", handler);
-      window.removeEventListener("mousedown", clickHandler);
-    };
-  }, [ctxMenu, closeCtxMenu]);
 
   /** Open the language menu under the label, wherever it was asked for. */
   const openLangMenu = useCallback(() => {
@@ -455,13 +440,37 @@ export default memo(function CodeBlock({
         </button>
       </div>
 
-      {/* Context menu */}
+      {/* Context menu: Copy code, Change language (CodeLangMenu's list, under the label), Delete block */}
       {ctxMenu && (
-        <CodeCtxMenu
-          position={ctxMenu}
-          onCopy={handleCopy}
-          onChangeLang={handleChangeLangFromMenu}
-          onDelete={handleDeleteBlock}
+        <Menu
+          label="Code block options"
+          idPrefix="code-menu-item"
+          className="code-ctx-menu"
+          anchor={ctxMenu}
+          minWidth={180}
+          onClose={closeCtxMenu}
+          items={[
+            {
+              label: "Copy code",
+              icon: <CopyIcon />,
+              action: () => {
+                closeCtxMenu();
+                handleCopy();
+              },
+            },
+            {
+              label: "Change language",
+              icon: <SlashCommandIcon name="code" />,
+              action: handleChangeLangFromMenu,
+            },
+            {
+              label: "Delete block",
+              icon: <TrashIcon />,
+              action: handleDeleteBlock,
+              danger: true,
+              rule: true,
+            },
+          ]}
         />
       )}
 
@@ -478,47 +487,3 @@ export default memo(function CodeBlock({
     </div>
   );
 });
-
-/* ---- Context menu, position: fixed inside the column (not a portal) ---- */
-/**
- * The code block's own menu: Copy code, Change language, Delete block. The
- * language list is `CodeLangMenu`'s alone, which this row opens under the
- * block's label.
- */
-function CodeCtxMenu({ position, onCopy, onChangeLang, onDelete }) {
-  const menuRef = useRef(null);
-
-  // Adjust position so menu stays within viewport
-  const [pos, setPos] = useState(position);
-  useEffect(() => {
-    const el = menuRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    let { top, left } = position;
-    if (rect.bottom > window.innerHeight) top = window.innerHeight - rect.height - 8;
-    if (rect.right > window.innerWidth) left = window.innerWidth - rect.width - 8;
-    if (top < 0) top = 8;
-    if (left < 0) left = 8;
-    setPos({ top, left });
-  }, [position]);
-
-  return (
-    <div
-      ref={menuRef}
-      className="code-ctx-menu"
-      style={{ top: pos.top, left: pos.left }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <button className="code-ctx-item" onClick={onCopy}>
-        Copy code
-      </button>
-      <button className="code-ctx-item" onClick={onChangeLang}>
-        Change language
-      </button>
-      <div className="code-ctx-sep" />
-      <button className="code-ctx-item code-ctx-danger" onClick={onDelete}>
-        Delete block
-      </button>
-    </div>
-  );
-}

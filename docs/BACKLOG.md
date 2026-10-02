@@ -410,10 +410,9 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 - [ ] **The callout's type button is not a Tab stop** (a `div role="button"` inside the block);
   it is named and announces its list since 2026-09-25. With the Tab pass.
 - [ ] **The crash screen loses its theme**: `GlobalStyles` renders inside the boundary.
-- **Menu dismissal is still several spellings** (a backdrop's `onClick` or `onMouseDown`, or a
-  document press listener) and the callout picker positions itself by hand. The keys were
-  unified on 2026-09-25 (`useMenuKeys`); dismissal behaves the same to the eye, so it waits for
-  a reason.
+- **Not every popover is `Menu` yet**: the suggestion menus, the link picker, the path tree
+  and the version and deleted lists keep their own dismissal, and the callout picker
+  positions itself by hand. They behave the same to the eye, so they wait for a reason.
 
 ### Technical debt
 

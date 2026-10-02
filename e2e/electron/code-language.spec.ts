@@ -90,7 +90,7 @@ test("Escape closes it and changes nothing", async () => {
 
 test("the block's ··· menu opens the same menu, and carries no list of its own", async () => {
   await h.page.locator(".code-block").click({ button: "right" });
-  const items = h.page.locator(".code-ctx-item");
+  const items = h.page.locator(".code-ctx-menu [role=menuitem]");
   expect(await items.allInnerTexts()).toEqual(["Copy code", "Change language", "Delete block"]);
   await items.filter({ hasText: "Change language" }).click();
   await expect(menu(h.page)).toBeVisible();
