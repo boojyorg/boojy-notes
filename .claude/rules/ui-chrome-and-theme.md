@@ -70,10 +70,9 @@ tiers. Hit boxes are `CHROME_BTN`.
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - One active note; no tabs. Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
-- **The header ··· is the active note's menu**, four groups under rules: Rename, Copy,
-  Duplicate, Move to… | Version History, the view item (`Show Markdown`/`Show Formatted`) | Settings |
-  Delete; then the word count, muted. A row's ··· is the first group and Delete. While the
-  Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its room.
+- **The header ··· is the active note's menu** (a row's ··· is its first group and Delete).
+  While the Markdown view is on, a lit `</>` stands left of the ···; the path band reserves its
+  room.
 - **The menu bar is every command with its shortcut** (`electron/appMenu.ts`). **An item does
   nothing itself**: it sends its id (`menu-command`) and `useAppKeyboard` runs what the key runs,
   under the key's ownership rules. The window reports its state (`menu-state`) and the menu is
@@ -83,18 +82,16 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
   after `TOOLTIP_REST_MS`, at once while warm; portalled to `body`, placed via `cssZoom`. No
   shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
-- **Shell keys**: `⌘N`, `⇧⌘N`, `⌘P` Search, `⌘K` link (never Search), `⌘,`, `⌘\` sidebar, `⌘/`
-  Markdown view, `⌘S` save point, `⇧⌘D`/`⇧⌘C` duplicate/copy the note, `⌘Z`/`⇧⌘Z`, `⌘±0` UI scale, `⇧⌘L`/`E`/`R` align the caret's
-  table column (claimed only in a cell), `⌃⌘S` Go to Sidebar (`⇧⌘E` is Align Centre). Sort has
-  none.
+- **Shell keys live in `useAppKeyboard`.** `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
+  table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
   block are `inert` (the whole column broke double-click rename). `header-controls.spec.ts`.
 
 ## Settings, setup and UI scale
 
-- Settings is one pane on the palette's surface: Appearance (theme pills, Interface size),
-  Storage locations, Updates. Accent never marks the chosen pill. Switching never asks.
+- Settings is one pane on the palette's surface. Accent never marks the chosen pill.
+  Switching never asks.
 - **Interface size is one segmented control; every press applies at once** — no timer in this
   row (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
@@ -168,11 +165,8 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
   its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
   store is the root's last row.
-- The wordmark is one generated asset per theme, never the master PNG; regenerate both when
-  `MARK` or `TEXT.primary` changes: `magick assets/boojy-notes-wordmark.png \( +clone -alpha
-  extract \) \( -clone 0 -alpha off -fuzz 12% -fill "<MARK>" -opaque "#A4CACE" +fuzz -fill
-  "<TEXT.primary>" -opaque black \) -delete 0 +swap -alpha off -compose CopyOpacity -composite
-  assets/boojy-notes-wordmark-<light|dark>.png`.
+- The wordmark is one generated asset per theme, never the master PNG; regenerate both with
+  `dev/wordmarks.sh` when `MARK` or `TEXT.primary` changes.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` is the
   sidebar's own and never baked into the shared constants.
