@@ -16,19 +16,15 @@ interface PendingHover {
 /**
  * The destination chip: rest the pointer on an `<a>` or a `[[wikilink]]` for
  * half a second and what it points at appears under it; move off and it
- * goes. The keyboard reaches it too (2026-09-20): a caret that comes to rest
+ * goes. The keyboard reaches it too: a caret that comes to rest
  * inside a link, by the arrows or Home and End, shows the same chip after
  * the same rest, and it goes the moment the caret leaves. `describe` says
  * what a link is: the URL, or the note's name and folder, or that no note
  * (or two) answers to it.
  *
  * The pending hover is tracked as an object holding both the timer and the
- * link. The previous version hung the URL off the timer handle itself, which
- * is a number in the browser: in strict mode that assignment throws, so every
- * hover raised a TypeError and, because the throw came before the handle was
- * stored, the timer it had already started could never be cancelled and the
- * tooltip appeared after the pointer had left. The callback also checks it is
- * still the current hover before showing anything.
+ * link (a timer handle is a number in the browser and takes no property). The
+ * callback also checks it is still the current hover before showing anything.
  */
 const linkAt = (node: Node | null): HTMLElement | null => {
   const el = (node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement)) || null;

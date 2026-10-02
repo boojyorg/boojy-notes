@@ -39,12 +39,9 @@ export function LayoutProvider({ children }) {
    * The sidebar is either in the layout or hidden, and only the user decides
    * which: `collapsed` is written by a toggle and nothing else. The window's
    * width changes how much room the editor has beside it, never where the
-   * sidebar is painted. Until 2026-09-14 a narrow window took the sidebar out
-   * of the layout and brought it back as an overlay over the note, behind a
-   * scrim, with its own open state and a hysteresis band on the threshold; a
-   * second identity for the same panel, and the one desktop surface that
-   * floated. It is gone: at every width the sidebar pushes the editor, as it
-   * does in Apple Notes and Obsidian, and the editor column shrinks.
+   * sidebar is painted: at every width the sidebar pushes the editor, as it
+   * does in Apple Notes and Obsidian, and the editor column shrinks. Never an
+   * overlay, which would be a second identity for the same panel.
    */
   const sidebarVisible = !collapsed;
 
@@ -56,7 +53,7 @@ export function LayoutProvider({ children }) {
   /**
    * The Markdown view (SourceView): the note shown as its file. App-wide while
    * it is on, so the next note opens in it too; never saved, so every launch
-   * starts in the formatted view (2026-09-24, Tyr's call). Only the switch in
+   * starts in the formatted view. Only the switch in
    * EditorArea writes it, because the caret's place is read on the way.
    */
   const [sourceView, setSourceView] = useState(false);

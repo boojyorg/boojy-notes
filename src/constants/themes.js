@@ -1,22 +1,20 @@
-// The one teal (2026-09-14). Marks and fills — the checkbox, the quote bar,
-// drop markers, focus rings, the selection band, switches, buttons,
-// the wordmark's N — are the same colour in both themes: the misty brand teal
-// (#A4CACE, hue 186) two steps deeper. Judged live 2026-09-14 against #2593A0
-// (read blue: same hue, twice the saturation) and #6FB3BA (still too far from
-// the brand). 2.0:1 on white, 9:1 on the dark sheet. What sits on it is white
-// in both themes, Tyr's call over a dark tick: 2:1, a soft tick by design,
+// The one teal. Marks and fills — the checkbox, the quote bar, drop markers,
+// focus rings, the selection band, switches, buttons, the wordmark's N — are
+// the same colour in both themes: the misty brand teal (#A4CACE, hue 186) two
+// steps deeper (more saturated reads blue). 2.0:1 on white, 9:1 on the dark
+// sheet. What sits on it is white in both themes: 2:1, a soft tick by design,
 // never body text. Accent *as ink* cannot be one colour — nothing passes 4.5:1
 // on both grounds — so that is `ACCENT.text`, per theme.
 export const MARK = "#8FC1C6";
 export const ON_MARK = "#FFFFFF";
 /** A label read on the mark (Create note, Restart to update, a confirm button):
- *  the dark ink is about 9.7:1 on the teal where white is 2:1 (2026-09-17).
+ *  the dark ink is about 9.7:1 on the teal where white is 2:1.
  *  `ON_MARK` stays for the tick, which is a shape, not a word. */
 export const ON_MARK_TEXT = "#14110F";
 
 export const NIGHT = {
   name: "night",
-  // Neutral grey ramp, no blue cast, small steps between regions (2026-09-14):
+  // Neutral grey ramp, no blue cast, small steps between regions:
   // the sheet at L* 8, the sidebar one step up at L* 13, hover/selected one
   // more. Grounds are neutral; the ink is one step warm (DAY's tilt read cream here).
   BG: {
@@ -30,9 +28,9 @@ export const NIGHT = {
     hover: "#2D2D2D", // row/menu hover + selected
   },
   TEXT: {
-    primary: "#E7E6E5", // 13.9:1 on the sheet; one step warm (three read cream, judged live 2026-09-14)
+    primary: "#E7E6E5", // 13.9:1 on the sheet; one step warm (three read cream)
     secondary: "#ACABAA", // 7.0:1 on the sidebar
-    muted: "#969594", // 4.6:1 on a hovered row, its lowest ground (2026-09-25)
+    muted: "#969594", // 4.6:1 on a hovered row, its lowest ground
   },
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with DAY
@@ -63,8 +61,8 @@ export const NIGHT = {
   codeBlockBorderFocus: "rgba(255,255,255,0.18)",
   transitionMs: 400,
   callouts: {
-    // Grounds are the colour at 14% over the sheet (2026-09-14); the old hand-picked
-    // mid-greys read as lit panels once the sheet stopped being near-black.
+    // Grounds are the colour at 14% over the sheet; hand-picked mid-greys read
+    // as lit panels on a sheet that is not near-black.
     note: { colour: "#7AA2F7", bg: "#262B37", border: "rgba(122,162,247,0.25)" },
     info: { colour: "#89DDFF", bg: "#283438", border: "rgba(137,221,255,0.25)" },
     tip: { colour: "#9ECE6A", bg: "#2B3123", border: "rgba(158,206,106,0.25)" },
@@ -152,7 +150,7 @@ export const DAY = {
   TEXT: {
     primary: "#14110F", // 18.3:1 on ground
     secondary: "#47403A", // 9.9:1
-    muted: "#6F6861", // 4.6:1 on a hovered row, its lowest ground (2026-09-25)
+    muted: "#6F6861", // 4.6:1 on a hovered row, its lowest ground
   },
   ACCENT: {
     primary: MARK, // marks and fills: the one teal, shared with NIGHT

@@ -30,8 +30,8 @@ export interface Rhythm {
   measure: number;
 }
 
-/** v3, judged live against Obsidian and Notion on 2026-09-24 (v1 32/8/10 had
- *  too much above a heading, v2 24/6/8 put a heading on its own text). */
+/** Judged against Obsidian and Notion: more above a heading floats it away,
+ *  less sits it on its own text. */
 export const DEFAULT_RHYTHM: Rhythm = {
   bodySize: 15,
   lineHeight: 1.7,

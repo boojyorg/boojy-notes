@@ -15,18 +15,15 @@ const EDGE_GAP = 4;
 /**
  * Block reorder by drag — started from the gutter grip (`BlockDragHandle`),
  * never from the block text. Text is for writing and selecting; the handle is
- * for moving. (Press-and-hold on the text was the previous model; it was
- * removed 2026-09-03 after a live comparison, because a hold timer makes every
- * pause-then-drag-to-select a race.) Keyboard reorder lives in
+ * for moving (a hold timer on the text would make every pause-then-drag-to-
+ * select a race). Keyboard reorder lives in
  * `useKeyboardHandlers` (Cmd/Ctrl+Shift+↑/↓) and is untouched by this.
  *
  * The drag commits on drop. Nothing in the note moves while the pointer is
  * down: a translucent copy of the block(s) follows the pointer, a thin
  * insertion marker shows where release would put them, and the reorder (plus
- * its single history entry) happens on release. Judged live 2026-09-03 against
- * the earlier live-reorder model, whose blocks shuffled under the pointer as
- * it crossed them; the page staying still until the hand lets go read as
- * calmer and more trustworthy. Escape, window blur, or releasing outside the
+ * its single history entry) happens on release: the page staying still until
+ * the hand lets go reads calmer than blocks shuffling under the pointer. Escape, window blur, or releasing outside the
  * editor's scroll area cancel, and there is nothing to restore because nothing
  * was written.
  *
@@ -37,8 +34,8 @@ const EDGE_GAP = 4;
  * `startHandleDrag` is handed to the handle through EditorContext, whose value
  * is frozen at mount (see EditorContext.jsx). So this hook must never read
  * `activeNote` as a value: it takes `activeNoteRef` and resolves the current
- * note when the press happens. Reading the value here is exactly the bug that
- * made drag work only on the note that was open when the app launched.
+ * note when the press happens; read as a value, drag would work only on the
+ * note open at launch.
  */
 export function useBlockDrag({
   noteDataRef,
@@ -111,8 +108,7 @@ export function useBlockDrag({
     // block; else the block with the items nested under it (utils/blockRun,
     // the rule the selection uses). A range that reaches the frontmatter root
     // takes the body alone (Chromium makes none today: Select All starts in
-    // the first paragraph's text, probed 2026-09-15; the rule holds whatever a
-    // range says).
+    // the first paragraph's text; the rule holds whatever a range says).
     const run = selectedIds(blocks, blockSelectionRef?.current ?? null);
     let draggedIds = run.includes(blockId)
       ? run

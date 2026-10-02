@@ -1,5 +1,5 @@
 /**
- * What the link picker makes of a typed destination (2026-09-20).
+ * What the link picker makes of a typed destination.
  *
  * A web address is recognised with or without its scheme: `youtube.com`,
  * `bbc.co.uk/news`, `https://example.org`. The picker shows it as

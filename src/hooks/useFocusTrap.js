@@ -7,15 +7,11 @@ const FOCUSABLE_SELECTOR =
  * Traps keyboard focus within a container element while `isOpen` is true.
  * Restores focus to the previously-focused element on close.
  *
- * Focus follows the closest active surface (review 2026-09-07, §4.1, §4.2):
- * a surface that has already placed its own focus keeps it (the confirm
- * dialog's default button, the palette's autofocused field), and a closing
- * surface hands focus back only while it still holds it. Before this, the
- * context menu's Rename opened the sidebar's rename field, and the menu's
- * cleanup then put focus back on the row's ··· a frame later: the field
- * blurred, committed the unchanged name and unmounted, so Rename from a menu
- * never worked; the same cleanup took focus off the confirm dialog's Cancel
- * button the moment a menu's Delete opened it.
+ * Focus follows the closest active surface: a surface that has already
+ * placed its own focus keeps it (the confirm dialog's default button, the
+ * palette's autofocused field), and a closing surface hands focus back only
+ * while it still holds it, or a menu's Rename would lose its field to the
+ * row's ··· a frame later.
  *
  * @param {React.RefObject<HTMLElement>} containerRef - ref to the trap container
  * @param {boolean} isOpen - whether the trap is active
@@ -102,8 +98,7 @@ export function useFocusTrap(containerRef, isOpen, initialFocus = "first") {
       const stillHeld = !active || active === document.body || container.contains(active);
       const previous = previousFocusRef.current;
       // Never scrolled: handing focus back to the editor, a contentEditable
-      // spanning the note, scrolled it to wherever its caret sat, so closing
-      // the image menu jumped the note to the bottom (2026-09-23).
+      // spanning the note, scrolls it to wherever its caret sits.
       if (stillHeld && previous && typeof previous.focus === "function") {
         previous.focus({ preventScroll: true });
       }

@@ -73,9 +73,8 @@ const FIRST_PAINT_CAP_MS = 3000;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    // Shown on its first frame (below), never before: shown at once, the
-    // window stood empty in its background colour while the page loaded, and
-    // that blank canvas was the slow launch people saw (2026-09-24).
+    // Shown on its first frame (below), never before: shown at once, it
+    // stands empty in its background colour while the page loads.
     show: false,
     width: 1200,
     height: 800,
@@ -92,9 +91,7 @@ function createWindow() {
       ? {}
       : { titleBarOverlay: { color: "#FFFFFF", symbolColor: "#14110F", height: WINDOW_STRIP_H } }),
     // The lights share the sidebar header row, whose wordmark centres at
-    // ~25px. macOS 26 draws each light 14px across, so y = 25 - 7. The old
-    // y: 23 was judged in a dev window Chromium had zoomed to 131%, where the
-    // header sat lower; at true size it rode 5px low (measured 2026-09-05).
+    // ~25px. macOS 26 draws each light 14px across, so y = 25 - 7.
     // x pairs with MAC_TRAFFIC_INSET in EditorChrome.jsx — move one, re-judge
     // the other, and only at 100% (View has no zoom, see below).
     trafficLightPosition: { x: 14, y: 18 },

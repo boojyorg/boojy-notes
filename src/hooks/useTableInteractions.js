@@ -48,7 +48,7 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
   // Every operation reshapes the rows as the keystroke ref holds them
   // (`onUpdateTableRows(noteId, blockIndex, reshape)`), so a cell edit still
   // pending in a focused cell is inside the rows it reshapes; computed from
-  // the rendered rows, the operation dropped it (review 2026-09-07, §3.4).
+  // the rendered rows, the operation would drop it.
   // `dataRef` serves geometry and focus, never the rows an operation writes.
   const reshape = useCallback((fn) => {
     const { noteId: n, blockIndex: b } = dataRef.current;

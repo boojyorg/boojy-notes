@@ -7,8 +7,8 @@
  * answers it for every size and line height the app uses.
  *
  * That constant is Inter's ascent minus its descent, as a fraction of the font
- * size, fitted to Chromium's own layout (measured 2026-09-19, probing a
- * zero-width inline-block on the baseline against the box's top):
+ * size, fitted to Chromium's own layout (probing a zero-width inline-block on
+ * the baseline against the box's top):
  *
  * | size / line-height | measured | this model |
  * | --- | --- | --- |

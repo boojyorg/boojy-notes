@@ -20,12 +20,9 @@ import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatComm
  *
  * Deletion and the arrows want different answers, which is why this takes the
  * rule rather than holding one. **Backspace merges text**, so it may only land
- * where text can go: a code block in its path is stepped over, exactly as
- * before. **The arrows only move the caret**, so they land on a block that
- * keeps a field of its own and walk into it (2026-09-19; a code block and a
- * callout had been stepped over since the table's walk-in was built, so the
- * arrows passed over a code block in both directions and the only ways in were
- * the pointer and the block that made it).
+ * where text can go: a code block in its path is stepped over. **The arrows
+ * only move the caret**, so they land on a block that keeps a field of its own
+ * and walk into it.
  */
 function landing(blocks, index, step, stops) {
   let i = index + step;
@@ -70,9 +67,6 @@ import { stepIndex } from "../../utils/menuKeys";
  * does anything else (Notion's rule, and Obsidian's in effect, where the key
  * deletes the `### `): the text and the caret stay, only the kind goes. A
  * second Backspace then merges or reaches across as a paragraph's would.
- * Before 2026-09-23 the first press merged a heading's text into the block
- * above, and on an empty heading under a picture it selected the picture
- * with nothing on screen to say so, so the second press deleted it.
  */
 const DEMOTES_TO_PARAGRAPH = new Set([
   "h1",
@@ -230,7 +224,7 @@ export function useKeyboardHandlers({
       const isList = LIST_TYPES.has(blockType);
 
       // A marker on its own line opens its block on Enter as well as on the
-      // space (2026-09-19): ```js then Enter is the motion every Markdown
+      // space: ```js then Enter is the motion every Markdown
       // editor teaches, and Enter on a bare `---` or `|||` must not leave a
       // paragraph that the next open reads as the block anyway. Paragraphs
       // only — Enter inside a list item means a new item, and hijacking it
@@ -322,9 +316,8 @@ export function useKeyboardHandlers({
       const range = sel.getRangeAt(0);
 
       // Enter at the start of a heading that holds text opens a paragraph
-      // above it and leaves the heading where it is, caret and all. The
-      // split below made the empty half the heading and demoted the text
-      // to a paragraph (review §1.11).
+      // above it and leaves the heading where it is, caret and all, where the
+      // split below would make the empty half the heading.
       if (
         /^h[1-6]$/.test(blockType) &&
         text !== "" &&
@@ -386,17 +379,15 @@ export function useKeyboardHandlers({
         }
         // The only block, and empty: nothing to merge into, and Chromium
         // must not have the key. Its own Backspace on a lone `<p><br></p>`
-        // at the root's start removes the paragraph element itself; state
-        // still held one block, so nothing repainted and typing went nowhere
-        // until the note was reopened (2026-09-17).
+        // at the root's start removes the paragraph element itself while state
+        // still holds one block, and typing goes nowhere.
         e.preventDefault();
         if (blocks.length <= 1) return;
         const prevIdx = landingBefore(blocks, blockIndex);
         if (prevIdx >= 0 && isSelectableBlock(blocks[prevIdx])) {
           // A divider, image or table above: this empty row goes and the
           // block is selected, in one press, so what the next Backspace will
-          // remove is on screen. The row used to stay with the caret blinking
-          // in it, and the selection went unseen (2026-09-23).
+          // remove is on screen.
           const target = blocks[prevIdx].id;
           // The caret needs somewhere to rest while the block is selected
           // (a printable key deselects and types there): the nearest text
@@ -462,8 +453,7 @@ export function useKeyboardHandlers({
     // Shift+ArrowUp/Down extend the selection, and that is the browser's: the
     // editor is one contentEditable, so Chromium carries a selection across
     // block roots itself. The block navigation below moves a caret, and run
-    // for a Shift press it collapsed the selection into the next block
-    // (review §1.13, fixed 2026-09-24).
+    // for a Shift press it would collapse the selection.
     if (e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) return;
 
     // Arrow up
@@ -482,9 +472,7 @@ export function useKeyboardHandlers({
             // Nothing above to land in (the first block, or only frontmatter
             // above it): up goes to the note's name, caret at its end, as
             // Enter and ArrowDown there come back down. The name lives in the
-            // chrome row's path band, not above the editor, since 2026-09-15;
-            // the old lookup searched the editor's parent for an h1 and found
-            // nothing, so the key was dead (review §1.13, fixed 2026-09-24).
+            // chrome row's path band, not above the editor.
             focusTitleEnd();
           } else if (hasOwnField(blocks[prevIdx])) {
             // The arrows walk into a block that keeps its own field rather
@@ -529,8 +517,8 @@ export function useKeyboardHandlers({
 
     // ArrowLeft at a block's start and ArrowRight at its end, where a list row
     // is on either side of the step. Chromium's own move stops in the row
-    // beside the marker, outside the item's text, and the next character
-    // typed there never reached the file (2026-09-24). The step lands where
+    // beside the marker, outside the item's text, where the next character
+    // typed would never reach the file. The step lands where
     // ArrowUp and ArrowDown would, at the neighbour's near edge; between two
     // paragraphs the browser's move is already right and is left alone.
     if (
@@ -569,17 +557,15 @@ export function useKeyboardHandlers({
     // A key a menu has already consumed is not the editor's to handle. The
     // tag and wikilink menus take Enter, the arrows and Escape in a
     // capture-phase window listener and prevent the default; without this
-    // the editor's own Enter handler still ran on the DOM text and split the
-    // block instead of completing the tag (review 2026-09-06, H3). One rule
+    // the editor's Enter would split the block instead of completing the tag.
+    // One rule
     // for every menu, in place of a per-menu guard.
     if (e.defaultPrevented) return;
     // A block that keeps its own field owns every key pressed in it. The field
     // is the active element and the editor root is only what the event bubbles
     // through, so acting here means acting on the document selection — which,
-    // while a textarea has focus, is stale or empty. Measured 2026-09-19: an
-    // arrow pressed inside a code block took focus out of it and moved the
-    // caret by a range left in another block, and a letter typed there landed
-    // in the note's first block with the page scrolled to the top.
+    // while a textarea has focus, is stale or empty: an arrow would take focus
+    // out of a code block, and a letter would land in another block.
     const active = document.activeElement;
     if (active && active !== editorRef.current && editorRef.current?.contains(active)) {
       // One exception, and only for an inline format: a field that holds
@@ -588,9 +574,8 @@ export function useKeyboardHandlers({
       // applier, which is what keeps the toolbar's pressed glyph right whether
       // the format came from the strip or the keyboard. The field commits the
       // result itself. Chromium's own Cmd+B must not run instead: it decides
-      // from the computed style, so in a header cell (600) it wrote a
-      // `font-weight: normal` span the walker reads as plain text and the file
-      // never got its `**` (2026-09-19). A code block's textarea is not such a
+      // from the computed style, so in a header cell (600) it writes a
+      // `font-weight: normal` span the walker reads as plain text. A code block's textarea is not such a
       // field; there the selection really is stale and the key is dropped.
       const fieldFormat = inlineFieldFor(active, editorRef.current) ? inlineFormatForKey(e) : null;
       if (fieldFormat) {

@@ -144,11 +144,8 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   // the HTML the passes above have built: an entity is the character it
   // stands for (`&gt;` is `>`, which ends a URL; `&amp;` is `&`, which may end
   // one), and a URL inside a link's text, a code span or a wikilink is that
-  // element's text, never a second link. Before this the regex ran over the
-  // escaped HTML: `<https://example.com>` linked `https://example.com&gt` and
-  // grew a `;` on every edit, a URL ending in `&` did the same, a URL in a
-  // link's text was linked inside the anchor and read back as two links, and
-  // one in a wikilink target rewrote the span's own attribute.
+  // element's text, never a second link. Run over the escaped HTML, the regex
+  // would link `https://example.com&gt` and grow a `;` on every edit.
   s = s.replace(PROSE_OR_ELEMENT_RE, (piece) =>
     piece.startsWith("<") ? piece : autolinkProse(piece),
   );

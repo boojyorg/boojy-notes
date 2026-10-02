@@ -1,5 +1,5 @@
 /**
- * The Markdown view's two pure halves (2026-09-24): where a block sits in the
+ * The Markdown view's two pure halves: where a block sits in the
  * note's file text, so the caret can cross the switch in the block it was in,
  * and how that text is painted, with the markers in muted ink and the words in
  * primary.

@@ -29,10 +29,8 @@ interface EditorRenderBlock {
  * callout's type and the title that follows a type change.
  *
  * A media block has no field of its own, so React paints all of it: a resized
- * image's width, a replaced image's src. Left out, the commit reached state and
- * the file while the block kept the props it had, and the *next* resize read
- * its start size from those — the image jumped back to the size before the
- * first drag (2026-09-19). Replace image changed nothing on screen at all.
+ * image's width, a replaced image's src. Left out, the block would keep the
+ * props it had, and the *next* resize would read its start size from those.
  */
 export function haveEditorBlockRenderChanges(
   previous: readonly EditorRenderBlock[] | undefined,

@@ -4,8 +4,7 @@ import type { Theme } from "../hooks/useTheme";
 /**
  * The tag pill: `#tag` in the editor and the filter chip in Search are one
  * shape. The ground is the accent at a low alpha, a step stronger than the
- * selection band (a neutral grey was built first and judged too faint,
- * 2026-09-20), with the accent as ink; the Markdown stays plain `#tag`, the
+ * selection band (a neutral grey reads too faint), with the accent as ink; the Markdown stays plain `#tag`, the
  * pill is CSS on the span the renderer already draws. Inline padding never
  * grows the line box.
  */

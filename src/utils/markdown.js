@@ -414,16 +414,16 @@ export function blocksToMarkdown(blocks) {
           // parse splits the cell apart (content-destroying). A row is one
           // line: a newline inside a cell (Shift+Enter, a multi-line paste)
           // is written as `<br>`, the line break GitHub and Obsidian read in
-          // a cell; written raw it broke the row and every row below it into
-          // a paragraph (review 2026-09-07, §3.1). parseTableRow maps that
+          // a cell; written raw it would break the row and every row below it
+          // into a paragraph. parseTableRow maps that
           // exact form back, so the bytes round-trip.
           const esc = (cell) => cell.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
           const writeRow = (row) => "| " + row.map((cell) => esc(cell ?? "")).join(" | ") + " |";
           // A table keeps the spelling it was written in. A row still holding
           // the cells its line was read with is written as that line, byte for
           // byte: its padding, a `|---|` with no spaces, an indent, an
-          // unescaped pipe in a `[[Note|alias]]`. Before this the first save
-          // rewrote every table not already in the app's spelling.
+          // unescaped pipe in a `[[Note|alias]]`. A save never respells a
+          // table.
           const source = block.tableSource;
           const aligns = block.alignments || [];
           const rows = block.rows.map((r) => (r.length > 0 ? r : [""]));
@@ -449,8 +449,8 @@ export function blocksToMarkdown(blocks) {
           // holding its cells, so a row inserted, deleted or moved (into the
           // header's place too) leaves the others as written. Each row is
           // written with its own cells, one more or one fewer than the header
-          // included; padding or trimming a row to the header here is what
-          // used to drop a wide row's extra cells.
+          // included; padding or trimming a row to the header here would drop
+          // a wide row's extra cells.
           // A table whose cells and alignments are as they were read is its
           // lines, whatever the widths measure: it is never re-padded unasked.
           const untouched =
@@ -520,7 +520,7 @@ export function blocksToMarkdown(blocks) {
 export function markdownToBlocks(md) {
   // Blocks are always LF-internal; the file's EOL style is handled at the
   // read/write boundary (detectEol/applyEol). Normalising up front also keeps
-  // CRLF fragments out of code-block text (which used to produce mixed EOLs).
+  // CRLF fragments out of code-block text (which would mix EOLs).
   const lines = md.replace(/\r\n/g, "\n").split(/\n/);
   const blocks = [];
   let i = 0;
@@ -640,9 +640,8 @@ export function markdownToBlocks(md) {
       /** @type {{ header: string; separator: string; rows: string[] }} */
       const tableSource = { header: raw, separator: lines[i + 1], rows: [] };
       // The separator row follows the header's width; every other row keeps
-      // exactly the cells its line holds. A row wider than the header used to
-      // be sliced to it and a shorter one padded, so the extra cells were gone
-      // on the next save and short rows were rewritten. The grid on screen is
+      // exactly the cells its line holds, never sliced or padded to the
+      // header. The grid on screen is
       // the widest row wide (utils/tableShape.ts); the file is never
       // rectangularised by reading it.
       const alignments = readAlignments(lines[i + 1], rows[0].length);

@@ -10,26 +10,19 @@ import {
  * Wikilink wiring for the editor:
  *   - the note-title set used to detect broken `[[links]]`,
  *   - click / Cmd-click navigation, and autocomplete insertion.
- * (The backlink index and the panel under the note were removed 2026-09-05.)
  *
- * Extracted from BoojyNotes. `noteTitlesKey` short-circuits on `textOnlyEdit`
- * so plain typing doesn't rebuild the title set every keystroke.
- * `handleWikilinkSelect` used to write the rendered HTML to the block itself,
- * on the belief that a sync-generation bump from WikilinkMenu's *native*
- * keydown listener never repainted; proven false in the real app on
- * 2026-09-09 (`wikilink.spec.ts`), and the block now paints itself from the
- * keystroke ref like every other programmatic change (the editor rule, "One
- * owner for note state").
+ * `noteTitlesKey` short-circuits on `textOnlyEdit` so plain typing doesn't
+ * rebuild the title set every keystroke. `handleWikilinkSelect` lets the block
+ * paint itself from the keystroke ref like every other programmatic change
+ * (the editor rule, "One owner for note state").
  *
  * A click resolves the *note* a target names (`utils/wikilinkTarget`), so
  * `[[Beta#Intro]]` and `[[Work/Gamma]]` open Beta and the Gamma in Work (an
  * explicit path is the path, never a namesake elsewhere); the heading or
- * block is not jumped to. **A click that cannot open one note asks**
- * (2026-09-20, Tyr's decision): a name no note has, or one two notes share,
- * opens the link picker on the link (`openLinkFixerRef`) with Create note or
- * the candidates as its rows, and nothing is made or guessed until a row is
- * chosen. Before this a missing plain name was created at the root on click
- * and a shared name opened whichever note loaded first. A target of another
+ * block is not jumped to. **A click that cannot open one note asks**, by
+ * decision: a name no note has, or one two notes share, opens the link picker
+ * on the link (`openLinkFixerRef`) with Create note or the candidates as its
+ * rows, and nothing is made or guessed until a row is chosen. A target of another
  * form that resolves to nothing (a heading in this note) says so.
  */
 export function useWikilinkHandlers({

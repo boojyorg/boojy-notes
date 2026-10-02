@@ -34,9 +34,8 @@ function sanitizeFilename(name) {
  * The longest name the app makes, in UTF-8 bytes. A file name is at most 255
  * bytes on macOS, Windows and Linux alike; this leaves room for `.md`, a
  * collision suffix and a conflicted copy's ` (conflicted copy YYYY-MM-DD)`.
- * A longer title (a paragraph pasted into the name) failed every save with
- * the retry toast (2026-09-24); now the file takes the name cut here and the
- * field adopts it, as it adopts any answer the write gives.
+ * A longer title (a paragraph pasted into the name) takes the name cut here,
+ * and the field adopts it, as it adopts any answer the write gives.
  */
 const MAX_NAME_BYTES = 200;
 
@@ -231,10 +230,9 @@ function getIdIndex() {
 
 // ─── A note's file across an outside rename ───
 // The index maps an id to a path, and a rename made outside the app (Finder,
-// `mv`, Obsidian) leaves that path empty; read as a delete, the renderer
-// rebuilt from disk, kept the note because edits to it were pending, and the
-// next write made a fresh file under the old name beside the renamed one
-// (review 2026-09-07, §2.9). The disk's own identity for a file is its inode:
+// `mv`, Obsidian) leaves that path empty; read as a delete, a note with
+// pending edits would be written afresh under the old name beside the renamed
+// one. The disk's own identity for a file is its inode:
 // a rename or move within the volume keeps it, and nothing else in the vault
 // has it. It is recorded here for every note the app reads or writes, with
 // the hash of the bytes it read or wrote, in memory only: pending edits never
@@ -530,15 +528,14 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     const existingRelPath = _idIndex[note.id];
     const existingPath = existingRelPath ? path.join(notesDir, existingRelPath) : null;
 
-    // A save never lands over bytes the app has not seen (2026-09-15). The
-    // note's file can change under it between the last read or write and this
-    // save: an edit in another app inside the write debounce, or one the
-    // watcher has yet to report (it waits for the file to settle for 300 ms).
-    // Written over, the outside edit was lost and the event that followed was
-    // dropped as this save's own echo, with no copy and no toast. So the bytes
-    // on disk are compared with the ones last seen, and a mismatch refuses the
-    // write, moves nothing, and hands the renderer the disk version as the
-    // outside change it is; the renderer keeps both, exactly as it does for a
+    // A save never lands over bytes the app has not seen. The note's file can
+    // change under it between the last read or write and this save: an edit
+    // in another app inside the write debounce, or one the watcher has yet to
+    // report (it waits for the file to settle for 300 ms). Written over, the
+    // outside edit would be lost, its event dropped as this save's echo. So
+    // the bytes on disk are compared with the ones last seen, and a mismatch
+    // refuses the write, moves nothing, and hands the renderer the disk
+    // version as the outside change it is; the renderer keeps both, exactly as it does for a
     // change the watcher reports first. Reading the file records it as seen,
     // so the write that follows the conflict copy goes through.
     const identity = _identity.get(note.id);
@@ -569,7 +566,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // first, so the new casing is what the volume records (writing over the
     // old entry would keep its name), and skip the old-file removal below,
     // which would delete the file just written. chokidar reports the move as
-    // an unlink of the old name and an add of the new (probed 2026-09-08);
+    // an unlink of the old name and an add of the new;
     // the add is the write's own echo, the unlink is claimed here.
     if (sameFile) {
       watcher.claimUnlink(existingPath);
@@ -595,9 +592,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // On rename, remove the old file only after the new one is safely on disk —
     // a crash in between leaves a duplicate (recoverable), never a missing note.
     // The directory it leaves stays, however empty: a folder is a directory
-    // the user made, and only an explicit folder removal takes one away
-    // (decision D8, 2026-09-07). Until then the emptied parent was removed
-    // here, so moving the last note out of a folder deleted the folder.
+    // the user made, and only an explicit folder removal takes one away.
     if (existingPath && existingPath !== finalPath && !sameFile) {
       watcher.claimUnlink(existingPath);
       try {

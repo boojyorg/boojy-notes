@@ -16,9 +16,8 @@ const NEVER = Symbol("never painted");
  * when a row is inserted above a cell, when a type change renames a
  * callout), and, forced, on a sync-generation bump (undo, redo, an outside
  * change), the one case where the same text must still be repainted. Judged
- * against the render's text, a render behind the field repainted it and the
- * keystrokes since were lost (review 2026-09-07, §3.4; the paint half of
- * §1.3, §1.4 and §3.2).
+ * against the render's text, a render behind the field would repaint it and
+ * lose the keystrokes since.
  *
  * `read(el)` is what the field holds as Markdown (`domNodeToMarkdown`, or a
  * textarea's value); `paint(el, text)` puts the latest text into it, keeping

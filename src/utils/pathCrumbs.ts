@@ -2,7 +2,7 @@
  * The note's path in the chrome row: which folders to show in the room the
  * row has, and nothing about where they sit (CSS centres them; see NotePath).
  *
- * The rule (2026-09-15): the richest form that fits the band between the
+ * The rule: the richest form that fits the band between the
  * chrome row's controls. Forms, richest first, for a note in `A / B / C`:
  *
  *     A / B / C / name
@@ -16,10 +16,7 @@
  * against the band alone, never against the room that is symmetric about the
  * pane's centre: a form that fits the band is shown, shifted off centre if it
  * must be. That is what makes the choice monotonic in the window's width —
- * a wider band never hides a folder a narrower one showed — and it is what
- * the two mockup rules of 2026-09-14 both got wrong (one dropped to the bare
- * name the moment the centre came back into play, the other capped the shift
- * and fell back to a different form past the cap).
+ * a wider band never hides a folder a narrower one showed.
  */
 
 /** The parent folders of a vault-relative folder path, outermost first. */

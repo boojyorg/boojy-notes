@@ -1,6 +1,6 @@
 /**
  * What a right-click in the editor acts on, and where its menu hangs
- * (2026-09-23, EditorContextMenu). A right-click on a word that is not
+ * (EditorContextMenu). A right-click on a word that is not
  * selected selects that word, as a native Mac text field does; one inside
  * the selection keeps it. The menu then opens under the line of the selection
  * the pointer is on, left-aligned with it.
