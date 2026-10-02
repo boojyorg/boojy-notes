@@ -42,6 +42,10 @@ export const NIGHT = {
     warning: "#FFC107",
     error: "#FF6B3D", // 4.9:1 on a hovered row (a hovered Delete)
     onError: ON_MARK_TEXT, // the danger button's label: white on this orange is 2.8:1
+    // The spelling dots: Chromium's own (Apple's red), as Obsidian shows them.
+    // Under the 3:1 a meaningful glyph takes, by decision: a hint beside the
+    // word, matched to every other app's.
+    misspelled: "rgba(255, 59, 48, 0.76)",
   },
   scrollbar: {
     thumb: "#313131",
@@ -162,6 +166,7 @@ export const DAY = {
     warning: "#B07808", // a toast's glyph, never words: 3.2:1 on a hovered row
     error: "#C62D2D", // 4.7:1 on a hovered row
     onError: "#FFFFFF", // 5.5:1
+    misspelled: "rgba(255, 59, 48, 0.76)", // Chromium's dots, by decision (NIGHT says why)
   },
   scrollbar: {
     // thumb matches BG.divider on purpose — that is the resting grey the app has
