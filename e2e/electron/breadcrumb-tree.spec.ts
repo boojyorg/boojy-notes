@@ -11,12 +11,13 @@
 import { expect, type Page, test } from "@playwright/test";
 import { WINDOW_MIN_W } from "../../src/constants/layout";
 import {
-  type AppHandle,
   editorTitle,
   expandAllFolders,
   launchApp,
   MOD,
   waitForFile,
+  setWidth,
+  pathFolders,
 } from "./harness";
 
 const NOTE = "University/Archive/Todd's Note.md";
@@ -46,7 +47,6 @@ const popupRows = (page: Page) =>
         return `${mark}${(el as HTMLElement).innerText.trim()}`;
       }),
     );
-const pathFolders = (page: Page) => page.getByTestId("note-path-folder").allTextContents();
 const highlighted = (page: Page) =>
   popup(page).evaluate((el) => {
     const id = el.querySelector('[role="tree"]')?.getAttribute("aria-activedescendant");
@@ -62,27 +62,6 @@ async function expectInsideViewport(page: Page) {
   expect(box!.x + box!.width).toBeLessThanOrEqual(vp.w);
   expect(box!.y + box!.height).toBeLessThanOrEqual(vp.h);
   return box!;
-}
-
-async function settled(page: Page) {
-  await page.evaluate(async () => {
-    for (let round = 0; round < 10; round++) {
-      const running = document.getAnimations();
-      if (running.length === 0) return;
-      await Promise.allSettled(running.map((a) => a.finished));
-    }
-  });
-}
-
-async function setWidth(h: AppHandle, width: number) {
-  await h.app.evaluate(({ BrowserWindow }, w) => {
-    BrowserWindow.getAllWindows()[0].setSize(w, 800);
-  }, width);
-  await expect
-    .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5000 })
-    .toBe(width);
-  await settled(h.page);
-  await h.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
 }
 
 test("a folder crumb opens its parent's contents, the path expanded and the open note checked; the path stays put", async () => {

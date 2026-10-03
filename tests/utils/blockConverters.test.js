@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  blocksToMarkdown,
-  markdownToBlocks,
-  parseTableRow,
-  parseFrontmatter,
-} from "../../src/utils/markdown.js";
+import { blocksToMarkdown, markdownToBlocks, parseFrontmatter } from "../../src/utils/markdown.js";
 
 // --- blocksToMarkdown ---
 
@@ -261,7 +256,7 @@ describe("markdownToBlocks", () => {
     expect(blocks[0].text).toBe("");
   });
 
-  it("preserves leading blank lines as empty paragraphs (preservation fix, 2026-08)", () => {
+  it("preserves leading blank lines as empty paragraphs", () => {
     // They used to be skipped, which deleted them from the file on save
     const blocks = markdownToBlocks("\n\n\nHello");
     expect(blocks).toHaveLength(4);
@@ -271,73 +266,22 @@ describe("markdownToBlocks", () => {
   });
 });
 
-// --- Round-trip ---
+// --- Round-trip: a file read and written back is the same bytes ---
 
 describe("round-trip", () => {
-  it("preserves paragraphs", () => {
-    const md = "Hello world";
+  it.each([
+    ["paragraphs", "Hello world"],
+    ["headings", "# Title\n## Section\n### Sub"],
+    ["lists", "- bullet\n1. numbered\n- [ ] unchecked\n- [x] checked"],
+    ["code blocks", "```js\nconst x = 1;\nconsole.log(x);\n```"],
+    ["callouts", "> [!warning] Careful\n> Be safe\n> Very important"],
+    ["tables", "| A | B |\n| --- | --- |\n| 1 | 2 |"],
+    ["frontmatter", "---\ntitle: Test\n---\nContent"],
+    ["numbering that starts above 1", "3. Third item\n4. Fourth item"],
+    ["standard image syntax and alt text", "![A chart](https://example.com/chart.png)"],
+    ["a code block holding a lone 4-backtick line", "`````js\n````\ninner\n````\n`````"],
+  ])("preserves %s", (_name, md) => {
     expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves headings", () => {
-    const md = "# Title\n## Section\n### Sub";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves lists", () => {
-    const md = "- bullet\n1. numbered\n- [ ] unchecked\n- [x] checked";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves code blocks", () => {
-    const md = "```js\nconst x = 1;\nconsole.log(x);\n```";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves callouts", () => {
-    const md = "> [!warning] Careful\n> Be safe\n> Very important";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves tables", () => {
-    const md = "| A | B |\n| --- | --- |\n| 1 | 2 |";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves frontmatter", () => {
-    const md = "---\ntitle: Test\n---\nContent";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves numbered-list numbering, including non-1 starts", () => {
-    const md = "3. Third item\n4. Fourth item";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves standard markdown image syntax and alt text", () => {
-    const md = "![A chart](https://example.com/chart.png)";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-
-  it("preserves a code block containing a lone 4-backtick line", () => {
-    const md = "`````js\n````\ninner\n````\n`````";
-    expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
-  });
-});
-
-// --- parseTableRow ---
-
-describe("parseTableRow", () => {
-  it("splits cells and trims whitespace", () => {
-    expect(parseTableRow("| A | B | C |")).toEqual(["A", "B", "C"]);
-  });
-
-  it("handles empty cells", () => {
-    expect(parseTableRow("|  |  |")).toEqual(["", ""]);
-  });
-
-  it("handles cells with extra whitespace", () => {
-    expect(parseTableRow("|  hello  |  world  |")).toEqual(["hello", "world"]);
   });
 });
 

@@ -7,13 +7,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { launchApp } from "./harness";
+import { launchApp, type AppHandle } from "./harness";
 
 const readConfig = (userData: string) =>
   JSON.parse(fs.readFileSync(path.join(userData, "config.json"), "utf-8"));
 
 /** Settings → Storage locations → Add folder…, answering the native picker with `dir`. */
-async function addLocation(h: Awaited<ReturnType<typeof launchApp>>, dir: string) {
+async function addLocation(h: AppHandle, dir: string) {
   await h.app.evaluate(({ dialog }, d) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [d] });
   }, dir);

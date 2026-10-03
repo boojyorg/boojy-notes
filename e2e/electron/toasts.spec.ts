@@ -9,13 +9,13 @@
  * refusal from the filesystem.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { MOD, SETTLE_MS, launchApp, sleep } from "./harness";
 
 const seed = { "Note one.md": "One.\n", "Note two.md": "Two.\n" };
 
 /** Where the toast sits, where the sidebar ends, and the middle of the pane beside it. */
-async function edges(page: import("@playwright/test").Page) {
+async function edges(page: Page) {
   return page.evaluate(() => {
     const toast = (
       document.querySelector("[data-toast-kind]") as HTMLElement

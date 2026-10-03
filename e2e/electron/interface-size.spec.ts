@@ -12,13 +12,12 @@
  * Needs the real app: the scale is written to `<html>` and read back from
  * storage on the next launch.
  */
-import { expect, test } from "@playwright/test";
-import { MOD, SETTLE_MS, launchApp, sleep } from "./harness";
+import { expect, test, type Page } from "@playwright/test";
+import { MOD, SETTLE_MS, launchApp, sleep, type AppHandle } from "./harness";
 
-const scale = (page: import("@playwright/test").Page) =>
-  page.evaluate(() => document.documentElement.style.zoom);
+const scale = (page: Page) => page.evaluate(() => document.documentElement.style.zoom);
 
-async function openSettings(h: Awaited<ReturnType<typeof launchApp>>) {
+async function openSettings(h: AppHandle) {
   await h.page.getByRole("button", { name: "Notes — open Settings" }).click();
   await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
 }

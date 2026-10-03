@@ -8,7 +8,6 @@
  */
 import { expect, test } from "@playwright/test";
 import {
-  END_OF_LINE,
   MOD,
   type AppHandle,
   launchApp,
@@ -16,6 +15,7 @@ import {
   noteText,
   sleep,
   waitForFile,
+  typeAtEnd,
 } from "./harness";
 
 interface Version {
@@ -49,18 +49,12 @@ function versionText(h: AppHandle, id: string, versionId: string): Promise<strin
   ] as const);
 }
 
-async function typeAtEnd(h: AppHandle, text: string) {
-  await h.page.locator("[data-block-id]").first().click();
-  await h.page.keyboard.press(END_OF_LINE);
-  await h.page.keyboard.type(text);
-}
-
 test("⌘S keeps the note as a save point, named from its receipt, and it survives a restart", async () => {
   const h = await launchApp({ "Essay.md": "First line.\n" });
   try {
     await h.openNote("Essay");
     const id = await noteId(h, "Essay");
-    await typeAtEnd(h, " More.");
+    await typeAtEnd(h.page, " More.");
     await h.page.keyboard.press(`${MOD}+s`);
 
     const toast = h.page.locator("[data-toast-kind]");
@@ -108,7 +102,7 @@ test("clicking the receipt's words names the save point", async () => {
   try {
     await h.openNote("Essay");
     const id = await noteId(h, "Essay");
-    await typeAtEnd(h, " Added.");
+    await typeAtEnd(h.page, " Added.");
     await h.page.keyboard.press(`${MOD}+s`);
     await h.page.getByRole("button", { name: "Save point. Name this save point" }).click();
     await h.page.keyboard.type("Submitted v1");
@@ -125,7 +119,7 @@ test("leaving a note ends its writing session with an Autosave", async () => {
   try {
     await h.openNote("Alpha");
     const id = await noteId(h, "Alpha");
-    await typeAtEnd(h, " Edited.");
+    await typeAtEnd(h.page, " Edited.");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t.includes("Edited."));
     await h.openNote("Beta");
     // The session ends once the leaving write has had time to land.

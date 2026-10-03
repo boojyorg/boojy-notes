@@ -12,14 +12,12 @@
  * index when its read finished, so the order test guards rather than
  * reproduces), and a paste of several kept only the first image.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { dropFiles, launchApp, sleep, waitForFile } from "./harness";
 
 const PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 const png = (name: string) => ({ name, bytes: Buffer.from(PNG_B64, "base64") });
-
-type Page = import("@playwright/test").Page;
 
 const lines = (t: string) => t.split("\n").filter((l) => l.trim() !== "");
 const paragraph = (page: Page, text: string) =>

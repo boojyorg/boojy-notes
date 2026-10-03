@@ -10,7 +10,7 @@
  */
 import { expect, type Page, test } from "@playwright/test";
 import { PATH_AIR } from "../../src/components/EditorChrome";
-import { type AppHandle, launchApp } from "./harness";
+import { launchApp, settled, setWidth } from "./harness";
 import {
   EDITOR_FLOOR_W,
   HEADER_AIR,
@@ -30,34 +30,6 @@ const SUBPIXEL = 0.5;
  * bar on 2026-09-24.
  */
 const LEFT_CONTROLS = ["Toggle sidebar", "New note", "Search notes"];
-
-/**
- * Wait for every running CSS transition and animation to finish. The chrome
- * row moves on the panel's clock since 2026-09-14 (the trio fades in, the
- * path's inset eases), so a position read straight after a toggle or a resize
- * is a position in flight.
- */
-async function settled(page: Page) {
-  await page.evaluate(async () => {
-    // A transition a resize interrupts rejects its `finished` with AbortError
-    // and a fresh one takes its place, so wait in rounds until none is left.
-    for (let round = 0; round < 10; round++) {
-      const running = document.getAnimations();
-      if (running.length === 0) return;
-      await Promise.allSettled(running.map((a) => a.finished));
-    }
-  });
-}
-
-async function setWidth(h: AppHandle, width: number) {
-  await h.app.evaluate(({ BrowserWindow }, w) => {
-    BrowserWindow.getAllWindows()[0].setSize(w, 800);
-  }, width);
-  await expect
-    .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5000 })
-    .toBe(width);
-  await settled(h.page);
-}
 
 /**
  * The name's box once the layout has settled: the path's, whose edges are the

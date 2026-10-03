@@ -10,7 +10,7 @@
  * rendered column.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { SETTLE_MS, expectNoTempFiles, launchApp, sleep, waitForFile } from "./harness";
 
 const IMAGE = "![[pic.png]]";
@@ -30,8 +30,6 @@ const seed = () =>
       },
     },
   );
-
-type Page = import("@playwright/test").Page;
 
 /** The block root holding `text`, or the note's one image. */
 const block = (page: Page, which: "image" | string) =>

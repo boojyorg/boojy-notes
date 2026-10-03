@@ -12,14 +12,12 @@
  * code block in a note. Needs the real app: the grip, the drag threshold and
  * the drop are pointer geometry on the rendered column.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { SETTLE_MS, expectNoTempFiles, launchApp, sleep, waitForFile } from "./harness";
 
 const FENCE = "```js\nconst a = 1;\n```";
 
 const seed = () => launchApp({ "Code.md": `One\n${FENCE}\nTwo\n` });
-
-type Page = import("@playwright/test").Page;
 
 /** The note's one code block, or the paragraph holding `text`. */
 const block = (page: Page, which: "code" | string) =>

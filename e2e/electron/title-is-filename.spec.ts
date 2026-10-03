@@ -13,7 +13,6 @@
 import { expect, test } from "@playwright/test";
 import {
   END_OF_LINE,
-  type Vault,
   MOD,
   SETTLE_MS,
   editorTitle,
@@ -25,13 +24,8 @@ import {
   sidebarNoteTitles,
   sleep,
   waitForFile,
+  mdFiles,
 } from "./harness";
-
-const mdFiles = (vault: Vault) =>
-  vault
-    .list()
-    .filter((f) => f.endsWith(".md"))
-    .sort();
 
 /**
  * A new note starts unnamed: the field is empty under the caret with
@@ -391,7 +385,8 @@ test("a multi-line paste into the name takes its first line, and the file is nam
     await expect(title).toHaveText("Pasted plan");
     await h.page.keyboard.press("Enter");
     await waitForFile(h.vault.file("Pasted plan.md"), (t) => t === "Body.\n");
-    expect(h.vault.list().filter((f) => f.endsWith(".md"))).toEqual(["Pasted plan.md"]);
+    // The rename writes the new name first, then removes the old one.
+    await expect.poll(() => mdFiles(h.vault)).toEqual(["Pasted plan.md"]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

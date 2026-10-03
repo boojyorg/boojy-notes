@@ -149,6 +149,20 @@ describe("useKeyboardHandlers", () => {
     expect(document.execCommand).not.toHaveBeenCalled();
   });
 
+  it("Enter in an empty list item makes it a paragraph", () => {
+    deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "bullet", text: "" };
+    const { result } = renderHook(() => useKeyboardHandlers(deps));
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+    Object.defineProperty(event, "preventDefault", { value: vi.fn() });
+
+    result.current.handleBlockKeyDown("note-1", 0, event);
+
+    expect(deps.commitNoteData).toHaveBeenCalledTimes(1);
+    const next = deps.commitNoteData.mock.calls[0][0](deps.noteDataRef.current);
+    expect(next["note-1"].content.blocks[0].type).toBe("p");
+    expect(deps.insertBlockAfter).not.toHaveBeenCalled();
+  });
+
   it("handleBlockKeyDown handles Tab for indentation on list blocks", () => {
     deps.noteDataRef.current["note-1"].content.blocks[0] = { id: "b1", type: "bullet", text: "x" };
     const { result } = renderHook(() => useKeyboardHandlers(deps));
@@ -685,6 +699,20 @@ describe("useKeyboardHandlers", () => {
       expect(deps.commitNoteData.mock.calls.length + deps.insertBlockAfter.mock.calls.length).toBe(
         1,
       );
+    });
+
+    it("Escape with the slash menu open closes the menu and selects no block", () => {
+      deps.getBlock.mockImplementation(() => ({ blockIndex: 0, blockId: "b1" }));
+      deps.selectBlockRun = vi.fn();
+      deps.slashMenuRef.current = { noteId: "note-1", blockIndex: 0, filter: "", selectedIndex: 0 };
+      caretAtEndOf(deps.blockRefs.current.b1, "/");
+      const { result } = renderHook(() => useKeyboardHandlers(deps));
+      const e = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+
+      result.current.handleEditorKeyDown(e);
+
+      expect(deps.setSlashMenu).toHaveBeenCalledWith(null);
+      expect(deps.selectBlockRun).not.toHaveBeenCalled();
     });
 
     it("with no selection at all, a consumed key does not even park the caret", () => {

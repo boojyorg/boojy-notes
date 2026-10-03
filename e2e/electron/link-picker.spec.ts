@@ -14,6 +14,7 @@ import {
   SETTLE_MS,
   sleep,
   waitForFile,
+  START_OF_LINE,
 } from "./harness";
 
 const FILES: Record<string, string> = {
@@ -42,13 +43,12 @@ async function selectWords(page: Page, n: number, from: string, count: number) {
   const b = block(page, n);
   // The block's left edge: its middle may be a link, and a click there opens it.
   await b.click({ position: { x: 4, y: 8 } });
-  await page.keyboard.press(START_OF_BLOCK);
+  await page.keyboard.press(START_OF_LINE);
   const text = await b.innerText();
   const at = text.indexOf(from);
   for (let i = 0; i < at; i++) await page.keyboard.press("ArrowRight");
   for (let i = 0; i < count; i++) await page.keyboard.press("Shift+ArrowRight");
 }
-const START_OF_BLOCK = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
 
 test("selected words become a note link with those words as its text; a namesake is written with its folder", async () => {
   const h = await launchApp(FILES);
@@ -146,7 +146,7 @@ test("editing: Text and Destination, no list until the destination changes, Ente
     // Cmd+K with the caret in the link edits it. A click on a link opens it,
     // so the caret walks in from the block's start.
     await block(h.page, 1).click({ position: { x: 4, y: 8 } });
-    await h.page.keyboard.press(START_OF_BLOCK);
+    await h.page.keyboard.press(START_OF_LINE);
     for (let i = 0; i < 10; i++) await h.page.keyboard.press("ArrowRight");
     await h.page.keyboard.press(`${MOD}+k`);
     const text = h.page.getByLabel("Text");
@@ -245,11 +245,11 @@ test("the chip says where a link goes; a missing or shared name says so and its 
     // Re-tried as the hovers are: the runner's stray pointer event lands
     // inside the rest and cancels it (failing on master since 2026-09-23).
     await expect(async () => {
-      await h.page.keyboard.press(START_OF_BLOCK);
+      await h.page.keyboard.press(START_OF_LINE);
       for (let i = 0; i < 6; i++) await h.page.keyboard.press("ArrowRight");
       await expect(chip).toHaveText("Goals2 notes share this name", { timeout: 1_500 });
     }).toPass({ timeout: 10_000 });
-    await h.page.keyboard.press(START_OF_BLOCK);
+    await h.page.keyboard.press(START_OF_LINE);
     await expect(chip).toHaveCount(0);
 
     // A click on the shared name opens the picker with both candidates and no guess.

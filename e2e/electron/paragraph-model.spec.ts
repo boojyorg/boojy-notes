@@ -6,7 +6,7 @@
  * list item belongs to the item; and editing one block leaves every other
  * byte of the file as it was. All of it survives a restart.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   END_OF_LINE,
   SETTLE_MS,
@@ -15,10 +15,11 @@ import {
   launchApp,
   sleep,
   waitForFile,
+  blockTypes,
 } from "./harness";
 
 /** Non-empty editor blocks, each as the text the user reads. */
-const blockShapes = (page: import("@playwright/test").Page) =>
+const blockShapes = (page: Page) =>
   page.evaluate(() =>
     Array.from(document.querySelectorAll("[data-block-id]"))
       // A list row prints its marker glyph on a line of its own; the text is what follows.
@@ -30,14 +31,6 @@ const blockShapes = (page: import("@playwright/test").Page) =>
           .replace(/^\d+\.\n/, ""),
       )
       .filter((t) => t.trim() !== ""),
-  );
-
-/** The type of every block on screen, as the block roots carry it. */
-const blockTypes = (page: import("@playwright/test").Page) =>
-  page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
-      b.getAttribute("data-block-type"),
-    ),
   );
 
 test("Enter writes a blank line between paragraphs; Shift+Enter keeps lines in one paragraph", async () => {

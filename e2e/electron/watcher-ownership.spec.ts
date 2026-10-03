@@ -26,10 +26,10 @@ import {
   sidebarNoteTitles,
   sleep,
   waitForFile,
+  type AppHandle,
 } from "./harness";
 
-const titles = async (h: Awaited<ReturnType<typeof launchApp>>) =>
-  (await sidebarNoteTitles(h.page)).sort();
+const titles = async (h: AppHandle) => (await sidebarNoteTitles(h.page)).sort();
 
 test("an outside change back to the bytes the app last wrote is shown, and typing on keeps it", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha body.\n" });

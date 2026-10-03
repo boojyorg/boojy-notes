@@ -22,7 +22,6 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
-  END_OF_LINE,
   SETTLE_MS,
   editorTitle,
   expandAllFolders,
@@ -32,46 +31,38 @@ import {
   sidebarNoteTitles,
   sleep,
   waitForFile,
+  mdFiles,
+  typeAtEnd,
 } from "./harness";
-
-const mdFiles = (h: Awaited<ReturnType<typeof launchApp>>) =>
-  h.vault.list().filter((f) => f.endsWith(".md"));
-
-/** Type at the end of the first block, leaving the text pending in the write debounce. */
-async function typeAtEnd(h: Awaited<ReturnType<typeof launchApp>>, text: string) {
-  await h.page.locator("[data-block-id]").first().click();
-  await h.page.keyboard.press(END_OF_LINE);
-  await h.page.keyboard.type(text);
-}
 
 test("a note renamed outside while edits are pending follows the new name", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha body.\n" });
   try {
     await h.openNote("Alpha");
-    await typeAtEnd(h, " one");
+    await typeAtEnd(h.page, " one");
     await waitForFile(h.vault.file("Alpha.md"), (t) => t === "Alpha body. one\n");
     await sleep(SETTLE_MS);
 
     // Inside the write debounce of the next keystroke, the file is renamed in
     // Finder. Before: the unlink rebuilt state from disk, the kept note had no
     // index entry, and the flush recreated Alpha.md beside Renamed.md.
-    await typeAtEnd(h, " two");
+    await typeAtEnd(h.page, " two");
     fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Renamed.md"));
 
     await waitForFile(h.vault.file("Renamed.md"), (t) => t === "Alpha body. one two\n", {
       label: "the pending edit at the new name",
     });
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Renamed.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Renamed.md"]);
     expect(await sidebarNoteTitles(h.page)).toEqual(["Renamed"]);
     expect(await editorTitle(h.page)).toBe("Renamed");
     expect(await noteText(h.page)).toBe("Alpha body. one two");
 
     // The note is still the note: typing on reaches the renamed file.
-    await typeAtEnd(h, " three");
+    await typeAtEnd(h.page, " three");
     await waitForFile(h.vault.file("Renamed.md"), (t) => t === "Alpha body. one two three\n");
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Renamed.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Renamed.md"]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -85,14 +76,14 @@ test("a note renamed outside before its first save of the session follows the ne
     // The app has read this file and never written it: the only bytes it
     // knows are the ones it loaded. The rename lands with the first edit
     // still inside the write debounce.
-    await typeAtEnd(h, " one");
+    await typeAtEnd(h.page, " one");
     fs.renameSync(h.vault.file("Alpha.md"), h.vault.file("Renamed.md"));
 
     await waitForFile(h.vault.file("Renamed.md"), (t) => t === "Alpha body. one\n", {
       label: "the pending edit at the new name",
     });
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Renamed.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Renamed.md"]);
     expect(await sidebarNoteTitles(h.page)).toEqual(["Renamed"]);
     expect(await editorTitle(h.page)).toBe("Renamed");
     expect(h.pageErrors).toEqual([]);
@@ -106,13 +97,13 @@ test("a folder moved outside while a note in it has pending edits does not bring
   try {
     await expandAllFolders(h.page);
     await h.openNote("Alpha");
-    await typeAtEnd(h, " one");
+    await typeAtEnd(h.page, " one");
     await waitForFile(h.vault.file("Old/Alpha.md"), (t) => t === "Alpha body. one\n");
     await sleep(SETTLE_MS);
 
     // `mv Old New` in the shell. Before: `Old/Alpha.md` came back, directory
     // and all, holding the pending edit, while `New/Alpha.md` kept the old text.
-    await typeAtEnd(h, " two");
+    await typeAtEnd(h.page, " two");
     fs.renameSync(h.vault.file("Old"), h.vault.file("New"));
 
     await waitForFile(h.vault.file("New/Alpha.md"), (t) => t === "Alpha body. one two\n", {
@@ -120,7 +111,7 @@ test("a folder moved outside while a note in it has pending edits does not bring
     });
     await sleep(SETTLE_MS);
     expect(h.vault.exists("Old")).toBe(false);
-    expect(mdFiles(h)).toEqual(["Beta.md", "New/Alpha.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Beta.md", "New/Alpha.md"]);
     await expectTitlesMatchFiles(h.page, h.vault);
     expect(await h.page.locator('[data-folder-path="New"]').count()).toBe(1);
     expect(await h.page.locator('[data-folder-path="Old"]').count()).toBe(0);
@@ -143,15 +134,15 @@ test("a note renamed outside with nothing pending keeps its place in the editor"
     // the app did not make, so the file's mtime is untouched.
     await expect.poll(() => editorTitle(h.page), { timeout: 5_000 }).toBe("Renamed");
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Beta.md", "Renamed.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Beta.md", "Renamed.md"]);
     expect((await sidebarNoteTitles(h.page)).sort()).toEqual(["Beta", "Renamed"]);
     expect(await noteText(h.page)).toBe("Alpha body.");
     expect(h.vault.mtimeMs("Renamed.md")).toBe(before);
 
-    await typeAtEnd(h, " more");
+    await typeAtEnd(h.page, " more");
     await waitForFile(h.vault.file("Renamed.md"), (t) => t === "Alpha body. more\n");
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Beta.md", "Renamed.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Beta.md", "Renamed.md"]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

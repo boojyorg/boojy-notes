@@ -10,11 +10,9 @@
  * from the laid-out picture on screen.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { makePng } from "../../tests/fixtures/makePng";
 import { dropFiles, launchApp, waitForFile } from "./harness";
-
-type Page = import("@playwright/test").Page;
 
 /** Each image's drawn width in CSS pixels, once every picture has loaded. */
 const drawnWidths = (page: Page) =>

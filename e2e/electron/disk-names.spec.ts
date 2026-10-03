@@ -16,9 +16,7 @@
  */
 import { expect, test } from "@playwright/test";
 import {
-  END_OF_LINE,
   SETTLE_MS,
-  type Vault,
   expandAllFolders,
   expectTitlesMatchFiles,
   launchApp,
@@ -26,17 +24,11 @@ import {
   moveNoteToFolder,
   sleep,
   waitForFile,
+  mdFiles,
+  typeAtEnd,
 } from "./harness";
 
 test.skip(process.platform === "win32", "Finder-made names cannot exist on Windows");
-
-const mdFiles = (vault: Vault) => vault.list().filter((f) => f.endsWith(".md"));
-
-async function typeAtEnd(page: import("@playwright/test").Page, text: string) {
-  await page.locator("[data-block-id]").first().click();
-  await page.keyboard.press(END_OF_LINE);
-  await page.keyboard.type(text);
-}
 
 test("a note in a Finder-named folder is saved where it is, and a note dragged in lands there", async () => {
   const h = await launchApp({

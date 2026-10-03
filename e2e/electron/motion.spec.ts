@@ -8,13 +8,12 @@
  *    nothing can reach: inert, hidden from assistive tech, no ids, no pointer.
  *    The timing itself is CSS and is not sampled here.
  */
-import { expect, test } from "@playwright/test";
-import { launchApp } from "./harness";
+import { expect, test, type Page } from "@playwright/test";
+import { launchApp, type AppHandle } from "./harness";
 
-const menuItem = (h: { page: import("@playwright/test").Page }) =>
-  h.page.getByRole("menuitem", { name: "Cut" });
+const menuItem = (h: { page: Page }) => h.page.getByRole("menuitem", { name: "Cut" });
 
-async function openEditMenuAtCorner(h: Awaited<ReturnType<typeof launchApp>>) {
+async function openEditMenuAtCorner(h: AppHandle) {
   await h.openNote("Alpha");
   await h.page.evaluate(() => {
     const editor = document.querySelector("[data-editor]") as HTMLElement;
@@ -182,7 +181,7 @@ test("reduced motion leaves no copy at all", async () => {
  */
 type Settle = { text: string; translate: string; opacity: number; order: string[] };
 
-async function recordSettles(page: import("@playwright/test").Page) {
+async function recordSettles(page: Page) {
   await page.evaluate(() => {
     const seen: Settle[] = [];
     (window as unknown as { __settles: Settle[] }).__settles = seen;
@@ -204,7 +203,7 @@ async function recordSettles(page: import("@playwright/test").Page) {
   });
 }
 
-const settles = (page: import("@playwright/test").Page) =>
+const settles = (page: Page) =>
   page.evaluate(() => (window as unknown as { __settles: Settle[] }).__settles);
 
 /** How far a settle starts from its place, in px (negative: from above). */
