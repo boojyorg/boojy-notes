@@ -18,6 +18,7 @@ import {
   stripIncidentalLineEnding,
 } from "../../utils/pasteBlocks";
 import { richPasteMarkdown } from "../../utils/richPaste";
+import { editBlocks } from "../../utils/editBlocks";
 
 export function usePasteHandler({
   noteDataRef,
@@ -89,43 +90,25 @@ export function usePasteHandler({
         ownEdit(scope, { kind: "insertText", text: url }, range);
         return;
       }
-      if (!sel.isCollapsed) {
-        // Selection exists: wrap selected text as [text](url)
-        const selectedText = sel.toString();
-        range.deleteContents();
-        const a = document.createElement("a");
-        a.href = url;
-        a.className = "external-link";
-        a.setAttribute("data-url", url);
-        a.textContent = selectedText;
-        const icon = document.createElement("span");
-        icon.className = "external-link-icon";
-        icon.contentEditable = "false";
-        icon.textContent = "\u2197";
-        a.appendChild(icon);
-        range.insertNode(a);
-        range.setStartAfter(a);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        // No selection: insert bare URL as link
-        const a = document.createElement("a");
-        a.href = url;
-        a.className = "external-link bare-url";
-        a.setAttribute("data-url", url);
-        a.textContent = url;
-        const icon = document.createElement("span");
-        icon.className = "external-link-icon";
-        icon.contentEditable = "false";
-        icon.textContent = "\u2197";
-        a.appendChild(icon);
-        range.insertNode(a);
-        range.setStartAfter(a);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
+      // Over selected text, the text becomes the link's words: [text](url).
+      // With none, the URL is a bare link.
+      const words = sel.isCollapsed ? null : sel.toString();
+      range.deleteContents();
+      const a = document.createElement("a");
+      a.href = url;
+      a.className = words === null ? "external-link bare-url" : "external-link";
+      a.setAttribute("data-url", url);
+      a.textContent = words ?? url;
+      const icon = document.createElement("span");
+      icon.className = "external-link-icon";
+      icon.contentEditable = "false";
+      icon.textContent = "\u2197";
+      a.appendChild(icon);
+      range.insertNode(a);
+      range.setStartAfter(a);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
       reReadBlockFromDom();
       return;
     }
@@ -139,6 +122,33 @@ export function usePasteHandler({
     const afterText = markdownAfter(scope.end.el, range.endContainer, range.endOffset);
     const currentBlock = blocks[startIdx];
 
+    // A block-level paste: the pasted blocks replace the selection's blocks,
+    // the kept block repaints, and the caret lands once React has mounted
+    // the block it goes in.
+    const landBlocks = (pastedBlocks) => {
+      const {
+        blocks: newBlocks,
+        focusId,
+        focusPos,
+      } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
+      commitNoteData(
+        editBlocks(currentNote, (blks) => {
+          blks.splice(startIdx, 1 + deleteCount, ...newBlocks);
+        }),
+      );
+      syncGeneration.current++;
+      repaintKeptBlock(currentBlock, newBlocks);
+      focusBlockId.current = focusId;
+      focusCursorPos.current = focusPos;
+      let attempts = 0;
+      const tryPlace = () => {
+        const el = blockRefs.current[focusId];
+        if (el?.isConnected) placeCaret(el, focusPos);
+        else if (++attempts < 10) requestAnimationFrame(tryPlace);
+      };
+      requestAnimationFrame(tryPlace);
+    };
+
     // Check for internal block-level paste
     const boojyData = e.clipboardData.getData("text/boojy-blocks");
     if (boojyData) {
@@ -151,38 +161,7 @@ export function usePasteHandler({
 
       const hasFullBlock = pastedBlocks?.some((b) => b.fullBlock);
       if (pastedBlocks?.length > 0 && hasFullBlock) {
-        const {
-          blocks: newBlocks,
-          focusId,
-          focusPos,
-        } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
-
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[currentNote] };
-          const blks = [...n.content.blocks];
-          blks.splice(startIdx, 1 + deleteCount, ...newBlocks);
-          n.content = { ...n.content, blocks: blks };
-          next[currentNote] = n;
-          return next;
-        });
-        syncGeneration.current++;
-        repaintKeptBlock(currentBlock, newBlocks);
-        focusBlockId.current = focusId;
-        focusCursorPos.current = focusPos;
-        // Re-place cursor after React re-render mounts the new block
-        const deferredId = focusId;
-        const deferredPos = focusPos;
-        let attempts = 0;
-        const tryPlace = () => {
-          const el = blockRefs.current[deferredId];
-          if (el?.isConnected) {
-            placeCaret(el, deferredPos);
-          } else if (++attempts < 10) {
-            requestAnimationFrame(tryPlace);
-          }
-        };
-        requestAnimationFrame(tryPlace);
+        landBlocks(pastedBlocks);
         return;
       }
     }
@@ -201,40 +180,7 @@ export function usePasteHandler({
     if (textData.includes("\n") || (isStructuredMarkdownLine(textData) && caretInEmptyBlock())) {
       const rich = textData.includes("\n") && htmlData ? richPasteMarkdown(htmlData) : null;
       const pastedBlocks = markdownToBlocks(rich ?? textData);
-      if (!pastedBlocks.length) return;
-      const {
-        blocks: newBlocks,
-        focusId,
-        focusPos,
-      } = buildPastedBlocks(currentBlock, pastedBlocks, beforeText, afterText, genBlockId);
-
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[currentNote] };
-        const blks = [...n.content.blocks];
-        blks.splice(startIdx, 1 + deleteCount, ...newBlocks);
-        n.content = { ...n.content, blocks: blks };
-        next[currentNote] = n;
-        return next;
-      });
-      syncGeneration.current++;
-      repaintKeptBlock(currentBlock, newBlocks);
-      focusBlockId.current = focusId;
-      focusCursorPos.current = focusPos;
-      {
-        const targetId = focusId;
-        const targetPos = focusPos;
-        let attempts = 0;
-        const tryPlace = () => {
-          const el = blockRefs.current[targetId];
-          if (el?.isConnected) {
-            placeCaret(el, targetPos);
-          } else if (++attempts < 10) {
-            requestAnimationFrame(tryPlace);
-          }
-        };
-        requestAnimationFrame(tryPlace);
-      }
+      if (pastedBlocks.length) landBlocks(pastedBlocks);
       return;
     }
 
@@ -349,19 +295,8 @@ export function usePasteHandler({
       let text;
       let fullBlock = false;
 
-      if (startIdx === endIdx) {
-        // Single block selection
-        const div = document.createElement("div");
-        div.appendChild(range.cloneContents());
-        text = htmlToInlineMarkdown(sanitizeInlineHtml(div.innerHTML));
-        const preR = document.createRange();
-        preR.selectNodeContents(el);
-        preR.setEnd(range.startContainer, range.startOffset);
-        const postR = document.createRange();
-        postR.selectNodeContents(el);
-        postR.setStart(range.endContainer, range.endOffset);
-        fullBlock = preR.toString().length === 0 && postR.toString().length === 0;
-      } else if (i === startIdx) {
+      // One block alone returned above, so the run spans two or more.
+      if (i === startIdx) {
         const r = document.createRange();
         r.selectNodeContents(el);
         r.setStart(range.startContainer, range.startOffset);

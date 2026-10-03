@@ -3,8 +3,8 @@ import { getAPI } from "../../services/apiProvider";
 import { genBlockId } from "../../utils/storage";
 import { hasOwnField } from "../../utils/domHelpers";
 import { insertedImageWidth } from "../../utils/imageSize";
-
-const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
+import { editBlocks } from "../../utils/editBlocks";
+import { saveFileAsBlock } from "../../utils/savedFile";
 
 // The special blocks with a field of their own (a textarea, a title, a
 // cell). Chosen from the menu, one of these owns the next keystroke: the
@@ -28,17 +28,7 @@ export function useSlashCommands({
     const block = blocks[blockIndex];
     const el = blockRefs.current[block.id];
 
-    const updateBlocks = (mutate) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        mutate(blks);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
-    };
+    const updateBlocks = (mutate) => commitNoteData(editBlocks(noteId, mutate));
 
     // Replace the slash block with `special` followed by a fresh empty
     // paragraph, and put the caret in the block that can take it: the
@@ -108,30 +98,7 @@ export function useSlashCommands({
           refocusSlashBlock();
           return;
         }
-        const ext =
-          picked.fileName.lastIndexOf(".") !== -1
-            ? picked.fileName.slice(picked.fileName.lastIndexOf(".")).toLowerCase()
-            : "";
-        if (IMAGE_EXTS.has(ext)) {
-          const filename = await getAPI().saveImage({
-            fileName: picked.fileName,
-            dataBase64: picked.dataBase64,
-          });
-          replaceWithSpecialBlock(imageBlockFor(picked, filename));
-        } else {
-          const result = await getAPI().saveAttachment({
-            fileName: picked.fileName,
-            dataBase64: picked.dataBase64,
-          });
-          replaceWithSpecialBlock({
-            id: genBlockId(),
-            type: "file",
-            src: result.filename,
-            filename: result.filename,
-            size: result.size,
-            text: "",
-          });
-        }
+        replaceWithSpecialBlock({ id: genBlockId(), ...(await saveFileAsBlock(getAPI(), picked)) });
       } catch (err) {
         console.error("File slash command failed", err);
         onError?.("Failed to attach file");

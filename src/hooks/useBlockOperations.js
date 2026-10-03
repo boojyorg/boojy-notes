@@ -4,8 +4,9 @@ import { getCaretOffset } from "../utils/domHelpers";
 import { withCell } from "../utils/tableShape";
 import { reorderFloor } from "../utils/blockOrder";
 import { indentRun } from "../utils/blockRun";
-import { insertedImageWidth } from "../utils/imageSize";
+import { fileExtension, saveFileAsBlock } from "../utils/savedFile";
 import { getAPI } from "../services/apiProvider";
+import { editBlocks, patchBlock } from "../utils/editBlocks";
 
 /** The text blocks the Format menu can turn into one another. */
 const KIND_TYPES = new Set([
@@ -38,15 +39,7 @@ export function useBlockOperations({
   // editor skips its render. `patch` is a function of the block as the ref
   // holds it.
   const typeIntoBlock = (noteId, blockIndex, patch) => {
-    commitTextChange((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], ...patch(blocks[blockIndex]) };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitTextChange(patchBlock(noteId, blockIndex, patch));
   };
 
   const updateBlockText = (noteId, blockIndex, newText) =>
@@ -64,15 +57,11 @@ export function useBlockOperations({
     const newBlock = { id: genBlockId(), type, text };
     if (type === "checkbox") newBlock.checked = false;
     if (opts.indent) newBlock.indent = opts.indent;
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks.splice(afterIndex + 1, 0, newBlock);
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        blocks.splice(afterIndex + 1, 0, newBlock);
+      }),
+    );
     focusBlockId.current = newBlock.id;
     focusCursorPos.current = 0;
   };
@@ -88,19 +77,15 @@ export function useBlockOperations({
   const openCodeBlock = (noteId, blockIndex, lang = "") => {
     const paraBlock = { id: genBlockId(), type: "p", text: "" };
     let codeId = null;
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      const codeBlock = { ...blocks[blockIndex], text: "", type: "code", lang };
-      delete codeBlock.checked;
-      delete codeBlock.indent;
-      codeId = codeBlock.id;
-      blocks.splice(blockIndex, 1, codeBlock, paraBlock);
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const codeBlock = { ...blocks[blockIndex], text: "", type: "code", lang };
+        delete codeBlock.checked;
+        delete codeBlock.indent;
+        codeId = codeBlock.id;
+        blocks.splice(blockIndex, 1, codeBlock, paraBlock);
+      }),
+    );
     focusBlockId.current = codeId;
     focusCursorPos.current = 0;
   };
@@ -112,32 +97,24 @@ export function useBlockOperations({
    * state and indent go with it.
    */
   const openDivider = (noteId, blockIndex) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      const divider = { ...blocks[blockIndex], type: "spacer" };
-      delete divider.text;
-      delete divider.checked;
-      delete divider.indent;
-      blocks[blockIndex] = divider;
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const divider = { ...blocks[blockIndex], type: "spacer" };
+        delete divider.text;
+        delete divider.checked;
+        delete divider.indent;
+        blocks[blockIndex] = divider;
+      }),
+    );
     insertBlockAfter(noteId, blockIndex, "p", "");
   };
 
   const deleteBlock = (noteId, blockIndex) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks.splice(blockIndex, 1);
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        blocks.splice(blockIndex, 1);
+      }),
+    );
   };
 
   /**
@@ -147,18 +124,15 @@ export function useBlockOperations({
    */
   const deleteBlockRange = (noteId, from, to) => {
     let fresh = null;
-    commitNoteData((prev) => {
-      if (!prev[noteId]) return prev;
-      const n = { ...prev[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks.splice(from, to - from + 1);
-      if (blocks.length <= reorderFloor(blocks)) {
-        fresh = { id: genBlockId(), type: "p", text: "" };
-        blocks.push(fresh);
-      }
-      n.content = { ...n.content, blocks };
-      return { ...prev, [noteId]: n };
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        blocks.splice(from, to - from + 1);
+        if (blocks.length <= reorderFloor(blocks)) {
+          fresh = { id: genBlockId(), type: "p", text: "" };
+          blocks.push(fresh);
+        }
+      }),
+    );
     if (fresh) {
       focusBlockId.current = fresh.id;
       focusCursorPos.current = 0;
@@ -173,76 +147,35 @@ export function useBlockOperations({
   const duplicateBlockRange = (noteId, from, to) => {
     // Made before the commit: an updater may run more than once.
     const ids = Array.from({ length: to - from + 1 }, () => genBlockId());
-    commitNoteData((prev) => {
-      if (!prev[noteId]) return prev;
-      const n = { ...prev[noteId] };
-      const blocks = [...n.content.blocks];
-      const copies = blocks.slice(from, to + 1).map((b, k) => {
-        const copy = { ...b, id: ids[k] };
-        delete copy.tightAbove;
-        delete copy.looseAbove;
-        return copy;
-      });
-      blocks.splice(to + 1, 0, ...copies);
-      n.content = { ...n.content, blocks };
-      return { ...prev, [noteId]: n };
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const copies = blocks.slice(from, to + 1).map((b, k) => {
+          const copy = { ...b, id: ids[k] };
+          delete copy.tightAbove;
+          delete copy.looseAbove;
+          return copy;
+        });
+        blocks.splice(to + 1, 0, ...copies);
+      }),
+    );
     return ids;
   };
 
-  const updateBlockProperty = (noteId, blockIndex, updates) => {
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks[blockIndex] = { ...blocks[blockIndex], ...updates };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-  };
+  const updateBlockProperty = (noteId, blockIndex, updates) =>
+    commitNoteData(patchBlock(noteId, blockIndex, updates));
 
-  const insertImageBlock = (noteId, afterIndex, src, alt = "", widthFields = {}) => {
-    const imgBlock = {
-      id: genBlockId(),
-      type: "image",
-      src,
-      alt,
-      width: 0,
-      ...widthFields,
-      text: "",
-    };
+  // An image or file block below `afterIndex`, with a paragraph under it that takes the caret.
+  const insertMediaBlock = (noteId, afterIndex, media) => {
+    const mediaBlock = { id: genBlockId(), ...media };
     const paraBlock = { id: genBlockId(), type: "p", text: "" };
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks.splice(afterIndex + 1, 0, imgBlock, paraBlock);
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        blocks.splice(afterIndex + 1, 0, mediaBlock, paraBlock);
+      }),
+    );
     focusBlockId.current = paraBlock.id;
     focusCursorPos.current = 0;
   };
-
-  const insertFileBlock = (noteId, afterIndex, src, filename, size) => {
-    const fileBlock = { id: genBlockId(), type: "file", src, filename, size, text: "" };
-    const paraBlock = { id: genBlockId(), type: "p", text: "" };
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      blocks.splice(afterIndex + 1, 0, fileBlock, paraBlock);
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
-    focusBlockId.current = paraBlock.id;
-    focusCursorPos.current = 0;
-  };
-
-  const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"]);
 
   const saveAndInsertImage = async (noteId, afterIndex, file) => {
     const api = getAPI();
@@ -265,10 +198,7 @@ export function useBlockOperations({
         });
         srcName = file.name || "";
       }
-      const ext =
-        srcName.lastIndexOf(".") !== -1
-          ? srcName.slice(srcName.lastIndexOf(".")).toLowerCase()
-          : "";
+      const ext = fileExtension(srcName);
       // Generate timestamp filename for clipboard pastes (generic names like image.png, blob)
       const isClipboardPaste = /^(image|blob|clipboard)/i.test(srcName.replace(/\.[^.]+$/, ""));
       let finalFileName = srcName;
@@ -277,22 +207,8 @@ export function useBlockOperations({
         const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
         finalFileName = `paste-${ts}${ext}`;
       }
-      if (IMAGE_EXTS.has(ext)) {
-        const filename = await api.saveImage({
-          fileName: finalFileName,
-          dataBase64,
-        });
-        insertImageBlock(
-          noteId,
-          afterIndex,
-          filename,
-          finalFileName.replace(/\.[^.]+$/, ""),
-          insertedImageWidth(dataBase64),
-        );
-      } else {
-        const result = await api.saveAttachment({ fileName: srcName, dataBase64 });
-        insertFileBlock(noteId, afterIndex, result.filename, result.filename, result.size);
-      }
+      const media = await saveFileAsBlock(api, { fileName: srcName, dataBase64 }, finalFileName);
+      insertMediaBlock(noteId, afterIndex, media);
       return true;
     } catch (err) {
       console.error("saveAndInsertImage failed", err);
@@ -317,15 +233,7 @@ export function useBlockOperations({
 
   const flipCheck = useCallback(
     (noteId, blockIndex) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blocks = [...n.content.blocks];
-        blocks[blockIndex] = { ...blocks[blockIndex], checked: !blocks[blockIndex].checked };
-        n.content = { ...n.content, blocks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(patchBlock(noteId, blockIndex, (block) => ({ checked: !block.checked })));
     },
     [commitNoteData],
   );
@@ -341,15 +249,7 @@ export function useBlockOperations({
   // --- Code block operations (the text goes through updateBlockText) ---
   const updateCodeLang = useCallback(
     (noteId, blockIndex, lang) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blocks = [...n.content.blocks];
-        blocks[blockIndex] = { ...blocks[blockIndex], lang };
-        n.content = { ...n.content, blocks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(patchBlock(noteId, blockIndex, { lang }));
     },
     [commitNoteData],
   );
@@ -357,15 +257,7 @@ export function useBlockOperations({
   // --- Callout operations ---
   const updateCallout = useCallback(
     (noteId, blockIndex, updates) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blocks = [...n.content.blocks];
-        blocks[blockIndex] = { ...blocks[blockIndex], ...updates };
-        n.content = { ...n.content, blocks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(patchBlock(noteId, blockIndex, updates));
     },
     [commitNoteData],
   );
@@ -381,20 +273,16 @@ export function useBlockOperations({
   // up (Tidy table).
   const updateTableRows = useCallback(
     (noteId, blockIndex, reshape) => {
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blocks = [...n.content.blocks];
-        const block = blocks[blockIndex];
-        const { rows, alignments, tidy } = reshape(block.rows || [], block.alignments || []);
-        const updated = { ...block, rows };
-        if (alignments !== undefined) updated.alignments = alignments;
-        if (tidy) delete updated.tableSource;
-        blocks[blockIndex] = updated;
-        n.content = { ...n.content, blocks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(
+        editBlocks(noteId, (blocks) => {
+          const block = blocks[blockIndex];
+          const { rows, alignments, tidy } = reshape(block.rows || [], block.alignments || []);
+          const updated = { ...block, rows };
+          if (alignments !== undefined) updated.alignments = alignments;
+          if (tidy) delete updated.tableSource;
+          blocks[blockIndex] = updated;
+        }),
+      );
     },
     [commitNoteData],
   );
@@ -412,26 +300,23 @@ export function useBlockOperations({
   const moveBlock = useCallback(
     (noteId, fromIndex, toIndex) => {
       let movedId = null;
-      commitNoteData((prev) => {
-        const n0 = prev[noteId];
-        if (!n0) return prev;
-        const blocks = [...n0.content.blocks];
-        const floor = reorderFloor(blocks);
-        if (
-          fromIndex < floor ||
-          fromIndex >= blocks.length ||
-          toIndex < floor ||
-          toIndex >= blocks.length ||
-          fromIndex === toIndex
-        ) {
-          return prev; // no-op safety net (caller should pre-guard boundaries)
-        }
-        const [moved] = blocks.splice(fromIndex, 1);
-        blocks.splice(toIndex, 0, moved);
-        movedId = moved.id;
-        const n = { ...n0, content: { ...n0.content, blocks } };
-        return { ...prev, [noteId]: n };
-      });
+      commitNoteData(
+        editBlocks(noteId, (blocks) => {
+          const floor = reorderFloor(blocks);
+          if (
+            fromIndex < floor ||
+            fromIndex >= blocks.length ||
+            toIndex < floor ||
+            toIndex >= blocks.length ||
+            fromIndex === toIndex
+          ) {
+            return false; // no-op safety net (caller should pre-guard boundaries)
+          }
+          const [moved] = blocks.splice(fromIndex, 1);
+          blocks.splice(toIndex, 0, moved);
+          movedId = moved.id;
+        }),
+      );
       if (movedId) {
         focusBlockId.current = movedId;
         focusCursorPos.current = 0;
@@ -446,36 +331,31 @@ export function useBlockOperations({
   const updateBlockIndent = (noteId, blockIndex, delta, withChildren = false) => {
     let blockId = null;
     let caret = -1;
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      const blocks = [...n.content.blocks];
-      const block = blocks[blockIndex];
-      blockId = block.id;
-      // Re-indenting changes the block's box, not its text, so the caret stays
-      // on the same character. Read it from the DOM here, before the state
-      // changes (the updater runs synchronously): the focus effect defaults to
-      // offset 0, the front of the item. -1 when the caret is not in this block.
-      caret = getCaretOffset(blockRefs.current[block.id]);
-      if (withChildren) {
-        const moved = indentRun(blocks, blockIndex, blockIndex, delta);
-        if (!moved) {
-          blockId = null;
-          return prev;
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const block = blocks[blockIndex];
+        blockId = block.id;
+        // Re-indenting changes the block's box, not its text, so the caret stays
+        // on the same character. Read it from the DOM here, before the state
+        // changes (the updater runs synchronously): the focus effect defaults to
+        // offset 0, the front of the item. -1 when the caret is not in this block.
+        caret = getCaretOffset(blockRefs.current[block.id]);
+        if (withChildren) {
+          const moved = indentRun(blocks, blockIndex, blockIndex, delta);
+          if (!moved) {
+            blockId = null;
+            return false;
+          }
+          blocks.splice(0, blocks.length, ...moved);
+          return;
         }
-        n.content = { ...n.content, blocks: moved };
-        next[noteId] = n;
-        return next;
-      }
-      const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
-      // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
-      // file) — after an in-app indent change it no longer matches, and a
-      // stale one would serialise the OLD indentation (see utils/markdown.js)
-      blocks[blockIndex] = { ...block, indent: newIndent, indentStr: undefined };
-      n.content = { ...n.content, blocks };
-      next[noteId] = n;
-      return next;
-    });
+        const newIndent = Math.max(0, Math.min(6, (block.indent || 0) + delta));
+        // Drop any preserved raw indent prefix (tabs/odd spaces from a parsed
+        // file) — after an in-app indent change it no longer matches, and a
+        // stale one would serialise the OLD indentation (see utils/markdown.js)
+        blocks[blockIndex] = { ...block, indent: newIndent, indentStr: undefined };
+      }),
+    );
     if (blockId) {
       focusBlockId.current = blockId;
       if (caret >= 0) focusCursorPos.current = caret;
@@ -487,12 +367,13 @@ export function useBlockOperations({
   // (utils/blockRun `indentRun`), in one history entry. The selection is left
   // as it is, so a second Tab moves the same items again.
   const indentBlockRange = (noteId, from, to, delta) => {
-    commitNoteData((prev) => {
-      const n = prev[noteId];
-      const blocks = n && indentRun(n.content.blocks, from, to, delta);
-      if (!blocks) return prev;
-      return { ...prev, [noteId]: { ...n, content: { ...n.content, blocks } } };
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        const moved = indentRun(blocks, from, to, delta);
+        if (!moved) return false;
+        blocks.splice(0, blocks.length, ...moved);
+      }),
+    );
   };
 
   // Format → Body Text, Heading, a list or Quote: each text block the
@@ -505,24 +386,23 @@ export function useBlockOperations({
     const caretBlock = blockIds[0];
     const el = caretBlock ? blockRefs.current[caretBlock] : null;
     const caret = el ? getCaretOffset(el) : -1;
-    commitNoteData((prev) => {
-      const n = prev[noteId];
-      if (!n) return prev;
-      let changed = false;
-      const blocks = n.content.blocks.map((block) => {
-        if (!blockIds.includes(block.id) || !KIND_TYPES.has(block.type)) return block;
-        if (block.type === type) return block;
-        changed = true;
-        const next = { id: block.id, type, text: block.text ?? "" };
-        if (type === "checkbox") next.checked = false;
-        if (LIST_KINDS.has(type) && LIST_KINDS.has(block.type) && block.indent) {
-          next.indent = block.indent;
-        }
-        return next;
-      });
-      if (!changed) return prev;
-      return { ...prev, [noteId]: { ...n, content: { ...n.content, blocks } } };
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        let changed = false;
+        blocks.forEach((block, i) => {
+          if (!blockIds.includes(block.id) || !KIND_TYPES.has(block.type)) return;
+          if (block.type === type) return;
+          changed = true;
+          const next = { id: block.id, type, text: block.text ?? "" };
+          if (type === "checkbox") next.checked = false;
+          if (LIST_KINDS.has(type) && LIST_KINDS.has(block.type) && block.indent) {
+            next.indent = block.indent;
+          }
+          blocks[i] = next;
+        });
+        if (!changed) return false;
+      }),
+    );
     if (caretBlock) {
       focusBlockId.current = caretBlock;
       if (caret >= 0) focusCursorPos.current = caret;

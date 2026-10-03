@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { makeCaretAnchor } from "../utils/domHelpers";
 import { inlineMarkdownToHtml } from "../utils/inlineFormatting";
 import { TAG_TAIL_RE } from "../utils/tags";
+import { editBlocks } from "../utils/editBlocks";
 
 /**
  * Tag interactions: clicking a tag chip filters the sidebar to `#tag`, and
@@ -51,15 +52,11 @@ export function useTagHandlers({
         // A structural commit, as the wikilink completion is: it publishes the
         // new text to React state at once; a debounced commit would leave state
         // at `#rev` for the menu's close to repaint over `#review`. One undo entry for the completion, as for a link.
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const b = [...n.content.blocks];
-          b[blockIndex] = { ...b[blockIndex], text: newText };
-          n.content = { ...n.content, blocks: b };
-          next[noteId] = n;
-          return next;
-        });
+        commitNoteData(
+          editBlocks(noteId, (b) => {
+            b[blockIndex] = { ...b[blockIndex], text: newText };
+          }),
+        );
         // The block is painted here for the caret, not for the paint: the
         // commit's render would repaint it from the ref, but the repaint puts
         // the caret back at its offset, which is inside the collapsed space.

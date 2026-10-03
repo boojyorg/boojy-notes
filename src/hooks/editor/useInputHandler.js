@@ -12,6 +12,7 @@ import {
   typedFenceLang,
   typedTableColumns,
 } from "../../utils/blockTriggers";
+import { editBlocks } from "../../utils/editBlocks";
 
 // Pre-compiled markdown shortcut patterns (avoid re-creating RegExp on every keystroke)
 const S = "[\\s\\u00a0]";
@@ -153,18 +154,14 @@ export function useInputHandler({
           openDivider(noteId, blockIndex);
           return;
         }
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const blks = [...n.content.blocks];
-          const updated = { ...blks[blockIndex], text: "", type: pat.type };
-          if (pat.type === "checkbox") updated.checked = false;
-          if (pat.type !== "checkbox") delete updated.checked;
-          blks[blockIndex] = updated;
-          n.content = { ...n.content, blocks: blks };
-          next[noteId] = n;
-          return next;
-        });
+        commitNoteData(
+          editBlocks(noteId, (blks) => {
+            const updated = { ...blks[blockIndex], text: "", type: pat.type };
+            if (pat.type === "checkbox") updated.checked = false;
+            if (pat.type !== "checkbox") delete updated.checked;
+            blks[blockIndex] = updated;
+          }),
+        );
         focusBlockId.current = currentBlock.id;
         focusCursorPos.current = 0;
         return;
@@ -184,18 +181,14 @@ export function useInputHandler({
     if (lineMarker && getCaretOffset(el) === lineMarker[0].length) {
       const type = LINE_MARKER_TYPE(lineMarker[1]);
       const rest = text.slice(lineMarker[0].length);
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        const updated = { ...blks[blockIndex], text: rest, type };
-        if (type === "checkbox") updated.checked = false;
-        else delete updated.checked;
-        blks[blockIndex] = updated;
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(
+        editBlocks(noteId, (blks) => {
+          const updated = { ...blks[blockIndex], text: rest, type };
+          if (type === "checkbox") updated.checked = false;
+          else delete updated.checked;
+          blks[blockIndex] = updated;
+        }),
+      );
       focusBlockId.current = currentBlock.id;
       focusCursorPos.current = 0;
       return;
@@ -227,15 +220,11 @@ export function useInputHandler({
         width: 0,
       };
       const paraBlock = { id: genBlockId(), type: "p", text: "" };
-      commitNoteData((prev) => {
-        const next = { ...prev };
-        const n = { ...next[noteId] };
-        const blks = [...n.content.blocks];
-        blks.splice(blockIndex, 1, imgBlock, paraBlock);
-        n.content = { ...n.content, blocks: blks };
-        next[noteId] = n;
-        return next;
-      });
+      commitNoteData(
+        editBlocks(noteId, (blks) => {
+          blks.splice(blockIndex, 1, imgBlock, paraBlock);
+        }),
+      );
       focusBlockId.current = paraBlock.id;
       focusCursorPos.current = 0;
       return;
