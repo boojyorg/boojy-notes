@@ -1,4 +1,5 @@
 import { genNoteId, genBlockId } from "../utils/storage";
+import { parentFolder, remapFolderPath, withinFolder } from "../utils/pathTree";
 
 export function useNoteCrud({
   commitNoteData,
@@ -105,11 +106,8 @@ export function useNoteCrud({
   // ── Folders ──
   // A folder path is `Parent/Child`; every path under a renamed or moved
   // folder moves with it, in the notes, the folder list and the expanded map.
-  const remapPaths = (oldPath, newPath) => (p) =>
-    p === oldPath ? newPath : p.startsWith(`${oldPath}/`) ? newPath + p.slice(oldPath.length) : p;
-
   const remapExpanded = (oldPath, newPath) => {
-    const remap = remapPaths(oldPath, newPath);
+    const remap = remapFolderPath(oldPath, newPath);
     setExpanded((prev) => {
       const next = {};
       for (const [key, val] of Object.entries(prev)) next[remap(key)] = val;
@@ -137,7 +135,7 @@ export function useNoteCrud({
           return null;
         });
     }
-    const remap = remapPaths(oldPath, newPath);
+    const remap = remapFolderPath(oldPath, newPath);
     commitNoteData((prev) => {
       const next = { ...prev };
       for (const [id, n] of Object.entries(next)) {
@@ -164,20 +162,15 @@ export function useNoteCrud({
   // Answers with the folder's final path, or null when it did not move.
   const moveFolder = (folderPath, targetParent) => {
     const parent = targetParent || null;
-    const slash = folderPath.lastIndexOf("/");
-    const currentParent = slash === -1 ? null : folderPath.slice(0, slash);
-    if (parent === currentParent) return Promise.resolve(null);
-    if (parent && (parent === folderPath || parent.startsWith(`${folderPath}/`)))
-      return Promise.resolve(null);
-    const name = folderPath.slice(slash + 1);
+    if (parent === parentFolder(folderPath)) return Promise.resolve(null);
+    if (parent && withinFolder(parent, folderPath)) return Promise.resolve(null);
+    const name = folderPath.slice(folderPath.lastIndexOf("/") + 1);
     return changeFolderPath(folderPath, parent ? `${parent}/${name}` : name);
   };
 
   const deleteFolder = (folderPath) => {
     const noteIds = Object.entries(noteDataRef.current)
-      .filter(
-        ([, n]) => n.folder && (n.folder === folderPath || n.folder.startsWith(`${folderPath}/`)),
-      )
+      .filter(([, n]) => n.folder && withinFolder(n.folder, folderPath))
       .map(([id]) => id);
 
     if (noteIds.length > 0) {
@@ -197,9 +190,7 @@ export function useNoteCrud({
       });
       return;
     }
-    setCustomFolders((prev) =>
-      prev.filter((f) => f !== folderPath && !f.startsWith(`${folderPath}/`)),
-    );
+    setCustomFolders((prev) => prev.filter((f) => !withinFolder(f, folderPath)));
   };
 
   // `parent` is a folder path for the folder menu's New folder, or null for the root.
@@ -243,7 +234,7 @@ export function useNoteCrud({
     // is marked and the tree scrolls it into view. The disk names it, so the
     // desktop marks it when the answer comes back.
     const landed = (path) => {
-      const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : null;
+      const parent = parentFolder(path);
       if (parent) setExpanded((prev) => (prev[parent] ? prev : { ...prev, [parent]: true }));
       markNewFolder?.(path);
     };
@@ -260,8 +251,8 @@ export function useNoteCrud({
     const existing = new Set(customFolders);
     let target = `${folderPath} (copy)`;
     for (let i = 2; existing.has(target); i++) target = `${folderPath} (copy)-${i}`;
-    const remap = remapPaths(folderPath, target);
-    const under = (p) => p === folderPath || p.startsWith(`${folderPath}/`);
+    const remap = remapFolderPath(folderPath, target);
+    const under = (p) => withinFolder(p, folderPath);
     setCustomFolders((prev) => [...prev, ...new Set([target, ...prev.filter(under).map(remap)])]);
     commitNoteData((prev) => {
       const next = { ...prev };

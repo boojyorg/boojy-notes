@@ -5,7 +5,6 @@ import { NoteDataProvider, useNoteDataActions } from "./context/NoteDataContext"
 import { SettingsProvider } from "./context/SettingsContext";
 import { LayoutProvider } from "./context/LayoutContext";
 import { SidebarProvider } from "./context/SidebarContext";
-import { OverlayProvider } from "./context/OverlayContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import BoojyNotes from "./BoojyNotes";
 import { installTraceProbes } from "./utils/trace";
@@ -53,11 +52,9 @@ createRoot(document.getElementById("root")).render(
         <SettingsProvider>
           <LayoutProvider>
             <SidebarProvider>
-              <OverlayProvider>
-                <AppErrorBoundary>
-                  <BoojyNotes />
-                </AppErrorBoundary>
-              </OverlayProvider>
+              <AppErrorBoundary>
+                <BoojyNotes />
+              </AppErrorBoundary>
             </SidebarProvider>
           </LayoutProvider>
         </SettingsProvider>

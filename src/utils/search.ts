@@ -2,6 +2,7 @@
 
 import type { Block, Note, NoteData } from "../types/notes";
 import { stripMarkdownFormatting } from "./inlineFormatting";
+import { withinFolder } from "./pathTree";
 import { naturalCompare } from "./sidebarTree";
 
 /**
@@ -270,7 +271,7 @@ export interface SearchOptions {
 
 /** Whether a note in `noteFolder` is inside `folder`, subfolders included. */
 export const inFolder = (noteFolder: string | null, folder: string) =>
-  noteFolder === folder || !!noteFolder?.startsWith(`${folder}/`);
+  noteFolder != null && withinFolder(noteFolder, folder);
 
 /**
  * The query's terms, folded: words split on spaces, and a quoted phrase as

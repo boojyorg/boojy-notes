@@ -16,9 +16,8 @@ interface HistoryAPI {
 interface Options {
   activeNote: string | null;
   activeNoteRef: MutableRefObject<string | null>;
-  flushToDisk: (latest?: unknown, extraDirtyIds?: string[]) => Promise<void>;
-  noteDataRef: MutableRefObject<unknown>;
-  unflushedNotes: MutableRefObject<Set<string>>;
+  /** Writes every pending edit (useFileSystem). */
+  flushAll: () => Promise<void>;
   toasts: ToastItem[];
   showToast: (message: string, kind?: ToastKind, options?: ToastOptions) => number;
   updateToast: (id: number, patch: Partial<ToastItem>) => void;
@@ -37,9 +36,7 @@ const historyAPI = (): HistoryAPI | undefined =>
 export function useSavePoint({
   activeNote,
   activeNoteRef,
-  flushToDisk,
-  noteDataRef,
-  unflushedNotes,
+  flushAll,
   toasts,
   showToast,
   updateToast,
@@ -66,7 +63,7 @@ export function useSavePoint({
       updateToast(open.id, { editing: true });
       return;
     }
-    await flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
+    await flushAll();
     const result = await api.savePoint(noteId);
     const options = { icon: "history", key: SAVE_POINT_TOAST };
     if (result.ok) {
@@ -79,5 +76,5 @@ export function useSavePoint({
     } else if (result.reason === "off") {
       showToast("History is off for this note", "done", options);
     }
-  }, [activeNoteRef, flushToDisk, noteDataRef, unflushedNotes, showToast, updateToast, holdToast]);
+  }, [activeNoteRef, flushAll, showToast, updateToast, holdToast]);
 }

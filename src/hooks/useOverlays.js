@@ -1,8 +1,11 @@
-import { createContext, useState, useRef, useContext, useMemo, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 
-const OverlayContext = createContext(null);
-
-export function OverlayProvider({ children }) {
+/**
+ * The surfaces that float over the app: the context menu, the confirm dialog,
+ * the lightbox and the editor's suggestion menus. Held by the root alone; the
+ * menus' refs let native handlers read the open menu without a render.
+ */
+export function useOverlays() {
   const [ctxMenu, setCtxMenu] = useState(null);
 
   // Promise-based confirmation dialog for destructive actions.
@@ -35,42 +38,22 @@ export function OverlayProvider({ children }) {
   const tagMenuRef = useRef(null);
   tagMenuRef.current = tagMenu;
 
-  const value = useMemo(
-    () => ({
-      ctxMenu,
-      setCtxMenu,
-      lightbox,
-      setLightbox,
-      slashMenu,
-      setSlashMenu,
-      slashMenuRef,
-      wikilinkMenu,
-      setWikilinkMenu,
-      wikilinkMenuRef,
-      tagMenu,
-      setTagMenu,
-      tagMenuRef,
-      confirmState,
-      requestConfirm,
-      resolveConfirm,
-    }),
-    [
-      ctxMenu,
-      lightbox,
-      slashMenu,
-      wikilinkMenu,
-      tagMenu,
-      confirmState,
-      requestConfirm,
-      resolveConfirm,
-    ],
-  );
-
-  return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>;
-}
-
-export function useOverlay() {
-  const ctx = useContext(OverlayContext);
-  if (!ctx) throw new Error("useOverlay must be used within OverlayProvider");
-  return ctx;
+  return {
+    ctxMenu,
+    setCtxMenu,
+    lightbox,
+    setLightbox,
+    slashMenu,
+    setSlashMenu,
+    slashMenuRef,
+    wikilinkMenu,
+    setWikilinkMenu,
+    wikilinkMenuRef,
+    tagMenu,
+    setTagMenu,
+    tagMenuRef,
+    confirmState,
+    requestConfirm,
+    resolveConfirm,
+  };
 }

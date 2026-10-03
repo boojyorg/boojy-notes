@@ -35,8 +35,7 @@ function setup(overrides = {}) {
   const deps = {
     activeNote: "n1" as string | null,
     noteDataRef,
-    unflushedNotes: { current: new Set<string>() },
-    flushToDisk: vi.fn().mockResolvedValue(undefined),
+    flushAll: vi.fn().mockResolvedValue(undefined),
     commitNoteData: vi.fn(),
     syncGeneration: { current: 0 },
     sourceView: false,
@@ -68,7 +67,7 @@ describe("useVersionHistory", () => {
   it("opens after writing pending edits, with the note's versions and the Mac's clock", async () => {
     const { result, deps } = setup();
     await act(() => result.current.open());
-    expect(deps.flushToDisk).toHaveBeenCalled();
+    expect(deps.flushAll).toHaveBeenCalled();
     expect(result.current.state).toMatchObject({ noteId: "n1", listOpen: true, versions });
     expect(result.current.hour12).toBe(false);
   });
