@@ -359,7 +359,7 @@ describe("Sidebar", () => {
       const input = getByLabelText("Rename note");
       invisible(input);
       const row = input.closest('[role="treeitem"]');
-      expect(row.className).toBe("sidebar-note is-renaming");
+      expect(row.classList.contains("is-renaming")).toBe(true);
       // The whole name is selected, Finder-style, ready to overwrite.
       expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Old Name".length]);
     });
@@ -376,10 +376,47 @@ describe("Sidebar", () => {
       const input = getByLabelText("Rename folder");
       invisible(input);
       const row = input.closest('[role="treeitem"]');
-      expect(row.className).toBe("sidebar-folder is-renaming");
+      expect(row.classList.contains("is-renaming")).toBe(true);
       // Until 2026-09-16 the folder field opened with the caret at the end.
       expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Work".length]);
     });
+  });
+
+  it("a note's rename field renames once on Enter (the blur after it is not a second), and never on Escape", () => {
+    const noteData = buildNoteData([{ id: "n1", title: "Old" }]);
+    const renameNote = vi.fn();
+    const setRenamingNote = vi.fn();
+    const folderTree = [{ name: "F", _path: "F", children: [], notes: ["n1"] }];
+    const first = renderSidebar({
+      folderTree,
+      noteData,
+      expanded: { F: true },
+      renamingNote: "n1",
+      renameNote,
+      setRenamingNote,
+    });
+    const input = first.getByLabelText("Rename note");
+    fireEvent.change(input, { target: { value: "New" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.blur(input);
+    expect(renameNote).toHaveBeenCalledExactlyOnceWith("n1", "New");
+    expect(setRenamingNote).toHaveBeenCalledWith(null);
+    first.unmount();
+
+    renameNote.mockClear();
+    const second = renderSidebar({
+      folderTree,
+      noteData,
+      expanded: { F: true },
+      renamingNote: "n1",
+      renameNote,
+      setRenamingNote,
+    });
+    const again = second.getByLabelText("Rename note");
+    fireEvent.change(again, { target: { value: "Typed" } });
+    fireEvent.keyDown(again, { key: "Escape" });
+    fireEvent.blur(again);
+    expect(renameNote).not.toHaveBeenCalled();
   });
 
   it("renders folder rows without a disclosure chevron but keeps aria-expanded", () => {

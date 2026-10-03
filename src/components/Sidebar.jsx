@@ -70,10 +70,7 @@ import {
   TREE_ROW_H,
   WORDMARK_H,
 } from "../constants/layout";
-
-const hBg = (el, c) => {
-  el.style.background = c;
-};
+import { parentFolder } from "../utils/pathTree";
 
 // ── Sidebar header geometry ─────────────────────────────────────────────────
 // Tweakable in one place: wordmark left, panel toggle right near the divider.
@@ -127,6 +124,32 @@ const rowMenuAnchor = (btn, row) => ({
   left: btn.left - NOTE_MENU_SHIFT,
   right: btn.right,
 });
+/**
+ * A tree row's box: the column's width less its insets, one label high, its
+ * glyph or title starting on the spine at its depth. The pill is CSS
+ * (`.sidebar-row` in GlobalStyles): hover, `.is-held`, `.lift-ink`.
+ */
+const treeRowStyle = (depth, color) => ({
+  width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
+  marginLeft: ROW_INSET,
+  marginRight: ROW_INSET_RIGHT,
+  marginBottom: TREE_ROW_GAP,
+  height: TREE_ROW_H,
+  boxSizing: "border-box",
+  padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
+  borderRadius: ACTION_RADIUS,
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: ICON_GAP,
+  color,
+  fontSize: 14,
+  // 400 for every kind: the glyph alone tells a folder from a note.
+  fontWeight: 400,
+  fontFamily: "inherit",
+  textAlign: "left",
+});
 /** The folder row's two trailing glyph boxes (New note, ···), 20px each with
  *  4px between them (adjacent, the pen's ink sits on the dots), the note row's single ··· slot twice over. */
 const FOLDER_ACTIONS_W = 44;
@@ -160,6 +183,44 @@ const renameFieldStyle = ({ TEXT }, fontSize) => ({
   minWidth: 0,
   cursor: "text",
 });
+
+/**
+ * A row's inline rename field: a note's (double-click, F2) or a folder's (its
+ * menu, F2). Finder-style, it arrives with the whole name selected. Enter or
+ * a blur renames, once: Enter unmounts the field, and the blur that can
+ * follow must not rename again. Escape renames nothing. Enter and Escape are
+ * the field's own (prevented), and a press stays in it, since rows open,
+ * toggle and drag. `onKeyClose` hands focus back after a key closed it.
+ */
+function RenameField({ name, label, style, onRename, onClose, onKeyClose }) {
+  const done = useRef(false);
+  const close = (field, value, byKey) => {
+    if (done.current) return;
+    done.current = true;
+    if (value !== null) onRename(value);
+    onClose();
+    if (byKey) onKeyClose(field, value);
+  };
+  return (
+    <input
+      autoFocus
+      defaultValue={name}
+      aria-label={label}
+      data-testid="rename-field"
+      onFocus={(e) => e.currentTarget.select()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onBlur={(e) => close(e.currentTarget, e.currentTarget.value, false)}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== "Escape") return;
+        e.preventDefault();
+        close(e.currentTarget, e.key === "Enter" ? e.currentTarget.value : null, true);
+      }}
+      style={style}
+    />
+  );
+}
 
 // ── Section headers (desktop) ───────────────────────────────────────────────
 // Header labels sit on the SPINE with the icons, one step quieter in colour
@@ -300,11 +361,11 @@ function SectionAction({ onClick, label, shortcut, ariaLabel, active, children, 
  * plus sits on the structural SPINE and the label on TEXT_COL, with the
  * folder names and note titles below it.
  */
-function SidebarNewNote({ onClick, TEXT, BG }) {
+function SidebarNewNote({ onClick, TEXT }) {
   return (
     <button
       type="button"
-      className="sidebar-action-row"
+      className="sidebar-action-row sidebar-row lift-ink"
       onClick={onClick}
       style={{
         display: "flex",
@@ -316,7 +377,6 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         boxSizing: "border-box",
         paddingLeft: TREE_SPINE - ROW_INSET,
         paddingRight: 8,
-        background: "none",
         border: "none",
         borderRadius: ACTION_RADIUS,
         cursor: "pointer",
@@ -326,15 +386,6 @@ function SidebarNewNote({ onClick, TEXT, BG }) {
         // Stated, not `normal`: the note's first line is set on this baseline.
         lineHeight: ROW_LABEL_LINE_HEIGHT,
         textAlign: "left",
-        transition: "background var(--motion-fast), color var(--motion-fast)",
-      }}
-      onMouseEnter={(e) => {
-        hBg(e.currentTarget, BG.hover);
-        e.currentTarget.style.color = TEXT.primary;
-      }}
-      onMouseLeave={(e) => {
-        hBg(e.currentTarget, "transparent");
-        e.currentTarget.style.color = TEXT.secondary;
       }}
     >
       {/* Left-aligned in a box the width of the spine-to-label gap, so the
@@ -655,17 +706,6 @@ const Sidebar = memo(function Sidebar({
     // and folders at one depth share a left edge and a folder's name is further
     // right only by its glyph. The folder popup keeps its notes on TEXT_COL
     // (PathTreeMenu), a deliberate difference.
-    const rowStyle = {
-      width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
-      marginLeft: ROW_INSET,
-      marginRight: ROW_INSET_RIGHT,
-      marginBottom: TREE_ROW_GAP,
-      height: TREE_ROW_H,
-      boxSizing: "border-box",
-      background: act || sel || menuOpen ? BG.hover : "transparent",
-      borderRadius: ACTION_RADIUS,
-      padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
-    };
     return (
       <button
         key={nId}
@@ -679,7 +719,8 @@ const Sidebar = memo(function Sidebar({
         // open the note, harmlessly.
         onDoubleClick={renamingNote !== nId ? () => setRenamingNote(nId) : undefined}
         className={[
-          "sidebar-note",
+          "sidebar-note sidebar-row",
+          act || sel || menuOpen ? "is-held" : "",
           renamingNote === nId ? "is-renaming" : "",
           // A note that just landed here (Move to…, a drag in the path's
           // popup) wears the pill for a beat, as a duplicated folder does.
@@ -693,65 +734,21 @@ const Sidebar = memo(function Sidebar({
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "note", id: nId });
         }}
         style={{
-          ...rowStyle,
-          marginTop: 0,
-          border: "none",
+          // The active note is marked by the pill alone, never bold.
+          ...treeRowStyle(depth, act || sel ? TEXT.primary : TEXT.secondary),
+          gap: 5,
           appearance: "none",
           WebkitAppearance: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          color: act || sel ? TEXT.primary : TEXT.secondary,
-          fontSize: 14,
-          fontFamily: "inherit",
-          // The active note is marked by the pill alone, never bold.
-          fontWeight: 400,
-          transition: "background var(--motion-fast)",
-          textAlign: "left",
-        }}
-        onMouseEnter={(e) => {
-          if (!act && !sel) hBg(e.currentTarget, BG.hover);
-        }}
-        onMouseLeave={(e) => {
-          if (!act && !sel && !menuOpen) hBg(e.currentTarget, "transparent");
         }}
       >
         {renamingNote === nId ? (
-          <input
-            autoFocus
-            defaultValue={n.title}
-            aria-label="Rename note"
-            // Finder-style: arrive with the whole name selected, ready to
-            // overwrite; a click puts the caret where you aim.
-            onFocus={(e) => e.currentTarget.select()}
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
-            // Note rows are draggable — typing/selecting in the input must
-            // never start a drag.
-            onPointerDown={(e) => e.stopPropagation()}
-            onBlur={(e) => {
-              renameNote(nId, e.target.value);
-              setRenamingNote(null);
-            }}
-            data-testid="rename-field"
-            // The field owns Enter and Escape: prevented, so the app shell
-            // never treats them as its own (Escape also closed an overlay
-            // sidebar under the field).
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                renameNote(nId, e.target.value);
-                setRenamingNote(null);
-                refocusAfterRename(e.currentTarget);
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setRenamingNote(null);
-                refocusAfterRename(e.currentTarget);
-              }
-            }}
+          <RenameField
+            name={n.title}
+            label="Rename note"
             style={renameFieldStyle(theme, 14)}
+            onRename={(value) => renameNote(nId, value)}
+            onClose={() => setRenamingNote(null)}
+            onKeyClose={(field) => refocusAfterRename(field)}
           />
         ) : (
           <span
@@ -846,7 +843,7 @@ const Sidebar = memo(function Sidebar({
           aria-expanded={isOpen}
           {...rowProps(folderKey(folderPath))}
           className={[
-            "sidebar-folder",
+            "sidebar-folder sidebar-row lift-ink",
             renamingFolder === folderPath ? "is-renaming" : "",
             // A folder the app has just made wears the row pill for a beat, so
             // the copy is found rather than hunted for (SidebarContext).
@@ -864,86 +861,29 @@ const Sidebar = memo(function Sidebar({
             e.preventDefault();
             setCtxMenu({ x: e.clientX, y: e.clientY, type: "folder", id: folderPath });
           }}
-          style={{
-            // Folder glyph on the SPINE, name on TEXT_COL, same quiet pill
-            // grammar as note rows.
-            width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
-            marginLeft: ROW_INSET,
-            marginBottom: TREE_ROW_GAP,
-            height: TREE_ROW_H,
-            boxSizing: "border-box",
-            padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
-            borderRadius: ACTION_RADIUS,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: ICON_GAP,
-            color: TEXT.secondary,
-            fontSize: 14,
-            // 400 matches note and action rows — the folder glyph alone
-            // distinguishes the row kind; headers carry the hierarchy.
-            fontWeight: 400,
-            fontFamily: "inherit",
-            transition: "background var(--motion-fast), color var(--motion-fast)",
-            textAlign: "left",
-          }}
-          onMouseEnter={(e) => {
-            hBg(e.currentTarget, BG.hover);
-            e.currentTarget.style.color = TEXT.primary;
-          }}
-          onMouseLeave={(e) => {
-            hBg(e.currentTarget, "transparent");
-            e.currentTarget.style.color = TEXT.secondary;
-          }}
+          // Folder glyph on the SPINE, name on TEXT_COL, the note rows' pill.
+          style={treeRowStyle(depth, TEXT.secondary)}
         >
           {/* No disclosure chevron — the whole row toggles, the open-folder icon
               and indented children carry the state. aria-expanded still announces
               it. The glyph inherits the row's currentColor like the other nav icons. */}
           <FolderIcon open={isOpen} />
           {renamingFolder === folderPath ? (
-            <input
-              autoFocus
-              defaultValue={folder.name}
-              aria-label="Rename folder"
-              data-testid="rename-field"
-              // Finder-style, as a note's: the whole name selected, ready to
-              // overwrite. With no border the selection is the only
-              // sign the field is there, so this is not polish.
-              onFocus={(e) => e.currentTarget.select()}
-              onClick={(e) => e.stopPropagation()}
-              // Folder rows are draggable too; a press in the field must never
-              // start a drag.
-              onPointerDown={(e) => e.stopPropagation()}
-              // Commit once: Enter commits and unmounts the field, and the blur
-              // that can follow must not rename the (now moved) directory again.
-              onBlur={(e) => {
-                if (e.target.dataset.committed) return;
-                e.target.dataset.committed = "1";
-                renameFolder(folderPath, e.target.value.trim());
-                setRenamingFolder(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  e.currentTarget.dataset.committed = "1";
-                  const name = e.currentTarget.value.trim();
-                  renameFolder(folderPath, name);
-                  setRenamingFolder(null);
-                  const parent = folderPath.includes("/")
-                    ? folderPath.slice(0, folderPath.lastIndexOf("/") + 1)
-                    : "";
-                  refocusAfterRename(e.currentTarget, name ? folderKey(parent + name) : undefined);
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  e.currentTarget.dataset.committed = "1";
-                  setRenamingFolder(null);
-                  refocusAfterRename(e.currentTarget);
-                }
-              }}
+            <RenameField
+              name={folder.name}
+              label="Rename folder"
               style={renameFieldStyle(theme, 14)}
+              onRename={(value) => renameFolder(folderPath, value.trim())}
+              onClose={() => setRenamingFolder(null)}
+              // The renamed folder's row is a new one, under its new path.
+              onKeyClose={(field, value) => {
+                const name = value?.trim();
+                const parent = parentFolder(folderPath);
+                refocusAfterRename(
+                  field,
+                  name ? folderKey(parent ? `${parent}/${name}` : name) : undefined,
+                );
+              }}
             />
           ) : (
             <span
@@ -1057,37 +997,13 @@ const Sidebar = memo(function Sidebar({
         data-file-path={path}
         role="treeitem"
         {...rowProps(fileKey(path))}
-        className="sidebar-file"
+        className={`sidebar-file sidebar-row${menuOpen ? " is-held" : ""}`}
         onClick={() => onOpenFile?.(path)}
         onContextMenu={(e) => {
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
         }}
-        style={{
-          width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
-          marginLeft: ROW_INSET,
-          marginRight: ROW_INSET_RIGHT,
-          marginBottom: TREE_ROW_GAP,
-          height: TREE_ROW_H,
-          boxSizing: "border-box",
-          padding: `0 8px 0 ${TREE_SPINE - ROW_INSET + depth * TREE_INDENT}px`,
-          borderRadius: ACTION_RADIUS,
-          background: menuOpen ? BG.hover : "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: ICON_GAP,
-          color: TEXT.secondary,
-          fontSize: 14,
-          fontFamily: "inherit",
-          textAlign: "left",
-          transition: "background var(--motion-fast)",
-        }}
-        onMouseEnter={(e) => hBg(e.currentTarget, BG.hover)}
-        onMouseLeave={(e) => {
-          if (!menuOpen) hBg(e.currentTarget, "transparent");
-        }}
+        style={treeRowStyle(depth, TEXT.secondary)}
       >
         <OtherFileIcon kind={otherFileKind(label)} />
         <span
@@ -1114,38 +1030,11 @@ const Sidebar = memo(function Sidebar({
           role="treeitem"
           aria-expanded={isOpen}
           {...rowProps(ATTACHMENTS_KEY)}
-          className="sidebar-attachments"
+          className="sidebar-attachments sidebar-row lift-ink"
           data-testid="attachments-row"
           onClick={() => toggle(ATTACHMENTS_PATH)}
           onContextMenu={(e) => e.preventDefault()}
-          style={{
-            width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
-            marginLeft: ROW_INSET,
-            marginBottom: TREE_ROW_GAP,
-            height: TREE_ROW_H,
-            boxSizing: "border-box",
-            padding: `0 8px 0 ${TREE_SPINE - ROW_INSET}px`,
-            borderRadius: ACTION_RADIUS,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: ICON_GAP,
-            color: TEXT.secondary,
-            fontSize: 14,
-            fontFamily: "inherit",
-            textAlign: "left",
-            transition: "background var(--motion-fast), color var(--motion-fast)",
-          }}
-          onMouseEnter={(e) => {
-            hBg(e.currentTarget, BG.hover);
-            e.currentTarget.style.color = TEXT.primary;
-          }}
-          onMouseLeave={(e) => {
-            hBg(e.currentTarget, "transparent");
-            e.currentTarget.style.color = TEXT.secondary;
-          }}
+          style={treeRowStyle(0, TEXT.secondary)}
         >
           <AttachmentsIcon />
           <span style={{ flex: 1 }}>Attachments</span>
@@ -1321,7 +1210,7 @@ const Sidebar = memo(function Sidebar({
           under the vault row down to Recently Deleted. */}
           <div inert={hiddenControls} style={{ background: chromeBg, flexShrink: 0 }}>
             <div style={{ height: COLUMN_HEAD_GAP }} />
-            <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} BG={BG} />
+            <SidebarNewNote onClick={() => createNote(null)} TEXT={TEXT} />
             <SectionHeader
               label={
                 vaults.length > 0 ? (
@@ -1427,37 +1316,11 @@ const Sidebar = memo(function Sidebar({
           <button
             type="button"
             data-testid="recently-deleted-row"
+            className={`sidebar-row lift-ink${recentlyDeleted.open ? " is-held" : ""}`}
             aria-haspopup="dialog"
             aria-expanded={recentlyDeleted.open}
             onClick={recentlyDeleted.onToggle}
-            style={{
-              width: `calc(100% - ${ROW_INSET + ROW_INSET_RIGHT}px)`,
-              marginLeft: ROW_INSET,
-              height: TREE_ROW_H,
-              boxSizing: "border-box",
-              padding: `0 8px 0 ${TREE_SPINE - ROW_INSET}px`,
-              borderRadius: ACTION_RADIUS,
-              background: recentlyDeleted.open ? BG.hover : "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: ICON_GAP,
-              color: recentlyDeleted.open ? TEXT.primary : TEXT.secondary,
-              fontSize: 14,
-              fontFamily: "inherit",
-              textAlign: "left",
-              transition: "background var(--motion-fast), color var(--motion-fast)",
-            }}
-            onMouseEnter={(e) => {
-              hBg(e.currentTarget, BG.hover);
-              e.currentTarget.style.color = TEXT.primary;
-            }}
-            onMouseLeave={(e) => {
-              if (recentlyDeleted.open) return;
-              hBg(e.currentTarget, "transparent");
-              e.currentTarget.style.color = TEXT.secondary;
-            }}
+            style={{ ...treeRowStyle(0, TEXT.secondary), marginBottom: 0 }}
           >
             <TrashIcon />
             {/* No count: no other row in the sidebar carries one, and a number
