@@ -213,21 +213,25 @@ export default function GlobalStyles() {
           transition: color var(--motion-fast);
         }
         .sidebar-folder-action:hover { color: ${theme.TEXT.primary}; }
-        /* A row renaming stands down: no pill under the field,
-           however it is hovered, active or selected (the hover pill is an
-           inline write, hence !important), and no trailing actions, whose
-           only effect would be to blur the field. The selected name is the
-           whole signal. */
-        .sidebar-note.is-renaming, .sidebar-folder.is-renaming {
-          background: transparent !important;
+        /* The sidebar's rows: the neutral pill on hover and while held (the
+           open note, a selection, a row whose menu is up: .is-held); ink
+           lifts to primary on hover where the row's label is muted
+           (.lift-ink). A drag's drop paint is inline, so it still wins. */
+        .sidebar-row {
+          background-color: transparent;
+          transition: background-color var(--motion-fast), color var(--motion-fast);
         }
-        /* A folder the app has just made (Duplicate folder) wears the row's own
-           pill for NEW_ROW_MS, so the copy is found among its alphabetical
-           neighbours instead of announced in a message. Same !important reason
-           as above: the row's hover is an inline write. */
-        .sidebar-folder.is-new, .sidebar-note.is-new {
-          background: ${theme.BG.hover} !important;
-        }
+        .sidebar-row:hover, .sidebar-row.is-held { background-color: ${theme.BG.hover}; }
+        .sidebar-row.lift-ink:hover, .sidebar-row.lift-ink.is-held { color: ${theme.TEXT.primary}; }
+        /* A row renaming stands down: no pill under the field, however it is
+           hovered, active or selected, and no trailing actions, whose only
+           effect would be to blur the field. The selected name is the whole
+           signal. */
+        .sidebar-row.is-renaming { background-color: transparent; }
+        /* A row the app has just made or moved (Duplicate folder, Move to…)
+           wears the pill for NEW_ROW_MS, so it is found among its alphabetical
+           neighbours instead of announced in a message. */
+        .sidebar-row.is-new { background-color: ${theme.BG.hover}; }
         .sidebar-note.is-renaming .sidebar-note-more,
         .sidebar-folder.is-renaming .sidebar-folder-actions {
           opacity: 0 !important;
