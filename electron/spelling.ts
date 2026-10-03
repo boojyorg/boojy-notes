@@ -92,6 +92,17 @@ const preferred = () => JSON.stringify(app.getPreferredSystemLanguages());
 
 const spellingOn = () => loadSettings().spellCheckEnabled !== false;
 
+/**
+ * Off a Mac, Chromium loads (on a first launch, downloads) a language's
+ * dictionary after the window is up; a note checked before then got no
+ * misspellings back and kept none until an edit. `notify` runs each time a
+ * dictionary is ready, so the window asks again. Returns the unsubscribe.
+ */
+export function onDictionaryReady(session: Session, notify: () => void): () => void {
+  session.on("spellcheck-dictionary-initialized", notify);
+  return () => session.off("spellcheck-dictionary-initialized", notify);
+}
+
 /** The stored choice, applied to a window's session: at its creation and on every change. */
 export function applySpelling(session: Session) {
   const settings = loadSettings();

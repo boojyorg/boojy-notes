@@ -311,6 +311,8 @@ const EditorArea = memo(
       languagesSeen.current = spellingLanguages;
       recheckSpelling();
     }, [spellingLanguages, recheckSpelling]);
+    // A dictionary that loaded after the note was checked: so is every answer.
+    useEffect(() => getAPI()?.onSpellingReady?.(recheckSpelling), [recheckSpelling]);
 
     // ── The Markdown view's switch ──
     // Both ways, the caret crosses in the block it was in (on the same

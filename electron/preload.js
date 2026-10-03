@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setSpelling: (change) => ipcRenderer.invoke("set-spelling", change),
   addDictionaryWord: (word) => ipcRenderer.invoke("add-dictionary-word", word),
   removeDictionaryWord: (word) => ipcRenderer.invoke("remove-dictionary-word", word),
+  // A dictionary finished loading after the note was checked (off a Mac).
+  onSpellingReady: subscribe("spelling-ready"),
   openKeyboardSettings: () => ipcRenderer.invoke("open-keyboard-settings"),
   // The application menu (electron/appMenu.ts): its items arrive as command
   // ids, and the window tells it what can act so it greys what cannot.
