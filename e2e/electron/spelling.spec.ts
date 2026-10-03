@@ -10,9 +10,8 @@
  * word added is made up and is always removed again, pass or fail.
  */
 import { expect, type Page, test } from "@playwright/test";
-import { type AppHandle, MOD, launchApp, waitForFile } from "./harness";
+import { type AppHandle, MOD, launchApp, waitForFile, isMac } from "./harness";
 
-const isMac = process.platform === "darwin";
 const MADE_UP = "Zorblaxify";
 
 /** Right-click the middle of `word` in the paragraph holding it. */

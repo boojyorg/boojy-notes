@@ -19,9 +19,16 @@
  * what reached the disk.
  */
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, MOD, SETTLE_MS, launchApp, noteText, sleep, waitForFile } from "./harness";
-
-const isMac = process.platform === "darwin";
+import {
+  END_OF_LINE,
+  MOD,
+  SETTLE_MS,
+  launchApp,
+  noteText,
+  sleep,
+  waitForFile,
+  isMac,
+} from "./harness";
 
 test("Enter in a confirm activates the focused button, and Tab stays inside the dialog", async () => {
   // The desktop prompt is a move to the Trash, recoverable, so it opens on

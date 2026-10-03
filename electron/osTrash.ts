@@ -10,6 +10,7 @@ import {
   sanitizeFilename,
   saveIndex,
 } from "./noteFileManager.js";
+import { isDeletableOsCruft } from "./vaultFs.js";
 
 interface LegacyTrashMetaEntry {
   deletedAt?: number;
@@ -49,11 +50,6 @@ const LEGACY_META_FILE = ".boojy-trash-meta.json";
 // left in place (silently keeping `.trash` around) rather than destroyed.
 function isOsCruft(name: string): boolean {
   return isDeletableOsCruft(name) || name.startsWith("._");
-}
-
-function isDeletableOsCruft(name: string): boolean {
-  const lower = name.toLowerCase();
-  return lower === ".ds_store" || lower === "thumbs.db" || lower === "desktop.ini";
 }
 
 function legacyTrashDir(notesDir: string): string {
@@ -276,11 +272,8 @@ export async function trashManagedNote(
   const relativePath = idIndex[noteId];
   if (!relativePath) return { trashed: false, missing: true };
 
-  const resolvedNotesDir = path.resolve(notesDir);
-  const filePath = path.resolve(notesDir, relativePath);
-  if (filePath !== resolvedNotesDir && !filePath.startsWith(`${resolvedNotesDir}${path.sep}`)) {
-    return { trashed: false };
-  }
+  const filePath = insideVault(notesDir, relativePath);
+  if (!filePath) return { trashed: false };
   if (path.extname(filePath).toLowerCase() !== ".md") {
     return { trashed: false };
   }

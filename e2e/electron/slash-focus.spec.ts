@@ -7,12 +7,12 @@
  * asked for stayed empty and your lines landed as paragraphs beneath it.
  */
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
+import { END_OF_LINE, SETTLE_MS, launchApp, sleep, waitForFile, type AppHandle } from "./harness";
 
 const NOTE = "Note.md";
 
 /** Open a fresh paragraph under the intro and choose `command` from `/`. */
-async function chooseFromSlashMenu(h: Awaited<ReturnType<typeof launchApp>>, command: string) {
+async function chooseFromSlashMenu(h: AppHandle, command: string) {
   await h.page.locator("[data-block-type='p']", { hasText: "Intro." }).click();
   await h.page.keyboard.press(END_OF_LINE);
   await h.page.keyboard.press("Enter");

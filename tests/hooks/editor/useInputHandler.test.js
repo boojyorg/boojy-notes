@@ -108,32 +108,21 @@ describe("useInputHandler", () => {
     expect(deps.commitNoteData).not.toHaveBeenCalled();
   });
 
-  it("detects markdown heading shortcut (# )", () => {
-    mockEl.textContent = "# ";
+  // The block a line marker and its space turn the paragraph into, its text emptied.
+  it.each([
+    ["# ", { type: "h1" }],
+    ["## ", { type: "h2" }],
+    ["- ", { type: "bullet" }],
+    ["1. ", { type: "numbered" }],
+    ["[] ", { type: "checkbox", checked: false }],
+    ["[ ] ", { type: "checkbox", checked: false }],
+  ])("%j converts the paragraph", (typed, kind) => {
+    mockEl.textContent = typed;
     const { result } = renderHook(() => useInputHandler(deps));
     result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
-  });
-
-  it("detects markdown bullet shortcut (- )", () => {
-    mockEl.textContent = "- ";
-    const { result } = renderHook(() => useInputHandler(deps));
-    result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
-  });
-
-  it("detects markdown checkbox shortcut ([] )", () => {
-    mockEl.textContent = "[] ";
-    const { result } = renderHook(() => useInputHandler(deps));
-    result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
-  });
-
-  it("detects markdown numbered list shortcut (1. )", () => {
-    mockEl.textContent = "1. ";
-    const { result } = renderHook(() => useInputHandler(deps));
-    result.current.handleBlockInput("note-1", 0);
-    expect(deps.commitNoteData).toHaveBeenCalled();
+    expect(deps.commitNoteData).toHaveBeenCalledTimes(1);
+    const next = deps.commitNoteData.mock.calls[0][0](deps.noteDataRef.current);
+    expect(next["note-1"].content.blocks[0]).toMatchObject({ ...kind, text: "" });
   });
 
   // A fence waits for its space, as every marker carrying an argument does;
@@ -395,6 +384,25 @@ describe("useInputHandler", () => {
       const { result } = renderHook(() => useInputHandler(deps));
       result.current.handleEditorInput({ nativeEvent: native });
       expect(typedFormatHit).toHaveBeenCalledWith(mockEl, native);
+      mockEl.remove();
+    });
+
+    it("handleEditorInput takes a bare InputEvent as it is, and reads no event as none", () => {
+      mockEl.textContent = "say **bold**";
+      document.body.appendChild(mockEl);
+      deps.getBlock.mockReturnValue({ blockIndex: 0 });
+      const range = document.createRange();
+      range.setStart(mockEl, 0);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      const { result } = renderHook(() => useInputHandler(deps));
+      const bare = new InputEvent("input", { inputType: "insertText", data: "*" });
+      result.current.handleEditorInput(bare);
+      expect(typedFormatHit).toHaveBeenLastCalledWith(mockEl, bare);
+      typedFormatHit.mockClear();
+      result.current.handleEditorInput();
+      expect(typedFormatHit).not.toHaveBeenCalled();
+      expect(deps.updateBlockText).toHaveBeenLastCalledWith("note-1", 0, "say **bold**");
       mockEl.remove();
     });
   });

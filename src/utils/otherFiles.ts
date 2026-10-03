@@ -3,13 +3,10 @@
 // The main process lists them (`read-other-files`); this decides where each
 // one sits and what glyph it wears.
 
+import type { OtherFile } from "../types/global";
 import { naturalCompare } from "./sidebarTree";
 
-export interface OtherFile {
-  /** Vault-relative POSIX path. */
-  path: string;
-  attachment: boolean;
-}
+export type { OtherFile };
 
 /** Per vault: what the tree shows besides notes. */
 export interface VaultView {

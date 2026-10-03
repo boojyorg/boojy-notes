@@ -23,6 +23,7 @@ import {
   launchApp,
   sleep,
   waitForFile,
+  type AppHandle,
 } from "./harness";
 
 const NOTE = "Grid.md";
@@ -33,10 +34,10 @@ const seeded = ["Above.", "| Name | Qty |", "| --- | --- |", "| Tea | 2 |", "Bel
   "\n",
 );
 
-const table = (h: Awaited<ReturnType<typeof launchApp>>) => h.page.locator("table.table-block");
-const selectedTable = (h: Awaited<ReturnType<typeof launchApp>>) =>
+const table = (h: AppHandle) => h.page.locator("table.table-block");
+const selectedTable = (h: AppHandle) =>
   h.page.locator("[data-block-type='table'][data-selected='true']");
-const paragraph = (h: Awaited<ReturnType<typeof launchApp>>, text: string) =>
+const paragraph = (h: AppHandle, text: string) =>
   h.page.locator("[data-block-type='p']", { hasText: text });
 
 test("a typed ||| and a space makes a small grid whose bars show while a cell has focus; Escape then Backspace removes it, Cmd+Z brings it back", async () => {

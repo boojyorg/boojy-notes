@@ -5,7 +5,7 @@
  * saved before and put back after.
  */
 import { expect, test } from "@playwright/test";
-import { type AppHandle, launchApp, menuClick } from "./harness";
+import { type AppHandle, launchApp, menuClick, MOD } from "./harness";
 
 const NOTE = "# Plan\n\nSome **bold** words.\n\n- one\n- two\n";
 let h: AppHandle;
@@ -46,7 +46,6 @@ test("File → Copy Note copies the open note too", async () => {
 });
 
 test("⇧⌘C copies the open note, ⇧⌘D duplicates it", async () => {
-  const MOD = process.platform === "darwin" ? "Meta" : "Control";
   await h.page.locator("[data-editor] [data-block-id]").first().click();
   await h.page.keyboard.press(`${MOD}+Shift+c`);
   await expect.poll(async () => (await clip()).text).toBe(NOTE);

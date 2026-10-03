@@ -55,9 +55,8 @@ its own. An empty item takes no lazy continuation line.
 This is enforced at **block design time**, on **every platform**, by an automated test:
 
 - `tests/utils/markdown.test.js` — runs `markdownToBlocks(blocksToMarkdown(b))` for one
-  representative of every block type and asserts deep-equality. (`tests/electron/markdown.test.js`
-  is an older second file over the same module; its round-trip block duplicates this one and is
-  due to fold in, per the backlog.)
+  representative of every block type and asserts deep-equality. `tests/utils/blockConverters.test.js`
+  checks the other direction: a file read and written back is the same bytes.
 - Any new block type, or any change to a serializer/parser, that breaks the round-trip turns
   this test **red**. That red is the gate. **Do not lower it; fix the block.**
 

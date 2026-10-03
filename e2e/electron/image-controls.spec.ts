@@ -12,11 +12,9 @@
  * proven on disk.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { makePng } from "../../tests/fixtures/makePng";
 import { launchApp, waitForFile } from "./harness";
-
-type Page = import("@playwright/test").Page;
 
 const seed = (name: string, width: number, height: number) =>
   launchApp(

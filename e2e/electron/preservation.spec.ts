@@ -14,7 +14,6 @@ import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
   END_OF_LINE,
-  MOD,
   SETTLE_MS,
   editorTitle,
   expandAllFolders,
@@ -26,23 +25,9 @@ import {
   sidebarNoteTitles,
   sleep,
   waitForFile,
+  blockTypes,
+  nameNewFolder,
 } from "./harness";
-
-/** The type of every block on screen, top to bottom, as the block roots carry it. */
-const blockTypes = (page: import("@playwright/test").Page) =>
-  page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
-      b.getAttribute("data-block-type"),
-    ),
-  );
-
-async function nameNewFolder(page: import("@playwright/test").Page, name: string) {
-  const input = page.locator("input:focus");
-  await input.waitFor();
-  await page.keyboard.press(`${MOD}+a`);
-  await page.keyboard.type(name);
-  await page.keyboard.press("Enter");
-}
 
 test("a note or folder asked to start with a dot gets a visible name and survives a restart", async () => {
   const h = await launchApp({ "Plain.md": "Body.\n", "Other.md": "Other.\n" });

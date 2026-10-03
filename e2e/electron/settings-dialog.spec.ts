@@ -7,9 +7,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { appGround, launchApp } from "./harness";
+import { appGround, launchApp, type AppHandle } from "./harness";
 
-const openSettings = async (h: Awaited<ReturnType<typeof launchApp>>) => {
+const openSettings = async (h: AppHandle) => {
   await h.page.getByTestId("wordmark-settings-button").click();
   const settings = h.page.getByRole("dialog", { name: "Settings" });
   await expect(settings).toBeVisible();

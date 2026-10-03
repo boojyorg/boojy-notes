@@ -15,9 +15,10 @@ import {
   menuClick,
   sleep,
   waitForFile,
+  type AppHandle,
 } from "./harness";
 
-const label = (h: Awaited<ReturnType<typeof launchApp>>, id: string) =>
+const label = (h: AppHandle, id: string) =>
   h.app.evaluate(({ Menu }, id) => Menu.getApplicationMenu()?.getMenuItemById(id)?.label, id);
 
 // Written in spellings the app would not choose itself: star bullets, a

@@ -10,20 +10,19 @@
  * above it. Everything is checked against the bytes on disk.
  */
 import { expect, test } from "@playwright/test";
-import { END_OF_LINE, MOD, SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
-
-const START_OF_LINE = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
+import {
+  END_OF_LINE,
+  MOD,
+  SETTLE_MS,
+  launchApp,
+  sleep,
+  waitForFile,
+  START_OF_LINE,
+  blockTypes,
+} from "./harness";
 
 const RULE = '[data-block-type="spacer"]';
 const SELECTED_RULE = '[data-block-type="spacer"][data-selected="true"]';
-
-/** Every block root's type, in document order. */
-const blockTypes = (page: import("@playwright/test").Page) =>
-  page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
-      b.getAttribute("data-block-type"),
-    ),
-  );
 
 test("typing --- under a paragraph writes a blank line before it; Backspace from below selects, then removes it", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });

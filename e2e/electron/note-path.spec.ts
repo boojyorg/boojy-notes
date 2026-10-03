@@ -11,34 +11,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { PATH_AIR } from "../../src/components/EditorChrome";
 import { WINDOW_MIN_W } from "../../src/constants/layout";
-import { type AppHandle, expandAllFolders, launchApp, MOD, waitForFile } from "./harness";
+import { expandAllFolders, launchApp, MOD, waitForFile, settled, setWidth } from "./harness";
 
 const SUBPIXEL = 0.5;
 // Collapsed, the trio stands left of the path; expanded, nothing does (Undo and
 // Redo went to the menu bar on 2026-09-24), and the pane's own edge is the limit.
 const LEFT_CONTROLS = ["Toggle sidebar", "Search notes", "New note"];
-
-async function settled(page: Page) {
-  await page.evaluate(async () => {
-    for (let round = 0; round < 10; round++) {
-      const running = document.getAnimations();
-      if (running.length === 0) return;
-      await Promise.allSettled(running.map((a) => a.finished));
-    }
-  });
-}
-
-async function setWidth(h: AppHandle, width: number) {
-  await h.app.evaluate(({ BrowserWindow }, w) => {
-    BrowserWindow.getAllWindows()[0].setSize(w, 800);
-  }, width);
-  await expect
-    .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5000 })
-    .toBe(width);
-  await settled(h.page);
-  // The band re-measures itself on the resize; give the frame that paints it.
-  await h.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
-}
 
 /** The path's box, the pane's box, and the controls either side of the path. */
 async function rowGeometry(page: Page, controls: string[]) {

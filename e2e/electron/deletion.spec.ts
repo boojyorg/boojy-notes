@@ -13,7 +13,7 @@
  * rule for anything touching the OS Trash requires.
  */
 import { expect, test } from "@playwright/test";
-import { MOD, SETTLE_MS, launchApp, sidebarNoteTitles, sleep } from "./harness";
+import { MOD, SETTLE_MS, launchApp, sidebarNoteTitles, sleep, mdFiles } from "./harness";
 
 const seed = {
   "Work/Note.md": "Note body.\n",
@@ -21,8 +21,6 @@ const seed = {
   "Loose one.md": "One.\n",
   "Loose two.md": "Two.\n",
 };
-
-const mdFiles = (list: string[]) => list.filter((f) => f.endsWith(".md")).sort();
 
 test("folder and bulk deletion ask first, in words that say what happens; cancel changes nothing", async () => {
   const h = await launchApp(seed);
@@ -98,12 +96,12 @@ test("confirmed deletion moves only the notes; a single note goes at once with a
     );
     await expect.poll(() => h.vault.exists("Loose one.md"), { timeout: 5_000 }).toBe(false);
     await sleep(SETTLE_MS);
-    expect(mdFiles(h.vault.list())).toEqual(["Loose two.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Loose two.md"]);
     expect(h.vault.exists("Work/budget.txt")).toBe(true);
 
     // Nothing comes back after a restart, and nothing else went.
     await h.restart();
-    expect(mdFiles(h.vault.list())).toEqual(["Loose two.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Loose two.md"]);
     expect(h.vault.exists("Work/budget.txt")).toBe(true);
     expect((await sidebarNoteTitles(h.page)).sort()).toEqual(["Loose two"]);
     expect(h.pageErrors).toEqual([]);

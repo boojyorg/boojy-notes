@@ -5,6 +5,7 @@ import zlib from "node:zlib";
 import { app, ipcMain, systemPreferences } from "electron";
 import { writeFileAtomic } from "./atomicWrite.js";
 import { trace } from "./trace.js";
+import { vaultKey } from "./vaultFs.js";
 
 // ─── Version history ───
 // Every note's past, kept outside the vault beside the note index (a vault is
@@ -94,10 +95,6 @@ export function setHistoryRoot(dir: string | null): void {
 }
 export function setClock(clock: (() => number) | null): void {
   _clock = clock || (() => Date.now());
-}
-
-function vaultKey(notesDir: string): string {
-  return crypto.createHash("sha1").update(path.resolve(notesDir)).digest("hex").slice(0, 12);
 }
 
 function storeDir(): string | null {

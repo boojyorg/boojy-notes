@@ -4,6 +4,7 @@ import { watchTree } from "./treeWatcher.js";
 import { hashOf, parseNoteFile, relocateNote, saveIndex } from "./noteFileManager.js";
 import { isOffloaded } from "./offloaded.js";
 import { trace, traceEnabled } from "./trace.js";
+import { isSkippedName } from "./vaultFs.js";
 
 let watcher = null;
 
@@ -170,16 +171,15 @@ function startWatcher(getNotesDir, getMainWindow) {
 /**
  * What the watcher never reports, judged on the path *inside* the vault:
  * dot-entries at any depth, the attachment store, and the pre-v0.5.0 in-vault
- * index. The vault root itself is never a match, so a vault that lives under
- * a dot-directory (`~/.notes`) is watched like any other; the old regex ran
- * on the absolute path, root included, and such a vault got no watcher and no
- * error. Mirrors the note walk's skip rule in `readAllNotes`.
+ * index: the note walk's own rule (`isSkippedName`). The vault root itself is
+ * never a match, so a vault under a dot-directory (`~/.notes`) is watched like
+ * any other.
  */
 function isIgnoredPath(notesDir, filePath) {
   const rel = path.relative(notesDir, filePath);
   if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) return false;
   const segments = rel.split(/[/\\]/);
-  return segments.some((s) => s.startsWith(".") || s === "attachments");
+  return segments.some(isSkippedName);
 }
 
 /**

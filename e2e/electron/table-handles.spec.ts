@@ -7,7 +7,7 @@
  * the separator, keeping the other columns' spelling.
  */
 import { expect, test } from "@playwright/test";
-import { SETTLE_MS, launchApp, sleep, waitForFile } from "./harness";
+import { SETTLE_MS, launchApp, sleep, waitForFile, type AppHandle } from "./harness";
 
 const NOTE = "Prices.md";
 const lines = [
@@ -21,7 +21,7 @@ const lines = [
   "",
 ];
 
-type Harness = Awaited<ReturnType<typeof launchApp>>;
+type Harness = AppHandle;
 
 const cell = (h: Harness, row: number, col: number) =>
   h.page.locator("table.table-block tr").nth(row).locator("th, td").nth(col);
