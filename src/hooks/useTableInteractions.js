@@ -9,7 +9,15 @@ import {
   withRowMoved,
 } from "../utils/tableShape";
 
-export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableRows, cellRefs }) {
+const widthOf = (r) => tableColumnCount(r) || 2;
+
+export function useTableInteractions({
+  block,
+  noteId,
+  blockIndex,
+  onUpdateTableRows,
+  onRowsAdded,
+}) {
   const defaultRows = useMemo(
     () => [
       ["", ""],
@@ -28,6 +36,8 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
   dataRef.current = { rows, colCount, alignments, noteId, blockIndex };
   const updateRef = useRef(onUpdateTableRows);
   updateRef.current = onUpdateTableRows;
+  const rowsAddedRef = useRef(onRowsAdded);
+  rowsAddedRef.current = onRowsAdded;
 
   /* ── Context menu ─────────────────────────────────────── */
   const [contextMenu, setContextMenu] = useState(null);
@@ -54,7 +64,6 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
     const { noteId: n, blockIndex: b } = dataRef.current;
     updateRef.current(n, b, fn);
   }, []);
-  const widthOf = (r) => tableColumnCount(r) || 2;
 
   const insertRow = useCallback(
     (index, position) => {
@@ -130,164 +139,93 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
     [reshape],
   );
 
-  /* ── Drag-to-create ───────────────────────────────────── */
-  const createRef = useRef({
-    active: false,
-    type: null,
-    startY: 0,
-    startX: 0,
-    count: 0,
-    moved: false,
-  });
-  const [previewCount, setPreviewCount] = useState({ rows: 0, cols: 0 });
+  /* ── Add bars: a click adds one, a drag outward several ── */
+  // At the far edge, one commit each, so one undo. A new row hands its index
+  // to `onRowsAdded` (the caret goes there).
+  const addRows = useCallback(
+    (count) => {
+      rowsAddedRef.current?.(dataRef.current.rows.length);
+      reshape((r) => ({
+        rows: [...r, ...Array.from({ length: count }, () => new Array(widthOf(r)).fill(""))],
+      }));
+    },
+    [reshape],
+  );
+  // Column cc + 1 for every row: a short row is padded up to the new column
+  // so the cell lands where the user asked, not in a gap it did not reach.
+  const addColumns = useCallback(
+    (count) =>
+      reshape((r, a) => {
+        const cc = widthOf(r);
+        let rows = r;
+        for (let j = 0; j < count; j++) rows = withColumnInserted(rows, cc + j);
+        return { rows, alignments: [...a, ...new Array(count).fill("left")] };
+      }),
+    [reshape],
+  );
+
+  // One row per 36 px down (at most 20), one column per 120 px right (at
+  // most 10), counted on a badge as the pointer goes and added on release.
+  const createRef = useRef({ count: 0, moved: false, handled: false });
+  const [previewRows, setPreviewRows] = useState(0);
   const [createBadge, setCreateBadge] = useState(null);
 
-  const handleBottomZoneClick = useCallback(() => {
-    // If drag already handled this interaction, skip
-    if (createRef.current.handled) {
-      createRef.current.handled = false;
-      return;
-    }
-    reshape((curRows) => ({ rows: [...curRows, new Array(widthOf(curRows)).fill("")] }));
-    const newIdx = dataRef.current.rows.length;
-    setTimeout(() => {
-      cellRefs.current?.[`${newIdx}-0`]?.focus();
-    }, 50);
-  }, [cellRefs, reshape]);
-
-  const handleBottomZonePointerDown = useCallback(
-    (e) => {
+  const startCreateDrag = useCallback(
+    (axis, e) => {
       const c = createRef.current;
-      c.type = "rows";
-      c.startY = e.clientY;
-      c.startX = e.clientX;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const [step, max] = axis === "rows" ? [36, 20] : [120, 10];
       c.count = 0;
-      c.active = true;
       c.moved = false;
       c.handled = false;
 
-      const ROW_HEIGHT = 36;
-      const MAX_ROWS = 20;
-
       const handleMove = (me) => {
-        const dist = me.clientY - c.startY;
-        const totalMove = Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
-        if (totalMove > 4) c.moved = true;
-        const count = Math.min(MAX_ROWS, Math.max(0, Math.floor(dist / ROW_HEIGHT)));
-        c.count = count;
-        setPreviewCount((p) => ({ ...p, rows: count }));
-        if (count > 0) {
-          setCreateBadge({ x: me.clientX + 12, y: me.clientY - 16, count });
-        } else {
-          setCreateBadge(null);
-        }
+        const dist = axis === "rows" ? me.clientY - startY : me.clientX - startX;
+        if (Math.abs(me.clientX - startX) + Math.abs(me.clientY - startY) > 4) c.moved = true;
+        c.count = Math.min(max, Math.max(0, Math.floor(dist / step)));
+        if (axis === "rows") setPreviewRows(c.count);
+        setCreateBadge(
+          c.count > 0 ? { x: me.clientX + 12, y: me.clientY - 16, count: c.count } : null,
+        );
       };
-
       const handleUp = () => {
-        c.active = false;
         window.removeEventListener("pointermove", handleMove);
         window.removeEventListener("pointerup", handleUp);
         setCreateBadge(null);
-
+        setPreviewRows(0);
+        // A plain click is the bar's onClick.
         if (c.moved && c.count > 0) {
-          // Drag → add N rows
           c.handled = true;
-          const newIdx = dataRef.current.rows.length;
-          reshape((curRows) => {
-            const newRows = [...curRows];
-            for (let i = 0; i < c.count; i++) newRows.push(new Array(widthOf(curRows)).fill(""));
-            return { rows: newRows };
-          });
-          setTimeout(() => {
-            cellRefs.current?.[`${newIdx}-0`]?.focus();
-          }, 50);
+          if (axis === "rows") addRows(c.count);
+          else addColumns(c.count);
         }
-        // Simple click is handled by onClick
-
-        setPreviewCount((p) => ({ ...p, rows: 0 }));
       };
-
       c.moveHandler = handleMove;
       c.upHandler = handleUp;
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleUp);
     },
-    [cellRefs, reshape],
+    [addRows, addColumns],
   );
-
-  const handleRightZoneClick = useCallback(() => {
-    if (createRef.current.handled) {
-      createRef.current.handled = false;
-      return;
-    }
-    // Column cc + 1 for every row: a short row is padded up to the new column
-    // so the cell lands where the user asked, not in a gap it did not reach.
-    reshape((curRows, a) => {
-      const cc = widthOf(curRows);
-      return {
-        rows: withColumnInserted(curRows, cc),
-        alignments: [...a, "left"],
-      };
-    });
-  }, [reshape]);
-
-  const handleRightZonePointerDown = useCallback((e) => {
-    const c = createRef.current;
-    c.type = "cols";
-    c.startX = e.clientX;
-    c.startY = e.clientY;
-    c.count = 0;
-    c.active = true;
-    c.moved = false;
-    c.handled = false;
-
-    const COL_WIDTH = 120;
-    const MAX_COLS = 10;
-
-    const handleMove = (me) => {
-      const dist = me.clientX - c.startX;
-      const totalMove = Math.abs(me.clientX - c.startX) + Math.abs(me.clientY - c.startY);
-      if (totalMove > 4) c.moved = true;
-      const count = Math.min(MAX_COLS, Math.max(0, Math.floor(dist / COL_WIDTH)));
-      c.count = count;
-      setPreviewCount((p) => ({ ...p, cols: count }));
-      if (count > 0) {
-        setCreateBadge({ x: me.clientX + 12, y: me.clientY - 16, count });
-      } else {
-        setCreateBadge(null);
-      }
-    };
-
-    const handleUp = () => {
-      c.active = false;
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-      setCreateBadge(null);
-
-      if (c.moved && c.count > 0) {
-        // Drag → add N columns
-        c.handled = true;
-        reshape((curRows, a) => {
-          const cc = widthOf(curRows);
-          let newRows = curRows;
-          for (let j = 0; j < c.count; j++) {
-            newRows = withColumnInserted(newRows, cc + j);
-          }
-          const newAligns = [...a];
-          for (let j = 0; j < c.count; j++) newAligns.push("left");
-          return { rows: newRows, alignments: newAligns };
-        });
-      }
-      // Simple click is handled by onClick
-
-      setPreviewCount((p) => ({ ...p, cols: 0 }));
-    };
-
-    c.moveHandler = handleMove;
-    c.upHandler = handleUp;
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
+  // The click that ends a drag has been handled by the drag.
+  const clickAdding = useCallback((add) => {
+    if (createRef.current.handled) createRef.current.handled = false;
+    else add(1);
   }, []);
+  const handleBottomZonePointerDown = useCallback(
+    (e) => startCreateDrag("rows", e),
+    [startCreateDrag],
+  );
+  const handleRightZonePointerDown = useCallback(
+    (e) => startCreateDrag("cols", e),
+    [startCreateDrag],
+  );
+  const handleBottomZoneClick = useCallback(() => clickAdding(addRows), [clickAdding, addRows]);
+  const handleRightZoneClick = useCallback(
+    () => clickAdding(addColumns),
+    [clickAdding, addColumns],
+  );
 
   const cleanupCreate = useCallback(() => {
     const c = createRef.current;
@@ -295,7 +233,6 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
     if (c.upHandler) window.removeEventListener("pointerup", c.upHandler);
     c.moveHandler = null;
     c.upHandler = null;
-    c.active = false;
   }, []);
 
   /* ── Cleanup on unmount ───────────────────────────────── */
@@ -308,8 +245,9 @@ export function useTableInteractions({ block, noteId, blockIndex, onUpdateTableR
     handleBottomZoneClick,
     handleRightZonePointerDown,
     handleRightZoneClick,
-    previewCount,
+    previewRows,
     createBadge,
+    addRows,
 
     insertRow,
     deleteRowAt,

@@ -5,6 +5,7 @@ import {
   unresolvedWikilinkMessage,
   wikilinkStatus,
 } from "../utils/wikilinkTarget";
+import { editBlocks } from "../utils/editBlocks";
 
 /**
  * Wikilink wiring for the editor:
@@ -96,15 +97,11 @@ export function useWikilinkHandlers({
         const newText = oldText.slice(0, match.index) + `[[${title}]]`;
         // Update state for persistence.
         syncGeneration.current++;
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const b = [...n.content.blocks];
-          b[blockIndex] = { ...b[blockIndex], text: newText };
-          n.content = { ...n.content, blocks: b };
-          next[noteId] = n;
-          return next;
-        });
+        commitNoteData(
+          editBlocks(noteId, (b) => {
+            b[blockIndex] = { ...b[blockIndex], text: newText };
+          }),
+        );
         // The commit renders the editor at once, the bump has the block repaint
         // itself from the keystroke ref, and the queued focus puts the caret
         // after the link through placeCaret, which anchors it *outside* the link

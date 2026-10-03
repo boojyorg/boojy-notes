@@ -61,6 +61,7 @@ import { bareFenceLang, bareTableColumns, isBareDivider } from "../../utils/bloc
 import { reorderFloor } from "../../utils/blockOrder";
 import { measureBlockPlaces, settleBlocks } from "../../utils/blockSettle";
 import { stepIndex } from "../../utils/menuKeys";
+import { editBlocks } from "../../utils/editBlocks";
 
 /**
  * Blocks a Backspace at their start turns into a plain paragraph before it
@@ -268,15 +269,11 @@ export function useKeyboardHandlers({
         // ignores the root's final <br> and the trailing newline is stripped).
         if (text === "") {
           el.innerHTML = "<br>";
-          commitNoteData((prev) => {
-            const next = { ...prev };
-            const n = { ...next[noteId] };
-            const blks = [...n.content.blocks];
-            blks[blockIndex] = { ...blks[blockIndex], type: "p", text: "" };
-            n.content = { ...n.content, blocks: blks };
-            next[noteId] = n;
-            return next;
-          });
+          commitNoteData(
+            editBlocks(noteId, (blks) => {
+              blks[blockIndex] = { ...blks[blockIndex], type: "p", text: "" };
+            }),
+          );
           focusBlockId.current = blocks[blockIndex].id;
           focusCursorPos.current = 0;
           return;
@@ -295,17 +292,13 @@ export function useKeyboardHandlers({
           return;
         }
         el.innerHTML = "<br>";
-        commitNoteData((prev) => {
-          const next = { ...prev };
-          const n = { ...next[noteId] };
-          const blks = [...n.content.blocks];
-          const updated = { ...blks[blockIndex], type: "p", text: "" };
-          delete updated.checked;
-          blks[blockIndex] = updated;
-          n.content = { ...n.content, blocks: blks };
-          next[noteId] = n;
-          return next;
-        });
+        commitNoteData(
+          editBlocks(noteId, (blks) => {
+            const updated = { ...blks[blockIndex], type: "p", text: "" };
+            delete updated.checked;
+            blks[blockIndex] = updated;
+          }),
+        );
         focusBlockId.current = blocks[blockIndex].id;
         focusCursorPos.current = 0;
         return;
@@ -353,17 +346,13 @@ export function useKeyboardHandlers({
         const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
         if (range?.collapsed && caretOffsetAt(el, range.startContainer, range.startOffset) === 0) {
           e.preventDefault();
-          commitNoteData((prev) => {
-            const next = { ...prev };
-            const n = { ...next[noteId] };
-            const blks = [...n.content.blocks];
-            // Only the id and the text survive: a heading's source spacing, a
-            // list's marker and number, a task's tick all belonged to the kind.
-            blks[blockIndex] = { id: block.id, type: "p", text };
-            n.content = { ...n.content, blocks: blks };
-            next[noteId] = n;
-            return next;
-          });
+          commitNoteData(
+            editBlocks(noteId, (blks) => {
+              // Only the id and the text survive: a heading's source spacing, a
+              // list's marker and number, a task's tick all belonged to the kind.
+              blks[blockIndex] = { id: block.id, type: "p", text };
+            }),
+          );
           focusBlockId.current = block.id;
           focusCursorPos.current = 0;
           return;
