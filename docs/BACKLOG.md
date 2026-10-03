@@ -405,6 +405,9 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 
 ### Technical debt
 
+- **The audit ignores GHSA-ch52-4w7c-c8xp** (`pnpm.auditConfig` in `package.json`): `http-cache-semantics`
+  reaches us only through electron-builder's download of Electron, with no patched version.
+  Drop the entry once electron-builder's `got` chain updates.
 - **`tests/electron/markdown.test.js` is misfiled** — it tests `src/utils/markdown.js`; move it
   beside `tests/utils/markdown.test.js` and drop its round-trip block, which duplicates
   `LOSSLESS_CASES` there (no overlapping test names otherwise).
