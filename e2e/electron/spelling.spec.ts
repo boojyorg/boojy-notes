@@ -147,6 +147,25 @@ test("Add to dictionary teaches the word: its line goes", async () => {
   await expect.poll(offered).toBe(false);
 });
 
+// Off a Mac a language's dictionary can finish loading after the note was
+// checked (a first launch downloads it); the note is checked again then. The
+// word is learned behind the app's back, so only that event can clear it.
+test("a dictionary that becomes ready after the note was checked brings the lines up to date", async () => {
+  // A Mac's checker loads no dictionary, and its word list is the system's,
+  // where a word added and removed at once can outlive the test.
+  test.skip(isMac, "a Mac's checker never loads a dictionary");
+  expect(await underlined(h.page)).toContain(MADE_UP);
+  await h.app.evaluate(({ session }, w) => {
+    session.defaultSession.addWordToSpellCheckerDictionary(w);
+  }, MADE_UP);
+  await h.page.waitForTimeout(400);
+  expect(await underlined(h.page)).toContain(MADE_UP);
+  await h.app.evaluate(({ session }) => {
+    session.defaultSession.emit("spellcheck-dictionary-initialized", "en-US");
+  });
+  await expect.poll(() => underlined(h.page)).not.toContain(MADE_UP);
+});
+
 test("the toast's Undo takes the word back out", async () => {
   await addMadeUp();
   await h.page.getByRole("button", { name: "Undo" }).click();

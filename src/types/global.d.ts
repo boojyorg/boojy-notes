@@ -94,6 +94,8 @@ declare global {
       getSpelling: () => Promise<SpellingState>;
       setSpelling: (change: { enabled?: boolean; languages?: string[] }) => Promise<SpellingState>;
       addDictionaryWord: (word: string) => Promise<boolean>;
+      /** A spelling dictionary finished loading (off a Mac): what was checked before is stale. */
+      onSpellingReady: (callback: () => void) => Unsubscribe;
       removeDictionaryWord: (word: string) => Promise<boolean>;
       openKeyboardSettings: () => Promise<void>;
       onMenuCommand: (callback: (id: string) => void) => () => void;
