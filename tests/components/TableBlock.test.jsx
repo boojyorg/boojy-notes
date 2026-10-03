@@ -28,6 +28,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 
 // ── Mock useTableInteractions ───────────────────────────────────────────────
 const mockInsertRow = vi.fn();
+const mockAddRows = vi.fn();
 const mockDeleteRowAt = vi.fn();
 const mockInsertColumn = vi.fn();
 const mockDeleteColumnAt = vi.fn();
@@ -39,8 +40,9 @@ vi.mock("../../src/hooks/useTableInteractions", () => ({
     handleBottomZoneClick: vi.fn(),
     handleRightZonePointerDown: vi.fn(),
     handleRightZoneClick: vi.fn(),
-    previewCount: { rows: 0, cols: 0 },
+    previewRows: 0,
     createBadge: null,
+    addRows: mockAddRows,
     insertRow: mockInsertRow,
     deleteRowAt: mockDeleteRowAt,
     insertColumn: mockInsertColumn,
@@ -145,25 +147,14 @@ describe("TableBlock", () => {
       expect(props.onUpdateTableRows).not.toHaveBeenCalled();
     });
 
-    it("adds a row as a function of the rows as they are, a pending cell edit included", () => {
+    it("Enter in the last row adds one row (useTableInteractions builds it from the ref's rows)", () => {
+      mockAddRows.mockClear();
       const props = baseProps();
       const { container } = render(<TableBlock {...props} />);
       const cell = container.querySelector("tbody td");
       cell.focus();
-      fireEvent.keyDown(cell, { key: "Enter" }); // last row: Enter adds one
-      expect(props.onUpdateTableRows).toHaveBeenCalledTimes(1);
-      const reshape = props.onUpdateTableRows.mock.calls[0][2];
-      const pending = [
-        ["Header A", "Header B"],
-        ["typed", "Cell 2"],
-      ];
-      expect(reshape(pending, [])).toEqual({
-        rows: [
-          ["Header A", "Header B"],
-          ["typed", "Cell 2"],
-          ["", ""],
-        ],
-      });
+      fireEvent.keyDown(cell, { key: "Enter" });
+      expect(mockAddRows).toHaveBeenCalledExactlyOnceWith(1);
     });
 
     it("Enter moves down a row and never breaks the cell into two lines", () => {

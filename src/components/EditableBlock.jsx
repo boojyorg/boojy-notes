@@ -208,130 +208,107 @@ const EditableBlock = memo(
       );
     }
 
+    // The root of a block that is not text: the browser never edits it, and
+    // `wholeRef` registers it for the grip and the selection band.
+    const wholeRoot = (children, style, ref) => (
+      <div
+        ref={ref}
+        data-block-id={block.id}
+        data-block-type={block.type}
+        contentEditable="false"
+        suppressContentEditableWarning
+        style={{ ...style, userSelect: "none" }}
+      >
+        {children}
+      </div>
+    );
+
     if (block.type === "image") {
-      return (
-        <div
-          ref={wholeRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ padding: "8px 0", userSelect: "none" }}
-        >
-          <ImageBlock
-            src={block.src}
-            alt={block.alt}
-            displayWidth={imageDisplayWidth(block)}
-            isSelected={isBlockSelected}
-            selectedAlone={isOnlyBlockSelected}
-            accentColor={accentColor}
-            onSelect={() => onBlockSelect(block.id)}
-            onLightbox={() => onImageLightbox(block.src, block.alt)}
-            onDelete={() => onDeleteBlock(noteId, blockIndex)}
-            onCopyImage={() => onImageCopyImage(block.src)}
-            onShowInFolder={
-              isElectron && !/^(https?:|data:)/i.test(block.src || "")
-                ? () => onFileShowInFolder(block.src)
-                : undefined
-            }
-            onUpdateWidth={(px) =>
-              onUpdateBlockProperty(
-                noteId,
-                blockIndex,
-                px == null ? imageNoWidthFields() : imageWidthFields(px),
-              )
-            }
-          />
-        </div>
+      return wholeRoot(
+        <ImageBlock
+          src={block.src}
+          alt={block.alt}
+          displayWidth={imageDisplayWidth(block)}
+          isSelected={isBlockSelected}
+          selectedAlone={isOnlyBlockSelected}
+          accentColor={accentColor}
+          onSelect={() => onBlockSelect(block.id)}
+          onLightbox={() => onImageLightbox(block.src, block.alt)}
+          onDelete={() => onDeleteBlock(noteId, blockIndex)}
+          onCopyImage={() => onImageCopyImage(block.src)}
+          onShowInFolder={
+            isElectron && !/^(https?:|data:)/i.test(block.src || "")
+              ? () => onFileShowInFolder(block.src)
+              : undefined
+          }
+          onUpdateWidth={(px) =>
+            onUpdateBlockProperty(
+              noteId,
+              blockIndex,
+              px == null ? imageNoWidthFields() : imageWidthFields(px),
+            )
+          }
+        />,
+        { padding: "8px 0" },
+        wholeRef,
       );
     }
 
     if (block.type === "file") {
-      return (
-        <div
-          ref={wholeRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ padding: "8px 0", userSelect: "none" }}
-        >
-          <FileBlock
-            src={block.src}
-            filename={block.filename || block.src}
-            size={block.size}
-            accentColor={accentColor}
-            onDelete={() => onDeleteBlock(noteId, blockIndex)}
-            onOpen={() => onFileOpen(block.src)}
-            onShowInFolder={() => onFileShowInFolder(block.src)}
-          />
-        </div>
+      return wholeRoot(
+        <FileBlock
+          src={block.src}
+          filename={block.filename || block.src}
+          size={block.size}
+          accentColor={accentColor}
+          onDelete={() => onDeleteBlock(noteId, blockIndex)}
+          onOpen={() => onFileOpen(block.src)}
+          onShowInFolder={() => onFileShowInFolder(block.src)}
+        />,
+        { padding: "8px 0" },
+        wholeRef,
       );
     }
 
     if (block.type === "code") {
-      return (
-        <div
-          ref={wholeRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ userSelect: "none" }}
-        >
-          <CodeBlock
-            block={block}
-            noteId={noteId}
-            blockIndex={blockIndex}
-            syncGen={syncGen}
-            noteDataRef={noteDataRef}
-            onUpdateCode={onUpdateText}
-            onUpdateLang={onUpdateLang}
-            onBlockNav={onBlockNav}
-            onDelete={(idx) => onDeleteBlock(noteId, idx)}
-          />
-        </div>
+      return wholeRoot(
+        <CodeBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          syncGen={syncGen}
+          noteDataRef={noteDataRef}
+          onUpdateCode={onUpdateText}
+          onUpdateLang={onUpdateLang}
+          onBlockNav={onBlockNav}
+          onDelete={(idx) => onDeleteBlock(noteId, idx)}
+        />,
+        null,
+        wholeRef,
       );
     }
 
     if (block.type === "frontmatter") {
-      return (
-        <div
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ userSelect: "none" }}
-        >
-          <FrontmatterBlock block={block} />
-        </div>
-      );
+      return wholeRoot(<FrontmatterBlock block={block} />, null, null);
     }
 
     if (block.type === "callout") {
-      return (
-        <div
-          ref={wholeRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ userSelect: "none" }}
-        >
-          <CalloutBlock
-            block={block}
-            noteId={noteId}
-            blockIndex={blockIndex}
-            syncGen={syncGen}
-            noteDataRef={noteDataRef}
-            noteTitleSet={noteTitleSet}
-            onUpdateCallout={onUpdateCallout}
-            onUpdateText={onUpdateText}
-            onUpdateTitle={onUpdateCalloutTitle}
-            onBlockNav={onBlockNav}
-            onDelete={(idx) => onDeleteBlock(noteId, idx)}
-          />
-        </div>
+      return wholeRoot(
+        <CalloutBlock
+          block={block}
+          noteId={noteId}
+          blockIndex={blockIndex}
+          syncGen={syncGen}
+          noteDataRef={noteDataRef}
+          noteTitleSet={noteTitleSet}
+          onUpdateCallout={onUpdateCallout}
+          onUpdateText={onUpdateText}
+          onUpdateTitle={onUpdateCalloutTitle}
+          onBlockNav={onBlockNav}
+          onDelete={(idx) => onDeleteBlock(noteId, idx)}
+        />,
+        null,
+        wholeRef,
       );
     }
 
@@ -352,36 +329,21 @@ const EditableBlock = memo(
           isSelected={isBlockSelected}
           onSelect={() => onBlockSelect(block.id)}
           onBlockNav={onBlockNav}
-          onDelete={() => onDeleteBlock(noteId, blockIndex)}
           registerRef={registerRef}
         />
       );
     }
 
     if (block.type === "embed") {
-      return (
-        <div
-          ref={wholeRef}
-          data-block-id={block.id}
-          data-block-type={block.type}
-          contentEditable="false"
-          suppressContentEditableWarning
-          style={{ padding: "4px 0", userSelect: "none" }}
-        >
-          <EmbedBlock
-            block={block}
-            noteData={noteDataRef?.current}
-            accentColor={accentColor}
-            onNavigate={(target, create) => {
-              if (create && onNavigateToNote) {
-                // create=true means we should create the note
-                onNavigateToNote(target, true);
-              } else if (onNavigateToNote) {
-                onNavigateToNote(target);
-              }
-            }}
-          />
-        </div>
+      return wholeRoot(
+        <EmbedBlock
+          block={block}
+          noteData={noteDataRef?.current}
+          accentColor={accentColor}
+          onNavigate={onNavigateToNote}
+        />,
+        { padding: "4px 0" },
+        wholeRef,
       );
     }
 
@@ -469,27 +431,37 @@ const EditableBlock = memo(
       );
     }
 
+    // A list item's row: its marker, then its text, both on the first line
+    // (top-aligned, so a wrapped item's marker stays by its first line),
+    // indented by depth. The task's box and line differ from the bullet's.
+    const listRow = (children, style) => (
+      <div
+        data-block-id={block.id}
+        data-block-type={block.type}
+        suppressContentEditableWarning
+        style={{
+          contain: "content",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 9,
+          padding: "2px 0",
+          fontSize: rhythm.bodySize,
+          lineHeight: rhythm.lineHeight,
+          paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
+          // Reaches up to the note's first baseline when it opens the note.
+          ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
+          ...style,
+        }}
+      >
+        {children}
+      </div>
+    );
+
     if (block.type === "bullet") {
       const depth = block.indent || 0;
       const hollow = depth % 2 === 1;
-      return (
-        <div
-          data-block-id={block.id}
-          data-block-type={block.type}
-          suppressContentEditableWarning
-          style={{
-            contain: "content",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 9,
-            padding: "2px 0",
-            fontSize: rhythm.bodySize,
-            lineHeight: rhythm.lineHeight,
-            paddingLeft: depth * INDENT_PX || undefined,
-            // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
-          }}
-        >
+      return listRow(
+        <>
           <span
             contentEditable="false"
             suppressContentEditableWarning
@@ -503,29 +475,13 @@ const EditableBlock = memo(
             aria-label="Bullet item"
             style={{ color: TEXT.primary, outline: "none", flex: 1 }}
           />
-        </div>
+        </>,
       );
     }
 
     if (block.type === "numbered") {
-      return (
-        <div
-          data-block-id={block.id}
-          data-block-type={block.type}
-          suppressContentEditableWarning
-          style={{
-            contain: "content",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 9,
-            padding: "2px 0",
-            fontSize: rhythm.bodySize,
-            lineHeight: rhythm.lineHeight,
-            paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
-            // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
-          }}
-        >
+      return listRow(
+        <>
           <span
             contentEditable="false"
             suppressContentEditableWarning
@@ -546,31 +502,13 @@ const EditableBlock = memo(
             aria-label="Numbered item"
             style={{ color: TEXT.primary, outline: "none", flex: 1 }}
           />
-        </div>
+        </>,
       );
     }
 
     if (block.type === "checkbox") {
-      return (
-        <div
-          data-block-id={block.id}
-          data-block-type={block.type}
-          suppressContentEditableWarning
-          style={{
-            contain: "content",
-            display: "flex",
-            // Top-aligned, like the bullet and number markers: the box sits on
-            // the first line of a wrapped task, not the middle of the block.
-            alignItems: "flex-start",
-            gap: CHECKBOX_TEXT_GAP,
-            padding: "2.5px 0",
-            fontSize: rhythm.bodySize,
-            lineHeight: CHECKBOX_LINE_HEIGHT,
-            // Reaches up to the note's first baseline when it opens the note.
-            ...(blockIndex === 0 ? { marginTop: firstBlockLift(block.type, rhythm) } : null),
-            paddingLeft: (block.indent || 0) * INDENT_PX || undefined,
-          }}
-        >
+      return listRow(
+        <>
           {/* The hit area, not the drawn box: the same footprint as the square,
               but it never transforms, so the press animation cannot move the
               target out from under the pointer. */}
@@ -638,7 +576,8 @@ const EditableBlock = memo(
               transition: "color var(--motion-fast)",
             }}
           />
-        </div>
+        </>,
+        { gap: CHECKBOX_TEXT_GAP, padding: "2.5px 0", lineHeight: CHECKBOX_LINE_HEIGHT },
       );
     }
 
