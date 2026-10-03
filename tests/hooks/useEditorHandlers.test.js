@@ -96,10 +96,6 @@ function setup(blocks, noteId = "note-1") {
     noteData = updater(noteData);
     noteDataRef.current = noteData;
   });
-  const commitTextChange = vi.fn((updater) => {
-    noteData = updater(noteData);
-    noteDataRef.current = noteData;
-  });
   const updateBlockText = vi.fn((nId, idx, text) => {
     noteData = { ...noteData };
     const n = { ...noteData[nId] };
@@ -135,8 +131,6 @@ function setup(blocks, noteId = "note-1") {
       tagMenuRef.current = v;
     }
   });
-  const setToolbarState = vi.fn();
-  const onOpenLinkEditor = vi.fn();
   const updateBlockIndent = vi.fn();
 
   const deps = {
@@ -144,7 +138,6 @@ function setup(blocks, noteId = "note-1") {
     noteTitleSetRef,
     activeNote: noteId,
     commitNoteData,
-    commitTextChange,
     blockRefs,
     editorRef,
     focusBlockId,
@@ -163,8 +156,6 @@ function setup(blocks, noteId = "note-1") {
     reReadBlockFromDom,
     applyFormat,
     mouseIsDown,
-    setToolbarState,
-    onOpenLinkEditor,
     updateBlockIndent,
   };
 
@@ -182,14 +173,6 @@ function setup(blocks, noteId = "note-1") {
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(range);
-  }
-
-  /** Update the DOM text of a block element (simulating user typing) */
-  function setBlockDomText(blockIndex, text) {
-    const b = noteDataRef.current[noteId].content.blocks[blockIndex];
-    const el = blockRefs.current[b.id];
-    el.textContent = text;
-    el.innerHTML = text || "<br>";
   }
 
   return {
@@ -212,181 +195,16 @@ function setup(blocks, noteId = "note-1") {
     updateBlockIndent,
     reReadBlockFromDom,
     applyFormat,
-    onOpenLinkEditor,
     saveAndInsertFiles,
     placeCursorInBlock,
-    setBlockDomText,
   };
 }
 
 // ---- Tests ----
 
+// The paste and copy handlers, through the hook that wires them. The keys and
+// typed input are tested on their own hooks (tests/hooks/editor/).
 describe("useEditorHandlers", () => {
-  describe("handleEditorKeyDown — Enter key", () => {
-    it("splits block at cursor position (calls insertBlockAfter)", () => {
-      const blocks = [paragraph("hello world")];
-      const s = setup(blocks);
-
-      s.placeCursorInBlock(0, 5);
-
-      act(() => {
-        s.result.current.handleEditorKeyDown(
-          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-        );
-      });
-
-      expect(s.updateBlockText).toHaveBeenCalled();
-      expect(s.insertBlockAfter).toHaveBeenCalled();
-    });
-
-    it("converts empty list block to paragraph on Enter", () => {
-      const blocks = [bullet("")];
-      const s = setup(blocks);
-
-      s.placeCursorInBlock(0, 0);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("p");
-    });
-  });
-
-  describe("handleEditorKeyDown — Backspace", () => {
-    it("deletes empty block and focuses previous block", () => {
-      const blocks = [paragraph("first"), paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(1, "");
-      s.placeCursorInBlock(1, 0);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Backspace", bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.deleteBlock).toHaveBeenCalledWith(s.noteId, 1);
-      expect(s.focusBlockId.current).toBe(blocks[0].id);
-    });
-
-    it("merges with previous block when cursor is at start", () => {
-      const blocks = [paragraph("hello"), paragraph("world")];
-      const s = setup(blocks);
-
-      s.placeCursorInBlock(1, 0);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Backspace", bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.updateBlockText).toHaveBeenCalledWith(s.noteId, 0, "helloworld");
-      expect(s.deleteBlock).toHaveBeenCalledWith(s.noteId, 1);
-      expect(s.focusCursorPos.current).toBe(5);
-    });
-  });
-
-  describe("handleEditorKeyDown — Tab indent/dedent", () => {
-    it("indents block on Tab", () => {
-      const blocks = [bullet("item")];
-      const s = setup(blocks);
-
-      s.placeCursorInBlock(0, 0);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Tab", bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, 1, true);
-    });
-
-    it("dedents block on Shift+Tab", () => {
-      const blocks = [bullet("item")];
-      const s = setup(blocks);
-
-      s.placeCursorInBlock(0, 0);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.updateBlockIndent).toHaveBeenCalledWith(s.noteId, 0, -1, true);
-    });
-  });
-
-  describe("handleEditorKeyDown — Escape closes slash menu", () => {
-    it("closes slash menu on Escape", () => {
-      const blocks = [paragraph("/")];
-      const s = setup(blocks);
-
-      // Simulate slash menu being open
-      s.slashMenuRef.current = { noteId: s.noteId, blockIndex: 0, filter: "", selectedIndex: 0 };
-
-      s.placeCursorInBlock(0, 1);
-
-      act(() => {
-        const e = new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
-        s.result.current.handleEditorKeyDown(e);
-      });
-
-      expect(s.setSlashMenu).toHaveBeenCalledWith(null);
-    });
-  });
-
-  describe("handleEditorInput — text updates and menu triggers", () => {
-    it("updates block text via handleBlockInput", () => {
-      const blocks = [paragraph("hello")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "hello!");
-      s.placeCursorInBlock(0, 6);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.updateBlockText).toHaveBeenCalledWith(s.noteId, 0, "hello!");
-    });
-
-    it("detects slash command trigger (/)", () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "/");
-      s.placeCursorInBlock(0, 1);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.setSlashMenu).toHaveBeenCalled();
-      const call = s.setSlashMenu.mock.calls[0][0];
-      expect(call).toMatchObject({ noteId: s.noteId, blockIndex: 0, filter: "" });
-    });
-
-    it("detects wikilink trigger ([[)", () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "see [[");
-      s.placeCursorInBlock(0, 6);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.setWikilinkMenu).toHaveBeenCalled();
-      const call = s.setWikilinkMenu.mock.calls[0][0];
-      expect(call).toMatchObject({ noteId: s.noteId, blockIndex: 0, filter: "" });
-    });
-  });
-
   describe("handleEditorPaste", () => {
     function makePasteEvent(text, html) {
       const e = new Event("paste", { bubbles: true, cancelable: true });
@@ -835,110 +653,6 @@ describe("useEditorHandlers", () => {
         ["h1", "Title"],
         ["bullet", "item"],
       ]);
-    });
-  });
-
-  describe("Markdown shortcuts (via handleEditorInput)", () => {
-    it('"# " converts block to h1', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "# ");
-      s.placeCursorInBlock(0, 2);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("h1");
-      expect(blks[0].text).toBe("");
-    });
-
-    it('"## " converts block to h2', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "## ");
-      s.placeCursorInBlock(0, 3);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("h2");
-      expect(blks[0].text).toBe("");
-    });
-
-    it('"- " converts block to bullet', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "- ");
-      s.placeCursorInBlock(0, 2);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("bullet");
-      expect(blks[0].text).toBe("");
-    });
-
-    it('"1. " converts block to numbered', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "1. ");
-      s.placeCursorInBlock(0, 3);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("numbered");
-      expect(blks[0].text).toBe("");
-    });
-
-    it('"[] " converts block to checkbox', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "[] ");
-      s.placeCursorInBlock(0, 3);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("checkbox");
-      expect(blks[0].checked).toBe(false);
-    });
-
-    it('"[ ] " converts block to checkbox', () => {
-      const blocks = [paragraph("")];
-      const s = setup(blocks);
-
-      s.setBlockDomText(0, "[ ] ");
-      s.placeCursorInBlock(0, 4);
-
-      act(() => {
-        s.result.current.handleEditorInput();
-      });
-
-      expect(s.commitNoteData).toHaveBeenCalled();
-      const blks = s.getNoteData()[s.noteId].content.blocks;
-      expect(blks[0].type).toBe("checkbox");
-      expect(blks[0].checked).toBe(false);
     });
   });
 });

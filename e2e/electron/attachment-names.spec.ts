@@ -11,7 +11,7 @@
  * protocol, which no other layer has.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { launchApp, waitForFile } from "./harness";
 
 // A 1x1 PNG, so a block that loads has a real picture.
@@ -21,8 +21,6 @@ const PNG = Buffer.from(PNG_B64, "base64");
 
 const SCREENSHOT = "Screenshot 2026-09-23 at 10.12.33.png";
 const NAMES = [SCREENSHOT, "100% done.png", "Café menu.png", "plain.png"];
-
-type Page = import("@playwright/test").Page;
 
 /** Each image block's picture: whether it loaded, by the name it asked for. */
 const imageStates = (page: Page) =>

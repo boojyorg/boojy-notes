@@ -15,17 +15,17 @@ import {
   menuClick,
   menuEnabled,
   waitForFile,
+  type AppHandle,
 } from "./harness";
 
 const click = menuClick;
 const enabled = menuEnabled;
-const item = (h: Awaited<ReturnType<typeof launchApp>>, id: string) =>
+const item = (h: AppHandle, id: string) =>
   h.app.evaluate(({ Menu }, id) => {
     const it = Menu.getApplicationMenu()?.getMenuItemById(id);
     return it ? { checked: it.checked, label: it.label, sublabel: it.sublabel } : null;
   }, id);
-const checked = async (h: Awaited<ReturnType<typeof launchApp>>, id: string) =>
-  (await item(h, id))?.checked ?? null;
+const checked = async (h: AppHandle, id: string) => (await item(h, id))?.checked ?? null;
 
 test("Format turns the line into a heading, Edit → Undo takes it back, and Undo greys when there is nothing to undo", async () => {
   const h = await launchApp({ "Alpha.md": "First line.\n\nSecond line.\n" });

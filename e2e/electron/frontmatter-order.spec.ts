@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { launchApp, MOD, menuEnabled, SETTLE_MS, sleep, waitForFile } from "./harness";
+import {
+  launchApp,
+  MOD,
+  menuEnabled,
+  SETTLE_MS,
+  sleep,
+  waitForFile,
+  type AppHandle,
+} from "./harness";
 
 /**
  * Frontmatter is the head of the file, not a block in the body. Nothing can
@@ -21,14 +29,14 @@ const TIGHT = `${FRONTMATTER}\nFirst paragraph.\n\nSecond paragraph.\n\nThird pa
 /** A blank line after the closer: the first block under the frontmatter is an empty row. */
 const SPACED = `${FRONTMATTER}\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n`;
 
-const frontmatterFirst = async (h: Awaited<ReturnType<typeof launchApp>>) =>
+const frontmatterFirst = async (h: AppHandle) =>
   expect(h.page.locator("[data-block-id]").first()).toHaveAttribute(
     "data-block-type",
     "frontmatter",
   );
 
 /** `noteText` for the blocks under the frontmatter, whose own row is a header and a glyph. */
-const bodyText = async (h: Awaited<ReturnType<typeof launchApp>>) =>
+const bodyText = async (h: AppHandle) =>
   (
     await h.page.evaluate(() =>
       Array.from(document.querySelectorAll('[data-block-id]:not([data-block-type="frontmatter"])'))

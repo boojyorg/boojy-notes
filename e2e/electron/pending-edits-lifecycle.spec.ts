@@ -16,13 +16,18 @@
  * story.
  */
 import { expect, test } from "@playwright/test";
-import { expectNoTempFiles, launchApp, sleep, SETTLE_MS, waitForFile } from "./harness";
-
-const mdFiles = (h: Awaited<ReturnType<typeof launchApp>>) =>
-  h.vault.list().filter((f) => f.endsWith(".md"));
+import {
+  expectNoTempFiles,
+  launchApp,
+  sleep,
+  SETTLE_MS,
+  waitForFile,
+  mdFiles,
+  type AppHandle,
+} from "./harness";
 
 /** Click another note's row at once, without the actionability wait a click takes. */
-const switchTo = (h: Awaited<ReturnType<typeof launchApp>>, title: string) =>
+const switchTo = (h: AppHandle, title: string) =>
   h.page.locator('[role="treeitem"]').filter({ hasText: title }).first().dispatchEvent("click");
 
 test("a name typed into the launch draft survives switching to another note at once", async () => {
@@ -40,7 +45,7 @@ test("a name typed into the launch draft survives switching to another note at o
       label: "the draft's file under the name typed",
     });
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Alpha.md", "K.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md", "K.md"]);
     await expect(h.page.locator('[role="treeitem"]').filter({ hasText: "K" })).toHaveCount(1);
     expectNoTempFiles(h.vault);
     expect(h.pageErrors).toEqual([]);
@@ -64,7 +69,7 @@ test("a name typed into the launch draft survives quitting at once", async () =>
       300,
     );
 
-    expect(mdFiles(h)).toEqual(["Alpha.md", "K.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md", "K.md"]);
     expect(h.vault.read("K.md")).toBe("");
     expectNoTempFiles(h.vault);
   } finally {
@@ -84,7 +89,7 @@ test("body text typed into the launch draft survives switching to another note a
       label: "the draft's text under the Untitled fallback",
     });
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Alpha.md", "Untitled.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md", "Untitled.md"]);
     await expect(h.page.locator('[role="treeitem"]').filter({ hasText: "Untitled" })).toHaveCount(
       1,
     );
@@ -102,9 +107,9 @@ test("a draft that never held text is not written by a switch or a quit", async 
     await h.page.locator("[data-block-id]").first().click();
     await h.openNote("Alpha");
     await sleep(SETTLE_MS);
-    expect(mdFiles(h)).toEqual(["Alpha.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md"]);
     await h.quit();
-    expect(mdFiles(h)).toEqual(["Alpha.md"]);
+    expect(mdFiles(h.vault)).toEqual(["Alpha.md"]);
   } finally {
     await h.close();
   }

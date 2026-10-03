@@ -15,7 +15,7 @@
  * nest or move a folder at all.
  */
 import fs from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   END_OF_LINE,
   SETTLE_MS,
@@ -29,19 +29,10 @@ import {
   sidebarNoteTitles,
   sleep,
   waitForFile,
+  nameNewFolder,
 } from "./harness";
 
-const folderRow = (page: import("@playwright/test").Page, path: string) =>
-  page.locator(`[data-folder-path="${path}"]`);
-
-/** Commit the inline rename that a freshly created folder opens with. */
-async function nameNewFolder(page: import("@playwright/test").Page, name: string) {
-  const input = page.locator("input:focus");
-  await input.waitFor();
-  await page.keyboard.press(process.platform === "darwin" ? "Meta+a" : "Control+a");
-  await page.keyboard.type(name);
-  await page.keyboard.press("Enter");
-}
+const folderRow = (page: Page, path: string) => page.locator(`[data-folder-path="${path}"]`);
 
 test("a new folder is a directory at once, can nest, and is still there after a restart", async () => {
   const h = await launchApp({ "Loose.md": "One.\n" });

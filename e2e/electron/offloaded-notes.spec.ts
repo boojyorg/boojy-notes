@@ -8,7 +8,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { SETTLE_MS, launchApp, noteText, sleep, type Vault } from "./harness";
 
 const BODY = "# Plans\n\nThe text that lives in the cloud.\n";
@@ -30,7 +30,7 @@ async function launchOffloaded(files: Record<string, string>, offloaded: string[
   return { h, listed, offload };
 }
 
-const row = (h: { page: import("@playwright/test").Page }, title: string) =>
+const row = (h: { page: Page }, title: string) =>
   h.page.locator("[data-note-id]").filter({ hasText: title });
 
 test("an offloaded note is listed greyed with a cloud mark, and opening it downloads it", async () => {

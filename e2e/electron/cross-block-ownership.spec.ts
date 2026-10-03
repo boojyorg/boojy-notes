@@ -15,9 +15,18 @@
  * Chromium's editing engine and React's reconciliation.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { END_OF_LINE, MOD, SETTLE_MS, editorText, launchApp, sleep, waitForFile } from "./harness";
+import {
+  END_OF_LINE,
+  MOD,
+  SETTLE_MS,
+  editorText,
+  launchApp,
+  sleep,
+  waitForFile,
+  START_OF_LINE,
+  blockTypes,
+} from "./harness";
 
-const START_OF_LINE = process.platform === "darwin" ? "Meta+ArrowLeft" : "Home";
 const NOTE = "Note.md";
 const THREE = "first\n\nsecond\n\nthird\n";
 
@@ -52,13 +61,6 @@ async function selectAcross(
     [from, fromOffset, to, toOffset] as const,
   );
 }
-
-const blockTypes = (page: Page) =>
-  page.evaluate(() =>
-    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
-      b.getAttribute("data-block-type"),
-    ),
-  );
 
 test.describe("edits that reach across block roots are owned by the app", () => {
   test("forward Delete at the end of a block merges the next one in; Enter afterwards splits, no crash", async () => {

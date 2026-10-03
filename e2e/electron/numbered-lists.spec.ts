@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { END_OF_LINE, MOD, launchApp, waitForFile } from "./harness";
 
-const listRows = (page: import("@playwright/test").Page) =>
+const listRows = (page: Page) =>
   page.locator('[data-block-type="numbered"]').evaluateAll((rows) =>
     rows.map((row) => ({
       marker: row.firstElementChild?.textContent,

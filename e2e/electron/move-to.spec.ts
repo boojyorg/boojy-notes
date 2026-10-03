@@ -9,7 +9,15 @@
  * measured there.
  */
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { editorTitle, expandAllFolders, launchApp, MOD, sleep, waitForFile } from "./harness";
+import {
+  editorTitle,
+  expandAllFolders,
+  launchApp,
+  MOD,
+  sleep,
+  waitForFile,
+  pathFolders,
+} from "./harness";
 
 const FILES: Record<string, string> = {
   "University/Archive/Todd's Note.md": "Alpha.\n",
@@ -25,7 +33,6 @@ const picker = (page: Page) => page.getByTestId("move-picker");
 const popup = (page: Page) => page.getByTestId("path-tree");
 const crumb = (page: Page, name: string) =>
   page.getByTestId("note-path-folder").filter({ hasText: name });
-const pathFolders = (page: Page) => page.getByTestId("note-path-folder").allTextContents();
 const noteRow = (page: Page, title: string) =>
   page.locator("[data-note-id]").filter({ hasText: title }).first();
 const folderRow = (page: Page, path: string) =>

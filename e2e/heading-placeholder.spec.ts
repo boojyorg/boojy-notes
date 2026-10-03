@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // The placeholder is a CSS pseudo-element on the heading, read from its
 // data-placeholder attribute, so it is judged through computed style: it is
 // not in the DOM and can never reach the file or the clipboard.
-const placeholderOf = (page: import("@playwright/test").Page, selector: string) =>
+const placeholderOf = (page: Page, selector: string) =>
   page.evaluate((sel) => {
     const el = document.querySelector(sel);
     if (!el) return null;

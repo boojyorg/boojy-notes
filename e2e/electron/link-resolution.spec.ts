@@ -17,9 +17,9 @@
  * says so and the link's bytes stay as written.
  */
 import { expect, test } from "@playwright/test";
-import { SETTLE_MS, editorTitle, launchApp, sleep, waitForFile } from "./harness";
+import { SETTLE_MS, editorTitle, launchApp, sleep, waitForFile, type AppHandle } from "./harness";
 
-const link = (h: Awaited<ReturnType<typeof launchApp>>, text: string) =>
+const link = (h: AppHandle, text: string) =>
   h.page
     .locator("[data-block-id] .wikilink")
     .filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) })

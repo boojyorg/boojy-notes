@@ -405,9 +405,6 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
 
 ### Technical debt
 
-- **`tests/electron/markdown.test.js` is misfiled** — it tests `src/utils/markdown.js`; move it
-  beside `tests/utils/markdown.test.js` and drop its round-trip block, which duplicates
-  `LOSSLESS_CASES` there (no overlapping test names otherwise).
 - **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename), the
   `boojy-att://` traversal guard, and a pending title at quit. No layer covers them today.
 - **Confirmed deletion never runs in CI** — both Trash journeys and the case-only rename skip

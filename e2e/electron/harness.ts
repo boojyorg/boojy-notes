@@ -51,7 +51,7 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
-const isMac = process.platform === "darwin";
+export const isMac = process.platform === "darwin";
 
 /** The platform's primary modifier, for shortcuts the app handles itself. */
 export const MOD = isMac ? "Meta" : "Control";
@@ -331,11 +331,6 @@ export async function waitForFile(
   );
 }
 
-/**
- * The editor's blocks as the user reads them, one line per block. The
- * zero-width space the editor parks the caret on after a link has no glyph
- * and never reaches Markdown, so it is not part of what the user reads.
- */
 /** The app ground's colour (`BG.darkest`): Light `rgb(252, 252, 252)`, Dark `rgb(28, 28, 28)`. */
 export async function appGround(page: Page): Promise<string> {
   return page.evaluate(() => {
@@ -344,6 +339,11 @@ export async function appGround(page: Page): Promise<string> {
   });
 }
 
+/**
+ * The editor's blocks as the user reads them, one line per block. The
+ * zero-width space the editor parks the caret on after a link has no glyph
+ * and never reaches Markdown, so it is not part of what the user reads.
+ */
 export async function editorText(page: Page): Promise<string> {
   return page.evaluate(() =>
     Array.from(document.querySelectorAll("[data-block-id]"))
@@ -382,6 +382,61 @@ export async function expectNoteMatchesDisk(page: Page, vault: Vault, rel: strin
 export function expectNoTempFiles(vault: Vault) {
   const stray = vault.list().filter((f) => /(^|\/)\..*\.tmp$/.test(f));
   expect(stray, "leftover temp files in the vault").toEqual([]);
+}
+
+/** The vault's notes, as vault-relative paths, sorted. */
+export const mdFiles = (vault: Vault) => vault.list().filter((f) => f.endsWith(".md"));
+
+/** Each block's `data-block-type`, top to bottom, nested blocks included. */
+export const blockTypes = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll("[data-block-id]")).map((b) =>
+      b.getAttribute("data-block-type"),
+    ),
+  );
+
+/** Type at the end of the first block, leaving the text pending in the write debounce. */
+export async function typeAtEnd(page: Page, text: string) {
+  await page.locator("[data-block-id]").first().click();
+  await page.keyboard.press(END_OF_LINE);
+  await page.keyboard.type(text);
+}
+
+/** Name the folder whose inline name field has just taken focus. */
+export async function nameNewFolder(page: Page, name: string) {
+  await page.locator("input:focus").waitFor();
+  await page.keyboard.press(`${MOD}+a`);
+  await page.keyboard.type(name);
+  await page.keyboard.press("Enter");
+}
+
+/** The open note's folder crumbs in the chrome row, left to right. */
+export const pathFolders = (page: Page) => page.getByTestId("note-path-folder").allTextContents();
+
+/** Wait until no animation or transition is running. */
+export async function settled(page: Page) {
+  await page.evaluate(async () => {
+    // A transition a resize interrupts rejects its `finished` with AbortError
+    // and a fresh one takes its place, so wait in rounds until none is left.
+    for (let round = 0; round < 10; round++) {
+      const running = document.getAnimations();
+      if (running.length === 0) return;
+      await Promise.allSettled(running.map((a) => a.finished));
+    }
+  });
+}
+
+/** Resize the window's width, then wait for the layout to settle and paint. */
+export async function setWidth(h: AppHandle, width: number) {
+  await h.app.evaluate(({ BrowserWindow }, w) => {
+    BrowserWindow.getAllWindows()[0].setSize(w, 800);
+  }, width);
+  await expect
+    .poll(async () => await h.page.evaluate(() => window.innerWidth), { timeout: 5000 })
+    .toBe(width);
+  await settled(h.page);
+  // Bands that re-measure themselves on the resize; give the frame that paints them.
+  await h.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
 }
 
 /**
