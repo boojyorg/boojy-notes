@@ -1,12 +1,12 @@
 # Changelog
 
-## Unreleased
+## v0.12.0 — 2026-10-03
 
 ### Features
 
 - **Search finds folders** — Type part of a folder's name in Search (⌘P) and the folder shows up as a row, with its folder icon. Press Enter on it and it becomes a grey chip in the search box: everything you type then searches only that folder and the folders inside it, and with nothing typed you see its notes, newest first. Each note's place is shown from inside the folder, so the folder's own name isn't repeated on every row. A folder chip and a tag chip can be on together. Backspace in the empty box turns the chip back into the folder's name. When a note's name matches as well as a folder's does, the note stays first, so Enter still opens it.
 - **Search finds your other files** — PDFs, pictures, spreadsheets and any other file kept beside your notes now show up in Search by name, with the same icon the sidebar gives them; typing `pdf` lists your PDFs. Enter opens the file in its own app, as clicking it in the sidebar does. Pictures you pasted into notes, which live in the attachments folder, are left out so they don't crowd every search.
-- **Spelling suggestions** — Misspelled words are underlined as soon as a note opens, with no click and no wait, and never inside code, tags or links. Right-click a word with a red underline and the menu starts with up to three suggestions, then Add to dictionary, above Cut, Copy and Paste. Choosing a suggestion swaps the word, and ⌘Z swaps it back. Add to dictionary teaches the word to your computer's own spellchecker (on a Mac, every app learns it), and its message offers Undo. On a Mac the suggestions come in the language of the paragraph you're in, so English and Spanish notes each get their own.
+- **Spelling suggestions** — Misspelled words are underlined as soon as a note opens, with no click and no wait, and never inside code, tags or links. Right-click a word with a red underline and the menu starts with up to three suggestions, then Add to dictionary, above Cut, Copy and Paste. Choosing a suggestion swaps the word, and ⌘Z swaps it back. Add to dictionary teaches the word to your computer's own spellchecker (on a Mac, every app learns it), and its message offers Undo. On a Mac the suggestions come in the language of the paragraph you're in, so English and Spanish notes each get their own. On Windows and Linux, where the first launch downloads the language's dictionary, a note that opened before it arrived is checked again the moment it does.
 - **Spelling in Settings** — A new Spelling section turns checking on or off at once. On Windows and Linux you tick every language you write in; on a Mac the language comes from your Mac, and the button opens its Keyboard settings.
 - **Make a note from Search** — When nothing matches what you typed, Search offers one row, Create "…", and Enter on it makes a note with that name and opens it. With a folder chip on, the note goes into that folder.
 
@@ -16,12 +16,19 @@
 - **Nested tags and exact phrases in Search** — Choosing `#uni` in Search now also finds notes tagged `#uni/lectures` or `#uni/exams`, as Obsidian does, and `#uni` is offered even when no note uses it on its own. Put words in double quotes, like `"exam notes"`, to find only notes where they appear together and in that order; a line break between them still counts.
 - **Resize a picture by its corners** — Click a picture and a thin teal outline appears round it, with a white dot on each corner. Drag any dot to make the picture bigger or smaller; it always keeps its shape, and lands on its own size when you drag close to it. Double-click a dot to put it back to its own size. The white pill that used to appear on the picture's right edge whenever you pointed at it is gone, so pointing at a picture now shows only the small bar at its top right. When a picture is part of several selected blocks it is tinted like the others, with no dots, since one drag can't resize them all.
 
+- **Search is ready sooner in a big vault** — When a storage location opens, the app reads every note once so Search can answer at once. That now takes about a third of the time and far less memory: for 2,000 notes, about a quarter of a second instead of three quarters. What Search finds is unchanged.
+- **Every menu is the same menu** — Sort, storage locations, right-click, the block grip, tables, code, pictures and files now share one menu: one shadow, one icon spacing, icons in the row's own ink, and a tick in teal wherever an item is on. At an interface size other than 100%, the Sort, storage-location and table menus now open where you clicked rather than a little off. A file's right-click reads Open file, Show in Finder (Show in folder on Windows and Linux), Copy file path and Delete, and Escape closes a code block's menu.
+
 ### Removed
 
 - **The touch layout** — A separate phone-and-tablet layout (its own top bar, formatting toolbar, floating New button, bottom-sheet menu and a search field in the sidebar) had been switched off since 24 September, so every device already got the desktop layout. Its code is now gone, about 1,900 lines nobody was running. Nothing changes on screen. A phone layout will be designed fresh when the web build gets one.
 
 ### Bug Fixes
 
+- **Backspace under an embedded note no longer loses words** — Backspace at the very start of a paragraph just below an embedded note (`![[Note]]`) merged the paragraph into the embed, and its words were gone from the file at the next save. Backspace now steps past the embed to the text above, as it does past a code block.
+- **A callout's hints show when it's empty** — A new callout's body never showed "Type callout content…", and its title's hint went for good once you cleared it. Both now show whenever the field is empty.
+- **Sort chooses only what you point at** — Moving the pointer off the Sort menu left the last row lit, so Enter chose it. Leaving the menu now clears it.
+- **No stray highlight in the sidebar** — With the pointer resting on one note while the selection moved elsewhere (with the arrow keys, say), the note under the pointer could keep its grey pill. Now only the rows you point at or have selected wear one.
 - **"Type / for commands…" leaves once you write below it** — With the first line of a note left empty and your writing on the lines below, the grey hint kept showing on that empty first line. It now shows only while the whole note is one empty line.
 - **Opening the app twice brings back the window you have** — Launching Boojy Notes while it was already running (clicking it twice in the Start menu, say) started a second copy with its own window, and both saved to the same notes. Now the second launch closes at once and the window you already had comes to the front, restored if it was minimised. On a Mac where you had closed the window but left the app running, a new one opens.
 

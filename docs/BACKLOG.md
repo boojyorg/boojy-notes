@@ -12,8 +12,9 @@ issues bad enough to fix before anything else sit in their own short list below.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-09-30,
-the whole-product pass (Tyr marked 89 features from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-03,
+the v0.12.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
+from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
 2026-09-07, whose fixes shipped in v0.7.0.
 
 ## Direction
@@ -229,11 +230,6 @@ none blocks the release. The shared question comes first because three candidate
   bookmarklet, the Shortcuts app and Raycast, and later a web clipper (Future). Initial focus,
   location and the moment an empty note becomes a file are undecided for every entry point. Not
   accepted: deriving the title from the first line.
-- **Search, a few additions.** Wanted soon (2026-09-30). Filters by tag, folder and date (how
-  dates read is to be mocked up in a couple of directions), and a timing check on a vault of
-  2,000 notes.
-  Still no fuzzy matching, and **no command palette** (Tyr dislikes them: the menu bar and
-  shortcuts are the keyboard path).
 - **For friends at Beta.** A keyboard shortcuts sheet (a screen reached from Help or Settings),
   a way to report a problem, a short privacy statement (soon), and a first-run explainer (a
   welcome note or a short tour, undecided). Custom shortcuts come in Beta, once the defaults
@@ -594,7 +590,8 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
 ## Not doing
 
 No AI features or agents; no calendar; no Inbox; no daily-note feature; no
-templates; no tabs or split view; no separate quick-note workflow. The spec
+templates; no tabs or split view; no separate quick-note workflow; no command palette (the menu
+bar and the shortcuts are the keyboard path) and no fuzzy matching in Search. The spec
 additionally excludes layouts and blocks that cannot round-trip to readable Markdown.
 
 Declined 2026-09-12, when the sidebar was rearranged: **Collapse all folders** (folders toggle
