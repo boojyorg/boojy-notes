@@ -102,9 +102,12 @@ test("on a blank draft the file's items grey out, and Format and Rename stay", a
   // An empty vault opens on a draft: a note with no file until its first keystroke.
   const h = await launchApp({});
   try {
-    await expect.poll(() => enabled(h, "duplicate")).toBe(false);
-    for (const id of ["moveTo", "reveal", "trash"]) expect(await enabled(h, id)).toBe(false);
-    for (const id of ["rename", "h1", "bold", "newNote"]) expect(await enabled(h, id)).toBe(true);
+    // The menu starts with no note open, so the greyed items read right before
+    // the window's first state arrives; wait for the whole set at once.
+    const ids = ["duplicate", "moveTo", "reveal", "trash", "rename", "h1", "bold", "newNote"];
+    await expect
+      .poll(async () => Promise.all(ids.map((id) => enabled(h, id))))
+      .toEqual([false, false, false, false, true, true, true, true]);
   } finally {
     await h.close();
   }
