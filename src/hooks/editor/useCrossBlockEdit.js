@@ -8,6 +8,7 @@ import {
   reachAcross,
 } from "../../utils/crossBlockEdit";
 import { genBlockId } from "../../utils/storage";
+import { editBlocks } from "../../utils/editBlocks";
 
 /**
  * The one owner of every edit that is not confined to one block root.
@@ -69,13 +70,11 @@ export function useCrossBlockEdit({
       genBlockId,
     );
     if (!result) return false;
-    commitNoteData((prev) => {
-      const next = { ...prev };
-      const n = { ...next[noteId] };
-      n.content = { ...n.content, blocks: result.blocks };
-      next[noteId] = n;
-      return next;
-    });
+    commitNoteData(
+      editBlocks(noteId, (blocks) => {
+        blocks.splice(0, blocks.length, ...result.blocks);
+      }),
+    );
     syncGeneration.current++;
     focusBlockId.current = result.focusId;
     focusCursorPos.current = result.focusPos;
