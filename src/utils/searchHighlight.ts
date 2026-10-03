@@ -4,7 +4,7 @@
 // the editor reads its DOM back (a mark element would reach the file).
 
 import { prefersReducedMotion } from "../tokens/motion";
-import { foldText } from "./search";
+import { foldText, originAt } from "./search";
 
 interface Segment {
   node: Text | null;
@@ -49,8 +49,8 @@ export function matchRanges(root: Node, terms: string[]): Range[] {
   for (const term of terms) {
     if (!term) continue;
     for (let i = fold.text.indexOf(term); i !== -1; i = fold.text.indexOf(term, i + term.length)) {
-      const a = at(fold.map[i], false);
-      const b = at(fold.map[i + term.length], true);
+      const a = at(originAt(fold, i), false);
+      const b = at(originAt(fold, i + term.length), true);
       if (!a || !b) continue;
       const r = doc.createRange();
       r.setStart(a[0], a[1]);

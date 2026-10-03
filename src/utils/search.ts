@@ -52,29 +52,93 @@ export function buildPlainText(blocks: Block[] | null | undefined): {
 }
 
 /**
- * Text folded for matching: lower-cased, accents removed, with a map from
- * each folded index back to the index in the original, so a hit found in the
- * folded text is highlighted in the text as written. `cafe` finds `café`.
+ * Text folded for matching: lower-cased, accents removed, with a way back
+ * from each folded index to the index in the original (`originAt`), so a hit
+ * found in the folded text is highlighted in the text as written. `cafe` finds `café`.
  * Every run of whitespace folds to one space, so a quoted phrase finds its
  * words across a soft break or a double space, however the query spaces them.
  */
 export interface Folded {
   text: string;
-  /** `map[i]` is the original index of folded unit `i`; `map[text.length]` is the original length. */
-  map: number[];
+  /**
+   * Where each folded unit came from, kept as breaks: from folded index
+   * `at[k]` on, unit `i` came from `from[k] + (i - at[k])`, until the next
+   * break; before the first, from `i`. Almost every unit sits one past the
+   * one before it, so a note keeps a handful of breaks rather than a number
+   * per character. Read it with `originAt`.
+   */
+  at: number[];
+  from: number[];
+  /** The original's length: where the folded text's end maps to. */
+  length: number;
+}
+
+/** The index in the original of folded unit `i` (`f.text.length` maps to the original's end). */
+export function originAt(f: Folded, i: number): number {
+  if (i >= f.text.length) return f.length;
+  let lo = 0;
+  let hi = f.at.length - 1;
+  let k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (f.at[mid] <= i) {
+      k = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return k < 0 ? i : f.from[k] + (i - f.at[k]);
 }
 
 export function foldText(s: string): Folded {
-  const units: string[] = [];
-  const map: number[] = [];
-  let i = 0;
+  // Pieces joined once at the end: a string grown by `+=` stays a chain of
+  // pieces in memory, larger than the text it spells.
+  const parts: string[] = [];
+  let len = 0;
+  const at: number[] = [];
+  const from: number[] = [];
+  let drift = 0; // origin minus folded index, in the current stretch
   let space = false;
-  for (const ch of s) {
+  // The next folded unit (index `len`) came from original index `origin`.
+  const mark = (origin: number) => {
+    if (origin - len === drift) return;
+    drift = origin - len;
+    at.push(len);
+    from.push(origin);
+  };
+  let j = 0;
+  while (j < s.length) {
+    const c = s.charCodeAt(j);
+    if (c < 128) {
+      if (c === 32 || (c >= 9 && c <= 13)) {
+        // The rest of a run maps to nothing: a range ending at the run still
+        // maps to its first character, and one spanning it covers all of it.
+        if (!space) {
+          mark(j);
+          parts.push(" ");
+          len++;
+          space = true;
+        }
+        j++;
+        continue;
+      }
+      // A run of plain ASCII folds in one step, one unit for one.
+      let end = j + 1;
+      while (end < s.length) {
+        const d = s.charCodeAt(end);
+        if (d >= 128 || d === 32 || (d >= 9 && d <= 13)) break;
+        end++;
+      }
+      mark(j);
+      parts.push(s.slice(j, end).toLowerCase());
+      len += end - j;
+      space = false;
+      j = end;
+      continue;
+    }
+    const ch = String.fromCodePoint(s.codePointAt(j) as number);
     const isSpace = /\s/u.test(ch);
-    // The rest of a run maps to nothing: a range ending at the run still
-    // maps to its first character, and one spanning it covers all of it.
     if (isSpace && space) {
-      i += ch.length;
+      j += ch.length;
       continue;
     }
     space = isSpace;
@@ -84,14 +148,15 @@ export function foldText(s: string): Folded {
           .normalize("NFD")
           .replace(/\p{M}+/gu, "")
           .toLowerCase();
+    // Every unit a character folds to maps to the character's start.
     for (let k = 0; k < folded.length; k++) {
-      units.push(folded[k]);
-      map.push(i);
+      mark(j);
+      len++;
     }
-    i += ch.length;
+    parts.push(folded);
+    j += ch.length;
   }
-  map.push(s.length);
-  return { text: units.join(""), map };
+  return { text: parts.join(""), at, from, length: s.length };
 }
 
 export interface IndexEntry {
@@ -209,7 +274,7 @@ function initialsMatch(titleFold: string, word: string): Range[] | null {
   return starts.slice(k, k + word.length).map((i) => [i, i + 1] as Range);
 }
 
-const mapRange = (f: Folded, r: Range): Range => [f.map[r[0]], f.map[r[1]]];
+const mapRange = (f: Folded, r: Range): Range => [originAt(f, r[0]), originAt(f, r[1])];
 
 /** Every occurrence of every word inside `[from, to)` of the folded text. */
 function occurrencesWithin(text: string, words: string[], from: number, to: number): Range[] {
@@ -252,8 +317,8 @@ export function extractSnippet(entry: IndexEntry, words: string[], hit: Range): 
   }
   const prefix = start > 0 ? "…" : "";
   const suffix = end < text.length ? "…" : "";
-  const oStart = f.map[start];
-  const oEnd = f.map[end];
+  const oStart = originAt(f, start);
+  const oEnd = originAt(f, end);
   const ranges = occurrencesWithin(text, words, start, end).map((r) => {
     const [a, b] = mapRange(f, r);
     return [a - oStart + prefix.length, b - oStart + prefix.length] as Range;
@@ -373,7 +438,7 @@ export function searchNotes(
     if (bodyHit) {
       r.matchIn = "body";
       r.snippet = extractSnippet(entry, words, bodyHit);
-      r.matchBlockId = findMatchBlock(entry.blockOffsets, entry.plainFold.map[bodyHit[0]]);
+      r.matchBlockId = findMatchBlock(entry.blockOffsets, originAt(entry.plainFold, bodyHit[0]));
     }
     return r;
   });

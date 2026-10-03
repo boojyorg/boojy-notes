@@ -6,6 +6,7 @@ import {
   findMatchBlock,
   foldText,
   orderResults,
+  originAt,
   searchFiles,
   searchFolders,
   searchNotes,
@@ -16,19 +17,98 @@ const p = (id: string, text: string) => ({ id, type: "p", text }) as Block;
 const note = (title: string, blocks: Block[], extra: Record<string, unknown> = {}) =>
   ({ title, folder: null, content: { title, blocks }, lastModified: 0, ...extra }) as never;
 
+// The per-character fold foldText must agree with: each code point folded on
+// its own, every unit it folds to mapped to its start, a whitespace run one space.
+function referenceFold(s: string) {
+  const units: string[] = [];
+  const map: number[] = [];
+  let i = 0;
+  let space = false;
+  for (const ch of s) {
+    const isSpace = /\s/u.test(ch);
+    if (isSpace && space) {
+      i += ch.length;
+      continue;
+    }
+    space = isSpace;
+    const folded = isSpace
+      ? " "
+      : ch
+          .normalize("NFD")
+          .replace(/\p{M}+/gu, "")
+          .toLowerCase();
+    for (const unit of folded.split("")) {
+      units.push(unit);
+      map.push(i);
+    }
+    i += ch.length;
+  }
+  map.push(s.length);
+  return { text: units.join(""), map };
+}
+const origins = (s: string) => {
+  const f = foldText(s);
+  return Array.from({ length: f.text.length + 1 }, (_, i) => originAt(f, i));
+};
+
 describe("foldText", () => {
   it("lower-cases and drops accents, mapping every folded unit back to its source", () => {
     const f = foldText("Café Ñu");
     expect(f.text).toBe("cafe nu");
-    expect(f.map[3]).toBe(3);
-    expect(f.map[f.text.length]).toBe("Café Ñu".length);
+    expect(originAt(f, 3)).toBe(3);
+    expect(originAt(f, f.text.length)).toBe("Café Ñu".length);
   });
 
-  it("keeps offsets right through a decomposed accent", () => {
-    const s = "éx"; // é as e + combining acute
-    const f = foldText(s);
-    expect(f.text).toBe("ex");
-    expect(f.map).toEqual([0, 2, 3]);
+  it("keeps offsets right through a decomposed accent, a space run and an emoji", () => {
+    expect(origins("e\u0301x")).toEqual([0, 2, 3]); // é as e + combining acute
+    expect(foldText("a \t\n b").text).toBe("a b");
+    expect(origins("a \t\n b")).toEqual([0, 1, 5, 6]);
+    expect(origins("😀a")).toEqual([0, 0, 2, 3]);
+  });
+
+  it("keeps a handful of breaks, not a number per character", () => {
+    const f = foldText(`${"Plain words, nothing folded. ".repeat(200)}Café`);
+    expect(f.at.length).toBeLessThan(3);
+  });
+
+  it("agrees with the per-character fold on mixed text, unit for unit", () => {
+    const pool = [
+      ..."aZq7 #.[]",
+      "  ",
+      "\t",
+      "\r\n",
+      "\u00a0",
+      "\u2028",
+      "\u3000",
+      "\ufeff",
+      "é",
+      "e\u0301",
+      "\u0301",
+      "Ñ",
+      "ß",
+      "ẞ",
+      "İ",
+      "ﬁ",
+      "Æ",
+      "😀",
+      "👍🏽",
+      "中文",
+      " · ",
+      "Ⅻ",
+      "ǅ",
+      "WORLD",
+    ];
+    let seed = 3;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let n = 0; n < 3000; n++) {
+      const s = Array.from(
+        { length: Math.floor(rand() * 24) },
+        () => pool[Math.floor(rand() * pool.length)],
+      ).join("");
+      const want = referenceFold(s);
+      expect(foldText(s).text, JSON.stringify(s)).toBe(want.text);
+      expect(origins(s), JSON.stringify(s)).toEqual(want.map);
+    }
   });
 });
 
