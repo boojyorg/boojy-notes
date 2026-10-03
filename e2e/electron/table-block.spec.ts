@@ -334,3 +334,50 @@ test("Tidy table lines a compact table up in the file, and Cmd+Z puts it back", 
     await h.close();
   }
 });
+
+// Dragging an add bar outward adds one row per 36 px down, or one column per
+// 120 px right, in one commit: one Cmd+Z takes the whole drag back.
+test("dragging the add bars adds several rows or columns at once, each drag one undo", async () => {
+  const h = await launchApp({ [NOTE]: seeded });
+  try {
+    await h.openNote("Grid");
+    await table(h).locator("td").first().click();
+    const drag = async (selector: string, dx: number, dy: number) => {
+      const box = await h.page.locator(selector).boundingBox();
+      if (!box) throw new Error(`no ${selector}`);
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await h.page.mouse.move(x, y);
+      await h.page.mouse.down();
+      await h.page.mouse.move(x + dx, y + dy, { steps: 8 });
+      await expect(h.page.getByText(/^\+\d+$/)).toBeVisible();
+      await h.page.mouse.up();
+    };
+
+    await drag(".table-bottom-zone", 0, 3 * 36 + 10);
+    await expect(table(h).locator("tbody tr")).toHaveCount(4);
+    await waitForFile(h.vault.file(NOTE), (t) =>
+      t.includes("| Tea | 2 |\n|  |  |\n|  |  |\n|  |  |"),
+    );
+    // The caret goes to the first new row's first cell.
+    const caretRow = () =>
+      h.page.evaluate(() => {
+        const cell = document.activeElement?.closest("td");
+        return cell ? [(cell.parentElement as HTMLTableRowElement).rowIndex, cell.cellIndex] : null;
+      });
+    await expect.poll(caretRow).toEqual([2, 0]);
+
+    await drag(".table-right-zone", 2 * 120 + 10, 0);
+    await expect(table(h).locator("th")).toHaveCount(4);
+    await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Name | Qty |  |  |"));
+
+    await h.page.keyboard.press(`${MOD}+z`);
+    await expect(table(h).locator("th")).toHaveCount(2);
+    await expect(table(h).locator("tbody tr")).toHaveCount(4);
+    await h.page.keyboard.press(`${MOD}+z`);
+    await expect(table(h).locator("tbody tr")).toHaveCount(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

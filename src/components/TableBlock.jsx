@@ -145,6 +145,7 @@ export default memo(function TableBlock({
   const { theme } = useTheme();
   const accent = accentColor || theme.ACCENT.primary;
   const cellRefs = useRef({});
+  const focusOnRender = useRef(null);
   const tableRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -173,8 +174,9 @@ export default memo(function TableBlock({
     handleBottomZoneClick,
     handleRightZonePointerDown,
     handleRightZoneClick,
-    previewCount,
+    previewRows,
     createBadge,
+    addRows,
     insertRow,
     deleteRowAt,
     insertColumn,
@@ -192,7 +194,9 @@ export default memo(function TableBlock({
     noteId,
     blockIndex,
     onUpdateTableRows,
-    cellRefs,
+    onRowsAdded: (row) => {
+      focusOnRender.current = { row, col: 0 };
+    },
   });
   // The row or column whose grip menu is open: outlined by TableHandles.
   const gripContext = contextMenu?.context;
@@ -220,12 +224,6 @@ export default memo(function TableBlock({
     [noteId, blockIndex, onUpdateTableCell],
   );
 
-  const addRow = useCallback(() => {
-    onUpdateTableRows(noteId, blockIndex, (cur) => ({
-      rows: [...cur, new Array(tableColumnCount(cur) || 2).fill("")],
-    }));
-  }, [noteId, blockIndex, onUpdateTableRows]);
-
   const focusCell = useCallback(
     (rowIdx, colIdx) => cellRefs.current[`${rowIdx}-${colIdx}`]?.focus(),
     [],
@@ -244,7 +242,6 @@ export default memo(function TableBlock({
   // could beat. A grip's insert waits for the table's new shape (`shape`),
   // since the cell at the new row's place exists already and holds the row
   // being pushed down; its caret is placed without scrolling the note.
-  const focusOnRender = useRef(null);
   useLayoutEffect(() => {
     const pending = focusOnRender.current;
     if (!pending) return;
@@ -300,8 +297,7 @@ export default memo(function TableBlock({
         if (nextRow < rows.length) {
           focusCell(nextRow, targetCol);
         } else {
-          addRow();
-          focusOnRender.current = { row: rows.length, col: 0 };
+          addRows(1);
         }
       } else if (e.key === "Tab" && e.shiftKey) {
         e.preventDefault();
@@ -317,7 +313,7 @@ export default memo(function TableBlock({
         if (rowIdx < lastRow) {
           focusCell(rowIdx + 1, colIdx);
         } else {
-          addRow();
+          addRows(1);
           focusOnRender.current = { row: rows.length, col: colIdx };
         }
       } else if (tableMoveKey(e)) {
@@ -369,7 +365,7 @@ export default memo(function TableBlock({
     [
       rows,
       colCount,
-      addRow,
+      addRows,
       focusCell,
       caretInto,
       selectWhole,
@@ -411,6 +407,29 @@ export default memo(function TableBlock({
 
   const band = isSelected ? bandFill(accent, theme.name) : null;
 
+  // A row's cells, as wide as the grid: the header's `th`, bold, and the body's `td`.
+  const cellsOf = (rowIdx) =>
+    Array.from({ length: colCount }, (_, colIdx) => (
+      <TableCell
+        // biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column; it has no identity of its own
+        key={colIdx}
+        tag={rowIdx === 0 ? "th" : "td"}
+        rowIdx={rowIdx}
+        colIdx={colIdx}
+        text={cellAt(rows[rowIdx], colIdx)}
+        syncGen={syncGen}
+        latestRows={latestRows}
+        noteTitleSet={noteTitleSet}
+        cellRefs={cellRefs}
+        onInput={handleCellInput}
+        onKeyDown={handleCellKeyDown}
+        onPaste={handleCellPaste}
+        style={{
+          ...(rowIdx === 0 && { fontWeight: 600 }),
+          textAlign: alignments[colIdx] || "left",
+        }}
+      />
+    ));
   return (
     <div
       ref={rootRef}
@@ -462,63 +481,16 @@ export default memo(function TableBlock({
         >
           <table ref={tableRef} className="table-block">
             <thead>
-              <tr>
-                {Array.from({ length: colCount }, (_, colIdx) => cellAt(rows[0], colIdx)).map(
-                  (cell, colIdx) => (
-                    <TableCell
-                      // biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column; it has no identity of its own
-                      key={colIdx}
-                      tag="th"
-                      rowIdx={0}
-                      colIdx={colIdx}
-                      text={cell}
-                      syncGen={syncGen}
-                      latestRows={latestRows}
-                      noteTitleSet={noteTitleSet}
-                      cellRefs={cellRefs}
-                      onInput={handleCellInput}
-                      onKeyDown={handleCellKeyDown}
-                      onPaste={handleCellPaste}
-                      style={{
-                        fontWeight: 600,
-                        textAlign: alignments[colIdx] || "left",
-                      }}
-                    />
-                  ),
-                )}
-              </tr>
+              <tr>{cellsOf(0)}</tr>
             </thead>
             <tbody>
-              {rows.slice(1).map((row, rOffset) => {
-                const rowIdx = rOffset + 1;
-                return (
-                  <tr key={rowIdx}>
-                    {Array.from({ length: colCount }, (_, colIdx) => cellAt(row, colIdx)).map(
-                      (cell, colIdx) => (
-                        <TableCell
-                          // biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column; it has no identity of its own
-                          key={colIdx}
-                          tag="td"
-                          rowIdx={rowIdx}
-                          colIdx={colIdx}
-                          text={cell}
-                          syncGen={syncGen}
-                          latestRows={latestRows}
-                          noteTitleSet={noteTitleSet}
-                          cellRefs={cellRefs}
-                          onInput={handleCellInput}
-                          onKeyDown={handleCellKeyDown}
-                          onPaste={handleCellPaste}
-                          style={{ textAlign: alignments[colIdx] || "left" }}
-                        />
-                      ),
-                    )}
-                  </tr>
-                );
-              })}
+              {rows.slice(1).map((_, rOffset) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: a row is its place; rows have no ids
+                <tr key={rOffset + 1}>{cellsOf(rOffset + 1)}</tr>
+              ))}
               {/* Preview rows during drag-to-create */}
-              {previewCount.rows > 0 &&
-                Array.from({ length: previewCount.rows }, (_, i) => (
+              {previewRows > 0 &&
+                Array.from({ length: previewRows }, (_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: preview rows are placeholders counted, never reordered
                   <tr key={`preview-${i}`} className="table-preview-row">
                     {Array.from({ length: colCount }, (_, ci) => (
