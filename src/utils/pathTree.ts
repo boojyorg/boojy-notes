@@ -155,6 +155,10 @@ export function sharedFolder(
 export const withinFolder = (path: string, folder: string) =>
   path === folder || path.startsWith(`${folder}/`);
 
+/** Renames paths for a folder moved from `from` to `to`: it and everything under it follow. */
+export const remapFolderPath = (from: string, to: string) => (path: string) =>
+  withinFolder(path, from) ? to + path.slice(from.length) : path;
+
 /**
  * The picker's rows, top to bottom: the root, then every folder, its
  * subfolders under it while it is open. `excluded` is the folder being moved,

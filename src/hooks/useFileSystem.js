@@ -4,6 +4,7 @@ import { getAPI } from "../services/apiProvider";
 import { blocksToMarkdown } from "../utils/markdown";
 import { genNoteId } from "../utils/storage";
 import { trace } from "../utils/trace";
+import { remapFolderPath, withinFolder } from "../utils/pathTree";
 
 const WRITE_DEBOUNCE_MS = 500;
 const WRITE_RETRY_MS = 5000;
@@ -582,6 +583,20 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
 
   const flushRef = useRef(flush);
 
+  // Everything pending, as the keystroke ref holds it: the debounced flush
+  // reads state, but a quit, a save point or a switch must not lose the last
+  // 300 ms. `unflushedNotes` names the notes whose newest keystrokes may not
+  // have reached state (and so were never marked dirty); more than one can be
+  // edited inside a debounce. A note leaves the set only once a write of its
+  // newest content succeeds, so a failed write keeps it.
+  const flushAll = useCallback(() => {
+    const links = editorLinksRef.current;
+    return flushRef.current(
+      links?.latestNoteDataRef?.current,
+      links?.unflushedNotes ? [...links.unflushedNotes.current] : undefined,
+    );
+  }, []);
+
   // An offloaded note, downloaded to be shown. The text is the disk's; a
   // rename or move still waiting to be written keeps its name and folder.
   // Resolves false when the download failed.
@@ -770,8 +785,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     async (target) => {
       if (!isElectron) return;
       try {
-        const links = editorLinksRef.current;
-        await flushRef.current(links.latestNoteDataRef.current, [...links.unflushedNotes.current]);
+        await flushAll();
         const newDir =
           typeof target === "string"
             ? await window.electronAPI.openVault(target)
@@ -801,7 +815,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       }
       // Deps deliberately not exhaustive: onError is not stable
     },
-    [takeFromDisk, refreshFolders, refreshVaults],
+    [takeFromDisk, refreshFolders, refreshVaults, flushAll],
   );
 
   // Settings' Add folder…: the list gains a location; nothing switches.
@@ -836,8 +850,6 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // useNoteCrud keeps folders in memory.
   const folderOps = useMemo(() => {
     if (!isNative) return null;
-    const remapPaths = (oldPath, newPath) => (p) =>
-      p === oldPath ? newPath : p.startsWith(`${oldPath}/`) ? newPath + p.slice(oldPath.length) : p;
     return {
       /** mkdir now, so the folder exists before anything is put in it. */
       create: async (relPath) => {
@@ -853,13 +865,9 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
        * was edited, so nothing is rewritten and no mtime moves.
        */
       rename: async (oldPath, newPath) => {
-        const links = editorLinksRef.current;
-        await flushRef.current(
-          links?.latestNoteDataRef?.current,
-          links?.unflushedNotes ? [...links.unflushedNotes.current] : undefined,
-        );
+        await flushAll();
         const { path: finalPath } = await getAPI().renameFolder(oldPath, newPath);
-        const remap = remapPaths(oldPath, finalPath);
+        const remap = remapFolderPath(oldPath, finalPath);
         const affected = Object.values(noteDataRef.current).some(
           (n) => n.folder && remap(n.folder) !== n.folder,
         );
@@ -882,11 +890,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
        * becomes dirty and nothing is written again.
        */
       duplicate: async (relPath) => {
-        const links = editorLinksRef.current;
-        await flushRef.current(
-          links?.latestNoteDataRef?.current,
-          links?.unflushedNotes ? [...links.unflushedNotes.current] : undefined,
-        );
+        await flushAll();
         const { path, folders, notes } = await getAPI().duplicateFolder(relPath);
         setCustomFolders((prev) => {
           const added = folders.filter((f) => !prev.includes(f));
@@ -904,9 +908,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         const run = async () => {
           const { removed } = await getAPI().deleteFolder(relPath);
           if (removed) {
-            setCustomFolders((prev) =>
-              prev.filter((f) => f !== relPath && !f.startsWith(`${relPath}/`)),
-            );
+            setCustomFolders((prev) => prev.filter((f) => !withinFolder(f, relPath)));
             return;
           }
           const name = relPath.split("/").pop();
@@ -919,7 +921,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         else await run();
       },
     };
-  }, [setCustomFolders, afterNextFlush, applyExternal]);
+  }, [setCustomFolders, afterNextFlush, applyExternal, flushAll]);
 
   return {
     notesDir,
@@ -932,6 +934,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     refreshVaults,
     addVault,
     flushToDisk: flush,
+    flushAll,
     downloadOffloaded,
     folderOps,
   };

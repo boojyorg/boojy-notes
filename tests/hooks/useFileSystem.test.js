@@ -97,6 +97,34 @@ describe("useFileSystem — initial load", () => {
     expect(syncGeneration.current).toBe(1);
   });
 
+  it("flushAll writes every unflushed note as the keystroke ref holds it, and a failed write keeps it pending", async () => {
+    // Two notes edited inside one debounce window: neither reached state, so
+    // neither is dirty there; only the ref and the unflushed set know them.
+    const note = (id, text) => ({
+      id,
+      title: id,
+      content: { title: id, blocks: [{ id: "b", type: "p", text }] },
+    });
+    readAllNotes.mockResolvedValue({});
+    const latestNoteDataRef = { current: { a: note("a", "typed a"), b: note("b", "typed b") } };
+    const unflushedNotes = { current: new Set(["a", "b"]) };
+    const { result } = renderFS({
+      noteData: { a: note("a", "saved"), b: note("b", "saved") },
+      links: { latestNoteDataRef, unflushedNotes },
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    writeNote.mockImplementation(async (n) => {
+      if (n.id === "b") throw new Error("disk full");
+      return {};
+    });
+    await act(async () => result.current.flushAll());
+
+    expect(writeNote).toHaveBeenCalledWith(latestNoteDataRef.current.a);
+    expect(writeNote).toHaveBeenCalledWith(latestNoteDataRef.current.b);
+    expect([...unflushedNotes.current]).toEqual(["b"]);
+  });
+
   it("does not bump syncGeneration when the disk is empty", async () => {
     readAllNotes.mockResolvedValue({});
     const { result, syncGeneration } = renderFS();

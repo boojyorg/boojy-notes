@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { useTheme } from "./useTheme";
 import { runAutoScroll, suppressNextClick } from "../utils/domHelpers";
+import { withinFolder } from "../utils/pathTree";
 
 const LIFT_MS = 120;
 const SETTLE_MS = 200;
@@ -244,8 +245,7 @@ export function useSidebarDrag({
       const folderPath = el.dataset.folderPath;
       // A folder cannot be dropped into itself or its own subtree; those rows
       // are not targets, so the pointer falls through to the root.
-      if (sd.type === "folder" && (folderPath === sd.id || folderPath.startsWith(`${sd.id}/`)))
-        continue;
+      if (sd.type === "folder" && withinFolder(folderPath, sd.id)) continue;
       const rect = el.getBoundingClientRect();
       if (pointerY >= rect.top && pointerY <= rect.bottom) {
         target = { type: "folder", id: folderPath, el };
@@ -261,8 +261,7 @@ export function useSidebarDrag({
       if (scopeEl) {
         const scope = scopeEl.dataset.dropScope;
         const rect = scopeEl.getBoundingClientRect();
-        const ownTree =
-          sd.type === "folder" && scope && (scope === sd.id || scope.startsWith(`${sd.id}/`));
+        const ownTree = sd.type === "folder" && scope && withinFolder(scope, sd.id);
         if (pointerY >= rect.top && pointerY <= rect.bottom && !ownTree) {
           sd.dropTarget = scope
             ? { type: "folder", id: scope, el: scopeEl }

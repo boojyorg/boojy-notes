@@ -44,8 +44,8 @@ const CLOSED: VersionHistoryState = {
 interface Options {
   activeNote: string | null;
   noteDataRef: MutableRefObject<NoteMap>;
-  unflushedNotes: MutableRefObject<Set<string>>;
-  flushToDisk: (latest?: unknown, extraDirtyIds?: string[]) => Promise<void>;
+  /** Writes every pending edit (useFileSystem). */
+  flushAll: () => Promise<void>;
   commitNoteData: (updater: (prev: NoteMap) => NoteMap) => void;
   syncGeneration: MutableRefObject<number>;
   sourceView: boolean;
@@ -64,8 +64,7 @@ interface Options {
 export function useVersionHistory({
   activeNote,
   noteDataRef,
-  unflushedNotes,
-  flushToDisk,
+  flushAll,
   commitNoteData,
   syncGeneration,
   sourceView,
@@ -106,7 +105,7 @@ export function useVersionHistory({
     const noteId = activeNote;
     if (!noteId || !historyAPI()) return;
     // The list shows what the file holds, so pending edits are written first.
-    await flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
+    await flushAll();
     if (sourceView && stateRef.current.noteId === null) {
       hadSourceView.current = true;
       setSourceView(false);
@@ -121,7 +120,7 @@ export function useVersionHistory({
         ? { ...s, listOpen: true, versions, off }
         : { ...CLOSED, noteId, listOpen: true, versions, off },
     );
-  }, [activeNote, flushToDisk, noteDataRef, unflushedNotes, sourceView, setSourceView]);
+  }, [activeNote, flushAll, sourceView, setSourceView]);
 
   // Escape is Now from anywhere while a version is on screen and the list is
   // hidden (the list takes its own Escape). On the document, before the
@@ -186,7 +185,7 @@ export function useVersionHistory({
       const api = historyAPI();
       const v = versions.find((x) => x.id === versionId);
       if (!noteId || !api || !v) return;
-      await flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
+      await flushAll();
       await api.mark(noteId, "Before restore");
       const text = await api.read(noteId, versionId);
       const before = noteDataRef.current[noteId]?.content.blocks;
@@ -198,7 +197,7 @@ export function useVersionHistory({
         action: { label: "Undo", run: () => replaceBlocks(noteId, before) },
       });
     },
-    [flushToDisk, noteDataRef, unflushedNotes, close, replaceBlocks, showToast],
+    [flushAll, noteDataRef, close, replaceBlocks, showToast],
   );
 
   const rename = useCallback(

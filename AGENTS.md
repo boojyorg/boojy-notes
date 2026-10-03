@@ -51,7 +51,7 @@ pnpm build:electron   # desktop installers into release/
 src/
 ├── BoojyNotes.jsx      # root component; main.jsx is the entry
 ├── components/         # UI; blocks/ (media blocks), settings/
-├── context/            # Theme, NoteData, Settings, Layout, Sidebar, Overlay, Editor
+├── context/            # Theme, NoteData, Settings, Layout, Sidebar, Editor
 ├── hooks/              # app hooks; editor/ holds keyboard, paste, drag, slash commands
 ├── services/           # getAPI(): the Electron or web API
 ├── utils/              # markdown.js (the converters), storage, search, platform, …

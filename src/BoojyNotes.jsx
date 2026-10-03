@@ -8,9 +8,9 @@ import { useSettings } from "./context/SettingsContext";
 import { useLayout } from "./context/LayoutContext";
 import { PANEL_MS, panelTransition } from "./tokens/motion";
 import { useSidebar } from "./context/SidebarContext";
-import { useOverlay } from "./context/OverlayContext";
 import { useFileSystem } from "./hooks/useFileSystem";
 import { useOffloadedNote } from "./hooks/useOffloadedNote";
+import { useOverlays } from "./hooks/useOverlays";
 import { useQuitFlush } from "./hooks/useQuitFlush";
 import { useActiveNote } from "./hooks/useActiveNote";
 import { useNoteCrud } from "./hooks/useNoteCrud";
@@ -26,7 +26,7 @@ const SettingsModal = React.lazy(() => import("./components/settings/SettingsMod
 const SetupDialog = React.lazy(() => import("./components/settings/SetupDialog"));
 import ContextMenu from "./components/ContextMenu";
 import PathTreeMenu from "./components/PathTreeMenu";
-import { ancestorFolders, parentFolder, sharedFolder } from "./utils/pathTree";
+import { ancestorFolders, parentFolder, sharedFolder, withinFolder } from "./utils/pathTree";
 import SlashMenu from "./components/SlashMenu";
 import LinkPicker from "./components/LinkPicker";
 import TagMenu from "./components/TagMenu";
@@ -147,7 +147,7 @@ export default function BoojyNotes() {
     confirmState,
     requestConfirm,
     resolveConfirm,
-  } = useOverlay();
+  } = useOverlays();
 
   // ── State ──────────────────────────────────────────────────────────
   // Navigation state: one active note. Opening a note replaces the current one.
@@ -232,7 +232,7 @@ export default function BoojyNotes() {
     trashFile,
     refreshVaults,
     addVault,
-    flushToDisk,
+    flushAll,
     downloadOffloaded,
     folderOps,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
@@ -247,13 +247,11 @@ export default function BoojyNotes() {
     onTitleResolved,
     remapNoteFolders,
   });
-  useQuitFlush(flushToDisk, noteDataRef, unflushedNotes);
+  useQuitFlush(flushAll);
   const savePoint = useSavePoint({
     activeNote,
     activeNoteRef,
-    flushToDisk,
-    noteDataRef,
-    unflushedNotes,
+    flushAll,
     toasts,
     showToast,
     updateToast,
@@ -262,8 +260,7 @@ export default function BoojyNotes() {
   const versionHistory = useVersionHistory({
     activeNote,
     noteDataRef,
-    unflushedNotes,
-    flushToDisk,
+    flushAll,
     commitNoteData,
     syncGeneration,
     sourceView,
@@ -471,28 +468,9 @@ export default function BoojyNotes() {
     },
     [duplicateNoteRaw, noteDataRef, showToast],
   );
-  const {
-    updateBlockText,
-    insertBlockAfter,
-    openCodeBlock,
-    openDivider,
-    deleteBlock,
-    deleteBlockRange,
-    duplicateBlockRange,
-    updateBlockProperty,
-    saveAndInsertFiles,
-    flipCheck,
-    registerBlockRef,
-    updateCodeLang,
-    updateCallout,
-    updateCalloutTitle,
-    updateTableCell,
-    updateTableRows,
-    updateBlockIndent,
-    indentBlockRange,
-    moveBlock,
-    setBlockKind,
-  } = useBlockOperations({
+  // The editor's block operations and handlers go to EditorArea whole, through
+  // EditorContext; the root names only those it also uses itself.
+  const blockOps = useBlockOperations({
     commitNoteData,
     commitTextChange,
     blockRefs,
@@ -500,6 +478,8 @@ export default function BoojyNotes() {
     focusCursorPos,
     onError: showToast,
   });
+  const { updateBlockText, insertBlockAfter, deleteBlock, indentBlockRange, setBlockKind } =
+    blockOps;
 
   // The whole-block selection (utils/blockRun): the block it started on and
   // the one Shift last reached; the grip's drag reads it through the ref.
@@ -583,21 +563,7 @@ export default function BoojyNotes() {
     clearSelectionRef: clearSelectionRef,
     moveFolder: (path, parent, opts) => moveRef.current?.moveFolderTo(path, parent, opts),
   });
-  const {
-    handleEditorKeyDown,
-    handleEditorInput,
-    handleEditorMouseUp,
-    handleEditorMouseDown,
-    handleEditorFocus,
-    handleEditorPaste,
-    handleEditorCopy,
-    handleEditorCut,
-    handleEditorBeforeInput,
-    handleEditorDragOver,
-    handleEditorDragLeave,
-    handleEditorDrop,
-    executeSlashCommand,
-  } = useEditorHandlers({
+  const editorHandlers = useEditorHandlers({
     noteDataRef,
     noteTitleSetRef,
     activeNote,
@@ -615,16 +581,16 @@ export default function BoojyNotes() {
     syncGeneration,
     updateBlockText,
     insertBlockAfter,
-    openCodeBlock,
-    openDivider,
+    openCodeBlock: blockOps.openCodeBlock,
+    openDivider: blockOps.openDivider,
     deleteBlock,
-    saveAndInsertFiles,
+    saveAndInsertFiles: blockOps.saveAndInsertFiles,
     reReadBlockFromDom,
     applyFormat,
     mouseIsDown,
-    updateBlockIndent,
+    updateBlockIndent: blockOps.updateBlockIndent,
     indentBlockRange,
-    moveBlock,
+    moveBlock: blockOps.moveBlock,
     selectBlock: setSelectedBlockId,
     selectBlockRun,
     onError: showToast,
@@ -918,7 +884,7 @@ export default function BoojyNotes() {
           action: {
             label: "Undo",
             run: async () => {
-              await flushToDisk(noteDataRef.current, [...unflushedNotes.current]);
+              await flushAll();
               await recentlyDeleted.restore(id);
             },
           },
@@ -933,15 +899,14 @@ export default function BoojyNotes() {
       showToast,
       recentlyDeleted.available,
       recentlyDeleted.restore,
-      flushToDisk,
-      unflushedNotes,
+      flushAll,
     ],
   );
 
   const confirmDeleteFolder = useCallback(
     async (folderPath) => {
       const count = Object.values(noteDataRef.current || {}).filter(
-        (n) => n.folder && (n.folder === folderPath || n.folder.startsWith(`${folderPath}/`)),
+        (n) => n.folder && withinFolder(n.folder, folderPath),
       ).length;
       const name = folderPath.split("/").pop();
       if (!(await askBeforeDeleting("folder", { count, name }))) return;
@@ -1091,7 +1056,7 @@ export default function BoojyNotes() {
         noteDataRef.current[activeNote]?.content?.blocks ?? [],
         blockSelectionRef.current,
       ),
-    updateTableRows,
+    updateTableRows: blockOps.updateTableRows,
     openFind: (mode) => openFindRef.current?.(mode),
     detectActiveFormats,
     sidebarVisible,
@@ -1319,36 +1284,11 @@ export default function BoojyNotes() {
               focusBlockId,
               focusCursorPos,
               forceRender,
-              handleEditorKeyDown,
-              handleEditorInput,
-              handleEditorPaste,
-              handleEditorCopy,
-              handleEditorCut,
-              handleEditorBeforeInput,
+              ...blockOps,
+              ...editorHandlers,
               startHandleDrag,
-              handleEditorMouseDown,
-              handleEditorMouseUp,
-              handleEditorFocus,
-              handleEditorDragOver,
-              handleEditorDragLeave,
-              handleEditorDrop,
               commitTextChange,
               syncGeneration,
-              flipCheck,
-              deleteBlock,
-              deleteBlockRange,
-              duplicateBlockRange,
-              indentBlockRange,
-              setBlockKind,
-              registerBlockRef,
-              insertBlockAfter,
-              updateBlockText,
-              updateCodeLang,
-              updateCallout,
-              updateCalloutTitle,
-              updateTableCell,
-              updateTableRows,
-              updateBlockProperty,
               detectActiveFormats,
               applyFormat,
               reReadBlockFromDom,
@@ -1460,7 +1400,7 @@ export default function BoojyNotes() {
       <SlashMenu
         slashMenu={slashMenu}
         setSlashMenu={setSlashMenu}
-        executeSlashCommand={executeSlashCommand}
+        executeSlashCommand={editorHandlers.executeSlashCommand}
       />
 
       {linkPicker.picker && (
