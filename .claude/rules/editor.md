@@ -140,14 +140,14 @@ app's, made through state.**
 
 ## Right-click is Cut, Copy and Paste
 
-- `EditorContextMenu`: a misspelled word's guesses (three at most) and Add to dictionary, or a
+- `EditorContextMenu`: a misspelled word's guesses and Add to dictionary, or a
   link's actions; then Cut, Copy, Paste; in a table cell Delete table last. Media and code
   keep their own.
 - **Items run the keys' own path** (the captured range, then `execCommand`, a guess as
   `insertText`, or `paste` IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
-  late, focus-only): whole note on open, an edit after a pause; not code, tags,
-  links. Guesses only on a marked word; a Mac by paragraph language. `spelling.spec.ts`.
+  late): whole note on open and when a dictionary loads, an edit after a pause; not code,
+  tags, links. Guesses only on a marked word; a Mac by paragraph language. `spelling.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 

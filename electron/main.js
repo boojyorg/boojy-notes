@@ -26,7 +26,7 @@ import {
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
 import { buildAppMenu } from "./appMenu.js";
-import { applySpelling, registerSpellingIPC } from "./spelling.js";
+import { applySpelling, onDictionaryReady, registerSpellingIPC } from "./spelling.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -181,6 +181,10 @@ function createWindow() {
   // belongs to the window, so a window made again after Cmd+W (the Dock
   // click's `activate`) gets it too.
   applySpelling(mainWindow.webContents.session);
+  const stopDictionaryWatch = onDictionaryReady(contents.session, () => {
+    if (!contents.isDestroyed()) contents.send("spelling-ready");
+  });
+  mainWindow.on("closed", stopDictionaryWatch);
 
   // Boojy Notes scales its own UI (Cmd+Plus/Minus/0 → `boojy-ui-scale`); the
   // native controls never scale with Chromium's page zoom, so any page zoom
