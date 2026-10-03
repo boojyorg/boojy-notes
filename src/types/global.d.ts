@@ -1,10 +1,18 @@
 /// <reference types="vite/client" />
 
 // Truthful mirror of electron/preload.js — every member below exists on the
-// bridge, with argument and return shapes taken from the ipcMain handlers.
-// When the preload changes, change this file in the same commit.
+// bridge, with argument and return shapes taken from the ipcMain handlers
+// (imported from them where the main process declares one). When the preload
+// changes, change this file in the same commit.
 
+import type { MenuState } from "../../electron/appMenu";
+import type { OtherFile } from "../../electron/folders";
+import type { Version } from "../../electron/history";
+import type { SpellingState } from "../../electron/spelling";
+import type { VaultEntry } from "../../electron/vaults";
 import type { Note } from "./notes";
+
+export type { OtherFile, SpellingState, VaultEntry };
 
 /** userData/settings.json. */
 interface DesktopSettings {
@@ -14,39 +22,8 @@ interface DesktopSettings {
   [key: string]: unknown;
 }
 
-/** The Spelling section's state (electron/spelling.ts). */
-export interface SpellingState {
-  enabled: boolean;
-  /** The languages checked; on a Mac, empty (the system chooses). */
-  languages: string[];
-  available: string[];
-  setBySystem: boolean;
-}
-
-/** One version in a note's history (electron/history.ts), without its text. */
-export interface HistoryVersion {
-  id: string;
-  at: number;
-  kind: "auto" | "point";
-  hash: string;
-  name?: string;
-  reason?: string;
-}
-
-/** One vault the app has opened (electron/vaults.ts). */
-export interface VaultEntry {
-  path: string;
-  name: string;
-  current: boolean;
-  exists: boolean;
-  cloud: boolean;
-}
-
-/** A file in the vault that is not a note (electron/folders.ts). */
-export interface OtherFile {
-  path: string;
-  attachment: boolean;
-}
+/** One version in a note's history, as the list shows it. */
+export type HistoryVersion = Omit<Version, "src">;
 
 /** Payload of the update-status event. */
 interface UpdateStatus {
@@ -120,18 +97,7 @@ declare global {
       removeDictionaryWord: (word: string) => Promise<boolean>;
       openKeyboardSettings: () => Promise<void>;
       onMenuCommand: (callback: (id: string) => void) => () => void;
-      setMenuState: (state: {
-        hasNote: boolean;
-        hasFile: boolean;
-        canUndo: boolean;
-        canRedo: boolean;
-        textField: boolean;
-        formats: string[];
-        kind: string | null;
-        align: string | null;
-        sidebarVisible: boolean;
-        sourceView: boolean;
-      }) => void;
+      setMenuState: (state: MenuState) => void;
       /** Windows and Linux: the application menu's names, for the app's own strip. */
       menuLabels: () => Promise<string[]>;
       /** Opens that menu at the window point `x`, `y` (viewport pixels). */

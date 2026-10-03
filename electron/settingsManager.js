@@ -1,7 +1,6 @@
-import { ipcMain } from "electron";
+import { app, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
-import { app } from "electron";
 import { autoUpdater } from "electron-updater";
 import { writeFileAtomic } from "./atomicWrite.js";
 import { forgetVault, isKnownVault, rememberVault, vaultEntries } from "./vaults.js";
@@ -134,9 +133,12 @@ function setupAutoUpdater(getMainWindow) {
 
 // ─── Register IPC handlers ───
 
+// The vault being left is remembered only if it is there: the default folder
+// a first run never made is not a vault to come back to.
+const keepIfPresent = (vaults, dir) => (fs.existsSync(dir) ? rememberVault(vaults, dir) : vaults);
+
 function registerSettingsIPC(getMainWindow, restartWatcher) {
   ipcMain.handle("choose-notes-dir", async () => {
-    const { dialog } = await import("electron");
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openDirectory", "createDirectory"],
       title: "Choose Notes Folder",
@@ -153,10 +155,7 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
   // restarts the watcher on it, as choosing a folder does.
   const openVault = (dir) => {
     const cfg = loadConfig();
-    const current = cfg.notesDir || getNotesDir();
-    // The vault being left is remembered only if it is there: the default
-    // folder a first run never made is not a vault to come back to.
-    const known = fs.existsSync(current) ? rememberVault(cfg.vaults, current) : cfg.vaults;
+    const known = keepIfPresent(cfg.vaults, cfg.notesDir || getNotesDir());
     saveConfig({ ...cfg, notesDir: dir, vaults: rememberVault(known, dir) });
     restartWatcher();
     return dir;
@@ -175,7 +174,6 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
   // Settings' Add folder…: the picker, then the list gains the folder. It
   // does not switch to it; the row's Open does.
   ipcMain.handle("add-vault", async () => {
-    const { dialog } = await import("electron");
     const result = await dialog.showOpenDialog(getMainWindow(), {
       properties: ["openDirectory", "createDirectory"],
       title: "Add Storage Location",
@@ -184,19 +182,18 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     const cfg = loadConfig();
     const current = getNotesDir();
     if (!result.canceled && result.filePaths[0]) {
-      const known = fs.existsSync(current) ? rememberVault(cfg.vaults, current) : cfg.vaults;
+      const known = keepIfPresent(cfg.vaults, current);
       saveConfig({ ...cfg, vaults: rememberVault(known, result.filePaths[0]) });
     }
     return vaultEntries(loadConfig().vaults, current);
   });
 
   // Show in Finder for any listed location, the open one included.
-  ipcMain.handle("reveal-vault", async (_event, dir) => {
+  ipcMain.handle("reveal-vault", (_event, dir) => {
     if (typeof dir !== "string" || !fs.existsSync(dir)) return;
     const listed =
       isKnownVault(loadConfig().vaults, dir) || path.resolve(dir) === path.resolve(getNotesDir());
     if (!listed) return;
-    const { shell } = await import("electron");
     shell.showItemInFolder(dir);
   });
 

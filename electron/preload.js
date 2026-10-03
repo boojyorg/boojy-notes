@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
+// An event from the main process, as `onX(callback)`: the callback gets the
+// event's payload and the call returns the unsubscribe.
+const subscribe = (channel) => (callback) => {
+  const handler = (_event, payload) => callback(payload);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
+};
+
 contextBridge.exposeInMainWorld("electronAPI", {
   getNotesDir: () => ipcRenderer.invoke("get-notes-dir"),
   chooseNotesDir: () => ipcRenderer.invoke("choose-notes-dir"),
@@ -61,20 +69,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openKeyboardSettings: () => ipcRenderer.invoke("open-keyboard-settings"),
   // The application menu (electron/appMenu.ts): its items arrive as command
   // ids, and the window tells it what can act so it greys what cannot.
-  onMenuCommand: (callback) => {
-    const handler = (_event, id) => callback(id);
-    ipcRenderer.on("menu-command", handler);
-    return () => ipcRenderer.removeListener("menu-command", handler);
-  },
+  onMenuCommand: subscribe("menu-command"),
   setMenuState: (state) => ipcRenderer.send("menu-state", state),
   // Windows and Linux: the app's own menu strip (WindowStrip).
   menuLabels: () => ipcRenderer.invoke("menu-labels"),
   popupMenu: (label, x, y) => ipcRenderer.send("popup-menu", { label, x, y }),
-  onMenuClosed: (callback) => {
-    const handler = (_event, label) => callback(label);
-    ipcRenderer.on("menu-closed", handler);
-    return () => ipcRenderer.removeListener("menu-closed", handler);
-  },
+  onMenuClosed: subscribe("menu-closed"),
   setTitleBarOverlay: (colors) => ipcRenderer.send("set-title-bar-overlay", colors),
   // Show a note's file in Finder or Explorer, by its id.
   revealNote: (noteId) => ipcRenderer.invoke("reveal-note", noteId),
@@ -84,11 +84,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listDeletedNotes: () => ipcRenderer.invoke("list-deleted-notes"),
   restoreDeletedNote: (noteId) => ipcRenderer.invoke("restore-deleted-note", noteId),
   purgeDeletedNote: (noteId) => ipcRenderer.invoke("purge-deleted-note", noteId),
-  onDeletedNotesChanged: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on("deleted-notes-changed", handler);
-    return () => ipcRenderer.removeListener("deleted-notes-changed", handler);
-  },
+  onDeletedNotesChanged: subscribe("deleted-notes-changed"),
   history: {
     savePoint: (noteId) => ipcRenderer.invoke("history-save-point", noteId),
     name: (noteId, versionId, name) => ipcRenderer.invoke("history-name", noteId, versionId, name),
@@ -116,39 +112,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // One directory copy beside the original; answers with the copy's path,
   // its folders and its notes read from disk.
   duplicateFolder: (relPath) => ipcRenderer.invoke("duplicate-folder", relPath),
-  onFoldersChanged: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on("folders-changed", handler);
-    return () => ipcRenderer.removeListener("folders-changed", handler);
-  },
+  onFoldersChanged: subscribe("folders-changed"),
 
-  onFileChanged: (callback) => {
-    const handler = (_event, note) => callback(note);
-    ipcRenderer.on("file-changed", handler);
-    return () => ipcRenderer.removeListener("file-changed", handler);
-  },
+  onFileChanged: subscribe("file-changed"),
 
-  onFileDeleted: (callback) => {
-    const handler = (_event, data) => callback(data);
-    ipcRenderer.on("file-deleted", handler);
-    return () => ipcRenderer.removeListener("file-deleted", handler);
-  },
+  onFileDeleted: subscribe("file-deleted"),
 
   // A note renamed or moved outside the app: the same note, as the disk now
   // holds it (its new title and folder).
-  onFileMoved: (callback) => {
-    const handler = (_event, note) => callback(note);
-    ipcRenderer.on("file-moved", handler);
-    return () => ipcRenderer.removeListener("file-moved", handler);
-  },
+  onFileMoved: subscribe("file-moved"),
 
   // Quit/close flush handshake: main holds the window close until the renderer
   // has flushed pending edits to disk (or main's 2s timeout fires)
-  onAppWillClose: (callback) => {
-    const handler = () => callback();
-    ipcRenderer.on("app-will-close", handler);
-    return () => ipcRenderer.removeListener("app-will-close", handler);
-  },
+  onAppWillClose: subscribe("app-will-close"),
   flushBeforeCloseDone: () => ipcRenderer.send("flush-before-close-done"),
 
   // Auto-update
@@ -156,22 +132,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   installUpdate: () => ipcRenderer.invoke("install-update"),
   setAutoUpdate: (enabled) => ipcRenderer.invoke("set-auto-update", enabled),
   getAutoUpdate: () => ipcRenderer.invoke("get-auto-update"),
-  onUpdateStatus: (callback) => {
-    const handler = (_event, status) => callback(status);
-    ipcRenderer.on("update-status", handler);
-    return () => ipcRenderer.removeListener("update-status", handler);
-  },
+  onUpdateStatus: subscribe("update-status"),
 
   // Window
   setWindowTitle: (title) => ipcRenderer.send("set-window-title", title),
   // macOS full screen hides the traffic lights; the renderer drops the inset
   // that clears them while it is on. One answer at mount, then every edge.
   isFullScreen: () => ipcRenderer.invoke("is-full-screen"),
-  onFullScreenChanged: (callback) => {
-    const handler = (_event, on) => callback(on);
-    ipcRenderer.on("full-screen-changed", handler);
-    return () => ipcRenderer.removeListener("full-screen-changed", handler);
-  },
+  onFullScreenChanged: subscribe("full-screen-changed"),
 
   // Diagnostic trace (electron/trace.js): a no-op unless BOOJY_TRACE is set.
   traceEnabled: ipcRenderer.sendSync("trace-enabled"),

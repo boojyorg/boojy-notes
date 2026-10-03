@@ -12,6 +12,7 @@ vi.mock("electron", () => ({
   app: { getPath: vi.fn((name) => (name === "userData" ? userData : documents)) },
   ipcMain: { handle: vi.fn(), on: vi.fn() },
   dialog: {},
+  shell: {},
 }));
 vi.mock("electron-updater", () => ({
   autoUpdater: { on: vi.fn(), checkForUpdates: vi.fn(async () => {}) },
