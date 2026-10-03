@@ -2,13 +2,9 @@
 // `~` for home, a cloud provider by its name, the folder's own name apart.
 // Code calls a location a vault (electron/vaults.ts).
 
-export interface StorageLocation {
-  path: string;
-  name: string;
-  current: boolean;
-  exists: boolean;
-  cloud: boolean;
-}
+import type { VaultEntry } from "../types/global";
+
+export type StorageLocation = VaultEntry;
 
 /** `~` for the home directory, on either platform. */
 export const displayPath = (dir: string | null | undefined): string =>

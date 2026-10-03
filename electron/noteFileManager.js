@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { writeFileAtomic } from "./atomicWrite.js";
 import * as history from "./history.js";
 import { isOffloaded, offloadedAmong, readDownloading } from "./offloaded.js";
+import { isSameEntry, isSkippedName, vaultKey } from "./vaultFs.js";
 import {
   applyEol,
   blocksToMarkdown,
@@ -96,17 +97,6 @@ function ensureUniqueFilePath(filePath, ownPath = null) {
   }
 }
 
-/** Whether two paths name the same file on disk (false if either is missing). */
-function isSameFile(a, b) {
-  try {
-    const sa = fs.statSync(a);
-    const sb = fs.statSync(b);
-    return sa.ino === sb.ino && sa.dev === sb.dev;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * The name the directory entry actually carries, which on a case-insensitive
  * or normalising volume can differ from the name that was asked for. Falls
@@ -155,7 +145,7 @@ function assertVaultPresent(notesDir) {
  */
 function resolveWritePath(targetPath, existingPath) {
   if (existingPath === targetPath) return { finalPath: targetPath, sameFile: false };
-  if (existingPath && fs.existsSync(targetPath) && isSameFile(existingPath, targetPath))
+  if (existingPath && fs.existsSync(targetPath) && isSameEntry(existingPath, targetPath))
     return { finalPath: targetPath, sameFile: true };
   return { finalPath: ensureUniqueFilePath(targetPath, existingPath), sameFile: false };
 }
@@ -182,8 +172,7 @@ function indexDir() {
 }
 
 function indexPath(notesDir) {
-  const hash = crypto.createHash("sha1").update(path.resolve(notesDir)).digest("hex");
-  return path.join(indexDir(), `${hash.slice(0, 12)}.json`);
+  return path.join(indexDir(), `${vaultKey(notesDir)}.json`);
 }
 
 function legacyIndexPath(notesDir) {
@@ -249,7 +238,7 @@ function recordIdentity(id, stat, raw) {
 /** Every note file under the vault, skipping what the vault walk skips. */
 function walkNoteFiles(dir, visit) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith(".") || entry.name === "attachments") continue;
+    if (isSkippedName(entry.name)) continue;
     if (entry.isDirectory()) walkNoteFiles(path.join(dir, entry.name), visit);
     else if (entry.name.endsWith(".md")) visit(path.join(dir, entry.name));
   }
@@ -856,13 +845,10 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
 }
 
 export {
-  writeFileAtomic,
   insideVault,
   sanitizeFilename,
   MAX_NAME_BYTES,
   ensureUniqueFilePath,
-  resolveWritePath,
-  noteToFilePath,
   hashOf,
   relocateNote,
   getIdIndex,

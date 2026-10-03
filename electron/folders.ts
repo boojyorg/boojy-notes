@@ -8,6 +8,7 @@ import {
   saveIndex,
   walkNoteFiles,
 } from "./noteFileManager.js";
+import { isDeletableOsCruft, isSameEntry, isSkippedName } from "./vaultFs.js";
 
 /**
  * Folders are directories.
@@ -30,22 +31,6 @@ export interface FolderWatcherGuard {
 }
 
 const NO_GUARD: FolderWatcherGuard = { suppressTree: () => {} };
-
-/** Directories the vault walk never shows: hidden ones and the attachment store. */
-function isSkippedDir(name: string): boolean {
-  return name.startsWith(".") || name === "attachments";
-}
-
-/** Files a directory may hold and still count as empty. Only exact names; a
- * `._*` AppleDouble file could be a real user file and keeps the folder. */
-function isDeletableOsCruft(name: string): boolean {
-  const lower = name.toLowerCase();
-  // `Icon\r` is a folder's custom icon, which Finder and Dropbox write; the
-  // carriage return is part of the name.
-  return (
-    lower === ".ds_store" || lower === "thumbs.db" || lower === "desktop.ini" || name === "Icon\r"
-  );
-}
 
 export const toPosix = (rel: string): string => rel.split(path.sep).join("/");
 
@@ -107,7 +92,7 @@ export function readAllFolders(notesDir: string): string[] {
       return;
     }
     for (const entry of entries) {
-      if (!entry.isDirectory() || isSkippedDir(entry.name)) continue;
+      if (!entry.isDirectory() || isSkippedName(entry.name)) continue;
       const childRel = rel ? `${rel}/${entry.name}` : entry.name;
       out.push(childRel);
       walk(path.join(dir, entry.name), childRel);
@@ -134,17 +119,6 @@ export function resolveVaultDir(notesDir: string, rel: string): string | null {
 function isDirectory(abs: string): boolean {
   try {
     return fs.statSync(abs).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-/** Whether two paths name the same directory entry (false if either is missing). */
-function isSameEntry(a: string, b: string): boolean {
-  try {
-    const sa = fs.statSync(a);
-    const sb = fs.statSync(b);
-    return sa.ino === sb.ino && sa.dev === sb.dev;
   } catch {
     return false;
   }
