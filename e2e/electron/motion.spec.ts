@@ -270,3 +270,31 @@ test("a dropped block settles from where its copy was, as translucent, and the c
     await h.close();
   }
 });
+
+test("a submenu near the window's foot is placed by its resting size, its last row on screen", async () => {
+  // Measured a frame into its grow-in, Turn into's kinds judged themselves 4%
+  // short and their last row (Quote) hung off the window's foot.
+  const body = `${Array.from({ length: 30 }, (_, i) => `Line ${i + 1}.`).join("\n\n")}\n\nLast line.\n`;
+  const h = await launchApp({ "Long.md": body }, { motion: true });
+  try {
+    await h.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 420));
+    await h.openNote("Long");
+    const last = h.page.locator('[data-block-type="p"]', { hasText: "Last line." });
+    await last.scrollIntoViewIfNeeded();
+    await last.click();
+    await h.page.keyboard.press("Escape");
+    await h.page.keyboard.press("Shift+F10");
+    await h.page.keyboard.press("ArrowDown"); // Turn into
+    await h.page.keyboard.press("ArrowRight");
+    await expect(h.page.getByRole("menuitemradio", { name: "Quote" })).toBeVisible();
+    await h.page.waitForTimeout(400); // the grow-in has ended
+    const overhang = await h.page.evaluate(() => {
+      const kinds = document.querySelector('[role="menuitemradio"]')?.closest('[role="menu"]');
+      return Math.round((kinds?.getBoundingClientRect().bottom ?? 9_999) - window.innerHeight);
+    });
+    expect(overhang).toBeLessThanOrEqual(0);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

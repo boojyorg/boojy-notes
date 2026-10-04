@@ -114,3 +114,35 @@ test("a selected missing picture wears the selected outline", async () => {
   await expect(card).toHaveAttribute("data-selected", "true");
   expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
 });
+
+test("Option+Down and Option+Up keep the caret on screen, scrolling the note as they go", async () => {
+  await h.close();
+  const body = Array.from({ length: 40 }, (_, i) => `Block ${i + 1}.`).join("\n\n");
+  h = await launchApp({ "Long.md": `${body}\n` });
+  await h.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(900, 480));
+  await h.openNote("Long");
+  /** Where the caret's line sits against the scroller's visible part, below the path band. */
+  const caretInView = () =>
+    h.page.evaluate(() => {
+      const sel = window.getSelection();
+      if (!sel?.rangeCount) return false;
+      const r = sel.getRangeAt(0).getClientRects()[0] ?? sel.getRangeAt(0).getBoundingClientRect();
+      const scroller = document.querySelector(".editor-scroll") as HTMLElement;
+      const band = scroller.querySelector('[data-testid="note-path-row"]') as HTMLElement;
+      return (
+        r.top >= band.getBoundingClientRect().bottom &&
+        r.bottom <= scroller.getBoundingClientRect().bottom
+      );
+    });
+  await h.page.getByText("Block 1.", { exact: true }).click();
+  for (let i = 0; i < 30; i++) {
+    await h.page.keyboard.press(`${MOD}+ArrowDown`);
+    expect(await caretInView(), `after ${i + 1} steps down`).toBe(true);
+  }
+  await expect.poll(where).toBe("Block @0");
+  for (let i = 0; i < 30; i++) {
+    await h.page.keyboard.press(`${MOD}+ArrowUp`);
+    expect(await caretInView(), `after ${i + 1} steps up`).toBe(true);
+  }
+  expect(h.pageErrors).toEqual([]);
+});

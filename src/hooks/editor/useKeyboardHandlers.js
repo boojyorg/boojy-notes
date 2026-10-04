@@ -16,6 +16,8 @@ import {
   caretLandingBefore,
   isBlockJump,
   landing,
+  revealCaret,
+  revealInNote,
   landingBefore,
 } from "../../utils/domHelpers";
 import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
@@ -421,8 +423,11 @@ export function useKeyboardHandlers({
       const up = e.key === "ArrowUp";
       const sel = window.getSelection();
       const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+      // A caret placed by code is never scrolled to on its own: the jump
+      // brings its line, or the block it selects, on screen.
       if (up && range && caretOffsetAt(el, range.startContainer, range.startOffset) > 0) {
         placeCaret(el, 0);
+        revealCaret();
         return;
       }
       const idx = up
@@ -430,15 +435,21 @@ export function useKeyboardHandlers({
         : caretLandingAfter(blocks, blockIndex);
       if (idx < 0) {
         if (up) focusTitleEnd();
-        else placeCaret(el, caretLength(el));
+        else {
+          placeCaret(el, caretLength(el));
+          revealCaret();
+        }
         return;
       }
       const target = blocks[idx];
+      const targetEl = blockRefs.current[target.id];
       if (hasOwnField(target)) focusOwnedField(editorRef.current, target.id, "start");
-      else if (isSelectableBlock(target)) selectBlock(target.id);
-      else {
-        const targetEl = blockRefs.current[target.id];
-        if (targetEl) placeCaret(targetEl, 0);
+      else if (isSelectableBlock(target)) {
+        selectBlock(target.id);
+        if (targetEl) revealInNote(targetEl.getBoundingClientRect());
+      } else if (targetEl) {
+        placeCaret(targetEl, 0);
+        revealCaret();
       }
       return;
     }

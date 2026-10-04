@@ -20,6 +20,8 @@ vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
   caretLandingBefore: (await importOriginal()).caretLandingBefore,
   caretLandingAfter: (await importOriginal()).caretLandingAfter,
   isBlockJump: (await importOriginal()).isBlockJump,
+  revealCaret: vi.fn(),
+  revealInNote: vi.fn(),
   caretRect: (range) => range.getBoundingClientRect(),
   placeCaret: vi.fn(() => true),
   // Visible characters, as the real ones count them (no icons or anchors here).

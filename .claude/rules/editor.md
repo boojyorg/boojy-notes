@@ -78,7 +78,7 @@ app's, made through state.**
   on the next row's marker). The click's caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
-- **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as the arrows do.
+- **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as arrows do, on screen.
   `block-jump.spec.ts`.
 
 ## Backspace sheds the kind before it merges
