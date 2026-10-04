@@ -65,6 +65,7 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isWeb } from "./utils/platform";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
+import { useNoteHistory } from "./hooks/useNoteHistory";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
 
@@ -1023,6 +1024,14 @@ export default function BoojyNotes() {
       setTimeout(() => setVaultMenuRequest((n) => n + 1), PANEL_MS);
     }
   }, [sidebarVisible, revealSidebar]);
+  // ⌘[ / ⌘]: back and forward through the notes opened, per storage location.
+  const noteHistory = useNoteHistory({
+    activeNote,
+    setActiveNote,
+    noteDataRef,
+    resetKey: notesDir,
+  });
+
   useAppKeyboard({
     activeNote,
     noteData,
@@ -1066,6 +1075,10 @@ export default function BoojyNotes() {
     savePoint,
     openVersionHistory: versionHistory.open,
     openRecentlyDeleted: recentlyDeleted.available ? openRecentlyDeleted : undefined,
+    goBack: noteHistory.back,
+    goForward: noteHistory.forward,
+    canBack: noteHistory.canBack,
+    canForward: noteHistory.canForward,
   });
   const closeMovePicker = useCallback(() => setMovePicker(null), []);
   const pickTarget = React.useMemo(() => {

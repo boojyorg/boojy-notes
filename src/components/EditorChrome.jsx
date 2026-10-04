@@ -266,6 +266,7 @@ export default function EditorChrome({
               onClick={toggleSidebar}
               label="Toggle sidebar"
               shortcut={SHORTCUTS.toggleSidebar}
+              data-sidebar-toggle
             >
               <SidebarToggleIcon />
             </ChromeButton>

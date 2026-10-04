@@ -59,8 +59,9 @@ app's, made through state.**
 
 ## Keys and focus: the closest active surface owns them
 
-- **Tab outside a list leaves the note** (`focusBeyondNote`; Shift+Tab the name); lists indent,
-  cells and code keep their own Tab. Swallowing it was a keyboard trap.
+- **Tab outside a list leaves the note for the open note's sidebar row** (`focusBeyondNote`;
+  hidden sidebar: its show button; Shift+Tab the name); lists indent, cells and code keep their
+  own Tab. Swallowing it was a keyboard trap; the next DOM stop was the header's ···.
   `keyboard-walkthrough.spec.ts`.
 
 - **A surface that takes a key prevents its default; one that reads a key checks
@@ -79,6 +80,9 @@ app's, made through state.**
   on the next row's marker). The click's caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
+- **⌥↑/↓ (Ctrl off the Mac) jump block to block, to a block's start** (up: its own start
+  first), landing as the arrows do; a block with its own field keeps its ⌥ keys.
+  `block-jump.spec.ts`.
 
 ## Backspace sheds the kind before it merges
 

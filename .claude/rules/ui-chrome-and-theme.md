@@ -84,7 +84,9 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
   after `TOOLTIP_REST_MS`, at once while warm; portalled to `body`, placed via `cssZoom`. No
   shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
-- **Shell keys live in `useAppKeyboard`.** `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
+- **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ off the Mac) and View → Back /
+  Forward walk the notes opened (`useNoteHistory`: memory only, a deleted note skipped, reset
+  per vault). `note-history.spec.ts`. `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action

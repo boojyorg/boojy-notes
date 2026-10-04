@@ -37,8 +37,12 @@ import {
   isSelectableBlock,
   hasOwnField,
   focusOwnedField,
+  focusTitleEnd,
   titleFieldText,
   getCaretOffset,
+  caretLandingAfter,
+  caretLandingBefore,
+  isBlockJump,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
@@ -555,6 +559,34 @@ const EditorArea = memo(
         if (e.key === "Escape") {
           e.preventDefault();
           setSelectedBlockId(null);
+          return true;
+        }
+        // Option+Up/Down (Ctrl off the Mac) from a selected image or divider:
+        // on to the next block's start, as from a caret (useKeyboardHandlers).
+        if (isBlockJump(e)) {
+          e.preventDefault();
+          const up = e.key === "ArrowUp";
+          const idx = up
+            ? caretLandingBefore(blocks, range.from)
+            : caretLandingAfter(blocks, range.to);
+          if (idx < 0) {
+            if (up) {
+              setSelectedBlockId(null);
+              focusTitleEnd();
+            }
+            return true;
+          }
+          const target = blocks[idx];
+          if (isSelectableBlock(target)) {
+            setSelectedBlockId(target.id);
+            return true;
+          }
+          setSelectedBlockId(null);
+          if (hasOwnField(target)) focusOwnedField(editorRef.current, target.id, "start");
+          else {
+            const el = blockRefs.current[target.id];
+            if (el) placeCaret(el, 0);
+          }
           return true;
         }
         if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !mod && !e.altKey) {
