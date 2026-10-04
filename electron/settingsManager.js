@@ -3,7 +3,14 @@ import path from "node:path";
 import fs from "node:fs";
 import { autoUpdater } from "electron-updater";
 import { writeFileAtomic } from "./atomicWrite.js";
-import { forgetVault, isKnownVault, rememberVault, vaultEntries } from "./vaults.js";
+import {
+  forgetVault,
+  isKnownVault,
+  labelVault,
+  rememberVault,
+  unlabelVault,
+  vaultEntries,
+} from "./vaults.js";
 
 const CONFIG_FILE = path.join(app.getPath("userData"), "config.json");
 const SETTINGS_FILE = path.join(app.getPath("userData"), "settings.json");
@@ -135,6 +142,13 @@ function setupAutoUpdater(getMainWindow) {
 
 // The vault being left is remembered only if it is there: the default folder
 // a first run never made is not a vault to come back to.
+/** The vaults as Settings and the sidebar show them: named, A–Z. */
+const listVaults = (current) => {
+  const cfg = loadConfig();
+  return vaultEntries(cfg.vaults, current, cfg.vaultLabels);
+};
+const same = (a, b) => path.resolve(a) === path.resolve(b);
+
 const keepIfPresent = (vaults, dir) => (fs.existsSync(dir) ? rememberVault(vaults, dir) : vaults);
 
 function registerSettingsIPC(getMainWindow, restartWatcher) {
@@ -161,7 +175,7 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     return dir;
   };
 
-  ipcMain.handle("list-vaults", () => vaultEntries(loadConfig().vaults, getNotesDir()));
+  ipcMain.handle("list-vaults", () => listVaults(getNotesDir()));
 
   // Only a vault already in the list: the renderer never names a new path,
   // which comes from the native picker alone. A missing one is refused, never made.
@@ -185,7 +199,7 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
       const known = keepIfPresent(cfg.vaults, current);
       saveConfig({ ...cfg, vaults: rememberVault(known, result.filePaths[0]) });
     }
-    return vaultEntries(loadConfig().vaults, current);
+    return listVaults(current);
   });
 
   // Show in Finder for any listed location, the open one included.
@@ -197,13 +211,28 @@ function registerSettingsIPC(getMainWindow, restartWatcher) {
     shell.showItemInFolder(dir);
   });
 
+  // Settings' Rename…: the vault's name in the app alone, kept in config
+  // (`vaultLabels`). The folder on disk is never renamed. A listed vault only.
+  ipcMain.handle("rename-vault", (_event, dir, name) => {
+    const cfg = loadConfig();
+    const current = getNotesDir();
+    const listed = typeof dir === "string" && (isKnownVault(cfg.vaults, dir) || same(dir, current));
+    if (listed) saveConfig({ ...cfg, vaultLabels: labelVault(cfg.vaultLabels, dir, name) });
+    return listVaults(current);
+  });
+
   // Settings' Remove from list: the folder and its notes are not touched.
   ipcMain.handle("forget-vault", (_event, dir) => {
     const cfg = loadConfig();
     const current = getNotesDir();
     if (typeof dir === "string")
-      saveConfig({ ...cfg, vaults: forgetVault(cfg.vaults, dir, current) });
-    return vaultEntries(loadConfig().vaults, current);
+      saveConfig({
+        ...cfg,
+        vaults: forgetVault(cfg.vaults, dir, current),
+        // The open vault is never forgotten, so it keeps its name too.
+        vaultLabels: same(dir, current) ? cfg.vaultLabels : unlabelVault(cfg.vaultLabels, dir),
+      });
+    return listVaults(current);
   });
 
   // First-run setup (the renderer's SetupDialog): whether to show it, and

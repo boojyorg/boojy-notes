@@ -100,6 +100,8 @@ tiers. Hit boxes are `CHROME_BTN`.
   row (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
   the one rule shared with `Cmd+±`.
+- **A menu opened inside Settings passes `overSettings`** (else it stacks under the pane), and
+  Settings leaves Escape to any open menu. `settings-dialog.spec.ts`.
 - **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
   still. Centred by a wrapper, never a transform (it would contain the
   `fixed` children). A menu opened inside it portals to `body`, keys in capture; the scale keys
@@ -164,8 +166,12 @@ tiers. Hit boxes are `CHROME_BTN`.
   on hover; never more than three glyphs). **Only the tree scrolls**; the rows above it share its
   drop zone (`data-drop-zone`).
 - **The row is named after the storage location's folder** (default `Notes`; code: vault).
-  It and ⌘O open `VaultMenu`, a switcher only; Settings adds, uses, reveals, removes. A row: name and place (the Finder control), teal `Active` or hover `Use`, hover ×,
-  which asks and moves off the open one first. `vault-switcher.spec.ts`.
+  It and ⌘O open `VaultMenu`, a switcher only; Settings manages. **Both list A–Z, sorted once
+  in `vaultEntries`.** A Settings row: glyph (folder, cloud, missing), name, full path cut in
+  the middle, the tick on the open one, ··· on hover or focus (it darkens, no box). A click on
+  the row switches. Its menu
+  leaves out what cannot work, never greys it: Switch to, Rename…, Show in Finder, Remove from
+  list… (asks, moves off the open one first). `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
   its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
   store is the root's last row.

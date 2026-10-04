@@ -1,7 +1,8 @@
 /**
  * Storage locations: the sidebar's list is named after the open location's
  * folder, and its menu (a click on the name, or ⌘O) switches between them and
- * says what the tree shows besides notes; Settings adds, opens and removes. Files that are not notes open in their own app; the attachment store
+ * says what the tree shows besides notes; Settings adds, and each row's ···
+ * switches, renames (in the app alone), reveals and removes. Both list A–Z. Files that are not notes open in their own app; the attachment store
  * is its own row, hidden until asked for.
  */
 import fs from "node:fs";
@@ -18,12 +19,27 @@ async function addLocation(h: AppHandle, dir: string) {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [d] });
   }, dir);
   await h.page.getByRole("button", { name: "Add folder…" }).click();
-  await expect(
-    h.page.getByRole("button", { name: new RegExp(`^${path.basename(dir)},`) }),
-  ).toBeVisible();
+  await expect(location(h, path.basename(dir))).toBeVisible();
 }
 
-test("a location added in Settings is listed without switching; Use and the menu switch", async () => {
+/** Settings' row for the location named `name`. */
+const location = (h: AppHandle, name: string) =>
+  h.page.getByRole("listitem", { name: new RegExp(`^${name},`) });
+
+/** The row's ··· menu, opened as a pointer does: the ··· shows on the row's hover. */
+async function locationMenu(h: AppHandle, name: string) {
+  await location(h, name).hover();
+  await h.page.getByRole("button", { name: `${name} options` }).click();
+  const menu = h.page.getByTestId("location-menu");
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/** Finder's order, as the main process sorts. */
+const az = (names: string[]) =>
+  [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+
+test("a location added in Settings is listed without switching; Switch to and the menu switch", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
     const home = path.basename(h.vault.dir);
@@ -56,20 +72,29 @@ test("a location added in Settings is listed without switching; Use and the menu
     await expect(label).toHaveText(home);
     expect(readConfig(h.userData).notesDir).toBe(h.vault.dir);
 
-    // Use, shown on the row's hover, switches at once, Settings staying open.
-    const uni = settings.getByTestId("settings-location-row").filter({ hasText: "University" });
-    await settings.getByRole("button", { name: /^University,/ }).hover();
-    await settings.getByRole("button", { name: "Use University" }).click();
+    // Switch to, in the row's ··· menu, switches at once, Settings staying open.
+    const uni = location(h, "University");
+    await (await locationMenu(h, "University")).getByTestId("location-switch").click();
     await expect(label).toHaveText("University");
-    await expect(uni.getByTestId("location-active")).toHaveText("Active");
+    await expect(uni.getByTestId("location-current").locator("svg")).toBeVisible();
+    // The open one offers no Switch to.
+    const open = await locationMenu(h, "University");
+    await expect(open.getByTestId("location-switch")).toHaveCount(0);
+    await h.page.keyboard.press("Escape");
+
+    // A click on a row switches too, and back again.
+    await location(h, home).click();
+    await expect(label).toHaveText(home);
+    await location(h, "University").click();
+    await expect(label).toHaveText("University");
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByRole("treeitem").filter({ hasText: "Timetable" })).toBeVisible();
     await expect(h.page.getByRole("treeitem").filter({ hasText: "Alpha" })).toHaveCount(0);
     expect(readConfig(h.userData).notesDir).toBe(other);
 
-    // The menu lists both in the order first opened, the open one checked, and switches back.
+    // The menu lists both A–Z, the open one checked, and switches back.
     await label.click();
-    await expect(menu.getByRole("menuitemradio")).toHaveText([home, "University"]);
+    await expect(menu.getByRole("menuitemradio")).toHaveText(az([home, "University"]));
     await expect(menu.getByRole("menuitemradio", { name: "University" })).toHaveAttribute(
       "aria-checked",
       "true",
@@ -100,11 +125,7 @@ test("a location gone from disk stays listed, muted and unchosen, and is never r
 
     // Settings, opened again, reads the list as it is now.
     await h.page.getByTestId("wordmark-settings-button").click();
-    await expect(
-      h.page
-        .getByRole("dialog", { name: "Settings" })
-        .getByRole("button", { name: /^Old Journal,/ }),
-    ).toContainText("Not found");
+    await expect(location(h, "Old Journal")).toContainText("Not found");
     await h.page.keyboard.press("Escape");
 
     const label = h.page.getByTestId("vault-label");
@@ -116,15 +137,14 @@ test("a location gone from disk stays listed, muted and unchosen, and is never r
     await expect(label).toHaveText(path.basename(h.vault.dir));
     await h.page.keyboard.press("Escape");
 
-    // Settings says so too, offers no Use, and removes it from the list after asking.
+    // Settings says so too, keeping where it was; its menu offers only what
+    // can work, and Remove from list… removes it after asking.
     await h.page.getByTestId("wordmark-settings-button").click();
-    const settings = h.page.getByRole("dialog", { name: "Settings" });
-    const old = settings.getByRole("button", { name: /^Old Journal,/ });
-    await expect(old).toContainText("Not found");
-    await expect(old).toHaveAttribute("aria-disabled", "true");
-    await expect(settings.getByRole("button", { name: "Use Old Journal" })).toHaveCount(0);
-    await old.hover();
-    await settings.getByRole("button", { name: "Remove Old Journal from Boojy Notes" }).click();
+    const old = location(h, "Old Journal");
+    await expect(old).toContainText("Old Journal · Not found");
+    const oldMenu = await locationMenu(h, "Old Journal");
+    await expect(oldMenu.getByRole("menuitem")).toHaveText(["Rename…", "Remove from list…"]);
+    await oldMenu.getByTestId("location-remove").click();
     const ask = h.page.getByRole("alertdialog", { name: 'Remove "Old Journal" from Boojy Notes?' });
     await expect(ask).toContainText("The folder and its notes stay in");
     await ask.getByRole("button", { name: "Remove", exact: true }).click();
@@ -202,8 +222,7 @@ test("removing the open location asks, switches to another, then removes it", as
     await h.page.getByTestId("wordmark-settings-button").click();
     await addLocation(h, other);
     const settings = h.page.getByRole("dialog", { name: "Settings" });
-    await settings.getByRole("button", { name: new RegExp(`^${home},`) }).hover();
-    await settings.getByRole("button", { name: `Remove ${home} from Boojy Notes` }).click();
+    await (await locationMenu(h, home)).getByTestId("location-remove").click();
     const ask = h.page.getByRole("alertdialog", { name: `Remove "${home}" from Boojy Notes?` });
     await expect(ask).toContainText('switch to "University"');
     await ask.getByRole("button", { name: "Remove and switch" }).click();
@@ -218,29 +237,74 @@ test("removing the open location asks, switches to another, then removes it", as
   }
 });
 
-test("pointing anywhere along a location's row, the empty stretch included, shows its ×", async () => {
+test("pointing anywhere along a location's row, the empty stretch included, shows its ···", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
-    const other = path.join(path.dirname(h.vault.dir), "Uni");
+    await h.page.getByTestId("wordmark-settings-button").click();
+    const home = path.basename(h.vault.dir);
+    const row = location(h, home);
+    const more = h.page.getByRole("button", { name: `${home} options` });
+    // Transparent, not hidden, so Tab still reaches it.
+    const opacity = () => more.evaluate((el) => getComputedStyle(el).opacity);
+    await h.page.mouse.move(0, 0);
+    await expect.poll(opacity).toBe("0");
+    // Just left of the tick: nothing but the row itself.
+    const tick = await row.getByTestId("location-current").boundingBox();
+    if (!tick) throw new Error("row not laid out");
+    await h.page.mouse.move(tick.x - 20, tick.y + tick.height / 2);
+    await expect.poll(opacity).toBe("1");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("Rename… names a location in the app alone; Escape keeps the old name; a blank name clears it", async () => {
+  const h = await launchApp({ "Alpha.md": "Alpha.\n" });
+  try {
+    const home = path.basename(h.vault.dir);
+    const other = path.join(path.dirname(h.vault.dir), "University");
     fs.mkdirSync(other);
     await h.page.getByTestId("wordmark-settings-button").click();
     await addLocation(h, other);
-    const settings = h.page.getByRole("dialog", { name: "Settings" });
-    const home = path.basename(h.vault.dir);
-    const remove = settings.getByRole("button", { name: `Remove ${home} from Boojy Notes` });
-    const opacity = () =>
-      remove.evaluate(
-        (el) => getComputedStyle(el.closest(".settings-location-action") as Element).opacity,
-      );
-    expect(await opacity()).toBe("0");
-    // Between the end of the path and Active: nothing but the row itself.
-    const reveal = await settings
-      .getByRole("button", { name: new RegExp(`^${home},`) })
-      .boundingBox();
-    const active = await settings.getByTestId("location-active").boundingBox();
-    if (!reveal || !active) throw new Error("row not laid out");
-    await h.page.mouse.move((reveal.x + reveal.width + active.x) / 2, active.y + active.height / 2);
-    await expect.poll(opacity).toBe("1");
+
+    // Escape cancels, and the blur that follows saves nothing.
+    await (await locationMenu(h, "University")).getByTestId("location-rename").click();
+    const field = h.page.getByRole("textbox", { name: "Name for University in Boojy Notes" });
+    await expect(field).toBeFocused();
+    await expect(location(h, "University")).toContainText("The folder on disk keeps its name");
+    await field.fill("Changed my mind");
+    await field.press("Escape");
+    await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+    await expect(location(h, "University")).toBeVisible();
+    expect(readConfig(h.userData).vaultLabels ?? {}).toEqual({});
+
+    // Enter saves once; the row takes its A–Z place and keeps the keyboard.
+    await (await locationMenu(h, "University")).getByTestId("location-rename").click();
+    await field.fill("Aardvark");
+    await field.press("Enter");
+    await expect(location(h, "Aardvark")).toContainText("University");
+    await expect(h.page.getByRole("button", { name: "Aardvark options" })).toBeFocused();
+    const rows = h.page.getByTestId("settings-location-row");
+    await expect(rows.first()).toHaveAttribute("data-location-path", other);
+    expect(readConfig(h.userData).vaultLabels).toEqual({ [path.resolve(other)]: "Aardvark" });
+    // The folder on disk keeps its name.
+    expect(fs.existsSync(other)).toBe(true);
+
+    // The open one is named too, in the sidebar and after a restart.
+    await (await locationMenu(h, home)).getByTestId("location-rename").click();
+    await h.page.getByRole("textbox", { name: `Name for ${home} in Boojy Notes` }).fill("Mine");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.getByTestId("vault-label")).toHaveText("Mine");
+    await h.restart();
+    await expect(h.page.getByTestId("vault-label")).toHaveText("Mine");
+
+    // A blank name gives the folder's own name back.
+    await h.page.getByTestId("wordmark-settings-button").click();
+    await (await locationMenu(h, "Mine")).getByTestId("location-rename").click();
+    await h.page.getByRole("textbox", { name: `Name for ${home} in Boojy Notes` }).fill("   ");
+    await h.page.keyboard.press("Enter");
+    await expect(h.page.getByTestId("vault-label")).toHaveText(home);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();

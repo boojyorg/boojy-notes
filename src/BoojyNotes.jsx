@@ -228,6 +228,7 @@ export default function BoojyNotes() {
     changeNotesDir,
     vaults,
     forgetVault,
+    renameVault,
     otherFiles,
     trashFile,
     refreshVaults,
@@ -304,13 +305,14 @@ export default function BoojyNotes() {
   }, [settingsOpen, refreshVaults]);
   // Remove from list asks first, saying what stays where. The open location
   // can go too: the app always needs one, so it switches to the first other
-  // that is there, then removes; with none, the row offers no ×.
+  // that is there, then removes; with none, the row offers no Remove. A
+  // switch that fails removes nothing: the app never forgets where it is.
   const removeVault = useCallback(
     async (vault) => {
       const next = vault.current ? vaults.find((v) => !v.current && v.exists) : null;
       if (vault.current && !next) return;
       if (!(await requestConfirm(removeLocationPrompt(vault, next)))) return;
-      if (next) await changeNotesDir(next.path);
+      if (next && !(await changeNotesDir(next.path))) return;
       await forgetVault(vault.path);
     },
     [vaults, requestConfirm, changeNotesDir, forgetVault],
@@ -1461,6 +1463,7 @@ export default function BoojyNotes() {
           switchVault={switchVault}
           addVault={addVault}
           forgetVault={removeVault}
+          renameVault={renameVault}
           revealVault={revealVaultAt}
         />
         {firstRun && (

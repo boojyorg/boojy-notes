@@ -109,6 +109,8 @@ interface MenuProps {
   onKey?: (e: KeyboardEvent) => boolean;
   /** A press in the menu keeps the selected blocks selected (`data-selection-surface`). */
   selectionSurface?: boolean;
+  /** Opened from inside Settings: stacked above the pane, not under it. */
+  overSettings?: boolean;
 }
 
 /**
@@ -156,6 +158,7 @@ export default function Menu({
   takesFocus = true,
   onKey,
   selectionSurface,
+  overSettings = false,
 }: MenuProps) {
   const { theme } = useTheme();
   const { BG, TEXT, ACCENT, SEMANTIC } = theme;
@@ -371,7 +374,11 @@ export default function Menu({
       <div
         onMouseDown={close}
         onContextMenu={close}
-        style={{ position: "fixed", inset: 0, zIndex: Z.CONTEXT_BACKDROP }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: overSettings ? Z.SETTINGS_MENU_BACKDROP : Z.CONTEXT_BACKDROP,
+        }}
       />
       <div
         ref={menuRef}
@@ -393,6 +400,7 @@ export default function Menu({
         }}
         style={{
           ...menuSurface(theme),
+          ...(overSettings && { zIndex: Z.SETTINGS_MENU }),
           top: (pos?.top ?? anchor.bottom + (gapY ?? 0)) / zoom,
           left: (pos?.left ?? anchor.left) / zoom,
           minWidth,
@@ -417,6 +425,7 @@ export default function Menu({
           onContextMenu={(e) => e.preventDefault()}
           style={{
             ...menuSurface(theme),
+            ...(overSettings && { zIndex: Z.SETTINGS_MENU }),
             top: (subPos?.top ?? 0) / zoom,
             left: (subPos?.left ?? 0) / zoom,
             visibility: subPos ? "visible" : "hidden",

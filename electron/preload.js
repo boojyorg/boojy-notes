@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listVaults: () => ipcRenderer.invoke("list-vaults"),
   openVault: (dir) => ipcRenderer.invoke("open-vault", dir),
   forgetVault: (dir) => ipcRenderer.invoke("forget-vault", dir),
+  renameVault: (dir, name) => ipcRenderer.invoke("rename-vault", dir, name),
   addVault: () => ipcRenderer.invoke("add-vault"),
   revealVault: (dir) => ipcRenderer.invoke("reveal-vault", dir),
   // First-run setup: shown only on a launch that has never had a folder.

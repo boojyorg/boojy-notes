@@ -18,6 +18,7 @@ import {
   ArrowDownAZ as LuArrowDownAZ,
   ArrowDownToLine as LuArrowDownToLine,
   ArrowLeftToLine as LuArrowLeftToLine,
+  ArrowRightLeft as LuArrowRightLeft,
   ArrowRightToLine as LuArrowRightToLine,
   ArrowUpDown as LuArrowUpDown,
   ArrowUpToLine as LuArrowUpToLine,
@@ -159,6 +160,8 @@ export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => 
 export const OffloadedIcon = navIcon(LuCloudDownload);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = navIcon(LuFolderSearch);
+/** Switch to: one storage location for another. */
+export const SwitchIcon = navIcon(LuArrowRightLeft);
 
 // ── Actions ───────────────────────────────────────────────────────────────
 export const SearchIcon = navIcon(LuSearch);

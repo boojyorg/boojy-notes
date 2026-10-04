@@ -90,6 +90,7 @@ export default function SpellingSection({
         <Menu
           label="Spelling languages"
           idPrefix="spelling-language"
+          overSettings
           anchor={menu}
           gapY={4}
           align="end"
