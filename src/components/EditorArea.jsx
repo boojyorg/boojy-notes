@@ -43,6 +43,8 @@ import {
   caretLandingAfter,
   caretLandingBefore,
   isBlockJump,
+  revealCaret,
+  revealInNote,
 } from "../utils/domHelpers";
 import { haveEditorBlockRenderChanges } from "../utils/editorBlockRenderChanges";
 import { baselineFromTop, baselineInRow } from "../utils/typeBaseline";
@@ -590,15 +592,17 @@ const EditorArea = memo(
             return true;
           }
           const target = blocks[idx];
+          const el = blockRefs.current[target.id];
           if (isSelectableBlock(target)) {
             setSelectedBlockId(target.id);
+            if (el) revealInNote(el.getBoundingClientRect());
             return true;
           }
           setSelectedBlockId(null);
           if (hasOwnField(target)) focusOwnedField(editorRef.current, target.id, "start");
-          else {
-            const el = blockRefs.current[target.id];
-            if (el) placeCaret(el, 0);
+          else if (el) {
+            placeCaret(el, 0);
+            revealCaret();
           }
           return true;
         }

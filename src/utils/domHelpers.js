@@ -855,3 +855,37 @@ export function isBlockJump(e) {
   if (e.shiftKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return false;
   return isMac ? e.altKey && !e.metaKey && !e.ctrlKey : e.ctrlKey && !e.altKey && !e.metaKey;
 }
+
+/** Air kept between a revealed caret and the note's top or foot. */
+const REVEAL_MARGIN = 24;
+
+/**
+ * Scroll the note by the least it must so `rect` (viewport coordinates) is
+ * on screen, clear of the sticky path band at the top. A rect taller than
+ * the view shows its top. Rects arrive multiplied by the UI scale; the
+ * scroll offset is in CSS pixels, so the step is divided by it.
+ * @param {{ top: number, bottom: number }} rect
+ */
+export function revealInNote(rect) {
+  const scroller = document.querySelector(".editor-scroll");
+  if (!(scroller instanceof HTMLElement)) return;
+  const view = scroller.getBoundingClientRect();
+  const band = scroller.querySelector('[data-testid="note-path-row"]');
+  const top = (band ? band.getBoundingClientRect().bottom : view.top) + REVEAL_MARGIN;
+  const bottom = view.bottom - REVEAL_MARGIN;
+  const zoom = cssZoom(scroller) || 1;
+  if (rect.top < top) scroller.scrollTop -= (top - rect.top) / zoom;
+  else if (rect.bottom > bottom) {
+    scroller.scrollTop += Math.min(rect.bottom - bottom, rect.top - top) / zoom;
+  }
+}
+
+/** The caret's line on screen (⌥↑/↓): placed by code, it is never scrolled to on its own. */
+export function revealCaret() {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  if (el) revealInNote(caretRect(range, el));
+}

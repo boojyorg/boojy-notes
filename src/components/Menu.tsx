@@ -17,6 +17,7 @@ import { useExitGhost } from "../hooks/useExitGhost";
 import { Z } from "../constants/zIndex";
 import { MENU_PAD, MENU_RADIUS, MENU_ROW_RADIUS } from "../constants/layout";
 import { cssZoom } from "../utils/domHelpers";
+import { restingSize } from "../utils/menuPosition";
 import { CheckIcon, ChevronRightIcon } from "./Icons";
 
 /** A viewport rect a menu hangs from: a button's, a row's, or a point's. */
@@ -252,7 +253,9 @@ export default function Menu({
       return;
     }
     const menu = menuRef.current.getBoundingClientRect();
-    const box = subRef.current.getBoundingClientRect();
+    // As it rests: a frame into its grow-in it measures 4% short, and its
+    // foot was left off the window (`restingSize`).
+    const box = restingSize(subRef.current);
     const right = menu.right + SUBMENU_GAP;
     const left =
       right + box.width <= window.innerWidth ? right : menu.left - SUBMENU_GAP - box.width;

@@ -54,3 +54,22 @@ export function positionMenu(anchor, size, opts = {}) {
 
   return { left, top };
 }
+
+/**
+ * A menu's size as it rests. A menu arrives growing (`.motion-pop`'s
+ * `scale`), and a rect measured a frame into that is 4% short: a flip or
+ * clamp would judge it smaller than it rests at and leave its foot off the
+ * window. An `!important` declaration outranks an animation, so it is
+ * measured at scale 1 and the animation's own value put back.
+ * @param {HTMLElement} el
+ * @returns {{ width: number, height: number }}
+ */
+export function restingSize(el) {
+  const scale = el.style.getPropertyValue("scale");
+  const priority = el.style.getPropertyPriority("scale");
+  el.style.setProperty("scale", "1", "important");
+  const { width, height } = el.getBoundingClientRect();
+  if (scale) el.style.setProperty("scale", scale, priority);
+  else el.style.removeProperty("scale");
+  return { width, height };
+}
