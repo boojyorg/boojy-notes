@@ -11,6 +11,7 @@ import {
   HistoryIcon,
   CloseIcon,
 } from "./Icons";
+import DeletedNoteButton from "./DeletedNoteButton";
 import { hasWindowStrip, isElectronMac } from "../utils/platform";
 import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
@@ -290,7 +291,15 @@ export default function EditorChrome({
           gap: BTN_GAP,
         }}
       >
-        {past && (
+        {past?.deleted && (
+          // A deleted note on screen: one lit square, its menu the choices.
+          <DeletedNoteButton
+            onRestore={past.onRestore}
+            onPurge={past.onPurge}
+            onClose={past.onBack}
+          />
+        )}
+        {past && !past.deleted && (
           // A version on screen is a mode, shown as the Markdown view's is: lit,
           // in the same slot, and the way back. The time shows or hides the
           // list; the × is Now.
@@ -328,7 +337,7 @@ export default function EditorChrome({
           <div
             data-past-ask
             role="dialog"
-            aria-label="Viewing an earlier version"
+            aria-label={past.deleted ? "Viewing a deleted note" : "Viewing an earlier version"}
             style={{
               position: "fixed",
               top: CHROME_TOP + WINDOW_STRIP_H + CHROME_BTN + 6,
@@ -352,11 +361,15 @@ export default function EditorChrome({
             }}
           >
             <p style={{ margin: "0 0 12px" }}>
-              You’re viewing {past.time}. To edit, go back to now or restore this version.
+              {past.deleted
+                ? "This note is deleted. Restore it to edit it."
+                : `You’re viewing ${past.time}. To edit, go back to now or restore this version.`}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {[
-                { label: "Back to Now", run: past.onBack },
+                past.deleted
+                  ? { label: "Cancel", run: past.onDismissAsk }
+                  : { label: "Back to Now", run: past.onBack },
                 { label: "Restore", run: past.onRestore },
               ].map((b, i) => (
                 <button

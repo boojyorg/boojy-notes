@@ -12,7 +12,14 @@ interface Props {
   items: DeletedNote[];
   restore: (id: string) => void;
   purge: (item: DeletedNote) => void;
+  /** A press outside: the list goes, a note on screen stays. */
   onClose: () => void;
+  /** Escape: the list and the note on screen both go. */
+  onEscape: () => void;
+  /** A click on a row: the note shown read-only in the note's place. */
+  view: (item: DeletedNote) => void;
+  /** The note on screen, lit in the list. */
+  viewingId: string | null;
 }
 
 /**
@@ -20,9 +27,18 @@ interface Props {
  * note, `Folder / Name` as the path at the top reads, and no ages (the one line
  * under the list says how long they wait). The row under the pointer, or the
  * one the arrows are on, offers Restore and delete for good; Enter and Delete
- * do the same. Escape or a press outside closes it.
+ * do the same. A click on a row shows the note read-only (the list stays);
+ * Escape closes the list and that view, a press outside the list alone.
  */
-export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: Props) {
+export default function RecentlyDeletedMenu({
+  items,
+  restore,
+  purge,
+  onClose,
+  onEscape,
+  view,
+  viewingId,
+}: Props) {
   const { theme } = useTheme();
   const { BG, TEXT } = theme;
   const ref = useRef<HTMLDivElement>(null);
@@ -65,7 +81,7 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
     else if (e.key === "ArrowUp") setActive((i) => Math.max(0, i - 1));
     else if (e.key === "Enter" && item) restore(item.id);
     else if ((e.key === "Delete" || e.key === "Backspace") && item) purge(item);
-    else if (e.key === "Escape") onClose();
+    else if (e.key === "Escape") onEscape();
     else return;
     e.preventDefault();
     e.stopPropagation();
@@ -122,14 +138,22 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
               role="option"
               aria-selected={i === active}
               onMouseEnter={() => setHovered(item.id)}
+              onClick={() => {
+                setActive(i);
+                view(item);
+              }}
               style={{
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 height: 30,
                 padding: "0 4px 0 10px",
                 borderRadius: MENU_ROW_RADIUS,
-                background: i === active || hovered === item.id ? BG.hover : "transparent",
+                background:
+                  i === active || hovered === item.id || viewingId === item.id
+                    ? BG.hover
+                    : "transparent",
                 fontSize: 13.5,
               }}
             >
@@ -180,8 +204,11 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
         )}
       </div>
       <div role="separator" style={{ height: 1, background: BG.divider, margin: "4px 6px" }} />
-      <div style={{ padding: "5px 10px 6px", color: TEXT.muted, fontSize: 12.5 }}>
-        Notes here are deleted after 30 days.
+      <div style={{ padding: "5px 10px 6px", color: TEXT.muted, fontSize: 12.5, lineHeight: 1.5 }}>
+        {items.length > 0 && (
+          <div data-testid="recently-deleted-hint">Click a note to view it.</div>
+        )}
+        <div>Notes here are deleted after 30 days.</div>
       </div>
     </div>
   );

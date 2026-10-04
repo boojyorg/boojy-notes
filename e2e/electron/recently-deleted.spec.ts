@@ -98,3 +98,82 @@ test("deleting for good asks first, and leaves nothing to restore", async () => 
     await h.close();
   }
 });
+
+test("a click shows a deleted note read-only; typing asks; Restore opens it; Escape goes back", async () => {
+  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  const h = await launchApp({
+    "Plan.md": "The plan.\n\n- one\n",
+    "Draft.md": "A draft.\n",
+    "Keep.md": "Keep.\n",
+  });
+  try {
+    await deleteNote(h, "Plan");
+    await deleteNote(h, "Draft");
+    await expect.poll(() => fs.existsSync(h.vault.file("Plan.md"))).toBe(false);
+    await h.openNote("Keep");
+    const name = h.page.getByRole("textbox", { name: "Note title" });
+    await expect(name).toHaveText("Keep");
+
+    // A click shows it in the note's place, read-only; the list stays; the
+    // vault is untouched.
+    await binRow(h).click();
+    await expect(bin(h).getByTestId("recently-deleted-hint")).toHaveText(
+      "Click a note to view it.",
+    );
+    await bin(h).getByRole("option", { name: /Plan/ }).click();
+    await expect(h.page.locator("[data-deleted-title]")).toHaveText("Plan");
+    await expect(h.page.locator("[data-past-version]")).toContainText("The plan.");
+    const button = h.page.getByTestId("deleted-note-button");
+    await expect(button).toBeVisible();
+    await expect(bin(h)).toBeVisible();
+    expect(fs.existsSync(h.vault.file("Plan.md"))).toBe(false);
+
+    // Typing asks; Cancel keeps it as it was.
+    await h.page.locator("[data-past-version] [data-block-id]").first().click();
+    await h.page.keyboard.type("x");
+    const ask = h.page.getByRole("dialog", { name: "Viewing a deleted note" });
+    await expect(ask).toBeVisible();
+    await ask.getByRole("button", { name: "Cancel" }).click();
+    await expect(ask).toHaveCount(0);
+    await expect(h.page.locator("[data-past-version]")).toContainText("The plan.");
+    expect(fs.existsSync(h.vault.file("Plan.md"))).toBe(false);
+
+    // Restore from the question: back in the vault, open and editable.
+    await h.page.locator("[data-past-version] [data-block-id]").first().click();
+    await h.page.keyboard.type("x");
+    await ask.getByRole("button", { name: "Restore" }).click();
+    await waitForFile(h.vault.file("Plan.md"), (t) => t === "The plan.\n\n- one\n");
+    await expect(name).toHaveText("Plan");
+    await expect(button).toHaveCount(0);
+
+    // Another: its corner button's menu offers Restore, Delete permanently and
+    // Close; Close goes back to the open note.
+    await binRow(h).click();
+    await bin(h).getByRole("option", { name: /Draft/ }).click();
+    await expect(h.page.locator("[data-deleted-title]")).toHaveText("Draft");
+    await h.page.locator("[data-past-version]").click();
+    await button.click();
+    const menu = h.page.getByTestId("deleted-note-menu");
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Restore note",
+      "Delete permanently",
+      "Close",
+    ]);
+    await menu.getByRole("menuitem", { name: "Close" }).click();
+    await expect(h.page.locator("[data-deleted-title]")).toHaveCount(0);
+    await expect(name).toHaveText("Plan");
+    expect(fs.existsSync(h.vault.file("Draft.md"))).toBe(false);
+
+    // Again, then Escape: the list and the view both go, the open note stays.
+    await binRow(h).click();
+    await bin(h).getByRole("option", { name: /Draft/ }).click();
+    await expect(h.page.locator("[data-deleted-title]")).toHaveText("Draft");
+    await h.page.keyboard.press("Escape");
+    await expect(bin(h)).toHaveCount(0);
+    await expect(h.page.locator("[data-deleted-title]")).toHaveCount(0);
+    await expect(name).toHaveText("Plan");
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

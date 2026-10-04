@@ -174,6 +174,9 @@ const EditorArea = memo(
     // Version History: a version on screen instead of the note, read-only.
     pastVersion,
     onTypeIntoPast,
+    // Recently Deleted: a deleted note on screen in the note's place, read-only.
+    deletedNote,
+    onTypeIntoDeleted,
     // The app's toasts: Add to dictionary's, with its Undo.
     showToast,
     // A note whose text a sync service keeps online: shown downloading, never empty.
@@ -920,7 +923,7 @@ const EditorArea = memo(
     const colMargin = `max(0px, calc((${editorW} - ${colMax}) / 2))`;
     // Memoised so the band's measuring effect keys on the folder, not on a
     // fresh array every render.
-    const folder = note?.folder;
+    const folder = deletedNote ? deletedNote.item.folder : note?.folder;
     const parents = useMemo(() => parentFolders(folder), [folder]);
     const titleField = note ? (
       <div
@@ -1066,10 +1069,10 @@ const EditorArea = memo(
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {note && (
+        {(note || deletedNote) && (
           <NotePath
             parents={parents}
-            name={note.title}
+            name={deletedNote ? deletedNote.item.name : note.title}
             collapsed={!sidebarVisible}
             fullScreen={fullScreen}
             bg={editorBg}
@@ -1077,12 +1080,18 @@ const EditorArea = memo(
             onOpenNote={openNoteProp}
             onRowPointerDown={onPathRowPointerDown}
           >
-            {titleField}
+            {deletedNote ? (
+              <span data-deleted-title style={{ color: theme.TEXT.primary }}>
+                {deletedNote.item.name || "Untitled"}
+              </span>
+            ) : (
+              titleField
+            )}
           </NotePath>
         )}
-        {note ? (
+        {note || deletedNote ? (
           <div
-            key={activeNote}
+            key={deletedNote ? `deleted:${deletedNote.item.id}` : activeNote}
             ref={columnRef}
             className="panel-motion"
             onMouseDownCapture={selectFromGutter}
@@ -1109,7 +1118,16 @@ const EditorArea = memo(
               // blocks and the grip and under everything that floats.
             }}
           >
-            {offloaded ? (
+            {deletedNote ? (
+              <PastVersionView
+                versionId={`deleted:${deletedNote.item.id}`}
+                noteId={deletedNote.item.id}
+                blocks={deletedNote.blocks}
+                noteTitleSet={noteTitleSet}
+                accentColor={accentColor}
+                onTypeIntoPast={onTypeIntoDeleted}
+              />
+            ) : offloaded ? (
               <OffloadedNoteView
                 provider={offloaded.provider}
                 failed={offloaded.failed}
@@ -1488,6 +1506,7 @@ const EditorArea = memo(
     if (prev.syncGen !== next.syncGen) return false;
     // Version History swapped the note for a version, or back.
     if (prev.pastVersion !== next.pastVersion) return false;
+    if (prev.deletedNote !== next.deletedNote) return false;
     if (prev.offloaded !== next.offloaded) return false;
 
     // The selection toolbar is an interaction, not a keystroke, and it must

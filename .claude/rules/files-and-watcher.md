@@ -6,8 +6,8 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
   note's last text and history stay in the store 30 days (never a folder in the vault), listed
-  by where it was; restored there (folder remade, `-2` on a clash, same id), or deleted for
-  good after asking. `recently-deleted.spec.ts`. Web deletion is permanent behind confirmation.
+  by where it was; a click shows one read-only, nothing written; restored where it was (folder
+  remade, `-2` on a clash, same id), or deleted for good after asking. `recently-deleted.spec.ts`. Web deletion is permanent behind confirmation.
   A folder's directory goes only once nothing but OS cruft is left; non-note files are never
   touched.
 - Desktop confirms only more than one file; a single note goes at once, its toast offering
@@ -67,12 +67,10 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - Duplicate folder is one directory copy (`Name (copy)`), adopted from disk (fresh ids),
   nothing dirty; revealed, never toasted.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
-- **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults` lists them;
-  `add-vault` adds without switching; `open-vault` takes only a listed, present path. A
-  never-made default is not listed. Remove never touches the folder. **Rename is a label in
-  config (`vaultLabels`, by resolved path), never the folder's name on disk**: Obsidian or a
-  sync service may point at it. Unlike a note's title. A switch flushes,
-  empties, reloads.
+- **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults`; `add-vault`
+  adds without switching; `open-vault` takes only a listed, present path. Remove never touches
+  the folder; **Rename is a label (`vaultLabels`), never the folder's name**: other apps may
+  point at it. A switch flushes, empties, reloads.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id through `trash-note`,
   which keeps the index and the watcher's claim). `vault-switcher.spec.ts`.
@@ -113,11 +111,10 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
   point (`useSavePoint`). Nothing unchanged is kept twice. Only `⌘S` says so; its toast's words
   open a name field, as `⌘S` again does.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
-  Autosave makes it a save point. A deleted note keeps its last text for 30 days. History off
+  Autosave makes it a save point. History off
   keeps nothing new; turning it off with Delete removes the texts at once.
-- **The list is the ··· menu in place** (`VersionHistoryList`). A chosen
-  version shows read-only in the note (`PastVersionView`: the real blocks, painted from a ref
-  holding only the version; every edit is stopped and asks), with a pill in the `</>` slot.
+- **The list is the ··· menu in place** (`VersionHistoryList`). A chosen version shows read-only
+  (`PastVersionView`, a ref holding only it; an edit asks), with a pill in the `</>` slot.
   A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z
   take it back. `version-history.spec.ts`.
 - **A note renamed while the app was closed keeps its id** if it holds the text its history
