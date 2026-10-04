@@ -272,10 +272,9 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
   its own; an IME composition begun over a selection spanning blocks cannot be intercepted
   (`insertCompositionText` is not cancelable). None loses data; each is a decision to make
   once it has been felt.
-- [ ] **The empty state and the focus ring are short of ink** (review §5): the empty-state line
-  at half muted is 1.95:1; the focus ring at 25% accent is under 2:1 where a component needs
-  3:1. Full `TEXT.muted` for the empty state and a 2px ring at 60% would still be quiet. (The
-  toasts in the same finding were redrawn on 2026-09-19.) Not re-verified.
+- [ ] **The empty state is short of ink** (review §5): its line at half muted is 1.95:1; full
+  `TEXT.muted` would still be quiet. Not re-verified. (The focus ring is `ACCENT.text` since
+  the accessibility pass.)
 - [ ] **⌘N then ··· → Rename at once leaves focus on the ··· button**, so the name typed goes
   nowhere; with the caret in the body first, Rename works on a draft as on a note (checked
   2026-09-24). Duplicate and Delete on an empty draft do nothing visible and write nothing.
@@ -372,16 +371,8 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   Obsidian's own link update never runs either. Fixed by Backlinks (Beta candidates): links
   follow a rename, decided 2026-09-30.
 - [ ] **Unparseable files vanish from the sidebar** silently.
-- [ ] **A symlinked `.md` is replaced by a regular file on write** — the atomic rename lands a
-  new inode over the link, so the target file is left stale and the link is gone.
-- [ ] **Birthtime, Finder tags and other xattrs are lost on every save** (review §2.8; the
-  permission bits are kept since 2026-09-09). The same root cause as the symlink above: the
-  atomic rename lands a new inode. One design decision for both, copy the xattrs onto the temp
-  file or write in place with a backup; never fixed by writing in place without a decision on
-  the backup strategy.
-- [ ] **A symlinked folder inside the vault is skipped by the walk and followed by chokidar**
-  (review §2.9), so a note under it can be reported changed but is never listed.
-  `followSymlinks: false` is the one-line consistent answer when the watcher is next touched.
+- [ ] **A symlinked folder inside the vault** (review §2.9): unchecked since the one recursive
+  watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched.
 - [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes
   the first write strip the whole frontmatter block; `resolve-attachment` still scans the v0.1
   `.attachments/<noteId>/` layout; the `.trash` migration runs at every launch. Retire the three

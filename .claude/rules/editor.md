@@ -100,7 +100,7 @@ app's, made through state.**
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
-  Rename and move rewrite no links, by decision. `link-resolution.spec.ts`.
+  Rename and move rewrite no links yet (backlinks will). `link-resolution.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
   unresolved click: address, notes, `Create note` (doesn't open it). Writes `[words](url)`, a
   bare URL, `[[Target|words]]` or `[[Target]]`, the shortest unambiguous target
