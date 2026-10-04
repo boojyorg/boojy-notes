@@ -153,12 +153,16 @@ export function useBlockDrag({
     // shadow, no lift — the page underneath stays exactly as it was and the
     // copy is the only thing that moves.
     const clone = document.createElement("div");
+    clone.dataset.dragCopy = "";
     for (const id of draggedIds) {
       const srcEl = rootOf(id);
       if (!srcEl) continue;
       const c = srcEl.cloneNode(true);
       c.removeAttribute("contenteditable");
       for (const e of c.querySelectorAll("[contenteditable]")) e.removeAttribute("contenteditable");
+      // A picture travels as the picture: its outline, corner dots, wash and
+      // bar are controls for one at rest (`data-drag-chrome`).
+      for (const e of c.querySelectorAll("[data-drag-chrome]")) e.remove();
       clone.appendChild(c);
     }
     // The clone lives on <body>, so carry the editor's type with it or it

@@ -102,3 +102,15 @@ test("Option+Up/Down step through images one at a time, never stuck on a selecte
   // The two pictures are missing on purpose: their 404s are the only errors.
   expect(h.pageErrors.filter((m) => !m.includes("404"))).toEqual([]);
 });
+
+test("a selected missing picture wears the selected outline", async () => {
+  await h.close();
+  h = await launchApp({ "Gone.md": "Before.\n\n![[gone.png]]\n" });
+  await h.openNote("Gone");
+  const card = h.page.getByTestId("missing-attachment");
+  await expect(card).not.toHaveAttribute("data-selected", "true");
+  await h.page.getByText("Before.").click();
+  await h.page.keyboard.press(`${MOD}+ArrowDown`);
+  await expect(card).toHaveAttribute("data-selected", "true");
+  expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+});

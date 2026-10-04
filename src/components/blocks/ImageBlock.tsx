@@ -14,6 +14,8 @@ interface ImageBlockProps {
   /** The width drawn, in CSS pixels, or null for the picture's own size. */
   displayWidth: number | null;
   isSelected: boolean;
+  /** A press on the picture: past the drag threshold it moves the block (useBlockDrag). */
+  onDragPress?: (e: React.MouseEvent) => void;
   /** Selected and the only block selected: it shows its outline and corner dots. */
   selectedAlone?: boolean;
   onSelect: () => void;
@@ -136,6 +138,7 @@ function ImageBlock({
   alt,
   displayWidth,
   isSelected,
+  onDragPress,
   selectedAlone = false,
   onSelect,
   onLightbox,
@@ -228,6 +231,7 @@ function ImageBlock({
       <MissingAttachment
         src={src}
         image
+        selected={isSelected}
         onFind={findable(src) ? findMissing : undefined}
         onRemove={onDelete}
       />
@@ -249,9 +253,13 @@ function ImageBlock({
         onMouseLeave={() => setHovered(false)}
         // Selected on the press, not the release: the Mac's own
         // grammar, and the press that deselects elsewhere is the same event.
+        // Dragged on from there, the picture moves its block as the grip does
+        // (a picture is not text, so its press never starts a selection).
         // The dots and the bar stop their own press, so neither reselects.
         onMouseDown={(e) => {
-          if (e.button === 0) onSelect();
+          if (e.button !== 0) return;
+          onSelect();
+          onDragPress?.(e);
         }}
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => {
@@ -309,6 +317,7 @@ function ImageBlock({
         {(isSelected || !!menu) && !selectedAlone && !loading && (
           <div
             data-testid="image-selection-wash"
+            data-drag-chrome
             style={{
               position: "absolute",
               inset: 0,
@@ -321,6 +330,7 @@ function ImageBlock({
         {pointerOn && !dragging && (
           <div
             data-testid="image-hover-bar"
+            data-drag-chrome
             style={{
               position: "absolute",
               top: 8,
@@ -356,6 +366,7 @@ function ImageBlock({
         {selectedAlone && !loading && (
           <div
             data-testid="image-selection-outline"
+            data-drag-chrome
             style={{
               position: "absolute",
               // Over the frame's transparent border, so the outline sits just
@@ -375,6 +386,7 @@ function ImageBlock({
               type="button"
               aria-label="Resize image"
               data-testid="image-resize-handle"
+              data-drag-chrome
               data-corner={corner.name}
               onMouseDown={(e) => handleResizeStart(e, corner.left ? -1 : 1)}
               onClick={(e) => e.stopPropagation()}

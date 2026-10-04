@@ -11,6 +11,7 @@
  */
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { makePng } from "../../tests/fixtures/makePng";
 import { SETTLE_MS, expectNoTempFiles, launchApp, sleep, waitForFile } from "./harness";
 
 const IMAGE = "![[pic.png]]";
@@ -109,6 +110,61 @@ test("the image's own band counts for the drop: releasing over its top half leav
       "p",
     );
     expectNoTempFiles(h.vault);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("a press on the picture itself drags its block; a press without moving only selects it", async () => {
+  // A picture big enough to press away from its corner dots.
+  const h = await launchApp(
+    { "Pics.md": `One\n${IMAGE}\nTwo\n` },
+    {
+      prepare: (vault) => {
+        fs.mkdirSync(vault.file("attachments"), { recursive: true });
+        fs.writeFileSync(vault.file("attachments/pic.png"), makePng(200, 120));
+      },
+    },
+  );
+  try {
+    await h.openNote("Pics");
+    const img = h.page.locator('[data-block-type="image"] img');
+    await expect(img).toBeVisible();
+    const box = await img.boundingBox();
+    const twoBox = await block(h.page, "Two").boundingBox();
+    if (!box || !twoBox) throw new Error("blocks not visible");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+
+    // A click selects and moves nothing.
+    await h.page.mouse.click(x, y);
+    await expect(h.page.locator('[data-block-type="image"][data-selected="true"]')).toHaveCount(1);
+    await sleep(SETTLE_MS);
+    expect(lines(h.vault.read("Pics.md"))).toEqual(["One", IMAGE, "Two"]);
+
+    // Pressed and carried below "Two": the picture's block moves there.
+    await h.page.mouse.move(x, y);
+    await h.page.mouse.down();
+    await h.page.mouse.move(x, y + 8, { steps: 2 });
+    await h.page.waitForFunction(() => document.body.classList.contains("block-dragging"), null, {
+      timeout: 2_000,
+    });
+    // The copy carried is the picture alone: no outline, corner dots or bar.
+    const copy = h.page.locator("[data-drag-copy]");
+    await expect(copy.locator("img")).toHaveCount(1);
+    await expect(copy.locator("[data-drag-chrome]")).toHaveCount(0);
+    // The original in its place drops them too while it travels.
+    await expect(
+      h.page.locator('[data-block-type="image"] [data-drag-chrome]').first(),
+    ).toBeHidden();
+    await h.page.mouse.move(x, twoBox.y + twoBox.height - 2, { steps: 4 });
+    await sleep(50);
+    await h.page.mouse.up();
+    await waitForFile(h.vault.file("Pics.md"), (t) => lines(t)[2] === IMAGE, {
+      label: "the image to be written last",
+    });
+    expect(lines(h.vault.read("Pics.md"))).toEqual(["One", "Two", IMAGE]);
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
