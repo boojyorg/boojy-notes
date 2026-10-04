@@ -59,11 +59,9 @@ app's, made through state.**
 
 ## Keys and focus: the closest active surface owns them
 
-- **Tab outside a list leaves the note for the open note's sidebar row** (`focusBeyondNote`;
-  hidden sidebar: its show button; Shift+Tab the name); lists indent, cells and code keep their
-  own Tab. Swallowing it was a keyboard trap; the next DOM stop was the header's ···.
+- **Tab outside a list goes to the open note's sidebar row** (`focusBeyondNote`; Shift+Tab the
+  name); lists indent, cells and code keep their Tab. Swallowing it was a keyboard trap.
   `keyboard-walkthrough.spec.ts`.
-
 - **A surface that takes a key prevents its default; one that reads a key checks
   `defaultPrevented` first.** The shell (`useAppKeyboard`) is the last, bubble-phase window
   listener; a surface never adds its own bubble-phase window listener.
@@ -80,8 +78,7 @@ app's, made through state.**
   on the next row's marker). The click's caret rescue never takes focus back.
 - ArrowUp with nothing above reaches the note's name (`focusTitleEnd`), ArrowDown from it comes
   back. Shift+Arrow is always the browser's. `key-ownership.spec.ts`, `title-arrows.spec.ts`.
-- **⌥↑/↓ (Ctrl off the Mac) jump block to block, to a block's start** (up: its own start
-  first), landing as the arrows do; a block with its own field keeps its ⌥ keys.
+- **⌥↑/↓ (Ctrl elsewhere) jump to a block's start** (`isBlockJump`), landing as the arrows do.
   `block-jump.spec.ts`.
 
 ## Backspace sheds the kind before it merges
@@ -182,13 +179,12 @@ app's, made through state.**
 - **Route every popover through `positionMenu()` / `useMenuPosition`.**
 - **Every menu's keys are one rule** (`useMenuKeys`, `utils/menuKeys.ts`): arrows wrap past
   disabled rows, Home/End, Enter and Space choose, Escape closes, a letter jumps; only where a
-  menu listens differs. A suggestion under the caret (`suggestion: true`: tag, callout type; the
-  slash menu steps with `stepIndex` in the editor's handler) leaves Space, letters, Home and End
-  to typing and is a `listbox` of `option`s (a `menuitem` cannot be selected).
+  menu listens differs. A suggestion under the caret (`suggestion: true`: tag, callout type,
+  slash) leaves Space, letters, Home and End to typing and is a `listbox` of `option`s.
   `menuKeys.test.ts`, `callout-picker.spec.ts`.
 - **The editor column never carries a transform** (it would contain the `fixed` menus). `editor-menus.spec.ts`.
-- **A chosen block with its own field takes the caret** (`hasOwnField` in `useSlashCommands`: Code, Callout, Table
-  focus their first field through `ownedField`); the rest hand it to the paragraph below.
+- **A chosen block with its own field takes the caret** (`hasOwnField`: its first field); the
+  rest hand it to the paragraph below.
   `slash-focus.spec.ts`.
 
 ## Headings

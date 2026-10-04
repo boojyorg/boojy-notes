@@ -18,13 +18,12 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   `ACCENT.text` is accent as readable ink. A label on the mark takes `ACCENT.onAccentText`;
   `onAccent` (white) is for shapes only. Must it be read? `text`; otherwise `primary`.
 - **Accent is never a desktop surface**: identity, focus rings, thin markers, links, caret.
-  Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`,
-  a location's Active), a note's selection (one teal, `bandFill`, below the ==highlight==), a
+  Selected rows are neutral. The only tints: the tag pill, a mode that is on (the lit `</>`),
+  a note's selection (one teal, `bandFill`, below the ==highlight==), a
   search hit's words, briefly.
 - **A menu is `Menu`** (`components/Menu.tsx`): portalled, placed via `cssZoom`, keys on its own
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
-  alone. A surface it cannot be uses `menuSurface`
-  and `MenuRule`, never its own numbers. `Menu.test.tsx`.
+  alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
   hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
   `SEMANTIC.onError`). `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,
@@ -47,7 +46,7 @@ The stack is centred at the editor's foot, clear of the sidebar. `toasts.spec.ts
   selector(::-webkit-scrollbar)`.
 - State rules set `background-color`, never `background` (it resets the clip).
 - The editor keeps `scrollbar-gutter: stable` (a narrowing pane moved the centred path).
-- `.editor-scroll` stays a class: `CalloutBlock`, `TableContextMenu`, `FloatingToolbar` query it.
+- `.editor-scroll` stays a class: three components query it.
 
 ## Icons: Lucide only
 
@@ -84,9 +83,8 @@ tiers. Hit boxes are `CHROME_BTN`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
   after `TOOLTIP_REST_MS`, at once while warm; portalled to `body`, placed via `cssZoom`. No
   shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
-- **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ off the Mac) and View → Back /
-  Forward walk the notes opened (`useNoteHistory`: memory only, a deleted note skipped, reset
-  per vault). `note-history.spec.ts`. `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
+- **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes opened
+  (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
@@ -102,12 +100,10 @@ tiers. Hit boxes are `CHROME_BTN`.
   row (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
   the one rule shared with `Cmd+±`.
-- **A menu opened inside Settings passes `overSettings`** (else it stacks under the pane), and
-  Settings leaves Escape to any open menu. `settings-dialog.spec.ts`.
 - **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
-  still. Centred by a wrapper, never a transform (it would contain the
-  `fixed` children). A menu opened inside it portals to `body`, keys in capture; the scale keys
-  are the one shortcut that works over Settings. `interface-size.spec.ts`.
+  still. Centred by a wrapper, never a transform (it would contain the `fixed` children). A
+  menu inside it passes `overSettings` (else it stacks under the pane) and owns Escape; the
+  scale keys are the one shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
 - **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`;
@@ -167,13 +163,10 @@ tiers. Hit boxes are `CHROME_BTN`.
   one labelled action, neutral, never a filled accent), the vault row (New folder, Sort,
   on hover; never more than three glyphs). **Only the tree scrolls**; the rows above it share its
   drop zone (`data-drop-zone`).
-- **The row is named after the storage location's folder** (default `Notes`; code: vault).
-  It and ⌘O open `VaultMenu`, a switcher only; Settings manages. **Both list A–Z, sorted once
-  in `vaultEntries`.** A Settings row: glyph (folder, cloud, missing), name, full path cut in
-  the middle, the tick on the open one, ··· on hover or focus (it darkens, no box). A click on
-  the row switches. Its menu
-  leaves out what cannot work, never greys it: Switch to, Rename…, Show in Finder, Remove from
-  list… (asks, moves off the open one first). `vault-switcher.spec.ts`.
+- **The row shows the storage location's name** (its folder's, or a label; code: vault). It
+  and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
+  Settings row: glyph, name, path cut in the middle, the open one's tick, ··· on hover (darkens,
+  no box); a click switches. Its menu leaves out what cannot work. `vault-switcher.spec.ts`.
 - **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
   its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
   store is the root's last row.
@@ -221,8 +214,7 @@ tiers. Hit boxes are `CHROME_BTN`.
 
 ## Narrow desktop is still desktop
 
-- **There is no touch layout**; every device gets the desktop layout.
-- The sidebar is always in the layout, never an overlay; don't bring the overlay back.
+- **No touch layout, no overlay sidebar**: every device gets the desktop layout.
 - **The sidebar yields before the note** (`sidebarWidthFor()`, `EDITOR_FLOOR_W`); `WINDOW_MIN_W`
   is imported by `electron/main.js`. **A line is at most `rhythm.measure` ems**, centred under the
   name; margins go first, then gutters.
