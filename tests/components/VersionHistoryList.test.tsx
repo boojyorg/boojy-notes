@@ -126,6 +126,16 @@ describe("VersionHistoryList", () => {
     expect(screen.getAllByRole("option")[1]).toContainElement(restores[0]);
   });
 
+  it("names its row actions by the app's chip, never a native title, and says how to view", () => {
+    setup({ selected: "v2" });
+    for (const b of screen.getAllByRole("button", { name: /this version/ })) {
+      expect(b).not.toHaveAttribute("title");
+    }
+    expect(screen.getByTestId("version-history-hint")).toHaveTextContent(
+      "Click a version to view it.",
+    );
+  });
+
   it("right-click offers Rename, Restore and Delete", () => {
     const { props } = setup();
     fireEvent.contextMenu(screen.getAllByRole("option")[1]);

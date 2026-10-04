@@ -9,7 +9,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 - Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Existing users start on Light, a fresh install on
   System.
-- Neutral palettes; teal is the identity, never gold. `?tweak` (dev only) overrides live; a
+- Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live; a
   judged value goes into `themes.js`.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected, `BG.divider`
@@ -25,8 +25,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
-  hover included; a label on a filled button takes its ground's `on…` token (`onAccentText`,
-  `SEMANTIC.onError`). `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,
+  hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,
   both themes).
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
   tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
@@ -51,9 +50,9 @@ The stack is centred at the editor's foot, clear of the sidebar. `toasts.spec.ts
 ## Icons: Lucide only
 
 `src/components/Icons.jsx` wraps `lucide-react`, always `currentColor`; never hand-roll an SVG
-(known exceptions in `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
+(exceptions: `FindBar`, `CodeBlock`, the task tick). Two sizes (list, navigation) and two
 strokes (`ICON_STROKE_NAV` for chrome; the selection toolbar alone is bolder): don't flatten the
-tiers. Hit boxes are `CHROME_BTN`.
+tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, never a box.
 
 ## Window chrome
 
@@ -81,14 +80,14 @@ tiers. Hit boxes are `CHROME_BTN`.
   bypasses the app's history); no zoom roles (they steal the UI scale's keys); Reload is dev
   only. `app-menu.spec.ts`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
-  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body`, placed via `cssZoom`. No
-  shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
+  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface
+  (`Z.TOOLTIP`), placed via `cssZoom`. No shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
 - **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes opened
   (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
   renders none, so exactly one of each exists. Only the hidden sidebar's chrome row and action
-  block are `inert` (the whole column broke double-click rename). `header-controls.spec.ts`.
+  block are `inert` (the whole column broke rename). `header-controls.spec.ts`.
 
 ## Settings, setup and UI scale
 

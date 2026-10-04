@@ -40,7 +40,17 @@ test("a deleted note waits in Recently Deleted and comes back where it was", asy
     await binRow(h).click();
     await expect(bin(h).getByRole("option")).toHaveText(["Projects / Old plan"]);
     await bin(h).getByRole("option").hover();
-    await bin(h).getByRole("button", { name: "Put back “Old plan”" }).click();
+    // Named by the app's chip, over the list, never a native title. Re-hovered
+    // until it shows (the Linux runner's stray mouseout cancels the rest timer).
+    const putBack = bin(h).getByRole("button", { name: "Restore “Old plan”" });
+    await expect(putBack).not.toHaveAttribute("title", /.*/);
+    await expect(async () => {
+      await putBack.hover();
+      await expect(h.page.getByTestId("row-action-tooltip")).toHaveText(/Restore note/, {
+        timeout: 1_500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await putBack.click();
     await waitForFile(h.vault.file("Projects/Old plan.md"), (t) => t === "The plan.\n");
     await expect(bin(h).getByRole("option")).toHaveCount(0);
     await expect(bin(h)).toContainText("Nothing deleted in the last 30 days.");
@@ -70,7 +80,7 @@ test("Undo on the deletion toast puts the note back", async () => {
   }
 });
 
-test("deleting for good asks first, and leaves nothing to put back", async () => {
+test("deleting for good asks first, and leaves nothing to restore", async () => {
   test.skip(process.platform !== "darwin", "moves files to the OS Trash");
   const h = await launchApp({ "Secret.md": "Private.\n", "Keep.md": "Keep.\n" });
   try {

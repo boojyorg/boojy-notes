@@ -5,7 +5,8 @@ import { Z } from "../constants/zIndex";
 import type { DeletedNote } from "../hooks/useRecentlyDeleted";
 import { useTheme } from "../hooks/useTheme";
 import { cssZoom } from "../utils/domHelpers";
-import { CloseIcon, TrashIcon, RestoreIcon } from "./Icons";
+import { TrashIcon, RestoreIcon } from "./Icons";
+import RowAction from "./RowAction";
 
 interface Props {
   items: DeletedNote[];
@@ -18,7 +19,7 @@ interface Props {
  * Recently Deleted, opened from its row at the foot of the sidebar: one line a
  * note, `Folder / Name` as the path at the top reads, and no ages (the one line
  * under the list says how long they wait). The row under the pointer, or the
- * one the arrows are on, offers put back and delete for good; Enter and Delete
+ * one the arrows are on, offers Restore and delete for good; Enter and Delete
  * do the same. Escape or a press outside closes it.
  */
 export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: Props) {
@@ -69,42 +70,6 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
     e.preventDefault();
     e.stopPropagation();
   };
-
-  const iconButton = (label: string, icon: React.ReactNode, run: () => void) => (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      tabIndex={-1}
-      onClick={(e) => {
-        e.stopPropagation();
-        run();
-      }}
-      style={{
-        width: 26,
-        height: 24,
-        border: "none",
-        borderRadius: 6,
-        background: "transparent",
-        color: TEXT.secondary,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        padding: 0,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = BG.editor;
-        e.currentTarget.style.color = TEXT.primary;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = TEXT.secondary;
-      }}
-    >
-      {icon}
-    </button>
-  );
 
   return (
     <div
@@ -189,12 +154,20 @@ export default function RecentlyDeletedMenu({ items, restore, purge, onClose }: 
                 <span
                   style={{ display: "flex", gap: 2, visibility: actions ? "visible" : "hidden" }}
                 >
-                  {iconButton(`Put back “${item.name}”`, <RestoreIcon size={14} />, () =>
-                    restore(item.id),
-                  )}
-                  {iconButton(`Delete “${item.name}” permanently`, <CloseIcon size={14} />, () =>
-                    purge(item),
-                  )}
+                  <RowAction
+                    label={`Restore “${item.name}”`}
+                    tip="Restore note"
+                    shortcut="↵"
+                    icon={<RestoreIcon size={14} />}
+                    onClick={() => restore(item.id)}
+                  />
+                  <RowAction
+                    label={`Delete “${item.name}” permanently`}
+                    tip="Delete permanently"
+                    shortcut="⌫"
+                    icon={<TrashIcon />}
+                    onClick={() => purge(item)}
+                  />
                 </span>
               }
             </div>

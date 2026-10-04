@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 /**
  * Recently Deleted's menu: one line a note, `Folder / Name`, no ages; the row
- * under the pointer or the arrows offers put back and delete for good, and the
+ * under the pointer or the arrows offers Restore and delete for good, and the
  * keys do the same; Escape or a press outside closes it.
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -49,7 +49,7 @@ describe("RecentlyDeletedMenu", () => {
   it("puts back and deletes for good from the pointer's row", () => {
     const { props } = setup();
     fireEvent.mouseEnter(screen.getAllByRole("option")[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Put back “Old plan”" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore “Old plan”" }));
     expect(props.restore).toHaveBeenCalledWith("a");
     fireEvent.click(screen.getByRole("button", { name: "Delete “Old plan” permanently" }));
     expect(props.purge).toHaveBeenCalledWith(items[0]);

@@ -6,7 +6,7 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
   note's last text and history stay in the store 30 days (never a folder in the vault), listed
-  by where it was; put back there (folder remade, `-2` on a clash, same id), or deleted for
+  by where it was; restored there (folder remade, `-2` on a clash, same id), or deleted for
   good after asking. `recently-deleted.spec.ts`. Web deletion is permanent behind confirmation.
   A folder's directory goes only once nothing but OS cruft is left; non-note files are never
   touched.
