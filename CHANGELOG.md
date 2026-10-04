@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.13.0 — 2026-10-04
+
+### Features
+
+- **Back and Forward through your notes** — ⌘[ goes back to the note you had open before, and ⌘] goes forward again, as in a browser or Finder (Alt+← and Alt+→ on Windows and Linux). View → Back and View → Forward do the same, and are greyed out when there is nowhere to go. Opening a different note after going back starts a new path from there, a note you have deleted since is skipped, and switching storage location starts the list afresh.
+- **Jump from block to block** — ⌥↓ moves the cursor to the start of the next block and ⌥↑ to the start of the one above (Ctrl+↓ and Ctrl+↑ on Windows and Linux), however long the paragraph, its line breaks included. ⌥↑ from the middle of a block goes to its own start first. It walks into tables and code blocks at their start, stops on pictures and dividers, and steps on from a selected picture just as from text.
+- **Look at a deleted note before you restore it** — Click a note in Recently Deleted and it shows in the note's place, read-only, so you can see what it holds; nothing goes back into your notes folder yet. A teal button with a bin at the top right opens Restore note, which puts it back and opens it, Delete permanently, which asks first, and Close, which takes you back to the note you had open (as Escape does). Typing in it asks whether to restore it first.
+- **Drag a picture by the picture** — Press on a picture and drag it to move it up or down the note, as the grip beside it does. A click still just selects it, its corner dots still resize it, and a double-click still opens it full size. While it moves, you carry the picture alone, without its outline or dots.
+
+### Improvements
+
+- **Storage locations in Settings, redone** — Each storage location is one tidy row: a folder or cloud icon, its name, the whole path to it (shortened in the middle when long, so you always see where it lives and the folder's own name), and a tick on the one you are in. Click a row to switch to it. Point at a row and a ··· appears, with Switch to, Rename…, Show in Finder and Remove from list…; anything that can't work on that row is left out. Rename changes the name only in Boojy Notes, so the folder on disk, and any other app that uses it, keeps its own name; clear the name to get the folder's back. A location that has gone keeps its path, marked Not found. Locations are listed A to Z here, in the sidebar's menu and under ⌘O.
+- **Tab leaves the note for the sidebar** — Tab in a paragraph now goes to the note you're in, in the sidebar, instead of the ··· button at the top right. From there the arrows choose another note, Enter opens it and Escape comes back to where you were writing. With the sidebar hidden, Tab goes to the button that shows it. Shift+Tab still goes to the note's name, and Tab in a list still indents.
+- **Clearer Version History and Recently Deleted** — The restore and delete icons on a row no longer get a box when you point at them; they simply darken, as the ··· in the sidebar does. Each has the app's own label with its key: Restore version ↵, Delete version ⌫, Restore note ↵ and Delete permanently ⌫. Recently Deleted's delete is now a bin, as in Version History, and both lists say you can click a row to view it.
+- **A selected missing picture shows it** — A picture whose file can't be found now wears the teal outline when it's selected, so moving onto it with the keyboard visibly lands.
+
+### Bug Fixes
+
+- **Tooltips over menus and Settings** — A tooltip on something inside a menu, a list or Settings was drawn underneath it, so it could not be seen. Tooltips now always appear on top.
+- **Menus inside Settings work** — The Spelling language menu (Windows and Linux) opened underneath the Settings window, so it could not be used. It now opens on top, and pressing Escape in it closes the menu, not Settings.
+- **Removing the storage location you're in is safe** — If switching away failed for any reason, the location was still removed. It now stays put.
+
 ## v0.12.0 — 2026-10-03
 
 ### Features
