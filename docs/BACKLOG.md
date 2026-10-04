@@ -12,7 +12,7 @@ issues bad enough to fix before anything else sit in their own short list below.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-03,
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-04,
 the v0.12.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
 from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
 2026-09-07, whose fixes shipped in v0.7.0.
@@ -157,8 +157,8 @@ none blocks the release. The shared question comes first because three candidate
   note's place (Chromium's viewer, which the web build has too), Open in the default app one
   click away. As Obsidian: `[[Slides.pdf#page=12]]` opens at that page, `![[…#page=12]]` embeds
   it, and audio and video play inline (`![[clip.mp4]]`) or in the note's place. **Back and
-  Forward** (⌘[ / ⌘]) flip between the slides and the note, which reverses the 2026-09-12
-  decline for this reason; a second window only if that is not enough. A type the app cannot
+  Forward** (⌘[ / ⌘], shipped for notes in v0.13.0) must take in the viewer, so they flip
+  between the slides and the note; a second window only if that is not enough. A type the app cannot
   show (PowerPoint, Word, …) gets a card in the note's place saying so, with Open in… and Show
   in Finder; the Mac's Quick Look panel is the cheap next step for slides. Later: searching PDF
   text. Not planned: annotating PDFs, reading text from pictures.
@@ -589,8 +589,8 @@ Declined 2026-09-12, when the sidebar was rearranged: **Collapse all folders** (
 on click and persist as left, and the list menu has no room for an action nobody reached for),
 and **Back and Forward** through recently open notes (one active note, no navigation stack; the
 sidebar and Search are how you get back to a note; Recent notes in Search, which shipped on
-2026-09-20, is the idea that survives from it). Back and Forward returned on 2026-09-30, for lecture
-files only (Beta candidates).
+2026-09-20, is the idea that survives from it). Back and Forward returned on 2026-09-30 and shipped
+in v0.13.0.
 
 Declined 2026-09-24, planning the phase before cloud: **databases, properties views, bases and
 saved searches** (folders, tags and search are the whole model; "avoid becoming gimmicky"), **an
