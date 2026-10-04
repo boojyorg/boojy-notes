@@ -658,6 +658,12 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     return note;
   });
 
+  // Its last text, to look at before it comes back: read from the history
+  // store, nothing written to the vault.
+  ipcMain.handle("read-deleted-note", (_event, id) =>
+    typeof id === "string" ? (history.deletedText(id)?.text ?? null) : null,
+  );
+
   ipcMain.handle("purge-deleted-note", (_event, id) =>
     typeof id === "string" ? history.purgeDeleted(id) : false,
   );

@@ -117,6 +117,8 @@ declare global {
       listDeletedNotes: () => Promise<{ id: string; name: string; folder: string; at: number }[]>;
       restoreDeletedNote: (noteId: string) => Promise<Note | null>;
       purgeDeletedNote: (noteId: string) => Promise<boolean>;
+      /** A deleted note's last text, to look at; null once it is gone for good. */
+      readDeletedNote: (noteId: string) => Promise<string | null>;
       onDeletedNotesChanged: (callback: () => void) => () => void;
       /** Version history (electron/history.ts): a note's past, kept outside the vault. */
       history: {

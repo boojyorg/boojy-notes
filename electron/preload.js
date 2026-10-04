@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listDeletedNotes: () => ipcRenderer.invoke("list-deleted-notes"),
   restoreDeletedNote: (noteId) => ipcRenderer.invoke("restore-deleted-note", noteId),
   purgeDeletedNote: (noteId) => ipcRenderer.invoke("purge-deleted-note", noteId),
+  readDeletedNote: (noteId) => ipcRenderer.invoke("read-deleted-note", noteId),
   onDeletedNotesChanged: subscribe("deleted-notes-changed"),
   history: {
     savePoint: (noteId) => ipcRenderer.invoke("history-save-point", noteId),

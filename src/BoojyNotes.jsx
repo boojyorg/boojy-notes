@@ -270,13 +270,28 @@ export default function BoojyNotes() {
     showToast,
     requestConfirm,
   });
+  const [binOpen, setBinOpen] = useState(false);
   const recentlyDeleted = useRecentlyDeleted({
     notesDir,
     applyExternalNote,
     markNewRows,
     requestConfirm,
+    listOpen: binOpen,
   });
-  const [binOpen, setBinOpen] = useState(false);
+  const { preview: deletedPreview, closePreview: closeDeletedPreview } = recentlyDeleted;
+  // Another note opened (or a new one) ends the look at a deleted one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the open note is the trigger
+  useEffect(() => closeDeletedPreview(), [activeNote, closeDeletedPreview]);
+  // Restored from its own preview: opened, since it was being looked at.
+  const restoreDeleted = useCallback(
+    async (id) => {
+      const viewing = deletedPreview?.item.id === id;
+      if (!(await recentlyDeleted.restore(id)) || !viewing) return;
+      setBinOpen(false);
+      setActiveNote(id);
+    },
+    [deletedPreview, recentlyDeleted.restore, setActiveNote],
+  );
   // The bin's menu stands beside its row: with the sidebar gone, it goes too.
   useEffect(() => {
     if (!sidebarVisible) setBinOpen(false);
@@ -658,7 +673,9 @@ export default function BoojyNotes() {
       }
       if (caret >= 0) placeCaret(el, Math.min(caret, title.length));
     }
-  }, [activeNote, syncGeneration.current]); // only on note switch + external sync, NOT every keystroke
+    // A deleted note's preview stands in the field's place: closing it mounts
+    // the field again, empty, so it is painted then too.
+  }, [activeNote, syncGeneration.current, !!deletedPreview]); // only on note switch + external sync, NOT every keystroke
 
   // A rename made elsewhere — the sidebar row, or the filename the write
   // actually produced — reaches the title field as long as the user is not in
@@ -1204,18 +1221,30 @@ export default function BoojyNotes() {
           else setCtxMenu({ x, y, type: "header", id: activeNote });
         }}
         past={
-          pastShown
+          deletedPreview
             ? {
-                time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
-                moment: versionMoment(pastShown.at, versionHistory.hour12),
-                listOpen: versionHistory.state.listOpen,
-                onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
-                onBack: versionHistory.close,
-                ask: versionHistory.state.ask,
-                onRestore: () => versionHistory.restore(pastShown.id),
-                onDismissAsk: () => versionHistory.setAsk(false),
+                deleted: true,
+                onPurge: () => recentlyDeleted.purge(deletedPreview.item),
+                onBack: () => {
+                  setBinOpen(false);
+                  closeDeletedPreview();
+                },
+                ask: recentlyDeleted.ask,
+                onRestore: () => restoreDeleted(deletedPreview.item.id),
+                onDismissAsk: () => recentlyDeleted.setAsk(false),
               }
-            : null
+            : pastShown
+              ? {
+                  time: versionTime(pastShown.at, Date.now(), versionHistory.hour12),
+                  moment: versionMoment(pastShown.at, versionHistory.hour12),
+                  listOpen: versionHistory.state.listOpen,
+                  onToggleList: () => versionHistory.setListOpen(!versionHistory.state.listOpen),
+                  onBack: versionHistory.close,
+                  ask: versionHistory.state.ask,
+                  onRestore: () => versionHistory.restore(pastShown.id),
+                  onDismissAsk: () => versionHistory.setAsk(false),
+                }
+              : null
         }
         onNewNote={() => createNote(null)}
         onOpenSearch={openSearch}
@@ -1334,6 +1363,11 @@ export default function BoojyNotes() {
               onPathRowPointerDown={handleSidebarPointerDown}
               onTitleBlur={settleTitle}
               pastVersion={versionHistory.state.past}
+              deletedNote={deletedPreview}
+              onTypeIntoDeleted={() => {
+                setBinOpen(false);
+                recentlyDeleted.setAsk(true);
+              }}
               offloaded={offloaded}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
               showToast={showToast}
@@ -1381,9 +1415,18 @@ export default function BoojyNotes() {
       {binOpen && (
         <RecentlyDeletedMenu
           items={recentlyDeleted.items}
-          restore={recentlyDeleted.restore}
+          restore={restoreDeleted}
           purge={recentlyDeleted.purge}
           onClose={() => setBinOpen(false)}
+          onEscape={() => {
+            setBinOpen(false);
+            closeDeletedPreview();
+          }}
+          view={(item) => {
+            versionHistory.close();
+            recentlyDeleted.view(item);
+          }}
+          viewingId={deletedPreview?.item.id ?? null}
         />
       )}
       {versionHistory.state.listOpen && (

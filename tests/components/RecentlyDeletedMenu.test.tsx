@@ -27,7 +27,15 @@ const items = [
 ];
 
 function setup(list = items) {
-  const props = { items: list, restore: vi.fn(), purge: vi.fn(), onClose: vi.fn() };
+  const props = {
+    items: list,
+    restore: vi.fn(),
+    purge: vi.fn(),
+    onClose: vi.fn(),
+    onEscape: vi.fn(),
+    view: vi.fn(),
+    viewingId: null,
+  };
   render(<RecentlyDeletedMenu {...props} />);
   const menu = screen.getByRole("dialog", { name: "Recently Deleted" });
   return { props, menu };
@@ -38,7 +46,17 @@ describe("RecentlyDeletedMenu", () => {
     setup();
     const rows = screen.getAllByRole("option").map((o) => o.textContent);
     expect(rows).toEqual(["Projects / Old plan", "Loose"]);
+    expect(document.body.textContent).toContain("Click a note to view it.");
     expect(document.body.textContent).toContain("Notes here are deleted after 30 days.");
+  });
+
+  it("shows a note on a click on its row, never on a click on its actions", () => {
+    const { props } = setup();
+    fireEvent.mouseEnter(screen.getAllByRole("option")[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Restore “Old plan”" }));
+    expect(props.view).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole("option")[1]);
+    expect(props.view).toHaveBeenCalledWith(items[1]);
   });
 
   it("says when there is nothing in it", () => {
@@ -55,7 +73,7 @@ describe("RecentlyDeletedMenu", () => {
     expect(props.purge).toHaveBeenCalledWith(items[0]);
   });
 
-  it("takes the keys: arrows, Enter puts back, Delete asks, Escape closes", () => {
+  it("takes the keys: arrows, Enter restores, Delete asks, Escape closes the list and the view", () => {
     const { props, menu } = setup();
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     fireEvent.keyDown(menu, { key: "ArrowDown" });
@@ -65,7 +83,7 @@ describe("RecentlyDeletedMenu", () => {
     fireEvent.keyDown(menu, { key: "Delete" });
     expect(props.purge).toHaveBeenCalledWith(items[0]);
     fireEvent.keyDown(menu, { key: "Escape" });
-    expect(props.onClose).toHaveBeenCalled();
+    expect(props.onEscape).toHaveBeenCalled();
   });
 
   it("closes on a press outside", () => {
