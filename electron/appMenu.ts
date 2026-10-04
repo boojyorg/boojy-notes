@@ -42,6 +42,9 @@ export type MenuState = {
   sidebarVisible: boolean;
   /** The Markdown view is on, so View offers the formatted one back. */
   sourceView: boolean;
+  /** A note to go back or forward to (the renderer's useNoteHistory). */
+  canBack: boolean;
+  canForward: boolean;
 };
 
 const INITIAL: MenuState = {
@@ -55,6 +58,8 @@ const INITIAL: MenuState = {
   align: null,
   sidebarVisible: true,
   sourceView: false,
+  canBack: false,
+  canForward: false,
 };
 
 const isMac = process.platform === "darwin";
@@ -268,6 +273,10 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         ),
         // Moves the keyboard into the sidebar's tree; Escape there comes back.
         item("goToSidebar", "Go to Sidebar", isMac ? "Ctrl+Cmd+S" : "Ctrl+Alt+S"),
+        // The notes opened, as a browser's Back and Forward. In View, not a
+        // Go menu of their own: the Windows strip has room for four menus.
+        item("back", "Back", isMac ? "Cmd+[" : "Alt+Left", { enabled: state.canBack }),
+        item("forward", "Forward", isMac ? "Cmd+]" : "Alt+Right", { enabled: state.canForward }),
         { type: "separator" },
         // The note as its file, and back: says what it will do, as the
         // sidebar item does, because a view is switched where a format is

@@ -14,6 +14,12 @@ vi.mock("../../../src/utils/domHelpers", async (importOriginal) => ({
   isSelectableBlock: (block) => block.type === "spacer" || block.type === "image",
   hasOwnField: (block) => ["code", "callout", "table"].includes(block?.type),
   focusOwnedField: vi.fn(() => true),
+  // The real landing rules and key test: where the arrows and Backspace go.
+  landing: (await importOriginal()).landing,
+  landingBefore: (await importOriginal()).landingBefore,
+  caretLandingBefore: (await importOriginal()).caretLandingBefore,
+  caretLandingAfter: (await importOriginal()).caretLandingAfter,
+  isBlockJump: (await importOriginal()).isBlockJump,
   caretRect: (range) => range.getBoundingClientRect(),
   placeCaret: vi.fn(() => true),
   // Visible characters, as the real ones count them (no icons or anchors here).

@@ -818,6 +818,28 @@ describe("focusBeyondNote — Tab out of the note", () => {
     focusBeyondNote(1);
     expect(document.activeElement.id).toBe("side");
   });
+
+  it("goes to the open note's row in the sidebar when there is one", () => {
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div role="tree"><button data-tree-key="n:1" tabindex="-1" aria-selected="true" id="row">Open</button></div>`,
+    );
+    showAll();
+    focusBeyondNote(1);
+    expect(document.activeElement.id).toBe("row");
+  });
+
+  it("goes to the show-sidebar button while the sidebar is hidden, never past it", () => {
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div inert><div role="tree"><button data-tree-key="n:1" tabindex="-1" aria-selected="true">Open</button></div>
+       <button data-sidebar-toggle>Hidden toggle</button></div>
+       <button data-sidebar-toggle id="toggle">Toggle</button>`,
+    );
+    showAll();
+    focusBeyondNote(1);
+    expect(document.activeElement.id).toBe("toggle");
+  });
 });
 
 describe("focusSidebar and focusNote — into the tree and back", () => {

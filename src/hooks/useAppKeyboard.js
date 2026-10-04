@@ -3,6 +3,7 @@ import { getAPI } from "../services/apiProvider";
 import { SCALE_DEFAULT, stepScale } from "../utils/uiScale";
 import { withAlignment } from "../utils/tableShape";
 import { focusSidebar } from "../utils/domHelpers";
+import { isMac } from "../utils/platform";
 
 /**
  * Global keyboard shortcuts for the app shell.
@@ -80,6 +81,11 @@ export function useAppKeyboard({
   openVersionHistory,
   // File → Recently Deleted…
   openRecentlyDeleted,
+  // ⌘[ / ⌘] and View → Back / Forward: the notes opened (useNoteHistory).
+  goBack,
+  goForward,
+  canBack,
+  canForward,
 }) {
   const latest = useRef(null);
   latest.current = {
@@ -115,6 +121,8 @@ export function useAppKeyboard({
     savePoint,
     openVersionHistory,
     openRecentlyDeleted,
+    goBack,
+    goForward,
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: every input is read through `latest` or a stable ref
@@ -168,6 +176,16 @@ export function useAppKeyboard({
       if (mod && key === "n") {
         e.preventDefault();
         newNote(L, titleRef);
+        return;
+      }
+      // Back and Forward through the notes opened: ⌘[ / ⌘] (Finder's and
+      // Safari's), Alt+← / → elsewhere (a browser's). The bracket is read by
+      // its physical key too, for layouts where it needs Alt.
+      const historyDir = historyKey(e);
+      if (historyDir) {
+        e.preventDefault();
+        if (historyDir < 0) L.goBack?.();
+        else L.goForward?.();
         return;
       }
       // Cmd+S is a save point: notes save as they are typed, so
@@ -287,6 +305,8 @@ export function useAppKeyboard({
         align: columnAlignment(blocks),
         sidebarVisible: !!sidebarVisible,
         sourceView: !!sourceView,
+        canBack: !!canBack,
+        canForward: !!canForward,
       });
     };
     let timer = null;
@@ -313,7 +333,19 @@ export function useAppKeyboard({
       document.removeEventListener("focusout", soon);
       document.removeEventListener("selectionchange", soon);
     };
-  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView]);
+  }, [activeNote, canUndo, canRedo, noteData, sidebarVisible, sourceView, canBack, canForward]);
+}
+
+/** -1 for Back, 1 for Forward, 0 for any other key. */
+function historyKey(e) {
+  if (isMac) {
+    if (!e.metaKey || e.ctrlKey || e.shiftKey) return 0;
+    if (e.key === "[" || e.code === "BracketLeft") return -1;
+    if (e.key === "]" || e.code === "BracketRight") return 1;
+    return 0;
+  }
+  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return 0;
+  return e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
 }
 
 /** Cmd+N and File → New Note: an empty draft is reused, focused at its name. */
@@ -458,6 +490,10 @@ function runMenuCommand(id, L, titleRef) {
       return L.openVaultMenu?.();
     case "recentlyDeleted":
       return L.openRecentlyDeleted?.();
+    case "back":
+      return L.goBack?.();
+    case "forward":
+      return L.goForward?.();
   }
   if (!note) return;
   switch (id) {

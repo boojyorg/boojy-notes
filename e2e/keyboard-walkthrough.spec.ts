@@ -86,7 +86,7 @@ test("create, find, rename, move and delete a note with the keyboard alone", asy
   await expect(row(page, "Shopping")).toHaveCount(0);
 });
 
-test("Tab leaves a paragraph and Shift+Tab goes back to the name; a list keeps Tab", async ({
+test("Tab leaves a paragraph for the open note in the sidebar, Shift+Tab for the name; a list keeps Tab", async ({
   page,
 }) => {
   await start(page);
@@ -98,16 +98,19 @@ test("Tab leaves a paragraph and Shift+Tab goes back to the name; a list keeps T
   await page.keyboard.press("Shift+Tab");
   await expect(title(page)).toBeFocused();
 
+  // The new note's row is in the tree once its first words are.
+  await expect(row(page, "Tabs")).toBeVisible();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Tab");
-  const inEditor = await page.evaluate(() =>
-    Boolean(document.activeElement?.closest("[data-editor]")),
-  );
-  expect(inEditor).toBe(false);
-  // Not the skip link at the page's head: that is for arriving, not leaving.
-  await expect(page.getByRole("link", { name: "Skip to content" })).not.toBeFocused();
+  // Out to the open note's row in the sidebar, never the header's ···.
+  await expect(row(page, "Tabs")).toBeFocused();
   // The paragraph is untouched: Tab typed nothing.
   await expect(page.locator("[data-editor]")).toHaveText("A line");
+  // Escape in the tree comes back to the note.
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(() => page.evaluate(() => Boolean(document.activeElement?.closest("[data-editor]"))))
+    .toBe(true);
 
   // In a list Tab still indents, and the caret stays in the note.
   await page.keyboard.press(`${MOD}+n`);

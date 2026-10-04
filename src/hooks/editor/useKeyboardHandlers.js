@@ -12,42 +12,13 @@ import {
   placeCaret,
   focusTitleEnd,
   focusBeyondNote,
+  caretLandingAfter,
+  caretLandingBefore,
+  isBlockJump,
+  landing,
+  landingBefore,
 } from "../../utils/domHelpers";
 import { inlineFieldFor, inlineFormatForKey } from "../../utils/inlineFormatCommands";
-
-/**
- * The nearest block in `step`'s direction that `stops` accepts, or -1.
- *
- * Deletion and the arrows want different answers, which is why this takes the
- * rule rather than holding one. **Backspace merges text**, so it may only land
- * where text can go: a code block in its path is stepped over. **The arrows
- * only move the caret**, so they land on a block that keeps a field of its own
- * and walk into it.
- */
-function landing(blocks, index, step, stops) {
-  let i = index + step;
-  while (i >= 0 && i < blocks.length && !stops(blocks[i])) i += step;
-  return i >= 0 && i < blocks.length ? i : -1;
-}
-
-/** Text or a whole-block neighbour: where a merge or a removal may land. */
-const takesText = (b) => isEditableBlock(b) || isSelectableBlock(b);
-/** The same, plus the blocks the arrows can walk into. */
-const takesCaret = (b) => takesText(b) || hasOwnField(b);
-
-function landingBefore(blocks, index) {
-  return landing(blocks, index, -1, takesText);
-}
-
-/** Where ArrowUp lands: a code block or callout above is entered, not skipped. */
-function caretLandingBefore(blocks, index) {
-  return landing(blocks, index, -1, takesCaret);
-}
-
-/** Where ArrowDown lands. */
-function caretLandingAfter(blocks, index) {
-  return landing(blocks, index, 1, takesCaret);
-}
 
 import { sanitizeInlineHtml, htmlToInlineMarkdown } from "../../utils/inlineFormatting";
 import {
@@ -437,6 +408,39 @@ export function useKeyboardHandlers({
           }
         }
       }
+    }
+
+    // Option+Up/Down (Ctrl off the Mac, Word's keys): block by block, to a
+    // block's start, as a Mac moves by paragraph; a block is the paragraph
+    // here, its soft breaks included. Up from inside a block goes to its own
+    // start first. It lands where the plain arrows do: into a field's start,
+    // onto a divider or image, past the last block to the end of this one,
+    // past the first to the note's name.
+    if (isBlockJump(e)) {
+      e.preventDefault();
+      const up = e.key === "ArrowUp";
+      const sel = window.getSelection();
+      const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+      if (up && range && caretOffsetAt(el, range.startContainer, range.startOffset) > 0) {
+        placeCaret(el, 0);
+        return;
+      }
+      const idx = up
+        ? caretLandingBefore(blocks, blockIndex)
+        : caretLandingAfter(blocks, blockIndex);
+      if (idx < 0) {
+        if (up) focusTitleEnd();
+        else placeCaret(el, caretLength(el));
+        return;
+      }
+      const target = blocks[idx];
+      if (hasOwnField(target)) focusOwnedField(editorRef.current, target.id, "start");
+      else if (isSelectableBlock(target)) selectBlock(target.id);
+      else {
+        const targetEl = blockRefs.current[target.id];
+        if (targetEl) placeCaret(targetEl, 0);
+      }
+      return;
     }
 
     // Shift+ArrowUp/Down extend the selection, and that is the browser's: the

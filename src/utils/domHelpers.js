@@ -1,3 +1,5 @@
+import { isMac } from "./platform";
+
 // Pure DOM utility functions for the block editor.
 
 /**
@@ -743,14 +745,27 @@ const TABBABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex], [contenteditable="true"]';
 
 /**
- * Tab out of the note (Tab in a paragraph): the next control
- * after the editor in the page's Tab order, or the one before it with
- * Shift. Nothing inside the note is a stop on the way out (a code block or a
- * cell would take the key and trap it again); past either end it wraps. The
- * note's name, the usual Shift+Tab stop, takes the caret at its end.
+ * Tab out of the note (Tab in a paragraph): the open note's row in the
+ * sidebar, where the arrows choose another, Enter opens it and Escape comes
+ * back (the next control in DOM order was the header's ···, a dead end); with
+ * the sidebar hidden, the button that shows it, never the sidebar shown
+ * unasked. Shift+Tab is the control before the editor, the note's name,
+ * taking the caret at its end. Failing those, the next or previous Tab stop
+ * outside the note, wrapping: nothing inside it is a stop on the way out (a
+ * code block or a cell would take the key and trap it again).
  * @param {1 | -1} dir
  */
 export function focusBeyondNote(dir) {
+  if (dir === 1) {
+    if (focusSidebar()) return;
+    const toggle = [...document.querySelectorAll("[data-sidebar-toggle]")].find(
+      (el) => !el.closest("[inert]"),
+    );
+    if (toggle instanceof HTMLElement) {
+      toggle.focus({ preventScroll: true });
+      if (toggle === document.activeElement) return;
+    }
+  }
   const editor = document.querySelector("[data-editor]");
   if (!(editor instanceof HTMLElement)) return;
   const stops = [...document.querySelectorAll(TABBABLE)].filter(
@@ -796,4 +811,47 @@ export function focusNote() {
     return;
   }
   focusTitleEnd();
+}
+
+/**
+ * The nearest block in `step`'s direction that `stops` accepts, or -1.
+ *
+ * Deletion and the arrows want different answers, which is why this takes the
+ * rule rather than holding one. **Backspace merges text**, so it may only land
+ * where text can go: a code block in its path is stepped over. **The arrows
+ * only move the caret**, so they land on a block that keeps a field of its own
+ * and walk into it.
+ */
+export function landing(blocks, index, step, stops) {
+  let i = index + step;
+  while (i >= 0 && i < blocks.length && !stops(blocks[i])) i += step;
+  return i >= 0 && i < blocks.length ? i : -1;
+}
+
+/** Text or a whole-block neighbour: where a merge or a removal may land. */
+const takesText = (b) => isEditableBlock(b) || isSelectableBlock(b);
+/** The same, plus the blocks the arrows can walk into. */
+const takesCaret = (b) => takesText(b) || hasOwnField(b);
+
+export function landingBefore(blocks, index) {
+  return landing(blocks, index, -1, takesText);
+}
+
+/** Where ArrowUp lands: a code block or callout above is entered, not skipped. */
+export function caretLandingBefore(blocks, index) {
+  return landing(blocks, index, -1, takesCaret);
+}
+
+/** Where ArrowDown lands. */
+export function caretLandingAfter(blocks, index) {
+  return landing(blocks, index, 1, takesCaret);
+}
+
+/**
+ * Option+Up/Down on a Mac, Ctrl+Up/Down elsewhere (Word's keys): block by
+ * block, to a block's start. Shift is the browser's selection, never this.
+ */
+export function isBlockJump(e) {
+  if (e.shiftKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return false;
+  return isMac ? e.altKey && !e.metaKey && !e.ctrlKey : e.ctrlKey && !e.altKey && !e.metaKey;
 }

@@ -215,6 +215,7 @@ const EditableBlock = memo(
         ref={ref}
         data-block-id={block.id}
         data-block-type={block.type}
+        data-selected={isBlockSelected ? "true" : undefined}
         contentEditable="false"
         suppressContentEditableWarning
         style={{ ...style, userSelect: "none" }}
