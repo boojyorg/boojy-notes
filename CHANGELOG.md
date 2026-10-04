@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.13.1 — 2026-10-04
+
+### Bug Fixes
+
+- **Turn into fits on screen** — Opening a block's Turn into list near the bottom of the window left its last row (Quote) cut off by the window's edge. The list now moves up far enough to show every kind.
+- **⌥↑ and ⌥↓ keep the cursor in view** — Jumping from block to block past the bottom or top of the window left the cursor out of sight. The note now scrolls just enough to keep it on screen, clear of the bar at the top, and a picture the jump selects comes into view the same way.
+
 ## v0.13.0 — 2026-10-04
 
 ### Features
