@@ -10,6 +10,8 @@ interface Props {
   /** Desktop only, and never for a web address: pick the file and copy it in. */
   onFind?: () => void;
   onRemove: () => void;
+  /** Selected (the arrows, ⌥↓, the gutter): the outline a selected picture wears. */
+  selected?: boolean;
 }
 
 /** A file the vault could hold (desktop only): never a web address or a pasted data URL. */
@@ -28,9 +30,15 @@ const rectOf = (el: Element): MenuAnchor => {
  * right-click offers Find it… and Remove. Remove takes the block out, as
  * Delete does elsewhere, and is undoable, so it is not in the danger ink.
  */
-export default function MissingAttachment({ src, image = false, onFind, onRemove }: Props) {
+export default function MissingAttachment({
+  src,
+  image = false,
+  onFind,
+  onRemove,
+  selected = false,
+}: Props) {
   const { theme } = useTheme();
-  const { BG, TEXT } = theme;
+  const { BG, TEXT, ACCENT } = theme;
   const [menu, setMenu] = useState<{ anchor: MenuAnchor; fromBar: boolean } | null>(null);
   const [hovered, setHovered] = useState(false);
   const moreRef = useRef<HTMLSpanElement>(null);
@@ -45,6 +53,7 @@ export default function MissingAttachment({ src, image = false, onFind, onRemove
     <>
       <div
         data-testid="missing-attachment"
+        data-selected={selected ? "true" : undefined}
         role={onFind ? "button" : undefined}
         aria-label={`${name}, not found${onFind ? ". Find it" : ""}`}
         contentEditable={false}
@@ -64,6 +73,9 @@ export default function MissingAttachment({ src, image = false, onFind, onRemove
           padding: "10px 12px 10px 14px",
           borderRadius: 8,
           border: `1px solid ${BG.divider}`,
+          // The selected picture's outline, just outside the card.
+          outline: selected ? `2px solid ${ACCENT.primary}` : "none",
+          outlineOffset: 1,
           background: hovered && onFind ? BG.surface : BG.elevated,
           cursor: onFind ? "pointer" : "default",
           transition: "background var(--motion-fast)",

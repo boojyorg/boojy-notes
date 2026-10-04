@@ -437,6 +437,16 @@ const EditorArea = memo(
     );
 
     // Whole-block selection: a divider, an image or a table (isSelectableBlock)
+    // A press on a picture that moves on drags its block, as the grip does.
+    // Through a ref: useBlockDrag hands a fresh function every render, and the
+    // blocks are memoised on their props.
+    const startHandleDragRef = useRef(startHandleDrag);
+    startHandleDragRef.current = startHandleDrag;
+    const imageDragPress = useCallback(
+      (blockId, e) => startHandleDragRef.current?.(blockId, e),
+      [],
+    );
+
     const handleBlockSelect = useCallback(
       (blockId) => {
         setSelectedBlockId(blockId);
@@ -1277,6 +1287,7 @@ const EditorArea = memo(
                                 !!selectedRun && i === selectedRun.from && i === selectedRun.to
                               }
                               onBlockSelect={handleBlockSelect}
+                              onImageDragPress={imageDragPress}
                               onImageLightbox={handleImageLightbox}
                               onImageCopyImage={handleImageCopyImage}
                               onUpdateBlockProperty={updateBlockProperty}

@@ -103,6 +103,8 @@ export default function GlobalStyles() {
           color: ${theme.TEXT.primary};
         }
         body.block-dragging .block-drag-handle { opacity: 0 !important; }
+        /* A picture's controls are for one at rest: gone from the original too while it travels. */
+        body.block-dragging [data-drag-chrome] { display: none !important; }
         /* Insertion marker (useBlockDrag, painted on <body>): where the block
            lands on release. 3px of the accent at 40% — accent is allowed as a
            2-3px marker, never as a surface, and a drop line is a caret between

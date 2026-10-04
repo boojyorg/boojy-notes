@@ -154,11 +154,11 @@ app's, made through state.**
 
 ## Block drag: the gutter handle, never the text
 
-- **Text never starts a block drag.** One floating grip (`BlockDragHandle`) in the left
-  padding, on hover, desktop only, `aria-hidden`; a click selects the block. `⌘⇧↑/↓` is the
-  keyboard path. None under two blocks.
+- **Text never starts a block drag; a picture does.** One floating grip
+  (`BlockDragHandle`) in the left padding, on hover, desktop only, `aria-hidden`; a click
+  selects the block. `⌘⇧↑/↓` is the keyboard path. None under two blocks.
 - A key hides the grip (a modifier alone doesn't: Shift-click) and clears `hoveringHandle`.
-  **Blur cancels a press unconditionally** (else a Cmd-Tab left a phantom drag).
+  **Blur cancels a press unconditionally** (Cmd-Tab left a phantom drag).
   `grip-reveal.spec.ts`.
 - **Commits on drop**, one history entry, only if order changed. Escape, blur or the sidebar
   cancel. A selection, or a text range over several blocks, drags as one run.

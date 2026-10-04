@@ -127,6 +127,7 @@ const EditableBlock = memo(
     isBlockSelected,
     isOnlyBlockSelected,
     onBlockSelect,
+    onImageDragPress,
     onImageLightbox,
     onImageCopyImage,
     onUpdateBlockProperty,
@@ -231,6 +232,7 @@ const EditableBlock = memo(
           alt={block.alt}
           displayWidth={imageDisplayWidth(block)}
           isSelected={isBlockSelected}
+          onDragPress={(e) => onImageDragPress?.(block.id, e)}
           selectedAlone={isOnlyBlockSelected}
           accentColor={accentColor}
           onSelect={() => onBlockSelect(block.id)}
