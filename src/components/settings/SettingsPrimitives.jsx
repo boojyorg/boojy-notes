@@ -298,10 +298,22 @@ export const settingsStyles = (theme) => `
   .settings-reset:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); border-radius: 6px; }
   .theme-pill:not([aria-checked="true"]):hover { background: ${theme.BG.surface} !important; color: ${theme.TEXT.primary} !important; }
   .theme-pill:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
-  .settings-location-reveal:not([aria-disabled="true"]):hover { background: ${theme.BG.hover} !important; }
-  .settings-location-reveal:not([aria-disabled="true"]):hover .settings-location-path { color: ${theme.TEXT.primary} !important; }
-  .settings-location-reveal:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
-  .settings-location-action { opacity: 0; transition: opacity var(--motion-fast); }
-  .settings-location:hover .settings-location-action,
-  .settings-location:focus-within .settings-location-action { opacity: 1; }
+  .settings-locations { display: grid; margin: 0 -10px; }
+  .settings-location {
+    display: grid; grid-template-columns: 16px minmax(0, max-content) minmax(0, 1fr) 16px 28px;
+    align-items: center; column-gap: 10px; height: 34px; padding: 0 3px 0 10px; border-radius: 8px;
+  }
+  .settings-location:hover, .settings-location:focus-within, .settings-location.is-open { background: ${theme.BG.hover}; }
+  .settings-location-name { font-size: 14px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .settings-location-path { display: flex; min-width: 0; font-size: 13px; white-space: nowrap; }
+  .settings-location-more {
+    width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: none; border-radius: 6px;
+    background: none; color: ${theme.TEXT.muted}; cursor: pointer; opacity: 0;
+  }
+  .settings-location:hover .settings-location-more,
+  .settings-location:focus-within .settings-location-more,
+  .settings-location.is-open .settings-location-more { opacity: 1; }
+  .settings-location-more:hover { color: ${theme.TEXT.primary} !important; }
+  .settings-location-more:focus-visible { outline: none; color: ${theme.TEXT.primary}; box-shadow: inset 0 0 0 2px var(--boojy-focus-ring); }
+  .settings-location-field:focus { outline: none; box-shadow: 0 0 0 2px var(--boojy-focus-ring); }
 `;

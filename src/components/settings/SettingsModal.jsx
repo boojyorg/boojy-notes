@@ -24,6 +24,7 @@ export default function SettingsModal({
   switchVault,
   addVault,
   forgetVault,
+  renameVault,
   revealVault,
 }) {
   const { settingsOpen, setSettingsOpen, uiScale } = useSettings();
@@ -56,11 +57,14 @@ export default function SettingsModal({
   // Settings closes itself on Escape, as every other surface does; the app
   // shell's handler never needs to know it is open. On the document, so it
   // runs before the shell's window listener, and only for an Escape nothing
-  // above it has taken.
+  // above it has taken. A menu opened from inside (a location's ···) owns
+  // Escape even in the frame before focus reaches it, when its own document
+  // listener, added after this one, would hear the key second.
   useEffect(() => {
     if (!settingsOpen) return;
     const onKey = (e) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector('[role="menu"]')) return;
       e.preventDefault();
       setSettingsOpen(false);
     };
@@ -182,6 +186,7 @@ export default function SettingsModal({
                 switchVault={switchVault}
                 addVault={addVault}
                 forgetVault={forgetVault}
+                renameVault={renameVault}
                 revealVault={revealVault}
               />
               <SettingsRule />

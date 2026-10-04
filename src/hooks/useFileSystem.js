@@ -783,7 +783,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
   // without, the native picker.
   const changeNotesDir = useCallback(
     async (target) => {
-      if (!isElectron) return;
+      if (!isElectron) return false;
       try {
         await flushAll();
         const newDir =
@@ -793,7 +793,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         if (!newDir) {
           // Cancelled, or a listed vault that has gone since the menu opened.
           await refreshVaults();
-          return;
+          return false;
         }
         takeFromDisk({});
         dirtyNotes.current.clear();
@@ -809,10 +809,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
         // The new vault's directories replace the old vault's, never merge with them.
         await refreshFolders();
         await refreshVaults();
+        return true;
       } catch (err) {
         console.error("useFileSystem: changeNotesDir failed", err);
         onError?.("Failed to change notes directory");
       }
+      return false;
       // Deps deliberately not exhaustive: onError is not stable
     },
     [takeFromDisk, refreshFolders, refreshVaults, flushAll],
@@ -830,6 +832,13 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     const api = getAPI();
     if (typeof api?.forgetVault !== "function") return;
     setVaults(await api.forgetVault(dir));
+  }, []);
+
+  // Settings' Rename…: the location's name in the app; the folder keeps its own.
+  const renameVault = useCallback(async (dir, name) => {
+    const api = getAPI();
+    if (typeof api?.renameVault !== "function") return;
+    setVaults(await api.renameVault(dir, name));
   }, []);
 
   // A file that is not a note, to the OS Trash; the list follows the disk.
@@ -929,6 +938,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     changeNotesDir,
     vaults,
     forgetVault,
+    renameVault,
     otherFiles,
     trashFile,
     refreshVaults,

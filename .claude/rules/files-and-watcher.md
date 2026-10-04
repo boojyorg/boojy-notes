@@ -69,7 +69,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
 - **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults` lists them;
   `add-vault` adds without switching; `open-vault` takes only a listed, present path. A
-  never-made default is not listed. Remove never touches the folder. A switch flushes,
+  never-made default is not listed. Remove never touches the folder. **Rename is a label in
+  config (`vaultLabels`, by resolved path), never the folder's name on disk**: Obsidian or a
+  sync service may point at it. Unlike a note's title. A switch flushes,
   empties, reloads.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
   folders and on window focus. `trash-file` refuses a note (notes go by id through `trash-note`,

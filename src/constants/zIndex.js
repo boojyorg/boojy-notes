@@ -5,7 +5,7 @@
  * Scale overview (low → high):
  *   BASE → ELEMENT_OVERLAY → BLOCK_HANDLE → PATH_ROW → FIND_BAR
  *   → TOOLBAR → WIKILINK_MENU → MENU_BACKDROP
- *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → LIGHTBOX
+ *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → SETTINGS_MENU → LIGHTBOX
  *   → OVERLAY → CALLOUT_BACKDROP
  *   → TOAST → CONFIRM → ERROR_BOUNDARY
  */
@@ -31,6 +31,10 @@ export const Z = {
   CONTEXT_MENU: 300,
   SETTINGS: 400,
   SETTINGS_INNER: 401,
+  /** A menu opened from inside Settings (a location's ···, Spelling's
+   *  languages): its backdrop and surface, above the pane. */
+  SETTINGS_MENU_BACKDROP: 402,
+  SETTINGS_MENU: 403,
   LIGHTBOX: 1100,
   OVERLAY: 1200,
   CALLOUT_BACKDROP: 9998,

@@ -47,6 +47,8 @@ declare global {
       /** Only a vault already listed and present; null otherwise. */
       openVault: (dir: string) => Promise<string | null>;
       forgetVault: (dir: string) => Promise<VaultEntry[]>;
+      /** The vault's name in the app alone (empty clears it); the folder keeps its own. */
+      renameVault: (dir: string, name: string) => Promise<VaultEntry[]>;
       /** The picker, then the list gains the folder; the open vault stays open. */
       addVault: () => Promise<VaultEntry[]>;
       revealVault: (dir: string) => Promise<void>;

@@ -1,6 +1,7 @@
 /**
- * The vaults the app has opened: remembered in the order first opened, the
- * open one never forgotten, only a listed vault opened by path.
+ * The vaults the app has opened: remembered in the order first opened, shown
+ * A–Z by name (a label, else the folder's), the open one never forgotten,
+ * only a listed vault opened by path.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
@@ -10,7 +11,9 @@ import {
   forgetVault,
   isCloudPath,
   isKnownVault,
+  labelVault,
   rememberVault,
+  unlabelVault,
   vaultEntries,
 } from "../../electron/vaults";
 
@@ -77,9 +80,47 @@ describe("vaultEntries", () => {
 
   it("keeps a missing vault, marked, and never makes it", () => {
     const gone = dir("Old Journal");
-    const [entry] = vaultEntries([gone], dir("Notes"));
+    const entry = vaultEntries([gone], dir("Notes")).find((e) => e.path === gone);
     expect(entry).toMatchObject({ name: "Old Journal", exists: false });
     expect(fs.existsSync(gone)).toBe(false);
+  });
+});
+
+describe("order and labels", () => {
+  it("lists A–Z as Finder does: case ignored, numbers by value", () => {
+    const names = ["year 10", "Year 2", "archive", "Notes"];
+    for (const n of names) fs.mkdirSync(dir(n), { recursive: true });
+    const entries = vaultEntries(names.map(dir), dir("Notes"));
+    expect(entries.map((e) => e.name)).toEqual(["archive", "Notes", "Year 2", "year 10"]);
+  });
+
+  it("shows a label in place of the folder's name, and sorts by it", () => {
+    const labels = labelVault(undefined, dir("University"), "Alpha");
+    const entries = vaultEntries([dir("Notes"), dir("University")], dir("Notes"), labels);
+    expect(entries.map((e) => [e.name, e.folderName])).toEqual([
+      ["Alpha", "University"],
+      ["Notes", "Notes"],
+    ]);
+  });
+
+  it("keys a label by the resolved path, so a trailing separator is the same vault", () => {
+    const labels = labelVault(undefined, `${dir("Notes")}${path.sep}`, "Mine");
+    expect(vaultEntries([dir("Notes")], dir("Notes"), labels)[0].name).toBe("Mine");
+  });
+
+  it("trims a label to one line; blank or the folder's own name clears it", () => {
+    let labels = labelVault(undefined, dir("Notes"), "  My\n notes  ");
+    expect(labels[path.resolve(dir("Notes"))]).toBe("My notes");
+    labels = labelVault(labels, dir("Notes"), "   ");
+    expect(labels).toEqual({});
+    labels = labelVault(labelVault(undefined, dir("Notes"), "X"), dir("Notes"), "Notes");
+    expect(labels).toEqual({});
+  });
+
+  it("forgets a removed vault's label and ignores a junk config", () => {
+    const labels = labelVault(undefined, dir("Notes"), "Mine");
+    expect(unlabelVault(labels, dir("Notes"))).toEqual({});
+    expect(vaultEntries([dir("Notes")], dir("Notes"), 7)[0].name).toBe("Notes");
   });
 });
 

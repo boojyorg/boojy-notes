@@ -16,26 +16,23 @@ const openSettings = async (h: AppHandle) => {
   return settings;
 };
 
-test("the open location is marked Active; its name and place are the Show in Finder control", async () => {
+test("the open location is ticked; its ··· menu leaves out what cannot work", async () => {
   const h = await launchApp({ "Alpha.md": "Alpha.\n" });
   try {
     const settings = await openSettings(h);
     const row = settings.getByTestId("settings-location-row");
-    await expect(row.getByTestId("location-active")).toHaveText("Active");
-    const reveal = settings.getByRole("button", {
-      name: new RegExp(`^${path.basename(h.vault.dir)},`),
-    });
-    await expect(reveal).not.toHaveAttribute("title", /.*/);
-    // Re-hovered until the chip shows: the Linux runner sends a stray mouseout
-    // about half a second after a hover, which cancels the chip's rest timer.
-    await expect(async () => {
-      await reveal.hover();
-      await expect(h.page.getByTestId("path-tooltip")).toHaveText(/Show in (Finder|folder)/, {
-        timeout: 1_500,
-      });
-    }).toPass({ timeout: 10_000 });
-    // The only location: nothing to switch to, so no ×.
-    await expect(settings.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+    await expect(row.getByTestId("location-current").locator("svg")).toBeVisible();
+    await expect(row).toContainText(path.basename(h.vault.dir));
+    const more = settings.getByRole("button", { name: `${path.basename(h.vault.dir)} options` });
+    await row.hover();
+    await more.click();
+    const menu = h.page.getByTestId("location-menu");
+    // The only location, and the open one: nothing to switch to, nothing to remove.
+    await expect(menu.getByRole("menuitem")).toHaveText(["Rename…", /Show in (Finder|folder)/]);
+    // At once, before focus has reached the menu: the menu's Escape, not Settings'.
+    await h.page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(settings).toBeVisible();
     expect(h.pageErrors).toEqual([]);
   } finally {
     await h.close();
@@ -61,7 +58,7 @@ test("cancelling Add folder… adds nothing; choosing one lists it and switches 
     }, other);
     await settings.getByRole("button", { name: "Add folder…" }).click();
     await expect(rows).toHaveCount(2);
-    await expect(settings.getByRole("button", { name: "Use Other" })).toBeAttached();
+    await expect(rows.filter({ hasText: "Other" }).getByTestId("location-current")).toHaveCount(0);
     const config = JSON.parse(fs.readFileSync(path.join(h.userData, "config.json"), "utf-8"));
     expect(config.notesDir).toBe(h.vault.dir);
     expect(config.vaults).toEqual([h.vault.dir, other]);
