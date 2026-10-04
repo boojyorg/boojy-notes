@@ -8,6 +8,8 @@ import type { HistoryVersion } from "../types/global";
 import { cssZoom } from "../utils/domHelpers";
 import { versionMoment, versionTime } from "../utils/versionTime";
 import { HistoryIcon, PencilIcon, RestoreIcon, TrashIcon } from "./Icons";
+import { MenuRule } from "./Menu";
+import RowAction from "./RowAction";
 
 interface Props {
   state: VersionHistoryState;
@@ -237,42 +239,6 @@ export default function VersionHistoryList({
     );
   };
 
-  const iconButton = (label: string, icon: React.ReactNode, run: () => void) => (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      tabIndex={-1}
-      onClick={(e) => {
-        e.stopPropagation();
-        run();
-      }}
-      style={{
-        width: 26,
-        height: 24,
-        border: "none",
-        borderRadius: 6,
-        background: "transparent",
-        color: TEXT.secondary,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        padding: 0,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = BG.editor;
-        e.currentTarget.style.color = TEXT.primary;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = TEXT.secondary;
-      }}
-    >
-      {icon}
-    </button>
-  );
-
   const emptyText = state.off
     ? state.versions.length
       ? `Autosave and save points are off.\n${state.versions.length} saved versions are kept and come back when you turn it on.`
@@ -401,10 +367,20 @@ export default function VersionHistoryList({
               )}
               {showActions ? (
                 <span style={{ display: "flex", gap: 2 }}>
-                  {iconButton("Restore this version (↵)", <RestoreIcon size={14} />, () =>
-                    restore(id),
-                  )}
-                  {iconButton("Delete this version (⌫)", <TrashIcon />, () => remove(id))}
+                  <RowAction
+                    label="Restore this version"
+                    tip="Restore version"
+                    shortcut="↵"
+                    icon={<RestoreIcon size={14} />}
+                    onClick={() => restore(id)}
+                  />
+                  <RowAction
+                    label="Delete this version"
+                    tip="Delete version"
+                    shortcut="⌫"
+                    icon={<TrashIcon />}
+                    onClick={() => remove(id)}
+                  />
                 </span>
               ) : (
                 renaming !== id && (
@@ -437,6 +413,18 @@ export default function VersionHistoryList({
           </div>
         )}
       </div>
+      {/* Clicking a row shows that version: said once, as Recently Deleted's foot does. */}
+      {rows.length > 1 && (
+        <>
+          <MenuRule />
+          <div
+            data-testid="version-history-hint"
+            style={{ padding: "5px 10px 6px", color: TEXT.muted, fontSize: 12.5 }}
+          >
+            Click a version to view it.
+          </div>
+        </>
+      )}
       {rowMenu && (
         <div
           role="menu"

@@ -146,7 +146,7 @@ export function Tooltip({
         lineHeight: "18px",
         whiteSpace: "nowrap",
         pointerEvents: "none",
-        zIndex: Z.TOOLBAR,
+        zIndex: Z.TOOLTIP,
       }}
     >
       {lines ? (

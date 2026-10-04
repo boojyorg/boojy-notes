@@ -7,7 +7,7 @@
  *   → TOOLBAR → WIKILINK_MENU → MENU_BACKDROP
  *   → DROPDOWN → CONTEXT_BACKDROP → CONTEXT_MENU → SETTINGS → SETTINGS_MENU → LIGHTBOX
  *   → OVERLAY → CALLOUT_BACKDROP
- *   → TOAST → CONFIRM → ERROR_BOUNDARY
+ *   → TOAST → CONFIRM → TOOLTIP → ERROR_BOUNDARY
  */
 
 export const Z = {
@@ -40,5 +40,8 @@ export const Z = {
   CALLOUT_BACKDROP: 9998,
   TOAST: 9999,
   CONFIRM: 10001,
+  /** A control's chip: over whatever surface holds the control under the pointer
+   *  (a popover, Settings), and inert to the pointer. */
+  TOOLTIP: 10002,
   ERROR_BOUNDARY: 99999,
 };
