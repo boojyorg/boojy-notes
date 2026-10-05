@@ -67,7 +67,7 @@ test("folder and bulk deletion ask first, in words that say what happens; cancel
 });
 
 test("confirmed deletion moves only the notes; a single note goes at once with a toast", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp(seed);
   try {
     const dialog = h.page.getByRole("alertdialog");

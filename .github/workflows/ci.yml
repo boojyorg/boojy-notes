@@ -149,14 +149,25 @@ jobs:
             test-results/electron
           retention-days: 14
 
-  # Windows: the app's window chrome there is its own (the title bar is the
-  # app's strip, WindowStrip), so the chrome specs run on a real Windows
-  # runner too. A focused set, not the suite: the rest is platform-neutral and
-  # already runs on Linux above.
-  electron-windows:
-    name: Electron E2E (Windows chrome)
-    runs-on: windows-latest
-    timeout-minutes: 20
+  # The same suite on Windows and macOS. Linux above is the fast, broad
+  # pass; these catch what only a real system does: the OS Trash (Linux CI
+  # has none), Windows' file names, locks and window strip, a Mac's case-only
+  # rename and `cp -p` save. No Xvfb here: each runner has a desktop.
+  electron-desktop:
+    name: Electron E2E (${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }} ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, shard: 1, shards: 4 }
+          - { os: windows-latest, shard: 2, shards: 4 }
+          - { os: windows-latest, shard: 3, shards: 4 }
+          - { os: windows-latest, shard: 4, shards: 4 }
+          - { os: macos-latest, shard: 1, shards: 3 }
+          - { os: macos-latest, shard: 2, shards: 3 }
+          - { os: macos-latest, shard: 3, shards: 3 }
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -168,23 +179,46 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm exec vite build
-      - name: Window chrome tests
-        timeout-minutes: 15
-        run: pnpm exec playwright test -c playwright.electron.config.ts e2e/electron/window-strip.spec.ts e2e/electron/header-controls.spec.ts e2e/electron/note-path.spec.ts
-      - name: Keep the report of a failed run
+      - name: Electron core-journey tests
+        timeout-minutes: 20
+        run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/${{ matrix.shards }}
+      - name: Keep the report of a failed shard
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: electron-windows-report
+          name: electron-${{ matrix.os }}-report-${{ matrix.shard }}
           path: |
             playwright-report/electron
             test-results/electron
           retention-days: 14
 
+  # The unit tests on Windows and macOS: their platform branches (a path's
+  # separator, `cp -p`, a name Windows cannot hold) run nowhere else. No
+  # coverage gate here; the Linux job owns it.
+  unit-desktop:
+    name: unit tests (${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm test
+
   # The single status branch protection requires. Runs even when a job above
   # failed or was cancelled, and reports that as a failure of its own.
   ci:
-    needs: [checks, web-e2e, electron-e2e, electron-windows]
+    needs: [checks, web-e2e, electron-e2e, electron-desktop, unit-desktop]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -194,8 +228,10 @@ jobs:
           echo "checks: ${{ needs.checks.result }}"
           echo "web-e2e: ${{ needs.web-e2e.result }}"
           echo "electron-e2e: ${{ needs.electron-e2e.result }}"
-          echo "electron-windows: ${{ needs.electron-windows.result }}"
+          echo "electron-desktop: ${{ needs.electron-desktop.result }}"
+          echo "unit-desktop: ${{ needs.unit-desktop.result }}"
           test "${{ needs.checks.result }}" = success
           test "${{ needs.web-e2e.result }}" = success
           test "${{ needs.electron-e2e.result }}" = success
-          test "${{ needs.electron-windows.result }}" = success
+          test "${{ needs.electron-desktop.result }}" = success
+          test "${{ needs.unit-desktop.result }}" = success

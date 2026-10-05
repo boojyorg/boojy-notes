@@ -347,8 +347,11 @@ describe("readOtherFiles", () => {
     write(".obsidian/app.json");
     write(".DS_Store");
     write("Uni/Thumbs.db");
-    write("Icon\r");
-    write("Uni/Icon\r");
+    // A Mac folder's custom-icon file; Windows can hold no name with a CR in it.
+    if (process.platform !== "win32") {
+      write("Icon\r");
+      write("Uni/Icon\r");
+    }
     expect(readOtherFiles(notesDir)).toEqual([
       { path: "Uni/lecture-3.pptx", attachment: false },
       { path: "attachments/diagram-1.png", attachment: true },

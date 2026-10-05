@@ -193,7 +193,7 @@ test("other files show beside the notes; attachments only when asked; both toggl
 });
 
 test("a file that is not a note goes to the Trash from its menu, with a toast", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({ "Alpha.md": "Alpha.\n", "handout.pdf": "%PDF-1.4\n" });
   try {
     const row = h.page.getByRole("treeitem", { name: "handout.pdf" });

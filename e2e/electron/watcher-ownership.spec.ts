@@ -120,7 +120,7 @@ test("a note deleted outside and then restored with identical bytes reappears", 
 });
 
 test("a note deleted in the app and put back from the Trash reappears", async () => {
-  test.skip(process.platform !== "darwin", "moves files through the OS Trash");
+  test.skip(process.platform !== "darwin", "Finder's Put Back, from ~/.Trash");
   // A name no earlier run left in the Trash, so the file keeps it there.
   const title = `Put back ${Date.now()}`;
   const trashed = path.join(os.homedir(), ".Trash", `${title}.md`);
