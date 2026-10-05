@@ -116,7 +116,11 @@ Each has caused a real bug.
 - **Markdown has four contracts**: `markdown.test.js` (block → md → block),
   `preservation.test.js` (md → blocks → md, byte for byte), `domRoundTrip.test.js` (rendered,
   painted and read back), `markdownInterop.test.js` (meaning judged by `markdown-it`, never by
-  our own parser; known mismatches are narrow `it.fails`).
+  our own parser; known mismatches are narrow `it.fails`). **`roundTripProperty.test.js`
+  checks the first three over generated documents** (fast-check; a fixed seed in CI,
+  `FC_RUNS=20000` to hunt), less the rewrites on record in `knownRewrites.js`; delete an entry
+  when its rewrite is fixed. `BOOJY_CORPUS=<vault> pnpm vitest run tests/corpus` runs a real
+  vault the same way, reading only.
 - Coverage floors sit just below actuals: ratchet up, never lower. CI gates are
   `test:coverage`, web E2E and the Electron suite.
 - **Three verification surfaces**: `dev:web` for iteration and visual judgement, a visible
