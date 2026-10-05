@@ -91,8 +91,10 @@ declare global {
       paste: () => Promise<void>;
       /** Null when the word is spelled right, else up to three guesses. */
       checkSpelling: (word: string, paragraph: string) => Promise<string[] | null>;
-      /** Each paragraph's misspelled words, for the underline. */
-      checkParagraphs: (texts: string[]) => Promise<string[][]>;
+      /** Each paragraph's misspelled words, for the app's underline; absent on Windows, where it is Chromium's. */
+      checkParagraphs?: (texts: string[]) => Promise<string[][]>;
+      /** Windows: a right-click's spelling comes with the menu event, which must not be cancelled. */
+      spellingFromMenu: boolean;
       getSpelling: () => Promise<SpellingState>;
       setSpelling: (change: { enabled?: boolean; languages?: string[] }) => Promise<SpellingState>;
       addDictionaryWord: (word: string) => Promise<boolean>;

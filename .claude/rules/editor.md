@@ -147,8 +147,8 @@ app's, made through state.**
 - **Items run the keys' own path** (the captured range, then `execCommand`, a guess as
   `insertText`, or `paste` IPC).
 - **Spelling is the system's, underlined by the app** (`useSpellingMarks`; Chromium's is
-  late): whole note on open and when a dictionary loads, an edit after a pause; not code,
-  tags, links. Guesses only on a marked word; a Mac by paragraph language. `spelling.spec.ts`.
+  late): whole note on open; not code, tags, links. Guesses only on a marked word; a Mac by
+  paragraph language. Windows: Chromium's line, the menu event's guesses. `spelling.spec.ts`.
 - **Mac text-menu behaviour** (`utils/contextSelection.ts`); never focused, so the selection
   stays blue. `text-context-menu.spec.ts`.
 
