@@ -7,6 +7,7 @@ import { indentRun } from "../utils/blockRun";
 import { fileExtension, saveFileAsBlock } from "../utils/savedFile";
 import { getAPI } from "../services/apiProvider";
 import { editBlocks, patchBlock } from "../utils/editBlocks";
+import { settleTypedSpaces } from "../utils/inlineFormatting";
 
 /** The text blocks the Format menu can turn into one another. */
 const KIND_TYPES = new Set([
@@ -42,15 +43,28 @@ export function useBlockOperations({
     commitTextChange(patchBlock(noteId, blockIndex, patch));
   };
 
+  // What a field reads back is settled against what the block holds: a
+  // non-breaking space Chromium typed becomes the space it was
+  // (settleTypedSpaces). A code block's textarea types what it is given,
+  // Option+Space included, and code is kept literal.
   const updateBlockText = (noteId, blockIndex, newText) =>
-    typeIntoBlock(noteId, blockIndex, () => ({ text: newText }));
+    typeIntoBlock(noteId, blockIndex, (block) => ({
+      text: block.type === "code" ? newText : settleTypedSpaces(newText, block.text),
+    }));
 
   const updateCalloutTitle = (noteId, blockIndex, title) =>
-    typeIntoBlock(noteId, blockIndex, () => ({ title }));
+    typeIntoBlock(noteId, blockIndex, (block) => ({
+      title: settleTypedSpaces(title, block.title),
+    }));
 
   const updateTableCell = (noteId, blockIndex, rowIdx, colIdx, value) =>
     typeIntoBlock(noteId, blockIndex, (block) => ({
-      rows: withCell(block.rows || [], rowIdx, colIdx, value),
+      rows: withCell(
+        block.rows || [],
+        rowIdx,
+        colIdx,
+        settleTypedSpaces(value, block.rows?.[rowIdx]?.[colIdx]),
+      ),
     }));
 
   const insertBlockAfter = (noteId, afterIndex, type = "p", text = "", opts = {}) => {

@@ -55,6 +55,7 @@ import { useSpellingMarks } from "../hooks/editor/useSpellingMarks";
 import FindBar from "./FindBar";
 import SourceView from "./SourceView";
 import { blocksToMarkdown } from "../utils/markdown";
+import { settleTypedSpaces } from "../utils/inlineFormatting";
 import { blockOffsetFor, sourceOffsetFor } from "../utils/sourceView";
 import { ramp } from "../utils/fluidLength";
 import { wikilinkStatus } from "../utils/wikilinkTarget";
@@ -967,8 +968,10 @@ const EditorArea = memo(
           commitTextChange((prev) => {
             const next = { ...prev };
             const n = { ...next[activeNote] };
-            n.title = newTitle;
-            n.content = { ...n.content, title: newTitle };
+            // A space Chromium typed as U+00A0 would reach the file's name.
+            const title = settleTypedSpaces(newTitle, n.title);
+            n.title = title;
+            n.content = { ...n.content, title };
             next[activeNote] = n;
             return next;
           });

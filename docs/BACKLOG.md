@@ -347,17 +347,6 @@ to delete when fixed, and a fixture to add then:
 The preservation suite's `KNOWN_FAILURES` is empty since 2026-10-05; what remains is listed
 here and in `tests/utils/knownRewrites.js`.
 
-- [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
-  end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
-  keystroke; a save that lands in a pause after the space writes the non-breaking byte
-  (`hello world\u00A0`, probed in the real app 2026-09-09; the next character rewrites it as a
-  space; a space typed right after a link, on the caret anchor, is held the same way and stays
-  U+00A0 when the next word follows, seen 2026-09-16 in a copy that carried it into Obsidian's
-  file). A trailing U+00A0 the file itself holds is indistinguishable from it at read-back,
-  which is why no normalisation was added with the inline-preservation fix; `pre-wrap` was
-  rejected earlier for changing how every run of spaces renders. A leading space, or a double
-  space, typed in a line reaches the file the same way and, unlike the trailing one, persists
-  (review §1.7, reproduced live); one decision for the three.
 
 **Lost edits and filesystem.**
 
