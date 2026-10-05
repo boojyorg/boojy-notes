@@ -68,7 +68,8 @@ export function useNoteCrud({
 
   const duplicateNote = (noteId) => {
     const src = noteDataRef.current[noteId];
-    if (!src) return;
+    // A note whose file cannot be read as text has no text here to copy.
+    if (!src || src.unreadable) return;
     const id = genNoteId();
     // The same name: the write names the file by the one clash rule
     // (`Name-2`), and the name field, selected, is where it is changed.

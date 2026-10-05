@@ -50,6 +50,7 @@ import {
   FolderOpen as LuFolderOpen,
   FolderPlus as LuFolderPlus,
   FileX as LuFileX,
+  FileExclamationPoint as LuFileExclamationPoint,
   FolderSearch as LuFolderSearch,
   ImageOff as LuImageOff,
   FolderX as LuFolderX,
@@ -158,6 +159,8 @@ export const MissingAttachmentIcon = ({ image = false, size = ICON_INLINE }) => 
 };
 /** A note whose text a sync service keeps online until it is opened. */
 export const OffloadedIcon = navIcon(LuCloudDownload);
+/** A note whose file the app cannot open as text (not UTF-8, too large, or unreadable). */
+export const UnreadableIcon = navIcon(LuFileExclamationPoint);
 /** Show in Finder, for a vault or a file. */
 export const RevealIcon = navIcon(LuFolderSearch);
 /** Switch to: one storage location for another. */

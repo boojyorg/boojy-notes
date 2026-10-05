@@ -23,6 +23,7 @@ export function persistedEquals(a, b) {
     a.title === b.title &&
     (a.folder ?? null) === (b.folder ?? null) &&
     (a.content?.eol ?? "\n") === (b.content?.eol ?? "\n") &&
+    (a.unreadable ?? null) === (b.unreadable ?? null) &&
     blocksToMarkdown(a.content?.blocks || []) === blocksToMarkdown(b.content?.blocks || [])
   );
 }
@@ -399,9 +400,12 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
       const local =
         links?.latestNoteDataRef?.current?.[external.id] ?? noteDataRef.current[external.id];
       const same = !!local && persistedEquals(local, external);
+      // A note whose file cannot be read as text holds no text of its own,
+      // so there is nothing to keep both of: the disk's news is taken.
       const pending =
         !!local &&
         !local._draft &&
+        !local.unreadable &&
         (dirtyNotes.current.has(external.id) || !!links?.unflushedNotes?.current?.has(external.id));
       // A note a sync client took off this Mac arrives by name only. A new
       // one is listed; one the app holds keeps its text (search still finds
@@ -628,6 +632,19 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     [applyExternal],
   );
   flushRef.current = flush;
+
+  // A note whose file could not be opened as text, read again (Try again):
+  // taken as the disk holds it now, as text or still not.
+  const rereadNote = useCallback(
+    async (id) => {
+      if (!isElectron) return;
+      const note = await window.electronAPI.downloadNote(id);
+      if (!note) return;
+      const { _filePath, ...external } = note;
+      takeOutsideVersion(external);
+    },
+    [takeOutsideVersion],
+  );
 
   // ─── Listen for external file changes (chokidar → IPC, Electron only) ───
   useEffect(() => {
@@ -946,6 +963,7 @@ export function useFileSystem(noteData, setCustomFolders, syncGeneration, onErro
     flushToDisk: flush,
     flushAll,
     downloadOffloaded,
+    rereadNote,
     folderOps,
   };
 }

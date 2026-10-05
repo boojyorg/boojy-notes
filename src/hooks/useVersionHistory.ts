@@ -104,6 +104,8 @@ export function useVersionHistory({
   const open = useCallback(async () => {
     const noteId = activeNote;
     if (!noteId || !historyAPI()) return;
+    // Its file cannot be read as text, so it is never written: nothing to restore into.
+    if (noteDataRef.current[noteId]?.unreadable) return;
     // The list shows what the file holds, so pending edits are written first.
     await flushAll();
     if (sourceView && stateRef.current.noteId === null) {
@@ -120,7 +122,7 @@ export function useVersionHistory({
         ? { ...s, listOpen: true, versions, off }
         : { ...CLOSED, noteId, listOpen: true, versions, off },
     );
-  }, [activeNote, flushAll, sourceView, setSourceView]);
+  }, [activeNote, flushAll, sourceView, setSourceView, noteDataRef]);
 
   // Escape is Now from anywhere while a version is on screen and the list is
   // hidden (the list takes its own Escape). On the document, before the

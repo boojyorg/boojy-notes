@@ -132,6 +132,12 @@ export interface Note {
   _draft?: boolean;
   /** Its text is not on this Mac (a sync client removed the download); opening downloads it. */
   offloaded?: true;
+  /**
+   * Its file is there but cannot be edited as text: not UTF-8 (`encoding`),
+   * over the size the app opens (`too-large`), or it failed to read (`read`).
+   * Listed with no blocks; never written, only moved.
+   */
+  unreadable?: "encoding" | "too-large" | "read";
 }
 
 /** The app's note store: note id → note. */
