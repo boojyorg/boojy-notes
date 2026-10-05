@@ -82,6 +82,45 @@ export function inlineFormatForKey(e: {
   return (e.shiftKey ? SHIFT_KEYS[e.key] : MOD_KEYS[e.key]) ?? null;
 }
 
+/**
+ * `range` less the whitespace at its two ends, or null when it selects only
+ * whitespace. A format's markers must touch its text: `**The **` is no
+ * Markdown reader's bold, and Windows' double-click always takes the word's
+ * trailing space. A range over no text at all is returned as it is.
+ */
+function withoutEdgeSpaces(range: Range): Range | null {
+  const root = range.commonAncestorContainer;
+  const texts: Text[] = [];
+  if (root.nodeType === Node.TEXT_NODE) texts.push(root as Text);
+  else {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
+      if (range.intersectsNode(t)) texts.push(t);
+    }
+  }
+  if (!texts.length) return range;
+  const from = (t: Text) => (t === range.startContainer ? range.startOffset : 0);
+  const to = (t: Text) => (t === range.endContainer ? range.endOffset : t.length);
+  const out = range.cloneRange();
+  const first = texts.findIndex((t) => {
+    let i = from(t);
+    while (i < to(t) && /\s/.test(t.data[i])) i++;
+    if (i < to(t)) out.setStart(t, i);
+    return i < to(t);
+  });
+  if (first === -1) return null;
+  for (let k = texts.length - 1; k >= first; k--) {
+    const t = texts[k];
+    let j = to(t);
+    while (j > from(t) && /\s/.test(t.data[j - 1])) j--;
+    if (j > from(t)) {
+      out.setEnd(t, j);
+      break;
+    }
+  }
+  return out;
+}
+
 /** The first and last non-empty text nodes under `root`, or nulls. */
 function textEdges(root: Node): [Text | null, Text | null] {
   let first: Text | null = null;
@@ -160,13 +199,15 @@ export function toggleWrappingTag(sel: Selection, tagName: string, boundary: Nod
     sel.addRange(r);
     return;
   }
+  const target = withoutEdgeSpaces(range);
+  if (!target) return;
   const el = document.createElement(tagName.toLowerCase());
   try {
-    range.surroundContents(el);
+    target.surroundContents(el);
   } catch {
-    const frag = range.extractContents();
+    const frag = target.extractContents();
     el.appendChild(frag);
-    range.insertNode(el);
+    target.insertNode(el);
   }
   // A selection that reaches into an existing run of the same format
   // brings a partial clone of it along; one element of the format is

@@ -4,6 +4,7 @@
 
 ### Bug Fixes
 
+- **Bold and italic hug the word** — Making a word bold after double-clicking it on Windows (which also selects the space after it), or after a drag that took in a space, wrote `**word **` to the file, which Obsidian and other Markdown apps don't show as bold. The spaces at the edges of a selection now stay outside the formatting, for bold, italic, strikethrough, highlight and code.
 - **Names that work on Windows** — A note, folder or attachment called `CON`, `NUL`, `AUX` or another name Windows keeps for itself couldn't be saved there, so the app now adds a `_` (`CON_`), on every computer, since a notes folder can move between them. A folder name ending in a dot loses the dot, which Windows would drop anyway. A pasted picture whose name had an odd ending (`photo.P?NG`) failed to save; its ending is now cleaned up. Names already on disk are never changed.
 - **Saving on Windows rides out a busy file** — Antivirus, search indexing or OneDrive can hold a note for a moment just after it is saved, and the next save failed with a warning. The app now tries again for up to about half a second first. A save that still can't land leaves no stray temporary file behind.
 - **OneDrive, Google Drive and iCloud folders on Windows** show the cloud icon in the storage list, as they do on a Mac.
