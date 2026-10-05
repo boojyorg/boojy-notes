@@ -322,6 +322,20 @@ understands are safe and the rest is preserved", not "switch freely".
 - **Missing syntax variants: alternate dividers.** `***` and `___` are not recognised as
   dividers. Assess common forms without normalising their authored spelling on save.
 
+### Found by the Windows and macOS CI (2026-10-05)
+
+- [ ] **Spelling does not work on Windows.** Chromium hands every language Windows has installed
+  to Windows' own checker, and the app asks word by word (`webFrame.isWordMisspelled` in the
+  preload), which answers only from Chromium's Hunspell: no underline and no guesses, except for
+  a language Windows lacks (then Hunspell downloads it and all works). `spelling.spec.ts` is
+  `fixme` on Windows. Options: Chromium's own underline and the context menu's
+  `misspelledWord`/`dictionarySuggestions` on Windows, or a bundled Hunspell.
+- [ ] **Bold (any wrap) around a selection that ends in a space writes `**word **`**, which no
+  reader takes for bold. Windows' double-click always takes the trailing space; a drag can on
+  any system. The wrap should leave edge whitespace outside (`toggleWrappingTag`).
+- [ ] **Escape left a code block's right-click menu open on the macOS runner**
+  (`editor-menus.spec.ts:48`); passes on Linux. Check by hand on a Mac.
+
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
@@ -395,10 +409,6 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   Drop the entry once electron-builder's `got` chain updates.
 - **Untested seams worth a case each**: `remapNoteFolders` (undo across a folder rename), the
   `boojy-att://` traversal guard, and a pending title at quit. No layer covers them today.
-- **Confirmed deletion never runs in CI** — both Trash journeys and the case-only rename skip
-  off macOS (`deletion.spec.ts`, `folders.spec.ts`) and CI is Ubuntu only. A macOS job for
-  `pnpm test:electron` (~5 min) is the fix; deferred, since the daily-driver build exercises
-  them by hand.
 - **No Content-Security-Policy on the renderer** (review §6). The escaping is sound (every
   path-taking IPC handler goes through the vault guard, `will-navigate` and the window-open
   handler deny everything, `open-external` is `http(s)`-only), but it is a hand-rolled regex

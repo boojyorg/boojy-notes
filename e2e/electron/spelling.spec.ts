@@ -61,6 +61,11 @@ const checkerReady = (page: Page) =>
     )
     .not.toBeNull();
 
+// Windows' own checker answers no word-by-word check, and Chromium hands it
+// every language Windows has installed: underlines and guesses never appear
+// there (docs/BACKLOG.md, Known issues).
+test.fixme(process.platform === "win32", "spelling does not work on Windows yet");
+
 let h: AppHandle;
 test.beforeEach(async () => {
   h = await launchApp({

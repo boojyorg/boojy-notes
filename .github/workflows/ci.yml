@@ -179,6 +179,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm exec vite build
+      # The runner's real pointer rests mid-screen, over the app's window, and
+      # its events cut across the tests' own hovers (the grip's chip never came).
+      - name: Park the pointer in a corner
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Cursor]::Position = [System.Drawing.Point]::new(0, 0)
       - name: Electron core-journey tests
         timeout-minutes: 20
         run: pnpm exec playwright test -c playwright.electron.config.ts --shard=${{ matrix.shard }}/${{ matrix.shards }}

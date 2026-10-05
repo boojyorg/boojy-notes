@@ -132,7 +132,8 @@ test("a right-click on an unselected word selects it, and the menu hangs under i
     // 2px under the painted selection, which is the whole line's height: the
     // paragraph's own box, on a one-line paragraph.
     const line = (await h.page.locator("p", { hasText: "Hello" }).boundingBox())!;
-    expect(Math.round(box.y - (line.y + line.height))).toBe(2);
+    // Within a pixel: the line's box rounds differently with each system's font.
+    expect(Math.abs(box.y - (line.y + line.height) - 2)).toBeLessThanOrEqual(1);
     await expect(menu.getByRole("menuitem", { name: /^Copy/ })).not.toHaveAttribute(
       "aria-disabled",
       "true",

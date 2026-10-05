@@ -124,7 +124,8 @@ test("the toolbar steps inside the column rather than being cut off at its edge"
   await h.page.mouse.dblclick(first.x, first.y);
   const bar = toolbar(h.page);
   await expect(bar).toBeVisible({ timeout: 2_000 });
-  expect(await h.page.evaluate(() => window.getSelection()?.toString())).toBe("The");
+  // Windows' double-click takes the word's trailing space with it.
+  expect(await h.page.evaluate(() => window.getSelection()?.toString().trimEnd())).toBe("The");
   const box = (await bar.boundingBox())!;
   const scroller = await h.page
     .locator(".editor-scroll")
