@@ -308,5 +308,5 @@ same language writes nothing.
   semantic formatting (styled spans count only from Google Docs) or comes from a code editor
   (`vscode-editor-data`). One line: sanitised nodes via `insertNode`. `rich-paste.spec.ts`.
 - **The DOM read-back is verbatim; only marked scaffolding is dropped** (`walkNode`). A link
-  becomes a bare URL only if it is the editor's own unchanged `bare-url` autolink.
-  `domRoundTrip.test.js`, `inline-preservation.spec.ts`.
+  turns bare only as the editor's own unchanged `bare-url` autolink; a typed U+00A0 is a space
+  unless the block held one (`settleTypedSpaces`). `domRoundTrip.test.js`, `typed-spaces.spec.ts`.

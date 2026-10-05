@@ -9,6 +9,7 @@ import {
   sanitizeInlineHtml,
   domNodeToMarkdown,
 } from "../../src/utils/inlineFormatting.js";
+import * as INLINE from "../../src/utils/inlineFormatting.js";
 
 // --- inlineMarkdownToHtml ---
 
@@ -659,5 +660,20 @@ describe("soft breaks: a newline inside block text is a visible line break", () 
 
   it("does not let inline formatting span a line break", () => {
     expect(inlineMarkdownToHtml("**a\nb**")).toBe("**a<br>b**");
+  });
+});
+
+describe("settleTypedSpaces: a non-breaking space Chromium typed is the space it was (2026-10-05)", () => {
+  it("makes U+00A0 a space where the block held none", () => {
+    const { settleTypedSpaces } = INLINE;
+    expect(settleTypedSpaces("hello ", "hello")).toBe("hello ");
+    expect(settleTypedSpaces("a  b", "")).toBe("a  b");
+    expect(settleTypedSpaces(" lead", undefined)).toBe(" lead");
+  });
+
+  it("keeps the read as it is where the block already held one (the file's own byte)", () => {
+    const { settleTypedSpaces } = INLINE;
+    expect(settleTypedSpaces("10 km and ", "10 km")).toBe("10 km and ");
+    expect(settleTypedSpaces("plain", "x y")).toBe("plain");
   });
 });

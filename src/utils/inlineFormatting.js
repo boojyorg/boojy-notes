@@ -232,6 +232,20 @@ export function domNodeToMarkdown(element) {
   return walkNode(element);
 }
 
+/**
+ * Text read back from the editor, with the non-breaking spaces Chromium typed
+ * made the spaces they were. Chromium holds a space typed at a line's edge,
+ * doubled, or after a link as U+00A0 so it shows, and the read-back is
+ * verbatim, so the file got the byte (`hello `, and Obsidian kept it). A
+ * U+00A0 the file itself holds reads back the same, so the block's saved text
+ * decides: one that held none gets plain spaces; one that held any is left as
+ * read, the file's own bytes kept over the typed ones.
+ */
+export function settleTypedSpaces(read, saved) {
+  if (!read.includes(" ") || (saved || "").includes(" ")) return read;
+  return read.replace(/ /g, " ");
+}
+
 // The caret anchor placeCaret parks the caret on after a link
 // (domHelpers CARET_ANCHOR): a `<span class="caret-anchor">` around one
 // zero-width space. The element is what marks the space as scaffolding; a

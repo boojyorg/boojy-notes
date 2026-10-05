@@ -116,9 +116,7 @@ test("an address without its scheme is the first row and gets https; a note of t
     ]);
     await picker(h.page).getByTestId("link-row-url").click();
     await expect(picker(h.page)).toHaveCount(0);
-    // Nothing selected: a bare address, kept verbatim. (The space typed
-    // before it reaches the file as U+00A0, the known trailing-space residue,
-    // so the check starts at the address.)
+    // Nothing selected: a bare address, kept verbatim.
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("https://github.com/boojy\n"));
 
     // The [[ route is notes only: no address row for the same letters.

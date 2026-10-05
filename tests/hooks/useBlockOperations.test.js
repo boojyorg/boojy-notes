@@ -81,6 +81,22 @@ describe("useBlockOperations", () => {
       expect(getNoteData()[noteId].content.blocks[1].text).toBe("changed");
       expect(getNoteData()[noteId].content.blocks[0].text).toBe("hello");
     });
+
+    it("commits a typed non-breaking space as a space, except in code or where the block held one", () => {
+      const blocks = [paragraph("hello"), paragraph("10 km"), { id: "c", type: "code", text: "x" }];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.updateBlockText(noteId, 0, "hello ");
+        result.current.updateBlockText(noteId, 1, "10 km ");
+        result.current.updateBlockText(noteId, 2, "a b");
+      });
+
+      const [p, kept, code] = getNoteData()[noteId].content.blocks;
+      expect(p.text).toBe("hello ");
+      expect(kept.text).toBe("10 km ");
+      expect(code.text).toBe("a b");
+    });
   });
 
   describe("insertBlockAfter", () => {
