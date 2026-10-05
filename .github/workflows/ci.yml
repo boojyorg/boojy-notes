@@ -51,7 +51,7 @@ jobs:
       - name: Test
         run: pnpm test:coverage
       - name: Build
-        run: ELECTRON_DISABLE=1 pnpm build
+        run: pnpm exec vite build --mode web
 
   web-e2e:
     name: web E2E

@@ -54,7 +54,13 @@ export function writeFileAtomic(filePath: string, data: string, modeFrom = fileP
   } finally {
     fs.closeSync(fd);
   }
-  fs.renameSync(tmpPath, filePath);
+  try {
+    renameWithRetry(tmpPath, filePath);
+  } catch (error) {
+    // Nothing reached the note; the temp file must not outlive the attempt.
+    fs.rmSync(tmpPath, { force: true });
+    throw error;
+  }
   // Persist the directory entry too, so the rename itself survives power loss.
   // Best-effort: Windows cannot fsync a directory handle opened this way.
   try {
@@ -66,6 +72,30 @@ export function writeFileAtomic(filePath: string, data: string, modeFrom = fileP
     }
   } catch {
     /* directory fsync unsupported on this platform */
+  }
+}
+
+const RETRY_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
+const RETRY_DELAYS_MS = [10, 20, 40, 80, 160, 320];
+
+/**
+ * `fs.renameSync`, tried again for a moment on Windows: antivirus, the
+ * search indexer and a sync client (OneDrive, Dropbox) open a file just
+ * written and hold it, and a rename over it fails with EPERM or EBUSY until
+ * they let go. Elsewhere those codes are real and fail at once. The wait
+ * blocks, as the write does; about 0.6 s at most, then the error stands.
+ */
+export function renameWithRetry(from: string, to: string, platform = process.platform): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? "";
+      if (platform !== "win32" || !RETRY_CODES.has(code) || attempt >= RETRY_DELAYS_MS.length)
+        throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, RETRY_DELAYS_MS[attempt]);
+    }
   }
 }
 

@@ -82,8 +82,9 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 ## A note's title is its filename
 
 - **`write-note` is the only place that knows the final name** (collision suffix, `_` for
-  invalid characters, trim, `Untitled`, leading dot, 200-byte UTF-8 cut, volume casing) and
-  answers every write; `useResolvedTitle` adopts it. **Don't add a sanitiser to an input.**
+  invalid characters and Windows device names, trim, `Untitled`, leading dot, 200-byte cut,
+  volume casing) and answers every write; `useResolvedTitle` adopts it. **Don't add a
+  sanitiser to an input.**
 - A name the app makes is sanitised; a name the disk holds is kept (`Why?.md` stays).
   `disk-names.spec.ts`.
 - A note's own file is never its own collision (`ensureUniqueFilePath(target, ownPath)`).
@@ -91,8 +92,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   (`settleTitle`); nothing is painted into a focused field. A new note starts blank with an
   `Untitled` placeholder. A paste into the name keeps its first non-empty line.
   `title-is-filename.spec.ts`.
-- A save keeps the mode, and on macOS xattrs (tags) and birthtime (`cp -p` to temp); a
-  symlink is written through. `file-mode.spec.ts`.
+- A save keeps the mode, on macOS xattrs and birthtime (`cp -p`); a symlink is written
+  through. `file-mode.spec.ts`.
 
 ## Attachments
 

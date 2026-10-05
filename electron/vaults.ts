@@ -28,6 +28,12 @@ const CLOUD_MARKERS = [
   `${path.sep}Library${path.sep}Mobile Documents${path.sep}`,
   `${path.sep}Library${path.sep}CloudStorage${path.sep}`,
   `${path.sep}Dropbox${path.sep}`,
+  // Windows: OneDrive (personal, or `OneDrive - Company`), Google Drive's
+  // mirrored `My Drive`, iCloud for Windows.
+  `${path.sep}OneDrive${path.sep}`,
+  `${path.sep}OneDrive - `,
+  `${path.sep}My Drive${path.sep}`,
+  `${path.sep}iCloudDrive${path.sep}`,
 ];
 
 export const isCloudPath = (dir: string) =>

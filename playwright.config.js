@@ -19,7 +19,7 @@ export default defineConfig({
     reducedMotion: "reduce",
   },
   webServer: {
-    command: "ELECTRON_DISABLE=1 pnpm build && pnpm preview --port 4173",
+    command: "pnpm exec vite build --mode web && pnpm preview --port 4173",
     port: 4173,
     reuseExistingServer: !process.env.CI,
   },
