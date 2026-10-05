@@ -120,6 +120,15 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     "[[Welcome]] and [[Welcome|alias]] and #tag",
     // An alias spelled as the target keeps its pipe (it collapsed to `[[Note]]`).
     "[[Note|Note]] and [[Note]]",
+    // A target is a name, never formatted: its markup reached the file as HTML
+    // (found by the generated text, 2026-10-05).
+    "see [[My *great* note]] and [[a`b`]] and [[Notes #todo]] and [[x|*alias*]]",
+    // A `#` inside a link is the link's own text, never a tag inside its href.
+    "https://example.com/page(#tag and https://en.wikipedia.org/wiki/Mercury_(planet)#Orbit #real",
+    // A run of four stars or more is text.
+    "******",
+    "a ***** b ****",
+    "**bold** and ***both*** stay",
     "[text](https://x.com/a?b=c&d=e) and https://x.com/path",
     "\\*not italic\\* and \\# and \\[bracket\\]",
     "soft\nbreak\nlines",

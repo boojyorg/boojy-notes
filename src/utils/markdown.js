@@ -103,13 +103,15 @@ const isQuoteLike = (b) => b.type === "blockquote" || b.type === "callout";
  * Two blocks that read back as something else when written with no blank line
  * between them: a paragraph or divider under a paragraph or list item (folded
  * in, or a setext underline), two quotes (one quote), a paragraph under a
- * table (a row to GFM readers). Quotes at different indents stay apart. The separator is written here whatever the
- * pair was read as, so a moved or retyped block can never merge on save.
+ * table whose first line would be one more row (`continuesTable`; an HTML
+ * block ends a table by itself). Quotes at different indents stay apart. The
+ * separator is written here whatever the pair was read as, so a moved or
+ * retyped block can never merge on save.
  */
 const mustSeparate = (a, b) =>
   (absorbsFollowingLine(a) && takesSeparator(b)) ||
   (isQuoteLike(a) && b.type === "blockquote" && (a.indentStr || "") === (b.indentStr || "")) ||
-  (a.type === "table" && isTextParagraph(b));
+  (a.type === "table" && isTextParagraph(b) && continuesTable((b.text || "").split("\n")[0]));
 
 /** The app's own spelling: one blank line between blocks, none between list items. */
 const separatesByDefault = (a, b) => !(isListItem(a) && isListItem(b));
@@ -539,6 +541,24 @@ export function blocksToMarkdown(blocks) {
   return lines.join("\n");
 }
 
+/**
+ * Whether a line straight under a table's rows is one more row. A pipe row
+ * is; so is a plain line of text, as GFM and Obsidian read it ("the table
+ * is broken at the first empty line, or beginning of another block-level
+ * structure"): read as a paragraph, it was written apart from the table
+ * with a blank line that changed what the file means everywhere else. A
+ * line that opens another block (a heading, a list, a quote, a fence, a
+ * divider, an HTML block) ends the table.
+ */
+function continuesTable(line) {
+  if (/^\|(.+)\|/.test(line.trim())) return true;
+  // An HTML block opens on a tag's name or a comment; `<https://…>` is an autolink, text.
+  if (!line.trim() || /^ {0,3}<(?:\/?[A-Za-z][A-Za-z0-9-]*(?:[\s/>]|$)|!--)/.test(line))
+    return false;
+  const alone = markdownToBlocks(line);
+  return alone.length === 1 && alone[0].type === "p";
+}
+
 /** A divider line: `---` after at most three spaces, anything after it blank. */
 const DIVIDER_LINE = /^ {0,3}---[ \t]*$/;
 
@@ -693,7 +713,7 @@ export function markdownToBlocks(md) {
       const alignments = readAlignments(lines[i + 1], rows[0].length);
       i++;
       i++;
-      while (i < lines.length && /^\|(.+)\|/.test(lines[i].trim())) {
+      while (i < lines.length && continuesTable(lines[i])) {
         rows.push(readRow(lines[i]));
         tableSource.rows.push(lines[i]);
         i++;

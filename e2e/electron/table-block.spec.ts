@@ -30,7 +30,9 @@ const NOTE = "Grid.md";
 // Prose tight against the table on both sides: a blank line beside a table is
 // an empty paragraph row in the paragraph model, and these tests are about the
 // table's own neighbours.
-const seeded = ["Above.", "| Name | Qty |", "| --- | --- |", "| Tea | 2 |", "Below.", ""].join(
+// A blank line under the table, as the app writes one: a line straight under
+// it is one more row (GFM, Obsidian).
+const seeded = ["Above.", "| Name | Qty |", "| --- | --- |", "| Tea | 2 |", "", "Below.", ""].join(
   "\n",
 );
 
@@ -326,7 +328,10 @@ test("Tidy table lines a compact table up in the file, and Cmd+Z puts it back", 
     await expect(
       h.page.getByRole("menu", { name: "Edit" }).getByRole("menuitem", { name: "Tidy table" }),
     ).toHaveCount(0);
+    // The text menu never takes focus (it reads its keys from the document);
+    // the undo goes to the cell once Escape has closed it.
     await h.page.keyboard.press("Escape");
+    await expect(h.page.getByRole("menu", { name: "Edit" })).toHaveCount(0);
     await h.page.keyboard.press(`${MOD}+z`);
     await waitForFile(h.vault.file(NOTE), (t) => t.includes("| Name | Qty |\n| --- | --- |"));
     expect(h.pageErrors).toEqual([]);

@@ -95,6 +95,26 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     return `\x00ESC${escapes.length - 1}\x00`;
   });
 
+  // 1c. A wikilink's target is a note's name, never formatted: `[[My *great*
+  // note]]` names "My *great* note". Shielded from every pass below until the
+  // wikilink pass restores it; an alias after `|` is formatted as prose. Run
+  // through the passes, the target's markup reached the file as HTML on the
+  // first edit (`[[My <em>great</em> note|…]]`).
+  const targets = [];
+  s = s.replace(/\[\[((?:[^\]|\x00]|\x00ESC\d+\x00)+)(?=\||\]\])/g, (_, target) => {
+    targets.push(target);
+    return `[[\x00WL${targets.length - 1}\x00`;
+  });
+  const realTarget = (t) => t.replace(/\x00WL(\d+)\x00/g, (_, n) => targets[Number(n)]);
+
+  // 1d. A run of four stars or more is text, as CommonMark reads it: paired as
+  // delimiters, `******` drew an empty bold italic and the first edit lost it.
+  const runs = [];
+  s = s.replace(/\*{4,}/g, (run) => {
+    runs.push(run);
+    return `\x00RUN${runs.length - 1}\x00`;
+  });
+
   // 2. Inline code (must be first so formatting inside backticks is preserved literally)
   s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
 
@@ -126,15 +146,19 @@ export function inlineMarkdownToHtml(md, noteTitles) {
   };
   // An alias written out as the target itself (`[[Note|Note]]`) draws as the
   // short form and is marked `data-piped`, so the read-back keeps its pipe.
-  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
+  s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, shielded, display) => {
+    const target = realTarget(shielded);
     const broken = brokenClass(target);
     const piped = display === target ? " data-piped" : "";
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}"${piped}>${display}</span>`;
   });
-  s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
+  s = s.replace(/\[\[([^\]]+)\]\]/g, (_, shielded) => {
+    const target = realTarget(shielded);
     const broken = brokenClass(target);
     return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${target}</span>`;
   });
+  // A target whose link never closed is the text it was.
+  s = realTarget(s);
 
   // 9. Markdown links [text](url) \u2014 escape the URL so a stray " can't break out
   // of the href/data-url attribute (attribute-injection guard; escAttr defined above).
@@ -153,10 +177,23 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     piece.startsWith("<") ? piece : autolinkProse(piece),
   );
 
-  // 11. Tags (#tag but not # at line start which is heading)
-  s = s.replace(TAG_RE, '$1<span class="inline-tag" data-tag="$2">#$2</span>');
+  // 11. Tags, in prose only, as the bare URLs: a `#` inside a link (its text or
+  // its address: `https://x.y(#ta` drew a tag inside the link's own `href`),
+  // a code span or a wikilink is that element's own text. A tag opens only
+  // after a space, a `(` or the line's start (TAG_RE), so a prose piece that
+  // follows an element opens none at its first character.
+  s = s.replace(PROSE_OR_ELEMENT_RE, (piece, offset) =>
+    piece.startsWith("<")
+      ? piece
+      : piece.replace(TAG_RE, (m, pre, tag, at) =>
+          at === 0 && pre === "" && offset > 0
+            ? m
+            : `${pre}<span class="inline-tag" data-tag="${tag}">#${tag}</span>`,
+        ),
+  );
 
-  // Restore backslash-escaped characters, backslash included
+  // Restore the runs of stars, then backslash-escaped characters, backslash included
+  s = s.replace(/\x00RUN(\d+)\x00/g, (_, i) => runs[parseInt(i, 10)]);
   s = s.replace(/\x00ESC(\d+)\x00/g, (_, i) => `\\${escapes[parseInt(i, 10)]}`);
 
   // 12. A newline inside block text is a soft break: one line break on screen.

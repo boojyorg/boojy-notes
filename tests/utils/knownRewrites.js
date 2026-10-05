@@ -8,15 +8,6 @@ const lines = (doc) => doc.split(/\r?\n/);
 
 /** A document holding a rewrite already on record: why, and how to tell. */
 export const KNOWN = [
-  // docs/BACKLOG.md, Markdown compatibility: a line straight under a table is
-  // read as a paragraph and written apart, where GFM reads it as a row.
-  [
-    "a line straight under a table",
-    (doc) => {
-      const l = lines(doc);
-      return l.some((x, i) => i > 0 && x !== "" && !x.startsWith("|") && l[i - 1].startsWith("|"));
-    },
-  ],
   // docs/SPEC-markdown-source-of-truth.md, sanctioned: the blank line before a
   // `---` straight under a paragraph, which every other reader takes for a
   // heading underline.
@@ -50,19 +41,18 @@ export const KNOWN_INLINE = [
   // interleaved are paired differently by the renderer than as written.
   ["code and emphasis interleaved", (t) => t.includes("`") && /[*_~=]/.test(t)],
   ["two kinds of delimiter interleaved", interleaved],
-  // docs/BACKLOG.md, Markdown compatibility: markup inside a wikilink's
-  // target is rendered inside the link, and its tags reach the file.
-  ["markup inside a wikilink", (t) => /\[\[(?:\\.|[^\]\\])*[*_`~=<]/.test(t)],
-  // docs/BACKLOG.md, Markdown compatibility: a bare URL with an unclosed
-  // parenthesis before a `#tag` has the tag drawn inside the link's own HTML.
-  ["a bare URL's unclosed parenthesis before a tag", (t) => /https?:\/\/\S*\([^\s)]*#/.test(t)],
-  // The same pipeline: a `#tag` inside a wikilink's target (`[[Notes #todo]]`).
-  // (`Note#Heading` is a heading link, not a tag.)
-  ["a tag inside a wikilink", (t) => /\[\[[^\]]*[^\p{L}\p{N}]#\p{L}/u.test(t)],
-  // docs/BACKLOG.md, Markdown compatibility (alternate dividers): a run of
-  // five stars or more is paired as bold and italic delimiters (`******` an
-  // empty bold italic, which the first edit loses).
-  ["a run of five stars or more", (t) => t.includes("*****")],
+  // Wikilink brackets inside a wikilink (`[[[[|a]]]]`) pair as no reader would.
+  ["wikilink brackets nested", (t) => /\[\[[^\]]*\[\[/.test(t)],
+  // An alias is prose, so a delimiter in it pairs with one past the link (`[[x|**]]**`).
+  [
+    "a delimiter in an alias pairing past its link",
+    (t) => {
+      const alias = t.match(/\[\[[^\]]*\|([^\]]*)\]\]/);
+      if (!alias) return false;
+      const outside = t.replace(alias[0], "");
+      return [..."*~=`_"].some((d) => alias[1].includes(d) && outside.includes(d));
+    },
+  ],
   // The same pairing: an escaped delimiter beside live ones (`\**a**a*`).
   [
     "an escaped delimiter among live ones",
