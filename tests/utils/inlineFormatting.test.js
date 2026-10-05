@@ -12,6 +12,28 @@ import {
 
 // --- inlineMarkdownToHtml ---
 
+describe("inlineMarkdownToHtml: what earlier passes drew is not drawn into again (2026-10-05)", () => {
+  it("leaves a wikilink's target unformatted, and formats its alias", () => {
+    const html = inlineMarkdownToHtml("[[My *great* note]] and [[x|*alias*]]");
+    expect(html).toContain('data-target="My *great* note">My *great* note</span>');
+    expect(html).toContain('data-target="x"><em>alias</em></span>');
+  });
+
+  it("draws a tag in prose, in bold and after a paren, never inside a link or wikilink", () => {
+    const html = inlineMarkdownToHtml(
+      "#one **b #two** (#three) https://x.y/(#no [[N #no]] [see #no](https://x.y)",
+    );
+    const tags = [...html.matchAll(/data-tag="([^"]+)"/g)].map((m) => m[1]);
+    expect(tags).toEqual(["one", "two", "three"]);
+    expect(html).not.toMatch(/href="[^"]*<span/);
+  });
+
+  it("draws a run of four stars or more as the stars", () => {
+    expect(inlineMarkdownToHtml("******")).toBe("******");
+    expect(inlineMarkdownToHtml("**bold**")).toBe("<strong>bold</strong>");
+  });
+});
+
 describe("inlineMarkdownToHtml", () => {
   it("returns empty string for falsy input", () => {
     expect(inlineMarkdownToHtml("")).toBe("");

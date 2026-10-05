@@ -1311,3 +1311,22 @@ describe("quote markers and trailing whitespace, as written (2026-10-05)", () =>
     expect(blocksToMarkdown(blocks)).toBe("- one  \ntwo");
   });
 });
+
+describe("a line straight under a table (GFM, 2026-10-05)", () => {
+  it("is one more row when it is plain text, and the file is kept as written", () => {
+    const md = "| a | b |\n| --- | --- |\n| 1 | 2 |\nloose text\n\nAfter.";
+    const blocks = markdownToBlocks(md);
+    expect(blocks[0].type).toBe("table");
+    expect(blocks[0].rows.at(-1)).toEqual(["loose text"]);
+    expect(blocks.filter((b) => b.type === "table")).toHaveLength(1);
+    expect(blocksToMarkdown(blocks)).toBe(md);
+  });
+
+  it("ends the table when it opens another block", () => {
+    for (const next of ["# Heading", "- item", "> quote", "```", "---", "<div>", "<!-- c -->"]) {
+      const blocks = markdownToBlocks(`| a |\n| --- |\n${next}`);
+      expect(blocks[0].rows).toHaveLength(1);
+      expect(blocks.length).toBeGreaterThan(1);
+    }
+  });
+});

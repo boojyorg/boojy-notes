@@ -320,22 +320,13 @@ understands are safe and the rest is preserved", not "switch freely".
   speak only `*`. Rendering imported underscores must not cause the first edit to rewrite
   their marker style; source-preserving editing needs to accompany rendering support.
 - **Missing syntax variants: alternate dividers.** `***` and `___` are not recognised as
-  dividers. Assess common forms without normalising their authored spelling on save. A run of
-  five stars or more is paired as bold and italic delimiters instead: `******` renders as an
-  empty bold italic and the first edit of its paragraph loses it (found by the generated
-  documents, 2026-10-05).
+  dividers. Assess common forms without normalising their authored spelling on save. (A run of
+  four stars or more is text since 2026-10-05; it was paired as bold and italic, and an edit
+  lost it.)
 
 **Found by the generated documents (2026-10-05)**, each an entry in `tests/utils/knownRewrites.js`
 to delete when fixed, and a fixture to add then:
 
-- **A line straight under a table** is read as a paragraph and written with a blank line
-  between, where GFM and Obsidian read it as one more row (`mustSeparate`). Read it as a row.
-- **The inline renderer runs inside what it has already drawn.** Markup inside a wikilink's
-  target is drawn inside the link and its tags reach the file on the first edit
-  (`[[My *great* note]]` → `[[My <em>great</em> note|My *great* note]]`; a backtick, a
-  `#tag` after a space or punctuation the same); a bare URL with an unclosed parenthesis
-  before a `#tag` gets the tag's `<span>` inside its `href`. One fix: protect a drawn
-  element's text from the later passes (`inlineMarkdownToHtml`), as code spans are.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) are paired
   differently by the renderer than as written; with "Code: literal handling" above.
 
