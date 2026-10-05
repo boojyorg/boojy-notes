@@ -38,8 +38,8 @@ the raw setter is not exposed.** Six actions; a seventh is a smell.
 
 ## One edit, one block root
 
-The editor is one contentEditable over React-owned block roots; Chromium will happily edit
-across two and break the next commit. **An edit that reaches beyond one block root is the
+The editor is one contentEditable over React-owned block roots; Chromium edits
+across two and breaks the next commit. **An edit that reaches beyond one block root is the
 app's, made through state.**
 
 - **The seam is the native `beforeinput` on the editor root** (`useCrossBlockEdit`,
@@ -47,11 +47,11 @@ app's, made through state.**
   Enter and Shift+Enter, done in state. React's `onBeforeInput` cannot stand in.
 - **`execCommand` fires no `beforeinput`**, so script mutations ask `scopeOf` first.
 - **Bold, italic and code are structural wraps** (`toggleWrappingTag`), never `execCommand("bold")`,
-  which reads the computed style (un-bolded words inside headings). What is selected decides
-  on or off, not where it starts (code nested). `heading-bold.spec.ts`.
+  which reads the computed style. What is selected decides on or off, not where it starts
+  (code nested); edge spaces stay outside. `heading-bold.spec.ts`, `format-edge-spaces.spec.ts`.
 - **A block with its own field owns its edits and its keys** (table cell, callout, code
   textarea): `handleEditorKeyDown` returns when focus is in a field, because its logic reads a
-  document selection that is stale there. The one exception: inline-format shortcuts in a
+  stale document selection there. The exception: inline-format shortcuts in a
   `data-inline-field` go to `applyFormat`.
 - A collapsed Delete/Backspace into a neighbour merges only with text; it selects a divider,
   image or table. **Backspace in the only empty block is prevented** (Chromium deletes the

@@ -271,3 +271,43 @@ describe("formatInlineField", () => {
     expect([...FIELD_FORMATS]).toEqual(["bold", "italic", "code", "strikethrough", "highlight"]);
   });
 });
+
+// A wrap around a selection that ends in a space wrote `**The **`, which no
+// Markdown reader takes for bold (2026-10-05): Windows' double-click always
+// takes the word's trailing space, and a drag can on any system. The space at
+// either edge stays outside the element; the rest of the selection is wrapped.
+describe("toggleWrappingTag — spaces at the selection's edges stay outside", () => {
+  it("leaves a trailing space outside, and the selection on the word", () => {
+    const { root, sel } = surface("The cat", 0, 4);
+    toggleWrappingTag(sel, "STRONG", root);
+    expect(root.innerHTML).toBe("<strong>The</strong> cat");
+    expect(sel.toString()).toBe("The");
+  });
+
+  it("leaves leading spaces and a non-breaking space outside too", () => {
+    const { root, sel } = surface("a  big  b", 1, 8);
+    toggleWrappingTag(sel, "EM", root);
+    expect(root.innerHTML).toBe("a &nbsp;<em>big</em>&nbsp; b");
+  });
+
+  it("wraps nothing when the selection is only spaces", () => {
+    const { root, sel } = surface("a   b", 1, 4);
+    toggleWrappingTag(sel, "STRONG", root);
+    expect(root.innerHTML).toBe("a   b");
+  });
+
+  it("trims across element edges, keeping inner spaces", () => {
+    const root = document.createElement("div");
+    root.innerHTML = "x <em>one two </em>y";
+    document.body.appendChild(root);
+    const range = document.createRange();
+    range.setStart(root.firstChild as Text, 1);
+    range.setEnd((root.querySelector("em") as HTMLElement).firstChild as Text, 8);
+    const sel = window.getSelection() as Selection;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toggleWrappingTag(sel, "STRONG", root);
+    expect(root.textContent).toBe("x one two y");
+    expect(root.querySelector("strong")?.textContent).toBe("one two");
+  });
+});
