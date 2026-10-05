@@ -12,8 +12,8 @@ issues bad enough to fix before anything else sit in their own short list below.
 
 Three tiers, kept apart. **Release requirements** are what Beta waits for. **Beta candidates**
 are optional; each is judged on its own and may be declined. **Future** is everything after
-Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-04,
-the v0.12.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
+Beta, recorded so a preference and its open question are not lost. Last reviewed: 2026-10-06,
+the v0.14.0 release pass; before that 2026-09-30, the whole-product pass (Tyr marked 89 features
 from Apple Notes, Obsidian and Notion). Items marked *review §n* come from the whole-app review of
 2026-09-07, whose fixes shipped in v0.7.0.
 
@@ -290,7 +290,7 @@ Still reproduce on master, in the review's order. None blocks Beta on its own.
 
 - **Cmd+B at a bare caret** (press, type, press, as Apple Notes and Notion do). Probed in the
   real app 2026-09-10: bold and italic work through Chromium's own typing style, but a space
-  typed first lands inside the element and as U+00A0, so `Cmd+B`, ` bold`, `Cmd+B` reaches the
+  typed first lands inside the element, so `Cmd+B`, ` bold`, `Cmd+B` reaches the
   file as `** bold**`, which no reader takes for bold; strikethrough, highlight and code do
   nothing (their toggles return early on a collapsed selection, `useInlineFormatting`). Making
   it real means owning the typing style for all five and keeping the space outside.
@@ -338,6 +338,12 @@ to delete when fixed, and a fixture to add then:
 - **Spelling on Windows, the rest** (Chromium's line since 2026-10-05): it appears only once
   the note has focus, a moment after; a word taken out of the dictionary (Undo) is kept on
   Windows' exclusion list and reads as misspelled again only after its paragraph is edited.
+- [ ] **Finder's Put Back is sometimes not seen on the macOS runner**
+  (`watcher-ownership.spec.ts:122`): in four of about twenty CI runs on 2026-10-05 (two on
+  master) the note put back from the Trash was not listed within 5 s, retry and all, and one of
+  eight local runs hung past the test timeout; the other runs pass. Not seen by a person yet. Find whether the watcher misses the rename into the vault or
+  the runner is slow, before calling it a runner flake. `table-block.spec.ts` failed twice on
+  the same shard the same day.
 - [ ] **Escape left a code block's right-click menu open on the macOS runner**
   (`editor-menus.spec.ts:48`, `fixme` there). A menu takes focus a frame after it opens
   (`useFocusTrap`), and a window that paints no frames (hidden, or covered on the runner)
@@ -401,8 +407,10 @@ is a unit test (`themeContrast.test.js`); both fixed in the pass of 2026-09-25. 
   control that makes a future slip inert. It touches HMR, inline styles and `boojy-att:`, so it
   is a job on its own. `javascript:` hrefs survive into the DOM and only the main process
   filters them: inert on desktop, and the web build's `window.open` fallback is not product.
-- **The hook-dependency warnings are the lint gate's last noise** (2026-09-24): `pnpm check`
-  now warns about nothing else, 206 `useExhaustiveDependencies` in all. Most name a ref's
+- **The hook-dependency warnings are most of the lint gate's noise**: 207
+  `useExhaustiveDependencies` (2026-10-05), and about 46 small ones that crept in after the
+  2026-09-24 cleanup (`useTemplate`, `useOptionalChain`, `useLiteralKeys`, unused
+  suppressions; the two `noFocusedTests` in `SourceView.tsx` are false positives). Most name a ref's
   `.current` or a function from the frozen `EditorContext` (AGENTS.md gotcha 3), which the rule
   cannot see is stable, so adding them blindly would change behaviour; a few may be real stale
   closures. One audit: teach the rule the app's stable hooks, suppress each deliberate site with
