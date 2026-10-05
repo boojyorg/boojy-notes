@@ -233,7 +233,13 @@ export function useBlockOperations({
 
   const flipCheck = useCallback(
     (noteId, blockIndex) => {
-      commitNoteData(patchBlock(noteId, blockIndex, (block) => ({ checked: !block.checked })));
+      // A toggle writes the app's own mark: an imported `[X]` becomes `[x]`, as Obsidian writes it.
+      commitNoteData(
+        patchBlock(noteId, blockIndex, (block) => ({
+          checked: !block.checked,
+          checkMark: undefined,
+        })),
+      );
     },
     [commitNoteData],
   );

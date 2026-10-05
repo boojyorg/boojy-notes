@@ -281,6 +281,22 @@ describe("useBlockOperations", () => {
 
       expect(getNoteData()[noteId].content.blocks[0].checked).toBe(false);
     });
+
+    it("an imported `[X]` keeps its capital until toggled; a toggle writes the app's own mark", () => {
+      const blocks = [{ ...makeCheckbox("task", true), checkMark: "X" }];
+      const { result, noteId, getNoteData } = setup(blocks);
+
+      act(() => {
+        result.current.flipCheck(noteId, 0);
+      });
+      act(() => {
+        result.current.flipCheck(noteId, 0);
+      });
+
+      const block = getNoteData()[noteId].content.blocks[0];
+      expect(block.checked).toBe(true);
+      expect(block.checkMark).toBeUndefined();
+    });
   });
 
   // A special block's field (a table cell, a callout's title or body, a code

@@ -118,6 +118,8 @@ describe("inline bytes that only the DOM road could corrupt", () => {
     // Ordinary inline Markdown, so a regression in the common case shows here first.
     "**bold**, *italic*, ***both***, `code`, ~~gone~~, ==lit==",
     "[[Welcome]] and [[Welcome|alias]] and #tag",
+    // An alias spelled as the target keeps its pipe (it collapsed to `[[Note]]`).
+    "[[Note|Note]] and [[Note]]",
     "[text](https://x.com/a?b=c&d=e) and https://x.com/path",
     "\\*not italic\\* and \\# and \\[bracket\\]",
     "soft\nbreak\nlines",

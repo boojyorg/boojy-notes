@@ -49,6 +49,8 @@ interface TextBlock extends BlockBase {
 interface CheckboxBlock extends BlockBase {
   type: "checkbox";
   checked?: boolean;
+  /** An imported uppercase `[X]`, kept until the box is toggled. */
+  checkMark?: "X";
 }
 
 interface CodeBlock extends BlockBase {
@@ -97,10 +99,14 @@ interface TableBlock extends BlockBase {
 
 interface SpacerBlock extends BlockBase {
   type: "spacer";
+  /** The divider line as written, when it is not exactly `---`. */
+  dividerSource?: string;
 }
 
 interface FrontmatterBlock extends BlockBase {
   type: "frontmatter";
+  /** The closer as written when it is not `---`; `empty` for `---` straight over `---`. */
+  frontmatterSource?: { close?: string; empty?: true };
 }
 
 export type Block =

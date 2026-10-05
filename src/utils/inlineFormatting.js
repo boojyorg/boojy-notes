@@ -124,9 +124,12 @@ export function inlineMarkdownToHtml(md, noteTitles) {
     const key = wikilinkKey(parseWikilinkTarget(target));
     return key && !noteTitles.has(key) ? " wikilink-broken" : "";
   };
+  // An alias written out as the target itself (`[[Note|Note]]`) draws as the
+  // short form and is marked `data-piped`, so the read-back keeps its pipe.
   s = s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, (_, target, display) => {
     const broken = brokenClass(target);
-    return `<span class="wikilink${broken}" data-target="${escAttr(target)}">${display}</span>`;
+    const piped = display === target ? " data-piped" : "";
+    return `<span class="wikilink${broken}" data-target="${escAttr(target)}"${piped}>${display}</span>`;
   });
   s = s.replace(/\[\[([^\]]+)\]\]/g, (_, target) => {
     const broken = brokenClass(target);
@@ -245,7 +248,9 @@ export function nodeToMarkdown(child, before = "") {
     }
     if (child.classList.contains("wikilink")) {
       const target = child.getAttribute("data-target") || inner;
-      return target === inner ? `[[${inner}]]` : `[[${target}|${inner}]]`;
+      return target === inner && !child.hasAttribute("data-piped")
+        ? `[[${inner}]]`
+        : `[[${target}|${inner}]]`;
     }
     // Tag spans and anything else: the text, which for a tag already has its #.
     return inner;
@@ -352,6 +357,7 @@ function sanitizeInto(target, sourceNode, inAnchor) {
             if (cls.startsWith("wikilink")) {
               const target = child.getAttribute("data-target");
               if (target) el.setAttribute("data-target", target);
+              if (child.hasAttribute("data-piped")) el.setAttribute("data-piped", "");
             }
           } else if (cls === "external-link-icon") {
             el.setAttribute("class", cls);

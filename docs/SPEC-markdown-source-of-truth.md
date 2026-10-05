@@ -159,8 +159,9 @@ test rather than letting it pass as if lossless:
 - **`image` custom `alt` (wikilink syntax only)** — `![[photo.png]]` re-derives `alt` from the
   filename, so a custom caption (`alt ≠ filename`) is lost. Standard markdown images
   (`![alt](url)`, `format: "md"` on the block) keep their syntax and alt text losslessly.
-- **First-position `spacer`** — a leading `---` is always frontmatter, so a `spacer` must
-  never be the first block.
+- **First-position `spacer`** — a `---` on line 1 is frontmatter when a later `---` line
+  closes it (as Obsidian reads it), so a `spacer` first with a divider after it reads back as
+  frontmatter. A leading `---` with nothing to close it stays a divider.
 - **A newline in a heading** — an ATX heading is one line, so `h1` text `a\nb` is written
   `# a b` and reads back as `a b`. The editor refuses Shift+Enter in a heading and joins pasted
   lines with a space, so the loss is asserted, never met.
@@ -178,8 +179,11 @@ test rather than letting it pass as if lossless:
 
 These are the *only* sanctioned losses. Anything else that fails the round-trip is a bug.
 
-Byte changes are a separate matter from round-trip losses. Beyond the two sanctioned rewrites
-above (the blank before a tight `---`, the `-` the app writes for an empty marker), the app
+Byte changes are a separate matter from round-trip losses. Beyond the sanctioned rewrites
+(the blank before a tight `---`, the `-` the app writes for an empty marker, and **mixed line
+endings, written in the file's dominant style**: a file whose lines end some in CRLF and some
+in LF is almost always an accident of two editors, and no reader takes a meaning from it; a
+CR doubled before a line feed goes with it — decided 2026-10-05), the app
 still normalises a handful of unusual inputs on save: the preservation suite's `KNOWN_FAILURES`
 and the list under *Data safety* in `docs/BACKLOG.md` are the honest record. None of those is
 sanctioned by this spec; each is either fixed by carrying the raw bytes (the

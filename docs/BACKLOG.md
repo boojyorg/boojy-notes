@@ -369,19 +369,6 @@ to delete when fixed, and a fixture to add then:
   space, typed in a line reaches the file the same way and, unlike the trailing one, persists
   (review §1.7, reproduced live); one decision for the three.
 
-**Undocumented normalisations** (decision pending: carry the raw bytes with the
-`indentStr`/`marker`/`numRaw`/`bare` pattern, or sanction each in the spec). None is in the
-spec's sanctioned list; each needs a preservation fixture either way. Re-probed on master on
-2026-09-07, every one still occurs on any save of the note:
-
-- [ ] Uppercase `- [X]` is written as `- [x]`.
-- [ ] Dividers with 1–3 leading spaces are dedented.
-- [ ] Mixed line endings are healed to the dominant style (a code comment records this as
-  intended; the spec does not).
-- [ ] Unclosed frontmatter gains a closer.
-- [ ] `[[Note|Note]]` collapses to `[[Note]]` on the first edit of its block (the DOM walker,
-  not the parser).
-
 **Lost edits and filesystem.**
 
 - [ ] **Concurrent flushes are not serialised** — blur, quit and the write-debounce timer can
