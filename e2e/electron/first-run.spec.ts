@@ -22,7 +22,7 @@ test("a fresh install shows setup; Create note makes the default folder and puts
     await expect(dialog).toBeVisible();
     // Named, not made: nothing under Documents yet.
     expect(fs.existsSync(path.join(h.documents, "Boojy"))).toBe(false);
-    await expect(dialog.getByTestId("notes-folder-path")).toHaveText(/Boojy\/Notes$/);
+    await expect(dialog.getByTestId("notes-folder-path")).toHaveText(/Boojy[\\/]Notes$/);
     // A folder that does not exist yet is not a control.
     await expect(dialog.getByRole("button", { name: /Show in Finder|Show in folder/ })).toHaveCount(
       0,
@@ -136,7 +136,7 @@ test("cancelling the picker in setup changes nothing", async () => {
     const dialog = h.page.getByRole("dialog", { name: "Welcome to Boojy Notes" });
     await dialog.getByRole("button", { name: "Choose folder…" }).click();
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByTestId("notes-folder-path")).toHaveText(/Boojy\/Notes$/);
+    await expect(dialog.getByTestId("notes-folder-path")).toHaveText(/Boojy[\\/]Notes$/);
     expect(fs.existsSync(path.join(h.documents, "Boojy"))).toBe(false);
     expect(h.pageErrors).toEqual([]);
   } finally {

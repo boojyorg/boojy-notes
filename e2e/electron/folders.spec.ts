@@ -279,7 +279,7 @@ test("a folder made or removed in Finder shows up, and goes, on its own", async 
 });
 
 test("deleting a folder removes the directory only once nothing is left in it", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp(
     { "Work/Note.md": "Note.\n", "Solo/Only.md": "Only.\n" },
     { prepare: (vault) => vault.write("Work/budget.txt", "not a note\n") },

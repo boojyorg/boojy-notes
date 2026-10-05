@@ -22,7 +22,7 @@ const binRow = (h: AppHandle) => h.page.getByTestId("recently-deleted-row");
 const bin = (h: AppHandle) => h.page.getByRole("dialog", { name: "Recently Deleted" });
 
 test("a deleted note waits in Recently Deleted and comes back where it was", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({ "Projects/Old plan.md": "The plan.\n", "Keep.md": "Keep.\n" });
   try {
     await expect(binRow(h)).toBeVisible();
@@ -63,7 +63,7 @@ test("a deleted note waits in Recently Deleted and comes back where it was", asy
 });
 
 test("Undo on the deletion toast puts the note back", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({ "Loose.md": "Loose note.\n", "Keep.md": "Keep.\n" });
   try {
     await deleteNote(h, "Loose");
@@ -81,7 +81,7 @@ test("Undo on the deletion toast puts the note back", async () => {
 });
 
 test("deleting for good asks first, and leaves nothing to restore", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({ "Secret.md": "Private.\n", "Keep.md": "Keep.\n" });
   try {
     await deleteNote(h, "Secret");
@@ -100,7 +100,7 @@ test("deleting for good asks first, and leaves nothing to restore", async () => 
 });
 
 test("a click shows a deleted note read-only; typing asks; Restore opens it; Escape goes back", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp({
     "Plan.md": "The plan.\n\n- one\n",
     "Draft.md": "A draft.\n",

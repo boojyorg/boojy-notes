@@ -87,6 +87,9 @@ test("the pane holds its size and place while the app resizes behind it", async 
       );
     const before = await pane.boundingBox();
     const sidebarBefore = await sidebarWidth();
+    // Reopened at 200%, the pane is twice as wide: the window must hold that.
+    const room = await h.page.evaluate(() => window.innerWidth);
+    test.skip(room < (before?.width ?? 0) * 2, "this display is too small for the pane at 200%");
 
     // Six presses to 200%: the app grows under every one of them, the pane
     // does not move at all.

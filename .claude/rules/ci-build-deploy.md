@@ -54,8 +54,8 @@ Rule + one reason. Incidents and measurements are in git; command details in
   before adding anything. The browser is cached on the lockfile hash; the install runs in a
   `timeout` + three-attempt loop sized to the work, not to patience.
 - **`ci.yml` is side-by-side jobs plus a `ci` summary job**: `checks` (audit, lint, format,
-  typecheck, coverage, web build), `web-e2e`, `electron-e2e` in six `fullyParallel` shards, and
-  `electron-windows` (the window-chrome specs on a Windows runner).
+  typecheck, coverage, web build), `web-e2e`, `electron-e2e` in six `fullyParallel` shards,
+  `electron-desktop` (the same suite on Windows and macOS runners) and `unit-desktop`.
   Branch protection requires the `ci` job name; keep it. More shards stop paying past six;
   a faster runner doesn't help (the suite waits on debounces). New pushes cancel a PR's run;
   master runs are never cancelled.
@@ -72,7 +72,8 @@ Rule + one reason. Incidents and measurements are in git; command details in
   screenshot pumps or timer polling. **Each worker gets its own Xvfb** (`ownDisplay` in
   `harness.ts`): on a shared display the other worker's window stole focus and pointer,
   cancelling drags and hovers. A spec that presses a key into a menu waits for the menu to hold
-  focus first. OS Trash and native dialogs are macOS-only and say so.
+  focus first. **A spec skips only the platform that cannot run it, and says why** (Linux CI
+  has no Trash; Windows ignores a directory's mode bits).
 
 ## pnpm and Electron
 

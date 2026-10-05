@@ -111,6 +111,7 @@ test("a first sync landing forty notes at once shows every one, and writes none 
 });
 
 test("the invisible Icon file Finder and Dropbox leave in a folder is not an other file", async () => {
+  test.skip(process.platform === "win32", "Windows can hold no name with a CR in it");
   const h = await launchApp({ "Alpha.md": "Alpha body.\n", "Uni/Week 1.md": "x\n" });
   try {
     fs.writeFileSync(path.join(h.vault.dir, "Icon\r"), "");

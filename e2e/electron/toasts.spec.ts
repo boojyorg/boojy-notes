@@ -32,7 +32,7 @@ async function edges(page: Page) {
 }
 
 test("a note sent to the Trash is a receipt: the Trash mark, no ×, gone by itself", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp(seed);
   try {
     await h.page
@@ -70,7 +70,7 @@ test("a note sent to the Trash is a receipt: the Trash mark, no ×, gone by itse
 });
 
 test("the stack stands at the foot of the editor, and follows the sidebar", async () => {
-  test.skip(process.platform !== "darwin", "moves files to the OS Trash");
+  test.skip(process.platform === "linux", "Linux CI has no desktop Trash");
   const h = await launchApp(seed);
   try {
     await h.page
@@ -103,6 +103,7 @@ test("the stack stands at the foot of the editor, and follows the sidebar", asyn
 });
 
 test("a save that cannot land waits to be dismissed, and the receipt of its recovery ends it", async () => {
+  test.skip(process.platform === "win32", "a directory's mode bits do not stop writes on Windows");
   const h = await launchApp({ "Note.md": "One.\n" });
   try {
     await h.openNote("Note");
