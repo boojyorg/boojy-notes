@@ -2,7 +2,12 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it } from "vitest";
-import { blockCopyPayload, inlineCopyPayload } from "../../src/utils/clipboardCopy";
+import {
+  blockCopyPayload,
+  inlineCopyPayload,
+  wholeBlocksCopy,
+} from "../../src/utils/clipboardCopy";
+import type { Block } from "../../src/types/notes";
 import type { CopiedBlock } from "../../src/utils/clipboardCopy";
 
 const p = (text: string): CopiedBlock => ({ type: "p", text });
@@ -188,5 +193,17 @@ describe("inlineCopyPayload: an ordinary selection is its visible text and inlin
     const { text, html } = inlineCopyPayload("\\*not italic\\*");
     expect(text).toBe("\\*not italic\\*");
     expect(html).toBe("\\*not italic\\*");
+  });
+});
+
+describe("wholeBlocksCopy", () => {
+  it("leaves a picture's indent with the file: a copy lands elsewhere, unindented", () => {
+    const blocks: Block[] = [
+      { id: "a", type: "numbered", text: "Tres", num: 3 },
+      { id: "b", type: "image", text: "", src: "pic.png", width: 100, lead: "\t" },
+    ];
+    const { json, payload } = wholeBlocksCopy(blocks, 1, 1);
+    expect(JSON.parse(json)[0].lead).toBeUndefined();
+    expect(payload.text).toBe("![[pic.png]]");
   });
 });

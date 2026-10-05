@@ -167,6 +167,8 @@ export function useBlockOperations({
           const copy = { ...b, id: ids[k] };
           delete copy.tightAbove;
           delete copy.looseAbove;
+          // An embed's indent put it under the block above the original.
+          delete copy.lead;
           return copy;
         });
         blocks.splice(to + 1, 0, ...copies);

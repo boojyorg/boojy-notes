@@ -19,28 +19,34 @@ export function reorderFloor(blocks: readonly Block[]): number {
  * `looseAbove` record how the file spelled the gap above a position (no blank
  * line, or one between list items); they belong to the place, not the block,
  * so a commit that only reorders blocks leaves each position's spelling as it
- * was and a moved block takes the gap it lands in. Anything else is returned
- * as it is.
+ * was and a moved block takes the gap it lands in. An embed's indent (`lead`)
+ * puts it under the block above it, so it goes once that block is another:
+ * kept, a tab after a blank line would make the embed a code block elsewhere.
+ * Anything else is returned as it is.
  */
 export function keepGapsInPlace(before: readonly Block[], after: Block[]): Block[] {
   if (before.length !== after.length || before.length < 2) return after;
   let reordered = false;
-  const ids = new Set<string>();
+  const above = new Map<string, string | undefined>();
   for (let i = 0; i < before.length; i++) {
-    ids.add(before[i].id);
+    above.set(before[i].id, before[i - 1]?.id);
     if (before[i].id !== after[i].id) reordered = true;
   }
-  if (!reordered || !after.every((b) => ids.has(b.id))) return after;
+  if (!reordered || !after.every((b) => above.has(b.id))) return after;
   let changed = false;
   const out = after.map((block, i) => {
     const { tightAbove, looseAbove } = before[i];
-    if (block.tightAbove === tightAbove && block.looseAbove === looseAbove) return block;
+    const leadGoes = block.lead !== undefined && above.get(block.id) !== after[i - 1]?.id;
+    if (block.tightAbove === tightAbove && block.looseAbove === looseAbove && !leadGoes) {
+      return block;
+    }
     changed = true;
     const next: Block = { ...block };
     delete next.tightAbove;
     delete next.looseAbove;
     if (tightAbove) next.tightAbove = true;
     if (looseAbove) next.looseAbove = true;
+    if (leadGoes) delete next.lead;
     return next;
   });
   return changed ? out : after;

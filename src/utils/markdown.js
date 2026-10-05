@@ -353,14 +353,18 @@ export function blocksToMarkdown(blocks) {
           // Standard markdown image from an external file — keep its syntax and
           // alt text; a custom width uses the Obsidian alt suffix: ![alt|350](url)
           const alt = block.alt || "";
-          lines.push(`${px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`}${block.trail ?? ""}`);
+          lines.push(
+            `${block.lead ?? ""}${px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`}${block.trail ?? ""}`,
+          );
         } else {
-          lines.push(`${px ? `![[${src}|${px}]]` : `![[${src}]]`}${block.trail ?? ""}`);
+          lines.push(
+            `${block.lead ?? ""}${px ? `![[${src}|${px}]]` : `![[${src}]]`}${block.trail ?? ""}`,
+          );
         }
         break;
       }
       case "file":
-        lines.push(`![[${block.src || ""}]]${block.trail ?? ""}`);
+        lines.push(`${block.lead ?? ""}![[${block.src || ""}]]${block.trail ?? ""}`);
         break;
       case "frontmatter":
         lines.push("---");
@@ -529,7 +533,7 @@ export function blocksToMarkdown(blocks) {
       }
       case "embed": {
         const heading = block.heading ? "#" + block.heading : "";
-        lines.push(`![[${block.target || ""}${heading}]]${block.trail ?? ""}`);
+        lines.push(`${block.lead ?? ""}![[${block.target || ""}${heading}]]${block.trail ?? ""}`);
         break;
       }
       default:
@@ -771,7 +775,10 @@ export function markdownToBlocks(md) {
           text: "",
         });
       }
-      // Whitespace after the embed, kept as written (`trail`).
+      // Whitespace before the embed (`lead`: indented, it sits under the list
+      // item above it) and after it (`trail`), kept as written.
+      const embedLead = raw.match(/^[ \t]+/)?.[0];
+      if (embedLead) blocks[blocks.length - 1].lead = embedLead;
       const embedTrail = raw.match(/[ \t]+$/)?.[0];
       if (embedTrail) blocks[blocks.length - 1].trail = embedTrail;
       i++;
@@ -784,7 +791,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; trail?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; lead?: string; trail?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -883,6 +890,7 @@ export function markdownToBlocks(md) {
         text: "",
         format: "md",
       };
+      if (leadingWs) block.lead = leadingWs;
       const imageTrail = raw.match(/[ \t]+$/)?.[0];
       if (imageTrail) block.trail = imageTrail;
       // Same rounding-drift guard as the wikilink form above
