@@ -327,9 +327,6 @@ understands are safe and the rest is preserved", not "switch freely".
 - **Spelling on Windows, the rest** (Chromium's line since 2026-10-05): it appears only once
   the note has focus, a moment after; a word taken out of the dictionary (Undo) is kept on
   Windows' exclusion list and reads as misspelled again only after its paragraph is edited.
-- [ ] **Bold (any wrap) around a selection that ends in a space writes `**word **`**, which no
-  reader takes for bold. Windows' double-click always takes the trailing space; a drag can on
-  any system. The wrap should leave edge whitespace outside (`toggleWrappingTag`).
 - [ ] **Escape left a code block's right-click menu open on the macOS runner**
   (`editor-menus.spec.ts:48`, `fixme` there). A menu takes focus a frame after it opens
   (`useFocusTrap`), and a window that paints no frames (hidden, or covered on the runner)
