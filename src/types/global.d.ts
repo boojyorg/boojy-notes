@@ -106,9 +106,18 @@ declare global {
       setMenuState: (state: MenuState) => void;
       /** Windows and Linux: the application menu's names, for the app's own strip. */
       menuLabels: () => Promise<string[]>;
-      /** Opens that menu at the window point `x`, `y` (viewport pixels). */
-      popupMenu: (label: string, x: number, y: number) => void;
+      /**
+       * Opens that menu at the window point `x`, `y` (viewport pixels). `titles`, the
+       * strip's names where they sit, let the pointer move the menu to another name.
+       */
+      popupMenu: (
+        label: string,
+        x: number,
+        y: number,
+        titles?: { label: string; left: number; top: number; right: number; bottom: number }[],
+      ) => void;
       onMenuClosed: (callback: (label: string) => void) => () => void;
+      onMenuOpened: (callback: (label: string) => void) => () => void;
       /** The window buttons' ground and ink, drawn over the strip's right end. */
       setTitleBarOverlay: (colors: { color: string; symbolColor: string }) => void;
       revealNote: (noteId: string) => Promise<void>;

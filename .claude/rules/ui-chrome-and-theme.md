@@ -61,9 +61,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
-  Format, View open the real menus (`popup-menu`); Window and Help are the Mac's (⌘M, menu
-  search), so four fit a narrow sidebar. The system's buttons are the overlay; each
-  column's colour, the divider through it; no title. Fixed chrome stands `WINDOW_STRIP_H` lower.
+  Format, View open the real menus (`popup-menu`); one open, the pointer on another name opens
+  it. Window and Help are the Mac's, so four fit a narrow sidebar. The system's buttons are the
+  overlay; each column's colour, the divider through it; no title. Fixed chrome stands
+  `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
   regions in DOM order, so a later `drag` overrides an earlier `no-drag` (Playwright never sees
   it). Regions stand down while a popup is open; a surface that floats into the row (the

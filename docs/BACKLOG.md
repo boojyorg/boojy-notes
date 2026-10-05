@@ -105,8 +105,11 @@ found on the way gate it as well, without needing a line here.
   for anything that felt off however vague; each entry is reproduced in the real app
   (`BOOJY_TRACE`, the files rule) before it is fixed, and a review pass follows only if the log
   shows a pattern.
-- [ ] **Visual polish and a Windows smoke test.** On Tyr's Windows PC (2026-10-05); device names,
-  folder names ending in a dot and attachment extensions are handled since. Windows spell-check
+- [ ] **Visual polish and a Windows smoke test.** Walked through on Tyr's Windows PC on
+  2026-10-05 (`pnpm dev`): an unreadable note, spelling, bold after a double-click, device names,
+  a pasted screenshot, the Recycle Bin and Recently Deleted, a Notepad edit, an Explorer rename,
+  a OneDrive vault, Alt+F4 straight after typing and typed spaces all held; the menu strip's
+  pointer switching was fixed then. Left: the published installer and SmartScreen's words. Windows spell-check
   dictionaries download from Google's CDN on first launch (no
   `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
 - [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early

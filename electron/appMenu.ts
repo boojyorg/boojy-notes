@@ -3,9 +3,11 @@ import {
   Menu,
   ipcMain,
   nativeImage,
+  screen,
   shell,
   type MenuItemConstructorOptions,
   type NativeImage,
+  type WebContents,
 } from "electron";
 
 /**
@@ -354,17 +356,69 @@ export function buildAppMenu({
   ipcMain.handle("menu-labels", () =>
     (Menu.getApplicationMenu()?.items ?? []).map((i) => i.label).filter(Boolean),
   );
-  ipcMain.on("popup-menu", (event, { label, x, y }: { label: string; x: number; y: number }) => {
-    const menu = Menu.getApplicationMenu()?.items.find((i) => i.label === label)?.submenu;
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!menu || !window) return;
-    menu.popup({
-      window,
-      x: Math.round(x),
-      y: Math.round(y),
-      callback: () => {
-        if (!event.sender.isDestroyed()) event.sender.send("menu-closed", label);
-      },
-    });
+  ipcMain.on(
+    "popup-menu",
+    (event, { label, x, y, titles }: { label: string; x: number; y: number; titles?: Title[] }) => {
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (!window) return;
+      const title = titles?.find((t) => t.label === label);
+      // The menu hangs as far under its name as the strip asked for this one.
+      const drop = title ? y - title.bottom : 0;
+      popupStripMenu(event.sender, window, label, x, y, titles ?? [], drop);
+    },
+  );
+}
+
+/** A name in the strip, in the window's viewport pixels. */
+type Title = { label: string; left: number; top: number; right: number; bottom: number };
+
+/** How often the pointer is looked at while a strip menu is open. */
+const TRACK_MS = 40;
+
+/**
+ * Open the strip's menu `label` under its name. While it is open, the pointer
+ * moving onto another name in the strip opens that menu instead, as a menu
+ * bar does: a native menu takes the mouse while it is open, so the window
+ * never hears the pointer cross the strip, and the main process watches it
+ * (`TRACK_MS`). The strip is told which name is open (`menu-opened`) and when
+ * none is (`menu-closed`).
+ */
+function popupStripMenu(
+  sender: WebContents,
+  window: BrowserWindow,
+  label: string,
+  x: number,
+  y: number,
+  titles: Title[],
+  drop: number,
+) {
+  const menu = Menu.getApplicationMenu()?.items.find((i) => i.label === label)?.submenu;
+  if (!menu) return;
+  let next: Title | null = null;
+  const track = setInterval(() => {
+    if (window.isDestroyed() || next) return;
+    const pointer = screen.getCursorScreenPoint();
+    const content = window.getContentBounds();
+    const px = pointer.x - content.x;
+    const py = pointer.y - content.y;
+    const over = titles.find((t) => px >= t.left && px < t.right && py >= t.top && py < t.bottom);
+    if (!over || over.label === label) return;
+    next = over;
+    menu.closePopup(window);
+  }, TRACK_MS);
+  menu.popup({
+    window,
+    x: Math.round(x),
+    y: Math.round(y),
+    callback: () => {
+      clearInterval(track);
+      if (sender.isDestroyed()) return;
+      if (!next || window.isDestroyed()) {
+        sender.send("menu-closed", label);
+        return;
+      }
+      sender.send("menu-opened", next.label);
+      popupStripMenu(sender, window, next.label, next.left, next.bottom + drop, titles, drop);
+    },
   });
 }
