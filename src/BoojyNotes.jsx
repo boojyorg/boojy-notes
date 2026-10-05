@@ -236,6 +236,7 @@ export default function BoojyNotes() {
     addVault,
     flushAll,
     downloadOffloaded,
+    rereadNote,
     folderOps,
   } = useFileSystem(noteData, setCustomFolders, syncGeneration, showToast, {
     unflushedNotes,
@@ -509,6 +510,8 @@ export default function BoojyNotes() {
   // the file's own spelling, and as HTML for apps that take formatting.
   const copyNoteText = useCallback(
     async (id) => {
+      // A note whose file cannot be read as text has none here to copy.
+      if (noteDataRef.current[id]?.unreadable) return;
       const blocks = noteDataRef.current[id]?.content?.blocks ?? [];
       const text = blocksToMarkdown(blocks);
       const { html } = wholeBlocksCopy(blocks, 0, blocks.length - 1).payload;
@@ -783,6 +786,20 @@ export default function BoojyNotes() {
     () => offloadedNote && { ...offloadedNote, provider: cloudProvider(notesDir) },
     [offloadedNote, notesDir],
   );
+  // A note whose file cannot be opened as text: what the editor shows in its
+  // place, and the three ways on (the file's own app, its folder, a re-read).
+  const unreadableReason = note?.unreadable ?? null;
+  const unreadable = useMemo(() => {
+    if (!unreadableReason || !activeNote) return null;
+    const n = noteDataRef.current[activeNote];
+    const rel = `${n?.folder ? `${n.folder}/` : ""}${n?.title}.md`;
+    return {
+      reason: unreadableReason,
+      openFile: () => openOtherFile(rel),
+      revealFile: () => revealOtherFile(rel),
+      retry: () => rereadNote(activeNote),
+    };
+  }, [unreadableReason, activeNote, noteDataRef, openOtherFile, revealOtherFile, rereadNote]);
   const { wordCount } = useNoteStats(note?.content?.blocks);
 
   // Wikilink wiring (title set, click/select)
@@ -1369,6 +1386,7 @@ export default function BoojyNotes() {
                 recentlyDeleted.setAsk(true);
               }}
               offloaded={offloaded}
+              unreadable={unreadable}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
               showToast={showToast}
             />

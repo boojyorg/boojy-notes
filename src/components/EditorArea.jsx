@@ -21,6 +21,7 @@ import { parentFolders } from "../utils/pathCrumbs";
 import EditableBlock from "./EditableBlock";
 import OffloadedNoteView from "./OffloadedNoteView";
 import PastVersionView from "./PastVersionView";
+import UnreadableNoteView from "./UnreadableNoteView";
 import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle, { HANDLE_GAP } from "./BlockDragHandle";
@@ -183,6 +184,8 @@ const EditorArea = memo(
     showToast,
     // A note whose text a sync service keeps online: shown downloading, never empty.
     offloaded,
+    // A note whose file cannot be opened as text: said so, never shown empty.
+    unreadable,
   }) {
     const rhythm = useRhythm();
     const {
@@ -1147,6 +1150,13 @@ const EditorArea = memo(
                 failed={offloaded.failed}
                 retry={offloaded.retry}
               />
+            ) : unreadable ? (
+              <UnreadableNoteView
+                reason={unreadable.reason}
+                openFile={unreadable.openFile}
+                revealFile={unreadable.revealFile}
+                retry={unreadable.retry}
+              />
             ) : pastVersion ? (
               <PastVersionView
                 versionId={pastVersion.id}
@@ -1523,6 +1533,7 @@ const EditorArea = memo(
     if (prev.pastVersion !== next.pastVersion) return false;
     if (prev.deletedNote !== next.deletedNote) return false;
     if (prev.offloaded !== next.offloaded) return false;
+    if (prev.unreadable !== next.unreadable) return false;
 
     // The selection toolbar is an interaction, not a keystroke, and it must
     // paint now: applying a format re-reads the block (which sets the

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- **A note the app can't read is shown, and never changed** — A note saved in an older text format (Windows-1252 or UTF-16, from an old Windows editor) opened with odd symbols in place of its accented letters, and the first save wrote those symbols over the file for good. A note that couldn't be read at all, or one folder that couldn't be opened, made notes quietly disappear from the sidebar. Such a note is now listed greyed, with a small mark; opening it says why it can't be shown, with Open in Default App, Show in Finder (Show in folder on Windows and Linux) and Try again. Its file is never written; renaming or moving it moves the file as it is. A note larger than 10 MB is listed the same way.
+
 ## v0.13.1 — 2026-10-04
 
 ### Bug Fixes

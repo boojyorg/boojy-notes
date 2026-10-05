@@ -370,7 +370,6 @@ spec's sanctioned list; each needs a preservation fixture either way. Re-probed 
   elsewhere stays as written and draws dashed. The rename is a new file plus an unlink, so
   Obsidian's own link update never runs either. Fixed by Backlinks (Beta candidates): links
   follow a rename, decided 2026-09-30.
-- [ ] **Unparseable files vanish from the sidebar** silently.
 - [ ] **A symlinked folder inside the vault** (review §2.9): unchecked since the one recursive
   watch (`treeWatcher.ts`) replaced chokidar. Check whether its notes are listed and watched.
 - [ ] **Pre-0.5 residue that reads or rewrites user files**: a legacy `id:` frontmatter key makes

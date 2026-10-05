@@ -31,6 +31,8 @@ eviction). `watcher-scale.spec.ts`.
   `cloud-sync.spec.ts`.
 - **An offloaded (dataless) note is never read unasked** (reading downloads it): greyed by
   name, downloaded on open; a save fetches its text first. `offloaded-notes.spec.ts`.
+- **A file that can't be edited as text is listed, never hidden or written** (`unreadable`):
+  greyed, a view in its place; a rename moves the file. `unreadable-notes.spec.ts`.
 
 ## An outside rename or move is the same note
 
@@ -64,19 +66,18 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
 - Rename and move are one `renameSync`, after flushing pending edits under the folder; not an
   edit, not undoable. Delete waits for the Trash flush. A folder outlives its notes.
-- Duplicate folder is one directory copy (`Name (copy)`), adopted from disk (fresh ids),
-  nothing dirty; revealed, never toasted.
+- Duplicate folder: one directory copy (`Name (copy)`), adopted from disk, revealed, no toast.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
 - **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults`; `add-vault`
   adds without switching; `open-vault` takes only a listed, present path. Remove never touches
   the folder; **Rename is a label (`vaultLabels`), never the folder's name**: other apps may
   point at it. A switch flushes, empties, reloads.
 - **Files that are not notes** (`read-other-files`) are listed, never watched: re-read with the
-  folders and on window focus. `trash-file` refuses a note (notes go by id through `trash-note`,
-  which keeps the index and the watcher's claim). `vault-switcher.spec.ts`.
+  folders and on window focus. `trash-file` refuses a note (notes go by id, `trash-note`).
+  `vault-switcher.spec.ts`.
 - **First run** (`settleSetupState`): an existing config or `Documents/Boojy/Notes` means an
-  existing user; otherwise the default folder is not made until `complete-setup`. Tests use
-  `firstRun` in `launchApp`. `folders.spec.ts`, `vault-root.spec.ts`, `first-run.spec.ts`.
+  existing user; otherwise the default folder is not made until `complete-setup`.
+  `folders.spec.ts`, `vault-root.spec.ts`, `first-run.spec.ts`.
 
 ## A note's title is its filename
 
@@ -105,8 +106,8 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
   fed by `write-note` and `parseNoteFile`), never the editor's state: a restore can only bring
   back what the file was. Kept outside the vault (`userData/history/`): gzipped texts named by
   hash, an append-only log per note id.
-- **What makes one**: a session's end (the note left, the window closed, 30 minutes without a
-  write; within the hour it replaces the last session's), a note's text before its first edit,
+- **What makes one**: a session's end (the note left, the window closed, a pause; one
+  soon after replaces the last), a note's text before its first edit,
   and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
   point (`useSavePoint`). Nothing unchanged is kept twice. Only `⌘S` says so; its toast's words
   open a name field, as `⌘S` again does.

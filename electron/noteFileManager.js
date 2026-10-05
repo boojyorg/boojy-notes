@@ -235,9 +235,20 @@ function recordIdentity(id, stat, raw) {
   _identity.set(id, { dev: stat.dev, ino: stat.ino, hash: hashOf(raw) });
 }
 
-/** Every note file under the vault, skipping what the vault walk skips. */
+/**
+ * Every note file under the vault, skipping what the vault walk skips. A
+ * directory that cannot be listed is passed over: one folder the user cannot
+ * open must not leave the whole vault unloaded.
+ */
 function walkNoteFiles(dir, visit) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (error) {
+    console.warn("Folder could not be listed", dir, String(error));
+    return;
+  }
+  for (const entry of entries) {
     if (isSkippedName(entry.name)) continue;
     if (entry.isDirectory()) walkNoteFiles(path.join(dir, entry.name), visit);
     else if (entry.name.endsWith(".md")) visit(path.join(dir, entry.name));
@@ -345,11 +356,94 @@ function offloadedNote(filePath, notesDir, stat) {
   };
 }
 
-function parseNoteFile(filePath, notesDir, offloaded = false) {
+/**
+ * The largest note the app opens as text. A note is read whole and
+ * synchronously on the main process, and a bigger one would stall the window
+ * for every note behind it; it is listed instead, as unreadable.
+ */
+const MAX_NOTE_BYTES = 10 * 1024 * 1024;
+
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+/**
+ * A note file's text, or null when its bytes are not UTF-8 text the app can
+ * edit: UTF-16 (its byte-order mark), a NUL byte (binary), or any sequence
+ * that is not UTF-8 (Windows-1252, Latin-1). Decoded leniently, those bytes
+ * become U+FFFD, and the first save would write that over the original. A
+ * UTF-8 byte-order mark is kept as a character, so it round-trips.
+ */
+function noteText(bytes) {
+  const utf16 =
+    (bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff);
+  if (utf16) return null;
+  if (bytes.includes(0)) return null;
   try {
-    if (offloaded) return offloadedNote(filePath, notesDir, fs.statSync(filePath));
-    const raw = fs.readFileSync(filePath, "utf-8");
-    const stat = fs.statSync(filePath);
+    return strictUtf8.decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+// Notes whose file the app cannot edit as text: never written, only moved.
+const _unreadable = new Set(); // noteId
+
+/**
+ * A note whose file is there but cannot be edited as text: `reason` says why
+ * (`encoding`, `too-large`, `read`). Listed by its name, under the id the
+ * index gives it, with no blocks, so nothing is hidden and nothing can be
+ * typed into it; `write-note` only ever moves its file. Its identity hash is
+ * of the bytes as the watcher reads them, so the app's own move of it is
+ * known for the echo it is; a file never read has none.
+ */
+function unreadableNote(filePath, notesDir, stat, reason, bytes = null) {
+  const relPath = path.relative(notesDir, filePath);
+  const relDir = path.relative(notesDir, path.dirname(filePath));
+  const title = path.basename(filePath, ".md");
+  const id = indexedIdAt(relPath) ?? `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  _idIndex[id] = relPath;
+  _identity.set(id, {
+    dev: stat.dev,
+    ino: stat.ino,
+    hash: bytes ? hashOf(bytes.toString("utf-8")) : null,
+  });
+  _unreadable.add(id);
+  trace("M", "unreadable note", relPath, reason);
+  return {
+    id,
+    title,
+    folder: relDir ? relDir.split(path.sep).join("/") : null,
+    content: { title, blocks: [] },
+    lastModified: Math.round(stat.mtimeMs),
+    unreadable: reason,
+    _filePath: filePath,
+  };
+}
+
+/**
+ * The note a file holds, as the renderer takes it. Null only when the file is
+ * gone; a file that is there but cannot be edited as text is still a note,
+ * listed as unreadable (`unreadableNote`), never silently dropped.
+ */
+function parseNoteFile(filePath, notesDir, offloaded = false) {
+  let stat;
+  try {
+    stat = fs.statSync(filePath);
+  } catch {
+    return null;
+  }
+  if (offloaded) return offloadedNote(filePath, notesDir, stat);
+  if (stat.size > MAX_NOTE_BYTES) return unreadableNote(filePath, notesDir, stat, "too-large");
+  let bytes;
+  try {
+    bytes = fs.readFileSync(filePath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    console.warn("Note could not be read", filePath, String(error));
+    return unreadableNote(filePath, notesDir, stat, "read");
+  }
+  const raw = noteText(bytes);
+  if (raw === null) return unreadableNote(filePath, notesDir, stat, "encoding", bytes);
+  try {
     const relPath = path.relative(notesDir, filePath);
     const relDir = path.relative(notesDir, path.dirname(filePath));
     // `/`-separated on every OS: the renderer joins and splits folder paths on it.
@@ -386,8 +480,15 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
 
     // Update index
     _idIndex[id] = relPath;
+    _unreadable.delete(id);
     recordIdentity(id, stat, raw);
-    history.observe(id, raw);
+    // History is a copy, kept outside the vault: a userData that cannot be
+    // written must not keep the note itself from being listed.
+    try {
+      history.observe(id, raw);
+    } catch (error) {
+      console.warn("History could not record a note", relPath, String(error));
+    }
 
     const blocks = markdownToBlocks(body);
 
@@ -410,8 +511,9 @@ function parseNoteFile(filePath, notesDir, offloaded = false) {
       lastModified: Math.round(stat.mtimeMs),
       _filePath: filePath,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    console.warn("Note could not be parsed", filePath, String(error));
+    return unreadableNote(filePath, notesDir, stat, "read");
   }
 }
 
@@ -536,6 +638,9 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
       }
     }
 
+    if (note.unreadable || _unreadable.has(note.id))
+      return moveUnreadable(note, existingPath, existingRelPath);
+
     const targetPath = noteToFilePath(note, notesDir, existingRelPath);
     const traceStart = Date.now();
     trace(
@@ -620,6 +725,42 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     // The downloaded text goes back with the answer, so the note stops being offloaded.
     if (note.offloaded) result.downloaded = { ...note, offloaded: undefined };
     return result;
+  }
+
+  /**
+   * A note the app cannot edit as text keeps its file's bytes: a rename or a
+   * move is the file renamed, whatever text the note handed in holds, and
+   * nothing is ever written. The bytes are claimed as the watcher will read
+   * them, so the move's own events are known for echoes.
+   */
+  function moveUnreadable(note, existingPath, existingRelPath) {
+    const notesDir = getNotesDir();
+    if (!existingPath || !fs.existsSync(existingPath))
+      throw new Error("A note that cannot be read has no file to keep");
+    const { finalPath } = resolveWritePath(
+      noteToFilePath(note, notesDir, existingRelPath),
+      existingPath,
+    );
+    if (finalPath !== existingPath) {
+      fs.mkdirSync(path.dirname(finalPath), { recursive: true });
+      watcher.claimUnlink(existingPath);
+      try {
+        fs.renameSync(existingPath, finalPath);
+      } catch (error) {
+        watcher.releaseUnlinkClaim(existingPath);
+        throw error;
+      }
+      trace("M", "unreadable note moved", path.relative(notesDir, finalPath));
+      try {
+        watcher.claimWrite(finalPath, fs.readFileSync(finalPath, "utf-8"));
+      } catch {
+        // Unreadable even to claim: its add is the change it looks like.
+      }
+    }
+    const realPath = path.join(path.dirname(finalPath), realBasename(finalPath));
+    _idIndex[note.id] = path.relative(notesDir, realPath);
+    saveIndex(notesDir);
+    return { filePath: realPath, title: path.basename(realPath, ".md") };
   }
 
   // Recently Deleted: the notes the app sent to the Trash in the last 30 days,
@@ -854,6 +995,7 @@ export {
   insideVault,
   sanitizeFilename,
   MAX_NAME_BYTES,
+  MAX_NOTE_BYTES,
   ensureUniqueFilePath,
   hashOf,
   relocateNote,
