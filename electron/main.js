@@ -26,7 +26,12 @@ import {
 } from "./settingsManager.js";
 import { trace, traceEnabled } from "./trace.js";
 import { buildAppMenu } from "./appMenu.js";
-import { applySpelling, onDictionaryReady, registerSpellingIPC } from "./spelling.js";
+import {
+  applySpelling,
+  onDictionaryReady,
+  registerSpellingIPC,
+  watchMenuSpelling,
+} from "./spelling.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -185,6 +190,7 @@ function createWindow() {
     if (!contents.isDestroyed()) contents.send("spelling-ready");
   });
   mainWindow.on("closed", stopDictionaryWatch);
+  if (process.platform === "win32") mainWindow.on("closed", watchMenuSpelling(contents));
 
   // Boojy Notes scales its own UI (Cmd+Plus/Minus/0 → `boojy-ui-scale`); the
   // native controls never scale with Chromium's page zoom, so any page zoom

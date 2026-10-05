@@ -306,7 +306,8 @@ const EditorArea = memo(
     }, [activeNote, hasNote, editorRef, handleEditorBeforeInput, sourceView]);
 
     // The spelling underline is the app's (useSpellingMarks), so Chromium's
-    // own is off in the editor wherever the app can check.
+    // own is off in the editor wherever the app can check. On Windows it is
+    // Chromium's (electron/spelling.ts).
     const { spelling } = useSettings();
     const ownSpelling = !!getAPI()?.checkParagraphs;
     const spellingMarks = useSpellingMarks(
@@ -815,7 +816,11 @@ const EditorArea = memo(
       (e) => {
         // A block with a menu of its own (an image) has already answered.
         if (e.defaultPrevented) return;
-        e.preventDefault();
+        // On Windows the right-click's spelling comes with Chromium's own
+        // menu event, which a cancelled `contextmenu` never sends; Electron
+        // shows no menu of its own either way.
+        const fromMenu = !!getAPI()?.spellingFromMenu;
+        if (!fromMenu) e.preventDefault();
         const x = e.clientX;
         const y = e.clientY;
         const sel = window.getSelection();
@@ -878,16 +883,21 @@ const EditorArea = memo(
           menu.element = wikilink;
         }
         // One word of prose: the menu opens with its spellings once the
-        // checker answers (a Mac's, a few hundredths of a second).
-        // Only an underlined word: the menu and the line never disagree.
+        // checker answers (a Mac's, a few hundredths of a second; Windows'
+        // with the menu event). Only an underlined word: the menu and the
+        // line never disagree. On Windows the line is Chromium's, and the
+        // menu event says whether it is drawn under this word.
         const asked = ++spellAsk.current;
         const word = field || linkEl ? null : spellableWord(range);
         const check = getAPI()?.checkSpelling;
-        if (!word || !check || !spellingMarks.markedAt(range)) return setLinkCtxMenu(menu);
+        if (!word || !check || !(fromMenu || spellingMarks.markedAt(range)))
+          return setLinkCtxMenu(menu);
         check(word.text, word.paragraph)
           .catch(() => null)
           .then((suggestions) => {
             if (asked !== spellAsk.current) return;
+            // Windows' answer of "spelled right" means no line is drawn there.
+            if (!suggestions && fromMenu) return setLinkCtxMenu(menu);
             setLinkCtxMenu({ ...menu, word: word.text, suggestions: suggestions ?? [] });
           });
       },

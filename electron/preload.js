@@ -40,29 +40,40 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Pastes into the focused element, as ⌘V does (the editor's right-click Paste).
   paste: () => ipcRenderer.invoke("paste"),
   // Spelling (electron/spelling.ts). A Mac is asked through the main process,
-  // in each paragraph's language; elsewhere the window's own checker answers,
-  // in the chosen languages, less the words added to the dictionary (Linux
-  // hands an added word to this checker late).
+  // in each paragraph's language; on Windows the right-click's menu event
+  // answers (Windows' own checker, which takes no question); elsewhere the
+  // window's own checker answers, in the chosen languages, less the words
+  // added to the dictionary (Linux hands an added word to this checker late).
   // A word's check: null when spelled right, else its first three guesses.
   checkSpelling: async (word, paragraph) => {
     if (process.platform === "darwin") return ipcRenderer.invoke("check-spelling", word, paragraph);
+    if (process.platform === "win32") {
+      const menu = await ipcRenderer.invoke("menu-spelling");
+      return menu?.word === word ? menu.suggestions : null;
+    }
     if (!webFrame.isWordMisspelled(word)) return null;
     if ((await ipcRenderer.invoke("learned-words")).includes(word)) return null;
     return webFrame.getWordSuggestions(word).slice(0, 3);
   },
-  // Each paragraph's misspelled words, for the underline.
-  checkParagraphs: async (texts) => {
-    if (process.platform === "darwin") return ipcRenderer.invoke("check-paragraphs", texts);
-    const learned = new Set(await ipcRenderer.invoke("learned-words"));
-    const words = new Intl.Segmenter(undefined, { granularity: "word" });
-    return texts.map((text) => {
-      const seen = new Set();
-      for (const seg of words.segment(text)) {
-        if (seg.isWordLike && !learned.has(seg.segment)) seen.add(seg.segment);
-      }
-      return [...seen].filter((w) => webFrame.isWordMisspelled(w));
-    });
-  },
+  // On Windows the right-click asks the menu event, so the editor must let
+  // that event happen; the underline there is Chromium's own.
+  spellingFromMenu: process.platform === "win32",
+  // Each paragraph's misspelled words, for the app's underline (not on Windows).
+  checkParagraphs:
+    process.platform === "win32"
+      ? undefined
+      : async (texts) => {
+          if (process.platform === "darwin") return ipcRenderer.invoke("check-paragraphs", texts);
+          const learned = new Set(await ipcRenderer.invoke("learned-words"));
+          const words = new Intl.Segmenter(undefined, { granularity: "word" });
+          return texts.map((text) => {
+            const seen = new Set();
+            for (const seg of words.segment(text)) {
+              if (seg.isWordLike && !learned.has(seg.segment)) seen.add(seg.segment);
+            }
+            return [...seen].filter((w) => webFrame.isWordMisspelled(w));
+          });
+        },
   getSpelling: () => ipcRenderer.invoke("get-spelling"),
   setSpelling: (change) => ipcRenderer.invoke("set-spelling", change),
   addDictionaryWord: (word) => ipcRenderer.invoke("add-dictionary-word", word),

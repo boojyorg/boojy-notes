@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { app, ipcMain, type Session, shell } from "electron";
+import { app, ipcMain, type Session, shell, type WebContents } from "electron";
 import { loadSettings, saveSettings } from "./settingsManager.js";
 
 /**
@@ -14,6 +14,13 @@ import { loadSettings, saveSettings } from "./settingsManager.js";
  *   right-click menu alike, in each paragraph's language (`MAC_PARAGRAPHS`,
  *   `MAC_WORD`).
  * - **Elsewhere the app chooses**: any number of languages, checked together.
+ * - **On Windows the underline and the guesses are Chromium's.** It hands
+ *   every language Windows has installed to Windows' own checker, which
+ *   answers no word-by-word question (`webFrame.isWordMisspelled` reads only
+ *   Hunspell, so every word read as spelled right and nothing was ever
+ *   underlined). The window draws Chromium's own line there, and a
+ *   right-click's word and guesses are what Chromium sends with the menu
+ *   event (`watchMenuSpelling`).
  * - Both apply at once to the open window, with no restart.
  */
 
@@ -130,7 +137,46 @@ function spellingState(session: Session): SpellingState {
   };
 }
 
+/** The latest right-click's spelling, as Chromium reported it with the menu event (Windows). */
+let menuSpelling: { at: number; word: string; suggestions: string[] } | null = null;
+let menuWaiters: Array<() => void> = [];
+
+/**
+ * Windows: keep what each right-click in the window reports about the word
+ * under the pointer (`misspelledWord`, empty when it is spelled right, and
+ * Windows' guesses) for the renderer's menu to ask for (`menu-spelling`).
+ * Returns the unsubscribe.
+ */
+export function watchMenuSpelling(contents: WebContents): () => void {
+  const onMenu = (_event: unknown, params: Electron.ContextMenuParams) => {
+    menuSpelling = {
+      at: Date.now(),
+      word: params.misspelledWord,
+      suggestions: params.dictionarySuggestions.slice(0, MAX_SUGGESTIONS),
+    };
+    for (const wake of menuWaiters) wake();
+    menuWaiters = [];
+  };
+  contents.on("context-menu", onMenu);
+  return () => contents.off("context-menu", onMenu);
+}
+
+/** The menu event's spelling for the right-click being answered: one just in, or the next. */
+function nextMenuSpelling(): Promise<typeof menuSpelling> {
+  // The renderer asks while its own `contextmenu` handler runs; Chromium's
+  // menu event follows it by a few milliseconds, or has just arrived.
+  if (menuSpelling && Date.now() - menuSpelling.at < 100) return Promise.resolve(menuSpelling);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 500);
+    menuWaiters.push(() => {
+      clearTimeout(timer);
+      resolve(menuSpelling);
+    });
+  });
+}
+
 export function registerSpellingIPC() {
+  ipcMain.handle("menu-spelling", () => nextMenuSpelling());
   // A Mac's answer, in the paragraph's language; elsewhere the preload asks
   // the window's own checker, which already holds the chosen languages.
   ipcMain.handle("check-spelling", (_event, word: string, paragraph: string) =>

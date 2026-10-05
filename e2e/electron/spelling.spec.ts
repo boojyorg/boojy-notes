@@ -61,10 +61,12 @@ const checkerReady = (page: Page) =>
     )
     .not.toBeNull();
 
-// Windows' own checker answers no word-by-word check, and Chromium hands it
-// every language Windows has installed: underlines and guesses never appear
-// there (docs/BACKLOG.md, Known issues).
-test.fixme(process.platform === "win32", "spelling does not work on Windows yet");
+// On Windows the line is Chromium's own (Windows' checker answers no
+// word-by-word question; electron/spelling.ts), drawn where no test can read
+// it, and the right-click's guesses come with Chromium's menu event. The
+// menu is tested there as everywhere; the line only where the app draws it.
+const appLine = process.platform !== "win32";
+const NO_APP_LINE = "on Windows the line is Chromium's own, which a test cannot read";
 
 let h: AppHandle;
 test.beforeEach(async () => {
@@ -72,17 +74,41 @@ test.beforeEach(async () => {
     "Alpha.md": `I recieve the parcel.\n\nThe ${MADE_UP} is here.\n\nVoy a recivir el paquete mañana.\n\nSee \`codee\` and #tagg here.\n`,
   });
   await h.openNote("Alpha");
-  await checkerReady(h.page);
-  await expect.poll(() => underlined(h.page)).toContain("recieve");
+  if (appLine) {
+    await checkerReady(h.page);
+    await expect.poll(() => underlined(h.page)).toContain("recieve");
+  } else {
+    // Chromium checks only a focused editor, a moment after it takes focus.
+    await expect(h.page.locator("[data-editor]")).toHaveAttribute("spellcheck", "true");
+    await h.page.locator("[data-editor] [data-block-id]").first().click();
+    await expect
+      .poll(
+        async () => {
+          await rightClick(h.page, "recieve");
+          await expect(h.page.locator(".editor-context-menu")).toBeVisible();
+          const labels = await rows(h.page);
+          await closeMenu(h.page);
+          return labels;
+        },
+        { timeout: 20_000 },
+      )
+      .toContain("Add to dictionary");
+  }
 });
+// Windows keeps a word taken out of its dictionary on an exclusion list, so
+// a test there that added one would change the machine's dictionary for good.
+const OWN_DICTIONARY = "Windows keeps a removed word on its exclusion list, for good";
 test.afterEach(async () => {
-  await h.app.evaluate(({ session }, w) => {
-    session.defaultSession.removeWordFromSpellCheckerDictionary(w);
-  }, MADE_UP);
+  if (appLine) {
+    await h.app.evaluate(({ session }, w) => {
+      session.defaultSession.removeWordFromSpellCheckerDictionary(w);
+    }, MADE_UP);
+  }
   await h.close();
 });
 
 test("a note's misspelled words are underlined as it opens, before any click; never code or a tag", async () => {
+  test.skip(!appLine, NO_APP_LINE);
   expect(await h.page.evaluate(() => !!document.activeElement?.closest("[data-editor]"))).toBe(
     false,
   );
@@ -93,6 +119,7 @@ test("a note's misspelled words are underlined as it opens, before any click; ne
 });
 
 test("a typed word is underlined once the caret leaves it, and an undo keeps the lines", async () => {
+  test.skip(!appLine, NO_APP_LINE);
   await h.page.locator("[data-editor] [data-block-id]").first().click();
   await h.page.keyboard.press("End");
   await h.page.keyboard.type(" wordd", { delay: 20 });
@@ -147,6 +174,7 @@ const addMadeUp = async () => {
 };
 
 test("Add to dictionary teaches the word: its line goes", async () => {
+  test.skip(!appLine, OWN_DICTIONARY);
   await addMadeUp();
   await expect.poll(() => underlined(h.page)).not.toContain(MADE_UP);
   await expect.poll(offered).toBe(false);
@@ -159,6 +187,7 @@ test("a dictionary that becomes ready after the note was checked brings the line
   // A Mac's checker loads no dictionary, and its word list is the system's,
   // where a word added and removed at once can outlive the test.
   test.skip(isMac, "a Mac's checker never loads a dictionary");
+  test.skip(!appLine, NO_APP_LINE);
   expect(await underlined(h.page)).toContain(MADE_UP);
   await h.app.evaluate(({ session }, w) => {
     session.defaultSession.addWordToSpellCheckerDictionary(w);
@@ -172,6 +201,7 @@ test("a dictionary that becomes ready after the note was checked brings the line
 });
 
 test("the toast's Undo takes the word back out", async () => {
+  test.skip(!appLine, OWN_DICTIONARY);
   await addMadeUp();
   await h.page.getByRole("button", { name: "Undo" }).click();
   await expect.poll(() => underlined(h.page)).toContain(MADE_UP);
@@ -182,7 +212,7 @@ test("switched off in Settings, every line goes and the menu offers no spellings
   await h.page.keyboard.press(`${MOD}+Comma`);
   await h.page.getByRole("switch", { name: "Check spelling" }).click();
   await h.page.keyboard.press("Escape");
-  await expect.poll(() => underlined(h.page)).toEqual([]);
+  if (appLine) await expect.poll(() => underlined(h.page)).toEqual([]);
   await rightClick(h.page, "recieve");
   await expect(h.page.locator(".editor-context-menu")).toBeVisible();
   expect((await rows(h.page))[0]).toMatch(/^Cut/);
