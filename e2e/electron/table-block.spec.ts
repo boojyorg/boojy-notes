@@ -328,11 +328,8 @@ test("Tidy table lines a compact table up in the file, and Cmd+Z puts it back", 
     await expect(
       h.page.getByRole("menu", { name: "Edit" }).getByRole("menuitem", { name: "Tidy table" }),
     ).toHaveCount(0);
-    // Escape goes to the menu once it holds focus (a frame after it opens),
-    // and the undo to the cell once the menu has handed focus back.
-    await expect
-      .poll(() => h.page.evaluate(() => !!document.activeElement?.closest("[role=menu]")))
-      .toBe(true);
+    // The text menu never takes focus (it reads its keys from the document);
+    // the undo goes to the cell once Escape has closed it.
     await h.page.keyboard.press("Escape");
     await expect(h.page.getByRole("menu", { name: "Edit" })).toHaveCount(0);
     await h.page.keyboard.press(`${MOD}+z`);
