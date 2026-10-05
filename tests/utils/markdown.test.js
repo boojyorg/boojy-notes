@@ -1330,3 +1330,19 @@ describe("a line straight under a table (GFM, 2026-10-05)", () => {
     }
   });
 });
+
+describe("whitespace before a picture or embed, as written (2026-10-05)", () => {
+  const save = (md) => blocksToMarkdown(markdownToBlocks(md));
+
+  it("keeps the indent that puts it under a list item, for every embed form", () => {
+    for (const md of [
+      "1. Uno\n2. Tres\n\t![[pic.png|445]]\n3. Cuatro",
+      "- item\n  ![alt](pic.png)\n- next",
+      "- item\n    ![[doc.pdf]]  ",
+      "- item\n\t![[Note#Heading]]",
+      " ![[pic.png]]",
+    ]) {
+      expect(save(md)).toBe(md);
+    }
+  });
+});

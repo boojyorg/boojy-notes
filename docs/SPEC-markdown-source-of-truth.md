@@ -47,6 +47,12 @@ read back as that block with no text, never as a paragraph. A bare marker is rem
 block (`bare`) and written back without the space until text is typed, so the file's bytes stay
 its own. An empty item takes no lazy continuation line.
 
+A picture, file or note embed indented under a list item (Obsidian reads it as part of that
+item) is shown as a block of its own, and its indent is kept as written (`lead`) while the block
+above it is the one it was read under. Moved under another block, copied or duplicated, it is
+written unindented, as the app writes any embed: kept, a tab after a blank line would make it a
+code block to every other reader.
+
 ## The enforceable core: the round-trip rule
 
 > Every block MUST losslessly round-trip: **block → markdown → block**, producing an identical

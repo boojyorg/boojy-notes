@@ -41,6 +41,8 @@ interface BlockBase {
   gap?: string;
   /** Whitespace after a list item's text or an embed, kept as written. */
   trail?: string;
+  /** Whitespace before a picture or embed (indented under a list item), kept as written. */
+  lead?: string;
   /** A quote's or callout body's marker per line (`>`, `>\t`), where one is not `> `. */
   quoteMarks?: string[];
 }

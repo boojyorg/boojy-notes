@@ -38,6 +38,19 @@ describe("keepGapsInPlace", () => {
     ]);
   });
 
+  it("drops a moved embed's indent once the block above it is another, and keeps it otherwise", () => {
+    const before = [
+      b("item", { type: "numbered" }),
+      b("pic", { type: "image", lead: "\t" }),
+      b("next", { type: "numbered" }),
+      b("p"),
+    ];
+    const moved = keepGapsInPlace(before, [before[0], before[2], before[1], before[3]]);
+    expect(moved.find((x) => x.id === "pic")?.lead).toBeUndefined();
+    const under = keepGapsInPlace(before, [before[0], before[1], before[3], before[2]]);
+    expect(under.find((x) => x.id === "pic")?.lead).toBe("\t");
+  });
+
   it("returns anything that is not a pure reorder as it is", () => {
     const before = [b("a"), b("c", { tightAbove: true })];
     const inserted = [b("a"), b("x"), before[1]];

@@ -104,7 +104,15 @@ const table = fc
   });
 const divider = fc.constantFrom("---", "---", " ---", "   ---", "--- ", "***", "___", "- - -");
 const html = fc.constantFrom("<div>\nblock\n</div>", "<!-- comment -->", "<br>");
-const embed = fc.constantFrom("![[pic.png]]", "![[pic.png|300]]", "![alt](pic.png)", "![[Note]]");
+// An embed's own line, with whitespace either side: indented, it sits under
+// the list item above it (Obsidian), and its bytes are kept like any other.
+const embed = fc
+  .tuple(
+    indent,
+    fc.constantFrom("![[pic.png]]", "![[pic.png|300]]", "![alt](pic.png)", "![[Note]]"),
+    spaces,
+  )
+  .map(([lead, line, trail]) => lead + line + trail);
 
 const block = fc.oneof(
   { weight: 6, arbitrary: paragraph },

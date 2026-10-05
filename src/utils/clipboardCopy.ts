@@ -29,7 +29,8 @@ import { listLayout } from "./listStructure";
  * spelling of those blocks, not always the file's bytes: a `*` bullet is
  * written `-`, an authored `03.` is `3.`, imported list indentation and
  * heading spacing are canonical (the copied entries carry no `indentStr`,
- * `marker`, `numRaw` or `headingSource`), and the blank line the writer
+ * `marker`, `numRaw` or `headingSource`), an embed's indent under a list
+ * item stays with the file (`lead`), and the blank line the writer
  * puts between two blocks is written whether or not the file had it.
  * Special blocks (code, table, callout) are copied whole and keep their
  * source spelling.
@@ -224,6 +225,7 @@ export function wholeBlocksCopy(
     delete entry.id;
     delete entry.tightAbove;
     delete entry.looseAbove;
+    delete entry.lead;
     copied.push(entry);
   }
   const numbered = copied.map((b, k) => {
