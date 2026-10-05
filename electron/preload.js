@@ -87,8 +87,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setMenuState: (state) => ipcRenderer.send("menu-state", state),
   // Windows and Linux: the app's own menu strip (WindowStrip).
   menuLabels: () => ipcRenderer.invoke("menu-labels"),
-  popupMenu: (label, x, y) => ipcRenderer.send("popup-menu", { label, x, y }),
+  popupMenu: (label, x, y, titles) => ipcRenderer.send("popup-menu", { label, x, y, titles }),
   onMenuClosed: subscribe("menu-closed"),
+  // The pointer crossed the strip to another name: that menu is open now.
+  onMenuOpened: subscribe("menu-opened"),
   setTitleBarOverlay: (colors) => ipcRenderer.send("set-title-bar-overlay", colors),
   // Show a note's file in Finder or Explorer, by its id.
   revealNote: (noteId) => ipcRenderer.invoke("reveal-note", noteId),

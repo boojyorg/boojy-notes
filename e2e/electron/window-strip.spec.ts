@@ -6,6 +6,7 @@
  * only while the sidebar shows. The Mac has no strip (its lights sit in the
  * sidebar header), so there the one test is that there is none.
  */
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { type AppHandle, launchApp } from "./harness";
 
@@ -78,4 +79,40 @@ test("the sidebar's divider runs up through the strip, and dragging it there res
       ),
     )
     .toBeGreaterThan(grey + 40);
+});
+
+// A native menu takes the mouse while it is open, so the window never hears
+// the pointer cross the strip; the main process watches the real pointer and
+// opens the menu under it, as a Windows menu bar does (2026-10-05). The test
+// moves the system's pointer itself, as a person's hand would.
+test("with a menu open, the pointer moving onto another name opens that menu", async () => {
+  test.skip(process.platform !== "win32", "moves the system pointer with Windows Forms");
+  const names = strip().getByRole("menuitem");
+  const first = names.nth(0);
+  const second = names.nth(1);
+  const label = (await second.textContent())!;
+  const box = (await second.boundingBox())!;
+  const content = await h.app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].getContentBounds(),
+  );
+  const moveTo = (x: number, y: number) =>
+    execFileSync("powershell", [
+      "-NoProfile",
+      "-Command",
+      `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = [System.Drawing.Point]::new(${Math.round(x)}, ${Math.round(y)})`,
+    ]);
+  try {
+    await first.click();
+    await expect(first).toHaveAttribute("aria-expanded", "true");
+    moveTo(content.x + box.x + box.width / 2, content.y + box.y + box.height / 2);
+    await expect(second).toHaveAttribute("aria-expanded", "true", { timeout: 5_000 });
+    await expect(first).toHaveAttribute("aria-expanded", "false");
+  } finally {
+    await h.app.evaluate(({ BrowserWindow, Menu }, name) => {
+      const menu = Menu.getApplicationMenu()?.items.find((i) => i.label === name)?.submenu;
+      menu?.closePopup(BrowserWindow.getAllWindows()[0]);
+    }, label);
+    moveTo(0, 0);
+  }
+  await expect(second).toHaveAttribute("aria-expanded", "false");
 });

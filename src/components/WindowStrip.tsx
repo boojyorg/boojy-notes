@@ -43,10 +43,22 @@ export default function WindowStrip({
   useEffect(() => {
     let live = true;
     api?.menuLabels?.().then((l) => live && setLabels(l));
-    const off = api?.onMenuClosed?.(() => setOpen(null));
+    // A native menu takes the mouse, so the strip never hears the pointer
+    // leave a name while one is open: the hover is forgotten whenever a menu
+    // opens or closes, and found again from the pointer's next move.
+    const off = api?.onMenuClosed?.(() => {
+      setOpen(null);
+      setHover(null);
+    });
+    // The pointer crossed to another name with a menu open: that one is open now.
+    const offOpened = api?.onMenuOpened?.((label) => {
+      setOpen(label);
+      setHover(null);
+    });
     return () => {
       live = false;
       off?.();
+      offOpened?.();
     };
   }, [api]);
 
@@ -60,8 +72,14 @@ export default function WindowStrip({
     if (!el || !api?.popupMenu) return;
     const r = el.getBoundingClientRect();
     setOpen(label);
+    // Every name where it sits, so the pointer crossing the strip opens the
+    // menu under it, as a menu bar does (electron/appMenu.ts).
+    const titles = [...refs.current].map(([name, b]) => {
+      const box = b.getBoundingClientRect();
+      return { label: name, left: box.left, top: box.top, right: box.right, bottom: box.bottom };
+    });
     // A little below the name, as Windows 11's own menus hang.
-    api.popupMenu(label, r.left, r.bottom + MENU_GAP);
+    api.popupMenu(label, r.left, r.bottom + MENU_GAP, titles);
   };
 
   // Alt pressed and let go on its own opens the first menu.
@@ -142,6 +160,7 @@ export default function WindowStrip({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => popup(label)}
             onMouseEnter={() => setHover(label)}
+            onMouseMove={() => setHover(label)}
             onMouseLeave={() => setHover((h) => (h === label ? null : h))}
             style={
               {

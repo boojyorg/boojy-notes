@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+- **The menu strip on Windows and Linux works like a menu bar** — With File open, moving the mouse across to Edit, Format or View now opens that menu, as in any Windows app. Before, the first menu stayed open, and its name stayed highlighted, until you clicked again.
+
 ### Bug Fixes
 
 - **Spaces you type are plain spaces in the file** — A space typed at the end of a line, a second space in a row, or a space right after a link could reach the file as an invisible non-breaking space, which Obsidian and other apps then kept. They are now saved as ordinary spaces, in notes and in note names. A non-breaking space your file already had is left as it was, and code blocks are never changed.

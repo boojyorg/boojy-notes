@@ -12,6 +12,7 @@ vi.mock("../../src/hooks/useTheme", () => ({
 }));
 
 let closed: ((label: string) => void) | null = null;
+let opened: ((label: string) => void) | null = null;
 const api = {
   menuLabels: vi.fn(async () => ["File", "Edit", "Format", "View"]),
   popupMenu: vi.fn(),
@@ -21,8 +22,19 @@ const api = {
       closed = null;
     };
   }),
+  onMenuOpened: vi.fn((cb: (label: string) => void) => {
+    opened = cb;
+    return () => {
+      opened = null;
+    };
+  }),
   setTitleBarOverlay: vi.fn(),
 };
+/** Every name where it sits, as the strip sends them with a menu. */
+const titles = expect.arrayContaining([
+  expect.objectContaining({ label: "File", left: expect.any(Number), bottom: expect.any(Number) }),
+  expect.objectContaining({ label: "View" }),
+]);
 vi.mock("../../src/services/apiProvider", () => ({ getAPI: () => api }));
 
 import WindowStrip from "../../src/components/WindowStrip";
@@ -57,10 +69,28 @@ describe("WindowStrip", () => {
     const { getByRole } = await mount();
     const edit = getByRole("menuitem", { name: "Edit" });
     fireEvent.click(edit);
-    expect(api.popupMenu).toHaveBeenCalledWith("Edit", expect.any(Number), expect.any(Number));
+    expect(api.popupMenu).toHaveBeenCalledWith(
+      "Edit",
+      expect.any(Number),
+      expect.any(Number),
+      titles,
+    );
     expect(edit.getAttribute("aria-expanded")).toBe("true");
     act(() => closed?.("Edit"));
     expect(edit.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("the pointer crossing to another name with a menu open lights that name alone", async () => {
+    const { getByRole } = await mount();
+    const file = getByRole("menuitem", { name: "File" });
+    const view = getByRole("menuitem", { name: "View" });
+    fireEvent.mouseEnter(file);
+    fireEvent.click(file);
+    // A native menu takes the mouse: the strip hears no mouseleave from File.
+    act(() => opened?.("View"));
+    expect(view.getAttribute("aria-expanded")).toBe("true");
+    expect(file.getAttribute("aria-expanded")).toBe("false");
+    expect(file.style.background).toBe("transparent");
   });
 
   it("Alt pressed and let go on its own opens the first menu; Alt with a key does not", async () => {
@@ -71,7 +101,12 @@ describe("WindowStrip", () => {
     expect(api.popupMenu).not.toHaveBeenCalled();
     fireEvent.keyDown(window, { key: "Alt" });
     fireEvent.keyUp(window, { key: "Alt" });
-    expect(api.popupMenu).toHaveBeenCalledWith("File", expect.any(Number), expect.any(Number));
+    expect(api.popupMenu).toHaveBeenCalledWith(
+      "File",
+      expect.any(Number),
+      expect.any(Number),
+      titles,
+    );
   });
 
   it("the sidebar's grey runs under the names only while the sidebar shows", async () => {
