@@ -8,20 +8,6 @@ const lines = (doc) => doc.split(/\r?\n/);
 
 /** A document holding a rewrite already on record: why, and how to tell. */
 export const KNOWN = [
-  // preservation KNOWN_FAILURES, blockquotes-callouts.md: `>` becomes `> `.
-  ["a quote line without its space", (doc) => lines(doc).some((l) => /^>(?! )/.test(l))],
-  // preservation KNOWN_FAILURES, blockquotes-callouts.md: the type is lowercased.
-  ["a callout type with capitals", (doc) => /^> \[![a-z]*[A-Z]/m.test(doc.replace(/\r/g, ""))],
-  // preservation KNOWN_FAILURES, trailing-ws-list-lines.md (pictures and a
-  // tab after an empty marker too, found by this file): trailing whitespace
-  // on a line that is not a paragraph's goes.
-  [
-    "trailing whitespace on a line that is not a paragraph's",
-    (doc) =>
-      lines(doc).some(
-        (l) => /[ \t]$/.test(l) && /^(\s*([-*+]|\d+[.)])([ \t]|$)|#{1,6} |!\[|>)/.test(l),
-      ),
-  ],
   // docs/BACKLOG.md, Markdown compatibility: a line straight under a table is
   // read as a paragraph and written apart, where GFM reads it as a row.
   [

@@ -1282,3 +1282,32 @@ describe("one blank line between blocks is structure, whatever the blocks", () =
     }
   });
 });
+
+describe("quote markers and trailing whitespace, as written (2026-10-05)", () => {
+  const save = (md) => blocksToMarkdown(markdownToBlocks(md));
+
+  it("keeps a bare `>` and a callout's capitals and `>text` lines", () => {
+    for (const md of [
+      "> a\n>\n> b",
+      "> [!WARNING]+ Title\n> one\n>two\n>",
+      "- Minutes: \n- [ ] task  \n1. item\t",
+      "![[pic.png]]  \n\n![alt](pic.png)\t",
+      "1.\tfirst\n2.\t",
+    ]) {
+      expect(save(md)).toBe(md);
+    }
+  });
+
+  it("writes `> ` once a bare quote line holds text, so it stays a quote line", () => {
+    const blocks = markdownToBlocks("> a\n>\n> b");
+    blocks[0].text = "a\nx\nb";
+    expect(blocksToMarkdown(blocks)).toBe("> a\n> x\n> b");
+  });
+
+  it("folds a list item's trailing spaces into its text when a line continues it", () => {
+    const blocks = markdownToBlocks("- one  \ntwo");
+    expect(blocks[0].text).toBe("one  \ntwo");
+    expect(blocks[0].trail).toBeUndefined();
+    expect(blocksToMarkdown(blocks)).toBe("- one  \ntwo");
+  });
+});

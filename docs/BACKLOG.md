@@ -338,8 +338,6 @@ to delete when fixed, and a fixture to add then:
   element's text from the later passes (`inlineMarkdownToHtml`), as code spans are.
 - **Delimiters interleaved** (`**a==b**c==`, an escaped one beside live ones) are paired
   differently by the renderer than as written; with "Code: literal handling" above.
-- **Trailing whitespace** goes from a picture line too, and a tab after an empty list marker
-  becomes a space (with the `trailing-ws-list-lines.md` known failure).
 
 ### Found by the Windows and macOS CI (2026-10-05)
 
@@ -355,7 +353,8 @@ to delete when fixed, and a fixture to add then:
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.
-`KNOWN_FAILURES` in `tests/utils/preservation.test.js` holds the fixtures that already fail.
+The preservation suite's `KNOWN_FAILURES` is empty since 2026-10-05; what remains is listed
+here and in `tests/utils/knownRewrites.js`.
 
 - [ ] **A typed trailing space can reach the file as U+00A0** — Chromium holds a space at the
   end of a text node as `&nbsp;` so it renders, and turns it back into a space at the next
