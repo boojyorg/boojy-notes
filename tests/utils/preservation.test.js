@@ -46,11 +46,9 @@ const FIXTURES_DIR = path.join(
 
 // Fixture → which experiments currently fail byte-exactness.
 // (The inline comments on each entry carry the per-fixture failure detail.)
-const KNOWN_FAILURES = {
-  "blockquotes-callouts.md": { roundtrip: true, edit: true }, // ">" → "> "; callout type lowercased
-  // Found by the 2026-08-18 real-vault smoke test (209 files):
-  "trailing-ws-list-lines.md": { roundtrip: true, edit: true }, // list/heading lines still trim trailing spaces (paragraphs don't)
-};
+// Empty since 2026-10-05: `>` alone, a callout type's capitals and trailing
+// whitespace on list lines are kept.
+const KNOWN_FAILURES = {};
 
 const fixtureNames = fs
   .readdirSync(FIXTURES_DIR)

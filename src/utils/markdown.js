@@ -126,7 +126,9 @@ function structureParagraphs(lineBlocks) {
   for (const b of lineBlocks) {
     const prev = merged[merged.length - 1];
     if (isTextParagraph(b) && prev && absorbsFollowingLine(prev)) {
-      prev.text = `${prev.text}\n${b.text}`;
+      // The first line's trailing whitespace is a hard break now: text.
+      prev.text = `${prev.text}${prev.trail ?? ""}\n${b.text}`;
+      delete prev.trail;
       continue;
     }
     merged.push(b);
@@ -205,7 +207,24 @@ export function applyEol(md, eol) {
  * block with `bare` set, and written back without the space until text is
  * typed, so the file's bytes are its own.
  */
-const afterMarker = (block, text = block.text || "") => (block.bare && !text ? "" : ` ${text}`);
+/**
+ * A quote's (or callout body's) marker for each of its `count` lines: as
+ * written while the lines are the ones read (`quoteMarks`), the app's `> `
+ * otherwise. In a quote a bare `>` is written bare only where its line is
+ * still empty: `>text` is no quote line there. A callout's body reads
+ * `>text` as its own, so there it stays as written.
+ */
+const quoteMarksFor = (block, count) => {
+  const text = (block.text || "").split("\n");
+  const kept = block.quoteMarks?.length === count ? block.quoteMarks : null;
+  const bareTakesText = block.type === "callout";
+  return Array.from({ length: count }, (_, k) =>
+    kept && (kept[k] !== ">" || text[k] === "" || bareTakesText) ? kept[k] : "> ",
+  );
+};
+
+const afterMarker = (block, text = block.text || "") =>
+  block.bare && !text ? "" : `${block.gap ?? " "}${text}`;
 
 // ─── What the serializer writes, its parser reads back as the same block ───
 // A paragraph or list item holds soft breaks (Shift+Enter, a multi-line
@@ -305,17 +324,17 @@ export function blocksToMarkdown(blocks) {
       }
       case "bullet":
         lines.push(
-          `${listPositions[i]?.prefix}${block.marker || "-"}${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}${block.marker || "-"}${afterMarker(block, itemText(block))}${block.trail ?? ""}`,
         );
         break;
       case "numbered":
         lines.push(
-          `${listPositions[i]?.prefix}${block.numRaw ?? block.num ?? listPositions[i]?.number}.${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}${block.numRaw ?? block.num ?? listPositions[i]?.number}.${afterMarker(block, itemText(block))}${block.trail ?? ""}`,
         );
         break;
       case "checkbox":
         lines.push(
-          `${listPositions[i]?.prefix}- [${block.checked ? block.checkMark || "x" : " "}]${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}- [${block.checked ? block.checkMark || "x" : " "}]${afterMarker(block, itemText(block))}${block.trail ?? ""}`,
         );
         break;
       case "spacer":
@@ -332,14 +351,14 @@ export function blocksToMarkdown(blocks) {
           // Standard markdown image from an external file — keep its syntax and
           // alt text; a custom width uses the Obsidian alt suffix: ![alt|350](url)
           const alt = block.alt || "";
-          lines.push(px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`);
+          lines.push(`${px ? `![${alt}|${px}](${src})` : `![${alt}](${src})`}${block.trail ?? ""}`);
         } else {
-          lines.push(px ? `![[${src}|${px}]]` : `![[${src}]]`);
+          lines.push(`${px ? `![[${src}|${px}]]` : `![[${src}]]`}${block.trail ?? ""}`);
         }
         break;
       }
       case "file":
-        lines.push(`![[${block.src || ""}]]`);
+        lines.push(`![[${block.src || ""}]]${block.trail ?? ""}`);
         break;
       case "frontmatter":
         lines.push("---");
@@ -389,9 +408,10 @@ export function blocksToMarkdown(blocks) {
       case "blockquote": {
         const bqLines = (block.text || "").split("\n");
         const bqIndent = block.indentStr || "";
-        for (const bqLine of bqLines) {
-          lines.push(`${bqIndent}> ${bqLine}`);
-        }
+        const marks = quoteMarksFor(block, bqLines.length);
+        bqLines.forEach((bqLine, k) => {
+          lines.push(`${bqIndent}${marks[k]}${bqLine}`);
+        });
         break;
       }
       case "callout": {
@@ -402,9 +422,11 @@ export function blocksToMarkdown(blocks) {
         const title = (block.title || "").replace(/\n/g, " ");
         lines.push(`> [!${cType}]${fold} ${title}`.trimEnd());
         if (block.text) {
-          for (const bodyLine of block.text.split("\n")) {
-            lines.push(`> ${bodyLine}`);
-          }
+          const bodyLines = block.text.split("\n");
+          const marks = quoteMarksFor(block, bodyLines.length);
+          bodyLines.forEach((bodyLine, k) => {
+            lines.push(`${marks[k]}${bodyLine}`);
+          });
         }
         break;
       }
@@ -505,7 +527,7 @@ export function blocksToMarkdown(blocks) {
       }
       case "embed": {
         const heading = block.heading ? "#" + block.heading : "";
-        lines.push(`![[${block.target || ""}${heading}]]`);
+        lines.push(`![[${block.target || ""}${heading}]]${block.trail ?? ""}`);
         break;
       }
       default:
@@ -596,18 +618,21 @@ export function markdownToBlocks(md) {
     // 3. Callout (> [!type] ...)
     if (/^>\s*\[!(\w+)\]/.test(line)) {
       const calloutMatch = line.match(/^>\s*\[!(\w+)\]([+-])?\s*(.*)/);
-      const rawType = calloutMatch[1].toLowerCase();
+      // The type as written (`[!WARNING]` stays capitals); looked up in lowercase.
+      const rawType = calloutMatch[1];
       const calloutFold = calloutMatch[2] || "";
       const title = calloutMatch[3] || "";
-      const calloutType = CALLOUT_ALIASES[rawType] || "note";
+      const calloutType = CALLOUT_ALIASES[rawType.toLowerCase()] || "note";
       const bodyLines = [];
+      const marks = [];
       i++;
       while (i < lines.length && /^>\s?/.test(lines[i])) {
         if (/^>\s*\[!\w+\][+-]?\s/.test(lines[i]) || /^>\s*\[!\w+\][+-]?$/.test(lines[i])) break;
+        marks.push(lines[i].match(/^>\s?/)[0]);
         bodyLines.push(lines[i].replace(/^>\s?/, ""));
         i++;
       }
-      blocks.push({
+      const callout = {
         id: `md-${++_parseBlockId}`,
         type: "callout",
         calloutType,
@@ -615,7 +640,9 @@ export function markdownToBlocks(md) {
         calloutFold,
         title,
         text: bodyLines.join("\n"),
-      });
+      };
+      if (marks.some((mark) => mark !== "> ")) callout.quoteMarks = marks;
+      blocks.push(callout);
       continue;
     }
 
@@ -630,13 +657,19 @@ export function markdownToBlocks(md) {
     const bqIndent = quoteIndent(raw);
     if (bqIndent !== null) {
       const bqLines = [];
+      const marks = [];
       while (i < lines.length && quoteIndent(lines[i]) === bqIndent) {
-        bqLines.push(lines[i].slice(bqIndent.length).replace(/^>\s?/, ""));
+        const rest = lines[i].slice(bqIndent.length);
+        marks.push(rest.match(/^>\s?/)[0]);
+        bqLines.push(rest.replace(/^>\s?/, ""));
         i++;
       }
-      /** @type {{ id: string; type: string; text: string; indentStr?: string }} */
+      /** @type {{ id: string; type: string; text: string; indentStr?: string; quoteMarks?: string[] }} */
       const bq = { id: `md-${++_parseBlockId}`, type: "blockquote", text: bqLines.join("\n") };
       if (bqIndent) bq.indentStr = bqIndent;
+      // Each line's marker as written (`>` alone, `>` and a tab), where one
+      // is not the `> ` the app writes.
+      if (marks.some((mark) => mark !== "> ")) bq.quoteMarks = marks;
       blocks.push(bq);
       continue;
     }
@@ -718,6 +751,9 @@ export function markdownToBlocks(md) {
           text: "",
         });
       }
+      // Whitespace after the embed, kept as written (`trail`).
+      const embedTrail = raw.match(/[ \t]+$/)?.[0];
+      if (embedTrail) blocks[blocks.length - 1].trail = embedTrail;
       i++;
       continue;
     }
@@ -728,7 +764,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string; gap?: string; trail?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -742,6 +778,15 @@ export function markdownToBlocks(md) {
       const text = line.slice(m[0].length);
       // Bare: nothing at all after the marker on the source line, not even the space.
       if (text === "" && raw.trimStart().length === m[0].trimEnd().length) block.bare = true;
+      // What follows the marker's own characters: its separator, then the text
+      // and any whitespace after it.
+      const after = raw.trimStart().slice(m[0].trimEnd().length);
+      // A tab after the marker, not the space the app writes.
+      if (after[0] === "\t") block.gap = "\t";
+      // Whitespace after the item's text: invisible, and kept apart from the
+      // text as a heading's is (`trail`), so a save never trims it.
+      const rest = after.slice(1);
+      if (rest.length > text.length && rest.startsWith(text)) block.trail = rest.slice(text.length);
       return text;
     };
     let m;
@@ -818,6 +863,8 @@ export function markdownToBlocks(md) {
         text: "",
         format: "md",
       };
+      const imageTrail = raw.match(/[ \t]+$/)?.[0];
+      if (imageTrail) block.trail = imageTrail;
       // Same rounding-drift guard as the wikilink form above
       if (mdWidthPx != null && !(width < 100 && Math.round(width * 7) === mdWidthPx)) {
         block.widthPx = mdWidthPx;

@@ -37,6 +37,12 @@ interface BlockBase {
   num?: number;
   numRaw?: string;
   marker?: string;
+  /** A list item's tab after its marker, where the app writes a space. */
+  gap?: string;
+  /** Whitespace after a list item's text or an embed, kept as written. */
+  trail?: string;
+  /** A quote's or callout body's marker per line (`>`, `>\t`), where one is not `> `. */
+  quoteMarks?: string[];
 }
 
 // ─── Discriminated block variants ─────────────────────────────────
