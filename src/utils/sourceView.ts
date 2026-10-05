@@ -184,13 +184,15 @@ export function paintMarkdown(text: string): string {
   const lines = text.split("\n");
   const out: string[] = [];
   let fence: string | null = null;
-  let frontmatter = lines[0] === "---";
+  // Frontmatter as the parser reads it: `---` on line 1 with a later `---`
+  // line to close it; an opener with none is a divider.
+  let frontmatter = lines[0] === "---" && lines.some((l, n) => n > 0 && l.trim() === "---");
   for (let n = 0; n < lines.length; n++) {
     const line = lines[n];
     if (frontmatter) {
       // The file's properties, between its two `---` lines: the fences
       // muted, the properties in the secondary ink, never parsed.
-      if (n > 0 && line === "---") frontmatter = false;
+      if (n > 0 && line.trim() === "---") frontmatter = false;
       out.push(line === "---" ? muted(line) : `<span class="md-meta">${esc(line)}</span>`);
       continue;
     }

@@ -63,7 +63,8 @@ function scrubInline(root: ParentNode): void {
   for (const link of root.querySelectorAll("span.wikilink")) {
     const target = link.getAttribute("data-target") || link.textContent || "";
     const display = link.textContent || "";
-    const notation = target === display ? `[[${target}]]` : `[[${target}|${display}]]`;
+    const short = target === display && !link.hasAttribute("data-piped");
+    const notation = short ? `[[${target}]]` : `[[${target}|${display}]]`;
     link.replaceWith(document.createTextNode(notation));
   }
   for (const span of Array.from(root.querySelectorAll("span"))) {

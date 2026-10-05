@@ -133,6 +133,14 @@ describe("paintMarkdown", () => {
     expect(html).toContain('<span class="md-strong">library card</span>');
   });
 
+  it("draws frontmatter only where the parser reads it: a `---` on line 1 that something closes", () => {
+    expect(paintMarkdown("---\ntags: [a]\n---\nBody")).toContain(
+      '<span class="md-meta">tags: [a]</span>',
+    );
+    // No closer: a divider, and the rest is the note.
+    expect(paintMarkdown("---\nJust a note.")).not.toContain("md-meta");
+  });
+
   it("leaves code alone, in a fence and between backticks", () => {
     const html = paintMarkdown("```\n# not a heading\n**x**\n```\nsee `**raw**` here");
     expect(html).toContain("\n# not a heading\n**x**\n");

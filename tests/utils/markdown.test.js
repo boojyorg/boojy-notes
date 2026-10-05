@@ -345,10 +345,33 @@ describe("markdown round-trip — intrinsic, documented losses", () => {
     expect(out.alt).toBe("photo"); // custom "My Caption" → filename stem
   });
 
-  it("a leading spacer is read back as frontmatter (first-position ambiguity)", () => {
-    // `---` at position 0 is always frontmatter; a spacer must never be first.
-    const out = markdownToBlocks(blocksToMarkdown([{ type: "spacer", text: "" }]));
-    expect(out[0].type).toBe("frontmatter");
+  it("a leading spacer is read back as a spacer, unless a later divider closes it as frontmatter", () => {
+    // Frontmatter needs its closer, as in Obsidian: a lone `---` on line 1 is
+    // a divider. A later `---` line still makes the two frontmatter (the
+    // first-position ambiguity the spec records).
+    const alone = markdownToBlocks(blocksToMarkdown([{ type: "spacer", text: "" }]));
+    expect(alone[0].type).toBe("spacer");
+    const closed = markdownToBlocks(
+      blocksToMarkdown([
+        { type: "spacer", text: "" },
+        { type: "p", text: "a" },
+        { type: "spacer", text: "" },
+      ]),
+    );
+    expect(closed[0].type).toBe("frontmatter");
+  });
+
+  it("frontmatter opens only on a `---` line of its own at the very start", () => {
+    expect(markdownToBlocks(" ---\na: b\n---\n")[0].type).not.toBe("frontmatter");
+    expect(markdownToBlocks("--- \na: b\n---\n")[0].type).not.toBe("frontmatter");
+    expect(markdownToBlocks("---\na: b\n---\n")[0].type).toBe("frontmatter");
+  });
+
+  it("a `---` indented four spaces or a tab is text, not a divider", () => {
+    for (const md of ["a\n\n    ---\n", "a\n\n\t---\n"]) {
+      expect(markdownToBlocks(md).some((b) => b.type === "spacer")).toBe(false);
+      expect(blocksToMarkdown(markdownToBlocks(md))).toBe(md);
+    }
   });
 });
 
@@ -797,6 +820,17 @@ describe("line-ending preservation (fidelity fix, 2026-08)", () => {
   it("code block text never contains CRs (no more mixed-EOL output)", () => {
     const blocks = markdownToBlocks("```\r\nline one\r\nline two\r\n```\r\n");
     expect(blocks[0].text).toBe("line one\nline two");
+  });
+
+  // Sanctioned in docs/SPEC-markdown-source-of-truth.md (decided 2026-10-05):
+  // mixed endings are written in the dominant style, one save and then stable.
+  it("a file with mixed line endings is written in its dominant style, and stays so", () => {
+    const save = (md) => applyEol(blocksToMarkdown(markdownToBlocks(md)), detectEol(md));
+    const mostlyCrlf = "One.\r\n\r\nTwo.\nThree.\r\n";
+    expect(save(mostlyCrlf)).toBe("One.\r\n\r\nTwo.\r\nThree.\r\n");
+    const mostlyLf = "One.\n\nTwo.\r\nThree.\n";
+    expect(save(mostlyLf)).toBe("One.\n\nTwo.\nThree.\n");
+    expect(save(save(mostlyCrlf))).toBe(save(mostlyCrlf));
   });
 });
 

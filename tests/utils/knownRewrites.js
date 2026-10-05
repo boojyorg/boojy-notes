@@ -8,28 +8,10 @@ const lines = (doc) => doc.split(/\r?\n/);
 
 /** A document holding a rewrite already on record: why, and how to tell. */
 export const KNOWN = [
-  // docs/BACKLOG.md, Undocumented normalisations: an opener with no closer,
-  // or nothing between the two, is rewritten.
-  [
-    "frontmatter unclosed or empty",
-    (doc) => {
-      const l = lines(doc);
-      if (l[0].trim() !== "---") return false;
-      const close = l.findIndex((x, i) => i > 0 && x.trim() === "---");
-      return close === -1 || close === 1;
-    },
-  ],
   // preservation KNOWN_FAILURES, blockquotes-callouts.md: `>` becomes `> `.
   ["a quote line without its space", (doc) => lines(doc).some((l) => /^>(?! )/.test(l))],
   // preservation KNOWN_FAILURES, blockquotes-callouts.md: the type is lowercased.
   ["a callout type with capitals", (doc) => /^> \[![a-z]*[A-Z]/m.test(doc.replace(/\r/g, ""))],
-  // docs/BACKLOG.md, Undocumented normalisations: `- [X]` becomes `- [x]`.
-  ["an uppercase task mark", (doc) => doc.includes("[X]")],
-  // docs/BACKLOG.md, Undocumented normalisations: a divider is dedented and trimmed.
-  [
-    "a divider spelled otherwise",
-    (doc) => lines(doc).some((l) => /^( {1,3}---|---[ \t]+)$/.test(l)),
-  ],
   // preservation KNOWN_FAILURES, trailing-ws-list-lines.md (pictures and a
   // tab after an empty marker too, found by this file): trailing whitespace
   // on a line that is not a paragraph's goes.
@@ -56,7 +38,8 @@ export const KNOWN = [
     "sanctioned: a tight `---` under a line",
     (doc) => {
       const l = lines(doc);
-      return l.some((x, i) => i > 0 && x === "---" && l[i - 1].trim() !== "" && l[i - 1] !== "---");
+      const divider = (x) => /^ {0,3}---[ \t]*$/.test(x);
+      return l.some((x, i) => i > 0 && divider(x) && l[i - 1].trim() !== "" && !divider(l[i - 1]));
     },
   ],
 ];

@@ -315,11 +315,11 @@ export function blocksToMarkdown(blocks) {
         break;
       case "checkbox":
         lines.push(
-          `${listPositions[i]?.prefix}- [${block.checked ? "x" : " "}]${afterMarker(block, itemText(block))}`,
+          `${listPositions[i]?.prefix}- [${block.checked ? block.checkMark || "x" : " "}]${afterMarker(block, itemText(block))}`,
         );
         break;
       case "spacer":
-        lines.push("---");
+        lines.push(block.dividerSource ?? "---");
         break;
       case "image": {
         const src = block.src || "";
@@ -343,8 +343,8 @@ export function blocksToMarkdown(blocks) {
         break;
       case "frontmatter":
         lines.push("---");
-        lines.push(block.text || "");
-        lines.push("---");
+        if (block.text || !block.frontmatterSource?.empty) lines.push(block.text || "");
+        lines.push(block.frontmatterSource?.close ?? "---");
         break;
       case "code": {
         const lang = block.lang || "";
@@ -517,6 +517,15 @@ export function blocksToMarkdown(blocks) {
   return lines.join("\n");
 }
 
+/** A divider line: `---` after at most three spaces, anything after it blank. */
+const DIVIDER_LINE = /^ {0,3}---[ \t]*$/;
+
+/** The line closing frontmatter opened on line 1, or -1 when nothing closes it. */
+function frontmatterCloser(lines) {
+  for (let j = 1; j < lines.length; j++) if (lines[j].trim() === "---") return j;
+  return -1;
+}
+
 export function markdownToBlocks(md) {
   // Blocks are always LF-internal; the file's EOL style is handled at the
   // read/write boundary (detectEol/applyEol). Normalising up front also keeps
@@ -534,20 +543,24 @@ export function markdownToBlocks(md) {
     // leading blanks is no longer treated as frontmatter — which matches
     // Obsidian/CommonMark, where frontmatter must start on line 1.
 
-    // 1. Frontmatter (--- at position 0 only)
-    if (line === "---" && blocks.length === 0) {
-      const fmLines = [];
-      i++;
-      while (i < lines.length && lines[i].trim() !== "---") {
-        fmLines.push(lines[i]);
-        i++;
-      }
-      if (i < lines.length) i++;
-      blocks.push({
+    // 1. Frontmatter: `---` alone on line 1, closed by a later `---` line,
+    // as Obsidian reads it. An opener with no closer is a divider, and the
+    // rest of the note is the note. The closer's spelling and an empty
+    // block's missing line are kept (`frontmatterSource`).
+    const closer = raw === "---" && blocks.length === 0 ? frontmatterCloser(lines) : -1;
+    if (closer !== -1) {
+      const fmLines = lines.slice(1, closer);
+      const block = {
         id: `md-${++_parseBlockId}`,
         type: "frontmatter",
         text: fmLines.join("\n"),
-      });
+      };
+      const source = {};
+      if (lines[closer] !== "---") source.close = lines[closer];
+      if (fmLines.length === 0) source.empty = true;
+      if (Object.keys(source).length) block.frontmatterSource = source;
+      blocks.push(block);
+      i = closer + 1;
       continue;
     }
 
@@ -715,7 +728,7 @@ export function markdownToBlocks(md) {
     const leadingWs = raw.match(/^[ \t]*/)[0];
     const tabCount = (leadingWs.match(/\t/g) || []).length;
     const indent = Math.min(6, tabCount + Math.floor((leadingWs.length - tabCount) / 2));
-    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string } }} */
+    /** @type {{ id: string; type: string; text: string; checked?: boolean; indent?: number; indentStr?: string; marker?: string; bare?: boolean; src?: string; alt?: string; width?: number; widthPx?: number; num?: number; numRaw?: string; format?: string; headingSource?: { indent: string; gap: string; suffix: string }; checkMark?: "X"; dividerSource?: string }} */
     let block;
     const applyListIndent = (b) => {
       if (indent > 0) b.indent = indent;
@@ -732,11 +745,16 @@ export function markdownToBlocks(md) {
       return text;
     };
     let m;
-    if (line === "---") {
+    if (DIVIDER_LINE.test(raw)) {
+      // Up to three spaces before it and any after, kept as written; four
+      // or a tab before it is CommonMark's indented code, and stays text.
       block = { id: `md-${++_parseBlockId}`, type: "spacer", text: "" };
+      if (raw !== "---") block.dividerSource = raw;
     } else if ((m = line.match(/^- \[([ xX])\](?: |$)/))) {
       const checked = m[1] !== " ";
       block = { id: `md-${++_parseBlockId}`, type: "checkbox", text: "", checked };
+      // An uppercase mark is kept; a toggle writes the lowercase one (flipCheck).
+      if (m[1] === "X") block.checkMark = "X";
       block.text = markerText(m);
       applyListIndent(block);
     } else if ((m = line.match(/^(\d+)\.(?:\s|$)/))) {
