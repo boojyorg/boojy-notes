@@ -24,11 +24,34 @@ import {
  * watcher all skip dot-entries, so `.env.md` or a `.archive/` directory was
  * written fine and then vanished at the next restart, notes and all. The
  * same rule covers `.` and `..`, so no name can be a traversal component.
+ * A Windows device name (`CON`, `nul.txt`) gets a `_` after it on every
+ * system: a vault moves between machines, and Windows can hold no file or
+ * folder by that name, whatever follows its first dot.
  */
 function sanitizeFilename(name) {
   let sanitized = capBytes(name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")).trim() || "Untitled";
   if (sanitized.startsWith(".")) sanitized = `_${sanitized.slice(1)}`;
+  const dot = sanitized.indexOf(".");
+  const stem = (dot === -1 ? sanitized : sanitized.slice(0, dot)).trimEnd();
+  if (WINDOWS_DEVICE.test(stem)) sanitized = `${stem}_${dot === -1 ? "" : sanitized.slice(dot)}`;
   return sanitized;
+}
+
+const WINDOWS_DEVICE = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³]|conin\$|conout\$)$/i;
+
+/**
+ * An attachment's file name: its name made safe as any name the app makes,
+ * and its extension cut to what a file name can hold, lowercased and short.
+ * A pasted `photo.P?NG` failed to save on Windows.
+ */
+function attachmentName(fileName) {
+  const { name, ext } = path.parse(fileName.trim());
+  const safeExt = ext
+    .slice(1)
+    .toLowerCase()
+    .replace(/[<>:"/\\|?*\x00-\x1f\s.]/g, "")
+    .slice(0, 16);
+  return sanitizeFilename(name) + (safeExt ? `.${safeExt}` : "");
 }
 
 /**
@@ -814,9 +837,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     assertVaultPresent(notesDir);
     const attDir = path.join(notesDir, "attachments");
     fs.mkdirSync(attDir, { recursive: true });
-    const safeName =
-      sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
-    const finalPath = ensureUniqueFilePath(path.join(attDir, safeName));
+    const finalPath = ensureUniqueFilePath(path.join(attDir, attachmentName(fileName)));
     fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
     return path.basename(finalPath);
   });
@@ -826,9 +847,7 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
     assertVaultPresent(notesDir);
     const attDir = path.join(notesDir, "attachments");
     fs.mkdirSync(attDir, { recursive: true });
-    const safeName =
-      sanitizeFilename(path.parse(fileName).name) + path.extname(fileName).toLowerCase();
-    const finalPath = ensureUniqueFilePath(path.join(attDir, safeName));
+    const finalPath = ensureUniqueFilePath(path.join(attDir, attachmentName(fileName)));
     fs.writeFileSync(finalPath, Buffer.from(dataBase64, "base64"));
     const size = fs.statSync(finalPath).size;
     return { filename: path.basename(finalPath), size };

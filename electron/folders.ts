@@ -149,9 +149,13 @@ function realRelPath(notesDir: string, abs: string): string {
  * with one more rule: the walk skips a directory named exactly `attachments`
  * as the attachment store, so a folder asked for under that name would hide
  * every note put in it. It gets the same `_` the other unusable names get.
+ * A folder has no extension after its name, so its trailing dots and spaces
+ * go too: Windows drops them from a directory name, and the folder on disk
+ * would not be the one the app was answered with.
  */
 function sanitizeFolderName(name: string): string {
-  const safe = sanitizeFilename(name);
+  const trailing = /[. ]+$/;
+  const safe = sanitizeFilename(name.replace(trailing, "")).replace(trailing, "") || "Untitled";
   return safe === "attachments" ? `_${safe}` : safe;
 }
 

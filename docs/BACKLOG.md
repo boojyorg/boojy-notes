@@ -105,9 +105,8 @@ found on the way gate it as well, without needing a line here.
   for anything that felt off however vague; each entry is reproduced in the real app
   (`BOOJY_TRACE`, the files rule) before it is fixed, and a review pass follows only if the log
   shows a pattern.
-- [ ] **Visual polish and a Windows smoke test.** Traced only, no Windows machine (review §6, §2.10):
-  reserved device names (`CON`, `NUL`, …) as a note or folder name, and the raw extension kept
-  by `save-image` and `save-attachment`; both belong to this smoke test. Windows spell-check
+- [ ] **Visual polish and a Windows smoke test.** On Tyr's Windows PC (2026-10-05); device names,
+  folder names ending in a dot and attachment extensions are handled since. Windows spell-check
   dictionaries download from Google's CDN on first launch (no
   `setSpellCheckerDictionaryDownloadURL`); a line in a privacy statement or a self-hosted URL.
 - [ ] **Fix the release path.** v0.7.0 (2026-09-11) published the daily-driver line as early

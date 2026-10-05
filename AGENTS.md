@@ -36,7 +36,7 @@ commit) · pnpm with `node-linker=hoisted` · TypeScript on new files.
 
 ```sh
 pnpm dev              # Electron + Vite
-pnpm dev:web          # browser only (ELECTRON_DISABLE=1)
+pnpm dev:web          # browser only (vite --mode web)
 pnpm test:coverage    # unit tests with the CI coverage gate; run before pushing
 pnpm test:e2e         # Playwright, web build
 pnpm test:electron    # real Electron against a throwaway vault
@@ -80,7 +80,7 @@ dev/                    # dev-only tooling (?tweak, wordmarks.sh); never bundled
 - **Every path that crosses IPC stays inside the vault** (`insideVault()`,
   `resolveVaultDir()`). The window never opens a second window or navigates; http(s) links go
   to the system browser. Config and settings are written atomically.
-- Platform flags live in `src/utils/platform.js`; `ELECTRON_DISABLE=1` excludes Electron code.
+- Platform flags live in `src/utils/platform.js`; `--mode web` (or `ELECTRON_DISABLE=1`) excludes Electron code.
 
 ## Keep it small
 
