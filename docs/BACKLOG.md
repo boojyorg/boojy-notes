@@ -350,6 +350,11 @@ to delete when fixed, and a fixture to add then:
   never gets there, so Escape went to the code block. Not seen by a person; reproduced on a
   hidden local window. Fix the runner's window, or focus without waiting for a frame.
 
+- [ ] **The app once failed to quit on the Linux runner** (`app-menu.spec.ts:82`, master
+  858f118, 2026-10-06): `app.quit()` after File → Duplicate and the find bar did not close the
+  app within 30 s, though the quit handshake caps the flush at 2 s; the retry passed. Once in
+  about sixty runs. If it recurs, trace which quit step waits (`BOOJY_TRACE`).
+
 ### Data safety / reliability
 
 **First-edit mutations.** The first edit of an affected note can rewrite third-party content.

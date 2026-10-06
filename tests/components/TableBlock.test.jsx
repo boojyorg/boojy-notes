@@ -62,6 +62,7 @@ vi.mock("../../src/hooks/useTableInteractions", () => ({
 vi.mock("../../src/utils/inlineFormatting", () => ({
   inlineMarkdownToHtml: (text) => text,
   domNodeToMarkdown: (el) => el.textContent || "",
+  settleTypedSpaces: (read) => read,
 }));
 
 // ── Mock TableContextMenu ───────────────────────────────────────────────────
