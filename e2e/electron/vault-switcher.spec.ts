@@ -199,7 +199,11 @@ test("a file that is not a note goes to the Trash from its menu, with a toast", 
     const row = h.page.getByRole("treeitem", { name: "handout.pdf" });
     await row.click({ button: "right" });
     const menu = h.page.getByRole("menu", { name: "Context menu" });
-    await expect(menu.getByRole("menuitem")).toHaveText(["Open", "Show in Finder", "Delete"]);
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Open in Default App",
+      process.platform === "darwin" ? "Show in Finder" : "Show in folder",
+      "Delete",
+    ]);
     await menu.getByRole("menuitem", { name: "Delete" }).click();
     await expect(row).toHaveCount(0);
     await expect(

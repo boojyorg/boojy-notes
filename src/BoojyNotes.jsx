@@ -49,7 +49,7 @@ import { useAppPersistence } from "./hooks/useAppPersistence";
 import { useNoteStats } from "./hooks/useNoteStats";
 import { useDocumentTitle } from "./hooks/useDocumentTitle";
 import { useResolvedTitle } from "./hooks/useResolvedTitle";
-import { getCaretOffset, placeCaret } from "./utils/domHelpers";
+import { caretLength, caretOffsetAt, getCaretOffset, placeCaret } from "./utils/domHelpers";
 import { binnedToast, deletionPrompt, trashedToast } from "./utils/deletionPrompt";
 import { useRecentlyDeleted } from "./hooks/useRecentlyDeleted";
 import RecentlyDeletedMenu from "./components/RecentlyDeletedMenu";
@@ -65,7 +65,9 @@ import { useEditorFocusUX } from "./hooks/useEditorFocusUX";
 import { hasWindowStrip, isElectron, isWeb } from "./utils/platform";
 import { attachmentName, resolveAttachmentUrl } from "./utils/attachmentUrl";
 import { getAPI } from "./services/apiProvider";
-import { useNoteHistory } from "./hooks/useNoteHistory";
+import { fileFromHistoryKey, fileHistoryKey, useNoteHistory } from "./hooks/useNoteHistory";
+import { useFileView } from "./hooks/useFileView";
+import { fileLinkTarget, pageLink } from "./utils/fileView";
 import { blocksToMarkdown } from "./utils/markdown";
 import { wholeBlocksCopy } from "./utils/clipboardCopy";
 
@@ -358,6 +360,165 @@ export default function BoojyNotes() {
     },
     [trashFile, showToast],
   );
+  // A file that is not a note, shown in the note's place (a PDF, a picture,
+  // or a card saying it can't be): no note is open while it is, so every
+  // note command (Format, Rename, ⌘S, Version History) already has nothing
+  // to act on. Opening a note, or switching storage location, ends it.
+  const [openFile, setOpenFile] = useState(null);
+  const fileSeq = useRef(0);
+  // The note you were in when you turned to a file, and where its cursor
+  // was (block and visible offset; none if the cursor was elsewhere): Link
+  // Page in Note puts a page's link back there.
+  const leftNoteRef = useRef(null);
+  const [leftNoteId, setLeftNoteId] = useState(null);
+  const showFile = useCallback(
+    (rel, page = null) => {
+      const left = activeNote ? noteDataRef.current[activeNote] : null;
+      if (left && !left._draft) {
+        const sel = window.getSelection();
+        const node = sel?.rangeCount ? sel.anchorNode : null;
+        const el = node && editorRef.current?.contains(node) ? node : null;
+        const block = (el?.nodeType === Node.ELEMENT_NODE ? el : el?.parentElement)?.closest(
+          "[data-block-id]",
+        );
+        leftNoteRef.current = {
+          id: activeNote,
+          blockId: block?.getAttribute("data-block-id") ?? null,
+          offset: block ? Math.max(0, getCaretOffset(block)) : null,
+        };
+        setLeftNoteId(activeNote);
+      }
+      setActiveNote(null);
+      setOpenFile({ rel, page, seq: ++fileSeq.current });
+    },
+    [setActiveNote, activeNote, noteDataRef, editorRef],
+  );
+  useEffect(() => {
+    if (activeNote) setOpenFile(null);
+  }, [activeNote]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a switch of storage location is the trigger
+  useEffect(() => setOpenFile(null), [notesDir]);
+  // Gone from the vault (deleted, or moved in Finder): it leaves the note's place.
+  useEffect(() => {
+    if (openFile && !otherFiles.some((f) => f.path === openFile.rel)) setOpenFile(null);
+  }, [openFile, otherFiles]);
+  // A note opened takes the place at once; the file is let go an effect later,
+  // so for that one render the note wins (its name field must mount then).
+  const fileView = useFileView(activeNote ? null : openFile, notesDir || "");
+  const viewedRel = fileView?.rel ?? null;
+  const copyText = useCallback(
+    async (text, said) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(said, "done");
+      } catch {}
+    },
+    [showToast],
+  );
+  // Link Page in Note: back to the note left for this file, the page's link
+  // put where its cursor was (else at the end of its last line), the way the
+  // link picker writes one: a link element in the DOM, read back as typing.
+  const pendingLinkRef = useRef(null);
+  const leftNoteName =
+    leftNoteId && noteData[leftNoteId] ? noteData[leftNoteId].title || "Untitled" : null;
+  const linkPageInNote = useCallback(
+    (page) => {
+      const left = leftNoteRef.current;
+      if (!viewedRel || !left || !noteDataRef.current[left.id]) return;
+      pendingLinkRef.current = {
+        ...left,
+        target: `${fileLinkTarget(viewedRel, otherFiles)}#page=${page}`,
+      };
+      setActiveNote(left.id);
+    },
+    [viewedRel, otherFiles, noteDataRef, setActiveNote],
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the note opened is the trigger; the rest is read when it paints
+  useEffect(() => {
+    const p = pendingLinkRef.current;
+    if (!p || p.id !== activeNote) return;
+    pendingLinkRef.current = null;
+    // Once the note's blocks have painted.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const blocks = noteDataRef.current[p.id]?.content?.blocks ?? [];
+        let el = p.blockId ? blockRefs.current[p.blockId] : null;
+        let offset = p.offset ?? 0;
+        if (!el?.isContentEditable) {
+          const last = [...blocks]
+            .reverse()
+            .find((b) => blockRefs.current[b.id]?.isContentEditable);
+          el = last ? blockRefs.current[last.id] : null;
+          offset = el ? caretLength(el) : 0;
+        }
+        if (!el) return;
+        editorRef.current?.focus({ preventScroll: true });
+        placeCaret(el, Math.min(offset, caretLength(el)));
+        const sel = window.getSelection();
+        if (!sel?.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        const before =
+          range.startContainer.nodeType === Node.TEXT_NODE
+            ? (range.startContainer.textContent ?? "").slice(0, range.startOffset)
+            : "";
+        const link = document.createElement("span");
+        link.className = "wikilink";
+        link.setAttribute("data-target", p.target);
+        link.textContent = p.target;
+        range.insertNode(link);
+        // A word just before the cursor keeps a space between it and the link.
+        if (before && !/\s$/.test(before)) link.before(document.createTextNode(" "));
+        const after = document.createRange();
+        after.setStartAfter(link);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+        const pos = caretOffsetAt(el, after.startContainer, after.startOffset);
+        reReadBlockFromDom();
+        if (pos >= 0) placeCaret(el, pos);
+      }),
+    );
+  }, [activeNote]);
+
+  // ··· on a viewed file: its own app, its folder, its path, a link to the
+  // page in view (a PDF), putting that link in the note you came from, the Trash.
+  const viewedFileMenu = useMemo(() => {
+    if (!viewedRel) return null;
+    const sep = notesDir?.includes("\\") ? "\\" : "/";
+    return {
+      openDefault: () => openOtherFile(viewedRel),
+      reveal: () => revealOtherFile(viewedRel),
+      copyPath: () =>
+        copyText(`${notesDir}${sep}${viewedRel.split("/").join(sep)}`, "Copied the file’s path"),
+      copyPageLink:
+        fileView.kind === "pdf"
+          ? () =>
+              copyText(
+                pageLink(viewedRel, fileView.page, otherFiles),
+                `Copied a link to page ${fileView.page}`,
+              )
+          : null,
+      trash: () => trashOtherFile(viewedRel),
+      // The PDF's right-click (PdfActions) and ···'s Link Page in Note.
+      copy: copyText,
+      pageLink: (n) => pageLink(viewedRel, n, otherFiles),
+      linkInNote: fileView.kind === "pdf" && leftNoteName ? linkPageInNote : null,
+      linkNoteName: leftNoteName,
+      page: fileView.page,
+    };
+  }, [
+    viewedRel,
+    fileView?.kind,
+    fileView?.page,
+    notesDir,
+    otherFiles,
+    copyText,
+    openOtherFile,
+    revealOtherFile,
+    trashOtherFile,
+    leftNoteName,
+    linkPageInNote,
+  ]);
 
   // ── First-run setup ──────────────────────────────────────────────────
   // Shown once, on a launch that has never had a notes folder (the main
@@ -761,11 +922,13 @@ export default function BoojyNotes() {
     }
   }, [fsLoading, noteData, activeNote]);
 
+  // No note open means a draft to type into, except while a file stands in
+  // the note's place: it is what is open then.
   useEffect(() => {
     if (fsLoading) return;
-    if (activeNote) return;
+    if (activeNote || openFile) return;
     createDraftNote();
-  }, [activeNote, fsLoading]);
+  }, [activeNote, fsLoading, openFile]);
 
   // A draft ends at the keystroke that first gives it text (useHistory's
   // commitTextChange), never here on state: read 300 ms late, the discard
@@ -817,6 +980,8 @@ export default function BoojyNotes() {
     focusCursorPos,
     showToast,
     openLinkFixerRef,
+    otherFiles,
+    showFile,
   });
   noteTitleSetRef.current = noteTitleSet;
 
@@ -1062,9 +1227,16 @@ export default function BoojyNotes() {
   }, [sidebarVisible, revealSidebar]);
   // ⌘[ / ⌘]: back and forward through the notes opened, per storage location.
   const noteHistory = useNoteHistory({
-    activeNote,
-    setActiveNote,
-    noteDataRef,
+    current: activeNote || (openFile ? fileHistoryKey(openFile.rel) : null),
+    open: (key) => {
+      const rel = fileFromHistoryKey(key);
+      if (rel) showFile(rel);
+      else setActiveNote(key);
+    },
+    exists: (key) => {
+      const rel = fileFromHistoryKey(key);
+      return rel ? otherFiles.some((f) => f.path === rel) : !!noteDataRef.current[key];
+    },
     resetKey: notesDir,
   });
 
@@ -1113,6 +1285,10 @@ export default function BoojyNotes() {
     openRecentlyDeleted: recentlyDeleted.available ? openRecentlyDeleted : undefined,
     goBack: noteHistory.back,
     goForward: noteHistory.forward,
+    linkPageInNote: viewedFileMenu?.linkInNote
+      ? () => viewedFileMenu.linkInNote(viewedFileMenu.page)
+      : undefined,
+    linkPageTo: viewedFileMenu?.linkInNote ? viewedFileMenu.linkNoteName : null,
     canBack: noteHistory.canBack,
     canForward: noteHistory.canForward,
   });
@@ -1235,6 +1411,7 @@ export default function BoojyNotes() {
         onNoteActions={({ x, y }) => {
           // The ··· again closes Version History, which stands in its menu's place.
           if (versionHistory.state.listOpen) versionHistory.close();
+          else if (viewedRel) setCtxMenu({ x, y, type: "viewed-file", id: viewedRel });
           else setCtxMenu({ x, y, type: "header", id: activeNote });
         }}
         past={
@@ -1266,6 +1443,7 @@ export default function BoojyNotes() {
         onNewNote={() => createNote(null)}
         onOpenSearch={openSearch}
         onToggleSourceView={toggleSourceView}
+        fileView={fileView}
       />
 
       {/* === MAIN AREA === */}
@@ -1313,7 +1491,8 @@ export default function BoojyNotes() {
             otherFiles={otherFiles}
             onSwitchVault={switchVault}
             onManageVaults={manageVaults}
-            onOpenFile={openOtherFile}
+            onOpenFile={showFile}
+            openFilePath={viewedRel}
             trashFile={trashOtherFile}
             ctxMenuFileId={ctxMenu?.type === "file" ? ctxMenu.id : null}
             vaultMenuRequest={vaultMenuRequest}
@@ -1387,6 +1566,10 @@ export default function BoojyNotes() {
               }}
               offloaded={offloaded}
               unreadable={unreadable}
+              fileView={fileView}
+              onOpenFileDefault={viewedFileMenu?.openDefault}
+              onRevealFile={viewedFileMenu?.reveal}
+              fileActions={viewedFileMenu}
               onTypeIntoPast={() => versionHistory.setAsk(true)}
               showToast={showToast}
             />
@@ -1400,7 +1583,7 @@ export default function BoojyNotes() {
           onOpenResult={handleSearchResultOpen}
           onCreateNote={createNote}
           otherFiles={otherFiles}
-          onOpenFile={openOtherFile}
+          onOpenFile={showFile}
           onClose={closeSearch}
           recentIds={recentIds}
           currentNoteId={activeNote}
@@ -1428,6 +1611,7 @@ export default function BoojyNotes() {
         openFile={openOtherFile}
         revealFile={revealOtherFile}
         trashFile={trashOtherFile}
+        viewedFile={viewedFileMenu}
         onVersionHistory={window.electronAPI?.history ? versionHistory.open : undefined}
       />
       {binOpen && (

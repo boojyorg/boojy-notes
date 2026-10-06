@@ -490,6 +490,8 @@ const Sidebar = memo(function Sidebar({
   onManageVaults,
   // A file that is not a note: opened in its own app, or trashed from the tree.
   onOpenFile,
+  // The file shown in the note's place, whose row wears the open note's pill.
+  openFilePath = null,
   trashFile,
   ctxMenuFileId,
   // Bumped by ⌘O: open the vault menu from the keyboard.
@@ -578,7 +580,9 @@ const Sidebar = memo(function Sidebar({
     ? focusKey
     : activeNote && rowByKey.has(noteKey(activeNote))
       ? noteKey(activeNote)
-      : treeRows[0]?.key;
+      : openFilePath && rowByKey.has(fileKey(openFilePath))
+        ? fileKey(openFilePath)
+        : treeRows[0]?.key;
   const focusRow = (key) => {
     setFocusKey(key);
     treeRef.current?.querySelector(`[data-tree-key="${CSS.escape(key)}"]`)?.focus();
@@ -996,26 +1000,29 @@ const Sidebar = memo(function Sidebar({
 
   // A file that is not a note: its kind's glyph, its name in the folder's
   // ink with the extension a step quieter (it is what tells `report` the PDF
-  // from `report` the note). A click opens it in its own app; the tree never
-  // shows it. Not draggable and not renamed here (an attachment renamed
-  // would break the notes that embed it, since a rename rewrites no links).
+  // from `report` the note). A click shows it in the note's place, and the
+  // row then wears the open note's pill. Not draggable and not renamed here
+  // (an attachment renamed would break the notes that embed it, since a
+  // rename rewrites no links).
   const renderFile = (path, depth, label = baseName(path)) => {
     const { stem, ext } = splitExtension(label);
     const menuOpen = ctxMenuFileId === path;
+    const shown = openFilePath === path;
     return (
       <button
         key={path}
         type="button"
         data-file-path={path}
         role="treeitem"
+        aria-selected={shown}
         {...rowProps(fileKey(path))}
-        className={`sidebar-file sidebar-row${menuOpen ? " is-held" : ""}`}
+        className={`sidebar-file sidebar-row${menuOpen || shown ? " is-held" : ""}`}
         onClick={() => onOpenFile?.(path)}
         onContextMenu={(e) => {
           e.preventDefault();
           setCtxMenu({ x: e.clientX, y: e.clientY, type: "file", id: path });
         }}
-        style={treeRowStyle(depth, TEXT.secondary)}
+        style={treeRowStyle(depth, shown ? TEXT.primary : TEXT.secondary)}
       >
         <OtherFileIcon kind={otherFileKind(label)} />
         <span

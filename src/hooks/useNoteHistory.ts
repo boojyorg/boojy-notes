@@ -1,22 +1,26 @@
-import { type MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { emptyHistory, historyOpen, historyTarget, type NoteHistory } from "../utils/noteHistory";
 
 /**
- * ⌘[ and ⌘] (Alt+← / → off the Mac), and View → Back / Forward: the notes
- * opened, in order (`utils/noteHistory.ts`). It watches the open note rather
- * than each way of opening one (a click, Search, a link, New note), so none
- * is missed; a step it takes itself is not recorded as an opening. A switch of
+ * ⌘[ and ⌘] (Alt+← / → off the Mac), and View → Back / Forward: what was
+ * opened, in order (`utils/noteHistory.ts`): notes, and files shown in the
+ * note's place, each by a key (`fileHistoryKey`), so Back flips from a PDF
+ * to the note beside it and back again. It watches what is open rather than
+ * each way of opening it (a click, Search, a link, New note), so none is
+ * missed; a step it takes itself is not recorded as an opening. A switch of
  * storage location (`resetKey`) starts the list again.
  */
 export function useNoteHistory({
-  activeNote,
-  setActiveNote,
-  noteDataRef,
+  current,
+  open,
+  exists,
   resetKey,
 }: {
-  activeNote: string | null;
-  setActiveNote: (id: string) => void;
-  noteDataRef: MutableRefObject<Record<string, unknown>>;
+  /** The open note's id or file's key, or null for neither. */
+  current: string | null;
+  open: (key: string) => void;
+  /** Whether a key still names a note or file (one gone is stepped over). */
+  exists: (key: string) => boolean;
   resetKey: unknown;
 }) {
   const [history, setHistory] = useState<NoteHistory>(emptyHistory);
@@ -28,15 +32,13 @@ export function useNoteHistory({
   }, [resetKey]);
 
   useEffect(() => {
-    if (!activeNote) return;
-    if (stepping.current === activeNote) {
+    if (!current) return;
+    if (stepping.current === current) {
       stepping.current = null;
       return;
     }
-    setHistory((h) => historyOpen(h, activeNote));
-  }, [activeNote]);
-
-  const exists = useCallback((id: string) => !!noteDataRef.current[id], [noteDataRef]);
+    setHistory((h) => historyOpen(h, current));
+  }, [current]);
 
   const step = useCallback(
     (dir: -1 | 1) => {
@@ -44,9 +46,9 @@ export function useNoteHistory({
       if (i < 0) return;
       stepping.current = history.ids[i];
       setHistory({ ...history, at: i });
-      setActiveNote(history.ids[i]);
+      open(history.ids[i]);
     },
-    [history, exists, setActiveNote],
+    [history, exists, open],
   );
 
   return {
@@ -56,3 +58,8 @@ export function useNoteHistory({
     canForward: historyTarget(history, 1, exists) >= 0,
   };
 }
+
+/** A file's key in the history: kept apart from note ids by its prefix. */
+export const fileHistoryKey = (rel: string) => `file:${rel}`;
+export const fileFromHistoryKey = (key: string) =>
+  key.startsWith("file:") ? key.slice("file:".length) : null;

@@ -4,6 +4,7 @@ import { useSettings } from "../../context/SettingsContext";
 import { SCALE_DEFAULT, parseScale, stepScale } from "../../utils/uiScale";
 import { SCALE_MAX, SCALE_MIN } from "../../utils/uiScale";
 import { MinusIcon, MonitorIcon, MoonIcon, PlusIcon, SunIcon } from "../Icons";
+import { Segment, SegmentGroup } from "../Segmented";
 
 /** Stored keys stay "day"/"night"/"auto" so every saved preference keeps
  *  working; the product words are Light / Dark / System. */
@@ -61,46 +62,6 @@ export function ThemePills() {
         );
       })}
     </div>
-  );
-}
-
-/** One segment of the stepper: flat inside the pill, the hairline its divider. */
-function Segment({ divider, disabled, children, style, ...rest }) {
-  const { theme } = useTheme();
-  const { TEXT } = theme;
-  return (
-    <button
-      type="button"
-      className="press"
-      aria-disabled={disabled || undefined}
-      {...rest}
-      onClick={disabled ? undefined : rest.onClick}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = theme.BG.surface;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-      }}
-      style={{
-        height: "100%",
-        padding: "0 9px",
-        border: "none",
-        borderLeft: divider ? `1px solid ${theme.button.border}` : "none",
-        background: "transparent",
-        color: disabled ? TEXT.muted : TEXT.primary,
-        fontSize: 13,
-        fontWeight: 500,
-        fontFamily: "inherit",
-        cursor: disabled ? "default" : "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "background var(--motion-fast), color var(--motion-fast)",
-        ...style,
-      }}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -203,19 +164,7 @@ function InterfaceSize() {
             Reset
           </button>
         )}
-        <div
-          role="group"
-          aria-labelledby="interface-size-label"
-          style={{
-            display: "inline-flex",
-            alignItems: "stretch",
-            height: 30,
-            borderRadius: 8,
-            border: `1px solid ${theme.button.border}`,
-            background: theme.button.bg,
-            overflow: "hidden",
-          }}
-        >
+        <SegmentGroup aria-labelledby="interface-size-label">
           <Segment aria-label="Smaller" disabled={uiScale <= SCALE_MIN} onClick={() => bump(-1)}>
             <MinusIcon size={14} />
           </Segment>
@@ -224,7 +173,11 @@ function InterfaceSize() {
               divider
               aria-label="Set a custom size"
               data-testid="ui-scale-value"
-              onClick={() => setTyping(String(uiScale))}
+              onClick={() => {
+                // A fresh edit: an Escape's cancel never outlives its field.
+                cancelledRef.current = false;
+                setTyping(String(uiScale));
+              }}
               style={{ minWidth: 62, fontVariantNumeric: "tabular-nums" }}
             >
               {`${uiScale}%`}
@@ -287,7 +240,7 @@ function InterfaceSize() {
           >
             <PlusIcon size={14} />
           </Segment>
-        </div>
+        </SegmentGroup>
       </div>
     </div>
   );

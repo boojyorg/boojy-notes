@@ -122,6 +122,8 @@ export const NIGHT = {
     shadow: "0 1px 3px rgba(20,17,15,0.25)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
+  /** A viewed PDF's paper, under its drawing: white in both themes, as the file is. */
+  pageGround: "#FFFFFF",
   syntax: {
     comment: "#808080",
     punctuation: "#ACABAA",
@@ -239,6 +241,8 @@ export const DAY = {
     shadow: "0 1px 3px rgba(20,17,15,0.25)",
   },
   lightbox: { scrim: "rgba(0,0,0,0.88)", ink: "#F4F4F5", hover: "rgba(255,255,255,0.12)" },
+  /** A viewed PDF's paper, under its drawing: white in both themes, as the file is. */
+  pageGround: "#FFFFFF",
   syntax: {
     comment: "#8090A0",
     punctuation: "#4A5468",

@@ -158,16 +158,13 @@ none blocks the release. The shared question comes first because three candidate
   a note to a character limit). Still a candidate: "Edited today at 11:37" beside it, exact
   timestamp on demand. Edited follows the sort's recency rule (rename and move count; opening
   never does); imports, external changes and appearance changes need the same rule stated once.
-- **Lecture files in the app: PDFs and pictures.** Wanted soon (Tyr, 2026-09-30: stay in
-  Boojy Notes during a lecture instead of beside PowerPoint). A PDF or picture opens in the
-  note's place (Chromium's viewer, which the web build has too), Open in the default app one
-  click away. As Obsidian: `[[Slides.pdf#page=12]]` opens at that page, `![[…#page=12]]` embeds
-  it, and audio and video play inline (`![[clip.mp4]]`) or in the note's place. **Back and
-  Forward** (⌘[ / ⌘], shipped for notes in v0.13.0) must take in the viewer, so they flip
-  between the slides and the note; a second window only if that is not enough. A type the app cannot
-  show (PowerPoint, Word, …) gets a card in the note's place saying so, with Open in… and Show
-  in Finder; the Mac's Quick Look panel is the cheap next step for slides. Later: searching PDF
-  text. Not planned: annotating PDFs, reading text from pictures.
+- **Lecture files in the app, the rest.** PDFs and pictures open in the note's place
+  (`CHANGELOG.md`). Left: `![[Slides.pdf#page=12]]` embedding a page in a note, audio and video
+  playing inline (`![[clip.mp4]]`) or in the note's place (they get the card for now), the
+  Mac's Quick Look for slides, searching PDF text (⌘F in a PDF), dragging a thumbnail into a
+  note as a page link, Rename and Move to… for a viewed file (with backlinks, so its links
+  follow), and the open file surviving a relaunch. Not planned: annotating PDFs, reading text
+  from pictures.
 - **Backlinks, and links that follow a rename.** Wanted soon (Tyr, 2026-09-30). One link index
   serves three things: a note lists the notes that link to it (unlinked mentions under them, as
   Obsidian); **renaming a note updates the links to it, automatically**, as Tyr's Obsidian vault

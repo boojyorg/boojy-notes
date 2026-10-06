@@ -272,7 +272,7 @@ test("a folder is a result: its chip searches inside it, and Create makes the no
   }
 });
 
-test("a file is found by name and opened in its own app; a note opens with its matched words tinted", async () => {
+test("a file is found by name and shown in the note's place; a note opens with its matched words tinted", async () => {
   const filler = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of padding.`).join("\n\n");
   const h = await launchApp({
     "University/Report.pdf": "%PDF-1.4\n",
@@ -285,7 +285,7 @@ test("a file is found by name and opened in its own app; a note opens with its m
     const field = page.getByRole("textbox", { name: "Search notes" });
     const rows = dialog.locator("[data-search-index]");
 
-    // The main process's opener is watched instead of opening Preview.
+    // The main process's opener is watched: Enter shows the file in the app, never in Preview.
     await h.app.evaluate(({ shell }) => {
       const g = globalThis as unknown as { opened: string[] };
       g.opened = [];
@@ -305,9 +305,10 @@ test("a file is found by name and opened in its own app; a note opens with its m
     await expect(rows).toHaveCount(1);
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
-    await expect
-      .poll(() => h.app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened))
-      .toEqual([expect.stringMatching(/University[\\/]Report\.pdf$/)]);
+    await expect(page.locator("[data-file-title]")).toHaveText("Report.pdf");
+    expect(
+      await h.app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened),
+    ).toEqual([]);
 
     // A body hit opens the note with the matched words tinted, the text untouched.
     await page.keyboard.press(`${MOD}+p`);

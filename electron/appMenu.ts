@@ -47,6 +47,8 @@ export type MenuState = {
   /** A note to go back or forward to (the renderer's useNoteHistory). */
   canBack: boolean;
   canForward: boolean;
+  /** A PDF is open and this is the note it was opened from: Link Page in Note names it. */
+  linkPageTo: string | null;
 };
 
 const INITIAL: MenuState = {
@@ -62,6 +64,7 @@ const INITIAL: MenuState = {
   sourceView: false,
   canBack: false,
   canForward: false,
+  linkPageTo: null,
 };
 
 const isMac = process.platform === "darwin";
@@ -170,6 +173,14 @@ function template(state: MenuState, isDev: boolean, send: (id: string) => () => 
         note("rename", "Rename…"),
         file("duplicate", "Duplicate", { accelerator: "Shift+CmdOrCtrl+D" }),
         note("copyText", "Copy Note", "Shift+CmdOrCtrl+C"),
+        // A PDF open: its page's link put in the note it was opened from, at
+        // the cursor there (the renderer's Link Page in Note).
+        item(
+          "linkPage",
+          state.linkPageTo ? `Link Page in “${state.linkPageTo}”` : "Link Page in Note",
+          "Alt+CmdOrCtrl+L",
+          { enabled: !!state.linkPageTo },
+        ),
         file("moveTo", "Move to…"),
         file("reveal", isMac ? "Show in Finder" : "Show in Folder"),
         { type: "separator" },

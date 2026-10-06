@@ -14,7 +14,14 @@ import {
   SourceViewIcon,
   TrashIcon,
   HistoryIcon,
+  LinkIcon,
+  OpenNoteIcon,
 } from "./Icons";
+import { SHOW_IN_FOLDER_LABEL } from "./settings/SettingsPrimitives";
+import { isMac } from "../utils/platform";
+
+/** Link Page in Note's key, as the menu bar's accelerator shows it. */
+const LINK_PAGE_KEY = isMac ? "⌥⌘L" : "Ctrl+Alt+L";
 import { shortcutLabel } from "./Tooltip";
 import { useSettings } from "../context/SettingsContext";
 import Menu, { MenuRule } from "./Menu";
@@ -46,6 +53,9 @@ const ContextMenu = memo(function ContextMenu({
   openFile,
   revealFile,
   trashFile,
+  // The file shown in the note's place: its ··· actions
+  // ({ openDefault, reveal, copyPath, copyPageLink | null, trash }).
+  viewedFile,
   // Version History (desktop): the ··· menu becomes the note's past in place.
   onVersionHistory,
   wordCount,
@@ -198,7 +208,7 @@ const ContextMenu = memo(function ContextMenu({
   // notes that embed it, since a rename rewrites no links).
   const fileItems = (path) => [
     {
-      label: "Open",
+      label: "Open in Default App",
       icon: <OpenLinkIcon />,
       action: () => {
         setCtxMenu(null);
@@ -206,7 +216,7 @@ const ContextMenu = memo(function ContextMenu({
       },
     },
     {
-      label: "Show in Finder",
+      label: SHOW_IN_FOLDER_LABEL,
       icon: <RevealIcon />,
       action: () => {
         setCtxMenu(null);
@@ -223,6 +233,33 @@ const ContextMenu = memo(function ContextMenu({
       },
       danger: true,
     },
+  ];
+
+  // ··· on a file shown in the note's place: its own app first, since that
+  // is what the viewer stands in for, then where it is, then the copies (a
+  // PDF's page link among them), and the Trash last, as a note's Delete is.
+  const run = (fn) => () => {
+    setCtxMenu(null);
+    fn?.();
+  };
+  const viewedItems = (v) => [
+    { label: "Open in Default App", icon: <OpenLinkIcon />, action: run(v.openDefault) },
+    { label: SHOW_IN_FOLDER_LABEL, icon: <RevealIcon />, action: run(v.reveal) },
+    { label: "Copy Path", icon: <CopyIcon />, rule: true, action: run(v.copyPath) },
+    ...(v.copyPageLink
+      ? [{ label: "Copy Link to This Page", icon: <LinkIcon />, action: run(v.copyPageLink) }]
+      : []),
+    ...(v.linkInNote
+      ? [
+          {
+            label: `Link Page in “${v.linkNoteName}”`,
+            icon: <OpenNoteIcon />,
+            hint: LINK_PAGE_KEY,
+            action: run(() => v.linkInNote(v.page)),
+          },
+        ]
+      : []),
+    { label: "Delete", icon: <TrashIcon />, rule: true, action: run(v.trash) },
   ];
 
   const items = isHeader
@@ -255,55 +292,57 @@ const ContextMenu = memo(function ContextMenu({
         ? [...noteItems(ctxMenu.id), deleteItem(ctxMenu.id)]
         : ctxMenu.type === "file"
           ? fileItems(ctxMenu.id)
-          : [
-              // Five items, each with its glyph, and no rule: the menu opens
-              // from the folder's own row, so the anchoring already says
-              // "here". Duplicate and Delete keep their noun, because each
-              // takes the whole tree, notes and other files alike. The glyphs
-              // are the ones the same actions already wear elsewhere.
-              {
-                label: "New note",
-                icon: <NewNoteIcon />,
-                action: () => {
-                  createNote(ctxMenu.id);
-                  setCtxMenu(null);
+          : ctxMenu.type === "viewed-file" && viewedFile
+            ? viewedItems(viewedFile)
+            : [
+                // Five items, each with its glyph, and no rule: the menu opens
+                // from the folder's own row, so the anchoring already says
+                // "here". Duplicate and Delete keep their noun, because each
+                // takes the whole tree, notes and other files alike. The glyphs
+                // are the ones the same actions already wear elsewhere.
+                {
+                  label: "New note",
+                  icon: <NewNoteIcon />,
+                  action: () => {
+                    createNote(ctxMenu.id);
+                    setCtxMenu(null);
+                  },
                 },
-              },
-              {
-                label: "New folder",
-                icon: <NewFolderIcon />,
-                action: () => {
-                  createFolder(ctxMenu.id);
-                  setCtxMenu(null);
+                {
+                  label: "New folder",
+                  icon: <NewFolderIcon />,
+                  action: () => {
+                    createFolder(ctxMenu.id);
+                    setCtxMenu(null);
+                  },
                 },
-              },
-              {
-                label: "Rename",
-                icon: <PencilIcon />,
-                action: () => {
-                  setRenamingFolder(ctxMenu.id);
-                  setCtxMenu(null);
+                {
+                  label: "Rename",
+                  icon: <PencilIcon />,
+                  action: () => {
+                    setRenamingFolder(ctxMenu.id);
+                    setCtxMenu(null);
+                  },
                 },
-              },
-              {
-                label: "Duplicate folder",
-                icon: <CopyIcon />,
-                action: () => {
-                  duplicateFolder(ctxMenu.id);
-                  setCtxMenu(null);
+                {
+                  label: "Duplicate folder",
+                  icon: <CopyIcon />,
+                  action: () => {
+                    duplicateFolder(ctxMenu.id);
+                    setCtxMenu(null);
+                  },
                 },
-              },
-              moveItem({ kind: "folder", path: ctxMenu.id }),
-              {
-                label: "Delete folder",
-                icon: <TrashIcon />,
-                action: () => {
-                  deleteFolder(ctxMenu.id);
-                  setCtxMenu(null);
+                moveItem({ kind: "folder", path: ctxMenu.id }),
+                {
+                  label: "Delete folder",
+                  icon: <TrashIcon />,
+                  action: () => {
+                    deleteFolder(ctxMenu.id);
+                    setCtxMenu(null);
+                  },
+                  danger: true,
                 },
-                danger: true,
-              },
-            ];
+              ];
 
   return (
     <Menu
