@@ -136,10 +136,10 @@ test("a note deleted in the app and put back from the Trash reappears", async ()
 
     await h.page.locator("[data-note-id]").filter({ hasText: title }).click({ button: "right" });
     await h.page.getByRole("menuitem", { name: "Delete", exact: true }).click();
-    await expect.poll(() => fs.existsSync(trashed), { timeout: 5_000 }).toBe(true);
-    await expect.poll(() => titles(h), { timeout: 5_000 }).toEqual(["Beta"]);
+    await expect.poll(() => fs.existsSync(trashed), { timeout: 5_000, intervals: [10] }).toBe(true);
 
-    // Finder's Put Back: the file returns with the bytes the app last wrote.
+    // Finder's Put Back: the file returns with the bytes the app last wrote,
+    // at once, so before the watch has looked (as on a busy machine).
     fs.renameSync(trashed, h.vault.file(`${title}.md`));
     await expect.poll(() => titles(h), { timeout: 5_000 }).toEqual(["Beta", title]);
     await h.openNote(title);

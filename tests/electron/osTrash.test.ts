@@ -21,7 +21,7 @@ let notesDir: string;
 let indexDir: string;
 
 function makeGuard() {
-  return { suppressUnlink: vi.fn(), releaseUnlink: vi.fn() };
+  return { suppressUnlink: vi.fn(), releaseUnlink: vi.fn(), unlinkDone: vi.fn() };
 }
 
 function writeLegacyMetadata(metadata: Record<string, unknown>) {
@@ -184,6 +184,8 @@ describe("trashManagedNote", () => {
     expect(trashItem).toHaveBeenCalledWith(notePath);
     expect(guard.suppressUnlink).toHaveBeenCalledWith(notePath);
     expect(guard.releaseUnlink).not.toHaveBeenCalled();
+    // The move is done: the watch forgets the file, so a Put Back is an add.
+    expect(guard.unlinkDone).toHaveBeenCalledWith(notePath);
     expect(fs.existsSync(notePath)).toBe(false);
     expect(fs.readFileSync(unsupportedPath, "utf-8")).toBe("Unsupported");
     expect(fs.existsSync(folder)).toBe(true);
@@ -221,6 +223,7 @@ describe("trashManagedNote", () => {
     expect(getIdIndex()["note-1"]).toBe("Important.md");
     expect(guard.suppressUnlink).toHaveBeenCalledWith(notePath);
     expect(guard.releaseUnlink).toHaveBeenCalledWith(notePath);
+    expect(guard.unlinkDone).not.toHaveBeenCalled();
   });
 
   it("refuses to trash an indexed file that is not Markdown", async () => {

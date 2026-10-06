@@ -37,6 +37,12 @@ export interface TreeWatcherOptions {
 
 export interface TreeWatcher {
   on(event: string, listener: (...args: string[]) => void): TreeWatcher;
+  /**
+   * Forget the file at `p`, which the app itself has removed, and look there
+   * again: whatever the watch finds is an add, even the same file back (a Put
+   * Back) before or after the watch last looked, which saw nothing new.
+   */
+  forget(p: string): void;
   close(): Promise<void>;
 }
 
@@ -242,6 +248,11 @@ export function watchTree(root: string, options: TreeWatcherOptions): TreeWatche
     on(event, listener) {
       emitter.on(event, listener);
       return api;
+    },
+    forget(p) {
+      if (closed) return;
+      known.delete(p);
+      schedule(p);
     },
     close() {
       closed = true;

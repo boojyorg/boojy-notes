@@ -112,4 +112,35 @@ for (const mode of ["native", "per directory"])
       await until("add alpha.md");
       await until("unlink Alpha.md");
     });
+
+    it("takes a file it was told to forget as an add, even back before it looked", async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-trash-"));
+      fs.writeFileSync(path.join(root, "a.md"), "a");
+      start();
+      await new Promise((r) => setTimeout(r, 100));
+      // The app's Trash move, and a Put Back of the same file (inode, size
+      // and mtime all kept) before the watch has looked at either.
+      fs.renameSync(path.join(root, "a.md"), path.join(outside, "a.md"));
+      watcher?.forget(path.join(root, "a.md"));
+      fs.renameSync(path.join(outside, "a.md"), path.join(root, "a.md"));
+      await until("add a.md");
+      expect(events).toEqual(["add a.md"]);
+      fs.rmSync(outside, { recursive: true, force: true });
+    });
+
+    it("looks again when told to forget: a Put Back it already passed over is an add", async () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), "boojy-trash-"));
+      fs.writeFileSync(path.join(root, "a.md"), "a");
+      start();
+      await new Promise((r) => setTimeout(r, 100));
+      fs.renameSync(path.join(root, "a.md"), path.join(outside, "a.md"));
+      fs.renameSync(path.join(outside, "a.md"), path.join(root, "a.md"));
+      // The watch looks, finds the file it knew, and says nothing; then the
+      // app's Trash call returns, late.
+      await new Promise((r) => setTimeout(r, 300));
+      expect(events).toEqual([]);
+      watcher?.forget(path.join(root, "a.md"));
+      await until("add a.md");
+      fs.rmSync(outside, { recursive: true, force: true });
+    });
   });
