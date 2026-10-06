@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- **A space typed in a callout's title or a table cell stays** — Since v0.14.0, pausing for a moment after typing a space in a callout's title or a table cell made the space vanish, so the next word joined the last (`Heads up` became `Headsup`). The space now stays, however long you pause.
+
 ## v0.14.0 — 2026-10-06
 
 ### Improvements
