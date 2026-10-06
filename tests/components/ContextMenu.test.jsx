@@ -34,6 +34,7 @@ vi.mock("../../src/context/SettingsContext", () => ({
 }));
 
 // ── Import component after mocks ────────────────────────────────────────────
+import { SHOW_IN_FOLDER_LABEL } from "../../src/components/settings/SettingsPrimitives";
 import ContextMenu from "../../src/components/ContextMenu.jsx";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -413,7 +414,7 @@ describe("the highlight belongs to one open", () => {
 describe("ContextMenu for a file that is not a note", () => {
   afterEach(cleanup);
 
-  it("offers Open, Show in Finder and Delete, each with its glyph, and nothing that renames", () => {
+  it("offers Open in Default App, Show in Finder and Delete, each with its glyph, and nothing that renames", () => {
     const props = {
       ...baseProps(),
       ctxMenu: { x: 10, y: 10, type: "file", id: "Uni/handout.pdf" },
@@ -423,14 +424,49 @@ describe("ContextMenu for a file that is not a note", () => {
     };
     const { getAllByRole, getByRole } = render(<ContextMenu {...props} />);
     const items = getAllByRole("menuitem");
-    expect(items.map((i) => i.textContent)).toEqual(["Open", "Show in Finder", "Delete"]);
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Open in Default App",
+      SHOW_IN_FOLDER_LABEL,
+      "Delete",
+    ]);
     for (const item of items) expect(item.querySelector("svg")).not.toBeNull();
-    fireEvent.click(getByRole("menuitem", { name: "Open" }));
+    fireEvent.click(getByRole("menuitem", { name: "Open in Default App" }));
     expect(props.openFile).toHaveBeenCalledWith("Uni/handout.pdf");
-    fireEvent.click(getByRole("menuitem", { name: "Show in Finder" }));
+    fireEvent.click(getByRole("menuitem", { name: SHOW_IN_FOLDER_LABEL }));
     expect(props.revealFile).toHaveBeenCalledWith("Uni/handout.pdf");
     fireEvent.click(getByRole("menuitem", { name: "Delete" }));
     expect(props.trashFile).toHaveBeenCalledWith("Uni/handout.pdf");
+  });
+
+  it("··· on a viewed PDF: its app, its folder, its path, a link to the page, the Trash", () => {
+    const viewedFile = {
+      openDefault: vi.fn(),
+      reveal: vi.fn(),
+      copyPath: vi.fn(),
+      copyPageLink: vi.fn(),
+      trash: vi.fn(),
+    };
+    const props = {
+      ...baseProps(),
+      ctxMenu: { x: 10, y: 10, type: "viewed-file", id: "Uni/Lecture 3.pdf" },
+      viewedFile,
+    };
+    const { getAllByRole, getByRole, rerender } = render(<ContextMenu {...props} />);
+    expect(getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "Open in Default App",
+      SHOW_IN_FOLDER_LABEL,
+      "Copy Path",
+      "Copy Link to This Page",
+      "Delete",
+    ]);
+    fireEvent.click(getByRole("menuitem", { name: "Copy Link to This Page" }));
+    expect(viewedFile.copyPageLink).toHaveBeenCalled();
+    expect(props.setCtxMenu).toHaveBeenCalledWith(null);
+    // A picture has no pages to link to.
+    rerender(<ContextMenu {...props} viewedFile={{ ...viewedFile, copyPageLink: null }} />);
+    expect(getAllByRole("menuitem").map((i) => i.textContent)).not.toContain(
+      "Copy Link to This Page",
+    );
   });
 
   it("Copy copies the note it was opened for, and closes", () => {

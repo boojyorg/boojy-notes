@@ -116,6 +116,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   // A file that is not a note, by its vault-relative path.
   trashFile: (relPath) => ipcRenderer.invoke("trash-file", relPath),
+  // Its bytes, to show it in the note's place (a PDF); null if it cannot be read.
+  readVaultFile: (relPath) => ipcRenderer.invoke("read-vault-file", relPath),
 
   // Folders are directories. Paths are vault-relative with `/` separators;
   // each mutation answers with the path the disk actually holds.

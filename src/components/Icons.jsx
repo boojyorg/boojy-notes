@@ -93,6 +93,7 @@ import {
   Table as LuTable,
   TextQuote as LuTextQuote,
   Trash as LuTrash,
+  LayoutList as LuLayoutList,
   TriangleAlert as LuTriangleAlert,
   Type as LuType,
   X as LuX,
@@ -170,6 +171,8 @@ export const SwitchIcon = navIcon(LuArrowRightLeft);
 export const SearchIcon = navIcon(LuSearch);
 export const NewNoteIcon = navIcon(LuSquarePen);
 export const NewFolderIcon = navIcon(LuFolderPlus);
+/** A viewed PDF's page column: small pages beside their lines. */
+export const PageColumnIcon = navIcon(LuLayoutList, ICON_CONTROL);
 /** The Notes row's Sort control: one glyph whatever the mode, since
  *  the row is hidden at rest and the menu is what says which mode is on. */
 export const SortIcon = navIcon(LuArrowUpDown);

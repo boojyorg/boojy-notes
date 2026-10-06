@@ -576,6 +576,58 @@ ${tagPillCss(theme)}
           background: ${theme.codeSelection};
           -webkit-text-fill-color: transparent;
         }
+        /* A PDF page's words, laid invisibly over its picture so they can be
+           selected and copied (PDF.js's TextLayer, its own rules trimmed to
+           what this app draws: no search highlights). Each span is placed and
+           sized by the variables PDF.js writes; the page sets
+           --total-scale-factor. The selection is the note's teal. */
+        .pdf-text {
+          position: absolute;
+          inset: 0;
+          overflow: clip;
+          line-height: 1;
+          text-align: initial;
+          letter-spacing: normal;
+          word-spacing: normal;
+          text-size-adjust: none;
+          forced-color-adjust: none;
+          transform-origin: 0 0;
+          z-index: 0;
+          --min-font-size: 1;
+          --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+          --min-font-size-inv: calc(1 / var(--min-font-size));
+        }
+        .pdf-text :is(span, br) {
+          color: transparent;
+          position: absolute;
+          white-space: pre;
+          cursor: text;
+          transform-origin: 0% 0%;
+          user-select: text;
+        }
+        .pdf-text > :not(.markedContent),
+        .pdf-text .markedContent span:not(.markedContent) {
+          z-index: 1;
+          --font-height: 0;
+          font-size: calc(var(--text-scale-factor) * var(--font-height));
+          --scale-x: 1;
+          --rotate: 0deg;
+          transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+        }
+        .pdf-text .markedContent {
+          display: contents;
+        }
+        .pdf-text span[role="img"] {
+          user-select: none;
+          cursor: default;
+        }
+        .pdf-text ::selection {
+          background: ${bandFill(theme.ACCENT.primary, theme.name)};
+          color: transparent;
+        }
+        .pdf-text br::selection {
+          background: transparent;
+        }
         .source-layer {
           position: absolute;
           inset: 0;

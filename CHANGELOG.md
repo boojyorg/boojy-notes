@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- **PDFs and pictures open inside Boojy Notes** — Click a PDF or a picture in the sidebar, in Search, or in a link, and it opens where a note would, instead of in Preview. A PDF's pages scroll on a light grey ground; ← and →, Page Up and Page Down, or Space step one page at a time, and the page number at the top right shows where you are — click it, type another and press Enter to go there. The zoom figure beside it opens a small menu: − and + (the − and + keys too) zoom in steps and leave the menu open, then Fit Width, Fit Page and Actual Size. A pinch or ⌘-scroll zooms as well; ⌘+ and ⌘− still change the app's size. Each file remembers its zoom and the page you left it on. You can select a slide's words and copy them into a note. The button left of the zoom shows every page small down the left, the one you are on ringed, and a click goes to that page; it tucks itself away when the window is narrow. In the ··· menu, Copy Link to This Page puts `[[Lecture 3.pdf#page=12]]` on the clipboard, and clicking that link in a note opens the PDF at page 12, as Obsidian's links do. ⌘[ and ⌘] flip between the PDF and your notes and land back on the same page. A picture fits the window and a click on it shows its real size; a file the app can't show, such as slides or a Word document, gets a card with Open in Default App and Show in Finder. The ··· menu also has Open in Default App, Show in Finder, Copy Path and Delete, and right-clicking a file in the sidebar now says Open in Default App.
+
 ### Bug Fixes
 
 - **A space typed in a callout's title or a table cell stays** — Since v0.14.0, pausing for a moment after typing a space in a callout's title or a table cell made the space vanish, so the next word joined the last (`Heads up` became `Headsup`). The space now stays, however long you pause.

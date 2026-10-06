@@ -7,10 +7,9 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
 
 `src/constants/themes.js` is the only colour authority. Never hardcode a hex in a component.
 
-- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. Existing users start on Light, a fresh install on
-  System.
-- Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live; a
-  judged value goes into `themes.js`.
+- Product terms Light / Dark / System; stored keys stay `day` / `night` / `auto`. A fresh
+  install starts on System.
+- Neutral palettes; teal is the identity. `?tweak` (dev only) overrides live.
 - **Use surfaces by role**: `BG.editor` sheet, `BG.elevated` menus/modals, `BG.standard`
   sidebar, `BG.surface` content hover, `BG.hover` row/menu hover *and* selected, `BG.divider`
   borders. Text is `primary` / `secondary` / `muted`.
@@ -25,8 +24,7 @@ is in git and `CHANGELOG.md`. Editor behaviour: `editor.md`. Files: `files-and-w
   element (over a selection, never focused: keys in capture), rows as pills, the highlight state
   alone. A choice is ticked. A surface it cannot be uses `menuSurface` and `MenuRule`. `Menu.test.tsx`.
 - **Every ink reads on every ground it can sit on** (4.5:1 words, 3:1 a meaningful glyph),
-  hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts` (axe,
-  both themes).
+  hover included; a label on a filled button takes its ground's `on…` token. `themeContrast.test.js`, `e2e/accessibility.spec.ts`.
 - **The focus ring is `--boojy-focus-ring` (`ACCENT.text`)**, never the mark (2:1 on Light);
   tree rows draw it inset. Keyboard focus only; never `outline: none` on a control.
 
@@ -56,18 +54,16 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
 
 ## Window chrome
 
-- The window is created hidden and shown on `ready-to-show` (else an empty canvas).
-  `first-paint.spec.ts` (CI only).
+- The window is shown on `ready-to-show` (else an empty canvas). `first-paint.spec.ts`.
 - **No title bar** (`hiddenInset`); the traffic lights sit in the sidebar header. In full screen
   they hide: ask `trafficLightsShown(fullScreen)`, never `isElectronMac` alone.
 - **Windows and Linux: `WindowStrip` above the Mac's row** (`hasWindowStrip`): File, Edit,
   Format, View open the real menus (`popup-menu`); one open, the pointer on another name opens
-  it. Window and Help are the Mac's, so four fit a narrow sidebar. The system's buttons are the
+  it. Window and Help are the Mac's. The system's buttons are the
   overlay; each column's colour, the divider through it; no title. Fixed chrome stands
   `WINDOW_STRIP_H` lower.
 - **A drag rectangle must never lie under a control earlier in the DOM**: Chromium applies
-  regions in DOM order, so a later `drag` overrides an earlier `no-drag` (Playwright never sees
-  it). Regions stand down while a popup is open; a surface that floats into the row (the
+  regions in DOM order, so a later `drag` overrides an earlier `no-drag`. Regions stand down while a popup is open; a surface that floats into the row (the
   selection toolbar) is `no-drag`. `chrome-row.spec.ts`.
 - One active note; no tabs. Leave the `resolveInitialActiveNote()` migration read path.
 - The wordmark opens Settings. No About, Help or Recently Deleted.
@@ -81,9 +77,9 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   bypasses the app's history); no zoom roles (they steal the UI scale's keys); Reload is dev
   only. `app-menu.spec.ts`.
 - **Every chrome control names itself with one chip, never a native `title`** (`Tooltip.tsx`):
-  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface
-  (`Z.TOOLTIP`), placed via `cssZoom`. No shadow. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
-- **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes opened
+  after `TOOLTIP_REST_MS`, at once while warm; portalled to `body` above every surface,
+  placed via `cssZoom`. A shortcut shown must match `useAppKeyboard`. `chrome-tooltips.spec.ts`.
+- **Shell keys live in `useAppKeyboard`.** `⌘[`/`⌘]` (Alt+←/→ elsewhere) walk the notes and files opened
   (`useNoteHistory`, memory only). `⌘K` is link, never Search. `⇧⌘L`/`E`/`R` align a
   table column, claimed only in a cell; Go to Sidebar is `⌃⌘S`, since `⇧⌘E` is taken. Sort has none.
 - **The collapsed header carries the sidebar's three controls**; while the sidebar shows, it
@@ -96,8 +92,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   Switching never asks.
 - **Spelling: a Mac's system chooses the language**, so that row opens Keyboard settings, never a
   dead control; elsewhere, languages are ticked in a menu. `SpellingSection.test.tsx`.
-- **Interface size is one segmented control; every press applies at once** — no timer in this
-  row (a debounce overwrote newer values). The figure is an editable
+- **Interface size is one segmented control; every press applies at once** — no timer (a debounce overwrote newer values). The figure is an editable
   field committed on Enter/blur; an outside change cancels an unfinished edit. `stepScale` is
   the one rule shared with `Cmd+±`.
 - **Settings keeps the scale it opened with** (`zoom: openedAt / uiScale`), so the pane holds
@@ -106,8 +101,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   scale keys are the one shortcut over Settings. `interface-size.spec.ts`, `settings-dialog.spec.ts`.
 - **`vw`/`vh` ignore the UI scale**: anything sized against the viewport divides by it
   (`atScale()`).
-- **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`;
-  judge chrome after Cmd+0. A scale shortcut always answers with `UiScaleChip`.
+- **One zoom system**: the app's UI scale. `main.js` resets Chromium's zoom on `dom-ready`. A scale shortcut always answers with `UiScaleChip`.
 - **First-run setup** (`SetupDialog`): every way out saves the choice and never shows again;
   nothing is written until the first keystroke. `first-run.spec.ts`.
 
@@ -137,8 +131,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   over a control. What fits is measured by an invisible twin (`utils/pathCrumbs.ts`).
 - **The note's first line sits on the New note row's baseline, for every block type.** The
   column padding is one number (`COLUMN_TOP`, `utils/typeBaseline.ts`); a first block reaches up
-  (`firstBlockLift`) rather than pushing the line down. A baseline is not canvas
-  `fontBoundingBoxAscent`; probe with a zero-size inline-block. A note opens scrolled to the
+  (`firstBlockLift`) rather than pushing the line down. A note opens scrolled to the
   top. `note-path.spec.ts`, `editor-scroll.spec.ts`.
 
 ## A folder crumb opens the sidebar's tree under itself
@@ -147,7 +140,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   (`crumbScope`); `…` shows the root. A root note carries a folder glyph so the path always has
   a clickable location. Click only, never hover.
 - Tree keys on a document listener; **a press outside closes and is not swallowed** (no
-  backdrop: a first press on a top-row button read as dead). Fixed width.
+  backdrop: a first press on a top-row button read as dead).
 - **Rows drag with the sidebar's drag** (`useSidebarDrag`); the head row (`data-drop-scope`) is
   the drop "up into this folder". Only folder rows and the head row are targets.
 - **The same surface is the Move to… picker** (`pick`): folders only, root first, current
@@ -167,11 +160,10 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   and ⌘O open `VaultMenu`, a switcher; Settings manages. **Both A–Z (`vaultEntries`).** A
   Settings row: glyph, name, path cut in the middle, the open one's tick, ··· on hover (darkens,
   no box); a click switches. Its menu leaves out what cannot work. `vault-switcher.spec.ts`.
-- **A file that is not a note** follows its folder's notes, extension muted; a click opens it in
-  its own app; menu Open, Show in Finder, Delete; never renamed or dragged. The attachment
-  store is the root's last row.
-- The wordmark is one generated asset per theme, never the master PNG; regenerate both with
-  `dev/wordmarks.sh` when `MARK` or `TEXT.primary` changes.
+- **A file that is not a note** follows its folder's notes, extension muted; a click shows it
+  in the note's place; menu Open in Default App, Show in Finder, Delete; never
+  renamed or dragged. The attachment store is the root's last row.
+- The wordmark is generated per theme (`dev/wordmarks.sh`), never the master PNG.
 - **Alignment**: `SPINE` and `TEXT_COL` in `constants/layout.js`, shared with the popup; a
   note's title starts where a folder at its depth puts its glyph; `SIDEBAR_TREE_INSET` is the
   sidebar's own and never baked into the shared constants.
@@ -191,8 +183,7 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   row. Focus returns to the row after a rename, its neighbour after a delete.
   `tree-keyboard.spec.ts`.
 - **Sort is a preference, not an arrangement**: Most recent means most recently *modified*
-  (`recencyOf()`), never opened, so opening never reorders. `sortNoteIds` returns the same
-  reference when already sorted.
+  (`recencyOf()`), never opened, so opening never reorders.
 - **Drag means location, not order**: dragging moves the file or directory. A drag starts past
   `DRAG_THRESHOLD`, no hold. Dropping on the editor doesn't open the note.
 
@@ -211,6 +202,14 @@ tiers. Hit boxes are `CHROME_BTN`. A row's icon action (`RowAction`) darkens, ne
   (`flushSearch`). The sidebar never reads the query.
 - Opening a hit tints its words (`utils/searchHighlight.ts`: a CSS highlight, never the DOM).
   `search-palette.spec.ts`.
+
+## A file in the note's place
+
+- **A PDF, a picture, or a card for any other file stands where the note would** (`FileView`,
+  `useFileView`); no note, not even a draft, is open meanwhile. `file-view.spec.ts`.
+- PDF.js draws it (loaded on first use), one scale for every page, its words a `.pdf-text`
+  layer. ⌘± stays the UI scale. Zoom and page are kept per file, off the vault.
+- Its controls stand left of the ··· and the path ends before them (`chromePathRightInset`).
 
 ## Narrow desktop is still desktop
 

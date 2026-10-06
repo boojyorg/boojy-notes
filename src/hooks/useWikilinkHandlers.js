@@ -6,6 +6,8 @@ import {
   wikilinkStatus,
 } from "../utils/wikilinkTarget";
 import { editBlocks } from "../utils/editBlocks";
+import { fileForTarget } from "../utils/fileView";
+import { baseName } from "../utils/otherFiles";
 
 /**
  * Wikilink wiring for the editor:
@@ -25,6 +27,10 @@ import { editBlocks } from "../utils/editBlocks";
  * on the link (`openLinkFixerRef`) with Create note or the candidates as its
  * rows, and nothing is made or guessed until a row is chosen. A target of another
  * form that resolves to nothing (a heading in this note) says so.
+ *
+ * **A target naming a file that is not a note** (`[[Lecture 3.pdf#page=12]]`,
+ * Obsidian's form) opens it in the note's place, at the page it asks for
+ * (`fileForTarget`), and is drawn as a live link, not a broken one.
  */
 export function useWikilinkHandlers({
   noteData,
@@ -40,6 +46,9 @@ export function useWikilinkHandlers({
   showToast,
   // `(el, { fix: true })`: the picker on a link that names no note, or two.
   openLinkFixerRef,
+  // The vault's files that are not notes, and the way to show one in place.
+  otherFiles = [],
+  showFile,
 }) {
   // Note title set for broken wikilink detection (its only consumer is
   // inlineMarkdownToHtml's `has`)
@@ -57,6 +66,11 @@ export function useWikilinkHandlers({
       if (n._draft) continue;
       for (const k of noteLinkKeys(n)) counts.set(k, (counts.get(k) || 0) + 1);
     }
+    // A file answers to its name and its path, as a note does.
+    for (const f of otherFiles) {
+      for (const k of new Set([baseName(f.path).toLowerCase(), f.path.toLowerCase()]))
+        counts.set(k, (counts.get(k) || 0) + 1);
+    }
     const key = [...counts.entries()]
       .filter(([k, c]) => c === 1 || k.includes("/"))
       .map(([k]) => k)
@@ -64,12 +78,17 @@ export function useWikilinkHandlers({
       .join("\0");
     lastTitlesKey.current = key;
     return key;
-  }, [noteData]);
+  }, [noteData, otherFiles]);
   const noteTitleSet = useMemo(() => new Set(noteTitlesKey.split("\0")), [noteTitlesKey]);
 
   // Wikilink click handler
   const handleWikilinkClick = useCallback(
     (target, el = null) => {
+      const file = showFile ? fileForTarget(target, otherFiles) : null;
+      if (file) {
+        showFile(file.path, file.page);
+        return;
+      }
       const status = wikilinkStatus(target, noteDataRef.current);
       if (status.kind === "note") {
         openNote(status.id);
@@ -80,7 +99,7 @@ export function useWikilinkHandlers({
         openLinkFixerRef.current(el, { fix: true });
       else showToast?.(unresolvedWikilinkMessage(parsed), "info");
     },
-    [openNote, noteDataRef, showToast, openLinkFixerRef],
+    [openNote, noteDataRef, showToast, openLinkFixerRef, otherFiles, showFile],
   );
 
   // Wikilink autocomplete select handler

@@ -385,6 +385,8 @@ function offloadedNote(filePath, notesDir, stat) {
  * for every note behind it; it is listed instead, as unreadable.
  */
 const MAX_NOTE_BYTES = 10 * 1024 * 1024;
+/** The largest file shown in the note's place; a bigger one opens in its own app. */
+const MAX_VIEWED_FILE_BYTES = 500 * 1024 * 1024;
 
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
@@ -880,6 +882,20 @@ function registerNoteFileIPC(getMainWindow, getNotesDir, watcher) {
   ipcMain.handle("open-path", async (_event, absolutePath) => {
     const abs = insideVault(getNotesDir(), absolutePath);
     if (abs && fs.existsSync(abs)) await shell.openPath(abs);
+  });
+
+  // A file shown in the note's place (a PDF): its bytes, for the renderer to
+  // draw. Inside the vault only, and only a file; null for anything else, or
+  // past the cap, so a stray path can never stream the disk into the window.
+  ipcMain.handle("read-vault-file", async (_event, relPath) => {
+    const abs = typeof relPath === "string" ? insideVault(getNotesDir(), relPath) : null;
+    const stat = abs ? fs.statSync(abs, { throwIfNoEntry: false }) : null;
+    if (!stat?.isFile() || stat.size > MAX_VIEWED_FILE_BYTES) return null;
+    try {
+      return await fs.promises.readFile(abs);
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle("show-item-in-folder", (_event, absolutePath) => {

@@ -10,7 +10,7 @@ import { cssZoom } from "../utils/domHelpers";
 import {
   CHROME_TOP,
   CHROME_BTN,
-  CHROME_PATH_RIGHT_INSET,
+  chromePathRightInset,
   ChromeButton,
   chromePathInset,
 } from "./EditorChrome";
@@ -175,6 +175,7 @@ function useCrumbFit(bandRef, twinRef, parents, name) {
  * @param {(id: string) => void} [props.onOpenNote] opens a note chosen in the popup
  * @param {(e: import("react").PointerEvent<HTMLElement>) => void} [props.onRowPointerDown]
  *   the sidebar's press-and-hold drag, so the popup's rows can be dragged onto its folders
+ * @param {number} [props.rightControlsW] a viewed file's controls' width, left of the ···
  * @param {import("react").ReactNode} props.children the title field
  */
 export default function NotePath({
@@ -186,6 +187,10 @@ export default function NotePath({
   activeNote = null,
   onOpenNote,
   onRowPointerDown,
+  // A viewed file's controls left of the ···, measured: the band ends before them.
+  rightControlsW = 0,
+  // The pane keeps a scrollbar lane at its right (a note); a viewed file's does not.
+  lane = true,
   children,
 }) {
   const { theme } = useTheme();
@@ -225,12 +230,12 @@ export default function NotePath({
   }, [menu]);
 
   const padLeft = chromePathInset(collapsed, fullScreen);
-  const padRight = CHROME_PATH_RIGHT_INSET;
+  const padRight = chromePathRightInset(rightControlsW);
   // The band sits inside the scroller, whose scrollbar lane is always kept at
   // its right, so its right padding is the inset less the lane: the band ends
   // where it always did on screen, and the bias below, measured from the
   // window's edges, keeps the path on the pane's centre.
-  const bandPadRight = padRight - SCROLLBAR_W;
+  const bandPadRight = lane ? padRight - SCROLLBAR_W : padRight;
   // The pane's centre sits left of the band's centre by half of this when the
   // left group is the wider (it always is on the desktop); a positive value
   // is the right spacer's head start, a negative one the left's.

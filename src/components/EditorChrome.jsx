@@ -12,6 +12,7 @@ import {
   CloseIcon,
 } from "./Icons";
 import DeletedNoteButton from "./DeletedNoteButton";
+import FileControls from "./FileControls";
 import { hasWindowStrip, isElectronMac } from "../utils/platform";
 import { WINDOW_STRIP_H as STRIP_H } from "../constants/layout";
 import { BTN_GAP, CHROME_BTN, MAC_TRAFFIC_INSET } from "../constants/layout";
@@ -108,6 +109,15 @@ export const chromePathInset = (collapsed, fullScreen = false) =>
 export const CHROME_PATH_RIGHT_INSET = CHROME_INSET + groupWidth(2) + PATH_AIR;
 
 /**
+ * The same for a viewed file, whose controls stand where `</>` would: the
+ * ···, their measured width beside it, and the air.
+ */
+export const chromePathRightInset = (controlsW) =>
+  controlsW > 0
+    ? CHROME_INSET + CHROME_BTN + BTN_GAP + controlsW + PATH_AIR
+    : CHROME_PATH_RIGHT_INSET;
+
+/**
  * The shell's shortcuts as the chips show them: the map in useAppKeyboard
  * and the menu's accelerators (electron/appMenu.ts), and the three must agree.
  */
@@ -142,6 +152,9 @@ export function ChromeButton({
   // tag pill's teal wash, a step stronger under the pointer. Never the grey
   // of hover, which reads as a hovered button.
   lit,
+  // A panel that is open (a PDF's page column): the glyph alone in the accent
+  // ink, no wash, quieter than a mode.
+  on,
   children,
   style,
   ...rest
@@ -150,7 +163,7 @@ export function ChromeButton({
   const { BG, TEXT, ACCENT } = theme;
   const tip = useTooltip();
   const restBg = lit ? tagPillGround(theme) : active ? BG.surface : "none";
-  const restInk = lit ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
+  const restInk = lit || on ? ACCENT.text : active ? TEXT.primary : TEXT.muted;
   const ref = useRef(null);
   return (
     <button
@@ -203,7 +216,7 @@ export function ChromeButton({
         tip.handlers.onMouseEnter();
         if (disabled) return;
         e.currentTarget.style.background = lit ? tagPillGround(theme, true) : BG.surface;
-        e.currentTarget.style.color = lit ? ACCENT.text : TEXT.primary;
+        e.currentTarget.style.color = lit || on ? ACCENT.text : TEXT.primary;
       }}
       onMouseLeave={(e) => {
         tip.handlers.onMouseLeave();
@@ -236,6 +249,8 @@ export default function EditorChrome({
   // question typing into it asks. { time, moment, listOpen, onToggleList,
   // onBack, ask, onRestore, onDismissAsk }
   past,
+  // A file shown in the note's place (useFileView): its controls stand left of the ···.
+  fileView = null,
 }) {
   const { sidebarVisible, fullScreen, toggleSidebar, sourceView } = useLayout();
   const { theme } = useTheme();
@@ -410,13 +425,14 @@ export default function EditorChrome({
             <SourceViewIcon />
           </ChromeButton>
         )}
+        {fileView && <FileControls view={fileView} />}
         <ChromeButton
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             // Anchor the menu under the button, right-aligned to it.
             onNoteActions({ x: r.right, y: r.bottom + 4 });
           }}
-          label={activeNote ? "Note actions" : "App options"}
+          label={activeNote ? "Note actions" : fileView ? "File actions" : "App options"}
         >
           <MoreHorizontalIcon />
         </ChromeButton>

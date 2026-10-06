@@ -22,6 +22,7 @@ import EditableBlock from "./EditableBlock";
 import OffloadedNoteView from "./OffloadedNoteView";
 import PastVersionView from "./PastVersionView";
 import UnreadableNoteView from "./UnreadableNoteView";
+import FileView from "./FileView";
 import { useRhythm } from "../tokens/rhythm";
 import BlockErrorBoundary from "./BlockErrorBoundary";
 import BlockDragHandle, { HANDLE_GAP } from "./BlockDragHandle";
@@ -187,6 +188,11 @@ const EditorArea = memo(
     offloaded,
     // A note whose file cannot be opened as text: said so, never shown empty.
     unreadable,
+    // A file that is not a note, shown in the note's place (useFileView), and
+    // the card's two ways on for one it can't show.
+    fileView = null,
+    onOpenFileDefault,
+    onRevealFile,
   }) {
     const rhythm = useRhythm();
     const {
@@ -951,7 +957,11 @@ const EditorArea = memo(
     const colMargin = `max(0px, calc((${editorW} - ${colMax}) / 2))`;
     // Memoised so the band's measuring effect keys on the folder, not on a
     // fresh array every render.
-    const folder = deletedNote ? deletedNote.item.folder : note?.folder;
+    const folder = deletedNote
+      ? deletedNote.item.folder
+      : fileView
+        ? fileView.rel.slice(0, Math.max(0, fileView.rel.lastIndexOf("/")))
+        : note?.folder;
     const parents = useMemo(() => parentFolders(folder), [folder]);
     const titleField = note ? (
       <div
@@ -1093,16 +1103,20 @@ const EditorArea = memo(
           // styled bar takes layout width on macOS, so a note crossing the
           // fold (or a switch to the Markdown view, whose height differs)
           // narrowed the pane and moved the centred path by half a bar.
-          scrollbarGutter: "stable",
+          // A viewed file scrolls its own pages, so the pane keeps no lane.
+          scrollbarGutter: fileView ? "auto" : "stable",
+          ...(fileView ? { overflowY: "hidden" } : null),
           background: editorBg,
           position: "relative",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {(note || deletedNote) && (
+        {(note || deletedNote || fileView) && (
           <NotePath
             parents={parents}
-            name={deletedNote ? deletedNote.item.name : note.title}
+            name={deletedNote ? deletedNote.item.name : fileView ? fileView.name : note.title}
+            lane={!fileView}
+            rightControlsW={fileView?.controlsWidth ?? 0}
             collapsed={!sidebarVisible}
             fullScreen={fullScreen}
             bg={editorBg}
@@ -1113,6 +1127,18 @@ const EditorArea = memo(
             {deletedNote ? (
               <span data-deleted-title style={{ color: theme.TEXT.primary }}>
                 {deletedNote.item.name || "Untitled"}
+              </span>
+            ) : fileView ? (
+              <span
+                data-file-title
+                style={{
+                  color: theme.TEXT.primary,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {fileView.name}
               </span>
             ) : (
               titleField
@@ -1515,6 +1541,8 @@ const EditorArea = memo(
               />
             )}
           </div>
+        ) : fileView ? (
+          <FileView view={fileView} openFile={onOpenFileDefault} revealFile={onRevealFile} />
         ) : (
           <div
             style={{
@@ -1547,6 +1575,7 @@ const EditorArea = memo(
     if (prev.deletedNote !== next.deletedNote) return false;
     if (prev.offloaded !== next.offloaded) return false;
     if (prev.unreadable !== next.unreadable) return false;
+    if (prev.fileView !== next.fileView) return false;
 
     // The selection toolbar is an interaction, not a keystroke, and it must
     // paint now: applying a format re-reads the block (which sets the

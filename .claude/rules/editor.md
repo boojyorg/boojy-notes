@@ -92,14 +92,14 @@ app's, made through state.**
 ## Links: the caret stays outside
 
 - **A caret at a link's edge rests on a U+200B inside a `caret-anchor` span**, placed only by
-  `placeCaret`: Chromium canonicalises an edge caret to inside the link and the next keystroke
-  rewrote a wikilink's alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
+  `placeCaret`: Chromium put an edge caret inside the link, and typing rewrote the alias. Walkers drop U+200B only inside a `caret-anchor`; elsewhere it is
   the file's byte. Never strip it by value; never place a caret bypassing `placeCaret`.
 - **The browser's own caret is fixed at the keystroke** (`beforeinput` in `useEditorFocusUX`:
   `caretOutOfLinkEnd`/`Start`), never on `selectionchange`, which would trap ArrowLeft.
 - **A wikilink click opens the note its target names; it never guesses or creates**
   (`utils/wikilinkTarget.ts`, shared by click, picker and the broken mark). An explicit path is
   the path. A name two notes share, or none, draws dashed and opens the link picker in fix mode.
+  A vault file's name opens it in the note's place, at `#page=N` (`fileForTarget`).
   Rename and move rewrite no links yet (backlinks will). `link-resolution.spec.ts`.
 - **One link picker** (`LinkPicker.tsx`) for Cmd+K, the toolbar, `[[`, Edit link and an
   unresolved click: address, notes, `Create note` (doesn't open it). Writes `[words](url)`, a
@@ -243,12 +243,12 @@ never holds a byte sequence the syntax cannot.**
   Chromium's `Cmd+B` must never run in a field. `special-block-fields.spec.ts`.
 - **A field repaints only when it doesn't hold the ref's latest text** (`useOwnedField`);
   structural operations reshape the block as the ref holds it (`updateTableRows`).
-- The serializer enforces the syntax: a newline in a cell is `<br>`, in a callout title a space.
+- The serializer enforces the syntax: a cell's newline is `<br>`, a callout title's a space.
 
 ## Code blocks
 
 Every `.code-line` takes at least `1lh` (or the layers drift). `fenceSource` keeps authored
-fences, including an absent closer; the editor never normalises code. **The info string is kept
+fences, an absent closer too; code is never normalised. **The info string is kept
 as typed** (`js` stays `js`) and resolved only for display (`canonicalLang`); re-picking the
 same language writes nothing.
 `code-language.spec.ts`.
@@ -273,7 +273,7 @@ same language writes nothing.
   scroller clips); a carried row passes a neighbour at its middle; one write, on drop.
   `table-handles.spec.ts`. In a cell `⌘⇧↑/↓` moves the row, `⌥⇧⌘←/→` the column (`⌘⇧←/→`
   stays select-to-edge).
-- Content-sized, then scrolling; inserts take the caret. `table-block.spec.ts`.
+- Content-sized, then scrolling. `table-block.spec.ts`.
 
 ## Whole-block selection
 

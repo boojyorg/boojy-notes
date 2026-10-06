@@ -153,6 +153,7 @@ declare global {
         clock24h: () => Promise<boolean | null>;
       };
       trashFile: (relPath: string) => Promise<{ trashed: boolean }>;
+      readVaultFile: (relPath: string) => Promise<Uint8Array | null>;
 
       // Folders are directories. Vault-relative `/` paths; each mutation
       // answers with the path the disk holds (sanitised, de-duplicated).
