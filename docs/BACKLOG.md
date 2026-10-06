@@ -29,17 +29,21 @@ more than any feature nobody else has. That is a product hypothesis, not validat
 - **Beta is desktop-first, and for Tyr and a few friends**: local files, no account, no sync.
   There is no rush to a public launch; the aim is the best product for daily use. Personal
   tools only; collaboration is excluded.
-- **Before any cloud work, every area reaches a solid 8/10.** The scorecard of 2026-09-24 (Tyr
-  and Claude agreed): editing 7.5, files and safety 6.5, tables 5.5, search 6.5, organisation 7,
-  keyboard 5, feel and motion 6, accessibility 5, repo and tests 7.5, public face 5. The Beta
-  sections below are that phase, and repo and tests reach 8 through the Technical debt list (the
-  lint warnings, the dependency majors, CI hygiene, secret scanning). It ends when a re-score
-  puts every row at 8. **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety
-  7.5 (left: why Put Back is sometimes missed, the corpus run on two outside vaults, the rename
-  and temporary-file crash windows); repo and tests holds at 7.5 (left: the hook-dependency
-  audit and the small lint warnings, the two flaky macOS tests, Actions pinned by SHA). **Then,
-  in order:** cloud sync between desktop and web, with the web build working well on a phone;
-  a mobile app; a public launch.
+- **Sync with the phone is the next goal, after Beta's release requirements** (Tyr,
+  2026-10-06): write on the laptop, read and write the same notes on an Android phone, and back.
+  It matters more to daily use than any missing desktop feature. Before sync work starts, only
+  the release requirements below and files and safety at 8/10; the other rows of the scorecard
+  and the Beta candidates (Word import, PDF export, the public-face batch, backlinks) wait until
+  after sync. Files and safety keeps its bar because sync multiplies outside edits and renames.
+  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (left: why Put Back
+  is sometimes missed, the corpus run on two outside vaults, the rename and temporary-file crash
+  windows); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
+  warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** a one-hour test of
+  the web build on the phone (Android keyboards type by composition, which several editor rules
+  assume away), Beta, a cloud design document (where notes live, encryption, accounts, cost
+  limits; no code), the groundwork (stable block ids, the web build storing Markdown), sync
+  between desktop and the phone's web build, **writing offline on the phone from day one**,
+  then an installable Android app on the same editor; a public launch after that.
 - **Local-first; the cloud is opt-in.** Nothing leaves the machine unless you turn sync on,
   and a device that never signs in loses nothing. **Hosting must stay cheap to run**: a design
   that could cost $1,000 a month is the wrong design, so quotas, size caps and a budget alarm
@@ -212,7 +216,7 @@ none blocks the release. The shared question comes first because three candidate
   proving the conversion as a script over fixtures before any UI is one way to do that.
   Distinct from the File menu
   Import removed on 2026-09-05: a one-time journey with a report, not a converter.
-- **Word import.** Wanted for Beta (Tyr, 2026-09-24): a `.docx` arrives as a note that looks
+- **Word import.** Nice to have, after sync (Tyr, 2026-10-06; wanted for Beta on 2026-09-24): a `.docx` arrives as a note that looks
   right in the app. A converter to semantic HTML (mammoth is the candidate) feeding the rich
   paste reader that already exists (`utils/richPaste.ts`: headings, lists, tasks, tables,
   links, emphasis), with the pictures saved into `attachments/`. The source file is left
@@ -556,9 +560,10 @@ discussion record in `docs/private/archive/` (gitignored; on Tyr's machine only)
   two-screen navigation was explored on 2026-04-06 and left undecided; the two-screen touch
   layout has since been removed. The earlier Capacitor spec, mobile
   spec, navigation exploration and release strategy are archived in `docs/private/archive/` as
-  reference, not plan. **Tyr's phone is Android**, and a good phone app would double his use
-  (2026-09-30): a reason cloud and the phone web build may come sooner. The web app is wanted
-  soon, and it needs the cloud's storage, so the two move together. Tablets: no ink or
+  reference, not plan. **Tyr's phone is Android** (a Pixel 8a), and a good phone app would
+  double his use (2026-09-30). The phone comes first as the web build in Chrome, then as an
+  installable app on the same editor; the web app needs the cloud's storage, so the two move
+  together (Direction). Tablets: no ink or
   sketching; handwriting to text comes from iPadOS Scribble in any text field (verify in the
   shell).
 - **Accounts: email-only** when accounts are needed (codes or links; session length open).
