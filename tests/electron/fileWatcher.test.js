@@ -12,6 +12,7 @@ const {
   claimWrite,
   claimUnlink,
   releaseUnlinkClaim,
+  unlinkDone,
   claimTree,
   isUnderOwnTree,
   isOwnWriteEvent,
@@ -158,6 +159,18 @@ describe("own-bytes claim", () => {
     expect(isOwnUnlinkEvent(file)).toBe(true);
 
     fs.writeFileSync(file, "keep\n");
+    expect(isOwnWriteEvent(file)).toBe(false);
+  });
+
+  it("ends when the app's Trash move is done, before its unlink arrives: a quick Put Back is a real add", () => {
+    const file = path.join(dir, "Note.md");
+    fs.writeFileSync(file, "keep\n");
+    claimWrite(file, "keep\n");
+
+    claimUnlink(file);
+    unlinkDone(file);
+    // The unlink claim went with it: no later unlink is taken for the app's.
+    expect(releaseUnlinkClaim(file)).toBe(false);
     expect(isOwnWriteEvent(file)).toBe(false);
   });
 

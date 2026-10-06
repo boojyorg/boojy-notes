@@ -35,9 +35,8 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   the release requirements below and files and safety at 8/10; the other rows of the scorecard
   and the Beta candidates (Word import, PDF export, the public-face batch, backlinks) wait until
   after sync. Files and safety keeps its bar because sync multiplies outside edits and renames.
-  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (left: why Put Back
-  is sometimes missed, the corpus run on two outside vaults, the rename and temporary-file crash
-  windows); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
+  **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety 7.5 (left: the corpus run
+  on two outside vaults, the rename and temporary-file crash windows); repo and tests holds at 7.5 (left: the hook-dependency audit and the small lint
   warnings, the two flaky macOS tests, Actions pinned by SHA). **The order:** a one-hour test of
   the web build on the phone (Android keyboards type by composition, which several editor rules
   assume away), Beta, a cloud design document (where notes live, encryption, accounts, cost
@@ -343,12 +342,6 @@ to delete when fixed, and a fixture to add then:
 - **Spelling on Windows, the rest** (Chromium's line since 2026-10-05): it appears only once
   the note has focus, a moment after; a word taken out of the dictionary (Undo) is kept on
   Windows' exclusion list and reads as misspelled again only after its paragraph is edited.
-- [ ] **Finder's Put Back is sometimes not seen on the macOS runner**
-  (`watcher-ownership.spec.ts:122`): in four of about twenty CI runs on 2026-10-05 (two on
-  master) the note put back from the Trash was not listed within 5 s, retry and all, and one of
-  eight local runs hung past the test timeout; the other runs pass. Not seen by a person yet. Find whether the watcher misses the rename into the vault or
-  the runner is slow, before calling it a runner flake. `table-block.spec.ts` failed twice on
-  the same shard the same day.
 - [ ] **Escape left a code block's right-click menu open on the macOS runner**
   (`editor-menus.spec.ts:48`, `fixme` there). A menu takes focus a frame after it opens
   (`useFocusTrap`), and a window that paints no frames (hidden, or covered on the runner)

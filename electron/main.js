@@ -11,6 +11,7 @@ import {
   startWatcher,
   claimWrite,
   claimUnlink,
+  unlinkDone,
   releaseUnlinkClaim,
   claimTree,
   closeWatcher,
@@ -253,7 +254,11 @@ ipcMain.on("trace", (_event, line) => trace("R", line));
 ipcMain.handle("paste", (event) => {
   event.sender.paste();
 });
-registerOSTrashIPC(getNotesDir, { suppressUnlink: claimUnlink, releaseUnlink: releaseUnlinkClaim });
+registerOSTrashIPC(getNotesDir, {
+  suppressUnlink: claimUnlink,
+  releaseUnlink: releaseUnlinkClaim,
+  unlinkDone,
+});
 registerFolderIPC(getNotesDir, { suppressTree: claimTree });
 registerSettingsIPC(getMainWindow, restartWatcher);
 registerSpellingIPC();

@@ -35,11 +35,13 @@ type TrashItem = (filePath: string) => Promise<void>;
  * Watcher coordination around our own trash moves. `suppressUnlink` must hold
  * until the resulting unlink event is consumed (not a fixed timer — the OS
  * trash call's latency is unbounded); `releaseUnlink` undoes it when the trash
- * operation fails and no unlink is coming.
+ * operation fails and no unlink is coming; `unlinkDone` settles it when the
+ * move has finished, so a Put Back is seen whenever it comes.
  */
 export interface WatcherGuard {
   suppressUnlink: (filePath: string) => void;
   releaseUnlink: (filePath: string) => void;
+  unlinkDone: (filePath: string) => void;
 }
 
 const LEGACY_META_FILE = ".boojy-trash-meta.json";
@@ -296,6 +298,7 @@ export async function trashManagedNote(
     watcherGuard.releaseUnlink(filePath);
     throw error;
   }
+  watcherGuard.unlinkDone(filePath);
 
   noteDeleted(noteId, relativePath.split(path.sep).join("/"));
   delete idIndex[noteId];

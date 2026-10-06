@@ -5,12 +5,12 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 ## Delete follows the platform
 
 - Electron sends `.md` files to the OS Trash; **Recently Deleted is the recovery surface**: the
-  note's last text and history stay in the store 30 days (never a folder in the vault), listed
-  by where it was; a click shows one read-only, nothing written; restored where it was (folder
+  note's last text and history stay in the store 30 days (not in the vault), listed
+  by where it was, shown read-only on a click; restored where it was (folder
   remade, `-2` on a clash, same id), or deleted for good after asking. `recently-deleted.spec.ts`. Web deletion is permanent behind confirmation.
-  A folder's directory goes only once nothing but OS cruft is left; non-note files are never
+  A folder's directory goes only once just OS cruft is left; non-note files are never
   touched.
-- Desktop confirms only more than one file; a single note goes at once, its toast offering
+- Desktop confirms only several files; one note goes at once, its toast with
   Undo. Wording in `utils/deletionPrompt.ts`.
 
 ## The watcher drops only an event it can trace to the app's own operation
@@ -20,10 +20,11 @@ Rule + one reason + the proving spec. `AGENTS.md` gotcha 4 is the summary. Histo
 eviction). `watcher-scale.spec.ts`.
 
 - **`write-note` claims the bytes it wrote**: a later event whose file holds exactly those bytes
-  is the echo, however late (macOS sends a metadata `change` ~3 s after). The claim ends at
+  is the echo, however late (macOS re-sends ~3 s later). The claim ends at
   the first event showing other bytes or the file gone. **Don't replace the bytes with a timer.**
-- **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. An
-  unclaimed unlink is real, however soon.
+- **An unlink the app causes** (Trash, a rename's old path) is claimed once and consumed. A
+  Trash move's end forgets the file and looks again (`unlinkDone`; a quick Put Back was lost).
+  An unclaimed unlink is real, however soon.
 - A folder rename, removal or copy is the one timed suppression (`claimTree`).
   `watcher-ownership.spec.ts`.
 - **A sync folder**: a version renamed over a note is an outside edit, a conflicted copy is
@@ -46,9 +47,9 @@ stays a delete. Never compare bytes to decide identity. `external-rename.spec.ts
 - Everything from disk goes through `applyExternalNote`; "same" is judged by the writer
   (`persistedEquals`). No pending edits: take it at once.
 - **Pending edits: keep both.** The local version is written first as `Title (conflicted copy
-  YYYY-MM-DD)`; only once that write succeeds is the disk version adopted. A failed copy
-  replaces nothing.
-- **`write-note` refuses a stale save** (the file's bytes differ from the last seen hash:
+  YYYY-MM-DD)`; the disk version is adopted only once that succeeds, so a failed copy replaces
+  nothing.
+- **`write-note` refuses a stale save** (bytes differ from the last seen hash:
   `{ stale: true, note }`); the refusal and the watcher both land in `takeOutsideVersion`.
 - **Once conflicted, the local version never goes over the outside path**: every flush writes
   the copy until one succeeds (`copyInFlight`). No merging, by decision. `external-edit.spec.ts`.
@@ -64,8 +65,8 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 - **The main process alone names folders** (`electron/folders.ts`): sanitises and de-duplicates
   a new last segment, keeps a moved folder's disk name, never escapes the vault
   (`resolveVaultDir`), answers with the final path. No input sanitises a folder name.
-- Rename and move are one `renameSync`, after flushing pending edits under the folder; not an
-  edit, not undoable. Delete waits for the Trash flush. A folder outlives its notes.
+- Rename and move are one `renameSync`, after flushing pending edits under it; not an edit,
+  not undoable. Delete waits for the Trash flush. A folder outlives its notes.
 - Duplicate folder: one directory copy (`Name (copy)`), adopted from disk, revealed, no toast.
 - **A missing chosen vault is never recreated**; writes refuse with the ordinary toast.
 - **Storage locations** (`electron/vaults.ts`, code says vault): config's `vaults`; `add-vault`
@@ -98,7 +99,7 @@ edit landing mid-write is lost from disk. `write-in-flight.spec.ts`.
 ## Attachments
 
 Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, name in the
-**path, never the host** (Chromium refuses spaces and brackets in a host), served only through
+**path, never the host** (Chromium refuses spaces and brackets there), served only through
 `insideVault`. `attachment-names.spec.ts`.
 
 ## Version history keeps what the file held
@@ -108,13 +109,11 @@ Loaded as `boojy-att://vault/<name>` with each path segment percent-encoded, nam
   back what the file was. Kept outside the vault (`userData/history/`): gzipped texts named by
   hash, an append-only log per note id.
 - **What makes one**: a session's end (the note left, the window closed, a pause; one
-  soon after replaces the last), a note's text before its first edit,
-  and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
+  soon after replaces the last), a note's text before its first edit, and before a large delete, an outside change, Replace All or a restore; `⌘S` makes a save
   point (`useSavePoint`). Nothing unchanged is kept twice. Only `⌘S` says so; its toast's words
   open a name field, as `⌘S` again does.
 - **Save points are kept for good; Autosaves over a month thin to a day's last.** Naming an
-  Autosave makes it a save point. History off
-  keeps nothing new; turning it off with Delete removes the texts at once.
+  Autosave makes it a save point. History off keeps nothing new; turning it off with Delete removes the texts at once.
 - **The list is the ··· menu in place** (`VersionHistoryList`). A chosen version shows read-only
   (`PastVersionView`, a ref holding only it; an edit asks), with a pill in the `</>` slot.
   A restore keeps the note's text first (`Before restore`) and is one commit, so Undo and ⌘Z

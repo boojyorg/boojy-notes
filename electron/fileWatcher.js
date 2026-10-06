@@ -23,7 +23,8 @@ let watcher = null;
 // - `ownUnlinks`: paths the app is removing itself (a Trash move, the old
 //   path of a rename), each consumed by the one unlink it produces. Not a
 //   timer: shell.trashItem() latency is OS-mediated and unbounded. The
-//   timeout is only a leak guard for an unlink chokidar never delivers.
+//   timeout is only a leak guard for an unlink chokidar never delivers. A
+//   finished Trash move needs no event at all (`unlinkDone`).
 // - `ownTrees`: a directory the app is renaming or removing, which chokidar
 //   reports as one event per entry underneath. The renderer already knows the
 //   outcome from the IPC answer, so everything under the old and the new
@@ -212,6 +213,20 @@ function claimUnlink(filePath) {
   ownUnlinks.set(filePath, timer);
 }
 
+/**
+ * The app has removed the file at `filePath` (its Trash move finished): the
+ * unlink is accounted for whether its event has come or not. The claim is
+ * consumed, the app's bytes are no longer there, and the watch forgets the
+ * file, so whatever appears at the path next is an add. Waiting for the event
+ * instead missed a Put Back that landed before the watch looked: it found the
+ * very file it knew, and reported nothing.
+ */
+function unlinkDone(filePath) {
+  releaseUnlinkClaim(filePath);
+  ownBytes.delete(filePath);
+  watcher?.forget(filePath);
+}
+
 /** Give back an unlink claim. Returns true if one was pending. */
 function releaseUnlinkClaim(filePath) {
   const timer = ownUnlinks.get(filePath);
@@ -324,6 +339,7 @@ export {
   claimWrite,
   claimUnlink,
   releaseUnlinkClaim,
+  unlinkDone,
   claimTree,
   isUnderOwnTree,
   isOwnWriteEvent,
