@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
+import { settleTypedSpaces } from "../utils/inlineFormatting";
 
 const NEVER = Symbol("never painted");
 
@@ -20,8 +21,10 @@ const NEVER = Symbol("never painted");
  * lose the keystrokes since.
  *
  * `read(el)` is what the field holds as Markdown (`domNodeToMarkdown`, or a
- * textarea's value); `paint(el, text)` puts the latest text into it, keeping
- * the caret where the caller can. `text` is this render's text, the trigger.
+ * textarea's value), judged as the commit settles it: a U+00A0 Chromium typed
+ * is the space it committed (`settleTypedSpaces`), never a difference, or a
+ * pause after a trailing space repainted it away. `paint(el, text)` puts the
+ * latest text into it, keeping the caret where the caller can. `text` is this render's text, the trigger.
  */
 export function useOwnedField(ref, { text, syncGen, latest, read, paint }) {
   // The generation the field was last painted for; NEVER before the mount paint.
@@ -35,7 +38,11 @@ export function useOwnedField(ref, { text, syncGen, latest, read, paint }) {
     if (!el) return;
     const target = fns.current.latest();
     if (target === undefined) return; // the block is gone
-    if (paintedFor.current === syncGen && fns.current.read(el) === target) return;
+    if (
+      paintedFor.current === syncGen &&
+      settleTypedSpaces(fns.current.read(el), target) === target
+    )
+      return;
     paintedFor.current = syncGen;
     fns.current.paint(el, target);
   }, [ref, text, syncGen]);

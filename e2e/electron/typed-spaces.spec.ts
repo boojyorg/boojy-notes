@@ -51,3 +51,36 @@ test("a non-breaking space the file holds is kept through an edit of its line", 
     await h.close();
   }
 });
+
+// A field of its own repaints when it does not hold the ref's latest text
+// (useOwnedField); the field's U+00A0 against the settled space was such a
+// difference, so a pause after a trailing space repainted the field, the space
+// collapsed, and the next word joined the last ("Headsup").
+test("a pause after a space in a callout title, its body or a table cell keeps the space", async () => {
+  const h = await launchApp({
+    "Note.md": "> [!note] Heads\n> Body\n\n| A | B |\n| --- | --- |\n| c | d |\n",
+  });
+  try {
+    await h.openNote("Note");
+    const fields = [
+      h.page.locator(".callout-title"),
+      h.page.locator(".callout-body"),
+      h.page.locator("table.table-block td").first(),
+    ];
+    for (const field of fields) {
+      await field.click();
+      await h.page.keyboard.press(END_OF_LINE);
+      await h.page.keyboard.type(" ");
+      await sleep(800); // past the text commit's debounce and its render
+      await h.page.keyboard.type("up");
+    }
+    await waitForFile(h.vault.file("Note.md"), (t) => (t.match(/ up/g) || []).length === 3);
+    await sleep(SETTLE_MS);
+    expect(h.vault.read("Note.md")).toBe(
+      "> [!note] Heads up\n> Body up\n\n| A | B |\n| --- | --- |\n| c up | d |\n",
+    );
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
