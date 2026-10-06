@@ -288,3 +288,58 @@ test("the viewer, its page column and its zoom menu have no serious accessibilit
     await h.close();
   }
 });
+
+test("the zoom figure is a field: a typed size applies on Enter and closes the menu, Escape cancels", async () => {
+  const h = await launchApp(seed, { prepare });
+  try {
+    await openFileRow(h.page, "Lecture 3.pdf");
+    await expect.poll(() => drawn(h.page, 1)).toBe(true);
+    const menu = h.page.getByTestId("zoom-menu");
+    await h.page.getByTestId("zoom-button").click();
+    await h.page.getByTestId("zoom-figure").click();
+    const field = h.page.getByTestId("zoom-input");
+    await expect(field).toBeFocused();
+    // The field's keys are its own: a typed minus is not Zoom Out, Escape keeps the menu.
+    await h.page.keyboard.type("90");
+    await h.page.keyboard.press("Escape");
+    await expect(menu).toBeVisible();
+    await expect(h.page.getByTestId("zoom-figure")).not.toHaveText("90%");
+
+    await h.page.getByTestId("zoom-figure").click();
+    await h.page.keyboard.type("140");
+    await h.page.keyboard.press("Enter");
+    await expect(menu).toHaveCount(0);
+    await expect(h.page.getByTestId("zoom-button")).toHaveText(/140%/);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});
+
+test("the path holds still as a PDF opens from a note: no frame drawn short or gliding", async () => {
+  const h = await launchApp(seed, { prepare });
+  try {
+    await expandAllFolders(h.page);
+    await h.openNote("COMP329");
+    await expandAllFolders(h.page);
+    await h.page.evaluate(() => {
+      const w = window as unknown as { frames: number[] };
+      w.frames = [];
+      const snap = () => {
+        const name = document.querySelector("[data-file-title]");
+        if (name) w.frames.push(Math.round(name.getBoundingClientRect().left));
+        if (w.frames.length < 30) requestAnimationFrame(snap);
+      };
+      requestAnimationFrame(snap);
+    });
+    await h.page.locator('[data-file-path$="Lecture 3.pdf"]').click();
+    await expect
+      .poll(() => h.page.evaluate(() => (window as unknown as { frames: number[] }).frames.length))
+      .toBe(30);
+    const frames = await h.page.evaluate(() => (window as unknown as { frames: number[] }).frames);
+    expect(new Set(frames).size).toBe(1);
+    expect(h.pageErrors).toEqual([]);
+  } finally {
+    await h.close();
+  }
+});

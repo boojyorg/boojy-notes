@@ -173,7 +173,11 @@ function InterfaceSize() {
               divider
               aria-label="Set a custom size"
               data-testid="ui-scale-value"
-              onClick={() => setTyping(String(uiScale))}
+              onClick={() => {
+                // A fresh edit: an Escape's cancel never outlives its field.
+                cancelledRef.current = false;
+                setTyping(String(uiScale));
+              }}
               style={{ minWidth: 62, fontVariantNumeric: "tabular-nums" }}
             >
               {`${uiScale}%`}

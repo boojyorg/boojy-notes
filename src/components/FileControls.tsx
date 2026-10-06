@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import type { FileViewState } from "../hooks/useFileView";
 import { ACTUAL_SIZE, FIT_PAGE, FIT_WIDTH, sameZoom } from "../utils/fileView";
@@ -11,11 +11,19 @@ import { Tooltip, useTooltip } from "./Tooltip";
 // A .jsx component: its props are untyped to TypeScript.
 const ChromeButton = ChromeButtonJsx as unknown as ComponentType<Record<string, unknown>>;
 
+/** The sizes a typed figure may ask for, in per cent. */
+const TYPED_MIN = 10;
+const TYPED_MAX = 400;
+
 /**
  * The menu under the zoom figure: the Settings-style stepper on top, whose
  * − and + leave it open so a page can be grown press by press (and the − and
- * + keys do the same), then the fits, ticked when on. The figure in the
- * middle is Actual Size.
+ * + keys do the same), then the fits, ticked when on; choosing a fit closes
+ * it, as choosing any menu row does. **The figure is a field**, as Settings'
+ * is: a click opens it to type a percentage, applied on Enter (which also
+ * closes the menu) or on leaving it; Escape cancels. The field keeps its keys
+ * from the menu. The stepper's segments are menu items (a menu owns nothing
+ * else), reached by the pointer and by − and +.
  */
 function ZoomMenu({
   view,
@@ -26,10 +34,24 @@ function ZoomMenu({
   anchor: MenuAnchor;
   onClose: () => void;
 }) {
+  const { theme } = useTheme();
+  const [typing, setTyping] = useState<string | null>(null);
+  // Escape unmounts the field, and the blur that follows must not apply it.
+  const cancelled = useRef(false);
   const pdf = view.kind === "pdf";
   const choose = (z: typeof FIT_WIDTH) => () => {
     view.setZoom(z);
     onClose();
+  };
+  const applyTyped = () => {
+    if (cancelled.current) {
+      cancelled.current = false;
+      return;
+    }
+    const n = Number.parseInt(typing ?? "", 10);
+    setTyping(null);
+    if (Number.isFinite(n) && n > 0)
+      view.setZoom({ mode: "pct", pct: Math.min(TYPED_MAX, Math.max(TYPED_MIN, n)) });
   };
   const fits = pdf
     ? [
@@ -58,16 +80,71 @@ function ZoomMenu({
             <Segment role="menuitem" aria-label="Zoom out" onClick={view.zoomOut}>
               <MinusIcon size={14} />
             </Segment>
-            <Segment
-              divider
-              role="menuitem"
-              aria-label="Actual size"
-              data-testid="zoom-figure"
-              onClick={view.actualSize}
-              style={{ minWidth: 62, fontVariantNumeric: "tabular-nums" }}
-            >
-              {`${view.percent}%`}
-            </Segment>
+            {typing === null ? (
+              <Segment
+                divider
+                role="menuitem"
+                aria-label="Type a size"
+                data-testid="zoom-figure"
+                onClick={() => {
+                  cancelled.current = false;
+                  setTyping(String(view.percent));
+                }}
+                style={{ minWidth: 62, fontVariantNumeric: "tabular-nums" }}
+              >
+                {`${view.percent}%`}
+              </Segment>
+            ) : (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 62,
+                  borderLeft: `1px solid ${theme.button.border}`,
+                  color: theme.TEXT.primary,
+                  fontSize: 13,
+                }}
+              >
+                <input
+                  // Opened on purpose, by a click on the figure itself.
+                  autoFocus
+                  inputMode="numeric"
+                  aria-label="Zoom, per cent"
+                  data-testid="zoom-input"
+                  value={typing}
+                  onChange={(e) => setTyping(e.target.value.replace(/\D/g, ""))}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={applyTyped}
+                  onKeyDown={(e) => {
+                    // The field's own keys, never the menu's rows or its − and +.
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyTyped();
+                      onClose();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelled.current = true;
+                      setTyping(null);
+                    }
+                  }}
+                  style={{
+                    width: 34,
+                    border: "none",
+                    background: "transparent",
+                    color: "inherit",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    fontFamily: "inherit",
+                    textAlign: "right",
+                    outline: "none",
+                    padding: 0,
+                  }}
+                />
+                <span style={{ color: theme.TEXT.muted, fontWeight: 500 }}>%</span>
+              </div>
+            )}
             <Segment divider role="menuitem" aria-label="Zoom in" onClick={view.zoomIn}>
               <PlusIcon size={14} />
             </Segment>
@@ -110,6 +187,7 @@ function PageField({ view }: { view: FileViewState }) {
     >
       <input
         aria-label={`Page, of ${view.pageCount}`}
+        disabled={!view.pageCount}
         data-testid="page-field"
         inputMode="numeric"
         value={draft ?? String(view.page)}
@@ -153,7 +231,7 @@ function PageField({ view }: { view: FileViewState }) {
           outlineColor: ACCENT.text,
         }}
       />
-      <span>of {view.pageCount}</span>
+      <span>of {view.pageCount || "–"}</span>
       {tip.shown && (
         <Tooltip
           label="Go to page"
@@ -178,8 +256,9 @@ export default function FileControls({ view }: { view: FileViewState }) {
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const { setControlsWidth } = view;
 
-  // The path's band ends before these: their width, as they change (CSS pixels).
-  useEffect(() => {
+  // The path's band ends before these: their width, as they change (CSS pixels),
+  // read before the first paint so the path is never drawn over them.
+  useLayoutEffect(() => {
     if (!root) return;
     const measure = () => setControlsWidth(root.offsetWidth);
     measure();
@@ -232,11 +311,12 @@ export default function FileControls({ view }: { view: FileViewState }) {
           whiteSpace: "nowrap",
         }}
       >
-        {view.zoomLabel}
+        {/* Held in place, unseen, until the page is measured: no 100% that turns into 118%. */}
+        <span style={{ visibility: view.zoomKnown ? "visible" : "hidden" }}>{view.zoomLabel}</span>
         <ChevronDownIcon size={13} />
       </ChromeButton>
       {menu && <ZoomMenu view={view} anchor={menu} onClose={() => setMenu(null)} />}
-      {pdf && view.pageCount > 0 && <PageField view={view} />}
+      {pdf && <PageField view={view} />}
     </div>
   );
 }

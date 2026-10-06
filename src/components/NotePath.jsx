@@ -198,6 +198,14 @@ export default function NotePath({
   const bandRef = useRef(null);
   const twinRef = useRef(null);
   const { form, placeholderWidth } = useCrumbFit(bandRef, twinRef, parents, name);
+  // A path just shown takes its place at once; only a later change (the
+  // sidebar toggled) glides on the panel's clock.
+  const [glides, setGlides] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setGlides(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const glide = (...props) => (glides ? panelTransition(...props) : "none");
 
   // The folder popup: which crumb opened it (its index in `parents`, -1 for
   // the ellipsis, and the element itself), what it shows, and where it hangs.
@@ -315,7 +323,7 @@ export default function NotePath({
     flexShrink: basis > 0 ? BIAS_SHRINK : 0,
     flexBasis: basis > 0 ? basis : 0,
     minWidth: 0,
-    transition: panelTransition("flex-basis"),
+    transition: glide("flex-basis"),
   });
 
   return (
@@ -333,7 +341,7 @@ export default function NotePath({
         paddingLeft: padLeft,
         paddingRight: bandPadRight,
         background: bg,
-        transition: panelTransition("padding-left"),
+        transition: glide("padding-left"),
       }}
     >
       {/* The drag strip: the row's height, between the paddings, so it never
@@ -352,7 +360,7 @@ export default function NotePath({
             left: padLeft,
             right: bandPadRight,
             WebkitAppRegion: "drag",
-            transition: panelTransition("left"),
+            transition: glide("left"),
           }}
         />
       )}

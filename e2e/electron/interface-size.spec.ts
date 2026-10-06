@@ -60,6 +60,12 @@ test("the stepper applies at once, takes a typed value, and resets", async () =>
     await expect(h.page.getByTestId("ui-scale-input")).toHaveCount(0);
     await expect(h.page.getByRole("dialog", { name: "Settings" })).toBeVisible();
     expect(await scale(h.page)).toBe("125%");
+    // And the next size typed after an Escape still applies (the cancel was
+    // left armed for a blur that never came, and swallowed it).
+    await figure.click();
+    await h.page.getByTestId("ui-scale-input").fill("110");
+    await h.page.getByTestId("ui-scale-input").press("Enter");
+    await expect.poll(() => scale(h.page)).toBe("110%");
 
     await h.page.getByRole("button", { name: "Reset" }).click();
     expect(await scale(h.page)).toBe("100%");

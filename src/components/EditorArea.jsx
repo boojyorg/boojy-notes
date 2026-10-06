@@ -1113,6 +1113,10 @@ const EditorArea = memo(
       >
         {(note || deletedNote || fileView) && (
           <NotePath
+            // A file and a note have different controls beside the path: a
+            // fresh path for each, so it snaps to its place instead of gliding
+            // there on the sidebar's clock.
+            key={fileView ? "file" : "note"}
             parents={parents}
             name={deletedNote ? deletedNote.item.name : fileView ? fileView.name : note.title}
             lane={!fileView}

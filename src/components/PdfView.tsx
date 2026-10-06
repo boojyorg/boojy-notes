@@ -4,6 +4,7 @@ import { useTheme } from "../hooks/useTheme";
 import type { FileViewState } from "../hooks/useFileView";
 import { cssZoom } from "../utils/domHelpers";
 import { loadPdfLib } from "../utils/pdfDocument";
+import { PANEL_MS, panelTransition } from "../tokens/motion";
 
 /** Room round the pages: either side, and above the first and below the last. */
 export const PAGE_MARGIN_X = 48;
@@ -175,6 +176,7 @@ function PageColumn({ view }: { view: FileViewState }) {
       data-testid="page-column"
       style={{
         width: COLUMN_W,
+        minWidth: COLUMN_W,
         flexShrink: 0,
         overflowY: "auto",
         background: BG.editor,
@@ -240,6 +242,45 @@ function PageColumn({ view }: { view: FileViewState }) {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * The page column as a panel: it slides open and shut on the sidebar's clock
+ * (its width, `.panel-motion`, so Reduce Motion snaps it), and its pages stay
+ * while it slides out, then go, so a closed column draws nothing.
+ */
+function PageColumnPanel({ view }: { view: FileViewState }) {
+  const shown = view.columnShown;
+  const [held, setHeld] = useState(shown);
+  useEffect(() => {
+    if (shown) {
+      setHeld(true);
+      return;
+    }
+    const t = setTimeout(() => setHeld(false), PANEL_MS);
+    return () => clearTimeout(t);
+  }, [shown]);
+  // Open from the first frame when the file opens with the column on: only a
+  // press of the toggle slides it.
+  const [slides, setSlides] = useState(false);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setSlides(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+  return (
+    <div
+      className="panel-motion"
+      style={{
+        width: shown ? COLUMN_W : 0,
+        flexShrink: 0,
+        overflow: "hidden",
+        display: "flex",
+        transition: slides ? panelTransition("width") : "none",
+      }}
+    >
+      {(shown || held) && <PageColumn view={view} />}
+    </div>
   );
 }
 
@@ -387,7 +428,7 @@ export default function PdfView({ view }: { view: FileViewState }) {
       ref={setPane}
       style={{ flex: 1, minHeight: 0, display: "flex", background: theme.BG.surface }}
     >
-      {view.columnShown && <PageColumn view={view} />}
+      <PageColumnPanel view={view} />
       <div
         ref={setScroller}
         data-testid="pdf-pages"
@@ -401,6 +442,9 @@ export default function PdfView({ view }: { view: FileViewState }) {
           flex: 1,
           minWidth: 0,
           overflow: "auto",
+          // The lane is kept whether the pages overflow or not, so the room,
+          // and the fit, never change as the first pages arrive.
+          scrollbarGutter: "stable",
           outline: "none",
           display: "flex",
           flexDirection: "column",

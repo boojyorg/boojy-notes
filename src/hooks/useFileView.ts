@@ -160,6 +160,8 @@ export function useFileView(open: OpenFile | null, vaultKey: string) {
             percent,
             /** The zoom control's label: a picture fitted says Fit; anything else its percentage. */
             zoomLabel: kind === "picture" && zoom.mode === "fitPage" ? "Fit" : `${percent}%`,
+            /** The page has been measured, so the figure means something. */
+            zoomKnown: scale > 0,
             setZoom,
             zoomIn: () => zoomBy(1),
             zoomOut: () => zoomBy(-1),
@@ -174,9 +176,13 @@ export function useFileView(open: OpenFile | null, vaultKey: string) {
             setNatural,
             column,
             /** The column is shown: open, and room for it beside the pages. */
-            columnShown: column && paneWidth >= COLUMN_FITS_AT,
-            /** Whether the toggle is offered at all: not where the column could not fit. */
-            columnFits: paneWidth >= COLUMN_FITS_AT,
+            columnShown: column && (paneWidth === 0 || paneWidth >= COLUMN_FITS_AT),
+            /**
+             * Whether the toggle is offered at all: not where the column could not
+             * fit. Before the pane is measured it is assumed to fit, so the row is
+             * drawn whole from the first frame.
+             */
+            columnFits: paneWidth === 0 || paneWidth >= COLUMN_FITS_AT,
             toggleColumn,
             setPaneWidth,
             controlsWidth,
