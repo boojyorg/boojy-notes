@@ -34,8 +34,12 @@ more than any feature nobody else has. That is a product hypothesis, not validat
   keyboard 5, feel and motion 6, accessibility 5, repo and tests 7.5, public face 5. The Beta
   sections below are that phase, and repo and tests reach 8 through the Technical debt list (the
   lint warnings, the dependency majors, CI hygiene, secret scanning). It ends when a re-score
-  puts every row at 8. **Then, in order:** cloud sync between desktop and web, with the web
-  build working well on a phone; a mobile app; a public launch.
+  puts every row at 8. **Re-scored on 2026-10-06, after v0.14.0** (agreed): files and safety
+  7.5 (left: why Put Back is sometimes missed, the corpus run on two outside vaults, the rename
+  and temporary-file crash windows); repo and tests holds at 7.5 (left: the hook-dependency
+  audit and the small lint warnings, the two flaky macOS tests, Actions pinned by SHA). **Then,
+  in order:** cloud sync between desktop and web, with the web build working well on a phone;
+  a mobile app; a public launch.
 - **Local-first; the cloud is opt-in.** Nothing leaves the machine unless you turn sync on,
   and a device that never signs in loses nothing. **Hosting must stay cheap to run**: a design
   that could cost $1,000 a month is the wrong design, so quotas, size caps and a budget alarm
