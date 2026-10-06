@@ -214,11 +214,13 @@ function loadIndex(notesDir) {
     // file, and leaving it would keep the vault dirty for git-tracked folders
     try {
       _idIndex = JSON.parse(fs.readFileSync(legacyIndexPath(notesDir), "utf-8"));
-      saveIndex(notesDir);
-      try {
-        fs.unlinkSync(legacyIndexPath(notesDir));
-      } catch {
-        /* leave the legacy copy if it can't be removed */
+      // The legacy copy goes only once the index is safely saved elsewhere.
+      if (saveIndex(notesDir)) {
+        try {
+          fs.unlinkSync(legacyIndexPath(notesDir));
+        } catch {
+          /* leave the legacy copy if it can't be removed */
+        }
       }
     } catch {
       /* no index anywhere — fresh vault */
@@ -227,12 +229,25 @@ function loadIndex(notesDir) {
   return _idIndex;
 }
 
+/**
+ * Write the ID index if it changed. Never throws: it is called from file
+ * events and every note operation, and a failed save (a full disk, another
+ * copy of the app saving the same index at that instant) must not become an
+ * uncaught exception. The index in memory stays the truth and the next save
+ * writes it again. Returns whether the index on disk now matches it.
+ */
 function saveIndex(notesDir) {
   const json = JSON.stringify(_idIndex, null, 2);
-  if (json === _savedIndexJson) return;
-  fs.mkdirSync(indexDir(), { recursive: true });
-  writeFileAtomic(indexPath(notesDir), json);
+  if (json === _savedIndexJson) return true;
+  try {
+    fs.mkdirSync(indexDir(), { recursive: true });
+    writeFileAtomic(indexPath(notesDir), json);
+  } catch (error) {
+    console.error("The note index could not be saved; the next change saves it again", error);
+    return false;
+  }
   _savedIndexJson = json;
+  return true;
 }
 
 /** Returns the current ID index (mutable reference). */

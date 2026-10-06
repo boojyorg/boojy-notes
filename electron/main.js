@@ -1,3 +1,5 @@
+// First: `pnpm dev` moves to its own userData before any module reads the path.
+import "./devProfile.js";
 import { app, BrowserWindow, protocol, net, nativeTheme, ipcMain, dialog, shell } from "electron";
 import path from "node:path";
 import { WINDOW_MIN_W, WINDOW_STRIP_H } from "../src/constants/layout.js";
@@ -216,8 +218,8 @@ function createWindow() {
 // Two copies would each run a watcher and an index over the same files, both
 // writing. A second launch tells the first (`second-instance`) and exits here,
 // before any IPC, settings or vault work. `pnpm dev` skips the lock so it runs
-// beside the installed app; the two share userData, so each sees the other's
-// saves as outside edits.
+// beside the installed app, with its own userData (`devProfile.ts`); on the
+// same vault each sees the other's saves as outside edits.
 if (!process.env.VITE_DEV_SERVER_URL && !app.requestSingleInstanceLock()) app.exit(0);
 
 app.on("second-instance", () => {
